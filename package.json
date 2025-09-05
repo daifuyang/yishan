@@ -7,5 +7,6 @@
   },
   "keywords": [],
   "author": "yishan",
-  "license": "MIT"
-} 
+  "license": "MIT",
+  "packageManager": "pnpm@8.15.9"
+}
