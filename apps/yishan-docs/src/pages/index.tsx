@@ -19,9 +19,21 @@ function HomepageHeader() {
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
           <Link
+            className="button button--primary button--lg"
+            to="/docs/introduction">
+            快速开始 🚀
+          </Link>
+          <Link
             className="button button--secondary button--lg"
-            to="/docs/intro">
-            Docusaurus Tutorial - 5min ⏱️
+            to="/docs/admin"
+            style={{marginLeft: '1rem'}}>
+            管理后台 📊
+          </Link>
+          <Link
+            className="button button--secondary button--lg"
+            to="/docs/components"
+            style={{marginLeft: '1rem'}}>
+            组件库 🧩
           </Link>
         </div>
       </div>
@@ -33,8 +45,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title={`${siteConfig.title} - 现代化全栈开发平台`}
+      description="基于Next.js + TypeScript + Tailwind CSS的现代化全栈开发平台，包含管理后台、组件库和完整文档">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

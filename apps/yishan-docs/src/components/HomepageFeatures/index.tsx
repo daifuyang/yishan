@@ -11,32 +11,32 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: '现代化技术栈',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        基于Next.js 15 + TypeScript + Tailwind CSS构建，提供最佳的开发体验
+        和性能表现，支持服务端渲染和静态生成。
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
+    title: '完整的组件库',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        基于shadcn/ui的丰富组件库，包含基础UI、表单、数据展示等各类组件，
+        支持深色模式和主题定制。
       </>
     ),
   },
   {
-    title: 'Powered by React',
+    title: '企业级管理后台',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        功能完整的企业级管理后台模板，包含用户管理、权限控制、数据可视化
+        等核心功能，开箱即用。
       </>
     ),
   },
