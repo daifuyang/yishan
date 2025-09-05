@@ -46,8 +46,10 @@
       "last 5 safari version"
     ]
   },
+  "license": "MIT",
   "engines": {
     "node": "20.x",
     "pnpm": "8.x"
-  }
+  },
+  "packageManager": "pnpm@8.15.9"
 }
