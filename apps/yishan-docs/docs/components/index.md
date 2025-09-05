@@ -53,36 +53,36 @@ export function MyApp() {
 ## 🧩 组件分类
 
 ### 基础组件 (UI)
-- [Button](./ui/button) - 按钮组件
-- [Card](./ui/card) - 卡片容器
-- [Input](./ui/input) - 输入框
-- [Label](./ui/label) - 标签
-- [Textarea](./ui/textarea) - 文本域
+- [Button](./button-demo) - 按钮组件
+- Card - 卡片容器
+- Input - 输入框
+- Label - 标签
+- Textarea - 文本域
 
 ### 表单组件
-- [Form](./ui/form) - 表单容器
-- [Select](./ui/select) - 选择器
-- [Checkbox](./ui/checkbox) - 复选框
-- [Radio](./ui/radio) - 单选框
-- [Switch](./ui/switch) - 开关
+- Form - 表单容器
+- Select - 选择器
+- Checkbox - 复选框
+- Radio - 单选框
+- Switch - 开关
 
 ### 反馈组件
-- [Toast](./ui/toast) - 轻提示
-- [Alert](./ui/alert) - 警告提示
-- [Dialog](./ui/dialog) - 对话框
-- [Sheet](./ui/sheet) - 抽屉
+- Toast - 轻提示
+- Alert - 警告提示
+- Dialog - 对话框
+- Sheet - 抽屉
 
 ### 数据展示
-- [Table](./ui/table) - 表格
-- [List](./ui/list) - 列表
-- [Avatar](./ui/avatar) - 头像
-- [Badge](./ui/badge) - 徽章
+- Table - 表格
+- List - 列表
+- Avatar - 头像
+- Badge - 徽章
 
 ### 导航组件
-- [Navigation](./ui/navigation) - 导航菜单
-- [Breadcrumb](./ui/breadcrumb) - 面包屑
-- [Tabs](./ui/tabs) - 选项卡
-- [Pagination](./ui/pagination) - 分页
+- Navigation - 导航菜单
+- Breadcrumb - 面包屑
+- Tabs - 选项卡
+- Pagination - 分页
 
 ## 🎨 主题系统
 
@@ -294,4 +294,4 @@ pnpm test:visual
 
 ---
 
-开始探索：[Button组件](./ui/button) →
+开始探索：[Button组件](./button-demo) →

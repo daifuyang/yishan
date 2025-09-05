@@ -113,7 +113,7 @@ const config: Config = {
           items: [
             {
               label: "项目概览",
-              to: "/docs/introduction",
+              to: "/docs/",
             },
             {
               label: "管理后台",
@@ -125,7 +125,7 @@ const config: Config = {
             },
             {
               label: "快速开始",
-              to: "/docs/introduction/quick-start",
+              to: "/docs/introduction/overview",
             },
           ],
         },
@@ -159,11 +159,11 @@ const config: Config = {
             },
             {
               label: "技术文档",
-              to: "/docs/introduction",
+              to: "/docs/",
             },
             {
               label: "最佳实践",
-              to: "/docs/guides/best-practices",
+              to: "/docs/",
             },
             {
               label: "联系我们",
