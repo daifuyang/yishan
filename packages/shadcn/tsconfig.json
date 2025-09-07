@@ -1,17 +1,7 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020", "DOM"],
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "jsx": "react-jsx",
-    "strict": true,
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["./*"] },
-    "declaration": true,
-    "outDir": "./dist"
-  },
-  "include": ["index.ts", "components/**/*", "lib/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
 }
