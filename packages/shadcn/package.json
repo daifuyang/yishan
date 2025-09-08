@@ -1,5 +1,5 @@
 {
-  "name": "@yishan/shadcn",
+  "name": "@zerocmf/yishan-shadcn",
   "version": "1.0.0",
   "description": "Shared shadcn/ui components library",
   "type": "module",

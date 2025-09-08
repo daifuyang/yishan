@@ -39,9 +39,9 @@ export default function App() {
 
 | 组件 | 说明 | 状态 |
 |---|---|---|
-| [Button](/components/button) | 按钮组件 | ✅ |
-| [Input](/components/input) | 输入框组件 | ✅ |
-| [Card](/components/card) | 卡片容器 | ✅ |
+| [Button](/docs/components/button) | 按钮组件 | ✅ |
+| [Input](/docs/components/input) | 输入框组件 | ✅ |
+| [Card](/docs/components/card) | 卡片容器 | ✅ |
 
 ### 表单组件
 

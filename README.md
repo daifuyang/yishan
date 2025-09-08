@@ -221,15 +221,37 @@ shadcn/
 
 ## 🔧 脚本命令
 
-### 根项目
+### 根项目（推荐）
 ```bash
 pnpm install          # 安装所有依赖
-pnpm build            # 构建所有项目
 pnpm dev              # 启动所有开发服务器
+pnpm build:all        # 构建所有项目
 pnpm clean            # 清理所有构建产物
+pnpm lint             # 代码检查
 ```
 
-### 子项目
+### 子项目（简化命令）
+```bash
+# 管理后台 (http://localhost:3000)
+pnpm dev:admin        # 开发模式
+pnpm build:admin      # 构建
+pnpm preview:admin    # 生产预览
+
+# 文档站点 (http://localhost:3001)
+pnpm dev:docs         # 开发模式
+pnpm build:docs       # 构建
+pnpm preview:docs     # 本地预览
+
+# 组件库 (http://localhost:5173)
+pnpm dev:shadcn       # 开发模式
+pnpm build:shadcn     # 构建组件库
+pnpm preview:shadcn   # 组件预览
+
+# 组件库开发环境
+pnpm dev:shadcn:playground  # 组件开发环境
+```
+
+### 传统方式（兼容）
 ```bash
 # 管理后台
 pnpm --filter yishan-admin dev      # 开发模式
@@ -237,13 +259,14 @@ pnpm --filter yishan-admin build     # 构建
 pnpm --filter yishan-admin start     # 生产模式
 
 # 文档站点
-pnpm --filter yishan-docs dev        # 开发模式
+pnpm --filter yishan-docs start       # 开发模式
 pnpm --filter yishan-docs build      # 构建
 pnpm --filter yishan-docs serve      # 本地预览
 
 # 组件库
 pnpm --filter @yishan/shadcn build   # 构建组件库
 pnpm --filter @yishan/shadcn dev     # 开发模式
+pnpm --filter @yishan/shadcn preview:playground  # 组件预览
 ```
 
 ## 🤝 贡献指南

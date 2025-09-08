@@ -43,7 +43,7 @@ const config: Config = {
         docs: {
           sidebarPath: "./sidebars.ts",
           path: "docs",
-          routeBasePath: "/",
+          routeBasePath: "/docs",
           showLastUpdateAuthor: false,
           showLastUpdateTime: true,
         },
@@ -113,21 +113,21 @@ const config: Config = {
           title: "快速入门",
           items: [
             {
-              label: "快速开始",
-              to: "/guide/quick-start",
-            },
-            {
-              label: "项目结构",
-              to: "/guide/project-structure",
-            },
-            {
-              label: "最佳实践",
-              to: "/guide/best-practices",
-            },
-            {
-              label: "开发指南",
-              to: "/guide",
-            },
+          label: "快速开始",
+          to: "/docs/guide/quick-start",
+        },
+        {
+          label: "项目结构",
+          to: "/docs/guide/project-structure",
+        },
+        {
+          label: "最佳实践",
+          to: "/docs/guide/best-practices",
+        },
+        {
+          label: "开发指南",
+          to: "/docs/guide",
+        },
           ],
         },
         {
@@ -135,15 +135,15 @@ const config: Config = {
           items: [
             {
               label: "组件库",
-              to: "/components",
+              to: "/docs/components",
             },
             {
               label: "管理后台",
-              to: "/admin",
+              to: "/docs/admin",
             },
             {
               label: "技术文档",
-              to: "/",
+              to: "/docs/guide",
             },
           ],
         },
@@ -152,19 +152,19 @@ const config: Config = {
           items: [
             {
               label: "GitHub仓库",
-              href: "https://github.com/yishan/yishan",
+              href: "https://github.com/daifuyang/yishan",
             },
             {
               label: "问题反馈",
-              href: "https://github.com/yishan/yishan/issues",
+              href: "https://github.com/daifuyang/issues",
             },
             {
               label: "功能建议",
-              href: "https://github.com/yishan/yishan/discussions",
+              href: "https://github.com/daifuyang/discussions",
             },
             {
               label: "更新日志",
-              href: "https://github.com/yishan/yishan/releases",
+              href: "https://github.com/daifuyang/releases",
             },
           ],
         },

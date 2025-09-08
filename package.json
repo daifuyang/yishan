@@ -1,13 +1,43 @@
 {
-  "name": "yishan",
+  "name": "@zerocmf/yishan",
   "version": "1.0.0",
-  "description": "",
+  "description": "移山快速开发平台 - 基于 Next.js 15 + TypeScript + Tailwind CSS 的现代化全栈开发解决方案",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build:shadcn": "pnpm --filter @yishan/shadcn build"
+    "dev": "pnpm run /dev:.*/",
+    "build": "pnpm run /build:.*/",
+    "dev:admin": "pnpm --filter yishan-admin dev",
+    "dev:docs": "pnpm --filter yishan-docs start",
+    "dev:shadcn": "pnpm --filter @yishan/shadcn dev",
+    "dev:shadcn:playground": "pnpm --filter @yishan/shadcn dev:playground",
+    "build:admin": "pnpm --filter yishan-admin build",
+    "build:docs": "pnpm --filter yishan-docs build",
+    "build:shadcn": "pnpm --filter @yishan/shadcn build",
+    "build:all": "pnpm run build:shadcn && pnpm run build:admin && pnpm run build:docs",
+    "preview:admin": "pnpm --filter yishan-admin start",
+    "preview:docs": "pnpm --filter yishan-docs serve",
+    "preview:shadcn": "pnpm --filter @yishan/shadcn preview:playground",
+    "lint": "pnpm run /lint:.*/",
+    "lint:admin": "pnpm --filter yishan-admin lint",
+    "lint:docs": "pnpm --filter yishan-docs typecheck",
+    "lint:shadcn": "pnpm --filter @yishan/shadcn lint",
+    "clean": "pnpm -r exec rm -rf .next dist node_modules/.cache",
+    "type-check": "pnpm -r run type-check || true",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "nextjs",
+    "typescript",
+    "tailwindcss",
+    "monorepo",
+    "shadcn-ui",
+    "admin-template",
+    "react"
+  ],
   "author": "yishan",
   "license": "MIT",
-  "packageManager": "pnpm@8.15.9"
+  "packageManager": "pnpm@8.15.9",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
 }
