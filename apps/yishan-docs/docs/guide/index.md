@@ -58,5 +58,4 @@ yishan/
 - [快速上手](/guide/quick-start) - 5分钟上手教程
 - [组件文档](/components) - 组件使用指南
 - [管理后台](/admin) - 后台开发文档
-- [API参考](/api) - API接口文档
 - [最佳实践](/guide/best-practices) - 开发规范与技巧
