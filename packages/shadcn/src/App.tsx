@@ -1,6 +1,7 @@
-import { ProTable } from '@/index'
+import { ProTable, ProPagination } from '@/index'
 import './App.css'
 import type { ColumnDef } from '@tanstack/react-table'
+import { useState } from 'react'
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,6 +15,8 @@ import {
 import { MoreHorizontal } from 'lucide-react'
 
 function App() {
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   interface Payment {
     id: string
@@ -23,16 +26,13 @@ function App() {
   }
 
   function getData(): Payment[] {
-    // Fetch data from your API here.
-    return [
-      {
-        id: "728ed52f",
-        amount: 100,
-        status: "pending",
-        email: "m@example.com",
-      },
-      // ...
-    ]
+    // 模拟更多数据用于分页测试
+    return Array.from({ length: 100 }, (_, i) => ({
+      id: `payment-${i + 1}`,
+      amount: Math.floor(Math.random() * 1000) + 50,
+      status: ["pending", "processing", "success", "failed"][Math.floor(Math.random() * 4)],
+      email: `user${i + 1}@example.com`,
+    }))
   }
 
   const columns: ColumnDef<Payment>[] = [
@@ -91,12 +91,72 @@ function App() {
     }
   ]
 
-  const data = getData()
+  const allData = getData()
+  const paginatedData = allData.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
+
+  const handlePageChange = (page: number, newPageSize?: number) => {
+    setCurrentPage(page)
+    if (newPageSize) {
+      setPageSize(newPageSize)
+      // 重新计算页码
+      const newTotalPages = Math.ceil(allData.length / newPageSize)
+      if (page > newTotalPages) {
+        setCurrentPage(newTotalPages || 1)
+      }
+    }
+  }
 
   return (
-    <>
-      <ProTable data={data} columns={columns} />
-    </>
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold">ProPagination 组件测试</h1>
+        <p className="text-muted-foreground">测试 ProPagination 与 ProTable 的集成使用</p>
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">数据表格</h2>
+        <ProTable data={paginatedData} columns={columns} />
+      </div>
+
+      <div className="space-y-4">
+        <h2 className="text-2xl font-semibold">分页控制</h2>
+        <div className="border rounded-lg p-4">
+          <ProPagination
+            current={currentPage}
+            pageSize={pageSize}
+            total={allData.length}
+            onChange={handlePageChange}
+            showSizeChanger
+            showQuickJumper
+            showTotal={(total, range) => (
+              <span>
+                显示 {range[0]}-{range[1]} 条，共 {total} 条
+              </span>
+            )}
+            align="center"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">简单模式</h3>
+          <div className="border rounded-lg p-4">
+            <ProPagination total={50} simple />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-xl font-semibold">小尺寸</h3>
+          <div className="border rounded-lg p-4">
+            <ProPagination total={30} size="small" showSizeChanger />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

@@ -11,7 +11,7 @@ sidebar_position: 1
 ### 按钮类型
 
 ```tsx
-import { Button } from '@yishan/shadcn'
+import { Button } from '@zerocmf/yishan-shadcn'
 
 export default function App() {
   return (

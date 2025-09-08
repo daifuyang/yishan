@@ -11,7 +11,7 @@ sidebar_position: 3
 ### 基础卡片
 
 ```tsx
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@yishan/shadcn'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@zerocmf/yishan-shadcn'
 
 export default function App() {
   return (
@@ -38,7 +38,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@yishan/shadcn'
+} from '@zerocmf/yishan-shadcn'
 
 export default function CompleteCard() {
   return (

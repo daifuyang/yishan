@@ -2,7 +2,7 @@
 module.exports = {
   content: [
     "./src/**/*.{html,js,ts,jsx,tsx,mdx}",
-    "./node_modules/@yishan/shadcn/dist/**/*.{js,ts,jsx,tsx}"
+    "./node_modules/@zerocmf/yishan-shadcn/dist/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
     extend: {},

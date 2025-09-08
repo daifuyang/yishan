@@ -11,7 +11,7 @@ sidebar_position: 2
 ### 基本输入框
 
 ```tsx
-import { Input } from '@yishan/shadcn'
+import { Input } from '@zerocmf/yishan-shadcn'
 
 export default function App() {
   return (
