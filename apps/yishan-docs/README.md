@@ -32,8 +32,7 @@ pnpm serve
 ```
 
 ### 访问地址
-- **开发环境**: http://localhost:3001
-- **生产环境**: https://yishan-docs.vercel.app
+- **开发环境**: http://localhost:3000
 
 ## 📁 文档结构
 
