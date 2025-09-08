@@ -16,24 +16,19 @@ function HomepageHeader() {
         <Heading as="h1" className="hero__title">
           {siteConfig.title}
         </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
+        <p className="hero__subtitle">
+          企业级全栈开发平台 · 开箱即用
+        </p>
         <div className={styles.buttons}>
           <Link
             className="button button--primary button--lg"
-            to="/docs/">
-            快速开始 🚀
+            to="/docs/guide/quick-start">
+            开始使用
           </Link>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/admin"
-            style={{marginLeft: '1rem'}}>
-            管理后台 📊
-          </Link>
-          <Link
-            className="button button--secondary button--lg"
-            to="/docs/components"
-            style={{marginLeft: '1rem'}}>
-            组件库 🧩
+            to="/docs">
+            文档中心
           </Link>
         </div>
       </div>
@@ -45,8 +40,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`${siteConfig.title} - 现代化全栈开发平台`}
-      description="基于Next.js + TypeScript + Tailwind CSS的现代化全栈开发平台，包含管理后台、组件库和完整文档">
+      title={`${siteConfig.title} - 企业级全栈开发平台`}
+      description="基于Next.js 15 + TypeScript构建的现代化全栈开发平台，提供完整的企业级后台管理解决方案">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

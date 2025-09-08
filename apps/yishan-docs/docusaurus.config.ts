@@ -42,10 +42,10 @@ const config: Config = {
       {
         docs: {
           sidebarPath: "./sidebars.ts",
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            "https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/",
+          path: "docs",
+          routeBasePath: "/",
+          showLastUpdateAuthor: false,
+          showLastUpdateTime: true,
         },
         blog: {
           showReadingTime: true,
@@ -53,6 +53,7 @@ const config: Config = {
             type: ["rss", "atom"],
             xslt: true,
           },
+          routeBasePath: "blog",
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
@@ -80,26 +81,26 @@ const config: Config = {
       },
       items: [
         {
-          type: "docSidebar",
-          sidebarId: "tutorialSidebar",
+          type: "doc",
+          docId: "guide/index",
           position: "left",
-          label: "项目概览",
+          label: "指南",
         },
         {
-          type: "docSidebar",
-          sidebarId: "adminSidebar",
-          position: "left",
-          label: "管理后台",
-        },
-        {
-          type: "docSidebar",
-          sidebarId: "componentsSidebar",
+          type: "doc",
+          docId: "components/index",
           position: "left",
           label: "组件库",
         },
+        {
+          type: "doc",
+          docId: "admin/index",
+          position: "left",
+          label: "管理后台",
+        },
         { to: "/blog", label: "博客", position: "left" },
         {
-          href: "https://github.com/yishan/yishan-docs",
+          href: "https://github.com/yishan/yishan",
           label: "GitHub",
           position: "right",
         },
@@ -109,23 +110,40 @@ const config: Config = {
       style: "dark",
       links: [
         {
-          title: "文档",
+          title: "快速入门",
           items: [
             {
-              label: "项目概览",
-              to: "/docs/",
+              label: "快速开始",
+              to: "/guide/quick-start",
+            },
+            {
+              label: "项目结构",
+              to: "/guide/project-structure",
+            },
+            {
+              label: "最佳实践",
+              to: "/guide/best-practices",
+            },
+            {
+              label: "开发指南",
+              to: "/guide",
+            },
+          ],
+        },
+        {
+          title: "核心功能",
+          items: [
+            {
+              label: "组件库",
+              to: "/components",
             },
             {
               label: "管理后台",
-              to: "/docs/admin",
+              to: "/admin",
             },
             {
-              label: "组件库",
-              to: "/docs/components",
-            },
-            {
-              label: "快速开始",
-              to: "/docs/introduction/overview",
+              label: "技术文档",
+              to: "/",
             },
           ],
         },
@@ -151,19 +169,19 @@ const config: Config = {
           ],
         },
         {
-          title: "社区",
+          title: "社区互动",
           items: [
             {
-              label: "博客",
+              label: "技术博客",
               to: "/blog",
             },
             {
-              label: "技术文档",
-              to: "/docs/",
+              label: "在线演示",
+              href: "https://demo.yishan.dev",
             },
             {
-              label: "最佳实践",
-              to: "/docs/",
+              label: "加入讨论",
+              href: "https://github.com/yishan/yishan/discussions",
             },
             {
               label: "联系我们",
