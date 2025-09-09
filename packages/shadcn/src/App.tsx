@@ -13,10 +13,91 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal } from 'lucide-react'
+import QueryFilter, { type ColumnConfig } from '@/components/pro/queryFilter'
 
 function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+
+    const searchColumns: ColumnConfig[] = [
+    {
+      key: 'username',
+      label: '用户名',
+      type: 'input',
+      placeholder: '请输入用户名',
+      required: true,
+    },
+    {
+      key: 'email',
+      label: '邮箱',
+      type: 'email',
+      placeholder: '请输入邮箱地址',
+      required: true,
+      pattern: {
+        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+        message: '请输入有效的邮箱地址',
+      },
+    },
+    {
+      key: 'phone',
+      label: '手机号',
+      type: 'tel',
+      placeholder: '请输入手机号',
+      required: true,
+      pattern: {
+        value: /^1[3-9]\d{9}$/,
+        message: '请输入有效的手机号',
+      },
+    },
+    {
+      key: 'status',
+      label: '状态',
+      type: 'select',
+      placeholder: '选择状态',
+      options: [
+        { label: '全部状态', value: 'all' },
+        { label: '启用', value: 'active' },
+        { label: '禁用', value: 'inactive' },
+        { label: '待审核', value: 'pending' },
+      ],
+    },
+    {
+      key: 'birthday',
+      label: '生日',
+      type: 'date',
+      placeholder: '请选择生日'
+    },
+    {
+      key: 'appointmentTime',
+      label: '预约时间',
+      type: 'dateTime',
+      placeholder: '请选择预约时间'
+    },
+    {
+      key: 'meetingTime',
+      label: '会议时间',
+      type: 'time',
+      placeholder: '请选择会议时间'
+    },
+    {
+      key: 'activityPeriod',
+      label: '活动周期',
+      type: 'dateRange',
+      placeholder: '请选择活动周期'
+    },
+    {
+      key: 'eventPeriod',
+      label: '事件周期',
+      type: 'dateTimeRange',
+      placeholder: '请选择事件周期'
+    },
+    {
+      key: 'search',
+      label: '搜索关键词',
+      type: 'input',
+      placeholder: '请输入关键词搜索',
+    },
+  ];
 
   interface Payment {
     id: string
@@ -43,10 +124,6 @@ function App() {
     {
       accessorKey: "email",
       header: "Email",
-    },
-    {
-      accessorKey: "amount",
-      header: "Amount",
     },
     {
       accessorKey: "amount",
@@ -115,6 +192,8 @@ function App() {
         <h1 className="text-3xl font-bold">ProPagination 组件测试</h1>
         <p className="text-muted-foreground">测试 ProPagination 与 ProTable 的集成使用</p>
       </div>
+
+      <QueryFilter columns={searchColumns} />
 
       <div className="space-y-4">
         <h2 className="text-2xl font-semibold">数据表格</h2>
