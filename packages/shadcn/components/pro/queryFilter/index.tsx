@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Clock, ChevronDown, ChevronUp, Calendar as CalendarIcon } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
 // 类型定义
-type Breakpoint = "sm" | "md" | "lg" | "xl" | "2xl";
+type Breakpoint = "xs" | "sm" | "md" | "lg";
 
 // 表单数据类型
 interface FormData {
@@ -52,7 +55,7 @@ export interface QueryFilterProps {
   defaultCollapsed?: boolean;
   hideRequiredMark?: boolean;
   labelWidth?: number | "auto";
-  span?: number;
+  layout?: "vertical" | "horizontal"; // 添加layout属性，默认为vertical
   className?: string;
   style?: React.CSSProperties;
   onSubmit?: (data: FormData) => void;
@@ -61,89 +64,105 @@ export interface QueryFilterProps {
 
 // 常量配置
 const BREAKPOINTS = {
-  sm: 640,
-  md: 768,
-  lg: 1024,
-  xl: 1280,
-  "2xl": 1536,
+  xs: 0,
+  sm: 513,
+  md: 785,
+  lg: 1057,
 } as const;
 
 const RESPONSIVE_COLUMNS: Record<Breakpoint, number> = {
-  sm: 1,
-  md: 2,
-  lg: 3,
-  xl: 4,
-  "2xl": 4,
-};
+  xs: 1,
+  sm: 2,
+  md: 3,
+  lg: 4,
+} as const;
 
-const GRID_CLASSES: Record<number, string> = {
-  1: "grid-cols-1",
-  2: "grid-cols-2",
-  3: "grid-cols-3",
-  4: "grid-cols-4",
+const getGridClass = (cols: number): string => {
+  return `grid-cols-${cols}`;
 };
 
 // 自定义 Hooks
-const useBreakpoint = (): Breakpoint => {
-  const [breakpoint, setBreakpoint] = useState<Breakpoint>("sm");
+const useContainerWidth = (
+  ref: React.RefObject<HTMLFormElement | null>
+): number => {
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
-    const calculateBreakpoint = () => {
-      const width = window.innerWidth;
-      let newBreakpoint: Breakpoint;
+    // 检查ref是否存在
+    if (!ref.current) {
+      return;
+    }
 
-      if (width >= BREAKPOINTS["2xl"]) {
-        newBreakpoint = "2xl";
-      } else if (width >= BREAKPOINTS.xl) {
-        newBreakpoint = "xl";
-      } else if (width >= BREAKPOINTS.lg) {
-        newBreakpoint = "lg";
-      } else if (width >= BREAKPOINTS.md) {
-        newBreakpoint = "md";
-      } else {
-        newBreakpoint = "sm";
+    const calculateWidth = () => {
+      if (ref.current) {
+        const containerWidth = ref.current.offsetWidth;
+        setWidth(containerWidth);
       }
-      setBreakpoint(newBreakpoint);
     };
 
     // 初始计算
-    calculateBreakpoint();
+    calculateWidth();
 
-    // 添加 resize 事件监听器
-    window.addEventListener("resize", calculateBreakpoint);
+    // 使用 ResizeObserver 监听容器尺寸变化
+    const resizeObserver = new ResizeObserver(calculateWidth);
+    if (ref.current) {
+      resizeObserver.observe(ref.current);
+    }
 
     // 清理函数
     return () => {
-      window.removeEventListener("resize", calculateBreakpoint);
+      resizeObserver.disconnect();
     };
-  }, []);
+  }, [ref]);
 
-  return breakpoint;
+  return width;
 };
 
-const useResponsiveConfig = (props: QueryFilterProps) => {
-  const breakpoint = useBreakpoint();
-  const colsNumber = RESPONSIVE_COLUMNS[breakpoint];
+const useResponsiveConfig = (
+  props: QueryFilterProps,
+  containerWidth: number
+) => {
+  const breakpoint = useMemo((): Breakpoint => {
+    if (containerWidth >= BREAKPOINTS.lg) {
+      return "lg";
+    } else if (containerWidth >= BREAKPOINTS.md) {
+      return "md";
+    } else if (containerWidth >= BREAKPOINTS.sm) {
+      return "sm";
+    } else {
+      // 容器宽度 < 513px
+      return "xs";
+    }
+  }, [containerWidth]);
+
+  const colsNumber = useMemo(() => {
+    return RESPONSIVE_COLUMNS[breakpoint];
+  }, [breakpoint]);
 
   const labelWidth = useMemo(() => {
+    // 如果是vertical布局，labelWidth默认占一整行
+    if (props.layout === "vertical") {
+      return "100%";
+    }
+    
+    // 只有horizontal布局时labelWidth才生效
     if (props.labelWidth === "auto") return "auto";
 
     const widths: Record<Breakpoint, number> = {
+      xs: Math.min(props.labelWidth as number, 50),
       sm: Math.min(props.labelWidth as number, 60),
       md: Math.min(props.labelWidth as number, 70),
       lg: props.labelWidth as number,
-      xl: props.labelWidth as number,
-      "2xl": props.labelWidth as number,
     };
 
     return widths[breakpoint];
-  }, [props.labelWidth, breakpoint]);
+  }, [props.labelWidth, props.layout, breakpoint]);
 
   return {
     breakpoint,
     colsNumber,
     labelWidth,
-    gridClass: GRID_CLASSES[colsNumber],
+    gridClass: getGridClass(colsNumber),
   };
 };
 
@@ -152,21 +171,28 @@ export default function QueryFilter({
   defaultCollapsed = true,
   hideRequiredMark = true,
   labelWidth = 80,
+  layout = "vertical", // 添加layout属性，默认为vertical
   className,
   style,
   onSubmit,
   onReset,
 }: QueryFilterProps) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const containerWidth = useContainerWidth(formRef);
+
   const {
     gridClass,
     colsNumber,
     labelWidth: computedLabelWidth,
-  } = useResponsiveConfig({
-    defaultCollapsed,
-    hideRequiredMark,
-    labelWidth,
-    columns,
-  });
+  } = useResponsiveConfig(
+    {
+      defaultCollapsed,
+      hideRequiredMark,
+      labelWidth,
+      columns,
+    },
+    containerWidth
+  );
 
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
@@ -175,7 +201,6 @@ export default function QueryFilter({
     handleSubmit,
     formState: { errors },
     setValue,
-    getValues,
     reset,
     watch,
   } = useForm<FormData>();
@@ -225,11 +250,13 @@ export default function QueryFilter({
                 type="text"
                 readOnly
                 placeholder={placeholder || `请选择${label}`}
-                value={watch(key)
-                  ? type === "dateTime"
-                    ? format(new Date(watch(key)), "yyyy-MM-dd HH:mm:ss")
-                    : format(new Date(watch(key)), "yyyy-MM-dd")
-                  : ""}
+                value={
+                  watch(key)
+                    ? type === "dateTime"
+                      ? format(new Date(watch(key)), "yyyy-MM-dd HH:mm:ss")
+                      : format(new Date(watch(key)), "yyyy-MM-dd")
+                    : ""
+                }
                 className="w-full cursor-pointer"
               />
             </PopoverTrigger>
@@ -240,10 +267,13 @@ export default function QueryFilter({
                 onSelect={(date) => {
                   setValue(key, date ? date.toISOString() : "");
                   // 点击后立即关闭弹窗
-                  const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+                  const event = new KeyboardEvent("keydown", {
+                    key: "Escape",
+                    bubbles: true,
+                  });
                   document.dispatchEvent(event);
                 }}
-                initialFocus
+                captionLayout="dropdown"
               />
             </PopoverContent>
           </Popover>
@@ -266,14 +296,19 @@ export default function QueryFilter({
               <div className="p-3">
                 <Input
                   type="time"
-                  value={watch(key) ? format(new Date(watch(key)), "HH:mm") : ""}
+                  value={
+                    watch(key) ? format(new Date(watch(key)), "HH:mm") : ""
+                  }
                   onChange={(e) => {
                     const [hours, minutes] = e.target.value.split(":");
                     const date = new Date();
                     date.setHours(parseInt(hours), parseInt(minutes));
                     setValue(key, date.toISOString());
                     // 点击后立即关闭弹窗
-                    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+                    const event = new KeyboardEvent("keydown", {
+                      key: "Escape",
+                      bubbles: true,
+                    });
                     document.dispatchEvent(event);
                   }}
                   className="w-full"
@@ -297,12 +332,17 @@ export default function QueryFilter({
                   const value = watch(key);
                   if (!value) return "";
                   try {
-                    const range = typeof value === 'string' ? JSON.parse(value) : value;
+                    const range =
+                      typeof value === "string" ? JSON.parse(value) : value;
                     if (range?.from && range?.to) {
-                      const formatStr = type === "dateTimeRange" 
-                        ? "yyyy年M月d日 HH:mm" 
-                        : "yyyy年M月d日";
-                      return `${format(new Date(range.from), formatStr)} 至 ${format(new Date(range.to), formatStr)}`;
+                      const formatStr =
+                        type === "dateTimeRange"
+                          ? "yyyy年M月d日 HH:mm"
+                          : "yyyy年M月d日";
+                      return `${format(
+                        new Date(range.from),
+                        formatStr
+                      )} 至 ${format(new Date(range.to), formatStr)}`;
                     }
                   } catch {
                     return "";
@@ -319,7 +359,9 @@ export default function QueryFilter({
                   const value = watch(key);
                   if (!value) return undefined;
                   try {
-                    return typeof value === 'string' ? JSON.parse(value) : value;
+                    return typeof value === "string"
+                      ? JSON.parse(value)
+                      : value;
                   } catch {
                     return undefined;
                   }
@@ -328,7 +370,10 @@ export default function QueryFilter({
                   setValue(key, range ? JSON.stringify(range) : "");
                   // 点击后立即关闭弹窗（范围选择器在选择完整范围后关闭）
                   if (range?.from && range?.to) {
-                    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+                    const event = new KeyboardEvent("keydown", {
+                      key: "Escape",
+                      bubbles: true,
+                    });
                     document.dispatchEvent(event);
                   }
                 }}
@@ -359,6 +404,7 @@ export default function QueryFilter({
 
   return (
     <form
+      ref={formRef}
       onSubmit={handleSubmit(onFormSubmit)}
       className={containerClass}
       style={style}
@@ -368,11 +414,14 @@ export default function QueryFilter({
           return null;
         }
         return (
-          <div key={column.key} className="space-y-2">
+          <div 
+            key={column.key} 
+            className={layout === "vertical" ? "space-y-2 w-full" : "space-y-2"}
+          >
             <Label
               htmlFor={column.key}
               className="text-sm font-medium flex items-center"
-              style={{ width: computedLabelWidth }}
+              style={{ width: layout === "vertical" ? "100%" : computedLabelWidth }}
             >
               {column.label}
               {!hideRequiredMark && column.required && (
@@ -390,7 +439,7 @@ export default function QueryFilter({
       })}
 
       {/* 操作按钮 */}
-      <div className="col-start-4 flex items-end justify-end">
+      <div className={`col-start-${colsNumber} flex items-end justify-end`}>
         <div className="flex items-center gap-2">
           <Button className="cursor-pointer" type="submit">
             查询
