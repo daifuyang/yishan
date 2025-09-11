@@ -89,7 +89,6 @@
       >thead {
         >tr {
           >th {
-            color: var(--popover-foreground);
             font-weight: 400;
             width: 36px;
             height: 36px;
@@ -101,7 +100,6 @@
       >tbody {
         >tr {
           >td {
-            color: var(--popover-foreground);
             width: 36px;
             height: 36px;
             font-weight: 400;
@@ -156,8 +154,7 @@
 
   // Content
   &-cell {
-    color: #aaa;
-
+    color: var(--muted-foreground);
     min-width: 24px;
 
     &-disabled {
@@ -181,7 +178,6 @@
       transition:
         background 0.3s,
         border 0.3s;
-
       border-radius: calc(var(--radius) - 2px);
 
       &:hover {
@@ -190,7 +186,7 @@
     }
 
     &-in-view {
-      color: #333;
+      color: var(--popover-foreground);
     }
 
     &-in-range>&-inner {
