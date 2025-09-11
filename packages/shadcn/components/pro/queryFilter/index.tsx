@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -78,7 +78,23 @@ const RESPONSIVE_COLUMNS: Record<Breakpoint, number> = {
 } as const;
 
 const getGridClass = (cols: number): string => {
-  return `grid-cols-${cols}`;
+  const gridMap: Record<number, string> = {
+    1: "grid-cols-1",
+    2: "grid-cols-2", 
+    3: "grid-cols-3",
+    4: "grid-cols-4",
+  };
+  return gridMap[cols] || "grid-cols-1";
+};
+
+const getColStartClass = (cols: number): string => {
+  const colStartMap: Record<number, string> = {
+    1: "col-start-1",
+    2: "col-start-2",
+    3: "col-start-3", 
+    4: "col-start-4",
+  };
+  return colStartMap[cols] || "col-start-1";
 };
 
 // 自定义 Hooks
@@ -163,6 +179,7 @@ const useResponsiveConfig = (
     colsNumber,
     labelWidth,
     gridClass: getGridClass(colsNumber),
+    colStartClass: getColStartClass(colsNumber),
   };
 };
 
@@ -182,6 +199,7 @@ export default function QueryFilter({
 
   const {
     gridClass,
+    colStartClass,
     colsNumber,
     labelWidth: computedLabelWidth,
   } = useResponsiveConfig(
@@ -377,7 +395,7 @@ export default function QueryFilter({
                     document.dispatchEvent(event);
                   }
                 }}
-                initialFocus
+                autoFocus
               />
             </PopoverContent>
           </Popover>
@@ -439,7 +457,7 @@ export default function QueryFilter({
       })}
 
       {/* 操作按钮 */}
-      <div className={`col-start-${colsNumber} flex items-end justify-end`}>
+      <div className={`${colStartClass} flex items-end justify-end`}>
         <div className="flex items-center gap-2">
           <Button className="cursor-pointer" type="submit">
             查询

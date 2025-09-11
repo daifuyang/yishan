@@ -7,7 +7,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  tsconfig: "tsconfig.build.json",  // 明确指定使用 tsconfig.build.json
   external: [
     "react",
     "react-dom",

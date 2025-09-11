@@ -1,12 +1,5 @@
 import { useState } from "react";
-import QueryFilter, { type ColumnConfig } from "@/components/pro/queryFilter";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { QueryFilter, type ColumnConfig, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@zerocmf/yishan-shadcn';
 
 export default function QueryFilterPage() {
   const [lastQuery, setLastQuery] = useState<Record<string, any>>({});

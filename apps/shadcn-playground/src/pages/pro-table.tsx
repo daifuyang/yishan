@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { ProTable, ProPagination } from '@/index'
-import type { ColumnDef } from '@tanstack/react-table'
+import { ProTable, ProPagination, Button, ColumnDef } from '@zerocmf/yishan-shadcn'
 
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@zerocmf/yishan-shadcn'
 import { MoreHorizontal } from 'lucide-react'
 
 export default function ProTablePage() {

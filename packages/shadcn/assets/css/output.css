@@ -1,0 +1,407 @@
+.shadcn-date-picker {
+  position: relative;
+  display: inline-flex;
+}
+.shadcn-date-picker-rtl {
+  direction: rtl;
+}
+.shadcn-date-picker-focused {
+  border: 1px solid blue;
+}
+.shadcn-date-picker-invalid {
+  box-shadow: 0 0 2px red;
+}
+.shadcn-date-picker-panels {
+  display: flex;
+  flex-wrap: nowrap;
+}
+.shadcn-date-picker-panel {
+  display: inline-block;
+  vertical-align: top;
+  background: #fff0ff;
+  border: 1px solid #666;
+}
+.shadcn-date-picker-panel-focused {
+  border-color: blue;
+}
+.shadcn-date-picker-panel-rtl {
+  direction: rtl;
+}
+.shadcn-date-picker-decade-panel,
+.shadcn-date-picker-year-panel,
+.shadcn-date-picker-month-panel,
+.shadcn-date-picker-week-panel,
+.shadcn-date-picker-date-panel,
+.shadcn-date-picker-time-panel {
+  display: flex;
+  flex-direction: column;
+}
+.shadcn-date-picker-decade-panel table,
+.shadcn-date-picker-year-panel table,
+.shadcn-date-picker-month-panel table,
+.shadcn-date-picker-week-panel table,
+.shadcn-date-picker-date-panel table,
+.shadcn-date-picker-time-panel table {
+  text-align: center;
+  border-collapse: collapse;
+}
+.shadcn-date-picker-header {
+  display: flex;
+}
+.shadcn-date-picker-header > * {
+  flex: none;
+}
+.shadcn-date-picker-header-view {
+  flex: auto;
+  text-align: center;
+}
+.shadcn-date-picker-header-view > button {
+  padding: 0;
+  border: 0;
+}
+.shadcn-date-picker-cell {
+  color: #aaa;
+}
+.shadcn-date-picker-cell-disabled {
+  opacity: 0.2;
+}
+.shadcn-date-picker-cell-inner {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 20px;
+  background: transparent;
+  border: 0;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.3s, border 0.3s;
+}
+.shadcn-date-picker-cell-inner:hover {
+  background: rgba(0, 0, 255, 0.3);
+}
+.shadcn-date-picker-cell-in-view {
+  color: #333;
+}
+.shadcn-date-picker-cell-in-range > .shadcn-date-picker-cell-inner {
+  background: rgba(0, 0, 255, 0.05);
+}
+.shadcn-date-picker-cell-hover > .shadcn-date-picker-cell-inner {
+  background: orange;
+}
+.shadcn-date-picker-cell-range-hover-start,
+.shadcn-date-picker-cell-range-hover-end,
+.shadcn-date-picker-cell-range-hover {
+  position: relative;
+}
+.shadcn-date-picker-cell-range-hover-start::after,
+.shadcn-date-picker-cell-range-hover-end::after,
+.shadcn-date-picker-cell-range-hover::after {
+  position: absolute;
+  top: 3px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border: 1px solid green;
+  border-right: 0;
+  border-left: 0;
+  content: '';
+  pointer-events: none;
+}
+.shadcn-date-picker-cell-range-hover-start::after {
+  border-left: 1px solid green !important;
+}
+.shadcn-date-picker-cell-range-hover-end::after {
+  border-right: 1px solid green !important;
+}
+.shadcn-date-picker-cell-today > .shadcn-date-picker-cell-inner {
+  border: 1px solid blue;
+}
+.shadcn-date-picker-cell-range-start > .shadcn-date-picker-cell-inner,
+.shadcn-date-picker-cell-range-end > .shadcn-date-picker-cell-inner,
+.shadcn-date-picker-cell-selected > .shadcn-date-picker-cell-inner {
+  background: rgba(0, 0, 255, 0.2);
+}
+.shadcn-date-picker-presets {
+  background: #ccccff;
+}
+.shadcn-date-picker-presets ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shadcn-date-picker-footer,
+.shadcn-date-picker-picker-footer {
+  background: green;
+}
+.shadcn-date-picker-ranges {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+.shadcn-date-picker-ranges > li {
+  display: inline-block;
+}
+.shadcn-date-picker-ok {
+  float: right;
+}
+.shadcn-date-picker-year-panel .shadcn-date-picker-cell-inner,
+.shadcn-date-picker-month-panel .shadcn-date-picker-cell-inner {
+  width: 80px;
+}
+.shadcn-date-picker-week-panel-row:hover .shadcn-date-picker-cell {
+  background: red;
+}
+.shadcn-date-picker-week-panel-row-selected .shadcn-date-picker-cell {
+  background: rgba(0, 0, 255, 0.3);
+}
+.shadcn-date-picker-week-panel-row-range-hover .shadcn-date-picker-cell {
+  background: rgba(0, 255, 0, 0.1);
+}
+.shadcn-date-picker-week-panel-row-range-start .shadcn-date-picker-cell,
+.shadcn-date-picker-week-panel-row-range-end .shadcn-date-picker-cell {
+  background: rgba(0, 255, 0, 0.3);
+}
+.shadcn-date-picker-week-panel .shadcn-date-picker-cell,
+.shadcn-date-picker-week-panel .shadcn-date-picker-cell-inner {
+  width: 20px;
+}
+.shadcn-date-picker-week-panel .shadcn-date-picker-cell-week {
+  color: #999;
+  font-weight: bold;
+  font-size: 12px;
+}
+.shadcn-date-picker-week-panel .shadcn-date-picker-cell:hover > .shadcn-date-picker-cell-inner,
+.shadcn-date-picker-week-panel .shadcn-date-picker-cell-selected > .shadcn-date-picker-cell-inner {
+  background: transparent;
+}
+.shadcn-date-picker-date-panel .shadcn-date-picker-cell-inner {
+  width: 20px;
+}
+.shadcn-date-picker-time-panel {
+  width: auto;
+}
+.shadcn-date-picker-time-panel .shadcn-date-picker-content {
+  position: relative;
+  display: flex;
+  max-height: 200px;
+  direction: ltr;
+}
+.shadcn-date-picker-time-panel-column-title {
+  font-size: 14px;
+  line-height: 20px;
+}
+.shadcn-date-picker-time-panel-column {
+  flex: auto;
+  width: 50px;
+  margin: 0;
+  padding: 0 0 180px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  font-size: 12px;
+  text-align: left;
+  list-style: none;
+  transition: background 0.3s;
+}
+.shadcn-date-picker-time-panel-column-active {
+  background: rgba(0, 0, 255, 0.1);
+}
+.shadcn-date-picker-time-panel-column:hover {
+  overflow-y: auto;
+}
+.shadcn-date-picker-time-panel-column > li {
+  width: 50px;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.shadcn-date-picker-time-panel-column > li.shadcn-date-picker-time-panel-cell-disabled {
+  opacity: 0.5;
+}
+.shadcn-date-picker-time-panel-column > li.shadcn-date-picker-time-panel-cell-selected {
+  background: rgba(0, 0, 255, 0.5);
+}
+.shadcn-date-picker-time-panel-column > li .shadcn-date-picker-time-panel-cell-inner {
+  display: block;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  color: #333;
+  line-height: 20px;
+  text-align: center;
+}
+.shadcn-date-picker-panel-rtl .shadcn-date-picker-time-panel-column > li .shadcn-date-picker-time-panel-cell-inner {
+  padding: 0 12px 0 0;
+  text-align: right;
+}
+.shadcn-date-picker-datetime-panel {
+  display: flex;
+}
+.shadcn-date-picker-datetime-panel .shadcn-date-picker-time-panel {
+  border-left: 1px solid #999;
+}
+.shadcn-date-picker-datetime-panel .shadcn-date-picker-date-panel,
+.shadcn-date-picker-datetime-panel .shadcn-date-picker-time-panel {
+  transition: opacity 0.3s;
+}
+.shadcn-date-picker-datetime-panel-active .shadcn-date-picker-date-panel,
+.shadcn-date-picker-datetime-panel-active .shadcn-date-picker-time-panel {
+  opacity: 0.3;
+}
+.shadcn-date-picker-datetime-panel-active .shadcn-date-picker-date-panel-active,
+.shadcn-date-picker-datetime-panel-active .shadcn-date-picker-time-panel-active {
+  opacity: 1;
+}
+.shadcn-date-picker-input {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+.shadcn-date-picker-rtl .shadcn-date-picker-input {
+  text-align: right;
+}
+.shadcn-date-picker-input-active > input {
+  background: rgba(0, 0, 255, 0.05);
+}
+.shadcn-date-picker-input > input {
+  width: 100%;
+}
+.shadcn-date-picker-input > input::-moz-placeholder {
+  opacity: 1;
+}
+.shadcn-date-picker-input > input::placeholder {
+  color: #bfbfbf;
+}
+.shadcn-date-picker-input > input:placeholder-shown {
+  text-overflow: ellipsis;
+}
+.shadcn-date-picker-input-placeholder > input {
+  color: #bfbfbf;
+}
+.shadcn-date-picker-clear {
+  position: absolute;
+  top: 0;
+  inset-inline-end: 4px;
+  cursor: pointer;
+}
+.shadcn-date-picker-clear-btn::after {
+  content: '×';
+}
+.shadcn-date-picker-dropdown {
+  position: absolute;
+  box-shadow: 0 0 1px red;
+  pointer-events: none;
+}
+.shadcn-date-picker-dropdown-range {
+  padding: 10px 0;
+}
+.shadcn-date-picker-dropdown-hidden {
+  display: none;
+}
+.shadcn-date-picker-dropdown-rtl {
+  direction: rtl;
+}
+.shadcn-date-picker-dropdown-placement-topLeft .shadcn-date-picker-range-arrow,
+.shadcn-date-picker-dropdown-placement-topRight .shadcn-date-picker-range-arrow {
+  bottom: 6px;
+  transform: rotate(135deg);
+}
+.shadcn-date-picker-dropdown-placement-bottomLeft .shadcn-date-picker-range-arrow,
+.shadcn-date-picker-dropdown-placement-bottomRight .shadcn-date-picker-range-arrow {
+  top: 6px;
+  transform: rotate(-45deg);
+}
+.shadcn-date-picker-dropdown .shadcn-date-picker-range-arrow {
+  position: absolute;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  transition: all 0.3s;
+}
+.shadcn-date-picker-dropdown .shadcn-date-picker-range-arrow::before,
+.shadcn-date-picker-dropdown .shadcn-date-picker-range-arrow::after {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 50%;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  content: '';
+}
+.shadcn-date-picker-dropdown-rtl.shadcn-date-picker-dropdown .shadcn-date-picker-range-arrow::before,
+.shadcn-date-picker-dropdown-rtl.shadcn-date-picker-dropdown .shadcn-date-picker-range-arrow::after {
+  transform: translate(50%, -50%);
+}
+.shadcn-date-picker-dropdown .shadcn-date-picker-range-arrow::before {
+  width: 10px;
+  height: 10px;
+  border: 5px solid blue;
+  border-color: blue blue transparent transparent;
+}
+.shadcn-date-picker-dropdown .shadcn-date-picker-range-arrow::after {
+  width: 8px;
+  height: 8px;
+  border: 4px solid blue;
+  border-color: #fff0ff #fff0ff transparent transparent;
+}
+.shadcn-date-picker-range {
+  position: relative;
+  display: inline-flex;
+}
+.shadcn-date-picker-range-wrapper {
+  display: flex;
+}
+.shadcn-date-picker-range .shadcn-date-picker-active-bar {
+  bottom: 0;
+  height: 3px;
+  background: green;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+}
+.shadcn-date-picker-range.shadcn-date-picker-focused .shadcn-date-picker-active-bar {
+  opacity: 1;
+}
+.shadcn-date-picker-panel-container {
+  display: inline-block;
+  vertical-align: top;
+  transition: margin 0.3s;
+  pointer-events: all;
+}
+.shadcn-date-picker-panel-layout {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+.shadcn-date-picker-selector {
+  width: 100%;
+}
+.shadcn-date-picker-selection-overflow {
+  display: flex;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid green;
+  min-height: 1em;
+}
+.shadcn-date-picker-selection-overflow-item {
+  flex: none;
+  max-width: 100%;
+}
+.shadcn-date-picker-selection-item {
+  border: 1px solid blue;
+}
+.shadcn-date-picker-selection-placeholder {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.shadcn-date-picker-multiple-input {
+  width: 10px;
+  opacity: 0.1;
+}
