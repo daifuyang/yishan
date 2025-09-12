@@ -19,6 +19,6 @@ fs.writeFileSync('temp/output.css', '@import "tailwind.css"; @import "index.css"
 execSync('npx postcss temp/output.css -o dist/index.css', { stdio: 'inherit' })
 
 // ④ 删除temp目录
-fs.rmSync('temp', { recursive: true, force: true })
+// fs.rmSync('temp', { recursive: true, force: true })
 
 console.log(`⚡️ 打包样式完成 ${Date.now() - start} ms`)

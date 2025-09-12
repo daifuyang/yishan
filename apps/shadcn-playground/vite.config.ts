@@ -9,5 +9,15 @@ export default defineConfig({
     alias: {
       '@': '/src',
     },
-  }
+  },
+  server: {
+    watch: {
+      ignored: [
+        '!**/node_modules/@zerocmf/yishan-shadcn/**',
+      ],
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@zerocmf/yishan-shadcn'],
+  },
 })

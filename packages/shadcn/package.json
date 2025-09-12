@@ -21,8 +21,7 @@
     "lint": "eslint .",
     "build": "tsup && pnpm run build:css",
     "build:css": "node scripts/build-css.js",
-    "dev": "concurrently \"pnpm dev:js\" \"pnpm dev:css\"",
-    "dev:js": "tsup --watch",
+    "dev": "tsup --watch --onSuccess \"pnpm dev:css\"",
     "dev:css": "node scripts/watch-css.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
