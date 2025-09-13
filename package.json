@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "移山快速开发平台 - 基于 Next.js 15 + TypeScript + Tailwind CSS 的现代化全栈开发解决方案",
   "scripts": {
-    "dev": "pnpm run /dev:.*/",
     "build": "pnpm run /build:.*/",
     "dev:admin": "pnpm --filter yishan-admin dev",
     "dev:docs": "pnpm --filter yishan-docs start",

@@ -21,6 +21,7 @@ function DatePicker() {
       <PickerPanel
         prefixCls="shadcn-date-picker"
         generateConfig={dayjsGenerateConfig}
+        picker="month"
         locale={zhCN}
       />
     </>

@@ -20,9 +20,9 @@
   "scripts": {
     "lint": "eslint .",
     "build": "tsup && pnpm run build:css",
-    "build:css": "npx lessc assets/css/index.less assets/css/output.css && npx postcss assets/css/index.css -o dist/index.css",
-    "dev": "concurrently \"tsup --watch\" \"pnpm run dev:css\"",
-    "dev:css": "npm run build:css && chokidar \"assets/css/**/*.less\" -c \"npm run build:css\"",
+    "build:css": "node scripts/build-css.js",
+    "dev": "tsup --watch --onSuccess \"pnpm dev:css\"",
+    "dev:css": "node scripts/watch-css.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

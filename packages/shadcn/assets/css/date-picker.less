@@ -11,7 +11,6 @@
 @panel-padding: calc(var(--spacing) * 3);
 
 .placeholder(@color: @input-placeholder-color) {
-
   // Firefox
   &::-moz-placeholder {
     opacity: 1; // Override Firefox's unusual default opacity; see https://github.com/twbs/bootstrap/pull/11526
@@ -32,7 +31,6 @@
   border: 1px solid var(--input);
   border-radius: calc(var(--radius) - 2px);
   overflow: hidden;
-
 
   &-rtl {
     direction: rtl;
@@ -55,9 +53,11 @@
     display: inline-block;
     vertical-align: top;
     background: @background-color;
-    border: 1px solid var(--border);
-    --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, #0000001a), 0 2px 4px -2px var(--tw-shadow-color, #0000001a);
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+    // border: 1px solid var(--border);
+    --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, #0000001a),
+      0 2px 4px -2px var(--tw-shadow-color, #0000001a);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+      var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
     border-radius: calc(var(--radius) - 2px);
     overflow: hidden;
 
@@ -86,9 +86,10 @@
       text-align: center;
       border-collapse: collapse;
 
-      >thead {
-        >tr {
-          >th {
+      > thead {
+        > tr {
+          > th {
+            color: var(--popover-foreground);
             font-weight: 400;
             width: 36px;
             height: 36px;
@@ -97,31 +98,29 @@
         }
       }
 
-      >tbody {
-        >tr {
-          >td {
+      > tbody {
+        > tr {
+          > td {
+            color: var(--popover-foreground);
             width: 36px;
             height: 36px;
             font-weight: 400;
           }
         }
       }
-
     }
   }
-
-
 
   // Header
   &-header {
     display: flex;
     align-items: center;
 
-    >* {
+    > * {
       flex: none;
     }
 
-    >button {
+    > button {
       color: rgba(0, 0, 0, 0.45);
       min-width: 1.4rem;
       font-size: 16px;
@@ -137,7 +136,7 @@
       flex: auto;
       text-align: center;
 
-      >button {
+      > button {
         padding: 0;
         border: 0;
         font-weight: 600;
@@ -150,12 +149,15 @@
     }
   }
 
-  &-body {}
+  &-body {
+  }
 
   // Content
   &-cell {
     color: var(--muted-foreground);
     min-width: 24px;
+
+    transition: background 0.1s, border 0.1s;
 
     &-disabled {
       opacity: 0.2;
@@ -175,9 +177,8 @@
       border: none;
       outline: none;
       cursor: pointer;
-      transition:
-        background 0.3s,
-        border 0.3s;
+      transition: background 0.1s, border 0.1s;
+
       border-radius: calc(var(--radius) - 2px);
 
       &:hover {
@@ -189,12 +190,13 @@
       color: var(--popover-foreground);
     }
 
-    &-in-range>&-inner {
+    &-in-range > &-inner {
       background: fade(blue, 5%);
     }
 
-    &-hover>&-inner {
-      background: orange;
+    &-hover > &-inner {
+      color: var(--primary-foreground);
+      background-color: var(--primary);
     }
 
     &-range-hover-start,
@@ -211,7 +213,7 @@
         border: 1px solid green;
         border-right: 0;
         border-left: 0;
-        content: '';
+        content: "";
         pointer-events: none;
       }
     }
@@ -224,13 +226,13 @@
       border-right: 1px solid green !important;
     }
 
-    &-today>&-inner {
+    &-today > &-inner {
       background-color: rgb(240, 240, 240);
     }
 
-    &-range-start>&-inner,
-    &-range-end>&-inner,
-    &-selected>&-inner {
+    &-range-start > &-inner,
+    &-range-end > &-inner,
+    &-selected > &-inner {
       color: var(--primary-foreground);
       background-color: var(--primary);
     }
@@ -249,7 +251,11 @@
 
   &-footer,
   &-picker-footer {
-    background: green;
+    background: @background-color;
+    color: var(--popover-foreground);
+    text-align: center;
+    border-top: 1px solid var(--border);
+    padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
   }
 
   &-ranges {
@@ -258,7 +264,7 @@
     overflow: hidden;
     list-style: none;
 
-    >li {
+    > li {
       display: inline-block;
     }
   }
@@ -269,9 +275,17 @@
 
   // ================== Year & Month Panel ==================
   &-year-panel,
-  &-month-panel {
+  &-month-panel,
+  &-decade-panel {
+    width: 288px;
+
     .@{prefix-cls}-cell-inner {
       width: 80px;
+    }
+
+    .@{prefix-cls}-content {
+      width: 100%;
+      height: 264px;
     }
   }
 
@@ -280,13 +294,23 @@
     &-row {
       &:hover {
         .@{prefix-cls}-cell {
-          background: red;
+          color: var(--primary-foreground);
+          background-color: var(--primary);
+
+          > .@{prefix-cls}-cell-inner {
+            background-color: unset;
+          }
         }
       }
 
       &-selected {
         .@{prefix-cls}-cell {
-          background: rgba(0, 0, 255, 0.3);
+          color: var(--primary-foreground);
+          background-color: var(--primary);
+
+          > .@{prefix-cls}-cell-inner {
+            background-color: unset;
+          }
         }
       }
 
@@ -317,8 +341,8 @@
       font-size: 12px;
     }
 
-    .@{prefix-cls}-cell:hover>.@{prefix-cls}-cell-inner,
-    .@{prefix-cls}-cell-selected>.@{prefix-cls}-cell-inner {
+    .@{prefix-cls}-cell:hover > .@{prefix-cls}-cell-inner,
+    .@{prefix-cls}-cell-selected > .@{prefix-cls}-cell-inner {
       background: transparent;
     }
   }
@@ -368,7 +392,8 @@
       width: 50px;
       margin: 0;
       // padding: 0 0 180px 0;
-      padding: @time-panel-padding-top 0 (@time-panel-padding-total - @time-panel-padding-top);
+      padding: @time-panel-padding-top 0
+        (@time-panel-padding-total - @time-panel-padding-top);
       overflow-x: hidden;
       overflow-y: hidden;
       font-size: 12px;
@@ -384,7 +409,7 @@
         overflow-y: auto;
       }
 
-      >li {
+      > li {
         width: 50px;
         margin: 0;
         padding: 0;
@@ -434,7 +459,6 @@
 
     // Keyboard
     &-active {
-
       .@{prefix-cls}-date-panel,
       .@{prefix-cls}-time-panel {
         opacity: 0.3;
@@ -457,19 +481,19 @@
     }
 
     &-active {
-      >input {
+      > input {
         background: rgba(0, 0, 255, 0.05);
       }
     }
 
-    >input {
+    > input {
       width: 100%;
       padding: calc(var(--spacing) * 1) calc(var(--spacing) * 3);
       .placeholder();
     }
 
     &-placeholder {
-      >input {
+      > input {
         color: @input-placeholder-color;
       }
     }
@@ -482,15 +506,21 @@
     cursor: pointer;
 
     &-btn::after {
-      content: '×';
+      content: "×";
     }
   }
 
   // ======================= Dropdown =======================
   &-dropdown {
     position: absolute;
-    box-shadow: 0 0 1px red;
+    // box-shadow: 0 0 1px red;
     pointer-events: none;
+
+    .@{prefix-cls}-panel {
+      box-shadow: unset;
+      border-radius: unset;
+      overflow: hidden;
+    }
 
     &-range {
       padding: 10px 0;
@@ -537,7 +567,7 @@
         inset-inline-start: 50%;
         box-sizing: border-box;
         transform: translate(-50%, -50%);
-        content: '';
+        content: "";
 
         .@{prefix-cls}-dropdown-rtl& {
           transform: translate(50%, -50%);
@@ -555,7 +585,8 @@
         width: @arrow-size - 2px;
         height: @arrow-size - 2px;
         border: ((@arrow-size - 2px) / 2) solid blue;
-        border-color: @background-color @background-color transparent transparent;
+        border-color: @background-color @background-color transparent
+          transparent;
       }
     }
   }
@@ -598,6 +629,15 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: stretch;
+
+    & > div {
+      --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, #0000001a),
+        0 2px 4px -2px var(--tw-shadow-color, #0000001a);
+      box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+        var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+      border-radius: calc(var(--radius) - 2px);
+      overflow: hidden;
+    }
   }
 
   // ========================================================
