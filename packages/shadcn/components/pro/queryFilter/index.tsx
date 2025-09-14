@@ -10,14 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
+
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { format } from "date-fns";
+
+import { ProColumns } from "@/types/proTable";
 
 // 类型定义
 type Breakpoint = "xs" | "sm" | "md" | "lg";
@@ -27,31 +28,8 @@ interface FormData {
   [key: string]: string;
 }
 
-// 列配置类型
-export interface ColumnConfig {
-  key: string;
-  label: string;
-  type:
-    | "input"
-    | "select"
-    | "email"
-    | "tel"
-    | "date"
-    | "time"
-    | "dateTime"
-    | "dateRange"
-    | "dateTimeRange";
-  placeholder?: string;
-  options?: { label: string; value: string }[];
-  required?: boolean;
-  pattern?: {
-    value: RegExp;
-    message: string;
-  };
-}
-
 export interface QueryFilterProps {
-  columns: ColumnConfig[];
+  columns: ProColumns[];
   defaultCollapsed?: boolean;
   hideRequiredMark?: boolean;
   labelWidth?: number | "auto";
@@ -80,7 +58,7 @@ const RESPONSIVE_COLUMNS: Record<Breakpoint, number> = {
 const getGridClass = (cols: number): string => {
   const gridMap: Record<number, string> = {
     1: "grid-cols-1",
-    2: "grid-cols-2", 
+    2: "grid-cols-2",
     3: "grid-cols-3",
     4: "grid-cols-4",
   };
@@ -91,7 +69,7 @@ const getColStartClass = (cols: number): string => {
   const colStartMap: Record<number, string> = {
     1: "col-start-1",
     2: "col-start-2",
-    3: "col-start-3", 
+    3: "col-start-3",
     4: "col-start-4",
   };
   return colStartMap[cols] || "col-start-1";
@@ -160,7 +138,7 @@ const useResponsiveConfig = (
     if (props.layout === "vertical") {
       return "100%";
     }
-    
+
     // 只有horizontal布局时labelWidth才生效
     if (props.labelWidth === "auto") return "auto";
 
@@ -183,7 +161,7 @@ const useResponsiveConfig = (
   };
 };
 
-export default function QueryFilter({
+function QueryFilter({
   columns = [],
   defaultCollapsed = true,
   hideRequiredMark = true,
@@ -237,16 +215,25 @@ export default function QueryFilter({
     .filter(Boolean)
     .join(" ");
 
-  const renderField = (column: ColumnConfig) => {
-    const { key, label, type, placeholder, options, required, pattern } =
-      column;
+  const renderField = (columns: ProColumns) => {
+    const { key, dataIndex, valueType = "input", title, placeholder, options } = columns;
 
-    switch (type) {
+    const name = dataIndex || key;
+
+    console.log("name", name);
+
+    if (!name) {
+      return null;
+    }
+
+    switch (valueType) {
       case "select":
         return (
-          <Select key={key} onValueChange={(value) => setValue(key, value)}>
+          <Select key={key} onValueChange={(value) => {
+            setValue(name, value)
+          }}>
             <SelectTrigger id={key} className="w-full">
-              <SelectValue placeholder={placeholder || `请选择${label}`} />
+              <SelectValue placeholder={placeholder || `请选择${title}`} />
             </SelectTrigger>
             <SelectContent>
               {options?.map((option) => (
@@ -263,36 +250,10 @@ export default function QueryFilter({
         return (
           <Popover>
             <PopoverTrigger asChild>
-              <Input
-                id={key}
-                type="text"
-                readOnly
-                placeholder={placeholder || `请选择${label}`}
-                value={
-                  watch(key)
-                    ? type === "dateTime"
-                      ? format(new Date(watch(key)), "yyyy-MM-dd HH:mm:ss")
-                      : format(new Date(watch(key)), "yyyy-MM-dd")
-                    : ""
-                }
-                className="w-full cursor-pointer"
-              />
+
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={watch(key) ? new Date(watch(key)) : undefined}
-                onSelect={(date) => {
-                  setValue(key, date ? date.toISOString() : "");
-                  // 点击后立即关闭弹窗
-                  const event = new KeyboardEvent("keydown", {
-                    key: "Escape",
-                    bubbles: true,
-                  });
-                  document.dispatchEvent(event);
-                }}
-                captionLayout="dropdown"
-              />
+
             </PopoverContent>
           </Popover>
         );
@@ -301,37 +262,10 @@ export default function QueryFilter({
         return (
           <Popover>
             <PopoverTrigger asChild>
-              <Input
-                id={key}
-                type="text"
-                readOnly
-                placeholder={placeholder || `请选择${label}`}
-                value={watch(key) ? format(new Date(watch(key)), "HH:mm") : ""}
-                className="w-full cursor-pointer"
-              />
+
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-              <div className="p-3">
-                <Input
-                  type="time"
-                  value={
-                    watch(key) ? format(new Date(watch(key)), "HH:mm") : ""
-                  }
-                  onChange={(e) => {
-                    const [hours, minutes] = e.target.value.split(":");
-                    const date = new Date();
-                    date.setHours(parseInt(hours), parseInt(minutes));
-                    setValue(key, date.toISOString());
-                    // 点击后立即关闭弹窗
-                    const event = new KeyboardEvent("keydown", {
-                      key: "Escape",
-                      bubbles: true,
-                    });
-                    document.dispatchEvent(event);
-                  }}
-                  className="w-full"
-                />
-              </div>
+
             </PopoverContent>
           </Popover>
         );
@@ -339,66 +273,7 @@ export default function QueryFilter({
       case "dateRange":
       case "dateTimeRange":
         return (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Input
-                id={key}
-                type="text"
-                readOnly
-                placeholder={placeholder || `请选择${label}`}
-                value={(() => {
-                  const value = watch(key);
-                  if (!value) return "";
-                  try {
-                    const range =
-                      typeof value === "string" ? JSON.parse(value) : value;
-                    if (range?.from && range?.to) {
-                      const formatStr =
-                        type === "dateTimeRange"
-                          ? "yyyy年M月d日 HH:mm"
-                          : "yyyy年M月d日";
-                      return `${format(
-                        new Date(range.from),
-                        formatStr
-                      )} 至 ${format(new Date(range.to), formatStr)}`;
-                    }
-                  } catch {
-                    return "";
-                  }
-                  return "";
-                })()}
-                className="w-full cursor-pointer"
-              />
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
-              <Calendar
-                mode="range"
-                selected={(() => {
-                  const value = watch(key);
-                  if (!value) return undefined;
-                  try {
-                    return typeof value === "string"
-                      ? JSON.parse(value)
-                      : value;
-                  } catch {
-                    return undefined;
-                  }
-                })()}
-                onSelect={(range) => {
-                  setValue(key, range ? JSON.stringify(range) : "");
-                  // 点击后立即关闭弹窗（范围选择器在选择完整范围后关闭）
-                  if (range?.from && range?.to) {
-                    const event = new KeyboardEvent("keydown", {
-                      key: "Escape",
-                      bubbles: true,
-                    });
-                    document.dispatchEvent(event);
-                  }
-                }}
-                autoFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <></>
         );
 
       case "input":
@@ -408,12 +283,8 @@ export default function QueryFilter({
         return (
           <Input
             id={key}
-            type={type}
-            placeholder={placeholder || `请输入${label}`}
-            {...register(key, {
-              required: required && !hideRequiredMark,
-              pattern,
-            })}
+            type={valueType}
+            placeholder={placeholder || `请输入${title}`}
             className="w-full"
           />
         );
@@ -428,12 +299,13 @@ export default function QueryFilter({
       style={style}
     >
       {columns.map((column, i) => {
+
         if (collapsed && i >= colsNumber - 1) {
           return null;
         }
         return (
-          <div 
-            key={column.key} 
+          <div
+            key={column.key}
             className={layout === "vertical" ? "space-y-2 w-full" : "space-y-2"}
           >
             <Label
@@ -441,17 +313,12 @@ export default function QueryFilter({
               className="text-sm font-medium flex items-center"
               style={{ width: layout === "vertical" ? "100%" : computedLabelWidth }}
             >
-              {column.label}
-              {!hideRequiredMark && column.required && (
+              {column.title}
+              {!hideRequiredMark && (
                 <span className="text-red-500 ml-1">*</span>
               )}
             </Label>
             {renderField(column)}
-            {errors[column.key] && (
-              <span className="text-red-500 text-xs">
-                {errors[column.key]?.message || `${column.label}不能为空`}
-              </span>
-            )}
           </div>
         );
       })}
@@ -472,7 +339,7 @@ export default function QueryFilter({
           </Button>
 
           <div
-            className="flex items-center cursor-pointer"
+            className="flex items-center cursor-pointer text-sm"
             onClick={() => setCollapsed(!collapsed)}
           >
             <span>{collapsed ? "展开" : "收起"}</span>
@@ -482,4 +349,8 @@ export default function QueryFilter({
       </div>
     </form>
   );
+}
+
+export {
+  QueryFilter,
 }

@@ -50,11 +50,11 @@ export function MainLayout() {
         </div>
       </nav>
 
-      <main className="flex-1">
+      <main className="flex-1 pb-24">
         <Outlet />
       </main>
 
-      <footer className="border-t mt-auto fixed bottom-0 left-0 right-0">
+      <footer className="border-t mt-auto fixed z-50 bg-white bottom-0 left-0 right-0">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">

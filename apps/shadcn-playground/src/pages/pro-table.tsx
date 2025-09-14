@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ProTable, ProPagination, Button, ColumnDef } from '@zerocmf/yishan-shadcn'
+import { ProTable, Button } from '@zerocmf/yishan-shadcn'
 
 import {
   DropdownMenu,
@@ -8,12 +8,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  ProColumns
 } from '@zerocmf/yishan-shadcn'
 import { MoreHorizontal } from 'lucide-react'
 
 export default function ProTablePage() {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [exampleType, setExampleType] = useState<'static' | 'request'>('static')
 
   interface Payment {
     id: string
@@ -35,59 +35,34 @@ export default function ProTablePage() {
     }))
   }
 
-  const columns: ColumnDef<Payment>[] = [
+  const columns: ProColumns[] = [
     {
-      accessorKey: "id",
-      header: "ID",
-      cell: ({ row }) => <span className="font-mono text-sm">{row.getValue("id")}</span>
+      dataIndex: "id",
+      title: "ID",
     },
     {
-      accessorKey: "customer",
-      header: "Customer",
-      cell: ({ row }) => <span className="font-medium">{row.getValue("customer")}</span>
+      dataIndex: "customer",
+      title: "客户",
     },
     {
-      accessorKey: "email",
-      header: "Email",
+      dataIndex: "email",
+      title: "邮箱",
     },
     {
-      accessorKey: "amount",
-      header: () => <div className="text-right">Amount</div>,
-      cell: ({ row }) => {
-        const amount = parseFloat(row.getValue("amount"))
-        const formatted = new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: "USD",
-        }).format(amount)
-
-        return <div className="text-right font-medium">{formatted}</div>
-      },
+      dataIndex: "amount",
+      title: "金额",
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const status = row.getValue("status") as string
-        const statusColors: Record<string, string> = {
-          pending: "bg-yellow-100 text-yellow-800",
-          processing: "bg-blue-100 text-blue-800",
-          success: "bg-green-100 text-green-800",
-          failed: "bg-red-100 text-red-800",
-        }
-        return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status] || "bg-gray-100 text-gray-800"}`}>
-            {status}
-          </span>
-        )
-      },
+      dataIndex: "status",
+      title: "状态",
     },
     {
-      accessorKey: "date",
-      header: "Date",
+      dataIndex: "date",
+      title: "日期",
     },
     {
-      id: "actions",
-      header: "Actions",
+      dataIndex: "actions",
+      title: "操作",
       cell: ({ row }) => {
         const payment = row.original
 
@@ -116,22 +91,28 @@ export default function ProTablePage() {
     }
   ]
 
-  const allData = getData()
-  const paginatedData = allData.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  )
+  // 模拟 API 请求
+  const requestData = async (params: any) => {
+    // 模拟网络延迟
+    await new Promise(resolve => setTimeout(resolve, 1000))
 
-  const handlePageChange = (page: number, newPageSize?: number) => {
-    setCurrentPage(page)
-    if (newPageSize) {
-      setPageSize(newPageSize)
-      const newTotalPages = Math.ceil(allData.length / newPageSize)
-      if (page > newTotalPages) {
-        setCurrentPage(newTotalPages || 1)
-      }
+    const allData = getData()
+    const { current, pageSize } = params
+
+    // 计算分页数据
+    const startIndex = (current - 1) * pageSize
+    const endIndex = startIndex + pageSize
+    const paginatedData = allData.slice(startIndex, endIndex)
+
+    return {
+      data: paginatedData,
+      success: true,
+      total: allData.length,
     }
   }
+
+  // 静态数据示例
+  const staticData = getData().slice(0, 50)
 
   return (
     <div className="container mx-auto py-8 space-y-8">
@@ -142,52 +123,50 @@ export default function ProTablePage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="border rounded-lg p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">总记录数</h3>
-          <p className="text-2xl font-bold">{allData.length}</p>
-        </div>
-        <div className="border rounded-lg p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">当前页</h3>
-          <p className="text-2xl font-bold">{currentPage}</p>
-        </div>
-        <div className="border rounded-lg p-4">
-          <h3 className="text-sm font-medium text-muted-foreground">每页条数</h3>
-          <p className="text-2xl font-bold">{pageSize}</p>
-        </div>
+      {/* 示例切换按钮 */}
+      <div className="flex gap-4 mb-6">
+        <Button
+          variant={exampleType === 'static' ? 'default' : 'outline'}
+          onClick={() => setExampleType('static')}
+        >
+          静态数据示例
+        </Button>
+        <Button
+          variant={exampleType === 'request' ? 'default' : 'outline'}
+          onClick={() => setExampleType('request')}
+        >
+          Request API 示例
+        </Button>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">数据表格</h2>
-          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-            刷新数据
-          </Button>
+      {exampleType === 'static' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">静态数据表格</h2>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+              刷新数据
+            </Button>
+          </div>
+          <div className="border rounded-lg">
+            <ProTable dataSource={staticData} columns={columns} />
+          </div>
         </div>
-        <div className="border rounded-lg">
-          <ProTable data={paginatedData} columns={columns} />
+      ) : (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold">Request API 数据表格</h2>
+            <div className="text-sm text-muted-foreground">
+              使用 request API 异步获取数据，支持分页和加载状态
+            </div>
+          </div>
+          <div className="border rounded-lg">
+            <ProTable
+              request={requestData}
+              columns={columns}
+            />
+          </div>
         </div>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">分页控制</h2>
-        <div className="border rounded-lg p-4">
-          <ProPagination
-            current={currentPage}
-            pageSize={pageSize}
-            total={allData.length}
-            onChange={handlePageChange}
-            showSizeChanger
-            showQuickJumper
-            showTotal={(total, range) => (
-              <span className="text-sm">
-                显示 {range[0]}-{range[1]} 条，共 {total} 条
-              </span>
-            )}
-            align="center"
-          />
-        </div>
-      </div>
+      )}
     </div>
   )
 }

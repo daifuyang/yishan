@@ -1,103 +1,21 @@
 import { useState } from "react";
-import { QueryFilter, type ColumnConfig, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@zerocmf/yishan-shadcn';
+import { QueryFilter, Card, CardContent, CardDescription, CardHeader, CardTitle, ProColumns } from '@zerocmf/yishan-shadcn';
 
 export default function QueryFilterPage() {
   const [lastQuery, setLastQuery] = useState<Record<string, any>>({});
 
-  const searchColumns: ColumnConfig[] = [
+  const searchColumns: ProColumns[] = [
     {
-      key: "username",
-      label: "用户名",
-      type: "input",
+      dataIndex: "username",
+      title: "用户名",
+      valueType: "input",
       placeholder: "请输入用户名",
-      required: true,
     },
     {
-      key: "email",
-      label: "邮箱",
-      type: "email",
+      dataIndex: "email",
+      title: "邮箱",
+      valueType: "email",
       placeholder: "请输入邮箱地址",
-      required: true,
-      pattern: {
-        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-        message: "请输入有效的邮箱地址",
-      },
-    },
-    {
-      key: "phone",
-      label: "手机号",
-      type: "tel",
-      placeholder: "请输入手机号",
-      required: true,
-      pattern: {
-        value: /^1[3-9]\d{9}$/,
-        message: "请输入有效的手机号",
-      },
-    },
-    {
-      key: "status",
-      label: "状态",
-      type: "select",
-      placeholder: "选择状态",
-      options: [
-        { label: "全部状态", value: "all" },
-        { label: "启用", value: "active" },
-        { label: "禁用", value: "inactive" },
-        { label: "待审核", value: "pending" },
-      ],
-    },
-    {
-      key: "role",
-      label: "角色",
-      type: "select",
-      placeholder: "选择用户角色",
-      options: [
-        { label: "管理员", value: "admin" },
-        { label: "普通用户", value: "user" },
-        { label: "VIP用户", value: "vip" },
-      ],
-    },
-    {
-      key: "birthday",
-      label: "生日",
-      type: "date",
-      placeholder: "请选择生日",
-    },
-    {
-      key: "appointmentTime",
-      label: "预约时间",
-      type: "dateTime",
-      placeholder: "请选择预约时间",
-    },
-    {
-      key: "meetingTime",
-      label: "会议时间",
-      type: "time",
-      placeholder: "请选择会议时间",
-    },
-    {
-      key: "activityPeriod",
-      label: "活动周期",
-      type: "dateRange",
-      placeholder: "请选择活动周期",
-    },
-    {
-      key: "eventPeriod",
-      label: "事件周期",
-      type: "dateTimeRange",
-      placeholder: "请选择事件周期",
-    },
-    {
-      key: "search",
-      label: "搜索关键词",
-      type: "input",
-      placeholder: "请输入关键词搜索",
-    },
-    {
-      key: "priceRange",
-      label: "价格区间",
-      type: "input",
-      placeholder: "请输入价格",
     },
   ];
 

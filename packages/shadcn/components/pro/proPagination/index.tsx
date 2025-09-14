@@ -24,7 +24,7 @@ export interface ProPaginationProps {
   /** 默认当前页数 */
   defaultCurrent?: number;
   /** 数据总数 */
-  total: number;
+  total?: number;
   /** 每页条数 */
   pageSize?: number;
   /** 默认每页条数 */
@@ -65,7 +65,7 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
     {
       current,
       defaultCurrent = 1,
-      total,
+      total = 0,
       pageSize = 10,
       defaultPageSize = 10,
       disabled = false,
@@ -148,8 +148,8 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
               disabled={disabled}
               onClick={() => handlePageChange(i)}
               className={cn(
-                "min-w-8",
-                controlledCurrent === i && "bg-primary text-primary-foreground"
+                "cursor-pointer min-w-8",
+                controlledCurrent === i && "border bg-primary text-primary-foreground"
               )}
             >
               {itemRender ? itemRender(i, "page", <>{i}</>) : i}
@@ -174,7 +174,7 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
               size={size === "small" ? "sm" : "default"}
               disabled={disabled}
               onClick={() => handlePageChange(1)}
-              className="min-w-8"
+              className="min-w-8 cursor-pointer"
             >
               {itemRender ? itemRender(1, "page", <>1</>) : 1}
             </Button>
@@ -197,7 +197,7 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
               disabled={disabled}
               onClick={() => handlePageChange(i)}
               className={cn(
-                "min-w-8",
+                "min-w-8 cursor-pointer",
                 controlledCurrent === i && "bg-primary text-primary-foreground"
               )}
             >
@@ -221,7 +221,7 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
               size={size === "small" ? "sm" : "default"}
               disabled={disabled}
               onClick={() => handlePageChange(totalPages)}
-              className="min-w-8"
+              className="min-w-8 cursor-pointer"
             >
               {itemRender
                 ? itemRender(totalPages, "page", <>{totalPages}</>)
@@ -252,11 +252,12 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
     const renderSimplePagination = () => (
       <div className="flex items-center gap-2">
         <Button
-          variant="outline"
-          size={size === "small" ? "sm" : "default"}
-          disabled={disabled || controlledCurrent <= 1}
-          onClick={() => handlePageChange(controlledCurrent - 1)}
-        >
+            variant="outline"
+            size={size === "small" ? "sm" : "default"}
+            className="disabled:pointer-events-auto disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={disabled || controlledCurrent <= 1}
+            onClick={() => handlePageChange(controlledCurrent - 1)}
+          >
           {itemRender ? (
             itemRender(
               controlledCurrent - 1,
@@ -273,6 +274,7 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
         <Button
           variant="outline"
           size={size === "small" ? "sm" : "default"}
+          className="disabled:pointer-events-auto disabled:cursor-not-allowed disabled:opacity-50"
           disabled={disabled || controlledCurrent >= totalPages}
           onClick={() => handlePageChange(controlledCurrent + 1)}
         >
@@ -357,6 +359,7 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
           <Button
             variant="outline"
             size={size === "small" ? "sm" : "default"}
+            className="cursor-pointer disabled:pointer-events-auto disabled:cursor-not-allowed"
             disabled={disabled || controlledCurrent <= 1}
             onClick={() => handlePageChange(controlledCurrent - 1)}
           >
@@ -376,6 +379,7 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
           <Button
             variant="outline"
             size={size === "small" ? "sm" : "default"}
+            className="cursor-pointer disabled:pointer-events-auto disabled:cursor-not-allowed"
             disabled={disabled || controlledCurrent >= totalPages}
             onClick={() => handlePageChange(controlledCurrent + 1)}
           >
@@ -400,7 +404,7 @@ const ProPagination = forwardRef<HTMLDivElement, ProPaginationProps>(
                   size={size === "small" ? "sm" : "default"}
                   disabled={disabled}
                   className={cn(
-                    "justify-between",
+                    "justify-between disabled:pointer-events-auto disabled:cursor-not-allowed",
                     size === "small" ? "h-7 px-2 text-xs" : "h-8 px-3"
                   )}
                 >

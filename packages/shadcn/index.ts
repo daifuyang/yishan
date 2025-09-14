@@ -24,10 +24,12 @@ export * from "./components/ui/date-picker"
 // ProTable 组件导出
 export * from "./components/pro/proTable";
 
+export * from "./types/proTable";
+
 // ProPagination 组件导出
 export { ProPagination } from "./components/pro/proPagination";
 
 // QueryFilter 组件
-export { default as QueryFilter, ColumnConfig } from "./components/pro/queryFilter";
+export * from "./components/pro/queryFilter";
 
 // 
