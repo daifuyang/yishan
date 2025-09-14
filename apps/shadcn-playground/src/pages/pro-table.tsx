@@ -39,30 +39,37 @@ export default function ProTablePage() {
     {
       dataIndex: "id",
       title: "ID",
+      width: 80,
     },
     {
       dataIndex: "customer",
       title: "客户",
+      width: 150,
     },
     {
       dataIndex: "email",
       title: "邮箱",
+      width: 200,
     },
     {
       dataIndex: "amount",
       title: "金额",
+      width: 100,
     },
     {
       dataIndex: "status",
       title: "状态",
+      width: 100,
     },
     {
       dataIndex: "date",
       title: "日期",
+      width: 120,
     },
     {
       dataIndex: "actions",
       title: "操作",
+      width: 80,
       cell: ({ row }) => {
         const payment = row.original
 
@@ -97,6 +104,7 @@ export default function ProTablePage() {
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     const allData = getData()
+
     const { current, pageSize } = params
 
     // 计算分页数据

@@ -15,4 +15,5 @@ export type ProColumns = {
         value: string;
     }[];
     cell?: (record: any) => ReactNode;
+    width?: number | string;
 }

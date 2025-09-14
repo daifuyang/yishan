@@ -17,7 +17,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton"
+
+import { Loader2Icon } from "lucide-react"
+
 import { Inbox } from "lucide-react";
 import { QueryFilter } from "../queryFilter";
 import { ProPagination } from "../proPagination";
@@ -59,27 +61,26 @@ function ProTable<TData, TValue>({
   request,
 }: DataTableProps<TData, TValue>) {
   // 统一数据来源
-  const sourceData = useMemo(() => 
+  const sourceData = useMemo(() =>
     dataSource.length > 0 ? dataSource : deprecatedData,
     [dataSource, deprecatedData]
   );
-  
+
   // 判断是否为服务端分页
   const isServerSide = !!request;
-  
+
   // 使用TanStack Table的分页状态
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
-  
+
   const [data, setData] = useState<TData[]>([]);
   const [loading, setLoading] = useState(isServerSide); // 服务端模式下初始为加载状态
   const [total, setTotal] = useState(0);
-  const [isFirstLoad, setIsFirstLoad] = useState(isServerSide); // 标记首次加载
 
   // 转换列定义
-  const tableColumns = useMemo(() => 
+  const tableColumns = useMemo(() =>
     columns.map((column) => ({
       header: column.title,
       accessorKey: column.dataIndex,
@@ -91,7 +92,7 @@ function ProTable<TData, TValue>({
   // 服务端数据获取
   const fetchServerData = async () => {
     if (!isServerSide) return;
-    
+
     setLoading(true);
     try {
       const response = await request(
@@ -112,7 +113,6 @@ function ProTable<TData, TValue>({
       console.error('Failed to fetch data:', error);
     } finally {
       setLoading(false);
-      setIsFirstLoad(false); // 首次加载完成
     }
   };
 
@@ -128,7 +128,7 @@ function ProTable<TData, TValue>({
     if (isServerSide) {
       fetchServerData();
     }
-  // 首次加载时也需要触发数据获取
+    // 首次加载时也需要触发数据获取
   }, [isServerSide, pagination.pageIndex, pagination.pageSize, JSON.stringify(params)]);
 
   // 统一的数据源：服务端数据 或 客户端分页数据
@@ -136,32 +136,30 @@ function ProTable<TData, TValue>({
     if (isServerSide) {
       return data;
     }
-    
+
     // 客户端分页：使用TanStack Table的内置分页
     return sourceData;
   }, [data, sourceData, isServerSide]);
-
-  console.log('displayData', displayData);
 
   // 创建TanStack Table实例
   const table = useReactTable({
     data: displayData,
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
-    
+
     // 根据数据源选择分页模式
-    ...(isServerSide 
+    ...(isServerSide
       ? {
-          // 服务端分页：手动分页模式
-          manualPagination: true,
-          pageCount: Math.ceil(total / pagination.pageSize),
-        }
+        // 服务端分页：手动分页模式
+        manualPagination: true,
+        pageCount: Math.ceil(total / pagination.pageSize),
+      }
       : {
-          // 客户端分页：使用内置分页
-          getPaginationRowModel: getPaginationRowModel(),
-        }
+        // 客户端分页：使用内置分页
+        getPaginationRowModel: getPaginationRowModel(),
+      }
     ),
-    
+
     state: {
       pagination,
     },
@@ -169,31 +167,47 @@ function ProTable<TData, TValue>({
   });
 
   // 获取当前显示的数据（客户端分页时自动处理）
-  const currentDisplayData = isServerSide 
+  const currentDisplayData = isServerSide
     ? table.getRowModel().rows
     : table.getPaginationRowModel().rows;
 
   // 判断是否应该显示空数据状态
-  const shouldShowEmpty = !loading && currentDisplayData.length === 0 && !isFirstLoad;
+  const shouldShowEmpty = currentDisplayData.length === 0;
+
 
   return (
     <div className="w-full p-6">
       <div className="mb-8"><QueryFilter columns={columns} /></div>
-      <div className="border-t border-b mb-8">
+      {/* 透明遮罩 */}
+      <div className="relative border-t border-b mb-8">
+        {
+          loading && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/60 z-100 w-full h-full flex flex-col items-center justify-center">
+              <Loader2Icon className="animate-spin" />
+            </div>
+          )
+        }
+
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
+                {headerGroup.headers.map((header) => {
+                  const columnWidth = (header.column.columnDef as any).width;
+                  return (
+                    <TableHead 
+                      key={header.id} 
+                      style={columnWidth ? { width: columnWidth } : undefined}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                  </TableHead>
-                ))}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
@@ -204,23 +218,28 @@ function ProTable<TData, TValue>({
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const columnWidth = (cell.column.columnDef as any).width;
+                    return (
+                      <TableCell 
+                        key={cell.id}
+                        style={columnWidth ? { width: columnWidth } : undefined}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))
             ) : shouldShowEmpty ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-32 text-center">
+                <TableCell colSpan={columns.length} className="h-64 text-center">
                   <div className="flex flex-col items-center justify-center space-y-3">
                     <div className="rounded-full bg-muted p-3">
                       <Inbox className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <div className="space-y-1">
                       <div className="text-sm font-medium text-muted-foreground">暂无数据</div>
-                      <div className="text-xs text-muted-foreground">当前没有可显示的数据</div>
                     </div>
                   </div>
                 </TableCell>
