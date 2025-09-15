@@ -19,7 +19,10 @@ export * from "./components/ui/skeleton";
 export * from "./components/ui/sonner";
 export * from "./components/ui/table";
 export * from "./components/ui/tooltip";
-export * from "./components/ui/date-picker"
+export * from "./components/ui/date-picker";
+
+// 应用组件导出
+export * from "./components/app-sidebar";
 
 // ProTable 组件导出
 export * from "./components/pro/proTable";
@@ -32,4 +35,4 @@ export { ProPagination } from "./components/pro/proPagination";
 // QueryFilter 组件
 export * from "./components/pro/queryFilter";
 
-// 
+//

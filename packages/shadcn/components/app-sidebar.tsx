@@ -26,8 +26,8 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 
-// This is sample data.
-const data = {
+// 示例数据 - 用于默认展示
+export const sampleData = {
   user: {
     name: "shadcn",
     email: "m@example.com",
@@ -156,7 +156,41 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+import type { LucideIcon } from "lucide-react"
+
+export interface AppSidebarData {
+  user: {
+    name: string
+    email: string
+    avatar: string
+  }
+  teams: Array<{
+    name: string
+    logo: LucideIcon
+    plan: string
+  }>
+  navMain: Array<{
+    title: string
+    url: string
+    icon: LucideIcon
+    isActive?: boolean
+    items?: Array<{
+      title: string
+      url: string
+    }>
+  }>
+  projects: Array<{
+    name: string
+    url: string
+    icon: LucideIcon
+  }>
+}
+
+export interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  data?: AppSidebarData
+}
+
+export function AppSidebar({ data = sampleData, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
