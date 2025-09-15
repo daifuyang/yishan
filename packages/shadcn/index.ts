@@ -20,9 +20,16 @@ export * from "./components/ui/sonner";
 export * from "./components/ui/table";
 export * from "./components/ui/tooltip";
 export * from "./components/ui/date-picker";
+export * from "./components/ui/sidebar";
+export * from "./components/ui/breadcrumb"
 
 // 应用组件导出
-export * from "./components/app-sidebar";
+
+export * from "@/components/nav-main"
+export * from "@/components/nav-projects"
+export * from "@/components/nav-user"
+export * from "@/components/team-switcher"
+export * from "@/components/ui/sidebar"
 
 // ProTable 组件导出
 export * from "./components/pro/proTable";
