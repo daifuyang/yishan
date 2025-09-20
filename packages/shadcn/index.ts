@@ -1,3 +1,7 @@
+// 引入库的全局样式（Tailwind + 组件 Less）
+import './assets/css/tailwindcss.css'
+import './assets/css/index.less'
+
 // UI 组件导出
 export * from "./components/ui/avatar";
 export * from "./components/ui/breadcrumb";
@@ -21,15 +25,15 @@ export * from "./components/ui/table";
 export * from "./components/ui/tooltip";
 export * from "./components/ui/date-picker";
 export * from "./components/ui/sidebar";
-export * from "./components/ui/breadcrumb"
+export * from "./components/ui/breadcrumb";
 
 // 应用组件导出
 
-export * from "@/components/nav-main"
-export * from "@/components/nav-projects"
-export * from "@/components/nav-user"
-export * from "@/components/team-switcher"
-export * from "@/components/ui/sidebar"
+export * from "./components/nav-main";
+export * from "./components/nav-projects";
+export * from "./components/nav-user";
+export * from "./components/team-switcher";
+export * from "./components/ui/sidebar";
 
 // ProTable 组件导出
 export * from "./components/pro/proTable";

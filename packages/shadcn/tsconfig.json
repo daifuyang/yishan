@@ -9,8 +9,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": { "@/*": ["./*"] },
-    "declaration": true,
-    "outDir": "./dist"
+    "declaration": true
   },
   "include": ["index.ts", "components/**/*", "lib/**/*"],
   "exclude": ["node_modules", "dist"]
