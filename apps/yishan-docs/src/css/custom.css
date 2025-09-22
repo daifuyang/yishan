@@ -1,5 +1,0 @@
-@config "../../tailwind.config.js";
-@import "@zerocmf/yishan-shadcn/index.css";
-.shadcn-example {
-  @import "tailwindcss";
-}
