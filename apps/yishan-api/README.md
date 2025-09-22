@@ -1,23 +1,65 @@
-# Getting Started with [Fastify-CLI](https://www.npmjs.com/package/fastify-cli)
-This project was bootstrapped with Fastify-CLI.
+# yishan-api
 
-## Available Scripts
+This is the API service for Yishan project, built with Fastify and following the official Fastify demo patterns.
 
-In the project directory, you can run:
+## Project Structure
 
-### `npm run dev`
+This project follows the official Fastify demo structure:
 
-To start the app in dev mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+```
+src/
+├── plugins/
+│   ├── external/          # External plugins (security, cors, etc.)
+│   └── app/              # Application plugins (business logic)
+├── routes/               # Route definitions
+└── app.ts               # Application entry point
+```
 
-### `npm start`
+## Getting Started
 
-For production mode
+### Prerequisites
 
-### `npm run test`
+- Node.js 18+
+- pnpm (recommended) or npm
 
-Run the test cases.
+### Installation
 
-## Learn More
+```bash
+# Install dependencies
+pnpm install
 
-To learn Fastify, check out the [Fastify documentation](https://fastify.dev/docs/latest/).
+# Copy environment variables
+cp .env.example .env
+
+# Edit .env file with your configuration
+```
+
+### Development
+
+```bash
+# Start development server with hot reload
+pnpm run dev
+
+# Build the project
+pnpm run build:ts
+
+# Start production server
+pnpm start
+```
+
+### Available Scripts
+
+- `pnpm run dev` - start the application in development mode
+- `pnpm run build:ts` - build the TypeScript application
+- `pnpm start` - start the built application
+- `pnpm test` - run the tests
+
+## API Documentation
+
+When running in development mode, API documentation is available at:
+- Swagger UI: http://localhost:3000/docs
+- OpenAPI JSON: http://localhost:3000/docs/json
+
+## Environment Variables
+
+See `.env.example` for all available environment variables.
