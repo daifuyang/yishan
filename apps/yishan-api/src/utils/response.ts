@@ -1,6 +1,6 @@
 /**
  * 统一响应工具类
- * 提供标准化的响应格式处理方法
+ * 提供标准化的响应格式处理方法，基于业务码体系
  */
 
 import { FastifyReply, FastifyRequest } from 'fastify'
@@ -12,15 +12,20 @@ import {
   PaginatedResponse,
   ListResponse,
   PaginatedData,
-  ResponseCode,
+  BusinessCode,
   ResponseMessage
 } from '../types/response.js'
 
 /**
  * 响应工具类
- * 支持业务码与HTTP状态码分离
+ * 支持业务码与HTTP状态码分离，默认业务码为20000
  */
 export class ResponseUtil {
+  /**
+   * 默认业务成功码
+   */
+  static readonly DEFAULT_SUCCESS_CODE = BusinessCode.SUCCESS
+
   /**
    * 创建基础响应对象
    */
@@ -33,13 +38,15 @@ export class ResponseUtil {
       code,
       message,
       timestamp: Date.now(),
-      requestId: request.id || randomUUID()
+      requestId: request.id || randomUUID(),
+      path: request.url,
+      method: request.method
     }
   }
 
   /**
    * 发送成功响应
-   * @param businessCode 业务码（5位数字）
+   * @param businessCode 业务码（5位数字，默认为20000）
    * @param httpStatus HTTP状态码（可选，如果不传则根据业务码自动映射）
    */
   static send<T = any>(
@@ -47,12 +54,12 @@ export class ResponseUtil {
     request: FastifyRequest,
     data: T,
     message: string = ResponseMessage.SUCCESS,
-    businessCode?: number,
+    businessCode: number = this.DEFAULT_SUCCESS_CODE,
     httpStatus?: number
   ): FastifyReply {
-    const statusCode = httpStatus || (businessCode ? this.getHttpStatusFromBusinessCode(businessCode) : 200)
+    const statusCode = httpStatus || this.getHttpStatusFromBusinessCode(businessCode)
     const response = {
-      ...this.createBaseResponse(request, businessCode || statusCode, message),
+      ...this.createBaseResponse(request, businessCode, message),
       data
     } as SuccessResponse<T>
 
@@ -86,7 +93,7 @@ export class ResponseUtil {
     data: T,
     message: string = ResponseMessage.CREATED
   ): FastifyReply {
-    return this.send(reply, request, data, message, ResponseCode.CREATED)
+    return this.send(reply, request, data, message, BusinessCode.CREATED)
   }
 
   /**
@@ -98,7 +105,7 @@ export class ResponseUtil {
     data?: T,
     message: string = ResponseMessage.UPDATED
   ): FastifyReply {
-    return this.send(reply, request, data, message, ResponseCode.SUCCESS)
+    return this.send(reply, request, data, message, BusinessCode.UPDATED)
   }
 
   /**
@@ -109,12 +116,12 @@ export class ResponseUtil {
     request: FastifyRequest,
     message: string = ResponseMessage.DELETED
   ): FastifyReply {
-    return this.send(reply, request, null, message, ResponseCode.SUCCESS)
+    return this.send(reply, request, null, message, BusinessCode.DELETED)
   }
 
   /**
    * 发送列表响应
-   * @param businessCode 业务码（5位数字）
+   * @param businessCode 业务码（5位数字，默认为20000）
    * @param httpStatus HTTP状态码（可选，如果不传则根据业务码自动映射）
    */
   static list<T = any>(
@@ -122,12 +129,12 @@ export class ResponseUtil {
     request: FastifyRequest,
     data: T[],
     message: string = ResponseMessage.SUCCESS,
-    businessCode?: number,
+    businessCode: number = this.DEFAULT_SUCCESS_CODE,
     httpStatus?: number
   ): FastifyReply {
-    const statusCode = httpStatus || (businessCode ? this.getHttpStatusFromBusinessCode(businessCode) : 200)
+    const statusCode = httpStatus || this.getHttpStatusFromBusinessCode(businessCode)
     const response = {
-      ...this.createBaseResponse(request, businessCode || statusCode, message),
+      ...this.createBaseResponse(request, businessCode, message),
       data
     } as ListResponse<T>
 
@@ -136,7 +143,7 @@ export class ResponseUtil {
 
   /**
    * 发送分页响应
-   * @param businessCode 业务码（5位数字）
+   * @param businessCode 业务码（5位数字，默认为20000）
    * @param httpStatus HTTP状态码（可选，如果不传则根据业务码自动映射）
    */
   static paginated<T = any>(
@@ -147,7 +154,7 @@ export class ResponseUtil {
     page: number,
     pageSize: number,
     message: string = ResponseMessage.SUCCESS,
-    businessCode?: number,
+    businessCode: number = this.DEFAULT_SUCCESS_CODE,
     httpStatus?: number
   ): FastifyReply {
     const totalPages = Math.ceil(total / pageSize)
@@ -164,9 +171,9 @@ export class ResponseUtil {
       hasPrev
     }
 
-    const statusCode = httpStatus || (businessCode ? this.getHttpStatusFromBusinessCode(businessCode) : 200)
+    const statusCode = httpStatus || this.getHttpStatusFromBusinessCode(businessCode)
     const response = {
-      ...this.createBaseResponse(request, businessCode || statusCode, message),
+      ...this.createBaseResponse(request, businessCode, message),
       data: paginatedData
     } as PaginatedResponse<T>
 
@@ -175,26 +182,27 @@ export class ResponseUtil {
 
   /**
    * 发送错误响应
-   * @param businessCode 业务码（5位数字）
+   * @param businessCode 业务码（5位数字，默认为50000）
    * @param httpStatus HTTP状态码（可选，如果不传则根据业务码自动映射）
    */
   static error(
     reply: FastifyReply,
     request: FastifyRequest,
     message: string = ResponseMessage.INTERNAL_SERVER_ERROR,
-    businessCode?: number,
+    businessCode: number = BusinessCode.SYSTEM_ERROR,
     error?: any,
     httpStatus?: number
   ): FastifyReply {
-    const statusCode = httpStatus || (businessCode ? this.getHttpStatusFromBusinessCode(businessCode) : 500)
+    const statusCode = httpStatus || this.getHttpStatusFromBusinessCode(businessCode)
     const response = {
-      ...this.createBaseResponse(request, businessCode || statusCode, message),
+      ...this.createBaseResponse(request, businessCode, message),
       data: null,
       error: {
-        type: error?.name || 'UnknownError',
+        type: error?.name || 'SystemError',
         description: error?.message || message,
         ...(process.env.NODE_ENV !== 'production' && error?.stack ? { stack: error.stack } : {}),
-        ...(error?.validation ? { validation: error.validation } : {})
+        ...(error?.validation ? { validation: error.validation } : {}),
+        errorId: request.id || randomUUID()
       }
     } as ErrorResponse
 
@@ -208,9 +216,9 @@ export class ResponseUtil {
     reply: FastifyReply,
     request: FastifyRequest,
     validation: Record<string, string[]>,
-    message: string = ResponseMessage.UNPROCESSABLE_ENTITY
+    message: string = ResponseMessage.VALIDATION_ERROR
   ): FastifyReply {
-    return this.error(reply, request, message, ResponseCode.UNPROCESSABLE_ENTITY, {
+    return this.error(reply, request, message, BusinessCode.VALIDATION_ERROR, {
       name: 'ValidationError',
       message,
       validation
@@ -225,7 +233,7 @@ export class ResponseUtil {
     request: FastifyRequest,
     message: string = ResponseMessage.UNAUTHORIZED
   ): FastifyReply {
-    return this.error(reply, request, message, ResponseCode.UNAUTHORIZED)
+    return this.error(reply, request, message, BusinessCode.UNAUTHORIZED)
   }
 
   /**
@@ -236,7 +244,7 @@ export class ResponseUtil {
     request: FastifyRequest,
     message: string = ResponseMessage.FORBIDDEN
   ): FastifyReply {
-    return this.error(reply, request, message, ResponseCode.FORBIDDEN)
+    return this.error(reply, request, message, BusinessCode.FORBIDDEN)
   }
 
   /**
@@ -247,7 +255,7 @@ export class ResponseUtil {
     request: FastifyRequest,
     message: string = ResponseMessage.NOT_FOUND
   ): FastifyReply {
-    return this.error(reply, request, message, ResponseCode.NOT_FOUND)
+    return this.error(reply, request, message, BusinessCode.NOT_FOUND)
   }
 
   /**
@@ -256,9 +264,9 @@ export class ResponseUtil {
   static tooManyRequests(
     reply: FastifyReply,
     request: FastifyRequest,
-    message: string = ResponseMessage.TOO_MANY_REQUESTS
+    message: string = '请求过于频繁'
   ): FastifyReply {
-    return this.error(reply, request, message, ResponseCode.TOO_MANY_REQUESTS)
+    return this.error(reply, request, message, 42900)
   }
 
   /**
@@ -267,9 +275,9 @@ export class ResponseUtil {
   static serviceUnavailable(
     reply: FastifyReply,
     request: FastifyRequest,
-    message: string = ResponseMessage.SERVICE_UNAVAILABLE
+    message: string = ResponseMessage.INTERNAL_SERVER_ERROR
   ): FastifyReply {
-    return this.error(reply, request, message, ResponseCode.SERVICE_UNAVAILABLE)
+    return this.error(reply, request, message, BusinessCode.SYSTEM_ERROR)
   }
 }
 
@@ -282,7 +290,7 @@ export function decorateReply(fastify: any) {
     this: FastifyReply,
     data: T,
     message?: string,
-    code?: number
+    code: number = ResponseUtil.DEFAULT_SUCCESS_CODE
   ): FastifyReply {
     return ResponseUtil.send(this, this.request, data, message, code)
   })
@@ -313,9 +321,10 @@ export function decorateReply(fastify: any) {
   fastify.decorateReply('sendList', function<T>(
     this: FastifyReply,
     data: T[],
-    message?: string
+    message?: string,
+    code: number = ResponseUtil.DEFAULT_SUCCESS_CODE
   ): FastifyReply {
-    return ResponseUtil.list(this, this.request, data, message)
+    return ResponseUtil.list(this, this.request, data, message, code)
   })
 
   fastify.decorateReply('sendPaginated', function<T>(
@@ -324,9 +333,10 @@ export function decorateReply(fastify: any) {
     total: number,
     page: number,
     pageSize: number,
-    message?: string
+    message?: string,
+    code: number = ResponseUtil.DEFAULT_SUCCESS_CODE
   ): FastifyReply {
-    return ResponseUtil.paginated(this, this.request, data, total, page, pageSize, message)
+    return ResponseUtil.paginated(this, this.request, data, total, page, pageSize, message, code)
   })
 
   fastify.decorateReply('sendError', function(

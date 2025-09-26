@@ -13,7 +13,11 @@
     "build:ts": "tsc",
     "watch:ts": "tsc -w",
     "dev": "npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
-    "dev:start": "fastify start --ignore-watch=.ts$ -w -l info -P dist/app.js"
+    "dev:start": "fastify start --ignore-watch=.ts$ -w -l info -P dist/app.js",
+    "db:create": "tsx --env-file=.env ./scripts/create-database.ts",
+    "db:migrate": "tsx --env-file=.env ./scripts/migrate.ts",
+    "db:seed": "tsx --env-file=.env ./scripts/seed.ts",
+    "db:reset": "npm run db:create && npm run db:migrate && npm run db:seed"
   },
   "keywords": [],
   "author": "",
@@ -34,7 +38,9 @@
     "fastify-cli": "^7.4.0",
     "fastify-plugin": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
-    "knex": "^3.1.0"
+    "knex": "^3.1.0",
+    "mysql2": "^3.15.0",
+    "postgrator": "^8.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.1.0",
@@ -42,6 +48,7 @@
     "concurrently": "^9.0.0",
     "fastify-tsconfig": "^3.0.0",
     "ts-node": "^10.4.0",
+    "tsx": "^4.20.5",
     "typescript": "~5.8.2"
   }
 }
