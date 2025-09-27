@@ -22,13 +22,6 @@ interface UserSeed {
   status?: number
 }
 
-interface TaskSeed {
-  title: string
-  description: string
-  status: 'pending' | 'in_progress' | 'completed'
-  priority: 'low' | 'medium' | 'high'
-}
-
 
 
 const REQUIRED_ENV_VARS = ['MYSQL_HOST', 'MYSQL_PORT', 'MYSQL_DATABASE', 'MYSQL_USER', 'MYSQL_PASSWORD']
@@ -103,14 +96,15 @@ const seedUsers = async (connection: Connection): Promise<void> => {
   const salt = randomBytes(4).toString('hex')
   
   // 将salt拼接到密码中，然后进行hash
-  const passwordWithSalt = 'admin123' + salt
+  const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin123'
+  const passwordWithSalt = defaultPassword + salt
   const passwordHash = await scryptHash(passwordWithSalt)
   
   const adminUser: UserSeed = {
     username: 'admin',
     email: 'admin@yishan.com',
     phone: '13800138000',
-    password: 'admin123',
+    password: defaultPassword,
     real_name: '系统管理员',
     avatar: null,
     gender: 0,
@@ -150,54 +144,6 @@ const seedUsers = async (connection: Connection): Promise<void> => {
   }
 }
 
-const seedTasks = async (connection: Connection): Promise<void> => {
-  console.log('📋 创建示例任务...')
-  
-  try {
-    // 检查tasks表是否存在
-    const [tables] = await connection.query(`
-      SELECT TABLE_NAME 
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME = 'tasks'
-    `) as any[]
-    
-    if (tables.length === 0) {
-      console.log('   ⚠️  tasks表不存在，跳过创建示例任务')
-      return
-    }
-    
-    const tasks: TaskSeed[] = [
-      {
-        title: '欢迎使用易山任务管理系统',
-        description: '这是一个示例任务，您可以编辑或删除它。',
-        status: 'pending',
-        priority: 'medium'
-      },
-      {
-        title: '配置系统设置',
-        description: '请根据您的需求配置系统设置，包括用户权限、通知设置等。',
-        status: 'pending',
-        priority: 'high'
-      }
-    ]
-    
-    for (const task of tasks) {
-      await connection.query(
-        'INSERT INTO tasks (title, description, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
-        [task.title, task.description, task.status, task.priority]
-      )
-    }
-    
-    console.log(`   ✅ 创建了 ${tasks.length} 个示例任务`)
-  } catch (error) {
-    console.log('   ❌ 创建示例任务失败:', error)
-    throw error
-  }
-}
-
-// 删除不再需要的seedData对象和SeedingContext接口
-
 const main = async (): Promise<void> => {
   let connection: Connection | null = null
   
@@ -219,17 +165,12 @@ const main = async (): Promise<void> => {
     // 创建管理员用户
     await seedUsers(connection)
     
-    // 创建示例任务
-    await seedTasks(connection)
-    
     console.log('=' .repeat(50))
     console.log('🎉 数据库种子数据初始化完成!')
     console.log('')
     console.log('默认管理员账户:')
     console.log('  用户名: admin')
     console.log('  邮箱: admin@yishan.com')
-    console.log('  密码: admin123')
-    console.log('')
     
   } catch (error) {
     console.error('❌ 数据库种子数据初始化失败:', error)
