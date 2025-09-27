@@ -119,10 +119,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
               type: 'object',
               properties: {
                 id: { type: 'number', description: '用户ID' },
-                email: { type: 'string', description: '用户邮箱' },
                 username: { type: 'string', description: '用户名' },
-                createdAt: { type: 'string', format: 'date-time', description: '创建时间' },
-                updatedAt: { type: 'string', format: 'date-time', description: '更新时间' }
+                email: { type: 'string', description: '用户邮箱' },
+                phone: { type: 'string', description: '手机号' },
+                real_name: { type: 'string', description: '真实姓名' },
+                avatar: { type: 'string', description: '头像URL' },
+                gender: { type: 'number', enum: [0, 1, 2], description: '性别：0-未知，1-男，2-女' },
+                birth_date: { type: 'string', format: 'date', description: '出生日期' },
+                status: { type: 'number', enum: [0, 1, 2], description: '状态：0-禁用，1-启用，2-锁定' },
+                last_login_time: { type: 'string', format: 'date-time', description: '最后登录时间' },
+                login_count: { type: 'number', description: '登录次数' },
+                created_at: { type: 'string', format: 'date-time', description: '创建时间' },
+                updated_at: { type: 'string', format: 'date-time', description: '更新时间' }
               }
             }
           }
@@ -209,7 +217,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
   ) => {
     try {
       const { refreshToken } = request.body
-      const tokenData = await authService.refreshToken(refreshToken)
+      const clientIp = request.ip // 获取客户端IP
+      const tokenData = await authService.refreshToken(refreshToken, clientIp)
       
       return ResponseUtil.send(
         reply,
@@ -261,7 +270,18 @@ export default async function authRoutes(fastify: FastifyInstance) {
     reply: FastifyReply
   ) => {
     try {
-      // 在实际应用中，这里可以将token加入黑名单
+      const userId = request.user!.id
+      
+      // 从Authorization头中提取accessToken
+      const authHeader = request.headers.authorization
+      let accessToken: string | undefined
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        accessToken = authHeader.substring(7) // 移除 'Bearer ' 前缀
+      }
+      
+      // 调用AuthService的logout方法，传递userId和accessToken
+      await authService.logout(userId, accessToken)
+      
       return ResponseUtil.send(
         reply,
         request,

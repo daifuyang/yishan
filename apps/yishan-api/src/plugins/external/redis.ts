@@ -7,14 +7,33 @@ export default fp(async (fastify, opts) => {
     port: fastify.config.REDIS_PORT,
     password: fastify.config.REDIS_PASSWORD,
     db: fastify.config.REDIS_DB,
+    connectTimeout: 5000, // 5秒连接超时
+    lazyConnect: false, // 立即连接，不延迟
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: 3,
     ...opts
   }
 
-  fastify.register(fastifyRedis, redisConfig)
+  try {
+    await fastify.register(fastifyRedis, redisConfig)
+    
+    // 测试Redis连接
+    await fastify.redis.ping()
+    fastify.log.info('Redis连接成功')
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    fastify.log.error(`Redis连接失败: ${errorMessage}`)
+    throw new Error(`Redis连接失败: ${errorMessage}`)
+  }
 
   fastify.addHook('onClose', async (instance) => {
     if (instance.redis) {
-      await instance.redis.quit()
+      try {
+        await instance.redis.quit()
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        fastify.log.warn(`Redis关闭连接时出错: ${errorMessage}`)
+      }
     }
   })
 }, {

@@ -22,6 +22,18 @@ export default fp(async (fastify) => {
   fastify.decorate('authenticate', async function(request: any, reply: any) {
     try {
       await request.jwtVerify()
+      
+      // 使用AuthService验证token的数据库状态
+      const { AuthService } = await import('../../services/authService.js')
+      const authService = new AuthService(fastify)
+      
+      // 从Authorization头中提取token
+      const authHeader = request.headers.authorization
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7)
+        // 验证token在数据库中的状态
+        await authService.validateToken(token)
+      }
     } catch (err) {
       reply.code(401).send({
         success: false,
