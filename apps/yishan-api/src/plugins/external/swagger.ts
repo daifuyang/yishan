@@ -17,9 +17,8 @@ export default fp(async function (fastify) {
         version: '0.0.0'
       },
       tags: [
-        { name: 'System', description: 'System related end-points' },
-        { name: 'Auth', description: 'Authentication related end-points' },
-        { name: 'User', description: 'User related end-points' }
+        { name: 'sysAuth', description: '系统用户认证' },
+        { name: 'sysUsers', description: '系统用户接口' },
       ],
       components: {
         securitySchemes: {

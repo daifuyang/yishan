@@ -1,0 +1,274 @@
+# 移山通用管理系统 (Yishan) - LLM 开发规范
+
+## 项目概述
+
+移山通用管理系统是一个基于现代技术栈的快速开发管理系统 monorepo 项目，专为 zerocmf.com 打造的通用管理解决方案。
+
+## 项目架构
+
+### Monorepo 结构
+```
+yishan/
+├── apps/                     # 应用层
+│   ├── yishan-admin/        # 管理后台应用 (Ant Design Pro)
+│   ├── yishan-api/          # API 服务 (Fastify)
+│   └── yishan-docs/         # 项目文档站点 (Docusaurus)
+├── packages/                 # 共享包和组件库
+│   └── shadcn/              # shadcn/ui 组件库
+├── package.json              # 根项目配置
+├── pnpm-workspace.yaml       # pnpm 工作空间配置
+└── README.md                # 项目说明文档
+```
+
+## API 服务开发规范 (yishan-api)
+
+### 技术栈
+- **框架**: Fastify 5.x
+- **语言**: TypeScript 5.8+
+- **数据库**: MySQL 2 + Knex.js
+- **认证**: JWT (@fastify/jwt)
+- **文档**: Swagger (@fastify/swagger)
+- **构建**: TypeScript Compiler
+
+### 项目结构
+```
+src/
+├── plugins/
+│   ├── external/          # 外部插件 (安全、CORS、JWT等)
+│   └── app/              # 应用插件 (业务逻辑)
+├── routes/               # 路由定义
+│   └── api/
+│       └── v1/
+│           ├── admin/    # 管理员路由 (需要认证)
+│           │   ├── users/
+│           │   │   └── index.ts  # 用户管理路由 (/api/v1/admin/users)
+│           │   ├── index.ts      # 管理员首页路由 (/api/v1/admin)
+│           │   └── autohooks.ts  # 管理员路由钩子 (认证等)
+│           └── auth.ts   # 认证路由
+├── services/             # 业务服务层
+├── domain/               # 领域模型和DTO
+├── utils/                # 工具函数
+├── constants/            # 常量定义
+└── app.ts               # 应用入口点
+```
+
+### 开发规范
+
+#### 1. 路由组织
+- 使用 Fastify autoload 自动注册路由
+- 路由文件导出默认异步函数: `export default async function routeName(fastify: FastifyInstance)`
+- 管理员路由放在 `/api/v1/admin/` 目录下
+- 公共路由放在 `/api/v1/` 目录下
+
+**重要路由规范**:
+- 对于需要子路径的路由（如 `/api/v1/admin/users`），应创建对应的目录结构
+- 例如：`/api/v1/admin/users` 路由应放在 `routes/api/v1/admin/users/index.ts`
+- 在路由文件中，路径应使用相对路径（如 `'/'` 而不是 `/users`）
+- fastifyAutoload 会根据文件路径自动生成完整的路由路径
+- 使用 `autohooks.ts` 文件可以为目录下的所有路由添加通用的钩子函数（遵循 Fastify autoload 官方命名约定）
+- `autohooks.ts` 中的钩子会自动应用到同级目录及所有子目录的路由上
+
+#### 2. 认证机制
+- 使用 JWT 进行身份认证
+- 认证装饰器: `fastify.authenticate`
+- 管理员路由通过 `autohooks.ts` 自动应用认证，无需在每个路由中手动添加
+- 对于需要特殊认证处理的路由，可以使用 `preHandler: fastify.authenticate`
+- JWT 配置在 `plugins/external/jwt-auth.ts`
+
+**认证钩子最佳实践**:
+- 使用 `autohooks.ts`（遵循 Fastify autoload 官方约定）
+- `autohooks.ts` 文件会自动被 Fastify autoload 识别并应用到所有子路由
+- 钩子文件示例：
+```typescript
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+
+export default async function (fastify: FastifyInstance) {
+  fastify.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
+    return fastify.authenticate(request, reply)
+  })
+}
+```
+
+#### 3. 响应格式
+统一响应格式 (通过 response-formatter 插件):
+```typescript
+// 成功响应
+{
+  code: number,      // 业务状态码
+  message: string,   // 响应消息
+  data: any         // 响应数据
+}
+
+// 错误响应
+{
+  code: number,      // 业务状态码
+  message: string,   // 错误消息
+  data: null
+}
+```
+
+#### 4. 业务状态码
+使用5位数字业务状态码 (定义在 `constants/business-code.ts`):
+- 第1位: 业务模块标识 (1-系统, 2-用户, 3-订单, 9-通用)
+- 第2-3位: 业务功能标识
+- 第4-5位: 具体状态标识
+- 20000-29999: 成功状态
+- 40000-49999: 客户端错误
+- 50000-59999: 服务器错误
+
+#### 5. Schema 定义
+- 所有路由必须定义完整的 Fastify Schema
+- 包含 tags, summary, description
+- 定义完整的 request body 和 response schema
+- 使用 TypeScript 类型约束
+
+#### 6. 错误处理
+- 使用 Fastify 内置错误处理机制
+- 自定义错误处理器在 `app.ts` 中定义
+- 404 错误包含速率限制保护
+
+#### 7. 插件开发
+- 外部插件放在 `plugins/external/`
+- 应用插件放在 `plugins/app/`
+- 使用 `fastify-plugin` 包装
+- 插件必须声明名称和版本兼容性
+
+#### 8. 数据库操作
+- 使用 Knex.js 作为查询构建器
+- 数据库连接配置在 `plugins/external/knex.ts`
+- 使用 Service 层封装数据库操作
+- 支持事务处理
+
+#### 9. 环境配置
+- 使用 `@fastify/env` 管理环境变量
+- 配置文件: `.env`
+- 必需的环境变量在插件中声明
+
+#### 10. 开发命令
+```bash
+# 开发模式 (热重载)
+pnpm run dev
+
+# 构建 TypeScript
+pnpm run build:ts
+
+# 生产模式启动
+pnpm start
+
+# 数据库操作
+pnpm run db:create    # 创建数据库
+pnpm run db:migrate   # 运行迁移
+pnpm run db:seed      # 填充种子数据
+pnpm run db:reset     # 重置数据库
+```
+
+## 前端开发规范 (yishan-admin)
+
+### 技术栈
+- **框架**: Ant Design Pro (基于 UmiJS)
+- **UI库**: Ant Design
+- **语言**: TypeScript
+- **构建**: UmiJS Max
+
+### 开发规范
+- 遵循 Ant Design Pro 官方规范
+- 使用 TypeScript 严格模式
+- 组件化开发，复用性优先
+- 响应式设计，支持多端适配
+
+## 文档规范 (yishan-docs)
+
+### 技术栈
+- **框架**: Docusaurus 3.8+
+- **语言**: TypeScript + MDX
+
+### 内容组织
+- API 文档自动生成
+- 开发指南和最佳实践
+- 组件使用示例
+- 更新日志维护
+
+## 通用开发规范
+
+### 1. 代码风格
+- 使用 TypeScript 严格模式
+- 遵循 ESLint 和 Prettier 配置
+- 使用 Biome 进行代码检查
+- 统一使用 pnpm 作为包管理器
+
+### 2. Git 工作流
+- 使用 Husky + lint-staged 进行提交前检查
+- 遵循 Conventional Commits 规范
+- 功能分支开发，主分支保护
+
+### 3. 版本管理
+- 使用语义化版本控制 (SemVer)
+- 维护详细的 CHANGELOG
+- 定期发布稳定版本
+
+### 4. 测试策略
+- 单元测试覆盖核心业务逻辑
+- API 接口测试
+- E2E 测试覆盖关键用户流程
+
+### 5. 部署规范
+- 支持 Docker 容器化部署
+- 推荐 Vercel 部署前端应用
+- 环境变量管理和配置分离
+
+## 最佳实践
+
+### 1. 性能优化
+- API 响应缓存策略
+- 数据库查询优化
+- 前端资源懒加载
+- CDN 静态资源分发
+
+### 2. 安全规范
+- JWT Token 安全管理
+- API 速率限制
+- 输入验证和 SQL 注入防护
+- HTTPS 强制使用
+
+### 3. 监控和日志
+- 结构化日志记录
+- 错误监控和告警
+- 性能指标收集
+- 用户行为分析
+
+### 4. 可维护性
+- 模块化架构设计
+- 清晰的代码注释
+- 完善的类型定义
+- 自动化测试覆盖
+
+## 开发工具推荐
+
+### IDE 配置
+- VS Code + 相关插件
+- TypeScript 严格模式
+- ESLint + Prettier 集成
+- Git 集成和可视化
+
+### 调试工具
+- Fastify 内置日志
+- Swagger UI API 调试
+- Chrome DevTools
+- Postman/Insomnia API 测试
+
+### 路由调试
+- 使用 `fastify.log.info()` 记录路由注册信息
+- 检查 fastifyAutoload 的目录结构映射
+- 验证路由路径与文件路径的对应关系
+- 使用 Swagger 文档查看已注册的路由
+- 验证 `autohooks.ts` 文件是否被正确识别和加载
+- 测试认证钩子是否正确应用到所有子路由
+
+**常见问题排查**:
+- 如果钩子未生效，检查文件名是否为 `autohooks.ts`（不是 `_hooks.ts`）
+- 确认 `app.ts` 中 fastifyAutoload 配置了 `autoHooks: true` 和 `cascadeHooks: true`
+- 使用无认证请求测试路由，应返回 40001 错误码表示认证生效
+
+---
+
+**注意**: 本规范文档应随项目发展持续更新，确保团队开发的一致性和代码质量。

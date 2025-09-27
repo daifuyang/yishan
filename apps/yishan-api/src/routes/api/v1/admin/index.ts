@@ -1,21 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 
 export default async function adminIndexRoutes(fastify: FastifyInstance) {
-  // 添加管理员权限验证钩子
-  fastify.addHook(
-    "preHandler",
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      // TODO: 实现管理员权限验证逻辑
-      // 这里暂时跳过验证，后续可以添加 fastify.requireAdmin 或类似验证
-    }
-  );
-
   // GET /api/v1/admin - 管理员首页
   fastify.get(
     "/",
     {
       schema: {
-        tags: ["Admin"],
         summary: "管理员首页",
         description: "管理员控制台首页",
         security: [{ bearerAuth: [] }],

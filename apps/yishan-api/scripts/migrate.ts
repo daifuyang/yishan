@@ -20,7 +20,6 @@ async function doMigration (): Promise<void> {
 
   try {
     const migrationDir = path.join(import.meta.dirname, '../migrations')
-
     if (!fs.existsSync(migrationDir)) {
       throw new Error(
         `Migration directory "${migrationDir}" does not exist. Skipping migrations.`
@@ -28,7 +27,7 @@ async function doMigration (): Promise<void> {
     }
 
     const postgrator = new Postgrator({
-      migrationPattern: path.join(migrationDir, '*'),
+      migrationPattern: migrationDir + "/*",
       driver: 'mysql',
       database: process.env.MYSQL_DATABASE,
       execQuery: async (query: string): Promise<PostgratorResult> => {
@@ -38,7 +37,11 @@ async function doMigration (): Promise<void> {
       schemaTable: 'schemaversion'
     })
 
-    await postgrator.migrate()
+    const migrations = await postgrator.migrate()
+    console.log(`📊 Applied migrations: ${migrations.length}`)
+    migrations.forEach((migration, index) => {
+      console.log(`${index + 1}. ${migration.filename} (version: ${migration.version})`)
+    })
 
     console.log('Migration completed!')
   } catch (err) {

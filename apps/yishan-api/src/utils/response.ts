@@ -5,6 +5,7 @@
 
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { randomUUID } from 'node:crypto'
+import { DateTimeUtil } from './datetime.js'
 import {
   BaseResponse,
   SuccessResponse,
@@ -37,7 +38,7 @@ export class ResponseUtil {
     return {
       code,
       message,
-      timestamp: Date.now(),
+      timestamp: DateTimeUtil.timestamp(),
       requestId: request.id || randomUUID(),
       path: request.url,
       method: request.method

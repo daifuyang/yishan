@@ -1,5 +1,6 @@
 import { createConnection, Connection } from 'mysql2/promise'
 import { scryptHash } from '../src/plugins/app/password-manager'
+import { randomBytes } from 'node:crypto'
 
 interface DatabaseConfig {
   host: string
@@ -10,9 +11,15 @@ interface DatabaseConfig {
 }
 
 interface UserSeed {
-  email: string
   username: string
+  email: string
+  phone?: string | null
   password: string
+  real_name: string
+  avatar?: string | null
+  gender?: number
+  birth_date?: string | null
+  status?: number
 }
 
 interface TaskSeed {
@@ -22,9 +29,7 @@ interface TaskSeed {
   priority: 'low' | 'medium' | 'high'
 }
 
-interface SeedingContext {
-  connection: Connection
-}
+
 
 const REQUIRED_ENV_VARS = ['MYSQL_HOST', 'MYSQL_PORT', 'MYSQL_DATABASE', 'MYSQL_USER', 'MYSQL_PASSWORD']
 
@@ -34,11 +39,11 @@ if (Number(process.env.CAN_SEED_DATABASE) !== 1) {
   process.exit(1)
 }
 
-const validateEnvironment = (): DatabaseConfig => {
+const getDatabaseConfig = (): DatabaseConfig => {
   const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key])
   
   if (missing.length > 0) {
-    console.error('❌ Missing required environment variables:')
+    console.error('❌ 缺少必需的环境变量:')
     missing.forEach(key => console.error(`   - ${key}`))
     process.exit(1)
   }
@@ -59,106 +64,181 @@ const createDatabaseConnection = async (config: DatabaseConfig): Promise<Connect
       multipleStatements: true
     })
   } catch (error) {
-    console.error('Failed to connect to database:', error)
+    console.error('❌ 数据库连接失败:', error)
     process.exit(1)
   }
 }
 
 const truncateAllTables = async (connection: Connection): Promise<void> => {
-  console.log('Cleaning all tables...')
+  console.log('🧹 清理所有表数据...')
   
   try {
     await connection.query('SET FOREIGN_KEY_CHECKS = 0')
-    await connection.query('TRUNCATE TABLE tasks')
-    await connection.query('TRUNCATE TABLE users')
+    
+    // 检查表是否存在再清理
+    const [tables] = await connection.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME IN ('tasks', 'sys_user')
+    `) as any[]
+    
+    for (const table of tables) {
+      await connection.query(`TRUNCATE TABLE ${table.TABLE_NAME}`)
+      console.log(`   ✅ 清理表 ${table.TABLE_NAME}`)
+    }
+    
     await connection.query('SET FOREIGN_KEY_CHECKS = 1')
-    console.log('   All tables cleaned successfully')
+    console.log('   ✅ 所有表数据清理成功')
   } catch (error) {
     await connection.query('SET FOREIGN_KEY_CHECKS = 1')
     throw error
   }
 }
 
-const seedUsers = async (ctx: SeedingContext, users: UserSeed[]): Promise<number[]> => {
-  console.log('👤 Seeding users...')
+const seedUsers = async (connection: Connection): Promise<void> => {
+  console.log('👤 创建管理员用户...')
   
-  const hashedUsers = await Promise.all(
-    users.map(async (user) => ({
-      ...user,
-      password: await scryptHash(user.password)
-    }))
-  )
-
-  const userIds: number[] = []
-  for (const user of hashedUsers) {
-    const [result] = await ctx.connection.execute(
-      'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-      [user.username, user.email, user.password]
-    )
-    userIds.push((result as { insertId: number }).insertId)
+  // 生成随机salt (8位)
+  const salt = randomBytes(4).toString('hex')
+  
+  // 将salt拼接到密码中，然后进行hash
+  const passwordWithSalt = 'admin123' + salt
+  const passwordHash = await scryptHash(passwordWithSalt)
+  
+  const adminUser: UserSeed = {
+    username: 'admin',
+    email: 'admin@yishan.com',
+    phone: '13800138000',
+    password: 'admin123',
+    real_name: '系统管理员',
+    avatar: null,
+    gender: 0,
+    birth_date: null,
+    status: 1
   }
-
-  console.log(`   ✅ ${userIds.length} users seeded`)
-  return userIds
-}
-
-const seedTasks = async (ctx: SeedingContext, tasks: TaskSeed[]): Promise<number[]> => {
-  console.log('📋 Seeding tasks...')
-  
-  const taskIds: number[] = []
-  for (const task of tasks) {
-    const [result] = await ctx.connection.execute(
-      'INSERT INTO tasks (title, description, status, priority) VALUES (?, ?, ?, ?)',
-      [task.title, task.description, task.status, task.priority]
-    )
-    taskIds.push((result as { insertId: number }).insertId)
-  }
-
-  console.log(`   ✅ ${taskIds.length} tasks seeded`)
-  return taskIds
-}
-
-const seedData = {
-  users: [
-    { email: 'alice@example.com', username: 'Alice Johnson', password: 'password123' },
-    { email: 'bob@example.com', username: 'Bob Smith', password: 'password123' },
-    { email: 'charlie@example.com', username: 'Charlie Brown', password: 'password123' },
-    { email: 'diana@example.com', username: 'Diana Prince', password: 'password123' },
-    { email: 'eve@example.com', username: 'Eve Wilson', password: 'password123' }
-  ] as UserSeed[],
-  tasks: [
-    { title: 'Complete project documentation', description: 'Write API documentation and usage instructions', status: 'pending' as const, priority: 'high' as const },
-    { title: 'Code review', description: 'Review team code submissions', status: 'in_progress' as const, priority: 'medium' as const },
-    { title: 'Fix bugs', description: 'Fix login issues reported by users', status: 'completed' as const, priority: 'high' as const },
-    { title: 'Performance optimization', description: 'Optimize database query performance', status: 'pending' as const, priority: 'low' as const },
-    { title: 'Unit tests', description: 'Write unit tests for new features', status: 'in_progress' as const, priority: 'medium' as const }
-  ] as TaskSeed[]
-}
-
-const main = async (): Promise<void> => {
-  console.log('🌱 Starting database seeding...\n')
-  
-  const config = validateEnvironment()
-  const connection = await createDatabaseConnection(config)
-  
-  const ctx: SeedingContext = { connection }
 
   try {
+    const insertQuery = `
+      INSERT INTO sys_user (
+        username, email, phone, password_hash, salt, real_name, 
+        avatar, gender, birth_date, status, login_count, 
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+    `
+    
+    // 存储hash和salt
+    await connection.query(insertQuery, [
+      adminUser.username,
+      adminUser.email,
+      adminUser.phone,
+      passwordHash, // scryptHash处理过的 "passwordWithSalt"
+      salt, // 原始salt值，用于后续验证时重新拼接
+      adminUser.real_name,
+      adminUser.avatar,
+      adminUser.gender,
+      adminUser.birth_date,
+      adminUser.status,
+      0 // login_count
+    ])
+    
+    console.log(`   ✅ 管理员用户创建成功: ${adminUser.username} (${adminUser.email})`)
+    console.log(`   🔐 使用了自定义salt: ${salt.substring(0, 8)}...`)
+  } catch (error) {
+    console.error('   ❌ 创建管理员用户失败:', error)
+    throw error
+  }
+}
+
+const seedTasks = async (connection: Connection): Promise<void> => {
+  console.log('📋 创建示例任务...')
+  
+  try {
+    // 检查tasks表是否存在
+    const [tables] = await connection.query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'tasks'
+    `) as any[]
+    
+    if (tables.length === 0) {
+      console.log('   ⚠️  tasks表不存在，跳过创建示例任务')
+      return
+    }
+    
+    const tasks: TaskSeed[] = [
+      {
+        title: '欢迎使用易山任务管理系统',
+        description: '这是一个示例任务，您可以编辑或删除它。',
+        status: 'pending',
+        priority: 'medium'
+      },
+      {
+        title: '配置系统设置',
+        description: '请根据您的需求配置系统设置，包括用户权限、通知设置等。',
+        status: 'pending',
+        priority: 'high'
+      }
+    ]
+    
+    for (const task of tasks) {
+      await connection.query(
+        'INSERT INTO tasks (title, description, status, priority, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())',
+        [task.title, task.description, task.status, task.priority]
+      )
+    }
+    
+    console.log(`   ✅ 创建了 ${tasks.length} 个示例任务`)
+  } catch (error) {
+    console.log('   ❌ 创建示例任务失败:', error)
+    throw error
+  }
+}
+
+// 删除不再需要的seedData对象和SeedingContext接口
+
+const main = async (): Promise<void> => {
+  let connection: Connection | null = null
+  
+  try {
+    console.log('🌱 开始数据库种子数据初始化...')
+    console.log('=' .repeat(50))
+    
+    // 获取数据库配置
+     const config = getDatabaseConfig()
+     console.log(`📊 数据库: ${config.database}@${config.host}:${config.port}`)
+     
+     // 创建数据库连接
+     connection = await createDatabaseConnection(config)
+    console.log('🔗 数据库连接成功')
+    
+    // 清理现有数据
     await truncateAllTables(connection)
     
-    const userIds = await seedUsers(ctx, seedData.users)
-    const taskIds = await seedTasks(ctx, seedData.tasks)
+    // 创建管理员用户
+    await seedUsers(connection)
     
-    console.log('\n✅ Database seeding completed successfully!')
-    console.log('\n📊 Test data summary:')
-    console.log(`- Users: ${seedData.users.map(u => `${u.username} (${u.email})`).join(', ')}`)
-    console.log(`- Tasks: ${seedData.tasks.map(t => t.title).join(', ')}`)
-
+    // 创建示例任务
+    await seedTasks(connection)
+    
+    console.log('=' .repeat(50))
+    console.log('🎉 数据库种子数据初始化完成!')
+    console.log('')
+    console.log('默认管理员账户:')
+    console.log('  用户名: admin')
+    console.log('  邮箱: admin@yishan.com')
+    console.log('  密码: admin123')
+    console.log('')
+    
   } catch (error) {
-    console.error('\n❌ Error during seeding:', error)
+    console.error('❌ 数据库种子数据初始化失败:', error)
     process.exit(1)
   } finally {
-    await connection.end()
+    if (connection) {
+      await connection.end()
+      console.log('🔌 数据库连接已关闭')
+    }
   }
 }
 

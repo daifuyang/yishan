@@ -47,13 +47,17 @@ declare module '@fastify/jwt' {
       id: number
       email: string
       username: string
+      real_name?: string
+      status?: number
+      type?: string  // 用于区分accessToken和refreshToken
     }
     user: {
       id: number
       email: string
       username: string
-      iat: number
-      exp: number
+      real_name?: string
+      status?: number
+      type?: string  // 用于区分accessToken和refreshToken
     }
   }
 }

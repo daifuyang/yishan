@@ -10,16 +10,21 @@ export default async function authRoutes(fastify: FastifyInstance) {
   // 用户登录
   fastify.post('/auth/login', {
     schema: {
-      tags: ['Auth'],
+      tags: ['sysAuth'],
       summary: '用户登录',
-      description: '使用邮箱和密码进行用户登录',
+      description: '使用用户名/邮箱和密码进行用户登录',
       body: {
         type: 'object',
-        required: ['email', 'password'],
+        required: ['password'],
         properties: {
+          username: { type: 'string', description: '用户名' },
           email: { type: 'string', format: 'email', description: '用户邮箱' },
           password: { type: 'string', minLength: 6, description: '用户密码' }
-        }
+        },
+        anyOf: [
+          { required: ['username', 'password'] },
+          { required: ['email', 'password'] }
+        ]
       },
       response: {
         200: {
@@ -30,15 +35,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
             data: {
               type: 'object',
               properties: {
-                token: { type: 'string', description: 'JWT访问令牌' },
-                user: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'number', description: '用户ID' },
-                    email: { type: 'string', description: '用户邮箱' },
-                    username: { type: 'string', description: '用户名' }
-                  }
-                }
+                accessToken: { type: 'string', description: 'JWT访问令牌' },
+                refreshToken: { type: 'string', description: 'JWT刷新令牌' },
+                accessTokenExpiresIn: { type: 'number', description: '访问令牌过期时间（秒）', example: 900 },
+                refreshTokenExpiresIn: { type: 'number', description: '刷新令牌过期时间（秒）', example: 604800 },
+                tokenType: { type: 'string', example: 'Bearer', description: '令牌类型' }
               }
             }
           }
@@ -71,7 +72,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     reply: FastifyReply
   ) => {
     try {
-      const result = await authService.login(request.body)
+      const result = await authService.login(request.body, request.ip)
       
       return ResponseUtil.send(
         reply,
@@ -104,7 +105,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.get('/auth/me', {
     preHandler: fastify.authenticate,
     schema: {
-      tags: ['Auth'],
+      tags: ['sysAuth'],
       summary: '获取当前用户信息',
       description: '获取当前登录用户的详细信息',
       security: [{ bearerAuth: [] }],
@@ -140,7 +141,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     reply: FastifyReply
   ) => {
     try {
-      const userId = request.user.id
+      const userId = request.user!.id
       const user = await authService.getCurrentUser(userId)
       
       return ResponseUtil.send(
@@ -164,12 +165,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // 刷新token
   fastify.post('/auth/refresh', {
-    preHandler: fastify.authenticate,
     schema: {
-      tags: ['Auth'],
+      tags: ['sysAuth'],
       summary: '刷新访问令牌',
-      description: '使用当前有效的令牌获取新的访问令牌',
-      security: [{ bearerAuth: [] }],
+      description: '使用refreshToken获取新的accessToken和refreshToken',
+      body: {
+        type: 'object',
+        required: ['refreshToken'],
+        properties: {
+          refreshToken: { type: 'string', description: '刷新令牌' }
+        }
+      },
       response: {
         200: {
           type: 'object',
@@ -179,7 +185,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
             data: {
               type: 'object',
               properties: {
-                token: { type: 'string', description: '新的JWT访问令牌' }
+                accessToken: { type: 'string', description: '新的JWT访问令牌' },
+                refreshToken: { type: 'string', description: '新的JWT刷新令牌' },
+                accessTokenExpiresIn: { type: 'number', description: '访问令牌过期时间（秒）', example: 900 },
+                refreshTokenExpiresIn: { type: 'number', description: '刷新令牌过期时间（秒）', example: 604800 },
+                tokenType: { type: 'string', example: 'Bearer', description: '令牌类型' }
               }
             }
           }
@@ -194,25 +204,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }
     }
   }, async (
-    request: FastifyRequest,
+    request: FastifyRequest<{ Body: { refreshToken: string } }>,
     reply: FastifyReply
   ) => {
     try {
-      const userId = request.user.id
-      const user = await authService.getCurrentUser(userId)
-      
-      const payload = {
-        id: user.id,
-        email: user.email,
-        username: user.username
-      }
-      
-      const newToken = fastify.jwt.sign(payload)
+      const { refreshToken } = request.body
+      const tokenData = await authService.refreshToken(refreshToken)
       
       return ResponseUtil.send(
         reply,
         request,
-        { token: newToken },
+        tokenData,
         'token刷新成功',
         UserBusinessCode.USER_PROFILE_UPDATED
       )
@@ -232,7 +234,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/auth/logout', {
     preHandler: fastify.authenticate,
     schema: {
-      tags: ['Auth'],
+      tags: ['sysAuth'],
       summary: '用户登出',
       description: '用户退出登录状态',
       security: [{ bearerAuth: [] }],
