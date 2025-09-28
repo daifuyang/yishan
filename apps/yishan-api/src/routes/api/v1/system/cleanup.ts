@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { ResponseUtil } from '../../../../utils/response.js'
 import { CommonBusinessCode } from '../../../../constants/business-code.js'
+import { TokenCleanupService } from '../../../../services/tokenCleanupService.js'
 
 export default async function cleanupRoutes(fastify: FastifyInstance) {
   
@@ -9,13 +10,14 @@ export default async function cleanupRoutes(fastify: FastifyInstance) {
     schema: {
       tags: ['system'],
       summary: 'Token清理',
-      description: '清理过期的用户认证Token，适用于Serverless环境的外部触发',
+      description: '清理过期的用户认证Token，通过外部中间件触发执行',
+      operationId: 'cleanupTokens',
       headers: {
         type: 'object',
         properties: {
           'x-cleanup-key': { 
             type: 'string', 
-            description: '清理服务密钥，用于验证调用权限' 
+            description: '清理服务密钥，用于验证外部中间件调用权限' 
           }
         },
         required: ['x-cleanup-key']
@@ -76,8 +78,9 @@ export default async function cleanupRoutes(fastify: FastifyInstance) {
 
       const startTime = Date.now()
       
-      // 执行token清理
-      const deletedCount = await fastify.tokenCleanup.manualCleanup()
+      // 创建TokenCleanupService实例并执行清理
+      const tokenCleanupService = new TokenCleanupService(fastify)
+      const deletedCount = await tokenCleanupService.executeCleanup()
       
       const executionTime = `${Date.now() - startTime}ms`
       
@@ -110,6 +113,7 @@ export default async function cleanupRoutes(fastify: FastifyInstance) {
       tags: ['system'],
       summary: '清理状态查询',
       description: '查询Token清理服务的状态信息',
+      operationId: 'getCleanupStatus',
       headers: {
         type: 'object',
         properties: {
@@ -163,8 +167,9 @@ export default async function cleanupRoutes(fastify: FastifyInstance) {
         )
       }
 
-      // 获取token统计信息
-      const stats = await fastify.tokenCleanup.getCleanupStats()
+      // 创建TokenCleanupService实例并获取统计信息
+      const tokenCleanupService = new TokenCleanupService(fastify)
+      const stats = await tokenCleanupService.getCleanupStats()
       
       return ResponseUtil.send(
           reply,

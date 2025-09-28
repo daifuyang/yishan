@@ -33,7 +33,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         201: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 201 },
+            code: { type: 'number', example: 20010 },
             message: { type: 'string', example: '用户创建成功' },
             data: {
               type: 'object',
@@ -56,7 +56,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         400: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 400 },
+            code: { type: 'number', example: 40011 },
             message: { type: 'string', example: '用户名已存在' }
           }
         }
@@ -122,8 +122,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
           real_name: { type: 'string', description: '真实姓名筛选' },
           phone: { type: 'string', description: '手机号筛选' },
           status: { type: 'number', enum: [0, 1, 2], description: '状态筛选：0-禁用，1-启用，2-锁定' },
-          sortBy: { type: 'string', enum: ['id', 'username', 'email', 'real_name', 'created_at', 'updated_at', 'last_login_time', 'status'], default: 'created_at', description: '排序字段' },
-          sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc', description: '排序方向' }
+          sort_by: { type: 'string', enum: ['id', 'username', 'email', 'real_name', 'created_at', 'updated_at', 'last_login_time', 'status'], default: 'created_at', description: '排序字段' },
+          sort_order: { type: 'string', enum: ['asc', 'desc'], default: 'desc', description: '排序方向' }
         }
       },
       response: {
@@ -157,12 +157,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
                     }
                   }
                 },
-                total: { type: 'number', description: '总记录数' },
-                page: { type: 'number', description: '当前页码' },
-                pageSize: { type: 'number', description: '每页数量' },
-                totalPages: { type: 'number', description: '总页数' },
-                hasNext: { type: 'boolean', description: '是否有下一页' },
-                hasPrev: { type: 'boolean', description: '是否有上一页' }
+                pagination: {
+                  type: 'object',
+                  properties: {
+                    page: { type: 'number', description: '当前页码' },
+                    pageSize: { type: 'number', description: '每页条数' },
+                    total: { type: 'number', description: '总记录数' },
+                    totalPages: { type: 'number', description: '总页数' }
+                  }
+                }
               }
             }
           }
@@ -200,41 +203,44 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // 验证排序字段合法性
       const allowedSortFields = ['id', 'username', 'email', 'real_name', 'created_at', 'updated_at', 'status', 'last_login_time']
       if (validatedQuery.sort_by && !allowedSortFields.includes(validatedQuery.sort_by)) {
-        return reply.code(400).send({
-          code: 40010,
-          message: '无效的排序字段'
-        })
+        return ResponseUtil.error(
+          reply,
+          request,
+          '无效的排序字段',
+          UserBusinessCode.INVALID_USER_ID
+        )
       }
 
       // 验证排序方向
       if (validatedQuery.sort_order && !['asc', 'desc'].includes(validatedQuery.sort_order)) {
-        return reply.code(400).send({
-          code: 40010,
-          message: '无效的排序方向'
-        })
+        return ResponseUtil.error(
+          reply,
+          request,
+          '无效的排序方向',
+          UserBusinessCode.INVALID_USER_ID
+        )
       }
 
       const result = await userService.getUsers(validatedQuery)
 
-      return {
-        code: 20000,
-        message: 'success',
-        data: {
-          list: result.users,
-          pagination: {
-            page: result.page,
-            pageSize: result.pageSize,
-            total: result.total,
-            totalPages: Math.ceil(result.total / result.pageSize)
-          }
-        }
-      }
+      return ResponseUtil.paginated(
+        reply,
+        request,
+        result.users,
+        result.total,
+        result.page,
+        result.pageSize,
+        '获取用户列表成功'
+      )
     } catch (error) {
       fastify.log.error(error)
-      return reply.code(500).send({
-        code: 50000,
-        message: error instanceof Error ? error.message : '服务器内部错误'
-      })
+      return ResponseUtil.error(
+        reply,
+        request,
+        error instanceof Error ? error.message : '获取用户列表失败',
+        UserBusinessCode.USER_LIST_FAILED,
+        error
+      )
     }
   })
 
@@ -257,7 +263,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20000 },
             message: { type: 'string', example: '获取成功' },
             data: {
               type: 'object',
@@ -283,7 +289,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 404 },
+            code: { type: 'number', example: 40010 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
@@ -350,7 +356,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20012 },
             message: { type: 'string', example: '更新成功' },
             data: {
               type: 'object',
@@ -372,7 +378,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 404 },
+            code: { type: 'number', example: 40010 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
@@ -435,14 +441,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20014 },
             message: { type: 'string', example: '删除成功' }
           }
         },
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 404 },
+            code: { type: 'number', example: 40010 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
@@ -503,14 +509,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20022 },
             message: { type: 'string', example: '状态修改成功' }
           }
         },
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 404 },
+            code: { type: 'number', example: 40010 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
@@ -573,14 +579,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20023 },
             message: { type: 'string', example: '密码重置成功' }
           }
         },
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 404 },
+            code: { type: 'number', example: 40010 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
@@ -629,7 +635,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20024 },
             message: { type: 'string', example: '缓存清除成功' }
           }
         }

@@ -13,6 +13,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '用户登录',
       description: '使用用户名/邮箱和密码进行用户登录',
+      operationId: 'userLogin',
       body: {
         type: 'object',
         required: ['password'],
@@ -30,7 +31,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20001 },
             message: { type: 'string', example: '登录成功' },
             data: {
               type: 'object',
@@ -47,21 +48,21 @@ export default async function authRoutes(fastify: FastifyInstance) {
         400: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 400 },
+            code: { type: 'number', example: 40001 },
             message: { type: 'string', example: '登录失败' }
           }
         },
         401: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 401 },
+            code: { type: 'number', example: 40002 },
             message: { type: 'string', example: '密码错误' }
           }
         },
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 404 },
+            code: { type: 'number', example: 40010 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
@@ -108,12 +109,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '获取当前用户信息',
       description: '获取当前登录用户的详细信息',
+      operationId: 'getCurrentUser',
       security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20002 },
             message: { type: 'string', example: '获取用户信息成功' },
             data: {
               type: 'object',
@@ -138,7 +140,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         401: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 401 },
+            code: { type: 'number', example: 40003 },
             message: { type: 'string', example: '未授权访问' }
           }
         }
@@ -177,6 +179,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '刷新访问令牌',
       description: '使用refreshToken获取新的accessToken和refreshToken',
+      operationId: 'refreshToken',
       body: {
         type: 'object',
         required: ['refreshToken'],
@@ -188,7 +191,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20003 },
             message: { type: 'string', example: 'token刷新成功' },
             data: {
               type: 'object',
@@ -205,7 +208,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         401: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 401 },
+            code: { type: 'number', example: 40003 },
             message: { type: 'string', example: '未授权访问' }
           }
         }
@@ -246,12 +249,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '用户登出',
       description: '用户退出登录状态',
+      operationId: 'userLogout',
       security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20004 },
             message: { type: 'string', example: '退出登录成功' },
             data: { type: 'null' }
           }
@@ -259,7 +263,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         401: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 401 },
+            code: { type: 'number', example: 40003 },
             message: { type: 'string', example: '未授权访问' }
           }
         }

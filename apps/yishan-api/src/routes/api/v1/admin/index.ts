@@ -8,12 +8,13 @@ export default async function adminIndexRoutes(fastify: FastifyInstance) {
       schema: {
         summary: "管理员首页",
         description: "管理员控制台首页",
+        operationId: "getAdminHome",
         security: [{ bearerAuth: [] }],
         response: {
           200: {
             type: "object",
             properties: {
-              code: { type: "number", example: 200 },
+              code: { type: "number", example: 20000 },
               message: { type: "string", example: "success" },
               data: {
                 type: "object",
@@ -26,14 +27,14 @@ export default async function adminIndexRoutes(fastify: FastifyInstance) {
           401: {
             type: "object",
             properties: {
-              code: { type: "number", example: 401 },
+              code: { type: "number", example: 40003 },
               message: { type: "string", example: "未授权访问" },
             },
           },
           403: {
             type: "object",
             properties: {
-              code: { type: "number", example: 403 },
+              code: { type: "number", example: 40004 },
               message: { type: "string", example: "权限不足" },
             },
           },

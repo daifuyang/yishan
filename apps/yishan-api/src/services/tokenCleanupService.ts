@@ -22,23 +22,13 @@ export class TokenCleanupService {
   }
 
   /**
-   * 启动服务 - Serverless环境下仅初始化，不启动定时器
+   * 执行Token清理 - 通过外部中间件调用
    */
-  start(): void {
-    this.fastify.log.info('Token清理服务已初始化 (Serverless模式 - API触发)')
-  }
-
-  /**
-   * 停止服务 - Serverless环境下无需特殊处理
-   */
-  stop(): void {
-    this.fastify.log.info('Token清理服务已停止')
-  }
 
   /**
    * 手动执行清理 - 主要清理方法，由API触发
    */
-  async manualCleanup(): Promise<number> {
+  async executeCleanup(): Promise<number> {
     try {
       const startTime = Date.now()
       const deletedCount = await this.tokenRepository.cleanupExpiredTokens()
@@ -50,7 +40,7 @@ export class TokenCleanupService {
         deletedCount,
         executionTime: `${executionTime}ms`,
         timestamp: this.lastCleanupTime
-      }, '手动清理token完成')
+      }, 'Token清理完成 (外部中间件触发)')
       
       return deletedCount
     } catch (error) {

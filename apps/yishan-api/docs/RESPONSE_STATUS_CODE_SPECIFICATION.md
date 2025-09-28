@@ -1,4 +1,4 @@
-# 全局响应状态码规范文档
+# 全球响应状态码规范文档
 
 ## 概述
 
@@ -48,6 +48,110 @@
 | 40003 | NOT_FOUND | 资源不存在 | 404 |
 | 40004 | METHOD_NOT_ALLOWED | 请求方法不允许 | 405 |
 | 40005 | CONFLICT | 资源冲突 | 409 |
+
+## API响应示例值规范
+
+### 1. Swagger/OpenAPI文档中的示例值规范
+
+在API文档的响应模式定义中，`code` 字段的 `example` 值必须使用5位数字的业务码，而不是HTTP状态码：
+
+#### ✅ 正确示例
+```json
+{
+  "200": {
+    "type": "object",
+    "properties": {
+      "code": { "type": "number", "example": 20000 },
+      "message": { "type": "string", "example": "操作成功" }
+    }
+  },
+  "400": {
+    "type": "object", 
+    "properties": {
+      "code": { "type": "number", "example": 40001 },
+      "message": { "type": "string", "example": "参数错误" }
+    }
+  }
+}
+```
+
+#### ❌ 错误示例
+```json
+{
+  "200": {
+    "type": "object",
+    "properties": {
+      "code": { "type": "number", "example": 200 },  // 错误：使用了HTTP状态码
+      "message": { "type": "string", "example": "操作成功" }
+    }
+  }
+}
+```
+
+### 2. 常用业务码示例值对照表
+
+| HTTP状态码 | 推荐业务码示例值 | 使用场景 |
+|------------|------------------|----------|
+| 200 | 20000 | 通用成功响应 |
+| 201 | 20001 | 资源创建成功 |
+| 400 | 40001 | 通用参数错误 |
+| 401 | 40003 | 未授权访问 |
+| 403 | 40004 | 权限不足 |
+| 404 | 40010 | 资源不存在（如用户不存在）|
+| 500 | 50000 | 内部服务器错误 |
+
+### 3. API接口operationId规范
+
+每个API接口都必须在Swagger/OpenAPI文档中包含唯一的 `operationId` 字段，用于：
+- 前端代码自动生成
+- API客户端库的生成  
+- 更好的API文档组织和导航
+- 提升开发者体验
+
+#### 3.1 operationId命名规范
+
+**命名格式**: 使用驼峰命名法，动词+名词的组合
+
+**示例**:
+```typescript
+// ✅ 正确示例
+schema: {
+  tags: ['sysAuth'],
+  summary: '用户登录',
+  description: '使用用户名/邮箱和密码进行用户登录',
+  operationId: 'userLogin',  // 动词+名词，语义明确
+  // ... 其他配置
+}
+
+// ✅ 更多正确示例
+operationId: 'getCurrentUser'     // 获取当前用户信息
+operationId: 'getUserList'        // 获取用户列表
+operationId: 'updateUser'         // 更新用户信息
+operationId: 'deleteUser'         // 删除用户
+operationId: 'resetUserPassword'  // 重置用户密码
+operationId: 'refreshToken'       // 刷新令牌
+operationId: 'cleanupTokens'      // 清理令牌
+operationId: 'getAdminHome'       // 获取管理员首页
+```
+
+#### 3.2 operationId最佳实践
+
+1. **唯一性**: 每个API接口的operationId必须在整个项目中唯一
+2. **语义化**: 名称应清晰表达接口的功能和用途
+3. **一致性**: 同类操作使用相同的动词前缀（如get、create、update、delete）
+4. **简洁性**: 避免过长的名称，保持简洁明了
+
+#### 3.3 常用动词前缀
+
+| 动词前缀 | 用途 | 示例 |
+|----------|------|------|
+| get | 获取单个资源或列表 | `getUser`, `getUserList` |
+| create | 创建新资源 | `createUser`, `createOrder` |
+| update | 更新现有资源 | `updateUser`, `updateProfile` |
+| delete | 删除资源 | `deleteUser`, `deleteOrder` |
+| reset | 重置操作 | `resetPassword`, `resetCache` |
+| refresh | 刷新操作 | `refreshToken`, `refreshData` |
+| cleanup | 清理操作 | `cleanupTokens`, `cleanupCache` |
 | 40006 | UNPROCESSABLE_ENTITY | 请求参数验证失败 | 422 |
 | 40007 | TOO_MANY_REQUESTS | 请求过于频繁 | 429 |
 | 50000 | INTERNAL_SERVER_ERROR | 服务器内部错误 | 500 |
@@ -335,11 +439,7 @@ interface PaginationRequest {
       "total": 100,
       "totalPages": 10
     }
-  },
-  "timestamp": 1703692800000,
-  "requestId": "550e8400-e29b-41d4-a716-446655440000",
-  "path": "/api/v1/users",
-  "method": "GET"
+  }
 }
 ```
 
@@ -358,11 +458,7 @@ interface PaginationRequest {
       "password": ["密码长度不能少于6位"]
     },
     "errorId": "err-123456789"
-  },
-  "timestamp": 1703692800000,
-  "requestId": "550e8400-e29b-41d4-a716-446655440000",
-  "path": "/api/v1/users/123",
-  "method": "GET"
+  }
 }
 ```
 

@@ -116,7 +116,52 @@ export default async function (fastify: FastifyInstance) {
 - 40000-49999: 客户端错误
 - 50000-59999: 服务器错误
 
-#### 4.1 分页查询状态码
+#### 4.1 API响应示例值规范
+在 Swagger/OpenAPI 文档的响应模式定义中，`code` 字段的 `example` 值必须使用5位数字的业务码，而不是HTTP状态码：
+
+**✅ 正确示例**:
+```typescript
+{
+  "200": {
+    "type": "object",
+    "properties": {
+      "code": { "type": "number", "example": 20000 },  // 使用业务码
+      "message": { "type": "string", "example": "操作成功" }
+    }
+  },
+  "404": {
+    "type": "object",
+    "properties": {
+      "code": { "type": "number", "example": 40010 },  // 使用业务码
+      "message": { "type": "string", "example": "用户不存在" }
+    }
+  }
+}
+```
+
+**❌ 错误示例**:
+```typescript
+{
+  "200": {
+    "type": "object",
+    "properties": {
+      "code": { "type": "number", "example": 200 },    // 错误：使用HTTP状态码
+      "message": { "type": "string", "example": "操作成功" }
+    }
+  }
+}
+```
+
+**常用业务码示例值对照表**:
+- HTTP 200 → 业务码 20000 (通用成功)
+- HTTP 201 → 业务码 20001 (创建成功)
+- HTTP 400 → 业务码 40001 (参数错误)
+- HTTP 401 → 业务码 40003 (未授权)
+- HTTP 403 → 业务码 40004 (权限不足)
+- HTTP 404 → 业务码 40010 (资源不存在)
+- HTTP 500 → 业务码 50000 (服务器错误)
+
+#### 4.2 分页查询状态码
 分页查询使用统一的业务状态码规范：
 
 - **成功状态码**: 使用 20000 (SUCCESS) - 操作成功
@@ -131,9 +176,45 @@ export default async function (fastify: FastifyInstance) {
 
 #### 5. Schema 定义
 - 所有路由必须定义完整的 Fastify Schema
-- 包含 tags, summary, description
+- 包含 tags, summary, description, operationId
 - 定义完整的 request body 和 response schema
 - 使用 TypeScript 类型约束
+
+#### 5.1 operationId 规范
+每个API接口都必须在Swagger/OpenAPI文档中包含唯一的 `operationId` 字段：
+
+**用途**:
+- 前端代码自动生成
+- API客户端库的生成
+- 更好的API文档组织和导航
+- 提升开发者体验
+
+**命名规范**:
+- 使用驼峰命名法
+- 动词+名词的组合
+- 必须在整个项目中唯一
+- 语义化，清晰表达接口功能
+
+**示例**:
+```typescript
+schema: {
+  tags: ['sysAuth'],
+  summary: '用户登录',
+  description: '使用用户名/邮箱和密码进行用户登录',
+  operationId: 'userLogin',  // 必须包含operationId
+  body: { /* ... */ },
+  response: { /* ... */ }
+}
+```
+
+**常用动词前缀**:
+- `get`: 获取资源 (getUserList, getCurrentUser)
+- `create`: 创建资源 (createUser, createOrder)
+- `update`: 更新资源 (updateUser, updateProfile)
+- `delete`: 删除资源 (deleteUser, deleteOrder)
+- `reset`: 重置操作 (resetPassword, resetCache)
+- `refresh`: 刷新操作 (refreshToken, refreshData)
+- `cleanup`: 清理操作 (cleanupTokens, cleanupCache)
 
 #### 6. 错误处理
 - 使用 Fastify 内置错误处理机制
@@ -153,21 +234,23 @@ export default async function (fastify: FastifyInstance) {
 - 支持事务处理
 
 #### 8.1 分页查询规范
-- **请求参数规范**:
+基于企业级标准的统一分页规范，详细规范见 `apps/yishan-api/docs/PAGINATION_SPECIFICATION.md`
+
+- **标准查询参数**:
   ```typescript
   interface PaginationQuery {
-    page?: number;      // 页码，默认1，最小1
-    pageSize?: number;  // 每页条数，默认10，最小1，最大100
-    sortBy?: string;    // 排序字段，默认id
+    page?: number;        // 页码，默认1，必须≥1
+    pageSize?: number;    // 每页条数，默认10，范围1-100
+    sortBy?: string;      // 排序字段，默认id，需验证字段合法性
     sortOrder?: 'asc' | 'desc'; // 排序方向，默认desc
-    search?: string;    // 搜索关键词，可选
+    search?: string;      // 搜索关键词，最大长度255，自动trim
   }
   ```
 
-- **响应格式规范**:
+- **标准响应格式**:
   ```typescript
   interface PaginationResponse<T> {
-    code: number;           // 业务状态码 (20060)
+    code: number;           // 业务状态码 (20000-成功)
     message: string;        // 响应消息
     data: {
       list: T[];            // 数据列表
@@ -184,14 +267,40 @@ export default async function (fastify: FastifyInstance) {
 - **客户端分页状态判断**:
   - 是否有下一页：`page < totalPages`
   - 是否有上一页：`page > 1`
-  - 是否为第一页：`page === 1`
+  - 是否为空结果：`total === 0`
   - 是否为最后一页：`page === totalPages`
 
-- **数据库查询最佳实践**:
-  - 总数查询和数据查询分离，避免GROUP BY冲突
-  - 使用参数化查询防止SQL注入
-  - 合理设置索引优化查询性能
-  - 实现边界值检查和处理
+- **Knex.js 数据库查询规范**:
+  ```typescript
+  // 1. 并行查询总数和数据，避免GROUP BY冲突
+  const [countResult, data] = await Promise.all([
+    knex('table_name')
+      .whereNull('deleted_at')
+      .modify(qb => applyFilters(qb, query))
+      .count('* as count')
+      .first(),
+    
+    knex('table_name')
+      .select(['id', 'name', 'created_at'])
+      .whereNull('deleted_at')
+      .modify(qb => applyFilters(qb, query))
+      .orderBy(sortBy, sortOrder)
+      .limit(pageSize)
+      .offset((page - 1) * pageSize)
+  ]);
+  
+  // 2. 事务支持
+  await knex.transaction(async (trx) => {
+    // 在事务中执行分页查询
+  });
+  ```
+
+- **性能优化最佳实践**:
+  - 使用索引优化排序和筛选字段
+  - 避免在大数据集上使用 `LIKE '%keyword%'`
+  - 实现 Redis 缓存机制（列表缓存300秒）
+  - 参数验证和边界检查
+  - 使用 `Promise.all` 并行查询提升性能
 
 #### 9. 环境配置
 - 使用 `@fastify/env` 管理环境变量
@@ -223,12 +332,16 @@ pnpm run db:reset     # 重置数据库
 
 #### 10.2 最近更新
 - ✅ 更新分页查询规范，符合大厂企业级标准
+- ✅ 基于 Knex.js 的完整分页实现规范和最佳实践
+- ✅ 统一响应格式（包含完整的响应元数据）
 - ✅ 简化分页响应格式（移除hasNext/hasPrev字段，由客户端计算）
 - ✅ 统一命名规范（数据列表使用list，每页条数使用pageSize）
-- ✅ 创建专门的分页规范文档
+- ✅ 创建专门的分页规范文档 `PAGINATION_SPECIFICATION.md`
 - ✅ 优化数据库查询规范，避免GROUP BY冲突
 - ✅ 添加客户端分页状态判断逻辑
-- ✅ 统一状态码规范（使用系统业务状态码，移除分页专用状态码）
+- ✅ 统一状态码规范（使用通用业务状态码20000，移除分页专用状态码）
+- ✅ 添加性能优化和缓存策略指导
+- ✅ 完善事务支持和错误处理机制
 
 ## 前端开发规范 (yishan-admin)
 

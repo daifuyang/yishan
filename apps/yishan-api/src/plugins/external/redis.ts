@@ -19,7 +19,10 @@ export default fp(async (fastify, opts) => {
     
     // 测试Redis连接
     await fastify.redis.ping()
-    fastify.log.info('Redis连接成功')
+    // 只在生产环境记录连接成功日志
+    if (process.env.NODE_ENV === 'production') {
+      fastify.log.info('Redis连接成功')
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     fastify.log.error(`Redis连接失败: ${errorMessage}`)
