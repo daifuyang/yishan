@@ -244,32 +244,33 @@ export class TokenRepository {
   }
 
   // 查询令牌列表（支持分页和筛选）
-  async findAll(query: TokenQueryDTO): Promise<{ tokens: UserToken[]; total: number; page: number; limit: number }> {
+  async findAll(query: TokenQueryDTO): Promise<{ tokens: UserToken[]; total: number; page: number; pageSize: number }> {
     const page = query.page || 1
-    const limit = query.limit || 10
-    const offset = (page - 1) * limit
+    const pageSize = query.pageSize || 10
+    const offset = (page - 1) * pageSize
     const sortBy = query.sort_by || 'created_at'
     const sortOrder = query.sort_order || 'desc'
 
-    let dbQuery = this.knex(TABLE_NAME)
-      .select('*')
+    // 构建基础查询
+    let baseQuery = this.knex(TABLE_NAME)
 
     // 应用筛选条件
-    if (query.user_id) dbQuery = dbQuery.where('user_id', query.user_id)
-    if (query.is_revoked !== undefined) dbQuery = dbQuery.where('is_revoked', query.is_revoked)
+    if (query.user_id) baseQuery = baseQuery.where('user_id', query.user_id)
+    if (query.is_revoked !== undefined) baseQuery = baseQuery.where('is_revoked', query.is_revoked)
 
-    // 获取总数
-    const countQuery = dbQuery.clone().count('* as count').first()
-    const countResult = await countQuery
+    // 获取总数 - 使用独立的count查询
+    const countResult = await baseQuery.clone().count('* as count').first()
     const total = parseInt((countResult as any)?.count as string)
 
-    // 获取分页数据
-    const tokens = await dbQuery
+    // 获取分页数据 - 使用独立的select查询
+    const tokens = await baseQuery
+      .clone()
+      .select('*')
       .orderBy(sortBy, sortOrder)
-      .limit(limit)
+      .limit(pageSize)
       .offset(offset)
 
-    return { tokens, total, page, limit }
+    return { tokens, total, page, pageSize }
   }
 
   // 获取用户令牌统计信息

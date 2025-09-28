@@ -109,12 +109,25 @@ export default async function (fastify: FastifyInstance) {
 
 #### 4. 业务状态码
 使用5位数字业务状态码 (定义在 `constants/business-code.ts`):
-- 第1位: 业务模块标识 (1-系统, 2-用户, 3-订单, 9-通用)
+- 第1位: 业务模块标识 (1-系统, 2-用户, 3-订单, 4-商品, 5-支付, 6-分页, 9-通用)
 - 第2-3位: 业务功能标识
 - 第4-5位: 具体状态标识
 - 20000-29999: 成功状态
 - 40000-49999: 客户端错误
 - 50000-59999: 服务器错误
+
+#### 4.1 分页查询状态码
+分页查询使用统一的业务状态码规范：
+
+- **成功状态码**: 使用 20000 (SUCCESS) - 操作成功
+- **客户端错误**: 使用 40010 (INVALID_PARAMETER) - 参数无效
+- **服务器错误**: 使用 50000 (INTERNAL_ERROR) - 内部服务器错误
+
+参数验证错误在 error.validation 字段中详细说明：
+- page: 页码必须大于等于1
+- pageSize: 页大小必须在1-100之间
+- sortBy: 排序字段不合法
+- sortOrder: 排序方向必须是asc或desc
 
 #### 5. Schema 定义
 - 所有路由必须定义完整的 Fastify Schema
@@ -139,6 +152,47 @@ export default async function (fastify: FastifyInstance) {
 - 使用 Service 层封装数据库操作
 - 支持事务处理
 
+#### 8.1 分页查询规范
+- **请求参数规范**:
+  ```typescript
+  interface PaginationQuery {
+    page?: number;      // 页码，默认1，最小1
+    pageSize?: number;  // 每页条数，默认10，最小1，最大100
+    sortBy?: string;    // 排序字段，默认id
+    sortOrder?: 'asc' | 'desc'; // 排序方向，默认desc
+    search?: string;    // 搜索关键词，可选
+  }
+  ```
+
+- **响应格式规范**:
+  ```typescript
+  interface PaginationResponse<T> {
+    code: number;           // 业务状态码 (20060)
+    message: string;        // 响应消息
+    data: {
+      list: T[];            // 数据列表
+      pagination: {
+        page: number;       // 当前页码
+        pageSize: number;   // 每页条数
+        total: number;      // 总记录数
+        totalPages: number; // 总页数
+      }
+    }
+  }
+  ```
+
+- **客户端分页状态判断**:
+  - 是否有下一页：`page < totalPages`
+  - 是否有上一页：`page > 1`
+  - 是否为第一页：`page === 1`
+  - 是否为最后一页：`page === totalPages`
+
+- **数据库查询最佳实践**:
+  - 总数查询和数据查询分离，避免GROUP BY冲突
+  - 使用参数化查询防止SQL注入
+  - 合理设置索引优化查询性能
+  - 实现边界值检查和处理
+
 #### 9. 环境配置
 - 使用 `@fastify/env` 管理环境变量
 - 配置文件: `.env`
@@ -161,6 +215,20 @@ pnpm run db:migrate   # 运行迁移
 pnpm run db:seed      # 填充种子数据
 pnpm run db:reset     # 重置数据库
 ```
+
+#### 10.1 相关文档
+- `apps/yishan-api/docs/PAGINATION_SPECIFICATION.md` - 详细分页规范文档
+- `apps/yishan-api/docs/RESPONSE_STATUS_CODE_SPECIFICATION.md` - 响应状态码规范
+- `apps/yishan-api/docs/PROJECT_SPECIFICATION.md` - 项目整体规范
+
+#### 10.2 最近更新
+- ✅ 更新分页查询规范，符合大厂企业级标准
+- ✅ 简化分页响应格式（移除hasNext/hasPrev字段，由客户端计算）
+- ✅ 统一命名规范（数据列表使用list，每页条数使用pageSize）
+- ✅ 创建专门的分页规范文档
+- ✅ 优化数据库查询规范，避免GROUP BY冲突
+- ✅ 添加客户端分页状态判断逻辑
+- ✅ 统一状态码规范（使用系统业务状态码，移除分页专用状态码）
 
 ## 前端开发规范 (yishan-admin)
 

@@ -121,47 +121,57 @@ export class UserRepository {
   }
 
   // 查询用户列表（支持分页和筛选）
-  async findAll(query: UserQueryDTO): Promise<{ users: UserPublic[]; total: number; page: number; limit: number }> {
-    const page = query.page || 1
-    const limit = query.limit || 10
-    const offset = (page - 1) * limit
+  async findAll(query: UserQueryDTO): Promise<{ users: UserPublic[]; total: number; page: number; pageSize: number }> {
+    const page = Math.max(1, query.page || 1)
+    const pageSize = Math.max(1, Math.min(100, query.pageSize || 10))
+    const offset = (page - 1) * pageSize
     const sortBy = query.sort_by || 'created_at'
     const sortOrder = query.sort_order || 'desc'
 
     const cacheKey = `${CACHE_PREFIX}list:${JSON.stringify(query)}`
-    const cached = await this.getCache<{ users: UserPublic[]; total: number; page: number; limit: number }>(cacheKey)
+    const cached = await this.getCache<{ users: UserPublic[]; total: number; page: number; pageSize: number }>(cacheKey)
     if (cached) return cached
 
-    let dbQuery = this.knex(TABLE_NAME)
+    // 构建基础查询
+    let baseQuery = this.knex(TABLE_NAME)
+      .whereNull('deleted_at')
+
+    // 应用筛选条件
+    if (query.id) baseQuery = baseQuery.where('id', query.id)
+    if (query.status !== undefined) baseQuery = baseQuery.where('status', query.status)
+    if (query.gender !== undefined) baseQuery = baseQuery.where('gender', query.gender)
+    if (query.creator_id) baseQuery = baseQuery.where('creator_id', query.creator_id)
+
+    // 应用统一搜索条件（模糊搜索用户名、邮箱、真实姓名、手机号）
+    if (query.search) {
+      baseQuery = baseQuery.where(function() {
+        this.where('username', 'like', `%${query.search}%`)
+          .orWhere('email', 'like', `%${query.search}%`)
+          .orWhere('real_name', 'like', `%${query.search}%`)
+          .orWhere('phone', 'like', `%${query.search}%`)
+      })
+    }
+    if (query.email) baseQuery = baseQuery.where('email', 'like', `%${query.email}%`)
+    if (query.real_name) baseQuery = baseQuery.where('real_name', 'like', `%${query.real_name}%`)
+    if (query.phone) baseQuery = baseQuery.where('phone', 'like', `%${query.phone}%`)
+
+    // 获取总数 - 使用独立的count查询
+    const countResult = await baseQuery.clone().count('* as count').first()
+    const total = parseInt((countResult as any)?.count as string)
+    
+    // 获取分页数据 - 使用独立的select查询
+    const users = await baseQuery
+      .clone()
       .select([
         'id', 'username', 'email', 'phone', 'real_name', 'avatar', 
         'gender', 'birth_date', 'status', 'last_login_time', 'login_count',
         'created_at', 'updated_at'
       ])
-      .whereNull('deleted_at')
-
-    // 应用筛选条件
-    if (query.id) dbQuery = dbQuery.where('id', query.id)
-    if (query.username) dbQuery = dbQuery.where('username', 'like', `%${query.username}%`)
-    if (query.email) dbQuery = dbQuery.where('email', 'like', `%${query.email}%`)
-    if (query.phone) dbQuery = dbQuery.where('phone', 'like', `%${query.phone}%`)
-    if (query.real_name) dbQuery = dbQuery.where('real_name', 'like', `%${query.real_name}%`)
-    if (query.status !== undefined) dbQuery = dbQuery.where('status', query.status)
-    if (query.gender !== undefined) dbQuery = dbQuery.where('gender', query.gender)
-    if (query.creator_id) dbQuery = dbQuery.where('creator_id', query.creator_id)
-
-    // 获取总数
-    const countQuery = dbQuery.clone().count('* as count').first()
-    const countResult = await countQuery
-    const total = parseInt((countResult as any)?.count as string)
-
-    // 获取分页数据
-    const users = await dbQuery
       .orderBy(sortBy, sortOrder)
-      .limit(limit)
+      .limit(pageSize)
       .offset(offset)
 
-    const result = { users, total, page, limit }
+    const result = { users, total, page, pageSize }
     await this.setCache(cacheKey, result, 300) // 列表缓存时间较短
     return result
   }

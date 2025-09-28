@@ -51,7 +51,7 @@ export interface TokenQueryDTO {
   is_revoked?: boolean;
   // 分页参数
   page?: number;
-  limit?: number;
+  pageSize?: number;
   // 排序参数
   sort_by?: string;
   sort_order?: 'asc' | 'desc';

@@ -198,6 +198,147 @@ PUT    /api/v1/users/:id     # 更新用户
 DELETE /api/v1/users/:id     # 删除用户
 ```
 
+### 分页查询规范
+
+#### 请求参数
+- `page`: 页码，从1开始，默认1
+- `pageSize`: 每页数量，范围1-100，默认10
+- `search`: 搜索关键词（可选）
+- `sortBy`: 排序字段（可选）
+- `sortOrder`: 排序方向 asc|desc（可选）
+
+#### 响应格式
+```typescript
+interface PaginationResponse<T> {
+  code: number
+  message: string
+  data: {
+    items: T[]
+    pagination: {
+      page: number
+      pageSize: number
+      total: number
+      totalPages: number
+    }
+  }
+}
+```
+
+#### 状态码规范
+- **20060**: 分页查询成功
+- **40060**: 分页参数错误
+- **50060**: 分页查询失败
+
+#### 示例
+```typescript
+// 请求
+GET /api/v1/users?page=1&pageSize=10&search=张三&sortBy=created_at&sortOrder=desc
+
+// 响应
+{
+  "code": 20060,
+  "message": "获取用户列表成功",
+  "data": {
+    "items": [...],
+    "pagination": {
+      "page": 1,
+      "pageSize": 10,
+      "total": 100,
+      "totalPages": 10
+    }
+  }
+}
+```
+
+### 分页查询规范
+
+#### 请求参数
+```typescript
+interface PaginationQuery {
+  page?: number;      // 页码，默认1，最小1
+  pageSize?: number;  // 每页条数，默认10，最小1，最大100
+  sortBy?: string;    // 排序字段，默认id
+  sortOrder?: 'asc' | 'desc'; // 排序方向，默认desc
+  search?: string;    // 搜索关键词，可选
+}
+```
+
+#### 响应格式
+```typescript
+interface PaginationResponse<T> {
+  code: number;           // 业务状态码 (20060: 分页查询成功)
+  message: string;        // 响应消息
+  data: {
+    list: T[];            // 数据列表
+    pagination: {
+      page: number;       // 当前页码
+      pageSize: number;   // 每页条数
+      total: number;      // 总记录数
+      totalPages: number; // 总页数
+    }
+  }
+}
+```
+
+#### 状态码规范
+分页查询统一使用系统的业务状态码规范：
+- **成功响应**: 20000 (SUCCESS) - 操作成功
+- **参数错误**: 40010 (INVALID_PARAMETER) - 参数无效
+- **服务器错误**: 50000 (INTERNAL_ERROR) - 内部服务器错误
+
+参数验证错误详情将在 `error.validation` 字段中返回。
+
+#### 客户端判断逻辑
+- **是否有下一页**: `page < totalPages`
+- **是否有上一页**: `page > 1`
+- **是否为空结果**: `total === 0`
+- **是否为最后一页**: `page === totalPages`
+
+#### 实现示例
+```typescript
+// 路由定义
+schema: {
+  querystring: {
+    type: 'object',
+    properties: {
+      page: { type: 'number', minimum: 1, default: 1 },
+      pageSize: { type: 'number', minimum: 1, maximum: 100, default: 10 },
+      sortBy: { type: 'string', enum: ['id', 'created_at', 'updated_at'], default: 'id' },
+      sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'desc' },
+      search: { type: 'string' }
+    }
+  }
+}
+
+// 服务层处理
+const page = Math.max(1, query.page || 1)
+const pageSize = Math.max(1, Math.min(100, query.pageSize || 10))
+const offset = (page - 1) * pageSize
+
+// 查询总数
+const total = await repository.count(filter)
+const totalPages = Math.max(0, Math.ceil(total / pageSize))
+
+// 查询数据
+const list = await repository.find({
+  limit: pageSize,
+  offset,
+  sortBy: query.sortBy,
+  sortOrder: query.sortOrder,
+  search: query.search
+})
+
+return {
+  list,
+  pagination: {
+    page,
+    pageSize,
+    total,
+    totalPages
+  }
+}
+```
+
 ### 请求/响应格式
 #### 请求格式
 ```json

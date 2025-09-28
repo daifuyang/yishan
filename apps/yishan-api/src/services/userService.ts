@@ -1,7 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { UserRepository } from '../repository/userRepository.js'
 import { CreateUserDTO, UpdateUserDTO, UserQueryDTO, UserPublic, UserStatus } from '../domain/user.js'
-import { DateTimeUtil } from '../utils/datetime.js'
 
 export class UserService {
   private userRepository: UserRepository
@@ -46,7 +45,7 @@ export class UserService {
     return this.userRepository.findById(id)
   }
 
-  async getUsers(query: UserQueryDTO): Promise<{ users: UserPublic[]; total: number; page: number; limit: number }> {
+  async getUsers(query: UserQueryDTO): Promise<{ users: UserPublic[]; total: number; page: number; pageSize: number }> {
     return this.userRepository.findAll(query)
   }
 
@@ -155,44 +154,21 @@ export class UserService {
     return this.userRepository.clearCache()
   }
 
-  async getUserStatistics(): Promise<{
-    total: number;
-    enabled: number;
-    disabled: number;
-    locked: number;
-    todayRegistered: number;
-  }> {
-    // 获取所有用户统计
-    const allUsers = await this.userRepository.findAll({ page: 1, limit: 999999 })
-    
-    const stats = {
-      total: allUsers.total,
-      enabled: 0,
-      disabled: 0,
-      locked: 0,
-      todayRegistered: 0
-    }
+  /**
+   * 根据邮箱查找用户
+   * @param email - 用户邮箱
+   * @returns 用户或null
+   */
+  async findByEmail(email: string): Promise<UserPublic | null> {
+    return await this.userRepository.findByEmail(email)
+  }
 
-    const today = DateTimeUtil.today()
-
-    allUsers.users.forEach(user => {
-      switch (user.status) {
-        case UserStatus.ENABLED:
-          stats.enabled++
-          break
-        case UserStatus.DISABLED:
-          stats.disabled++
-          break
-        case UserStatus.LOCKED:
-          stats.locked++
-          break
-      }
-
-      if (user.created_at.startsWith(today)) {
-        stats.todayRegistered++
-      }
-    })
-
-    return stats
+  /**
+   * 根据手机号查找用户
+   * @param phone - 手机号
+   * @returns 用户或null
+   */
+  async findByPhone(phone: string): Promise<UserPublic | null> {
+    return await this.userRepository.findByPhone(phone)
   }
 }

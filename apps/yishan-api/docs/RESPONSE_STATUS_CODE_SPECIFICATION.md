@@ -212,6 +212,93 @@
 | 50052 | CACHE_CONNECTION_FAILED | 缓存连接失败 |
 | 50053 | EXTERNAL_SERVICE_ERROR | 外部服务错误 |
 
+### 7. 分页查询状态码规范
+
+分页查询统一使用系统的业务状态码规范：
+
+- **成功响应**: 使用 20000 (SUCCESS) - 操作成功
+- **参数错误**: 使用 40010 (INVALID_PARAMETER) - 参数无效
+- **服务器错误**: 使用 50000 (INTERNAL_ERROR) - 内部服务器错误
+
+参数验证错误详情将在 `error.validation` 字段中返回：
+
+```json
+{
+  "code": 40010,
+  "message": "参数无效",
+  "error": {
+    "validation": {
+      "page": ["页码必须大于等于1"],
+      "pageSize": ["页大小必须在1-100之间"],
+      "sortBy": ["排序字段不合法"],
+      "sortOrder": ["排序方向必须是asc或desc"]
+    }
+  }
+}
+```
+
+## 分页响应规范
+
+### 标准分页数据结构
+
+所有列表查询接口必须遵循统一的分页响应格式：
+
+```typescript
+interface PaginationResponse<T> {
+  code: number;
+  message: string;
+  data: {
+    list: T[];           // 数据列表
+    pagination: {
+      page: number;      // 当前页码
+      pageSize: number;  // 每页条数
+      total: number;     // 总记录数
+      totalPages: number; // 总页数
+    }
+  }
+}
+
+// 客户端判断逻辑
+// 是否有下一页: page < totalPages
+// 是否有上一页: page > 1
+// 是否为空结果: total === 0
+// 是否为最后一页: page === totalPages
+```
+
+### 分页请求参数规范
+
+```typescript
+interface PaginationRequest {
+  page?: number;      // 页码，默认1
+  pageSize?: number;  // 每页条数，默认10，最大100
+  sortBy?: string;    // 排序字段
+  sortOrder?: 'asc' | 'desc'; // 排序方向
+  search?: string;    // 搜索关键词
+}
+```
+
+### 分页业务状态码
+
+分页查询使用统一的业务状态码规范：
+
+- **成功响应**: 使用 20000 (SUCCESS) - 操作成功
+- **参数错误**: 使用 40010 (INVALID_PARAMETER) - 参数无效
+- **服务器错误**: 使用 50000 (INTERNAL_ERROR) - 内部服务器错误
+
+#### 客户端错误码 (40050-40051)
+| 业务码 | 名称 | 描述 |
+|--------|------|------|
+| 40050 | SYSTEM_MAINTENANCE | 系统维护中 |
+| 40051 | API_VERSION_NOT_SUPPORTED | API版本不支持 |
+
+#### 服务器错误码 (50050-50053)
+| 业务码 | 名称 | 描述 |
+|--------|------|------|
+| 50050 | SYSTEM_ERROR | 系统错误 |
+| 50051 | DATABASE_CONNECTION_FAILED | 数据库连接失败 |
+| 50052 | CACHE_CONNECTION_FAILED | 缓存连接失败 |
+| 50053 | EXTERNAL_SERVICE_ERROR | 外部服务错误 |
+
 ## 响应格式规范
 
 ### 1. 统一响应结构
@@ -236,18 +323,18 @@
 #### 分页响应格式
 ```json
 {
-  "code": 20012,
-  "message": "用户列表获取成功",
+  "code": 20000,
+  "message": "操作成功",
   "data": {
     "list": [
       // 数据列表
     ],
-    "total": 100,
-    "page": 1,
-    "pageSize": 10,
-    "totalPages": 10,
-    "hasNext": true,
-    "hasPrev": false
+    "pagination": {
+      "page": 1,
+      "pageSize": 10,
+      "total": 100,
+      "totalPages": 10
+    }
   },
   "timestamp": 1703692800000,
   "requestId": "550e8400-e29b-41d4-a716-446655440000",

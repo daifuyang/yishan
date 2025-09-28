@@ -91,9 +91,11 @@ export interface UserQueryDTO {
   status?: UserStatus;
   gender?: Gender;
   creator_id?: number;
+  // 统一搜索字段（支持用户名、邮箱、真实姓名、手机号模糊搜索）
+  search?: string;
   // 分页参数
   page?: number;
-  limit?: number;
+  pageSize?: number;
   // 排序参数
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
