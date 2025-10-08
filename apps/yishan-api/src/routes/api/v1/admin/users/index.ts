@@ -22,10 +22,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
           email: { type: 'string', format: 'email', description: '用户邮箱' },
           phone: { type: 'string', description: '手机号' },
           password: { type: 'string', minLength: 6, description: '用户密码' },
-          real_name: { type: 'string', minLength: 1, maxLength: 100, description: '真实姓名' },
-          avatar: { type: 'string', description: '头像URL' },
-          gender: { type: 'number', enum: [0, 1, 2], description: '性别：0-未知，1-男，2-女' },
-          birth_date: { type: 'string', format: 'date', description: '出生日期' },
+          realName: { type: 'string', minLength: 1, maxLength: 100, description: '真实姓名' },
+                avatar: { type: 'string', description: '头像URL' },
+                gender: { type: 'number', enum: [0, 1, 2], description: '性别：0-未知，1-男，2-女' },
+                birthDate: { type: 'string', format: 'date', description: '出生日期' },
           status: { type: 'number', enum: [0, 1, 2], description: '状态：0-禁用，1-启用，2-锁定' }
         }
       },
@@ -189,17 +189,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
         pageSize: Math.max(1, Math.min(100, query.pageSize || 10)),
         search: query.search,
         email: query.email,
-        real_name: query.real_name,
+        realName: query.realName,
         phone: query.phone,
         status: query.status,
         gender: query.gender,
-        sort_by: query.sort_by || 'created_at',
-        sort_order: query.sort_order || 'desc'
+        sortBy: query.sortBy || 'createdAt',
+        sortOrder: query.sortOrder || 'desc'
       }
 
       // 验证排序字段合法性
-      const allowedSortFields = ['id', 'username', 'email', 'real_name', 'created_at', 'updated_at', 'status', 'last_login_time']
-      if (validatedQuery.sort_by && !allowedSortFields.includes(validatedQuery.sort_by)) {
+      const allowedSortFields = ['id', 'username', 'email', 'realName', 'createdAt', 'updatedAt', 'status', 'lastLoginTime']
+      if (validatedQuery.sortBy && !allowedSortFields.includes(validatedQuery.sortBy)) {
         return reply.code(400).send({
           code: 40010,
           message: '无效的排序字段'
@@ -207,7 +207,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       // 验证排序方向
-      if (validatedQuery.sort_order && !['asc', 'desc'].includes(validatedQuery.sort_order)) {
+      if (validatedQuery.sortOrder && !['asc', 'desc'].includes(validatedQuery.sortOrder)) {
         return reply.code(400).send({
           code: 40010,
           message: '无效的排序方向'
@@ -266,10 +266,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
                 username: { type: 'string', description: '用户名' },
                 email: { type: 'string', description: '用户邮箱' },
                 phone: { type: 'string', description: '手机号' },
-                real_name: { type: 'string', description: '真实姓名' },
+                realName: { type: 'string', description: '真实姓名' },
                 avatar: { type: 'string', description: '头像URL' },
                 gender: { type: 'number', description: '性别：0-未知，1-男，2-女' },
-                birth_date: { type: 'string', description: '出生日期' },
+                birthDate: { type: 'string', format: 'date', description: '出生日期' },
                 status: { type: 'number', description: '状态：0-禁用，1-启用，2-锁定' },
                 last_login_time: { type: 'string', format: 'date-time', description: '最后登录时间' },
                 last_login_ip: { type: 'string', description: '最后登录IP' },

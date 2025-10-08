@@ -46,12 +46,6 @@ export default [
     ],
   },
   {
-    name: 'list.table-list',
-    icon: 'table',
-    path: '/list',
-    component: './table-list',
-  },
-  {
     path: '/',
     redirect: '/welcome',
   },

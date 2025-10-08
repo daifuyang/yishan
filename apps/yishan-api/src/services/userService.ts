@@ -33,7 +33,7 @@ export class UserService {
     // 创建用户数据，包含创建者ID
     const createData: CreateUserDTO = {
       ...data,
-      creator_id: creatorId,
+      creatorId: creatorId,
       status: data.status || UserStatus.ENABLED
     }
 
@@ -83,7 +83,7 @@ export class UserService {
     // 添加更新者ID
     const updateData: UpdateUserDTO = {
       ...data,
-      updater_id: updaterId
+      updaterId: updaterId
     }
 
     return this.userRepository.update(id, updateData)
@@ -112,7 +112,7 @@ export class UserService {
 
     const updateData: UpdateUserDTO = {
       password: newPassword,
-      updater_id: updaterId
+      updaterId: updaterId
     }
 
     const result = await this.userRepository.update(id, updateData)
@@ -127,7 +127,7 @@ export class UserService {
     // 用户只能更新自己的基本信息，不能更新状态和密码
     const updateData: UpdateUserDTO = {
       ...data,
-      updater_id: id // 用户更新自己的信息
+      updaterId: id // 用户更新自己的信息
     }
 
     return this.updateUser(id, updateData, id)
@@ -160,7 +160,9 @@ export class UserService {
    * @returns 用户或null
    */
   async findByEmail(email: string): Promise<UserPublic | null> {
-    return await this.userRepository.findByEmail(email)
+    const user = await this.userRepository.findByEmail(email)
+    if (!user) return null
+    return this.userRepository.findById(user.id)
   }
 
   /**
@@ -169,6 +171,8 @@ export class UserService {
    * @returns 用户或null
    */
   async findByPhone(phone: string): Promise<UserPublic | null> {
-    return await this.userRepository.findByPhone(phone)
+    const user = await this.userRepository.findByPhone(phone)
+    if (!user) return null
+    return this.userRepository.findById(user.id)
   }
 }

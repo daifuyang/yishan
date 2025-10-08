@@ -4,6 +4,7 @@ import { LoginDTO } from '../../../domain/auth.js'
 import { ResponseUtil } from '../../../utils/response.js'
 import { UserBusinessCode } from '../../../constants/business-code.js'
 
+
 export default async function authRoutes(fastify: FastifyInstance) {
   const authService = new AuthService(fastify)
 
@@ -13,58 +14,19 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '用户登录',
       description: '使用用户名/邮箱和密码进行用户登录',
-      body: {
-        type: 'object',
-        required: ['password'],
-        properties: {
-          username: { type: 'string', description: '用户名' },
-          email: { type: 'string', format: 'email', description: '用户邮箱' },
-          password: { type: 'string', minLength: 6, description: '用户密码' }
-        },
-        anyOf: [
-          { required: ['username', 'password'] },
-          { required: ['email', 'password'] }
-        ]
-      },
+      body: { $ref: 'sysUserLoginRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
             code: { type: 'number', example: 200 },
             message: { type: 'string', example: '登录成功' },
-            data: {
-              type: 'object',
-              properties: {
-                accessToken: { type: 'string', description: 'JWT访问令牌' },
-                refreshToken: { type: 'string', description: 'JWT刷新令牌' },
-                accessTokenExpiresIn: { type: 'number', description: '访问令牌过期时间（秒）', example: 900 },
-                refreshTokenExpiresIn: { type: 'number', description: '刷新令牌过期时间（秒）', example: 604800 },
-                tokenType: { type: 'string', example: 'Bearer', description: '令牌类型' }
-              }
-            }
+            data: { $ref: 'sysUserTokenResponse#' }
           }
         },
-        400: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 400 },
-            message: { type: 'string', example: '登录失败' }
-          }
-        },
-        401: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 401 },
-            message: { type: 'string', example: '密码错误' }
-          }
-        },
-        404: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 404 },
-            message: { type: 'string', example: '用户不存在' }
-          }
-        }
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'errorResponse#' },
+        404: { $ref: 'errorResponse#' }
       }
     }
   }, async (
@@ -115,33 +77,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
           properties: {
             code: { type: 'number', example: 200 },
             message: { type: 'string', example: '获取用户信息成功' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number', description: '用户ID' },
-                username: { type: 'string', description: '用户名' },
-                email: { type: 'string', description: '用户邮箱' },
-                phone: { type: 'string', description: '手机号' },
-                real_name: { type: 'string', description: '真实姓名' },
-                avatar: { type: 'string', description: '头像URL' },
-                gender: { type: 'number', enum: [0, 1, 2], description: '性别：0-未知，1-男，2-女' },
-                birth_date: { type: 'string', format: 'date', description: '出生日期' },
-                status: { type: 'number', enum: [0, 1, 2], description: '状态：0-禁用，1-启用，2-锁定' },
-                last_login_time: { type: 'string', format: 'date-time', description: '最后登录时间' },
-                login_count: { type: 'number', description: '登录次数' },
-                created_at: { type: 'string', format: 'date-time', description: '创建时间' },
-                updated_at: { type: 'string', format: 'date-time', description: '更新时间' }
-              }
-            }
+            data: { $ref: 'sysUser#' }
           }
         },
-        401: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 401 },
-            message: { type: 'string', example: '未授权访问' }
-          }
-        }
+        401: { $ref: 'unauthorizedResponse#' }
       }
     }
   }, async (
@@ -177,38 +116,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '刷新访问令牌',
       description: '使用refreshToken获取新的accessToken和refreshToken',
-      body: {
-        type: 'object',
-        required: ['refreshToken'],
-        properties: {
-          refreshToken: { type: 'string', description: '刷新令牌' }
-        }
-      },
+      body: { $ref: 'sysUserRefreshTokenRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
             code: { type: 'number', example: 200 },
             message: { type: 'string', example: 'token刷新成功' },
-            data: {
-              type: 'object',
-              properties: {
-                accessToken: { type: 'string', description: '新的JWT访问令牌' },
-                refreshToken: { type: 'string', description: '新的JWT刷新令牌' },
-                accessTokenExpiresIn: { type: 'number', description: '访问令牌过期时间（秒）', example: 900 },
-                refreshTokenExpiresIn: { type: 'number', description: '刷新令牌过期时间（秒）', example: 604800 },
-                tokenType: { type: 'string', example: 'Bearer', description: '令牌类型' }
-              }
-            }
+            data: { $ref: 'sysUserTokenResponse#' }
           }
         },
-        401: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 401 },
-            message: { type: 'string', example: '未授权访问' }
-          }
-        }
+        401: { $ref: 'unauthorizedResponse#' }
       }
     }
   }, async (
@@ -256,13 +174,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
             data: { type: 'null' }
           }
         },
-        401: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 401 },
-            message: { type: 'string', example: '未授权访问' }
-          }
-        }
+        401: { $ref: 'unauthorizedResponse#' }
       }
     }
   }, async (

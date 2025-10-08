@@ -135,6 +135,44 @@ export default async function (fastify: FastifyInstance) {
 - 定义完整的 request body 和 response schema
 - 使用 TypeScript 类型约束
 
+#### 5.1 Schema 命名规范
+- **必须**与数据库表名保持一致（包括前缀）
+- **必须**包含业务模块前缀
+- **必须**添加功能类型后缀
+- 使用小驼峰命名法（camelCase）
+
+**命名格式**:
+```
+[业务前缀][功能名称][类型后缀]
+```
+
+**示例**:
+- `sysUserSchema` - 对应 sys_user 表
+- `sysUserTokenResponseSchema` - 系统用户token响应
+- `sysUserLoginRequestSchema` - 系统用户登录请求
+- `sysUserRefreshTokenRequestSchema` - 系统用户刷新token请求
+
+**文件命名**:
+- 使用 `kebab-case` 命名法
+- 格式：`[模块名].schema.ts`
+- 示例：`auth.schema.ts`、`user.schema.ts`
+
+**$id 命名**:
+- 必须与导出名称保持一致
+- 使用简洁的命名，不包含文件路径
+- 示例：`sysUser`、`sysUserTokenResponse`
+
+**最佳实践**:
+1. **集中注册**: 所有schema统一在`plugins/external/schemas.ts`中注册
+2. **职责分离**: 路由文件专注业务逻辑，schema管理由插件负责
+3. **路径规范**: 使用正确的相对路径（如`../../schemas/auth.schema.js`）
+4. **插件包装**: 使用`fastify-plugin`包装插件，确保正确元数据
+
+**新增模块步骤**:
+1. 在`schemas/`目录创建新的schema文件
+2. 在`plugins/external/schemas.ts`中导入并注册新schema
+3. 在路由文件中直接使用$ref引用，无需重复注册
+
 #### 6. 错误处理
 - 使用 Fastify 内置错误处理机制
 - 自定义错误处理器在 `app.ts` 中定义

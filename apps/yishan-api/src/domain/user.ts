@@ -42,15 +42,15 @@ export interface UserPublic {
   username: string;
   email: string;
   phone?: string | null;
-  real_name: string;
+  realName: string;
   avatar?: string | null;
   gender: Gender;
-  birth_date?: string | null;
+  birthDate?: string | null;
   status: UserStatus;
-  last_login_time?: string | null;
-  login_count: number;
-  created_at: string;
-  updated_at: string;
+  lastLoginTime?: string | null;
+  loginCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // 用于创建用户的数据传输对象
@@ -59,12 +59,12 @@ export interface CreateUserDTO {
   email: string;
   phone?: string | null;
   password: string; // 原始密码，将被加密处理
-  real_name: string;
+  realName: string;
   avatar?: string | null;
   gender?: Gender;
-  birth_date?: string | null;
+  birthDate?: string | null;
   status?: UserStatus;
-  creator_id?: number | null;
+  creatorId?: number | null;
 }
 
 // 用于更新用户的数据传输对象
@@ -72,13 +72,13 @@ export interface UpdateUserDTO {
   username?: string;
   email?: string;
   phone?: string | null;
-  password?: string; // 原始密码，将被加密处理
-  real_name?: string;
+  password?: string;
+  realName?: string;
   avatar?: string | null;
   gender?: Gender;
-  birth_date?: string | null;
+  birthDate?: string | null;
   status?: UserStatus;
-  updater_id?: number | null;
+  updaterId?: number | null;
 }
 
 // 用于查询用户的数据传输对象
@@ -87,18 +87,18 @@ export interface UserQueryDTO {
   username?: string;
   email?: string;
   phone?: string;
-  real_name?: string;
+  realName?: string;
   status?: UserStatus;
   gender?: Gender;
-  creator_id?: number;
+  creatorId?: number;
   // 统一搜索字段（支持用户名、邮箱、真实姓名、手机号模糊搜索）
   search?: string;
   // 分页参数
   page?: number;
   pageSize?: number;
   // 排序参数
-  sort_by?: string;
-  sort_order?: 'asc' | 'desc';
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 // 用户登录DTO
