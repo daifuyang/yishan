@@ -19,7 +19,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20001 },
             message: { type: 'string', example: '登录成功' },
             data: { $ref: 'sysUserTokenResponse#' }
           }
@@ -70,12 +70,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '获取当前用户信息',
       description: '获取当前登录用户的详细信息',
+      operationId: 'getCurrentUser',
       security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20002 },
             message: { type: 'string', example: '获取用户信息成功' },
             data: { $ref: 'sysUser#' }
           }
@@ -121,7 +122,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20003 },
             message: { type: 'string', example: 'token刷新成功' },
             data: { $ref: 'sysUserTokenResponse#' }
           }
@@ -164,12 +165,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '用户登出',
       description: '用户退出登录状态',
+      operationId: 'userLogout',
       security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 20004 },
             message: { type: 'string', example: '退出登录成功' },
             data: { type: 'null' }
           }

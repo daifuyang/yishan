@@ -32,7 +32,10 @@ export default fp(async (fastify, opts) => {
   try {
     // 测试数据库连接
     await knexInstance.raw('SELECT 1')
-    fastify.log.info('MySQL数据库连接成功')
+    // 只在生产环境或首次启动时记录连接成功日志
+    if (process.env.NODE_ENV === 'production') {
+      fastify.log.info('MySQL数据库连接成功')
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     fastify.log.error(`MySQL数据库连接失败: ${errorMessage}`)
@@ -46,7 +49,10 @@ export default fp(async (fastify, opts) => {
     if (instance.knex) {
       try {
         await instance.knex.destroy()
-        fastify.log.info('MySQL数据库连接已关闭')
+        // 只在生产环境记录关闭日志
+        if (process.env.NODE_ENV === 'production') {
+          fastify.log.info('MySQL数据库连接已关闭')
+        }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         fastify.log.warn(`MySQL关闭连接时出错: ${errorMessage}`)

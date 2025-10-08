@@ -28,30 +28,6 @@ export interface BaseResponse<T = any> {
    * 错误响应时此字段为可选
    */
   data?: T
-  
-  /**
-   * 时间戳
-   * 响应生成的时间戳（毫秒）
-   */
-  timestamp: number
-  
-  /**
-   * 请求ID
-   * 用于请求链路追踪，分布式系统调试
-   */
-  requestId?: string
-  
-  /**
-   * 响应路径
-   * 当前请求的API路径
-   */
-  path?: string
-  
-  /**
-   * 响应方法
-   * HTTP请求方法（GET, POST, PUT, DELETE等）
-   */
-  method?: string
 }
 
 /**
@@ -141,56 +117,48 @@ export interface ErrorResponse extends BaseResponse<null> {
 }
 
 /**
- * 分页响应数据
- * 用于分页查询的标准数据结构
+ * 分页数据结构
+ * 用于分页响应的数据部分
  */
 export interface PaginatedData<T = any> {
   /**
    * 数据列表
-   * 当前页的数据集合
    */
   list: T[]
   
   /**
-   * 总记录数
-   * 符合查询条件的总记录数
+   * 分页信息
    */
-  total: number
-  
-  /**
-   * 当前页码
-   * 从1开始的页码
-   */
-  page: number
-  
-  /**
-   * 每页记录数
-   */
-  pageSize: number
-  
-  /**
-   * 总页数
-   * 基于总记录数和每页记录数计算得出
-   */
-  totalPages: number
-  
-  /**
-   * 是否有下一页
-   */
-  hasNext: boolean
-  
-  /**
-   * 是否有上一页
-   */
-  hasPrev: boolean
+  pagination: {
+    /**
+     * 当前页码
+     */
+    page: number
+    
+    /**
+     * 每页条数
+     */
+    pageSize: number
+    
+    /**
+     * 总记录数
+     */
+    total: number
+    
+    /**
+     * 总页数
+     */
+    totalPages: number
+  }
 }
 
 /**
  * 分页响应体
- * 分页查询的标准响应格式
+ * 用于分页查询响应
  */
-export interface PaginatedResponse<T = any> extends BaseResponse<PaginatedData<T>> {
+export interface PaginatedResponse<T = any> extends BaseResponse {
   code: number
+  message: string
   data: PaginatedData<T>
 }
 

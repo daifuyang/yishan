@@ -5,14 +5,12 @@
 
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { randomUUID } from 'node:crypto'
-import { DateTimeUtil } from './datetime.js'
 import {
   BaseResponse,
   SuccessResponse,
   ErrorResponse,
   PaginatedResponse,
   ListResponse,
-  PaginatedData,
   BusinessCode,
   ResponseMessage
 } from '../types/response.js'
@@ -37,11 +35,7 @@ export class ResponseUtil {
   ): BaseResponse {
     return {
       code,
-      message,
-      timestamp: DateTimeUtil.timestamp(),
-      requestId: request.id || randomUUID(),
-      path: request.url,
-      method: request.method
+      message
     }
   }
 
@@ -159,22 +153,21 @@ export class ResponseUtil {
     httpStatus?: number
   ): FastifyReply {
     const totalPages = Math.ceil(total / pageSize)
-    const hasNext = page < totalPages
-    const hasPrev = page > 1
 
-    const paginatedData: PaginatedData<T> = {
+    const paginatedData = {
       list: data,
-      total,
-      page,
-      pageSize,
-      totalPages,
-      hasNext,
-      hasPrev
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages
+      }
     }
 
     const statusCode = httpStatus || this.getHttpStatusFromBusinessCode(businessCode)
     const response = {
-      ...this.createBaseResponse(request, businessCode, message),
+      code: businessCode,
+      message,
       data: paginatedData
     } as PaginatedResponse<T>
 
