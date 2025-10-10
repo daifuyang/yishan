@@ -1,0 +1,49 @@
+-- 企业级角色表设计
+-- 创建时间：2025年10月10日
+-- 版本：v1.0
+-- 作者：zerocmf-team
+
+-- 设置字符集和排序规则
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- Table structure for sys_role
+-- ----------------------------
+CREATE TABLE `sys_role` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '角色ID',
+  `role_name` varchar(100) NOT NULL COMMENT '角色名称',
+  `role_desc` varchar(255) DEFAULT NULL COMMENT '角色描述',
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
+  `is_system` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否为系统角色：0-否，1-是',
+  `creator_id` bigint(20) DEFAULT NULL COMMENT '创建人ID',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updater_id` bigint(20) DEFAULT NULL COMMENT '更新人ID',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted_at` timestamp NULL DEFAULT NULL COMMENT '删除时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_name` (`role_name`),
+  KEY `idx_status` (`status`),
+  KEY `idx_is_system` (`is_system`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_deleted_at` (`deleted_at`),
+  CONSTRAINT `fk_sys_role_creator` FOREIGN KEY (`creator_id`) REFERENCES `sys_user` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_sys_role_updater` FOREIGN KEY (`updater_id`) REFERENCES `sys_user` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统角色表';
+
+-- ----------------------------
+-- 创建索引优化
+-- ----------------------------
+-- 复合索引：状态+创建时间（用于角色列表查询）
+CREATE INDEX `idx_status_created_at` ON `sys_role` (`status`, `created_at`);
+
+-- ----------------------------
+-- 插入系统默认角色
+-- ----------------------------
+INSERT INTO `sys_role` (`role_name`, `role_desc`, `is_system`, `created_at`) VALUES
+('超级管理员', '系统超级管理员，拥有所有权限', 1, NOW()),
+('管理员', '系统管理员，拥有大部分管理权限', 1, NOW()),
+('普通用户', '普通用户，拥有基础功能权限', 1, NOW());
+
+-- 恢复外键检查
+SET FOREIGN_KEY_CHECKS = 1;

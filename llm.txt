@@ -302,6 +302,52 @@ schema: {
   - 参数验证和边界检查
   - 使用 `Promise.all` 并行查询提升性能
 
+#### 8.2 角色管理数据库规范 (RBAC)
+基于简化RBAC (Role-Based Access Control) 的角色权限管理系统规范：
+
+**核心表结构**:
+1. **sys_role (角色表)**:
+   - 基础字段：id, role_name, role_desc, is_system, status
+   - 审计字段：creator_id, created_at, updater_id, updated_at, deleted_at
+   - is_system: 标识是否为系统默认角色 (0-否, 1-是)
+   - 简洁设计，只保留必要字段
+
+2. **sys_user_role (用户角色关联表)**:
+   - 用户与角色的多对多关系
+   - 基础字段：user_id, role_id, status
+   - 审计字段支持
+
+3. **sys_permission (权限表)**:
+   - 树形结构权限管理 (parent_id)
+   - 支持菜单、按钮、API权限 (permission_type: 1-菜单, 2-按钮, 3-接口)
+   - 资源URL和HTTP方法映射
+   - 基础字段：permission_name, permission_desc, resource_url, resource_method
+
+4. **sys_role_permission (角色权限关联表)**:
+   - 角色与权限的多对多关系
+   - 基础字段：role_id, permission_id, status
+   - 审计字段支持
+
+**设计原则**:
+- 0/1 布尔值规范 (0-否/禁用, 1-是/启用)
+- 软删除机制 (deleted_at)
+- 审计字段 (creator_id, created_at, updater_id, updated_at)
+- 外键约束和级联操作
+- 简化索引优化查询性能
+
+**用户友好性设计**:
+- role_name: 用户友好的角色名称
+- role_desc: 可选的角色描述
+- is_system: 系统角色保护机制，防止误删系统默认角色
+- 去除复杂的编码和分类字段
+- 专注于核心功能：角色名称 + 描述 + 权限配置
+
+**迁移文件规范**:
+- 使用 003-006 序号的迁移文件
+- 完整的 do/undo 操作对
+- 外键约束管理 (FOREIGN_KEY_CHECKS)
+- 预置系统默认数据
+
 #### 9. 环境配置
 - 使用 `@fastify/env` 管理环境变量
 - 配置文件: `.env`
@@ -330,7 +376,7 @@ pnpm run db:reset     # 重置数据库
 - `apps/yishan-api/docs/RESPONSE_STATUS_CODE_SPECIFICATION.md` - 响应状态码规范
 - `apps/yishan-api/docs/PROJECT_SPECIFICATION.md` - 项目整体规范
 
-#### 10.2 最近更新
+#### 10.2 最近更新 (2025年10月10日)
 - ✅ 更新分页查询规范，符合大厂企业级标准
 - ✅ 基于 Knex.js 的完整分页实现规范和最佳实践
 - ✅ 统一响应格式（包含完整的响应元数据）
@@ -342,6 +388,13 @@ pnpm run db:reset     # 重置数据库
 - ✅ 统一状态码规范（使用通用业务状态码20000，移除分页专用状态码）
 - ✅ 添加性能优化和缓存策略指导
 - ✅ 完善事务支持和错误处理机制
+- ✅ **新增角色管理数据库规范 (RBAC)**
+  - 企业级角色权限管理系统设计
+  - 四核心表结构：sys_role, sys_user_role, sys_permission, sys_role_permission
+  - 用户友好性设计：role_name + role_display_name + role_code
+  - 系统内置角色保护机制 (is_system)
+  - 数据权限范围控制和时间控制
+  - 完整的迁移文件规范 (003-006)
 
 ## 前端开发规范 (yishan-admin)
 
@@ -449,6 +502,15 @@ pnpm run db:reset     # 重置数据库
 - 如果钩子未生效，检查文件名是否为 `autohooks.ts`（不是 `_hooks.ts`）
 - 确认 `app.ts` 中 fastifyAutoload 配置了 `autoHooks: true` 和 `cascadeHooks: true`
 - 使用无认证请求测试路由，应返回 40001 错误码表示认证生效
+
+## 最近更新
+
+**2025年10月10日**:
+- 简化角色管理数据库设计，移除过度复杂的字段
+- 角色表只保留：角色名称、描述、状态和基础审计字段
+- 权限表简化为：菜单、按钮、接口三种类型
+- 关联表结构优化，去除复杂的时间控制和分类字段
+- 更新迁移文件 003-006，专注核心RBAC功能
 
 ---
 
