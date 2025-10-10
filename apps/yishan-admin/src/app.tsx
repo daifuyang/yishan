@@ -1,52 +1,49 @@
-import { LinkOutlined } from '@ant-design/icons';
-import type { Settings as LayoutSettings } from '@ant-design/pro-components';
-import { SettingDrawer } from '@ant-design/pro-components';
-import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
-import { history, Link } from '@umijs/max';
-import React from 'react';
+import { LinkOutlined } from "@ant-design/icons";
+import type { Settings as LayoutSettings } from "@ant-design/pro-components";
+import { SettingDrawer } from "@ant-design/pro-components";
+import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
+import { history, Link } from "@umijs/max";
 import {
   AvatarDropdown,
   AvatarName,
   Footer,
   Question,
   SelectLang,
-} from '@/components';
-import { currentUser as queryCurrentUser } from '@/services/ant-design-pro/api';
-import defaultSettings from '../config/defaultSettings';
-import { errorConfig } from './requestErrorConfig';
-import '@ant-design/v5-patch-for-react-19';
+} from "@/components";
+import { getAuthMe } from "@/services/yishan-admin/sysAuth";
+import { BusinessCodeValidator } from "@/utils/validation";
+import defaultSettings from "../config/defaultSettings";
+import { errorConfig } from "./requestErrorConfig";
+import "@ant-design/v5-patch-for-react-19";
 
-const isDev = process.env.NODE_ENV === 'development';
-const loginPath = '/user/login';
+const isDev = process.env.NODE_ENV === "development";
+const loginPath = "/user/login";
 
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
  * */
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
-  currentUser?: API.CurrentUser;
+  currentUser?: API.sysUser;
   loading?: boolean;
-  fetchUserInfo?: () => Promise<API.CurrentUser | undefined>;
+  fetchUserInfo?: () => Promise<API.sysUser | undefined>;
 }> {
   const fetchUserInfo = async () => {
-    try {
-      const msg = await queryCurrentUser({
-        skipErrorHandler: true,
-      });
-      return msg.data;
-    } catch (_error) {
-      history.push(loginPath);
+    const response = await getAuthMe();
+    if (BusinessCodeValidator.isSuccess(response.code) && response.data) {
+      return response.data;
     }
     return undefined;
   };
   // 如果不是登录页面，执行
   const { location } = history;
   if (
-    ![loginPath, '/user/register', '/user/register-result'].includes(
-      location.pathname,
+    ![loginPath, "/user/register"].includes(
+      location.pathname
     )
   ) {
     const currentUser = await fetchUserInfo();
+
     return {
       fetchUserInfo,
       currentUser,
@@ -70,41 +67,41 @@ export const layout: RunTimeLayoutConfig = ({
       <SelectLang key="SelectLang" />,
     ],
     avatarProps: {
-      src: initialState?.currentUser?.avatar,
+      src: initialState?.currentUser?.avatar || "/icons/avatar.png",
       title: <AvatarName />,
       render: (_, avatarChildren) => {
         return <AvatarDropdown>{avatarChildren}</AvatarDropdown>;
       },
     },
     waterMarkProps: {
-      content: initialState?.currentUser?.name,
+      content: initialState?.currentUser?.username,
     },
     footerRender: () => <Footer />,
     onPageChange: () => {
       const { location } = history;
       // 如果没有登录，重定向到 login
       if (!initialState?.currentUser && location.pathname !== loginPath) {
-        history.push(loginPath);
+        // history.push(loginPath);
       }
     },
     bgLayoutImgList: [
       {
-        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr',
+        src: "https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr",
         left: 85,
         bottom: 100,
-        height: '303px',
+        height: "303px",
       },
       {
-        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/C2TWRpJpiC0AAAAAAAAAAAAAFl94AQBr',
+        src: "https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/C2TWRpJpiC0AAAAAAAAAAAAAFl94AQBr",
         bottom: -68,
         right: -45,
-        height: '303px',
+        height: "303px",
       },
       {
-        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/F6vSTbj8KpYAAAAAAAAAAAAAFl94AQBr',
+        src: "https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/F6vSTbj8KpYAAAAAAAAAAAAAFl94AQBr",
         bottom: 0,
         left: 0,
-        width: '331px',
+        width: "331px",
       },
     ],
     links: isDev
@@ -150,6 +147,5 @@ export const layout: RunTimeLayoutConfig = ({
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const request: RequestConfig = {
-  baseURL: 'https://proapi.azurewebsites.net',
   ...errorConfig,
 };

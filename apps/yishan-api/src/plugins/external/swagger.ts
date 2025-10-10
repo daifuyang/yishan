@@ -80,6 +80,11 @@ export default fp(async function (fastify) {
           }
         }
       }
+    },
+    refResolver: {
+      buildLocalReference: (json: any, baseUri: any, fragment: string, i: number): string => {
+        return json.$id || `def-${i}`
+      }
     }
   })
 

@@ -180,7 +180,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         username: user.username,
-        real_name: user.real_name,
+        real_name: user.realName,
         status: user.status,
         type: 'access'
       }

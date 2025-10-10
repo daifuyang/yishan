@@ -62,6 +62,9 @@ importers:
       react-dom:
         specifier: ^19.1.0
         version: 19.1.1(react@19.1.1)
+      swagger-ui-dist:
+        specifier: ^5.29.3
+        version: 5.29.3
     devDependencies:
       '@ant-design/pro-cli':
         specifier: ^3.3.0
@@ -8148,6 +8151,11 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@scarf/scarf@1.4.0:
+    resolution: {integrity: sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ==}
+    requiresBuild: true
+    dev: false
 
   /@sideway/address@4.1.5:
     resolution: {integrity: sha512-IqO/DUQHUkPeixNQ8n0JA6102hT9CmaljNTPmQ1u8MEhBo/R4Q8eKLN/vGZxuebwOroDB4cbpjheD4+/sKFK4Q==}
@@ -28779,6 +28787,12 @@ packages:
   /swagger-ui-dist@4.19.1:
     resolution: {integrity: sha512-n/gFn+R7G/BXWwl5UZLw6F1YgWOlf3zkwGlsPhTMhNtAAolBGKg0JS5b2RKt5NI6/hSopVaSrki2wTIMUDDy2w==}
     dev: true
+
+  /swagger-ui-dist@5.29.3:
+    resolution: {integrity: sha512-U99f/2YocRA2Mxqx3eUBRhQonWVtE5dIvMs0Zlsn4a4ip8awMq0JxXhU+Sidtna2WlZrHbK2Rro3RZvYUymRbA==}
+    dependencies:
+      '@scarf/scarf': 1.4.0
+    dev: false
 
   /swagger2openapi@7.0.8:
     resolution: {integrity: sha512-upi/0ZGkYgEcLeGieoz8gT74oWHA0E7JivX7aN9mAf+Tc7BQoRBvnIGHoPDw+f9TXTW4s6kGYCZJtauP6OYp7g==}

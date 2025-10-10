@@ -1,5 +1,5 @@
 {
-  "name": "ant-design-pro",
+  "name": "yishan-admin",
   "version": "6.0.0",
   "private": true,
   "description": "An out-of-box UI solution for enterprise applications",
@@ -31,7 +31,9 @@
     "test:update": "npm run jest -- -u",
     "tsc": "tsc --noEmit"
   },
-  "browserslist": ["defaults"],
+  "browserslist": [
+    "defaults"
+  ],
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
     "@ant-design/pro-components": "^2.7.19",
@@ -41,7 +43,8 @@
     "classnames": "^2.5.1",
     "dayjs": "^1.11.13",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "swagger-ui-dist": "^5.29.3"
   },
   "devDependencies": {
     "@ant-design/pro-cli": "^3.3.0",
@@ -71,5 +74,7 @@
     "umi-presets-pro": "^2.0.3",
     "umi-serve": "^1.9.11"
   },
-  "engines": { "node": ">=20.0.0" }
+  "engines": {
+    "node": ">=20.0.0"
+  }
 }

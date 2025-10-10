@@ -10,6 +10,8 @@ import {
   UserStatus 
 } from '../domain/user.js'
 import { scryptHash, compare } from '../plugins/app/password-manager.js'
+import { convertUserToPublic, convertUsersToPublic } from '../utils/naming-converter.js'
+import { DateTimeUtil } from '../utils/datetime.js'
 
 const CACHE_PREFIX = 'users:'
 const CACHE_TTL = parseInt(process.env.CACHE_TTL || '3600')
@@ -55,8 +57,7 @@ export class UserRepository {
 
   // 将完整用户信息转换为公开信息
   private toUserPublic(user: User): UserPublic {
-    const { password_hash, salt, deleted_at, version, ...publicUser } = user
-    return publicUser as UserPublic
+    return convertUserToPublic(user) as UserPublic;
   }
 
   // 根据邮箱查找用户（包含敏感信息，用于认证）
@@ -113,7 +114,16 @@ export class UserRepository {
       .first()
     
     if (user) {
-      const publicUser = this.toUserPublic(user)
+      // 确保日期时间字段转换为ISO字符串格式
+      const processedUser = {
+        ...user,
+        last_login_time: user.last_login_time ? DateTimeUtil.formatDateTime(user.last_login_time) : null,
+        created_at: user.created_at ? DateTimeUtil.formatDateTime(user.created_at) : null,
+        updated_at: user.updated_at ? DateTimeUtil.formatDateTime(user.updated_at) : null,
+        birth_date: user.birth_date ? DateTimeUtil.formatDate(user.birth_date) : null
+      };
+      
+      const publicUser = this.toUserPublic(processedUser)
       await this.setCache(cacheKey, publicUser)
       return publicUser
     }
@@ -125,8 +135,8 @@ export class UserRepository {
     const page = Math.max(1, query.page || 1)
     const pageSize = Math.max(1, Math.min(100, query.pageSize || 10))
     const offset = (page - 1) * pageSize
-    const sortBy = query.sort_by || 'created_at'
-    const sortOrder = query.sort_order || 'desc'
+    const sortBy = query.sortBy || 'created_at'
+    const sortOrder = query.sortOrder || 'desc'
 
     const cacheKey = `${CACHE_PREFIX}list:${JSON.stringify(query)}`
     const cached = await this.getCache<{ users: UserPublic[]; total: number; page: number; pageSize: number }>(cacheKey)
@@ -140,19 +150,19 @@ export class UserRepository {
     if (query.id) baseQuery = baseQuery.where('id', query.id)
     if (query.status !== undefined) baseQuery = baseQuery.where('status', query.status)
     if (query.gender !== undefined) baseQuery = baseQuery.where('gender', query.gender)
-    if (query.creator_id) baseQuery = baseQuery.where('creator_id', query.creator_id)
+    if (query.creatorId) baseQuery = baseQuery.where('creator_id', query.creatorId)
 
     // 应用统一搜索条件（模糊搜索用户名、邮箱、真实姓名、手机号）
     if (query.search) {
       baseQuery = baseQuery.where(function() {
         this.where('username', 'like', `%${query.search}%`)
-          .orWhere('email', 'like', `%${query.search}%`)
-          .orWhere('real_name', 'like', `%${query.search}%`)
-          .orWhere('phone', 'like', `%${query.search}%`)
+          .orWhere('email', 'like', `%${query.email}%`)
+          .orWhere('real_name', 'like', `%${query.realName}%`)
+          .orWhere('phone', 'like', `%${query.phone}%`)
       })
     }
     if (query.email) baseQuery = baseQuery.where('email', 'like', `%${query.email}%`)
-    if (query.real_name) baseQuery = baseQuery.where('real_name', 'like', `%${query.real_name}%`)
+    if (query.realName) baseQuery = baseQuery.where('real_name', 'like', `%${query.realName}%`)
     if (query.phone) baseQuery = baseQuery.where('phone', 'like', `%${query.phone}%`)
 
     // 获取总数 - 使用独立的count查询
@@ -171,7 +181,21 @@ export class UserRepository {
       .limit(pageSize)
       .offset(offset)
 
-    const result = { users, total, page, pageSize }
+    // 处理日期时间字段格式
+    const processedUsers = users.map(user => ({
+      ...user,
+      last_login_time: user.last_login_time ? DateTimeUtil.formatDateTime(user.last_login_time) : null,
+      created_at: user.created_at ? DateTimeUtil.formatDateTime(user.created_at) : null,
+      updated_at: user.updated_at ? DateTimeUtil.formatDateTime(user.updated_at) : null,
+      birth_date: user.birth_date ? DateTimeUtil.formatDate(user.birth_date) : null
+    }));
+
+    const result = { 
+      users: convertUsersToPublic(processedUsers), 
+      total, 
+      page, 
+      pageSize 
+    }
     await this.setCache(cacheKey, result, 300) // 列表缓存时间较短
     return result
   }
@@ -189,13 +213,13 @@ export class UserRepository {
       phone: data.phone || null,
       password_hash: passwordHash,
       salt: salt,
-      real_name: data.real_name,
+      real_name: data.realName,
       avatar: data.avatar || null,
       gender: data.gender || 0,
-      birth_date: data.birth_date || null,
+      birth_date: data.birthDate || null,
       status: data.status || UserStatus.ENABLED,
       login_count: 0,
-      creator_id: data.creator_id || null,
+      creator_id: data.creatorId || null,
       version: 1
     }
 
@@ -203,7 +227,17 @@ export class UserRepository {
     await this.invalidateCache(`${CACHE_PREFIX}*`)
     
     const newUser = await this.knex(TABLE_NAME).where({ id: userId }).first()
-    return this.toUserPublic(newUser)
+    
+    // 处理日期时间字段格式
+    const processedUser = {
+      ...newUser,
+      last_login_time: newUser.last_login_time ? DateTimeUtil.formatDateTime(newUser.last_login_time) : null,
+      created_at: newUser.created_at ? DateTimeUtil.formatDateTime(newUser.created_at) : null,
+      updated_at: newUser.updated_at ? DateTimeUtil.formatDateTime(newUser.updated_at) : null,
+      birth_date: newUser.birth_date ? DateTimeUtil.formatDate(newUser.birth_date) : null
+    };
+    
+    return this.toUserPublic(processedUser)
   }
 
   // 更新用户
@@ -216,12 +250,12 @@ export class UserRepository {
     if (data.username !== undefined) updateData.username = data.username
     if (data.email !== undefined) updateData.email = data.email
     if (data.phone !== undefined) updateData.phone = data.phone
-    if (data.real_name !== undefined) updateData.real_name = data.real_name
+    if (data.realName !== undefined) updateData.real_name = data.realName
     if (data.avatar !== undefined) updateData.avatar = data.avatar
     if (data.gender !== undefined) updateData.gender = data.gender
-    if (data.birth_date !== undefined) updateData.birth_date = data.birth_date
+    if (data.birthDate !== undefined) updateData.birth_date = data.birthDate
     if (data.status !== undefined) updateData.status = data.status
-    if (data.updater_id !== undefined) updateData.updater_id = data.updater_id
+    if (data.updaterId !== undefined) updateData.updater_id = data.updaterId
 
     // 如果需要更新密码
     if (data.password) {
@@ -245,7 +279,17 @@ export class UserRepository {
 
     await this.invalidateCache(`${CACHE_PREFIX}*`)
     const updatedUser = await this.knex(TABLE_NAME).where({ id }).first()
-    return this.toUserPublic(updatedUser)
+    
+    // 处理日期时间字段格式
+    const processedUser = {
+      ...updatedUser,
+      last_login_time: updatedUser.last_login_time ? DateTimeUtil.formatDateTime(updatedUser.last_login_time) : null,
+      created_at: updatedUser.created_at ? DateTimeUtil.formatDateTime(updatedUser.created_at) : null,
+      updated_at: updatedUser.updated_at ? DateTimeUtil.formatDateTime(updatedUser.updated_at) : null,
+      birth_date: updatedUser.birth_date ? DateTimeUtil.formatDate(updatedUser.birth_date) : null
+    };
+    
+    return this.toUserPublic(processedUser)
   }
 
   // 更新登录信息
