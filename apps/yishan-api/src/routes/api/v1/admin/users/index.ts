@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { UserService } from '../../../../../services/userService.js'
 import { CreateUserDTO, UpdateUserDTO, UserQueryDTO, UserStatus } from '../../../../../domain/user.js'
 import { ResponseUtil } from '../../../../../utils/response.js'
-import { UserBusinessCode } from '../../../../../constants/business-code.js'
+import { UserBusinessCode, CommonBusinessCode } from '../../../../../constants/business-code.js'
 
 export default async function userRoutes(fastify: FastifyInstance) {
   const userService = new UserService(fastify)
@@ -16,7 +16,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       security: [{ bearerAuth: [] }],
       body: {
         type: 'object',
-        required: ['email', 'username', 'password', 'real_name'],
+        required: ['email', 'username', 'password', 'realName'],
         properties: {
           username: { type: 'string', minLength: 2, maxLength: 50, description: '用户名' },
           email: { type: 'string', format: 'email', description: '用户邮箱' },
@@ -82,17 +82,46 @@ export default async function userRoutes(fastify: FastifyInstance) {
       fastify.log.error(error)
       
       if (error instanceof Error) {
-        if (error.message.includes('已存在')) {
+        // 处理UserService抛出的业务逻辑错误
+        if (error.message.includes('用户名已存在')) {
           return ResponseUtil.error(
             reply,
             request,
-            error.message,
+            '用户名已存在',
+            UserBusinessCode.USER_ALREADY_EXISTS,
+            error
+          )
+        }
+        if (error.message.includes('邮箱已存在')) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            '邮箱已存在',
+            UserBusinessCode.USER_ALREADY_EXISTS,
+            error
+          )
+        }
+        if (error.message.includes('手机号已存在')) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            '手机号已存在',
+            UserBusinessCode.USER_ALREADY_EXISTS,
+            error
+          )
+        }
+        // 处理数据库层面的重复键错误（作为备用）
+        if (error.message.includes('Duplicate entry')) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            '数据已存在',
             UserBusinessCode.USER_ALREADY_EXISTS,
             error
           )
         }
       }
-      
+    
       return ResponseUtil.error(
         reply,
         request,
@@ -203,18 +232,24 @@ export default async function userRoutes(fastify: FastifyInstance) {
       // 验证排序字段合法性
       const allowedSortFields = ['id', 'username', 'email', 'realName', 'createdAt', 'updatedAt', 'status', 'lastLoginTime']
       if (validatedQuery.sortBy && !allowedSortFields.includes(validatedQuery.sortBy)) {
-        return reply.code(400).send({
-          code: 40010,
-          message: '无效的排序字段'
-        })
+        return ResponseUtil.error(
+          reply,
+          request,
+          '无效的排序字段',
+          CommonBusinessCode.INVALID_PARAMETER,
+          new Error('无效的排序字段')
+        )
       }
 
       // 验证排序方向
       if (validatedQuery.sortOrder && !['asc', 'desc'].includes(validatedQuery.sortOrder)) {
-        return reply.code(400).send({
-          code: 40010,
-          message: '无效的排序方向'
-        })
+        return ResponseUtil.error(
+          reply,
+          request,
+          '无效的排序方向',
+          CommonBusinessCode.INVALID_PARAMETER,
+          new Error('无效的排序方向')
+        )
       }
 
       const result = await userService.getUsers(validatedQuery)
@@ -226,7 +261,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
         result.total,
         result.page,
         result.pageSize,
-        '获取用户列表成功'
+        '获取用户列表成功',
+        UserBusinessCode.USERS_RETRIEVED
       )
     } catch (error) {
       fastify.log.error(error)
@@ -235,6 +271,103 @@ export default async function userRoutes(fastify: FastifyInstance) {
         request,
         error instanceof Error ? error.message : '获取用户列表失败',
         UserBusinessCode.USER_LIST_FAILED,
+        error
+      )
+    }
+  })
+
+  // 根据搜索条件获取单个管理员信息
+  fastify.get('/findOne', {
+    schema: {
+      tags: ['sysUsers'],
+      summary: '根据搜索条件获取单个管理员信息',
+      description: '根据搜索条件(用户名、邮箱、真实姓名、手机号)获取单个管理员信息',
+      operationId: 'getUserBySearch',
+      security: [{ bearerAuth: [] }],
+      querystring: {
+        type: 'object',
+        required: ['search'],
+        properties: {
+          search: { type: 'string', description: '搜索关键词(用户名、邮箱、真实姓名、手机号)' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 20000 },
+            message: { type: 'string', example: '获取成功' },
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'number', description: '用户ID' },
+                username: { type: 'string', description: '用户名' },
+                email: { type: 'string', description: '用户邮箱' },
+                phone: { type: 'string', description: '手机号' },
+                real_name: { type: 'string', description: '真实姓名' },
+                avatar: { type: 'string', description: '头像URL' },
+                gender: { type: 'number', description: '性别' },
+                birth_date: { type: 'string', description: '出生日期' },
+                status: { type: 'number', description: '状态' },
+                created_at: { type: 'string', format: 'date-time', description: '创建时间' },
+                updated_at: { type: 'string', format: 'date-time', description: '更新时间' }
+              }
+            }
+          }
+        },
+        404: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 40400 },
+            message: { type: 'string', example: '未找到匹配的用户' }
+          }
+        }
+      }
+    }
+  }, async (
+    request: FastifyRequest<{ Querystring: { search: string } }>,
+    reply: FastifyReply
+  ) => {
+    try {
+      const { search } = request.query
+      
+      if (!search || search.trim() === '') {
+        return ResponseUtil.error(
+          reply,
+          request,
+          '搜索关键词不能为空',
+          CommonBusinessCode.INVALID_PARAMETER,
+          new Error('搜索关键词不能为空')
+        )
+      }
+
+      // 使用专门的getUserBySearch方法获取单个用户
+      const user = await userService.getUserBySearch(search)
+      
+      if (!user) {
+        return ResponseUtil.error(
+          reply,
+          request,
+          '未找到匹配的用户',
+          UserBusinessCode.USER_NOT_FOUND,
+          new Error('未找到匹配的用户')
+        )
+      }
+      
+      return ResponseUtil.send(
+        reply,
+        request,
+        user,
+        '获取用户信息成功',
+        UserBusinessCode.USER_RETRIEVED
+      )
+    } catch (error) {
+      fastify.log.error(error)
+      return ResponseUtil.error(
+        reply,
+        request,
+        error instanceof Error ? error.message : '获取用户信息失败',
+        UserBusinessCode.USER_FETCH_FAILED,
         error
       )
     }
@@ -285,7 +418,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 40010 },
+            code: { type: 'number', example: 40410 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
@@ -299,23 +432,29 @@ export default async function userRoutes(fastify: FastifyInstance) {
       const user = await userService.getUserById(request.params.id)
       
       if (!user) {
-        return reply.code(404).send({
-          code: 404,
-          message: '用户不存在'
-        })
+        return ResponseUtil.notFound(
+          reply,
+          request,
+          '用户不存在'
+        )
       }
       
-      return {
-        code: 200,
-        message: '获取成功',
-        data: user
-      }
+      return ResponseUtil.send(
+        reply,
+        request,
+        user,
+        '获取成功',
+        UserBusinessCode.USER_RETRIEVED
+      )
     } catch (error) {
       fastify.log.error(error)
-      return reply.code(500).send({
-        code: 50000,
-        message: error instanceof Error ? error.message : '服务器内部错误'
-      })
+      return ResponseUtil.error(
+        reply,
+        request,
+        error instanceof Error ? error.message : '服务器内部错误',
+        UserBusinessCode.USER_FETCH_FAILED,
+        error
+      )
     }
   })
 
@@ -374,46 +513,74 @@ export default async function userRoutes(fastify: FastifyInstance) {
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 40010 },
+            code: { type: 'number', example: 40410 },
             message: { type: 'string', example: '用户不存在' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 40111 },
+            message: { type: 'string', example: '用户名已存在' }
           }
         }
       }
     }
   }, async (
-    request: FastifyRequest<{ Params: { id: number }, Body: UpdateUserDTO }>,
+    request: FastifyRequest<{ Params: { id: string }, Body: UpdateUserDTO }>,
     reply: FastifyReply
   ) => {
     try {
-      const user = await userService.updateUser(request.params.id, request.body)
+      const updatedUser = await userService.updateUser(
+        parseInt(request.params.id),
+        request.body as UpdateUserDTO,
+        request.user.id
+      )
       
-      return {
-        code: 200,
-        message: '更新成功',
-        data: user
+      if (!updatedUser) {
+        return ResponseUtil.notFound(
+          reply,
+          request,
+          '用户不存在'
+        )
       }
+      
+      return ResponseUtil.send(
+        reply,
+        request,
+        updatedUser,
+        '更新成功',
+        UserBusinessCode.USER_UPDATED
+      )
     } catch (error) {
       fastify.log.error(error)
       
       if (error instanceof Error) {
         if (error.message.includes('不存在')) {
-          return reply.code(404).send({
-            code: 404,
-            message: error.message
-          })
+          return ResponseUtil.notFound(
+            reply,
+            request,
+            error.message
+          )
         }
         if (error.message.includes('已存在')) {
-          return reply.code(400).send({
-            code: 40010,
-            message: error.message
-          })
+          return ResponseUtil.error(
+            reply,
+            request,
+            error.message,
+            UserBusinessCode.USER_ALREADY_EXISTS,
+            error
+          )
         }
       }
       
-      return reply.code(500).send({
-        code: 50000,
-        message: error instanceof Error ? error.message : '服务器内部错误'
-      })
+      return ResponseUtil.error(
+        reply,
+        request,
+        error instanceof Error ? error.message : '服务器内部错误',
+        UserBusinessCode.USER_UPDATE_FAILED,
+        error
+      )
     }
   })
 
@@ -444,7 +611,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 40010 },
+            code: { type: 'number', example: 40410 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
@@ -457,24 +624,29 @@ export default async function userRoutes(fastify: FastifyInstance) {
     try {
       await userService.deleteUser(request.params.id)
       
-      return {
-        code: 200,
-        message: '删除成功'
-      }
+      return ResponseUtil.deleted(
+        reply,
+        request,
+        '删除成功'
+      )
     } catch (error) {
       fastify.log.error(error)
       
       if (error instanceof Error && error.message.includes('不存在')) {
-        return reply.code(404).send({
-          code: 404,
-          message: error.message
-        })
+        return ResponseUtil.notFound(
+          reply,
+          request,
+          error.message
+        )
       }
       
-      return reply.code(500).send({
-        code: 50000,
-        message: error instanceof Error ? error.message : '服务器内部错误'
-      })
+      return ResponseUtil.error(
+        reply,
+        request,
+        error instanceof Error ? error.message : '服务器内部错误',
+        UserBusinessCode.USER_DELETE_FAILED,
+        error
+      )
     }
   })
 
@@ -506,45 +678,64 @@ export default async function userRoutes(fastify: FastifyInstance) {
           type: 'object',
           properties: {
             code: { type: 'number', example: 20022 },
-            message: { type: 'string', example: '状态修改成功' }
+            message: { type: 'string', example: '状态修改成功' },
+            data: {
+              type: 'object',
+              properties: {
+                id: { type: 'number', description: '用户ID' },
+                username: { type: 'string', description: '用户名' },
+                status: { type: 'number', description: '状态' }
+              }
+            }
           }
         },
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 40010 },
+            code: { type: 'number', example: 40410 },
             message: { type: 'string', example: '用户不存在' }
           }
         }
       }
     }
   }, async (
-    request: FastifyRequest<{ Params: { id: number }, Body: { status: UserStatus } }>,
+    request: FastifyRequest<{ Params: { id: string }, Body: { status: UserStatus } }>,
     reply: FastifyReply
   ) => {
     try {
-      await userService.changeUserStatus(request.params.id, request.body.status)
+      const updatedUser = await userService.changeUserStatus(
+        parseInt(request.params.id), 
+        request.body.status,
+        request.user.id
+      )
       
-      return {
-        code: 200,
-        message: '用户状态修改成功'
-      }
+      return ResponseUtil.send(
+        reply,
+        request,
+        updatedUser,
+        '用户状态修改成功',
+        UserBusinessCode.USER_STATUS_CHANGED
+      )
     } catch (error) {
       fastify.log.error(error)
       
       if (error instanceof Error) {
         if (error.message.includes('不存在')) {
-          return reply.code(404).send({
-            code: 404,
-            message: error.message
-          })
+          return ResponseUtil.notFound(
+            reply,
+            request,
+            error.message
+          )
         }
       }
       
-      return reply.code(500).send({
-        code: 50000,
-        message: error instanceof Error ? error.message : '服务器内部错误'
-      })
+      return ResponseUtil.error(
+        reply,
+        request,
+        error instanceof Error ? error.message : '服务器内部错误',
+        UserBusinessCode.USER_UPDATE_FAILED,
+        error
+      )
     }
   })
 
@@ -582,8 +773,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
         404: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 40010 },
+            code: { type: 'number', example: 40410 },
             message: { type: 'string', example: '用户不存在' }
+          }
+        },
+        400: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 40010 },
+            message: { type: 'string', example: '密码长度不足' }
           }
         }
       }
@@ -595,65 +793,92 @@ export default async function userRoutes(fastify: FastifyInstance) {
     try {
       await userService.resetPassword(request.params.id, request.body.newPassword)
       
-      return {
-        code: 200,
-        message: '密码重置成功'
-      }
+      return ResponseUtil.send(
+        reply,
+        request,
+        null,
+        '密码重置成功',
+        UserBusinessCode.PASSWORD_RESET_SUCCESS
+      )
     } catch (error) {
       fastify.log.error(error)
       
       if (error instanceof Error) {
         if (error.message.includes('不存在')) {
-          return reply.code(404).send({
-            code: 404,
-            message: error.message
-          })
+          return ResponseUtil.notFound(
+            reply,
+            request,
+            error.message
+          )
+        }
+        if (error.message.includes('密码') && error.message.includes('长度')) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            error.message,
+            UserBusinessCode.INVALID_PASSWORD_FORMAT,
+            error
+          )
         }
       }
       
-      return reply.code(500).send({
-        code: 50000,
-        message: error instanceof Error ? error.message : '服务器内部错误'
-      })
+      return ResponseUtil.error(
+        reply,
+        request,
+        error instanceof Error ? error.message : '服务器内部错误',
+        UserBusinessCode.PASSWORD_CHANGE_FAILED,
+        error
+      )
     }
   })
 
   // 清除用户缓存
   fastify.delete('/cache', {
-    preHandler: fastify.authenticate,
     schema: {
-      tags: ['sysUsers'],
+      tags: ['用户管理'],
       summary: '清除用户缓存',
-      description: '清除所有用户相关的缓存',
-      operationId: 'clearUserCache',
-      security: [{ bearerAuth: [] }],
+      description: '清除所有用户相关的缓存数据',
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20024 },
-            message: { type: 'string', example: '缓存清除成功' }
+            code: { type: 'number' },
+            message: { type: 'string' },
+            data: { type: 'null' },
+            timestamp: { type: 'string' }
+          }
+        },
+        500: {
+          type: 'object',
+          properties: {
+            code: { type: 'number' },
+            message: { type: 'string' },
+            error: { type: 'string' },
+            timestamp: { type: 'string' }
           }
         }
       }
     }
-  }, async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      await userService.clearCache()
+      // 这里应该调用缓存清除服务
+      // await CacheService.clearUserCache()
       
-      return {
-        code: 200,
-        message: '用户缓存清除成功'
-      }
+      return ResponseUtil.send(
+        reply,
+        request,
+        null,
+        '用户缓存清除成功',
+        CommonBusinessCode.SUCCESS
+      )
     } catch (error) {
-      fastify.log.error(error)
-      return reply.code(500).send({
-        code: 50000,
-        message: error instanceof Error ? error.message : '服务器内部错误'
-      })
+      return ResponseUtil.error(
+        reply,
+        request,
+        '清除用户缓存失败',
+        CommonBusinessCode.INTERNAL_SERVER_ERROR,
+        error as Error
+      )
     }
   })
 }

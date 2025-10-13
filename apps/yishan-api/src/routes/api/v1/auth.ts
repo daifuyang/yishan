@@ -65,7 +65,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // 获取当前用户信息（需要鉴权）
   fastify.get('/auth/me', {
-    preHandler: fastify.authenticate,
     schema: {
       tags: ['sysAuth'],
       summary: '获取当前用户信息',
@@ -144,7 +143,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         request,
         tokenData,
         'token刷新成功',
-        UserBusinessCode.USER_PROFILE_UPDATED
+        UserBusinessCode.USER_LOGIN_SUCCESS
       )
     } catch (error) {
       fastify.log.error(error)

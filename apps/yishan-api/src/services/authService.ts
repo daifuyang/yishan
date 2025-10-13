@@ -50,7 +50,7 @@ export class AuthService {
     await this.userRepository.updateLoginInfo(user.id, {
       last_login_time: now,
       last_login_ip: clientIp,
-      login_count: user.login_count + 1
+      login_count: user.loginCount + 1
     })
 
     // 生成JWT payload
@@ -58,15 +58,16 @@ export class AuthService {
       id: user.id,
       email: user.email,
       username: user.username,
-      real_name: user.real_name,
+      real_name: user.realName,
       status: user.status
     }
 
     // 生成访问令牌（较短过期时间）
-    const accessTokenExpiresIn = 15 * 60 // 15分钟
+    const accessTokenExpiresIn = 60 * 60 // 1小时 后续改成配置的
     const accessTokenPayload = {
       ...payload,
-      type: 'access'
+      type: 'access',
+      jti: `${user.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` // 添加唯一标识符
     }
     const accessToken = this.fastify.jwt.sign(accessTokenPayload, { expiresIn: accessTokenExpiresIn })
 
@@ -76,7 +77,8 @@ export class AuthService {
       id: user.id,
       email: user.email,
       username: user.username,
-      type: 'refresh'
+      type: 'refresh',
+      jti: `${user.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` // 添加唯一标识符
     }
     const refreshToken = this.fastify.jwt.sign(refreshTokenPayload, { expiresIn: refreshTokenExpiresIn })
 

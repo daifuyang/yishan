@@ -18,21 +18,21 @@ export interface User {
   username: string;
   email: string;
   phone?: string | null;
-  password_hash: string;
+  passwordHash: string;
   salt: string;
-  real_name: string;
+  realName: string;
   avatar?: string | null;
   gender: Gender;
-  birth_date?: string | null; // ISO date string format
+  birthDate?: string | null; // ISO date string format
   status: UserStatus;
-  last_login_time?: string | null; // ISO datetime string
-  last_login_ip?: string | null;
-  login_count: number;
-  creator_id?: number | null;
-  created_at: string; // ISO datetime string
-  updater_id?: number | null;
-  updated_at: string; // ISO datetime string
-  deleted_at?: string | null; // ISO datetime string
+  lastLoginTime?: string | null; // ISO datetime string
+  lastLoginIp?: string | null;
+  loginCount: number;
+  creatorId?: number | null;
+  createdAt: string; // ISO datetime string
+  updaterId?: number | null;
+  updatedAt: string; // ISO datetime string
+  deletedAt?: string | null; // ISO datetime string
   version: number;
 }
 

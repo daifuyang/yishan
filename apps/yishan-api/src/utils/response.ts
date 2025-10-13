@@ -14,6 +14,7 @@ import {
   BusinessCode,
   ResponseMessage
 } from '../types/response.js'
+import { BusinessCodeUtil } from '../constants/business-code.js'
 
 /**
  * 响应工具类
@@ -65,18 +66,7 @@ export class ResponseUtil {
    * 根据业务码获取HTTP状态码
    */
   private static getHttpStatusFromBusinessCode(businessCode: number): number {
-    const prefix = Math.floor(businessCode / 10000)
-    
-    switch (prefix) {
-      case 2: // 成功状态
-        return 200
-      case 4: // 客户端错误
-        return 400
-      case 5: // 服务器错误
-        return 500
-      default:
-        return 200
-    }
+    return BusinessCodeUtil.getHttpStatus(businessCode)
   }
 
   /**

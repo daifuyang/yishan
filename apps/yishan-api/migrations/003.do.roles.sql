@@ -16,6 +16,7 @@ CREATE TABLE `sys_role` (
   `role_desc` varchar(255) DEFAULT NULL COMMENT '角色描述',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
   `is_system` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否为系统角色：0-否，1-是',
+  `sort_order` int(11) NOT NULL DEFAULT 0 COMMENT '排序顺序，数值越小越靠前',
   `creator_id` bigint(20) DEFAULT NULL COMMENT '创建人ID',
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updater_id` bigint(20) DEFAULT NULL COMMENT '更新人ID',
@@ -25,6 +26,7 @@ CREATE TABLE `sys_role` (
   UNIQUE KEY `uk_role_name` (`role_name`),
   KEY `idx_status` (`status`),
   KEY `idx_is_system` (`is_system`),
+  KEY `idx_sort_order` (`sort_order`),
   KEY `idx_created_at` (`created_at`),
   KEY `idx_deleted_at` (`deleted_at`),
   CONSTRAINT `fk_sys_role_creator` FOREIGN KEY (`creator_id`) REFERENCES `sys_user` (`id`) ON DELETE SET NULL,
@@ -40,10 +42,10 @@ CREATE INDEX `idx_status_created_at` ON `sys_role` (`status`, `created_at`);
 -- ----------------------------
 -- 插入系统默认角色
 -- ----------------------------
-INSERT INTO `sys_role` (`role_name`, `role_desc`, `is_system`, `created_at`) VALUES
-('超级管理员', '系统超级管理员，拥有所有权限', 1, NOW()),
-('管理员', '系统管理员，拥有大部分管理权限', 1, NOW()),
-('普通用户', '普通用户，拥有基础功能权限', 1, NOW());
+INSERT INTO `sys_role` (`role_name`, `role_desc`, `is_system`, `sort_order`, `created_at`) VALUES
+('超级管理员', '系统超级管理员，拥有所有权限', 1, 1, NOW()),
+('管理员', '系统管理员，拥有大部分管理权限', 1, 2, NOW()),
+('普通用户', '普通用户，拥有基础功能权限', 1, 3, NOW());
 
 -- 恢复外键检查
 SET FOREIGN_KEY_CHECKS = 1;

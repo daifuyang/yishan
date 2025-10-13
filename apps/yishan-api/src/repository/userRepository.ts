@@ -10,7 +10,6 @@ import {
   UserStatus 
 } from '../domain/user.js'
 import { scryptHash, compare } from '../plugins/app/password-manager.js'
-import { convertUserToPublic, convertUsersToPublic } from '../utils/naming-converter.js'
 import { DateTimeUtil } from '../utils/datetime.js'
 
 const CACHE_PREFIX = 'users:'
@@ -57,7 +56,8 @@ export class UserRepository {
 
   // 将完整用户信息转换为公开信息
   private toUserPublic(user: User): UserPublic {
-    return convertUserToPublic(user) as UserPublic;
+    const { passwordHash, salt, deletedAt, version, creatorId, updaterId, ...publicUser } = user;
+    return publicUser as UserPublic;
   }
 
   // 根据邮箱查找用户（包含敏感信息，用于认证）
@@ -130,6 +130,43 @@ export class UserRepository {
     return null
   }
 
+  // 根据搜索条件查找单个用户
+  async findOneBySearch(search: string): Promise<UserPublic | null> {
+    // 构建基础查询
+    let query = this.knex(TABLE_NAME)
+      .whereNull('deleted_at')
+      .where(function() {
+        this.where('username', 'like', `%${search}%`)
+          .orWhere('email', 'like', `%${search}%`)
+          .orWhere('real_name', 'like', `%${search}%`)
+          .orWhere('phone', 'like', `%${search}%`)
+      })
+      .select([
+        'id', 'username', 'email', 'phone', 'real_name', 'avatar', 
+        'gender', 'birth_date', 'status', 'last_login_time', 'login_count',
+        'created_at', 'updated_at'
+      ])
+      .orderBy('created_at', 'desc')
+      .limit(1)
+      .first()
+
+    const user = await query
+    
+    if (user) {
+      // 处理日期时间字段格式
+      const processedUser = {
+        ...user,
+        last_login_time: user.last_login_time ? DateTimeUtil.formatDateTime(user.last_login_time) : null,
+        created_at: user.created_at ? DateTimeUtil.formatDateTime(user.created_at) : null,
+        updated_at: user.updated_at ? DateTimeUtil.formatDateTime(user.updated_at) : null,
+        birth_date: user.birth_date ? DateTimeUtil.formatDate(user.birth_date) : null
+      };
+      
+      return this.toUserPublic(processedUser)
+    }
+    return null
+  }
+
   // 查询用户列表（支持分页和筛选）
   async findAll(query: UserQueryDTO): Promise<{ users: UserPublic[]; total: number; page: number; pageSize: number }> {
     const page = Math.max(1, query.page || 1)
@@ -156,9 +193,9 @@ export class UserRepository {
     if (query.search) {
       baseQuery = baseQuery.where(function() {
         this.where('username', 'like', `%${query.search}%`)
-          .orWhere('email', 'like', `%${query.email}%`)
-          .orWhere('real_name', 'like', `%${query.realName}%`)
-          .orWhere('phone', 'like', `%${query.phone}%`)
+          .orWhere('email', 'like', `%${query.search}%`)
+          .orWhere('real_name', 'like', `%${query.search}%`)
+          .orWhere('phone', 'like', `%${query.search}%`)
       })
     }
     if (query.email) baseQuery = baseQuery.where('email', 'like', `%${query.email}%`)
@@ -191,7 +228,10 @@ export class UserRepository {
     }));
 
     const result = { 
-      users: convertUsersToPublic(processedUsers), 
+      users: processedUsers.map(user => {
+        const { passwordHash, salt, deletedAt, version, creatorId, updaterId, ...publicUser } = user;
+        return publicUser as UserPublic;
+      }), 
       total, 
       page, 
       pageSize 
@@ -314,15 +354,31 @@ export class UserRepository {
   // 验证密码
   async verifyPassword(user: User, password: string): Promise<boolean> {
     const passwordWithSalt = password + user.salt
-    return compare(passwordWithSalt, user.password_hash)
+    return compare(passwordWithSalt, user.passwordHash)
   }
 
   // 软删除用户
   async delete(id: number, deleterId?: number): Promise<boolean> {
+    // 先获取用户信息，用于后续更新唯一字段
+    const user = await this.knex(TABLE_NAME)
+      .where({ id })
+      .whereNull('deleted_at')
+      .first()
+    
+    if (!user) return false
+    
+    // 生成时间戳后缀，用于确保唯一性
+    const timestamp = Date.now()
+    
     const affectedRows = await this.knex(TABLE_NAME)
       .where({ id })
       .whereNull('deleted_at')
       .update({
+        // 更新唯一字段，添加时间戳后缀
+        username: `${user.username}_${timestamp}`,
+        email: `${user.email}_${timestamp}`,
+        phone: user.phone ? `${user.phone}_${timestamp}` : null,
+        // 软删除标记
         deleted_at: this.knex.fn.now(),
         updater_id: deleterId || null,
         updated_at: this.knex.fn.now()

@@ -39,7 +39,17 @@ export async function scryptHash (value: string): Promise<string> {
 }
 
 export async function compare (value: string, hash: string): Promise<boolean> {
-  const [salt, hashed] = hash.split('.')
+  // 检查 hash 是否为 null 或 undefined
+  if (!hash || typeof hash !== 'string') {
+    return false
+  }
+  
+  const parts = hash.split('.')
+  if (parts.length !== 2) {
+    return false
+  }
+  
+  const [salt, hashed] = parts
   const saltBuffer = Buffer.from(salt, 'hex')
   const hashedBuffer = Buffer.from(hashed, 'hex')
 

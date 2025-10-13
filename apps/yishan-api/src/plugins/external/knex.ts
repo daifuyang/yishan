@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import knex from 'knex'
+import { Model, knexSnakeCaseMappers } from 'objection'
 
 export default fp(async (fastify, opts) => {
   const knexInstance = knex({
@@ -26,12 +27,18 @@ export default fp(async (fastify, opts) => {
       directory: './migrations'
     },
     acquireConnectionTimeout: 10000,
+    // 添加自动的 snake_case <-> camelCase 转换
+    ...knexSnakeCaseMappers(),
     ...opts
   })
 
   try {
     // 测试数据库连接
     await knexInstance.raw('SELECT 1')
+    
+    // 配置 Objection.js 使用 knex 实例
+    Model.knex(knexInstance)
+    
     // 只在生产环境或首次启动时记录连接成功日志
     if (process.env.NODE_ENV === 'production') {
       fastify.log.info('MySQL数据库连接成功')
@@ -44,6 +51,7 @@ export default fp(async (fastify, opts) => {
   }
 
   fastify.decorate('knex', knexInstance)
+  fastify.decorate('Model', Model)
 
   fastify.addHook('onClose', async (instance) => {
     if (instance.knex) {
@@ -69,5 +77,6 @@ export const autoConfig = {
 declare module 'fastify' {
   interface FastifyInstance {
     knex: knex.Knex
+    Model: typeof Model
   }
 }

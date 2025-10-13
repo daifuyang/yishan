@@ -56,6 +56,17 @@ export class UserService {
       throw new Error('用户不存在')
     }
 
+    // 防止修改admin用户的关键信息
+    if (existingUser.username === 'admin') {
+      // admin用户不允许修改用户名、邮箱、状态
+      if (data.username && data.username !== existingUser.username) {
+        throw new Error('不允许修改管理员账户的用户名')
+      }
+      if (data.status !== undefined && data.status !== existingUser.status) {
+        throw new Error('不允许修改管理员账户的状态')
+      }
+    }
+
     // 如果更新用户名，检查是否与其他用户冲突
     if (data.username && data.username !== existingUser.username) {
       const userWithSameUsername = await this.userRepository.findByUsername(data.username)
@@ -96,10 +107,26 @@ export class UserService {
       throw new Error('用户不存在')
     }
 
+    // 防止删除admin用户
+    if (existingUser.username === 'admin') {
+      throw new Error('不允许删除管理员账户')
+    }
+
     return this.userRepository.delete(id, deleterId)
   }
 
   async changeUserStatus(id: number, status: UserStatus, updaterId?: number): Promise<UserPublic | null> {
+    // 检查用户是否存在
+    const existingUser = await this.userRepository.findById(id)
+    if (!existingUser) {
+      throw new Error('用户不存在')
+    }
+
+    // 防止修改admin用户状态
+    if (existingUser.username === 'admin') {
+      throw new Error('不允许修改管理员账户的状态')
+    }
+
     return this.updateUser(id, { status }, updaterId)
   }
 
@@ -108,6 +135,11 @@ export class UserService {
     const existingUser = await this.userRepository.findById(id)
     if (!existingUser) {
       throw new Error('用户不存在')
+    }
+
+    // 防止重置admin用户密码
+    if (existingUser.username === 'admin') {
+      throw new Error('不允许重置管理员账户的密码')
     }
 
     const updateData: UpdateUserDTO = {
@@ -174,5 +206,15 @@ export class UserService {
     const user = await this.userRepository.findByPhone(phone)
     if (!user) return null
     return this.userRepository.findById(user.id)
+  }
+
+  /**
+   * 根据搜索关键词查找单个用户
+   * @param search - 搜索关键词(用户名、邮箱、真实姓名、手机号)
+   * @returns 用户或null
+   */
+  async getUserBySearch(search: string): Promise<UserPublic | null> {
+    // 直接使用仓库层的findOneBySearch方法，只查询一条记录
+    return this.userRepository.findOneBySearch(search)
   }
 }
