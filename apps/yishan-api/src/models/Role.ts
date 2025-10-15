@@ -113,7 +113,7 @@ export class Role extends Model {
   // 软删除
   async softDelete(deleterId?: number): Promise<void> {
     await this.$query().patch({
-      deletedAt: new Date().toISOString(),
+      deletedAt: DateTimeUtil.now(),  // 使用DateTimeUtil工具类生成MySQL兼容格式
       updaterId: deleterId || null
     })
   }

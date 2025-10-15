@@ -13,53 +13,22 @@ export default async function roleRoutes(fastify: FastifyInstance) {
       tags: ['sysRoles'],
       summary: '创建新角色',
       description: '创建一个新的系统角色',
+      operationId: 'postAdminRoles',
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        required: ['name'],
-        properties: {
-          name: { type: 'string', minLength: 2, maxLength: 50, description: '角色名称' },
-          description: { type: 'string', maxLength: 200, description: '角色描述' },
-          type: { type: 'string', enum: ['system', 'custom'], description: '角色类型：system-系统角色，custom-自定义角色' },
-          status: { type: 'number', enum: [0, 1], description: '状态：0-禁用，1-启用' },
-          sortOrder: { type: 'number', minimum: 0, description: '排序顺序' }
-        }
-      },
+      body: { $ref: 'sysRoleCreateRequest#' },
       response: {
         201: {
           type: 'object',
           properties: {
             code: { type: 'number', example: 20001 },
             message: { type: 'string', example: '角色创建成功' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number', description: '角色ID' },
-                roleName: { type: 'string', description: '角色名称' },
-                roleDesc: { type: 'string', description: '角色描述' },
-                status: { type: 'number', description: '状态' },
-                isSystem: { type: 'number', description: '是否系统角色' },
-                sortOrder: { type: 'number', description: '排序顺序' },
-                createdAt: { type: 'string', format: 'date-time', description: '创建时间' },
-                updatedAt: { type: 'string', format: 'date-time', description: '更新时间' }
-              }
-            }
+            isSuccess: { type: 'boolean', example: true },
+            data: { $ref: 'sysRole#' }
           }
         },
-        400: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 40000 },
-            message: { type: 'string', example: '参数错误' }
-          }
-        },
-        409: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 40005 },
-            message: { type: 'string', example: '角色名称或编码已存在' }
-          }
-        }
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' },
+        409: { $ref: 'errorResponse#' }
       }
     }
   }, async (
@@ -110,57 +79,19 @@ export default async function roleRoutes(fastify: FastifyInstance) {
       description: '获取系统角色列表，支持分页、搜索和排序',
       operationId: 'getRoleList',
       security: [{ bearerAuth: [] }],
-      querystring: {
-        type: 'object',
-        properties: {
-          page: { type: 'number', minimum: 1, default: 1, description: '页码' },
-          pageSize: { type: 'number', minimum: 1, default: 10, description: '每页数量' },
-          search: { type: 'string', description: '搜索关键词（支持角色名称、描述模糊搜索）' },
-          name: { type: 'string', description: '角色名称筛选' },
-          type: { type: 'string', enum: ['system', 'custom'], description: '角色类型筛选' },
-          status: { type: 'number', enum: [0, 1], description: '状态筛选：0-禁用，1-启用' },
-          sortBy: { type: 'string', enum: ['id', 'name', 'sort_order', 'created_at', 'updated_at'], default: 'sort_order', description: '排序字段' },
-          sortOrder: { type: 'string', enum: ['asc', 'desc'], default: 'asc', description: '排序方向' }
-        }
-      },
+      querystring: { $ref: 'sysRoleQueryRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
             code: { type: 'number', example: 20000 },
             message: { type: 'string', example: '操作成功' },
-            data: {
-              type: 'object',
-              properties: {
-                list: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'number', description: '角色ID' },
-                      roleName: { type: 'string', description: '角色名称' },
-                      roleDesc: { type: 'string', description: '角色描述' },
-                      status: { type: 'number', description: '状态' },
-                      isSystem: { type: 'number', description: '是否系统角色' },
-                      sortOrder: { type: 'number', description: '排序顺序' },
-                      createdAt: { type: 'string', format: 'date-time', description: '创建时间' },
-                      updatedAt: { type: 'string', format: 'date-time', description: '更新时间' }
-                    }
-                  }
-                },
-                pagination: {
-                  type: 'object',
-                  properties: {
-                    page: { type: 'number', description: '当前页码' },
-                    pageSize: { type: 'number', description: '每页条数' },
-                    total: { type: 'number', description: '总记录数' },
-                    totalPages: { type: 'number', description: '总页数' }
-                  }
-                }
-              }
-            }
+            isSuccess: { type: 'boolean', example: true },
+            data: { $ref: 'sysRoleListResponse#' }
           }
-        }
+        },
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' }
       }
     }
   }, async (
@@ -213,41 +144,20 @@ export default async function roleRoutes(fastify: FastifyInstance) {
       description: '根据ID获取角色的详细信息',
       operationId: 'getRoleDetail',
       security: [{ bearerAuth: [] }],
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'number', description: '角色ID' }
-        }
-      },
+      params: { $ref: 'idParam#' },
       response: {
         200: {
           type: 'object',
           properties: {
             code: { type: 'number', example: 20000 },
             message: { type: 'string', example: '获取成功' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number', description: '角色ID' },
-                roleName: { type: 'string', description: '角色名称' },
-                roleDesc: { type: 'string', description: '角色描述' },
-                status: { type: 'number', description: '状态' },
-                isSystemRole: { type: 'number', description: '是否系统角色' },
-                sortOrder: { type: 'number', description: '排序顺序' },
-                createdAt: { type: 'string', format: 'date-time', description: '创建时间' },
-                updatedAt: { type: 'string', format: 'date-time', description: '更新时间' }
-              }
-            }
+            isSuccess: { type: 'boolean', example: true },
+            data: { $ref: 'sysRole#' }
           }
         },
-        404: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 40003 },
-            message: { type: 'string', example: '角色不存在' }
-          }
-        }
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'errorResponse#' }
       }
     }
   }, async (
@@ -570,23 +480,20 @@ export default async function roleRoutes(fastify: FastifyInstance) {
       description: '为指定用户分配一个或多个角色',
       operationId: 'assignRolesToUser',
       security: [{ bearerAuth: [] }],
-      body: {
-        type: 'object',
-        required: ['userId', 'roleIds'],
-        properties: {
-          userId: { type: 'number', description: '用户ID' },
-          roleIds: { type: 'array', items: { type: 'number' }, description: '角色ID列表' },
-          expiresAt: { type: 'string', format: 'date-time', description: '过期时间（可选）' }
-        }
-      },
+      body: { $ref: 'sysRoleAssignRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
             code: { type: 'number', example: 20000 },
-            message: { type: 'string', example: '角色分配成功' }
+            message: { type: 'string', example: '角色分配成功' },
+            isSuccess: { type: 'boolean', example: true },
+            data: { type: 'boolean', example: true }
           }
-        }
+        },
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'errorResponse#' }
       }
     }
   }, async (

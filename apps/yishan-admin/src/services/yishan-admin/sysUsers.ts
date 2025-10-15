@@ -11,30 +11,8 @@ export async function getUserList(
   return request<{
     code?: number;
     message?: string;
-    data?: {
-      list?: {
-        id?: number;
-        username?: string;
-        email?: string;
-        phone?: string;
-        real_name?: string;
-        avatar?: string;
-        gender?: number;
-        birth_date?: string;
-        status?: number;
-        last_login_time?: string;
-        last_login_ip?: string;
-        login_count?: number;
-        created_at?: string;
-        updated_at?: string;
-      }[];
-      pagination?: {
-        page?: number;
-        pageSize?: number;
-        total?: number;
-        totalPages?: number;
-      };
-    };
+    isSuccess?: boolean;
+    data?: API.sysUserListResponse;
   }>("/api/v1/admin/users/", {
     method: "GET",
     params: {
@@ -43,10 +21,10 @@ export async function getUserList(
       // pageSize has a default value: 10
       pageSize: "10",
 
-      // sort_by has a default value: created_at
-      sort_by: "created_at",
-      // sort_order has a default value: desc
-      sort_order: "desc",
+      // sortBy has a default value: createdAt
+      sortBy: "createdAt",
+      // sortOrder has a default value: desc
+      sortOrder: "desc",
       ...params,
     },
     ...(options || {}),
@@ -55,44 +33,14 @@ export async function getUserList(
 
 /** 创建新用户 创建一个新的用户账户 POST /api/v1/admin/users/ */
 export async function postAdminUsers(
-  body: {
-    /** 用户名 */
-    username: string;
-    /** 用户邮箱 */
-    email: string;
-    /** 手机号 */
-    phone?: string;
-    /** 用户密码 */
-    password: string;
-    /** 真实姓名 */
-    realName: string;
-    /** 头像URL */
-    avatar?: string;
-    /** 性别：0-未知，1-男，2-女 */
-    gender?: 0 | 1 | 2;
-    /** 出生日期 */
-    birthDate?: string;
-    /** 状态：0-禁用，1-启用，2-锁定 */
-    status?: 0 | 1 | 2;
-  },
+  body: API.sysUserCreateRequest,
   options?: { [key: string]: any }
 ) {
   return request<{
     code?: number;
     message?: string;
-    data?: {
-      id?: number;
-      username?: string;
-      email?: string;
-      phone?: string;
-      real_name?: string;
-      avatar?: string;
-      gender?: number;
-      birth_date?: string;
-      status?: number;
-      created_at?: string;
-      updated_at?: string;
-    };
+    isSuccess?: boolean;
+    data?: API.sysUser;
   }>("/api/v1/admin/users/", {
     method: "POST",
     headers: {
@@ -113,22 +61,8 @@ export async function getUserDetail(
   return request<{
     code?: number;
     message?: string;
-    data?: {
-      id?: number;
-      username?: string;
-      email?: string;
-      phone?: string;
-      realName?: string;
-      avatar?: string;
-      gender?: number;
-      birthDate?: string;
-      status?: number;
-      last_login_time?: string;
-      last_login_ip?: string;
-      login_count?: number;
-      created_at?: string;
-      updated_at?: string;
-    };
+    isSuccess?: boolean;
+    data?: API.sysUser;
   }>(`/api/v1/admin/users/${param0}`, {
     method: "GET",
     params: { ...queryParams },
@@ -140,42 +74,15 @@ export async function getUserDetail(
 export async function updateUser(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.updateUserParams,
-  body: {
-    /** 用户名 */
-    username?: string;
-    /** 用户邮箱 */
-    email?: string;
-    /** 手机号 */
-    phone?: string;
-    /** 真实姓名 */
-    real_name?: string;
-    /** 头像URL */
-    avatar?: string;
-    /** 性别：0-未知，1-男，2-女 */
-    gender?: 0 | 1 | 2;
-    /** 出生日期 */
-    birth_date?: string;
-    /** 状态：0-禁用，1-启用，2-锁定 */
-    status?: 0 | 1 | 2;
-  },
+  body: API.sysUserUpdateRequest,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
   return request<{
     code?: number;
     message?: string;
-    data?: {
-      id?: number;
-      username?: string;
-      email?: string;
-      phone?: string;
-      real_name?: string;
-      avatar?: string;
-      gender?: number;
-      birth_date?: string;
-      status?: number;
-      updated_at?: string;
-    };
+    isSuccess?: boolean;
+    data?: API.sysUser;
   }>(`/api/v1/admin/users/${param0}`, {
     method: "PUT",
     headers: {
@@ -194,7 +101,7 @@ export async function deleteUser(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ code?: number; message?: string }>(
+  return request<{ code?: number; message?: string; isSuccess?: boolean }>(
     `/api/v1/admin/users/${param0}`,
     {
       method: "DELETE",
@@ -233,17 +140,15 @@ export async function resetUserPassword(
 export async function updateUserStatus(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.updateUserStatusParams,
-  body: {
-    /** 状态：0-禁用，1-启用，2-锁定 */
-    status: 0 | 1 | 2;
-  },
+  body: API.sysUserStatusRequest,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
   return request<{
     code?: number;
     message?: string;
-    data?: { id?: number; username?: string; status?: number };
+    isSuccess?: boolean;
+    data?: API.sysUserStatusResponse;
   }>(`/api/v1/admin/users/${param0}/status`, {
     method: "PATCH",
     headers: {
@@ -264,19 +169,8 @@ export async function getUserBySearch(
   return request<{
     code?: number;
     message?: string;
-    data?: {
-      id?: number;
-      username?: string;
-      email?: string;
-      phone?: string;
-      real_name?: string;
-      avatar?: string;
-      gender?: number;
-      birth_date?: string;
-      status?: number;
-      created_at?: string;
-      updated_at?: string;
-    };
+    isSuccess?: boolean;
+    data?: API.sysUser;
   }>("/api/v1/admin/users/findOne", {
     method: "GET",
     params: {

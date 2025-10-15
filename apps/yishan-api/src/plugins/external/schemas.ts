@@ -9,6 +9,24 @@ import {
   errorResponseSchema,
   unauthorizedResponseSchema
 } from '../../schemas/auth.schema.js'
+import {
+  sysUserCreateRequestSchema,
+  sysUserQueryRequestSchema,
+  sysUserListResponseSchema,
+  sysUserSearchRequestSchema,
+  sysUserIdParamSchema,
+  sysUserUpdateRequestSchema,
+  sysUserStatusRequestSchema,
+  sysUserStatusResponseSchema
+} from '../../schemas/user.schema.js'
+import {
+  sysRoleSchema,
+  sysRoleCreateRequestSchema,
+  sysRoleQueryRequestSchema,
+  sysRoleListResponseSchema,
+  idParamSchema,
+  sysRoleAssignRequestSchema
+} from '../../schemas/role.schema.js'
 
 /**
  * 全局Schema注册插件
@@ -23,6 +41,24 @@ async function schemasPlugin(fastify: FastifyInstance) {
   fastify.addSchema(baseResponseSchema)
   fastify.addSchema(errorResponseSchema)
   fastify.addSchema(unauthorizedResponseSchema)
+  
+  // 用户管理相关schema
+  fastify.addSchema(sysUserCreateRequestSchema)
+  fastify.addSchema(sysUserQueryRequestSchema)
+  fastify.addSchema(sysUserListResponseSchema)
+  fastify.addSchema(sysUserSearchRequestSchema)
+  fastify.addSchema(sysUserIdParamSchema)
+  fastify.addSchema(sysUserUpdateRequestSchema)
+  fastify.addSchema(sysUserStatusRequestSchema)
+  fastify.addSchema(sysUserStatusResponseSchema)
+  
+  // 角色管理相关schema
+  fastify.addSchema(sysRoleSchema)
+  fastify.addSchema(sysRoleCreateRequestSchema)
+  fastify.addSchema(sysRoleQueryRequestSchema)
+  fastify.addSchema(sysRoleListResponseSchema)
+  fastify.addSchema(idParamSchema)
+  fastify.addSchema(sysRoleAssignRequestSchema)
 
   fastify.log.info('✅ 所有全局schema已注册完成')
 }
