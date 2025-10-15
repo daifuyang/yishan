@@ -6,7 +6,7 @@
 import { history } from '@umijs/max';
 import { message } from 'antd';
 import { clearTokens, isLoggedIn } from './token';
-import { postAuthLogout } from '@/services/yishan-admin/sysAuth';
+import { userLogout } from '@/services/yishan-admin/sysAuth';
 
 /**
  * 用户注销
@@ -16,7 +16,7 @@ export const logout = async (redirectToLogin = true) => {
     // 调用后端注销接口
     const refreshToken = localStorage.getItem('refreshToken');
     if (refreshToken) {
-      await postAuthLogout({ refreshToken });
+      await userLogout({ refreshToken });
     }
   } catch (error) {
     console.error('注销失败:', error);

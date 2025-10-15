@@ -14,6 +14,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '用户登录',
       description: '使用用户名/邮箱和密码进行用户登录',
+      operationId: 'postAuthLogin',
       body: { $ref: 'sysUserLoginRequest#' },
       response: {
         200: {
@@ -21,6 +22,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           properties: {
             code: { type: 'number', example: 20001 },
             message: { type: 'string', example: '登录成功' },
+            isSuccess: { type: 'boolean', example: true },
             data: { $ref: 'sysUserTokenResponse#' }
           }
         },
@@ -65,6 +67,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
   // 获取当前用户信息（需要鉴权）
   fastify.get('/auth/me', {
+    preHandler: fastify.authenticate,
     schema: {
       tags: ['sysAuth'],
       summary: '获取当前用户信息',
@@ -77,6 +80,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           properties: {
             code: { type: 'number', example: 20002 },
             message: { type: 'string', example: '获取用户信息成功' },
+            isSuccess: { type: 'boolean', example: true },
             data: { $ref: 'sysUser#' }
           }
         },
@@ -116,6 +120,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       tags: ['sysAuth'],
       summary: '刷新访问令牌',
       description: '使用refreshToken获取新的accessToken和refreshToken',
+      operationId: 'postAuthRefresh',
       body: { $ref: 'sysUserRefreshTokenRequest#' },
       response: {
         200: {
@@ -123,9 +128,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
           properties: {
             code: { type: 'number', example: 20003 },
             message: { type: 'string', example: 'token刷新成功' },
+            isSuccess: { type: 'boolean', example: true },
             data: { $ref: 'sysUserTokenResponse#' }
           }
         },
+        400: { $ref: 'errorResponse#' },
         401: { $ref: 'unauthorizedResponse#' }
       }
     }
@@ -152,7 +159,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
         request,
         'token刷新失败',
         UserBusinessCode.TOKEN_GENERATION_FAILED,
-        error
+        error,
+        401
       )
     }
   })
@@ -172,9 +180,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
           properties: {
             code: { type: 'number', example: 20004 },
             message: { type: 'string', example: '退出登录成功' },
+            isSuccess: { type: 'boolean', example: true },
             data: { type: 'null' }
           }
         },
+        400: { $ref: 'errorResponse#' },
         401: { $ref: 'unauthorizedResponse#' }
       }
     }

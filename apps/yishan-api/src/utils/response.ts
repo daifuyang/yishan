@@ -36,8 +36,17 @@ export class ResponseUtil {
   ): BaseResponse {
     return {
       code,
-      message
+      message,
+      isSuccess: this.isSuccessCode(code)
     }
+  }
+
+  /**
+   * 判断业务码是否为成功码
+   * 成功码范围：20000-29999
+   */
+  private static isSuccessCode(code: number): boolean {
+    return code >= 20000 && code < 30000
   }
 
   /**
@@ -158,6 +167,7 @@ export class ResponseUtil {
     const response = {
       code: businessCode,
       message,
+      isSuccess: this.isSuccessCode(businessCode),
       data: paginatedData
     } as PaginatedResponse<T>
 
@@ -183,7 +193,7 @@ export class ResponseUtil {
       data: null,
       error: {
         type: error?.name || 'SystemError',
-        description: error?.message || message,
+        detail: error?.message || message,
         ...(process.env.NODE_ENV !== 'production' && error?.stack ? { stack: error.stack } : {}),
         ...(error?.validation ? { validation: error.validation } : {}),
         errorId: request.id || randomUUID()

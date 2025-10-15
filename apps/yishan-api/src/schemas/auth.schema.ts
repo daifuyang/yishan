@@ -87,6 +87,7 @@ export const baseResponseSchema = {
   properties: {
     code: { type: "number", example: 200 },
     message: { type: "string", example: "操作成功" },
+    isSuccess: { type: "boolean", example: true, description: "请求是否成功" },
   },
 };
 
@@ -96,6 +97,24 @@ export const errorResponseSchema = {
   properties: {
     code: { type: "number", example: 400 },
     message: { type: "string", example: "操作失败" },
+    isSuccess: { type: "boolean", example: false, description: "请求是否成功" },
+    data: { type: "null", example: null, description: "错误响应数据为空" },
+    error: {
+      type: "object",
+      properties: {
+        type: { type: "string", example: "ValidationError", description: "错误类型" },
+        detail: { type: "string", example: "参数验证失败", description: "错误详情" },
+        errorId: { type: "string", example: "uuid", description: "错误ID" },
+        validation: {
+          type: "object",
+          additionalProperties: {
+            type: "array",
+            items: { type: "string" }
+          },
+          description: "验证错误详情"
+        }
+      }
+    }
   },
 };
 
@@ -105,5 +124,15 @@ export const unauthorizedResponseSchema = {
   properties: {
     code: { type: "number", example: 401 },
     message: { type: "string", example: "未授权访问" },
+    isSuccess: { type: "boolean", example: false, description: "请求是否成功" },
+    data: { type: "null", example: null, description: "错误响应数据为空" },
+    error: {
+      type: "object",
+      properties: {
+        type: { type: "string", example: "UnauthorizedError", description: "错误类型" },
+        detail: { type: "string", example: "未授权访问", description: "错误详情" },
+        errorId: { type: "string", example: "uuid", description: "错误ID" }
+      }
+    }
   },
 };

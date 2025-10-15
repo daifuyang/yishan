@@ -462,6 +462,61 @@ pnpm run db:reset     # 重置数据库
 - 组件化开发，复用性优先
 - 响应式设计，支持多端适配
 
+### API 响应处理规范
+#### 1. 统一响应格式
+所有 API 响应都包含以下字段：
+```typescript
+interface ApiResponse<T = any> {
+  code: number;        // 业务状态码
+  message: string;     // 响应消息
+  data?: T;           // 响应数据
+  isSuccess: boolean; // 操作是否成功
+}
+```
+
+#### 2. 前端响应处理原则
+- **完全依赖 `isSuccess` 字段**：前端判断操作是否成功时，必须使用 API 返回的 `isSuccess` 字段
+- **禁止前端业务码判断**：不允许在前端使用 `BusinessCodeValidator.isSuccess(response.code)` 等方式自行判断
+- **统一错误处理**：错误信息直接使用 API 返回的 `message` 字段，不进行前端特殊处理
+
+#### 3. 正确的响应处理示例
+```typescript
+// ✅ 正确：完全依赖 isSuccess 字段
+const handleApiResponse = async () => {
+  const response = await apiCall();
+  if (response.isSuccess) {
+    // 处理成功逻辑
+    message.success(response.message || '操作成功');
+    return response.data;
+  } else {
+    // 处理失败逻辑
+    message.error(response.message || '操作失败');
+    return null;
+  }
+};
+
+// ❌ 错误：不要使用前端业务码判断
+const handleApiResponseWrong = async () => {
+  const response = await apiCall();
+  if (BusinessCodeValidator.isSuccess(response.code)) { // 禁止这样做
+    // ...
+  }
+};
+```
+
+#### 4. 登录页面处理规范
+```typescript
+// 登录成功判断
+if (msg.isSuccess) {
+  // 登录成功处理
+  message.success('登录成功');
+  // 保存 token 和用户信息
+} else {
+  // 登录失败处理
+  message.error(msg.message || '登录失败');
+}
+```
+
 ## 文档规范 (yishan-docs)
 
 ### 技术栈

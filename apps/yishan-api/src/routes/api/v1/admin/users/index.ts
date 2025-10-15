@@ -460,7 +460,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
   // 更新用户信息
   fastify.put('/:id', {
-    preHandler: fastify.authenticate,
     schema: {
       tags: ['sysUsers'],
       summary: '更新用户信息',
@@ -586,7 +585,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
   // 删除用户
   fastify.delete('/:id', {
-    preHandler: fastify.authenticate,
     schema: {
       tags: ['sysUsers'],
       summary: '删除用户',
@@ -652,7 +650,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
   // 修改用户状态
   fastify.patch('/:id/status', {
-    preHandler: fastify.authenticate,
     schema: {
       tags: ['sysUsers'],
       summary: '修改用户状态',
@@ -741,7 +738,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
   // 重置用户密码
   fastify.patch('/:id/password', {
-    preHandler: fastify.authenticate,
     schema: {
       tags: ['sysUsers'],
       summary: '重置用户密码',

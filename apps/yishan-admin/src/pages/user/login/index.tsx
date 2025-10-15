@@ -23,9 +23,8 @@ import React, { useState } from "react";
 import { flushSync } from "react-dom";
 import { Footer } from "@/components";
 import { postAuthLogin } from "@/services/yishan-admin/sysAuth";
-import { getAuthMe } from "@/services/yishan-admin/sysAuth";
+import { getCurrentUser } from "@/services/yishan-admin/sysAuth";
 import { saveTokens } from "@/utils/token";
-import { BusinessCodeValidator } from "@/utils/validation";
 import Settings from "../../../../config/defaultSettings";
 
 const useStyles = createStyles(({ token }) => {
@@ -141,8 +140,8 @@ const Login: React.FC = () => {
       }
 
       // 标准流程：通过用户信息接口获取
-      const response = await getAuthMe();
-      if (BusinessCodeValidator.isSuccess(response.code) && response.data) {
+      const response = await getCurrentUser();
+      if (response.isSuccess && response.data) {
         flushSync(() => {
           setInitialState((s) => ({
             ...s,
@@ -166,8 +165,8 @@ const Login: React.FC = () => {
       // 登录
       const msg = await postAuthLogin({ ...values });
 
-      // 检查响应格式并适配
-      if (BusinessCodeValidator.isSuccess(msg.code)) {
+      // 完全依赖API返回的isSuccess字段判断成功或失败
+      if (msg.isSuccess) {
         const defaultLoginSuccessMessage = intl.formatMessage({
           id: "pages.login.success",
           defaultMessage: "登录成功！",
@@ -191,25 +190,8 @@ const Login: React.FC = () => {
         return;
       }
 
-      // 处理特定错误码
-      let errorMessage = "";
-      switch (msg.code) {
-        case 40010:
-          errorMessage = "用户名或密码格式错误";
-          break;
-        case 40011:
-          errorMessage = "用户名或密码错误";
-          break;
-        case 40102:
-          errorMessage = "账户已被禁用，请联系管理员";
-          break;
-        case 42900:
-          errorMessage = "登录尝试过于频繁，请稍后再试";
-          break;
-        default:
-          errorMessage = msg.message || "登录失败，请重试";
-      }
-
+      // 登录失败，直接使用API返回的错误信息
+      const errorMessage = msg.message || "登录失败，请重试";
       message.error(errorMessage);
       setLoginError(errorMessage);
     } catch (error: any) {

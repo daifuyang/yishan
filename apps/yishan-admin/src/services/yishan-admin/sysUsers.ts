@@ -28,12 +28,12 @@ export async function getUserList(
         created_at?: string;
         updated_at?: string;
       }[];
-      total?: number;
-      page?: number;
-      pageSize?: number;
-      totalPages?: number;
-      hasNext?: boolean;
-      hasPrev?: boolean;
+      pagination?: {
+        page?: number;
+        pageSize?: number;
+        total?: number;
+        totalPages?: number;
+      };
     };
   }>("/api/v1/admin/users/", {
     method: "GET",
@@ -43,10 +43,10 @@ export async function getUserList(
       // pageSize has a default value: 10
       pageSize: "10",
 
-      // sortBy has a default value: created_at
-      sortBy: "created_at",
-      // sortOrder has a default value: desc
-      sortOrder: "desc",
+      // sort_by has a default value: created_at
+      sort_by: "created_at",
+      // sort_order has a default value: desc
+      sort_order: "desc",
       ...params,
     },
     ...(options || {}),
@@ -65,7 +65,7 @@ export async function postAdminUsers(
     /** 用户密码 */
     password: string;
     /** 真实姓名 */
-    realName?: string;
+    realName: string;
     /** 头像URL */
     avatar?: string;
     /** 性别：0-未知，1-男，2-女 */
@@ -240,27 +240,48 @@ export async function updateUserStatus(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ code?: number; message?: string }>(
-    `/api/v1/admin/users/${param0}/status`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      params: { ...queryParams },
-      data: body,
-      ...(options || {}),
-    }
-  );
+  return request<{
+    code?: number;
+    message?: string;
+    data?: { id?: number; username?: string; status?: number };
+  }>(`/api/v1/admin/users/${param0}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...queryParams },
+    data: body,
+    ...(options || {}),
+  });
 }
 
-/** 清除用户缓存 清除所有用户相关的缓存 DELETE /api/v1/admin/users/cache */
-export async function clearUserCache(options?: { [key: string]: any }) {
-  return request<{ code?: number; message?: string }>(
-    "/api/v1/admin/users/cache",
-    {
-      method: "DELETE",
-      ...(options || {}),
-    }
-  );
+/** 根据搜索条件获取单个管理员信息 根据搜索条件(用户名、邮箱、真实姓名、手机号)获取单个管理员信息 GET /api/v1/admin/users/findOne */
+export async function getUserBySearch(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getUserBySearchParams,
+  options?: { [key: string]: any }
+) {
+  return request<{
+    code?: number;
+    message?: string;
+    data?: {
+      id?: number;
+      username?: string;
+      email?: string;
+      phone?: string;
+      real_name?: string;
+      avatar?: string;
+      gender?: number;
+      birth_date?: string;
+      status?: number;
+      created_at?: string;
+      updated_at?: string;
+    };
+  }>("/api/v1/admin/users/findOne", {
+    method: "GET",
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
 }

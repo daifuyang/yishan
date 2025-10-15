@@ -10,8 +10,7 @@ import {
   Question,
   SelectLang,
 } from "@/components";
-import { getAuthMe } from "@/services/yishan-admin/sysAuth";
-import { BusinessCodeValidator } from "@/utils/validation";
+import { getCurrentUser } from "@/services/yishan-admin/sysAuth";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
 import "@ant-design/v5-patch-for-react-19";
@@ -29,8 +28,8 @@ export async function getInitialState(): Promise<{
   fetchUserInfo?: () => Promise<API.sysUser | undefined>;
 }> {
   const fetchUserInfo = async () => {
-    const response = await getAuthMe();
-    if (BusinessCodeValidator.isSuccess(response.code) && response.data) {
+    const response = await getCurrentUser();
+    if (response.isSuccess && response.data) {
       return response.data;
     }
     return undefined;

@@ -3,6 +3,15 @@
  * 基于业务码体系，而非HTTP状态码
  */
 
+import {
+  CommonBusinessCode,
+  UserBusinessCode,
+  OrderBusinessCode,
+  ProductBusinessCode,
+  PaymentBusinessCode,
+  SystemBusinessCode
+} from '../constants/business-code.js'
+
 /**
  * 统一响应体基础接口
  * 所有响应类型的基础结构
@@ -23,6 +32,12 @@ export interface BaseResponse<T = any> {
   message: string
   
   /**
+   * 请求是否成功
+   * 基于业务码判断，true表示成功(20000-29999)，false表示失败
+   */
+  isSuccess: boolean
+  
+  /**
    * 响应数据
    * 泛型类型，可根据具体接口返回不同数据结构
    * 错误响应时此字段为可选
@@ -37,6 +52,7 @@ export interface BaseResponse<T = any> {
 export interface SuccessResponse<T = any> extends BaseResponse<T> {
   code: number
   message: string
+  isSuccess: true
   data: T
 }
 
@@ -47,6 +63,7 @@ export interface SuccessResponse<T = any> extends BaseResponse<T> {
 export interface CreatedResponse<T = any> extends BaseResponse<T> {
   code: number
   message: string
+  isSuccess: true
   data: T
 }
 
@@ -57,44 +74,47 @@ export interface CreatedResponse<T = any> extends BaseResponse<T> {
 export interface UpdatedResponse<T = any> extends BaseResponse<T> {
   code: number
   message: string
+  isSuccess: true
   data: T
 }
 
 /**
  * 删除成功响应体
- * 专用于资源删除成功的响应
+ * 专用于资源删除成功的响应，通常不返回数据
  */
 export interface DeletedResponse extends BaseResponse<null> {
   code: number
   message: string
+  isSuccess: true
   data: null
 }
 
 /**
  * 错误响应体
- * 用于所有错误响应场景
+ * 用于所有错误场景的统一响应格式
  */
 export interface ErrorResponse extends BaseResponse<null> {
   code: number
   message: string
+  isSuccess: false
   data: null
   
   /**
    * 错误详情
-   * 包含详细的错误信息，便于调试和错误处理
+   * 包含错误的具体信息和调试数据
    */
   error?: {
     /**
      * 错误类型
-     * 错误分类标识，如ValidationError, BusinessError, SystemError等
+     * 用于前端错误分类处理
      */
-    type: string
+    type?: string
     
     /**
-     * 错误描述
-     * 详细的错误信息，可能包含解决方案建议
+     * 错误详细描述
+     * 开发者友好的错误信息
      */
-    description: string
+    detail?: string
     
     /**
      * 错误堆栈（开发环境）
@@ -159,6 +179,7 @@ export interface PaginatedData<T = any> {
 export interface PaginatedResponse<T = any> extends BaseResponse {
   code: number
   message: string
+  isSuccess: true
   data: PaginatedData<T>
 }
 
@@ -168,6 +189,8 @@ export interface PaginatedResponse<T = any> extends BaseResponse {
  */
 export interface ListResponse<T = any> extends BaseResponse<T[]> {
   code: number
+  message: string
+  isSuccess: true
   data: T[]
 }
 
@@ -193,43 +216,44 @@ export type BusinessCode = number
 /**
  * 业务码分类
  * 按模块和业务场景分类的业务码常量
+ * 从 business-code.ts 导入，保持一致性
  */
 export const BusinessCode = {
   // 通用成功码
-  SUCCESS: 20000,
-  CREATED: 20001,
-  UPDATED: 20002,
-  DELETED: 20003,
+  SUCCESS: CommonBusinessCode.SUCCESS,
+  CREATED: CommonBusinessCode.CREATED,
+  UPDATED: CommonBusinessCode.UPDATED,
+  DELETED: CommonBusinessCode.DELETED,
   
   // 通用客户端错误码
-  BAD_REQUEST: 40000,
-  UNAUTHORIZED: 40001,
-  FORBIDDEN: 40003,
-  NOT_FOUND: 40004,
-  VALIDATION_ERROR: 40010,
+  BAD_REQUEST: CommonBusinessCode.BAD_REQUEST,
+  UNAUTHORIZED: CommonBusinessCode.UNAUTHORIZED,
+  FORBIDDEN: CommonBusinessCode.FORBIDDEN,
+  NOT_FOUND: CommonBusinessCode.NOT_FOUND,
+  VALIDATION_ERROR: CommonBusinessCode.UNPROCESSABLE_ENTITY,
   
   // 用户模块
-  USER_NOT_FOUND: 40100,
-  USER_ALREADY_EXISTS: 40101,
-  USER_DISABLED: 40102,
+  USER_NOT_FOUND: UserBusinessCode.USER_NOT_FOUND,
+  USER_ALREADY_EXISTS: UserBusinessCode.USER_ALREADY_EXISTS,
+  USER_DISABLED: UserBusinessCode.USER_DISABLED,
   
   // 订单模块
-  ORDER_NOT_FOUND: 40200,
-  ORDER_STATUS_INVALID: 40201,
-  ORDER_PAYMENT_FAILED: 40202,
+  ORDER_NOT_FOUND: OrderBusinessCode.ORDER_NOT_FOUND,
+  ORDER_STATUS_INVALID: OrderBusinessCode.ORDER_STATUS_INVALID,
+  ORDER_PAYMENT_FAILED: PaymentBusinessCode.PAYMENT_PROCESSING_FAILED,
   
   // 商品模块
-  PRODUCT_NOT_FOUND: 40300,
-  PRODUCT_OUT_OF_STOCK: 40301,
+  PRODUCT_NOT_FOUND: ProductBusinessCode.PRODUCT_NOT_FOUND,
+  PRODUCT_OUT_OF_STOCK: ProductBusinessCode.PRODUCT_OUT_OF_STOCK,
   
   // 支付模块
-  PAYMENT_FAILED: 40400,
-  PAYMENT_TIMEOUT: 40401,
+  PAYMENT_FAILED: PaymentBusinessCode.PAYMENT_PROCESSING_FAILED,
+  PAYMENT_TIMEOUT: PaymentBusinessCode.PAYMENT_GATEWAY_ERROR,
   
   // 系统模块
-  SYSTEM_ERROR: 50000,
-  DATABASE_ERROR: 50001,
-  EXTERNAL_SERVICE_ERROR: 50002,
+  SYSTEM_ERROR: CommonBusinessCode.INTERNAL_SERVER_ERROR,
+  DATABASE_ERROR: CommonBusinessCode.DATABASE_ERROR,
+  EXTERNAL_SERVICE_ERROR: SystemBusinessCode.EXTERNAL_SERVICE_ERROR,
 } as const
 
 /**
