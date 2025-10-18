@@ -2,7 +2,7 @@ import { PlusOutlined, DownOutlined } from '@ant-design/icons';
 import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, Form, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
 import React, { useRef, useState } from 'react';
-import { getRoleList, updateRole, postAdminRoles, getRoleDetail, deleteRole } from '@/services/yishan-admin/sysRoles';
+import { getRoleList, updateRole, postAdminRoles, getRoleDetail, deleteRole, batchDeleteRoles } from '@/services/yishan-admin/sysRoles';
 import RoleForm from './components/RoleForm';
 
 /**
@@ -47,6 +47,7 @@ const SystemRoleTag: React.FC<{ isSystem?: number }> = ({ isSystem }) => {
 const RoleList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
   const [form] = Form.useForm();
   const [formVisible, setFormVisible] = useState(false);
   const [formTitle, setFormTitle] = useState('新建角色');
@@ -107,6 +108,63 @@ const RoleList: React.FC = () => {
       actionRef.current?.reload();
     } catch (error) {
       message.error('删除失败');
+    }
+  };
+
+  /**
+   * 处理批量删除角色
+   */
+  const handleBatchDelete = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('请选择要删除的角色');
+      return;
+    }
+
+    setBatchDeleteLoading(true);
+    
+    try {
+      const roleIds = selectedRowKeys.map(key => Number(key));
+      const result = await batchDeleteRoles({ roleIds });
+      
+      if (result.isSuccess && result.data) {
+        const { success, deletedCount, failedRoles } = result.data;
+        
+        if (success) {
+          message.success(`成功删除 ${deletedCount} 个角色`);
+        } else {
+          const failedCount = failedRoles?.length || 0;
+          const successCount = deletedCount || 0;
+          
+          if (successCount > 0) {
+            message.warning(
+              `删除完成，成功 ${successCount} 个，失败 ${failedCount} 个。失败的角色可能为系统角色、正在被使用或已不存在。`
+            );
+          } else {
+            message.error('批量删除失败，所选角色可能为系统角色、正在被使用或已不存在');
+          }
+        }
+        
+        // 清空选中项并刷新列表
+        setSelectedRowKeys([]);
+        actionRef.current?.reload();
+      } else {
+        message.error(result.message || '批量删除失败');
+      }
+    } catch (error: any) {
+      console.error('批量删除操作失败:', error);
+      
+      // 根据错误类型提供更具体的错误信息
+      if (error?.response?.status === 403) {
+        message.error('没有权限执行批量删除操作');
+      } else if (error?.response?.status === 400) {
+        message.error('请求参数错误，请检查选中的角色');
+      } else if (error?.response?.status >= 500) {
+        message.error('服务器错误，请稍后重试');
+      } else {
+        message.error('批量删除操作失败，请稍后重试');
+      }
+    } finally {
+      setBatchDeleteLoading(false);
     }
   };
 
@@ -247,7 +305,7 @@ const RoleList: React.FC = () => {
             key="primary"
             onClick={handleAdd}
           >
-            <PlusOutlined /> 新建角色
+            <PlusOutlined /> 新建
           </Button>,
         ]}
         request={async (params) => {
@@ -281,7 +339,22 @@ const RoleList: React.FC = () => {
         tableAlertOptionRender={() => {
           return (
             <Space size={16}>
-              <a>批量删除</a>
+              <Popconfirm
+                placement='bottomRight'
+                title="确定要批量删除选中的角色吗？"
+                description={`将删除 ${selectedRowKeys.length} 个角色，此操作不可恢复`}
+                onConfirm={handleBatchDelete}
+                okText="确定"
+                cancelText="取消"
+                disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
+              >
+                <a style={{ 
+                  color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
+                  cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
+                }}>
+                  {batchDeleteLoading ? '删除中...' : '批量删除'}
+                </a>
+              </Popconfirm>
             </Space>
           );
         }}
@@ -289,7 +362,7 @@ const RoleList: React.FC = () => {
 
       <RoleForm
         form={form}
-        visible={formVisible}
+        open={formVisible}
         title={formTitle}
         initialValues={currentRole}
         onCancel={() => setFormVisible(false)}

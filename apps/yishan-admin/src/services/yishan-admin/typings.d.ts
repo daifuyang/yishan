@@ -174,6 +174,10 @@ declare namespace API {
     roleIds: number[];
   };
 
+  type sysRoleBatchDeleteRequest = {
+    roleIds: number[];
+  };
+
   type sysRoleCreateRequest = {
     /** 角色名称 */
     roleName: string;
@@ -221,6 +225,22 @@ declare namespace API {
       | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
+  };
+
+  type sysRoleStatusUpdateRequest = {
+    /** 状态：0-禁用，1-启用 */
+    status: 0 | 1;
+  };
+
+  type sysRoleUpdateRequest = {
+    /** 角色名称 */
+    roleName?: string;
+    /** 角色描述 */
+    roleDesc?: string;
+    /** 状态：0-禁用，1-启用 */
+    status?: 0 | 1;
+    /** 排序顺序 */
+    sortOrder?: number;
   };
 
   type sysUser = {
@@ -393,12 +413,12 @@ declare namespace API {
   };
 
   type updateRoleParams = {
-    /** 角色ID */
+    /** ID */
     id: number;
   };
 
   type updateRoleStatusParams = {
-    /** 角色ID */
+    /** ID */
     id: number;
   };
 

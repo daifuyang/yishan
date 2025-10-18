@@ -118,6 +118,17 @@ export const errorResponseSchema = {
   },
 };
 
+export const successResponseSchema = {
+  $id: "successResponse",
+  type: "object",
+  properties: {
+    code: { type: "number", example: 20000 },
+    message: { type: "string", example: "操作成功" },
+    isSuccess: { type: "boolean", example: true, description: "请求是否成功" },
+    data: { description: "响应数据" }
+  }
+};
+
 export const unauthorizedResponseSchema = {
   $id: "unauthorizedResponse",
   type: "object",

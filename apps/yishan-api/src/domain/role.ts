@@ -16,7 +16,7 @@ export interface Role {
   roleName: string;
   roleDesc?: string | null;
   status: RoleStatus;
-  isSystemRole: number; // 0-否，1-是
+  isSystem: number; // 0-否，1-是
   sortOrder: number; // 排序顺序，数值越小越靠前
   creatorId?: number | null;
   createdAt: string; // ISO datetime string
@@ -31,7 +31,7 @@ export interface RolePublic {
   roleName: string;
   roleDesc?: string | null;
   status: RoleStatus;
-  isSystemRole: number;
+  isSystem: number;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -39,8 +39,8 @@ export interface RolePublic {
 
 // 用于创建角色的数据传输对象
 export interface CreateRoleDTO {
-  name: string;
-  description?: string | null;
+  roleName: string;
+  roleDesc?: string | null;
   type?: RoleType;
   status?: RoleStatus;
   sortOrder?: number;
@@ -49,8 +49,8 @@ export interface CreateRoleDTO {
 
 // 用于更新角色的数据传输对象
 export interface UpdateRoleDTO {
-  name?: string;
-  description?: string | null;
+  roleName?: string;
+  roleDesc?: string | null;
   status?: RoleStatus;
   sortOrder?: number;
   updaterId?: number | null;
@@ -59,7 +59,7 @@ export interface UpdateRoleDTO {
 // 角色查询数据传输对象
 export interface RoleQueryDTO {
   id?: number;
-  name?: string;
+  roleName?: string;
   code?: string;
   type?: RoleType;
   status?: RoleStatus;
@@ -108,4 +108,10 @@ export interface AssignPermissionDTO {
   roleId: number;
   permissionIds: number[];
   assignedBy?: number;
+}
+
+// 批量删除角色DTO
+export interface BatchDeleteRoleDTO {
+  roleIds: number[];
+  deleterId?: number;
 }

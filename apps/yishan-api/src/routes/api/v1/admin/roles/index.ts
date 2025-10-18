@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { RoleService } from '../../../../../services/roleService.js'
-import { CreateRoleDTO, UpdateRoleDTO, RoleQueryDTO, RoleStatus, AssignRoleDTO } from '../../../../../domain/role.js'
+import { CreateRoleDTO, UpdateRoleDTO, RoleQueryDTO, RoleStatus, AssignRoleDTO, BatchDeleteRoleDTO } from '../../../../../domain/role.js'
 import { ResponseUtil } from '../../../../../utils/response.js'
 import { CommonBusinessCode } from '../../../../../constants/business-code.js'
 
@@ -106,7 +106,7 @@ export default async function roleRoutes(fastify: FastifyInstance) {
         page: Math.max(1, query.page || 1),
         pageSize: Math.max(1, Math.min(100, query.pageSize || 10)),
         search: query.search,
-        name: query.name,
+        roleName: query.roleName,
         code: query.code,
         type: query.type,
         status: query.status,
@@ -203,41 +203,16 @@ export default async function roleRoutes(fastify: FastifyInstance) {
       description: '更新指定角色的信息',
       operationId: 'updateRole',
       security: [{ bearerAuth: [] }],
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'number', description: '角色ID' }
-        }
-      },
-      body: {
-        type: 'object',
-        properties: {
-          name: { type: 'string', minLength: 2, maxLength: 50, description: '角色名称' },
-          description: { type: 'string', maxLength: 200, description: '角色描述' },
-          status: { type: 'number', enum: [0, 1], description: '状态：0-禁用，1-启用' },
-          sortOrder: { type: 'number', minimum: 0, description: '排序顺序' }
-        }
-      },
+      params: { $ref: 'idParam#' },
+      body: { $ref: 'sysRoleUpdateRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
             code: { type: 'number', example: 20002 },
             message: { type: 'string', example: '角色更新成功' },
-            data: {
-              type: 'object',
-              properties: {
-                id: { type: 'number', description: '角色ID' },
-                roleName: { type: 'string', description: '角色名称' },
-                roleDesc: { type: 'string', description: '角色描述' },
-                status: { type: 'number', description: '状态' },
-                isSystemRole: { type: 'number', description: '是否系统角色' },
-                sortOrder: { type: 'number', description: '排序顺序' },
-                createdAt: { type: 'string', format: 'date-time', description: '创建时间' },
-                updatedAt: { type: 'string', format: 'date-time', description: '更新时间' }
-              }
-            }
+            isSuccess: { type: 'boolean', example: true },
+            data: { $ref: 'sysRole#' }
           }
         },
         404: {
@@ -394,20 +369,8 @@ export default async function roleRoutes(fastify: FastifyInstance) {
       description: '修改指定角色的状态',
       operationId: 'updateRoleStatus',
       security: [{ bearerAuth: [] }],
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'number', description: '角色ID' }
-        }
-      },
-      body: {
-        type: 'object',
-        required: ['status'],
-        properties: {
-          status: { type: 'number', enum: [0, 1], description: '状态：0-禁用，1-启用' }
-        }
-      },
+      params: { $ref: 'idParam#' },
+      body: { $ref: 'sysRoleStatusUpdateRequest#' },
       response: {
         200: {
           type: 'object',
@@ -558,7 +521,7 @@ export default async function roleRoutes(fastify: FastifyInstance) {
                   roleName: { type: 'string', description: '角色名称' },
                   roleDesc: { type: 'string', description: '角色描述' },
                   status: { type: 'number', description: '状态' },
-                  isSystemRole: { type: 'number', description: '是否系统角色' }
+                  isSystem: { type: 'number', description: '是否系统角色' }
                 }
               }
             }
@@ -586,6 +549,95 @@ export default async function roleRoutes(fastify: FastifyInstance) {
         reply,
         request,
         '获取用户角色失败',
+        CommonBusinessCode.INTERNAL_SERVER_ERROR,
+        error
+      )
+    }
+  })
+
+  // 批量删除角色
+  fastify.delete('/batch', {
+    schema: {
+      tags: ['sysRoles'],
+      summary: '批量删除角色',
+      description: '批量删除指定的角色',
+      operationId: 'batchDeleteRoles',
+      security: [{ bearerAuth: [] }],
+      body: { $ref: 'sysRoleBatchDeleteRequest#' },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 20003 },
+            message: { type: 'string', example: '批量删除完成' },
+            isSuccess: { type: 'boolean', example: true },
+            data: {
+              type: 'object',
+              properties: {
+                success: { type: 'boolean', description: '是否全部删除成功' },
+                deletedCount: { type: 'number', description: '成功删除的角色数量' },
+                failedRoles: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'number', description: '失败的角色ID' },
+                      reason: { type: 'string', description: '失败原因' }
+                    }
+                  },
+                  description: '删除失败的角色列表'
+                }
+              }
+            }
+          }
+        },
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' }
+      }
+    }
+  }, async (
+    request: FastifyRequest<{ Body: { roleIds: number[] } }>,
+    reply: FastifyReply
+  ) => {
+    try {
+      const deleterId = request.user?.id
+      const batchDeleteData: BatchDeleteRoleDTO = {
+        roleIds: request.body.roleIds,
+        deleterId
+      }
+
+      const result = await roleService.batchDeleteRoles(batchDeleteData)
+
+      const message = result.success 
+        ? `成功删除 ${result.deletedCount} 个角色`
+        : `删除完成，成功 ${result.deletedCount} 个，失败 ${result.failedRoles.length} 个`
+
+      return ResponseUtil.send(
+        reply,
+        request,
+        result,
+        message,
+        CommonBusinessCode.SUCCESS
+      )
+    } catch (error) {
+      fastify.log.error(error)
+
+      if (error instanceof Error) {
+        if (error.message.includes('请选择')) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            error.message,
+            CommonBusinessCode.BAD_REQUEST,
+            error
+          )
+        }
+      }
+
+      return ResponseUtil.error(
+        reply,
+        request,
+        '批量删除角色失败',
         CommonBusinessCode.INTERNAL_SERVER_ERROR,
         error
       )

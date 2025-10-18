@@ -60,16 +60,16 @@ export class RoleRepository {
   async create(data: CreateRoleDTO): Promise<RolePublic> {
     const cacheKey = `${CACHE_PREFIX}all`
     await this.invalidateCache(cacheKey)
-    
+
     const createdRole = await Role.query().insert({
-      roleName: data.name,
-      roleDesc: data.description,
+      roleName: data.roleName,
+      roleDesc: data.roleDesc,
       status: data.status ?? RoleStatus.ENABLED,
       isSystem: data.type === RoleType.SYSTEM ? 1 : 0,
       sortOrder: data.sortOrder ?? 0,
       creatorId: data.creatorId
     })
-    
+
     return this.toRolePublic(createdRole)
   }
 
@@ -80,18 +80,18 @@ export class RoleRepository {
    */
   async findById(id: number): Promise<RolePublic | null> {
     const cacheKey = `${CACHE_PREFIX}${id}`
-    
+
     // 尝试从缓存获取
     const cached = await this.getCache<RolePublic>(cacheKey)
     if (cached) {
       return cached
     }
-    
+
     const role = await Role.query().findById(id)
     if (!role) {
       return null
     }
-    
+
     const publicRole = this.toRolePublic(role)
     await this.setCache(cacheKey, publicRole)
     return publicRole
@@ -104,18 +104,18 @@ export class RoleRepository {
    */
   async findByName(name: string): Promise<RolePublic | null> {
     const cacheKey = `${CACHE_PREFIX}name:${name}`
-    
+
     // 尝试从缓存获取
     const cached = await this.getCache<RolePublic>(cacheKey)
     if (cached) {
       return cached
     }
-    
+
     const role = await Role.query().where('roleName', name).first()
     if (!role) {
       return null
     }
-    
+
     const publicRole = this.toRolePublic(role)
     await this.setCache(cacheKey, publicRole, 1800) // 30分钟缓存
     return publicRole
@@ -128,18 +128,18 @@ export class RoleRepository {
    */
   async findByCode(code: string): Promise<RolePublic | null> {
     const cacheKey = `${CACHE_PREFIX}code:${code}`
-    
+
     // 尝试从缓存获取
     const cached = await this.getCache<RolePublic>(cacheKey)
     if (cached) {
       return cached
     }
-    
+
     const role = await Role.query().where('roleName', code).first()
     if (!role) {
       return null
     }
-    
+
     const publicRole = this.toRolePublic(role)
     await this.setCache(cacheKey, publicRole, 1800) // 30分钟缓存
     return publicRole
@@ -156,18 +156,18 @@ export class RoleRepository {
     const offset = (page - 1) * pageSize
 
     let queryBuilder = Role.query().modify('notDeleted')
-    
+
     // 添加搜索条件
     if (query.search) {
-      queryBuilder = queryBuilder.where(function() {
+      queryBuilder = queryBuilder.where(function () {
         this.where('roleName', 'like', `%${query.search}%`)
           .orWhere('roleDesc', 'like', `%${query.search}%`)
       })
     }
-    
+
     // 添加其他筛选条件
     if (query.id) queryBuilder = queryBuilder.where('id', query.id)
-    if (query.name) queryBuilder = queryBuilder.where('roleName', 'like', `%${query.name}%`)
+    if (query.roleName) queryBuilder = queryBuilder.where('roleName', 'like', `%${query.roleName}%`)
     if (query.code) queryBuilder = queryBuilder.where('roleName', 'like', `%${query.code}%`)
     if (query.status !== undefined) queryBuilder = queryBuilder.where('status', query.status)
     if (query.type) {
@@ -175,23 +175,25 @@ export class RoleRepository {
       queryBuilder = queryBuilder.where('is_system', isSystemRole)
     }
     if (query.creatorId) queryBuilder = queryBuilder.where('creatorId', query.creatorId)
-    
-    // 排序 - 使用 sortOrder 作为默认排序
-    const sortBy = query.sortBy || 'sortOrder'
-    const sortOrder = query.sortOrder || 'asc'
-    queryBuilder = queryBuilder.orderBy(sortBy, sortOrder)
-    
+
+    // 排序 - 默认排序为更新时间，其次是排序字段，最后是id
+    queryBuilder = queryBuilder
+      .orderBy('isSystem', 'desc')
+      .orderBy('sortOrder', 'asc')   // 排序字段升序
+      .orderBy('updatedAt', 'desc')  // 更新时间倒序（最新的在前）
+      .orderBy('id', 'asc')          // id升序作为最终排序
+
     // 分页查询
     const roles = await queryBuilder
       .clone()
       .limit(pageSize)
       .offset(offset)
-    
+
     // 总数查询
     const total = await queryBuilder
       .clone()
       .resultSize()
-    
+
     return {
       roles: this.toRolesPublic(roles),
       total,
@@ -210,21 +212,28 @@ export class RoleRepository {
     const updateData: any = {
       updaterId: data.updaterId || null
     }
-    
-    if (data.name !== undefined) updateData.roleName = data.name
-    if (data.description !== undefined) updateData.roleDesc = data.description
+
+    // 使用与前端一致的字段名
+    if (data.roleName !== undefined) updateData.roleName = data.roleName
+    if (data.roleDesc !== undefined) updateData.roleDesc = data.roleDesc
     if (data.status !== undefined) updateData.status = data.status
-    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder
-    
+    if (data.sortOrder !== undefined) updateData.sortOrder = Number(data.sortOrder)
+
     const updatedCount = await Role.query()
       .findById(id)
       .modify('notDeleted')
       .patch(updateData)
-    
+
     if (updatedCount === 0) return null
-    
+
+    // 先清除缓存，确保不会返回旧数据
     await this.invalidateCache(`${CACHE_PREFIX}*`)
-    return this.findById(id)
+
+    // 直接从数据库获取最新数据，而不是通过findById可能会使用缓存
+    const updatedRole = await Role.query().findById(id)
+    if (!updatedRole) return null
+
+    return this.toRolePublic(updatedRole)
   }
 
   /**
@@ -236,10 +245,10 @@ export class RoleRepository {
   async delete(id: number, deleterId?: number): Promise<boolean> {
     const role = await Role.query().findById(id).modify('notDeleted')
     if (!role) return false
-    
+
     await role.softDelete(deleterId)
     await this.invalidateCache(`${CACHE_PREFIX}*`)
-    
+
     return true
   }
 
@@ -279,7 +288,7 @@ export class RoleRepository {
     try {
       // 删除现有的角色分配
       await UserRole.query().delete().where('user_id', userId)
-      
+
       // 插入新的角色分配
       const userRoles = roleIds.map(roleId => ({
         user_id: userId,
@@ -287,12 +296,12 @@ export class RoleRepository {
         status: 1,
         creator_id: assignedBy || null
       }))
-      
+
       await UserRole.query().insert(userRoles)
-      
+
       // 清除相关缓存
       await this.invalidateCache(`${CACHE_PREFIX}user:${userId}`)
-      
+
       return true
     } catch (error) {
       return false
@@ -308,16 +317,16 @@ export class RoleRepository {
   async removeFromUser(userId: number, roleIds?: number[]): Promise<boolean> {
     try {
       let query = UserRole.query().delete().where('userId', userId)
-      
+
       if (roleIds && roleIds.length > 0) {
         query = query.whereIn('roleId', roleIds)
       }
-      
+
       await query
-      
+
       // 清除相关缓存
       await this.invalidateCache(`${CACHE_PREFIX}user:${userId}`)
-      
+
       return true
     } catch (error) {
       return false

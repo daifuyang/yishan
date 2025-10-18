@@ -4,7 +4,7 @@ import type { FormInstance } from 'antd';
 
 export interface RoleFormProps {
   form: FormInstance;
-  visible: boolean;
+  open: boolean;
   title: string;
   initialValues?: API.sysRole;
   onCancel: () => void;
@@ -17,7 +17,7 @@ export interface RoleFormProps {
  */
 const RoleForm: React.FC<RoleFormProps> = ({
   form,
-  visible,
+  open,
   title,
   initialValues,
   onCancel,
@@ -39,12 +39,12 @@ const RoleForm: React.FC<RoleFormProps> = ({
   return (
     <Modal
       title={title}
-      open={visible}
+      open={open}
       onCancel={onCancel}
       onOk={handleSubmit}
       confirmLoading={confirmLoading}
       maskClosable={false}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form
         form={form}
@@ -68,7 +68,6 @@ const RoleForm: React.FC<RoleFormProps> = ({
           label="排序顺序"
           rules={[
             { required: true, message: '请输入排序顺序' },
-            { type: 'number', min: 0, message: '排序顺序必须为非负整数' },
           ]}
         >
           <Input type="number" placeholder="请输入排序顺序" />

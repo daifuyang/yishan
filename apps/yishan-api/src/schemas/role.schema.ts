@@ -92,6 +92,17 @@ export const idParamSchema = {
   }
 };
 
+export const sysRoleUpdateRequestSchema = {
+  $id: "sysRoleUpdateRequest",
+  type: "object",
+  properties: {
+    roleName: { type: "string", minLength: 2, maxLength: 50, description: "角色名称" },
+    roleDesc: { type: "string", maxLength: 200, description: "角色描述" },
+    status: { type: "number", enum: [0, 1], description: "状态：0-禁用，1-启用" },
+    sortOrder: { type: "number", minimum: 0, description: "排序顺序" }
+  }
+};
+
 export const sysRoleAssignRequestSchema = {
   $id: "sysRoleAssignRequest",
   type: "object",
@@ -103,5 +114,23 @@ export const sysRoleAssignRequestSchema = {
       items: { type: "number" },
       description: "角色ID列表" 
     }
+  }
+};
+
+export const sysRoleStatusUpdateRequestSchema = {
+  $id: "sysRoleStatusUpdateRequest",
+  type: "object",
+  required: ["status"],
+  properties: {
+    status: { type: "number", enum: [0, 1], description: "状态：0-禁用，1-启用" }
+  }
+};
+
+export const sysRoleBatchDeleteRequestSchema = {
+  $id: "sysRoleBatchDeleteRequest",
+  type: "object",
+  required: ["roleIds"],
+  properties: {
+    roleIds: { type: "array", items: { type: "number" } }
   }
 };

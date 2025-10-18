@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { RoleRepository } from '../repository/roleRepository.js'
 import { UserRepository } from '../repository/userRepository.js'
-import { CreateRoleDTO, UpdateRoleDTO, RoleQueryDTO, RolePublic, RoleStatus, RoleType, AssignRoleDTO, AssignPermissionDTO } from '../domain/role.js'
+import { CreateRoleDTO, UpdateRoleDTO, RoleQueryDTO, RolePublic, RoleStatus, RoleType, AssignRoleDTO, AssignPermissionDTO, BatchDeleteRoleDTO } from '../domain/role.js'
 
 export class RoleService {
   private roleRepository: RoleRepository
@@ -20,12 +20,12 @@ export class RoleService {
    */
   async createRole(data: CreateRoleDTO, creatorId?: number): Promise<RolePublic> {
     // 1. 验证角色数据的合法性
-    if (!data.name || data.name.trim().length < 2) {
+    if (!data.roleName || data.roleName.trim().length < 2) {
       throw new Error('角色名称不能为空且长度不能少于2个字符')
     }
 
     // 2. 检查角色名称是否已存在
-    const existingRoleByName = await this.roleRepository.existsByName(data.name.trim())
+    const existingRoleByName = await this.roleRepository.existsByName(data.roleName.trim())
     if (existingRoleByName) {
       throw new Error('角色名称已存在')
     }
@@ -33,8 +33,8 @@ export class RoleService {
     // 3. 准备创建数据
     const createData: CreateRoleDTO = {
       ...data,
-      name: data.name.trim(),
-      description: data.description?.trim() || null,
+      roleName: data.roleName.trim(),
+      roleDesc: data.roleDesc?.trim() || null,
       type: data.type || RoleType.CUSTOM,
       status: data.status !== undefined ? data.status : RoleStatus.ENABLED,
       sortOrder: data.sortOrder || 0,
@@ -90,9 +90,9 @@ export class RoleService {
     }
 
     // 2. 检查系统角色是否允许修改
-    if (existingRole.isSystemRole === 1) {
+    if (existingRole.isSystem === 1) {
       // 系统角色只允许修改描述和排序
-      const allowedFields = ['description', 'sortOrder']
+      const allowedFields = ['roleDesc', 'sortOrder']
       const updateFields = Object.keys(data)
       const hasDisallowedFields = updateFields.some(field => !allowedFields.includes(field))
       
@@ -102,20 +102,20 @@ export class RoleService {
     }
 
     // 3. 验证更新数据的合法性
-    if (data.name !== undefined) {
-      if (!data.name || data.name.trim().length < 2) {
+    if (data.roleName !== undefined) {
+      if (!data.roleName || data.roleName.trim().length < 2) {
         throw new Error('角色名称不能为空且长度不能少于2个字符')
       }
-      data.name = data.name.trim()
+      data.roleName = data.roleName.trim()
     }
 
-    if (data.description !== undefined && data.description !== null) {
-      data.description = data.description.trim() || null
+    if (data.roleDesc !== undefined && data.roleDesc !== null) {
+      data.roleDesc = data.roleDesc.trim() || null
     }
 
     // 4. 检查名称的唯一性
-    if (data.name && data.name !== existingRole.roleName) {
-      const nameExists = await this.roleRepository.existsByName(data.name, id)
+    if (data.roleName && data.roleName !== existingRole.roleName) {
+      const nameExists = await this.roleRepository.existsByName(data.roleName, id)
       if (nameExists) {
         throw new Error('角色名称已存在')
       }
@@ -145,7 +145,7 @@ export class RoleService {
     }
 
     // 2. 检查是否为系统角色（系统角色不允许删除）
-    if (existingRole.isSystemRole === 1) {
+    if (existingRole.isSystem === 1) {
       throw new Error('系统角色不允许删除')
     }
 
@@ -181,7 +181,7 @@ export class RoleService {
     }
 
     // 2. 检查系统角色是否允许修改状态
-    if (existingRole.isSystemRole === 1 && status === RoleStatus.DISABLED) {
+    if (existingRole.isSystem === 1 && status === RoleStatus.DISABLED) {
       throw new Error('系统角色不允许禁用')
     }
 
@@ -367,6 +367,60 @@ export class RoleService {
       return null
     }
     return this.roleRepository.findByCode(code.trim())
+  }
+
+  /**
+   * 批量删除角色
+   */
+  async batchDeleteRoles(data: BatchDeleteRoleDTO): Promise<{ success: boolean; deletedCount: number; failedRoles: number[] }> {
+    try {
+      const failedRoles: number[] = []
+      let deletedCount = 0
+
+      // 逐个检查和删除角色
+      for (const roleId of data.roleIds) {
+        try {
+          const role = await this.roleRepository.findById(roleId)
+          if (!role) {
+            failedRoles.push(roleId)
+            continue
+          }
+
+          // 检查是否为系统角色（系统角色不允许删除）
+          if (role.isSystem === 1) {
+            failedRoles.push(roleId)
+            continue
+          }
+
+          // 检查是否有用户正在使用该角色
+          const usersWithRole = await this.roleRepository.findByUserId(roleId)
+          if (usersWithRole && usersWithRole.length > 0) {
+            failedRoles.push(roleId)
+            continue
+          }
+
+          const deleted = await this.roleRepository.delete(roleId, data.deleterId)
+          if (deleted) {
+            deletedCount++
+          } else {
+            failedRoles.push(roleId)
+          }
+        } catch (error) {
+          failedRoles.push(roleId)
+        }
+      }
+
+      // 清理缓存
+      await this.clearCache()
+      
+      return {
+        success: failedRoles.length === 0,
+        deletedCount,
+        failedRoles
+      }
+    } catch (error) {
+      throw error
+    }
   }
 
   /**

@@ -25,7 +25,10 @@ import {
   sysRoleQueryRequestSchema,
   sysRoleListResponseSchema,
   idParamSchema,
-  sysRoleAssignRequestSchema
+  sysRoleAssignRequestSchema,
+  sysRoleUpdateRequestSchema,
+  sysRoleStatusUpdateRequestSchema,
+  sysRoleBatchDeleteRequestSchema
 } from '../../schemas/role.schema.js'
 
 /**
@@ -59,6 +62,9 @@ async function schemasPlugin(fastify: FastifyInstance) {
   fastify.addSchema(sysRoleListResponseSchema)
   fastify.addSchema(idParamSchema)
   fastify.addSchema(sysRoleAssignRequestSchema)
+  fastify.addSchema(sysRoleUpdateRequestSchema)
+  fastify.addSchema(sysRoleStatusUpdateRequestSchema)
+  fastify.addSchema(sysRoleBatchDeleteRequestSchema)
 
   fastify.log.info('✅ 所有全局schema已注册完成')
 }

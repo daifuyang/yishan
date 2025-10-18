@@ -74,32 +74,15 @@ export async function getRoleDetail(
 export async function updateRole(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.updateRoleParams,
-  body: {
-    /** 角色名称 */
-    name?: string;
-    /** 角色描述 */
-    description?: string;
-    /** 状态：0-禁用，1-启用 */
-    status?: 0 | 1;
-    /** 排序顺序 */
-    sortOrder?: number;
-  },
+  body: API.sysRoleUpdateRequest,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
   return request<{
     code?: number;
     message?: string;
-    data?: {
-      id?: number;
-      roleName?: string;
-      roleDesc?: string;
-      status?: number;
-      isSystemRole?: number;
-      sortOrder?: number;
-      createdAt?: string;
-      updatedAt?: string;
-    };
+    isSuccess?: boolean;
+    data?: API.sysRole;
   }>(`/api/v1/admin/roles/${param0}`, {
     method: "PUT",
     headers: {
@@ -132,10 +115,7 @@ export async function deleteRole(
 export async function updateRoleStatus(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.updateRoleStatusParams,
-  body: {
-    /** 状态：0-禁用，1-启用 */
-    status: 0 | 1;
-  },
+  body: API.sysRoleStatusUpdateRequest,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -173,6 +153,30 @@ export async function assignRolesToUser(
   });
 }
 
+/** 批量删除角色 批量删除指定的角色 DELETE /api/v1/admin/roles/batch */
+export async function batchDeleteRoles(
+  body: API.sysRoleBatchDeleteRequest,
+  options?: { [key: string]: any }
+) {
+  return request<{
+    code?: number;
+    message?: string;
+    isSuccess?: boolean;
+    data?: {
+      success?: boolean;
+      deletedCount?: number;
+      failedRoles?: { id?: number; reason?: string }[];
+    };
+  }>("/api/v1/admin/roles/batch", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** 获取用户角色 获取指定用户的角色列表 GET /api/v1/admin/roles/user/${param0} */
 export async function getUserRoles(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
@@ -188,7 +192,7 @@ export async function getUserRoles(
       roleName?: string;
       roleDesc?: string;
       status?: number;
-      isSystemRole?: number;
+      isSystem?: number;
     }[];
   }>(`/api/v1/admin/roles/user/${param0}`, {
     method: "GET",
