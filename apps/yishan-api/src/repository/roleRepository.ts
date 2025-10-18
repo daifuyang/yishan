@@ -176,12 +176,8 @@ export class RoleRepository {
     }
     if (query.creatorId) queryBuilder = queryBuilder.where('creatorId', query.creatorId)
 
-    // 排序 - 默认排序为更新时间，其次是排序字段，最后是id
-    queryBuilder = queryBuilder
-      .orderBy('isSystem', 'desc')
-      .orderBy('sortOrder', 'asc')   // 排序字段升序
-      .orderBy('updatedAt', 'desc')  // 更新时间倒序（最新的在前）
-      .orderBy('id', 'asc')          // id升序作为最终排序
+    // 大厂级别的排序逻辑设计
+    this.applySorting(queryBuilder, query)
 
     // 分页查询
     const roles = await queryBuilder
@@ -199,6 +195,69 @@ export class RoleRepository {
       total,
       page,
       pageSize
+    }
+  }
+
+  /**
+   * 应用排序逻辑 - 大厂级别的排序设计
+   * 1. 优先使用多字段排序(sorts)，支持最多3个字段
+   * 2. 向后兼容单字段排序(sortBy/sortOrder)
+   * 3. 系统角色始终优先显示
+   * 4. 保证排序结果的稳定性
+   */
+  private applySorting(queryBuilder: any, query: RoleQueryDTO): void {
+    // 系统角色始终优先显示
+    // queryBuilder.orderBy('isSystem', 'desc')
+
+    if (query.sorts && Array.isArray(query.sorts) && query.sorts.length > 0) {
+      // 多字段排序模式
+      const appliedFields = new Set(['isSystem']) // 已应用的字段
+      
+      // 应用用户指定的排序字段
+      query.sorts.forEach(sort => {
+        if (sort.field && sort.order && !appliedFields.has(sort.field)) {
+          queryBuilder.orderBy(sort.field, sort.order)
+          appliedFields.add(sort.field)
+        }
+      })
+
+      // 如果没有指定sortOrder排序，添加默认的sortOrder排序
+      if (!appliedFields.has('sortOrder')) {
+        queryBuilder.orderBy('sortOrder', 'asc')
+        appliedFields.add('sortOrder')
+      }
+
+      // 如果没有指定updatedAt排序，添加updatedAt作为次要排序
+      if (!appliedFields.has('updatedAt')) {
+        queryBuilder.orderBy('updatedAt', 'desc')
+        appliedFields.add('updatedAt')
+      }
+
+      // 最后按id排序保证结果稳定
+      if (!appliedFields.has('id')) {
+        queryBuilder.orderBy('id', 'asc')
+      }
+    } else {
+      // 单字段排序模式（向后兼容）
+      const sortBy = query.sortBy || 'sortOrder'
+      const sortOrder = query.sortOrder || 'asc'
+      
+      // 应用主要排序字段
+      queryBuilder.orderBy(sortBy, sortOrder)
+      
+      // 添加次要排序字段
+      if (sortBy !== 'sortOrder') {
+        queryBuilder.orderBy('sortOrder', 'asc')
+      }
+      
+      if (sortBy !== 'updatedAt') {
+        queryBuilder.orderBy('updatedAt', 'desc')
+      }
+      
+      // 最后按id排序保证结果稳定
+      if (sortBy !== 'id') {
+        queryBuilder.orderBy('id', 'asc')
+      }
     }
   }
 

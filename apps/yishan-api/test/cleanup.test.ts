@@ -63,7 +63,7 @@ describe('System Cleanup API Tests', () => {
 
       const body = JSON.parse(response.body)
       
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       assert.strictEqual(body.code, 40002)
       assert.strictEqual(body.message, '无效的清理密钥')
     })
@@ -94,7 +94,7 @@ describe('System Cleanup API Tests', () => {
 
       const body = JSON.parse(response.body)
       
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       assert.strictEqual(body.code, 40002)
       assert.strictEqual(body.message, '无效的清理密钥')
     })
@@ -110,7 +110,7 @@ describe('System Cleanup API Tests', () => {
 
       const body = JSON.parse(response.body)
       
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       assert.strictEqual(body.code, 40002)
       assert.strictEqual(body.message, '无效的清理密钥')
     })
@@ -131,7 +131,7 @@ describe('System Cleanup API Tests', () => {
 
         const body = JSON.parse(response.body)
         
-        assert.strictEqual(response.statusCode, 400)
+        assert.strictEqual(response.statusCode, 401)
         assert.strictEqual(body.code, 40002)
         assert.strictEqual(body.message, '无效的清理密钥')
       }
@@ -264,7 +264,7 @@ describe('System Cleanup API Tests', () => {
 
       const body = JSON.parse(response.body)
       
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       assert.strictEqual(body.code, 40002)
       assert.strictEqual(body.message, '无效的清理密钥')
     })

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Form, Input, Radio, Select, Modal } from 'antd';
 import type { FormInstance } from 'antd';
 
@@ -36,6 +36,22 @@ const RoleForm: React.FC<RoleFormProps> = ({
     }
   };
 
+  /**
+   * Modal 打开后的处理
+   */
+  const handleAfterOpenChange = (open: boolean) => {
+    if (open) {
+      if (initialValues) {
+        // 编辑模式：设置表单值
+        form.setFieldsValue(initialValues);
+      } else {
+        // 新增模式：重置表单并设置默认值
+        form.resetFields();
+        form.setFieldsValue({ status: 1, isSystem: 0, sortOrder: 0 });
+      }
+    }
+  };
+
   return (
     <Modal
       title={title}
@@ -44,12 +60,12 @@ const RoleForm: React.FC<RoleFormProps> = ({
       onOk={handleSubmit}
       confirmLoading={confirmLoading}
       maskClosable={false}
-      destroyOnHidden
+      destroyOnHidden={true}
+      afterOpenChange={handleAfterOpenChange}
     >
       <Form
         form={form}
         layout="vertical"
-        initialValues={initialValues || { status: 1, isSystem: 0, sortOrder: 0 }}
         preserve={false}
       >
         <Form.Item

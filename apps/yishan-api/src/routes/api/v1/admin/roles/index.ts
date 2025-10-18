@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { RoleService } from '../../../../../services/roleService.js'
-import { CreateRoleDTO, UpdateRoleDTO, RoleQueryDTO, RoleStatus, AssignRoleDTO, BatchDeleteRoleDTO } from '../../../../../domain/role.js'
+import { CreateRoleDTO, UpdateRoleDTO, RoleQueryDTO, RoleStatus, AssignRoleDTO, BatchDeleteRoleDTO, SortConfig, SortField, SortOrder } from '../../../../../domain/role.js'
 import { ResponseUtil } from '../../../../../utils/response.js'
 import { CommonBusinessCode } from '../../../../../constants/business-code.js'
 
@@ -112,6 +112,39 @@ export default async function roleRoutes(fastify: FastifyInstance) {
         status: query.status,
         sortBy: query.sortBy || 'sortOrder',
         sortOrder: query.sortOrder || 'asc'
+      }
+
+      // 处理多字段排序参数
+      if (query.sorts) {
+        try {
+          let sorts: any[] = []
+          
+          // 如果sorts是字符串，尝试解析JSON
+          if (typeof query.sorts === 'string') {
+            sorts = JSON.parse(query.sorts)
+          } else if (Array.isArray(query.sorts)) {
+            sorts = query.sorts
+          }
+          
+          if (Array.isArray(sorts) && sorts.length > 0) {
+            // 验证sorts参数格式
+            const validSorts: SortConfig[] = sorts
+              .filter((sort: any): sort is { field: string; order: string } => 
+                sort && typeof sort === 'object' && sort.field && sort.order)
+              .slice(0, 3) // 最多支持3个排序字段
+              .map((sort): SortConfig => ({
+                field: sort.field as SortField,
+                order: (sort.order === 'desc' ? 'desc' : 'asc') as SortOrder
+              }))
+            
+            if (validSorts.length > 0) {
+              validatedQuery.sorts = validSorts
+            }
+          }
+        } catch (error) {
+          // JSON解析失败，忽略sorts参数
+          fastify.log.warn('Failed to parse sorts parameter: %s', error)
+        }
       }
 
       const result = await roleService.getRoles(validatedQuery)

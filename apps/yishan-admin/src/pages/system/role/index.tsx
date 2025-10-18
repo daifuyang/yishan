@@ -49,7 +49,7 @@ const RoleList: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
   const [form] = Form.useForm();
-  const [formVisible, setFormVisible] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [formTitle, setFormTitle] = useState('新建角色');
   const [currentRole, setCurrentRole] = useState<API.sysRole | undefined>(undefined);
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -77,8 +77,7 @@ const RoleList: React.FC = () => {
   const handleAdd = () => {
     setFormTitle('新建角色');
     setCurrentRole(undefined);
-    form.resetFields();
-    setFormVisible(true);
+    setFormOpen(true);
   };
 
   /**
@@ -90,8 +89,7 @@ const RoleList: React.FC = () => {
       const result = await getRoleDetail({ id });
       if (result.isSuccess && result.data) {
         setCurrentRole(result.data);
-        form.setFieldsValue(result.data);
-        setFormVisible(true);
+        setFormOpen(true);
       }
     } catch (error) {
       message.error('获取角色详情失败');
@@ -186,7 +184,7 @@ const RoleList: React.FC = () => {
         await postAdminRoles(values);
         message.success('角色创建成功');
       }
-      setFormVisible(false);
+      setFormOpen(false);
       actionRef.current?.reload();
     } catch (error) {
       message.error('操作失败');
@@ -362,10 +360,10 @@ const RoleList: React.FC = () => {
 
       <RoleForm
         form={form}
-        open={formVisible}
+        open={formOpen}
         title={formTitle}
         initialValues={currentRole}
-        onCancel={() => setFormVisible(false)}
+        onCancel={() => setFormOpen(false)}
         onSubmit={handleFormSubmit}
         confirmLoading={confirmLoading}
       />

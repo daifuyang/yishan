@@ -59,6 +59,35 @@ export const sysRoleQueryRequestSchema = {
       enum: ["asc", "desc"], 
       default: "asc",
       description: "排序方向" 
+    },
+    sorts: {
+      oneOf: [
+        {
+          type: "string",
+          description: "JSON字符串格式的排序配置"
+        },
+        {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              field: {
+                type: "string",
+                enum: ["id", "roleName", "status", "isSystem", "sortOrder", "createdAt", "updatedAt"],
+                description: "排序字段"
+              },
+              order: {
+                 type: "string",
+                 enum: ["asc", "desc"],
+                 description: "排序方向"
+               }
+            },
+            required: ["field", "order"]
+          }
+        }
+      ],
+      maxItems: 3,
+      description: "多字段排序配置，优先级从高到低。与sortBy/sortOrder互斥，优先使用sorts"
     }
   }
 };

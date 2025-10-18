@@ -56,6 +56,18 @@ export interface UpdateRoleDTO {
   updaterId?: number | null;
 }
 
+// 排序字段类型
+export type SortField = 'id' | 'roleName' | 'status' | 'isSystem' | 'sortOrder' | 'createdAt' | 'updatedAt';
+
+// 排序方向类型
+export type SortOrder = 'asc' | 'desc';
+
+// 单个排序配置
+export interface SortConfig {
+  field: SortField;
+  order: SortOrder;
+}
+
 // 角色查询数据传输对象
 export interface RoleQueryDTO {
   id?: number;
@@ -69,9 +81,11 @@ export interface RoleQueryDTO {
   // 分页参数
   page?: number;
   pageSize?: number;
-  // 排序参数
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  // 单字段排序参数（向后兼容）
+  sortBy?: SortField;
+  sortOrder?: SortOrder;
+  // 多字段排序参数（优先使用）
+  sorts?: SortConfig[] | string;
 }
 
 // 角色权限关联接口

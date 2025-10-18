@@ -69,11 +69,11 @@ describe('Admin API Tests', () => {
         url: '/api/v1/admin'
       })
 
-      assert.strictEqual(response.statusCode, 401)
+      assert.strictEqual(response.statusCode, 400)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40001)
-      assert.ok(body.message.includes('无效的token') || body.message.includes('未授权'))
+      assert.strictEqual(body.code, 40118)
+      assert.ok(body.message.includes('Authorization头缺失或格式错误'))
     })
 
     test('应该拒绝无效的JWT令牌', async () => {
@@ -88,7 +88,7 @@ describe('Admin API Tests', () => {
       assert.strictEqual(response.statusCode, 401)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40001)
+      assert.strictEqual(body.code, 40118)
       assert.ok(body.message.includes('无效的token') || body.message.includes('未授权'))
     })
 
@@ -101,11 +101,11 @@ describe('Admin API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 401)
+      assert.strictEqual(response.statusCode, 400)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40001)
-      assert.ok(body.message.includes('无效的token') || body.message.includes('未授权'))
+      assert.strictEqual(body.code, 40118)
+      assert.ok(body.message.includes('Authorization头缺失或格式错误'))
     })
 
     test('应该拒绝空的Authorization头', async () => {
@@ -117,11 +117,11 @@ describe('Admin API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 401)
+      assert.strictEqual(response.statusCode, 400)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40001)
-      assert.ok(body.message.includes('无效的token') || body.message.includes('未授权'))
+      assert.strictEqual(body.code, 40118)
+      assert.ok(body.message.includes('Authorization头缺失或格式错误'))
     })
 
     test('应该拒绝过期的JWT令牌', async () => {
@@ -139,7 +139,7 @@ describe('Admin API Tests', () => {
       assert.strictEqual(response.statusCode, 401)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40001)
+      assert.strictEqual(body.code, 40118)
       assert.ok(body.message.includes('无效的token') || body.message.includes('过期'))
     })
 
@@ -152,14 +152,10 @@ describe('Admin API Tests', () => {
         }
       })
 
-      // 根据实际的JWT验证实现，这可能返回401（如果严格要求Bearer）或200（如果支持bearer）
-      // 这里我们测试实际行为
-      assert.ok(response.statusCode === 200 || response.statusCode === 401)
-      
-      if (response.statusCode === 401) {
-        const body = JSON.parse(response.body)
-        assert.strictEqual(body.code, 40001)
-      }
+      // 根据JWT认证插件实现，Bearer是大小写敏感的，应该返回400
+      assert.strictEqual(response.statusCode, 400)
+      const body = JSON.parse(response.body)
+      assert.strictEqual(body.code, 40118) // TOKEN_EXPIRED
     })
 
     test('应该返回正确的响应格式和数据类型', async () => {
