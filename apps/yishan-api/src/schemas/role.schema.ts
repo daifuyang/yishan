@@ -68,6 +68,7 @@ export const sysRoleQueryRequestSchema = {
         },
         {
           type: "array",
+          maxItems: 3,
           items: {
             type: "object",
             properties: {
@@ -86,7 +87,6 @@ export const sysRoleQueryRequestSchema = {
           }
         }
       ],
-      maxItems: 3,
       description: "多字段排序配置，优先级从高到低。与sortBy/sortOrder互斥，优先使用sorts"
     }
   }

@@ -1,199 +1,294 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { FastifyPluginAsync, FastifyRequest } from 'fastify'
+import { CleanupService } from '../../../../services/cleanupService.js'
+import { ErrorCode } from '../../../../constants/business-code.js'
 import { ResponseUtil } from '../../../../utils/response.js'
-import { CommonBusinessCode } from '../../../../constants/business-code.js'
-import { TokenCleanupService } from '../../../../services/tokenCleanupService.js'
 
-export default async function cleanupRoutes(fastify: FastifyInstance) {
-  
-  // Token清理API - 支持外部触发
-  fastify.post('/cleanup/tokens', {
+const cleanupRoutes: FastifyPluginAsync = async function (fastify, opts) {
+  const cleanupService = new CleanupService(fastify)
+
+  // 清理临时文件
+  fastify.post('/temp-files', {
     schema: {
-      tags: ['system'],
-      summary: 'Token清理',
-      description: '清理过期的用户认证Token，通过外部中间件触发执行',
-      operationId: 'cleanupTokens',
-      headers: {
+      operationId: 'cleanupTempFiles',
+      summary: '清理临时文件',
+      description: '清理系统中的临时文件',
+      tags: ['sysCleanup'],
+      security: [{ bearerAuth: [] }],
+      body: {
         type: 'object',
         properties: {
-          'x-cleanup-key': { 
-            type: 'string', 
-            description: '清理服务密钥，用于验证外部中间件调用权限' 
+          olderThanDays: { 
+            type: 'number', 
+            minimum: 1, 
+            default: 7,
+            description: '清理多少天前的文件' 
+          },
+          dryRun: { 
+            type: 'boolean', 
+            default: false,
+            description: '是否为试运行（不实际删除）' 
           }
-        },
-        required: ['x-cleanup-key']
+        }
       },
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20000 },
-            message: { type: 'string', example: 'Token清理完成' },
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '清理完成' },
             data: {
               type: 'object',
               properties: {
-                deletedCount: { type: 'number', description: '清理的token数量' },
-                executionTime: { type: 'string', description: '执行时间' },
-                timestamp: { type: 'string', description: '清理时间戳' }
+                deletedCount: { type: 'number', description: '删除的文件数量' },
+                freedSpace: { type: 'number', description: '释放的空间（字节）' },
+                dryRun: { type: 'boolean', description: '是否为试运行' }
               }
             }
           }
         },
-        401: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 40001 },
-            message: { type: 'string', example: '无效的清理密钥' }
-          }
-        },
-        500: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 50001 },
-            message: { type: 'string', example: '清理服务执行失败' }
-          }
+        401: { $ref: 'unauthorizedResponse#' },
+        403: { $ref: 'forbiddenResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request: FastifyRequest, reply) => {
+      try {
+        // 检查用户权限
+        const user = (request as any).user
+        if (!user || user.role !== 'admin') {
+          return ResponseUtil.forbidden(
+            reply,
+            request,
+            '权限不足，仅管理员可执行此操作'
+          )
         }
-      }
-    }
-  }, async (
-    request: FastifyRequest<{
-      Headers: {
-        'x-cleanup-key': string
-      }
-    }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      // 验证清理密钥
-      const cleanupKey = request.headers['x-cleanup-key']
-      const expectedKey = process.env.CLEANUP_API_KEY || 'default-cleanup-key-change-this'
-      
-      if (cleanupKey !== expectedKey) {
-        return ResponseUtil.error(
-          reply,
-          request,
-          '无效的清理密钥',
-          CommonBusinessCode.UNAUTHORIZED
-        )
-      }
 
-      const startTime = Date.now()
-      
-      // 创建TokenCleanupService实例并执行清理
-      const tokenCleanupService = new TokenCleanupService(fastify)
-      const deletedCount = await tokenCleanupService.executeCleanup()
-      
-      const executionTime = `${Date.now() - startTime}ms`
-      
-      return ResponseUtil.send(
+        const { olderThanDays = 7, dryRun = false } = request.body as any
+        
+        const result = await cleanupService.cleanupTempFiles({
+          olderThanDays,
+          dryRun,
+          operatorId: user.id
+        })
+        
+        const message = dryRun 
+          ? `试运行完成，预计删除 ${result.deletedCount} 个文件，释放 ${(result.freedSpace / 1024 / 1024).toFixed(2)} MB 空间`
+          : `清理完成，删除了 ${result.deletedCount} 个文件，释放了 ${(result.freedSpace / 1024 / 1024).toFixed(2)} MB 空间`
+        
+        return ResponseUtil.success(
           reply,
           request,
-          {
-            deletedCount,
-            executionTime,
-            timestamp: new Date().toISOString()
-          },
-          'Token清理完成',
-          CommonBusinessCode.SUCCESS
+          result,
+          message
         )
-    } catch (error) {
+      } catch (error) {
         fastify.log.error(error)
+        
+        const errorMessage = error instanceof Error ? error.message : '清理临时文件失败'
         return ResponseUtil.error(
           reply,
           request,
-          'Token清理执行失败',
-          CommonBusinessCode.INTERNAL_SERVER_ERROR,
-          error
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
         )
+      }
     }
   })
 
-  // 清理状态查询API
-  fastify.get('/cleanup/status', {
+  // 清理日志文件
+  fastify.post('/logs', {
     schema: {
-      tags: ['system'],
-      summary: '清理状态查询',
-      description: '查询Token清理服务的状态信息',
-      operationId: 'getCleanupStatus',
-      headers: {
+      operationId: 'cleanupLogs',
+      summary: '清理日志文件',
+      description: '清理系统中的过期日志文件',
+      tags: ['sysCleanup'],
+      security: [{ bearerAuth: [] }],
+      body: {
         type: 'object',
         properties: {
-          'x-cleanup-key': { 
-            type: 'string', 
-            description: '清理服务密钥' 
+          olderThanDays: { 
+            type: 'number', 
+            minimum: 1, 
+            default: 30,
+            description: '清理多少天前的日志' 
+          },
+          logLevel: {
+            type: 'string',
+            enum: ['debug', 'info', 'warn', 'error'],
+            description: '要清理的日志级别'
+          },
+          dryRun: { 
+            type: 'boolean', 
+            default: false,
+            description: '是否为试运行（不实际删除）' 
           }
-        },
-        required: ['x-cleanup-key']
+        }
       },
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20000 },
-            message: { type: 'string', example: '获取清理状态成功' },
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '日志清理完成' },
             data: {
               type: 'object',
               properties: {
-                serviceType: { type: 'string', description: '服务类型' },
-                environment: { type: 'string', description: '运行环境' },
-                lastCleanupTime: { type: 'string', description: '最后清理时间' },
-                totalTokens: { type: 'number', description: '总token数量' },
-                expiredTokens: { type: 'number', description: '过期token数量' },
-                revokedTokens: { type: 'number', description: '已撤销token数量' }
+                deletedFiles: { type: 'number', description: '删除的日志文件数量' },
+                deletedRecords: { type: 'number', description: '删除的日志记录数量' },
+                freedSpace: { type: 'number', description: '释放的空间（字节）' },
+                dryRun: { type: 'boolean', description: '是否为试运行' }
               }
             }
           }
+        },
+        401: { $ref: 'unauthorizedResponse#' },
+        403: { $ref: 'forbiddenResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request: FastifyRequest, reply) => {
+      try {
+        // 检查用户权限
+        const user = (request as any).user
+        if (!user || user.role !== 'admin') {
+          return ResponseUtil.forbidden(
+            reply,
+            request,
+            '权限不足，仅管理员可执行此操作'
+          )
         }
+
+        const { olderThanDays = 30, logLevel, dryRun = false } = request.body as any
+        
+        const result = await cleanupService.cleanupLogs({
+          olderThanDays,
+          logLevel,
+          dryRun,
+          operatorId: user.id
+        })
+        
+        const message = dryRun 
+          ? `试运行完成，预计删除 ${result.deletedFiles} 个日志文件，${result.deletedRecords} 条记录，释放 ${(result.freedSpace / 1024 / 1024).toFixed(2)} MB 空间`
+          : `日志清理完成，删除了 ${result.deletedFiles} 个文件，${result.deletedRecords} 条记录，释放了 ${(result.freedSpace / 1024 / 1024).toFixed(2)} MB 空间`
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          result,
+          message
+        )
+      } catch (error) {
+        fastify.log.error(error)
+        
+        const errorMessage = error instanceof Error ? error.message : '清理日志失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
       }
     }
-  }, async (
-    request: FastifyRequest<{
-      Headers: {
-        'x-cleanup-key': string
-      }
-    }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      // 验证清理密钥
-      const cleanupKey = request.headers['x-cleanup-key']
-      const expectedKey = process.env.CLEANUP_API_KEY || 'default-cleanup-key-change-this'
-      
-      if (cleanupKey !== expectedKey) {
-        return ResponseUtil.error(
-          reply,
-          request,
-          '无效的清理密钥',
-          CommonBusinessCode.UNAUTHORIZED
-        )
-      }
+  })
 
-      // 创建TokenCleanupService实例并获取统计信息
-      const tokenCleanupService = new TokenCleanupService(fastify)
-      const stats = await tokenCleanupService.getCleanupStats()
-      
-      return ResponseUtil.send(
+  // 清理数据库
+  fastify.post('/database', {
+    schema: {
+      operationId: 'cleanupDatabase',
+      summary: '清理数据库',
+      description: '清理数据库中的过期数据',
+      tags: ['sysCleanup'],
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        properties: {
+          tables: {
+            type: 'array',
+            items: { type: 'string' },
+            description: '要清理的表名列表'
+          },
+          olderThanDays: { 
+            type: 'number', 
+            minimum: 1, 
+            default: 90,
+            description: '清理多少天前的数据' 
+          },
+          dryRun: { 
+            type: 'boolean', 
+            default: false,
+            description: '是否为试运行（不实际删除）' 
+          }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '数据库清理完成' },
+            data: {
+              type: 'object',
+              properties: {
+                deletedRecords: { type: 'number', description: '删除的记录数量' },
+                affectedTables: { 
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: '受影响的表' 
+                },
+                dryRun: { type: 'boolean', description: '是否为试运行' }
+              }
+            }
+          }
+        },
+        401: { $ref: 'unauthorizedResponse#' },
+        403: { $ref: 'forbiddenResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request: FastifyRequest, reply) => {
+      try {
+        // 检查用户权限
+        const user = (request as any).user
+        if (!user || user.role !== 'admin') {
+          return ResponseUtil.forbidden(
+            reply,
+            request,
+            '权限不足，仅管理员可执行此操作'
+          )
+        }
+
+        const { tables, olderThanDays = 90, dryRun = false } = request.body as any
+        
+        const result = await cleanupService.cleanupDatabase({
+          tables,
+          olderThanDays,
+          dryRun,
+          operatorId: user.id
+        })
+        
+        const message = dryRun 
+          ? `试运行完成，预计从 ${result.affectedTables.join(', ')} 表中删除 ${result.deletedRecords} 条记录`
+          : `数据库清理完成，从 ${result.affectedTables.join(', ')} 表中删除了 ${result.deletedRecords} 条记录`
+        
+        return ResponseUtil.success(
           reply,
           request,
-          {
-            serviceType: 'API-Triggered',
-            environment: 'Serverless',
-            lastCleanupTime: stats.lastCleanupTime || 'Never',
-            totalTokens: stats.totalTokens,
-            expiredTokens: stats.expiredTokens,
-            revokedTokens: stats.revokedTokens
-          },
-          '获取清理状态成功',
-          CommonBusinessCode.SUCCESS
+          result,
+          message
         )
-    } catch (error) {
+      } catch (error) {
         fastify.log.error(error)
+        
+        const errorMessage = error instanceof Error ? error.message : '清理数据库失败'
         return ResponseUtil.error(
           reply,
           request,
-          '获取清理状态失败',
-          CommonBusinessCode.INTERNAL_SERVER_ERROR,
-          error
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
         )
+      }
     }
   })
 }
+
+export default cleanupRoutes

@@ -75,9 +75,9 @@ export const sysUserLoginRequestSchema = {
 export const sysUserRefreshTokenRequestSchema = {
   $id: "sysUserRefreshTokenRequest",
   type: "object",
-  required: ["refreshToken"],
+  required: ["refresh_token"],
   properties: {
-    refreshToken: { type: "string", description: "刷新令牌" },
+    refresh_token: { type: "string", description: "刷新令牌" },
   },
 };
 
@@ -87,7 +87,7 @@ export const baseResponseSchema = {
   properties: {
     code: { type: "number", example: 200 },
     message: { type: "string", example: "操作成功" },
-    isSuccess: { type: "boolean", example: true, description: "请求是否成功" },
+    success: { type: "boolean", example: true, description: "请求是否成功" },
   },
 };
 
@@ -97,8 +97,9 @@ export const errorResponseSchema = {
   properties: {
     code: { type: "number", example: 400 },
     message: { type: "string", example: "操作失败" },
-    isSuccess: { type: "boolean", example: false, description: "请求是否成功" },
+    success: { type: "boolean", example: false, description: "请求是否成功" },
     data: { type: "null", example: null, description: "错误响应数据为空" },
+    timestamp: { type: "string", format: "date-time" },
     error: {
       type: "object",
       properties: {
@@ -124,7 +125,7 @@ export const successResponseSchema = {
   properties: {
     code: { type: "number", example: 20000 },
     message: { type: "string", example: "操作成功" },
-    isSuccess: { type: "boolean", example: true, description: "请求是否成功" },
+    success: { type: "boolean", example: true, description: "请求是否成功" },
     data: { description: "响应数据" }
   }
 };
@@ -135,13 +136,74 @@ export const unauthorizedResponseSchema = {
   properties: {
     code: { type: "number", example: 401 },
     message: { type: "string", example: "未授权访问" },
-    isSuccess: { type: "boolean", example: false, description: "请求是否成功" },
+    success: { type: "boolean", example: false, description: "请求是否成功" },
     data: { type: "null", example: null, description: "错误响应数据为空" },
+    timestamp: { type: "string", format: "date-time" },
     error: {
       type: "object",
       properties: {
         type: { type: "string", example: "UnauthorizedError", description: "错误类型" },
         detail: { type: "string", example: "未授权访问", description: "错误详情" },
+        errorId: { type: "string", example: "uuid", description: "错误ID" }
+      }
+    }
+  },
+};
+
+export const notFoundResponseSchema = {
+  $id: "notFoundResponse",
+  type: "object",
+  properties: {
+    code: { type: "number", example: 404 },
+    message: { type: "string", example: "资源不存在" },
+    success: { type: "boolean", example: false, description: "请求是否成功" },
+    data: { type: "null", example: null, description: "错误响应数据为空" },
+    timestamp: { type: "string", format: "date-time" },
+    error: {
+      type: "object",
+      properties: {
+        type: { type: "string", example: "NotFoundError", description: "错误类型" },
+        detail: { type: "string", example: "请求的资源不存在", description: "错误详情" },
+        errorId: { type: "string", example: "uuid", description: "错误ID" }
+      }
+    }
+  },
+};
+
+export const conflictResponseSchema = {
+  $id: "conflictResponse",
+  type: "object",
+  properties: {
+    code: { type: "number", example: 409 },
+    message: { type: "string", example: "资源冲突" },
+    success: { type: "boolean", example: false, description: "请求是否成功" },
+    data: { type: "null", example: null, description: "错误响应数据为空" },
+    timestamp: { type: "string", format: "date-time" },
+    error: {
+      type: "object",
+      properties: {
+        type: { type: "string", example: "ConflictError", description: "错误类型" },
+        detail: { type: "string", example: "资源已存在或存在冲突", description: "错误详情" },
+        errorId: { type: "string", example: "uuid", description: "错误ID" }
+      }
+    }
+  },
+};
+
+export const forbiddenResponseSchema = {
+  $id: "forbiddenResponse",
+  type: "object",
+  properties: {
+    code: { type: "number", example: 403 },
+    message: { type: "string", example: "禁止访问" },
+    success: { type: "boolean", example: false, description: "请求是否成功" },
+    data: { type: "null", example: null, description: "错误响应数据为空" },
+    timestamp: { type: "string", format: "date-time" },
+    error: {
+      type: "object",
+      properties: {
+        type: { type: "string", example: "ForbiddenError", description: "错误类型" },
+        detail: { type: "string", example: "没有权限访问该资源", description: "错误详情" },
         errorId: { type: "string", example: "uuid", description: "错误ID" }
       }
     }

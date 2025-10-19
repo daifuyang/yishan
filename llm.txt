@@ -107,38 +107,32 @@ export default async function (fastify: FastifyInstance) {
 }
 ```
 
-#### 4. 业务状态码 (优化版)
+#### 4. 业务状态码 (统一版)
 使用5位数字业务状态码 (定义在 `constants/business-code.ts`)，采用优化的编码规则：
 
 **编码规则**:
-- **第1位**: 状态类型标识
-  - 2: 成功状态 (20000-29999)
-  - 4: 客户端错误 (40000-49999)  
-  - 5: 服务器错误 (50000-59999)
-
-- **第2-3位**: 业务模块标识
-  - 00: 通用模块
-  - 01: 用户模块  
-  - 02: 订单模块
-  - 03: 商品模块
-  - 04: 支付模块
-  - 05: 系统模块
-  - 06: 角色模块
-
-- **第4-5位**: 具体操作标识 (00-99)
+- 成功码统一：
+  - `10000`（SUCCESS_CODE）
+- 公共错误码分层：
+  - 系统错误：`20xxx`（如 `20001` 系统内部错误）
+  - 参数错误：`21xxx`（如 `21001` 参数缺失，`21003` 参数验证失败）
+  - 权限错误：`22xxx`（如 `22001` 未授权，`22004` 权限不足）
+  - 请求错误：`23xxx`（如 `23001` 方法不允许，`23002` 请求过于频繁）
+- 业务错误码（模块）：
+  - 用户模块：`30xxx`（如 `30001` 用户不存在，`30005` 用户名或密码错误）
+  - 部门模块：`31xxx`（如 `31001` 部门不存在）
+  - 角色模块：`32xxx`（如 `32001` 角色不存在）
+- 具体错误采用固定编号，不再细分成功码
 
 **示例**:
-- 20000: 通用成功
-- 20101: 用户创建成功  
-- 40110: 用户不存在
-- 50101: 用户创建失败
+- 10000: 操作成功
+- 30001: 用户不存在（HTTP 404）
+- 30005: 用户名或密码错误（HTTP 401）
 
 **优势**:
-- 清晰的状态类型区分（成功/客户端错误/服务器错误）
-- 模块化设计，每个模块有独立的编码空间
-- 避免编码冲突，支持99个模块，每个模块99个操作
-- 更精确的HTTP状态码映射（401/403/404等）
-- 完善的工具类支持（BusinessCodeUtil）
+- 成功码统一，减少维护成本
+- 错误码分层，定位清晰，自动映射对应 HTTP 状态
+- 业务模块独立编号，避免冲突，提升可扩展性
 
 #### 4.1 API响应示例值规范
 在 Swagger/OpenAPI 文档的响应模式定义中，`code` 字段的 `example` 值必须使用5位数字的业务码，而不是HTTP状态码：
@@ -149,14 +143,14 @@ export default async function (fastify: FastifyInstance) {
   "200": {
     "type": "object",
     "properties": {
-      "code": { "type": "number", "example": 20000 },  // 使用业务码
+      "code": { "type": "number", "example": 10000 },  // 使用业务码
       "message": { "type": "string", "example": "操作成功" }
     }
   },
   "404": {
     "type": "object",
     "properties": {
-      "code": { "type": "number", "example": 40010 },  // 使用业务码
+      "code": { "type": "number", "example": 30001 },  // 使用业务码
       "message": { "type": "string", "example": "用户不存在" }
     }
   }
@@ -177,46 +171,36 @@ export default async function (fastify: FastifyInstance) {
 ```
 
 **常用业务码示例值对照表**:
-- HTTP 200 → 业务码 20000 (通用成功)
-- HTTP 201 → 业务码 20001 (创建成功)
-- HTTP 400 → 业务码 40000 (参数错误)
-- HTTP 401 → 业务码 40001 (未授权)
-- HTTP 403 → 业务码 40002 (权限不足)
-- HTTP 404 → 业务码 40003 (资源不存在)
-- HTTP 500 → 业务码 50000 (服务器错误)
+- HTTP 200 → 业务码 10000 (操作成功)
+- HTTP 201 → 业务码 10000 (创建成功)
+- HTTP 400 → 业务码 21001/21003 (参数错误/验证失败)
+- HTTP 401 → 业务码 22001 (未授权)
+- HTTP 403 → 业务码 22004 (权限不足)
+- HTTP 404 → 业务码 30001/31001/32001（用户/部门/角色不存在）
+- HTTP 500 → 业务码 20001 (系统内部错误)
 
 #### 4.2 业务码工具类使用
 `BusinessCodeUtil` 提供了完整的业务码操作方法：
 
 ```typescript
-import { BusinessCodeUtil, CommonBusinessCode } from '@/constants/business-code'
+import { SUCCESS_CODE, ErrorCode, BusinessCode } from '@/constants/business-code'
 
 // 获取HTTP状态码
-const httpStatus = BusinessCodeUtil.getHttpStatus(CommonBusinessCode.SUCCESS) // 200
+const httpStatus = BusinessCode.getHttpStatus(ErrorCode.INVALID_CREDENTIALS) // 401
 
 // 获取业务码描述
-const description = BusinessCodeUtil.getDescription(CommonBusinessCode.SUCCESS) // "操作成功"
+const description = BusinessCode.getMessage(ErrorCode.USER_NOT_FOUND) // "用户不存在"
 
-// 检查是否为成功状态
-const isSuccess = BusinessCodeUtil.isSuccess(CommonBusinessCode.SUCCESS) // true
-
-// 检查是否为客户端错误
-const isClientError = BusinessCodeUtil.isClientError(40000) // true
-
-// 解析业务码结构
-const parsed = BusinessCodeUtil.parseBusinessCode(20101)
-// { statusType: 2, moduleCode: 1, operationCode: 1 }
-
-// 获取模块名称
-const moduleName = BusinessCodeUtil.getModuleName(1) // "用户模块"
+// 判断是否为成功状态
+const isSuccess = BusinessCode.isSuccess(SUCCESS_CODE) // true
 ```
 
 #### 4.3 分页查询状态码
 分页查询使用统一的业务状态码规范：
 
-- **成功状态码**: 使用 20000 (SUCCESS) - 操作成功
-- **客户端错误**: 使用 40000 (INVALID_PARAMETER) - 参数无效
-- **服务器错误**: 使用 50000 (INTERNAL_ERROR) - 内部服务器错误
+- **成功状态码**: 使用 10000 (SUCCESS_CODE) - 操作成功
+- **参数错误**: 使用 21003 (VALIDATION_ERROR) - 参数验证失败
+- **系统错误**: 使用 20001 (SYSTEM_ERROR) - 系统内部错误
 
 参数验证错误在 error.validation 字段中详细说明：
 - page: 页码必须大于等于1
@@ -302,7 +286,7 @@ const moduleName = BusinessCodeUtil.getModuleName(1) // "用户模块"
 - **标准响应格式**:
   ```typescript
   interface PaginationResponse<T> {
-    code: number;           // 业务状态码 (20000-成功)
+    code: number;           // 业务状态码 (10000-成功)
     message: string;        // 响应消息
     data: {
       list: T[];            // 数据列表
@@ -395,10 +379,19 @@ const moduleName = BusinessCodeUtil.getModuleName(1) // "用户模块"
 - 专注于核心功能：角色名称 + 描述 + 权限配置
 
 **迁移文件规范**:
-- 使用 003-006 序号的迁移文件
+- **主表与关联表合并原则**: 相关联的主表和关联表应放在同一个迁移文件中，避免过度拆分
+- **文件组织**: 
+  - 003.do.roles.sql: 包含 sys_role 和 sys_user_role 两个表的创建（含时间控制字段）
+  - 004.do.permissions.sql: 包含 sys_permission 表的创建
+  - 005.do.role_permissions.sql: 包含 sys_role_permission 表的创建
+  - 006.do.departments.sql: 包含 sys_department 表的创建
 - 完整的 do/undo 操作对
 - 外键约束管理 (FOREIGN_KEY_CHECKS)
 - 预置系统默认数据
+- **回滚顺序**: 在 undo 文件中，先删除关联表，再删除主表（遵循外键依赖关系）
+- **序号连续性**: 迁移文件序号必须连续，避免跳跃（如从003直接到005），确保迁移顺序清晰
+- **时间控制功能**: sys_user_role 表包含 assigned_at 和 expires_at 字段，支持角色权限的时间控制
+- **性能优化**: 为时间控制字段创建相应索引（idx_expires_at, idx_user_expires, idx_role_expires）
 
 #### 9. 环境配置
 - 使用 `@fastify/env` 管理环境变量
@@ -428,7 +421,7 @@ pnpm run db:reset     # 重置数据库
 - `apps/yishan-api/docs/RESPONSE_STATUS_CODE_SPECIFICATION.md` - 响应状态码规范
 - `apps/yishan-api/docs/PROJECT_SPECIFICATION.md` - 项目整体规范
 
-#### 10.2 最近更新 (2025年10月10日)
+#### 10.2 最近更新 (2025年1月)
 - ✅ 更新分页查询规范，符合大厂企业级标准
 - ✅ 基于 Knex.js 的完整分页实现规范和最佳实践
 - ✅ 统一响应格式（包含完整的响应元数据）
@@ -437,7 +430,7 @@ pnpm run db:reset     # 重置数据库
 - ✅ 创建专门的分页规范文档 `PAGINATION_SPECIFICATION.md`
 - ✅ 优化数据库查询规范，避免GROUP BY冲突
 - ✅ 添加客户端分页状态判断逻辑
-- ✅ 统一状态码规范（使用通用业务状态码20000，移除分页专用状态码）
+- ✅ 统一状态码规范（使用通用业务状态码10000，移除分页专用状态码）
 - ✅ 添加性能优化和缓存策略指导
 - ✅ 完善事务支持和错误处理机制
 - ✅ **新增角色管理数据库规范 (RBAC)**
@@ -447,6 +440,17 @@ pnpm run db:reset     # 重置数据库
   - 系统内置角色保护机制 (is_system)
   - 数据权限范围控制和时间控制
   - 完整的迁移文件规范 (003-006)
+- ✅ **优化迁移文件组织结构**
+  - 合并相关联的主表和关联表到单个迁移文件
+  - 角色管理系统：003.do.roles.sql 包含 sys_role 和 sys_user_role（含时间控制字段）
+  - 避免过度拆分，提高迁移文件的内聚性和可维护性
+  - 规范回滚顺序：先删除关联表，再删除主表
+  - 实现迁移文件序号连续性（001-006）
+- ✅ **角色权限时间控制功能**
+  - sys_user_role 表新增 assigned_at 和 expires_at 字段
+  - 支持角色权限的时间范围控制和过期管理
+  - 创建性能优化索引：idx_expires_at, idx_user_expires, idx_role_expires
+  - 完整的创建和回滚逻辑合并到 003 迁移文件
 
 ## 前端开发规范 (yishan-admin)
 

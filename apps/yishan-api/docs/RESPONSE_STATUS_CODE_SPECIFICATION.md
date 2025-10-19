@@ -27,7 +27,7 @@
 ```
 
 #### 2.2 状态码范围
-- **20000-29999**: 成功状态
+- **10000**: 成功状态
 - **40000-49999**: 客户端错误
 - **50000-59999**: 服务器错误
 
@@ -37,7 +37,7 @@
 
 | 业务码 | 名称 | 描述 | HTTP映射 |
 |--------|------|------|----------|
-| 20000 | SUCCESS | 操作成功 | 200 |
+| 10000 | SUCCESS | 操作成功 | 200 |
 | 20001 | CREATED | 创建成功 | 201 |
 | 20002 | UPDATED | 更新成功 | 200 |
 | 20003 | DELETED | 删除成功 | 200 |
@@ -61,7 +61,7 @@
   "200": {
     "type": "object",
     "properties": {
-      "code": { "type": "number", "example": 20000 },
+      "code": { "type": "number", "example": 10000 },
       "message": { "type": "string", "example": "操作成功" }
     }
   },
@@ -92,7 +92,7 @@
 
 | HTTP状态码 | 推荐业务码示例值 | 使用场景 |
 |------------|------------------|----------|
-| 200 | 20000 | 通用成功响应 |
+| 200 | 10000 | 通用成功响应 |
 | 201 | 20001 | 资源创建成功 |
 | 400 | 40001 | 通用参数错误 |
 | 401 | 40003 | 未授权访问 |
@@ -320,7 +320,7 @@ operationId: 'getAdminHome'       // 获取管理员首页
 
 分页查询统一使用系统的业务状态码规范：
 
-- **成功响应**: 使用 20000 (SUCCESS) - 操作成功
+- **成功响应**: 使用 10000 (SUCCESS_CODE) - 操作成功
 - **参数错误**: 使用 40010 (INVALID_PARAMETER) - 参数无效
 - **服务器错误**: 使用 50000 (INTERNAL_ERROR) - 内部服务器错误
 
@@ -385,7 +385,7 @@ interface PaginationRequest {
 
 分页查询使用统一的业务状态码规范：
 
-- **成功响应**: 使用 20000 (SUCCESS) - 操作成功
+- **成功响应**: 使用 10000 (SUCCESS_CODE) - 操作成功
 - **参数错误**: 使用 40010 (INVALID_PARAMETER) - 参数无效
 - **服务器错误**: 使用 50000 (INTERNAL_ERROR) - 内部服务器错误
 
@@ -412,7 +412,7 @@ interface PaginationRequest {
 #### 成功响应格式
 ```json
 {
-  "code": 20000,
+  "code": 10000,
   "message": "操作成功",
   "data": {
     // 具体业务数据
@@ -427,7 +427,7 @@ interface PaginationRequest {
 #### 分页响应格式
 ```json
 {
-  "code": 20000,
+  "code": 10000,
   "message": "操作成功",
   "data": {
     "list": [
@@ -480,7 +480,7 @@ interface PaginationRequest {
 基于实际代码实现，以下是当前项目中定义的所有业务码：
 
 ### 实际通用业务码
-- **20000**: SUCCESS - 操作成功
+- **10000**: SUCCESS - 操作成功
 - **20001**: CREATED - 创建成功  
 - **20002**: UPDATED - 更新成功
 - **20003**: DELETED - 删除成功
@@ -519,7 +519,7 @@ interface PaginationRequest {
 import { ResponseUtil } from '../utils/response.js'
 import { UserBusinessCode } from '../../../constants/business-code.js'
 
-// 成功响应 - 默认使用20000
+// 成功响应 - 默认使用10000
 return ResponseUtil.send(
   reply, 
   request, 
@@ -528,13 +528,13 @@ return ResponseUtil.send(
   UserBusinessCode.USER_RETRIEVED
 )
 
-// 使用默认成功码20000
+// 使用默认成功码10000
 return ResponseUtil.send(
   reply,
   request,
   userData,
   '操作成功'
-  // 不指定code时自动使用20000
+  // 不指定code时自动使用10000
 )
 
 // 分页响应
@@ -633,7 +633,7 @@ fastify.get('/users', async (request, reply) => {
 - 每个业务操作必须使用对应的业务码
 - 新增业务码时需遵循编码规则
 - 同一业务场景使用相同的业务码
-- 默认成功码为20000
+- 默认成功码为10000
 
 ### 2. 消息描述规范
 - 成功消息使用积极的表达方式

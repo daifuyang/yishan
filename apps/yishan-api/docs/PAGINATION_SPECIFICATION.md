@@ -270,7 +270,7 @@ class UserService {
     })
     
     return {
-      code: 20000,
+      code: 10000,
       message: '操作成功',
       data: result
     }
@@ -360,7 +360,7 @@ describe('UserService', () => {
         sortOrder: 'desc'
       })
 
-      expect(result.code).toBe(20000)
+      expect(result.code).toBe(10000)
       expect(result.data.list).toEqual(mockUsers)
       expect(result.data.pagination.total).toBe(100)
       expect(result.data.pagination.page).toBe(1)
@@ -387,7 +387,7 @@ describe('UserService', () => {
         pageSize: 10
       })
 
-      expect(result.code).toBe(20000)
+      expect(result.code).toBe(10000)
       expect(result.data.list).toEqual([])
       expect(result.data.pagination.total).toBe(0)
       expect(result.data.pagination.totalPages).toBe(0)

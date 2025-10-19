@@ -142,3 +142,59 @@ export const sysUserStatusResponseSchema = {
     },
   },
 };
+
+export const sysRoleUserQueryRequestSchema = {
+  $id: "sysRoleUserQueryRequest",
+  type: "object",
+  properties: {
+    page: { type: "number", minimum: 1, default: 1, description: "页码" },
+    pageSize: { type: "number", minimum: 1, maximum: 100, default: 10, description: "每页数量" },
+    search: { type: "string", description: "搜索关键词（支持用户名、真实姓名模糊搜索）" },
+    username: { type: "string", description: "用户名筛选" },
+    realName: { type: "string", description: "真实姓名筛选" },
+    status: { 
+      type: "number", 
+      enum: [0, 1, 2], 
+      description: "状态筛选：0-禁用，1-启用，2-锁定" 
+    }
+  }
+};
+
+export const sysRoleUserListResponseSchema = {
+  $id: "sysRoleUserListResponse",
+  type: "object",
+  properties: {
+    list: {
+      type: "array",
+      items: { $ref: "sysUser#" }
+    },
+    pagination: {
+      type: "object",
+      properties: {
+        page: { type: "number", description: "当前页码" },
+        pageSize: { type: "number", description: "每页条数" },
+        total: { type: "number", description: "总记录数" },
+        totalPages: { type: "number", description: "总页数" }
+      }
+    }
+  }
+};
+
+export const sysUserPasswordChangeRequestSchema = {
+  $id: "sysUserPasswordChangeRequest",
+  type: "object",
+  required: ["newPassword"],
+  additionalProperties: false,
+  properties: {
+    newPassword: { 
+      type: "string", 
+      minLength: 6, 
+      description: "新密码" 
+    },
+    confirmPassword: { 
+      type: "string", 
+      minLength: 6, 
+      description: "确认密码" 
+    }
+  }
+};

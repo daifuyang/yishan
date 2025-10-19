@@ -25,7 +25,7 @@ describe('Admin Roles API Tests', () => {
     // 使用admin账号登录获取访问令牌
     const loginResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/auth/login',
+      url: '/api/v1/login',
       payload: {
         username: 'admin',
         password: 'admin123'
@@ -54,7 +54,7 @@ describe('Admin Roles API Tests', () => {
       }
     })
 
-    if (userResponse.statusCode === 201) {
+    if (userResponse.statusCode === 200) {
       const userData = JSON.parse(userResponse.body)
       testUserId = userData.data.id
     }
@@ -105,8 +105,8 @@ describe('Admin Roles API Tests', () => {
       })
 
       const data = JSON.parse(response.body)
-      assert.strictEqual(response.statusCode, 201)
-      assert.strictEqual(data.code, 20001) // CREATED
+      assert.strictEqual(response.statusCode, 200)
+      assert.strictEqual(data.code, 10000)
       testRoleId = Number(data.data.id)
     })
 
@@ -129,7 +129,7 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(response.statusCode, 409)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40006) // CONFLICT
+      assert.strictEqual(data.code, 32002)
     })
 
     test('应该拒绝无效的请求数据', async () => {
@@ -160,9 +160,9 @@ describe('Admin Roles API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED (Authorization头缺失)
+      assert.strictEqual(data.code, 22001)
     })
   })
 
@@ -178,7 +178,7 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20000) // SUCCESS
+      assert.strictEqual(data.code, 10000)
       assert.ok(Array.isArray(data.data.list))
       assert.ok(typeof data.data.pagination.total === 'number')
       assert.ok(typeof data.data.pagination.page === 'number')
@@ -523,11 +523,9 @@ describe('Admin Roles API Tests', () => {
         url: '/api/v1/admin/roles'
       })
 
-      // 根据实际API行为调整期望值
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      // 检查返回的错误信息
-      assert(data.code && data.message)
+      assert.strictEqual(data.code, 22001)
     })
   })
 
@@ -543,8 +541,8 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20000) // SUCCESS
-      assert.strictEqual(data.message, '获取角色详情成功')
+      assert.strictEqual(data.code, 10000)
+      assert.strictEqual(data.message, '获取成功')
       assert.ok(data.data)
       assert.strictEqual(data.data.id, testRoleId)
       assert.strictEqual(data.data.roleName, testRoleName)
@@ -561,7 +559,7 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(response.statusCode, 404)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40004) // NOT_FOUND
+      assert.strictEqual(data.code, 32001)
     })
 
     test('应该拒绝无效的角色ID', async () => {
@@ -595,8 +593,8 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20002) // UPDATED
-      assert.strictEqual(data.message, '角色更新成功')
+      assert.strictEqual(data.code, 10000)
+      assert.strictEqual(data.message, '更新成功')
     })
 
     test('应该返回404当角色不存在', async () => {
@@ -613,6 +611,8 @@ describe('Admin Roles API Tests', () => {
       })
 
       assert.strictEqual(response.statusCode, 404)
+      const data = JSON.parse(response.body)
+      assert.strictEqual(data.code, 32001)
     })
 
     test('应该拒绝无效的更新数据', async () => {
@@ -648,8 +648,8 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(disableResponse.statusCode, 200)
       const disableData = JSON.parse(disableResponse.body)
-      assert.strictEqual(disableData.code, 20002) // UPDATED
-      assert.strictEqual(disableData.message, '角色状态修改成功')
+      assert.strictEqual(disableData.code, 10000)
+      assert.strictEqual(disableData.message, '状态更新成功')
 
       // 恢复角色状态为启用
       const enableResponse = await app.inject({
@@ -665,7 +665,7 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(enableResponse.statusCode, 200)
       const enableData = JSON.parse(enableResponse.body)
-      assert.strictEqual(enableData.code, 20002) // UPDATED
+      assert.strictEqual(enableData.code, 10000)
     })
 
     test('应该拒绝无效的状态值', async () => {
@@ -696,6 +696,8 @@ describe('Admin Roles API Tests', () => {
       })
 
       assert.strictEqual(response.statusCode, 404)
+      const data = JSON.parse(response.body)
+      assert.strictEqual(data.code, 32001)
     })
   })
 
@@ -717,7 +719,7 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20000) // SUCCESS
+      assert.strictEqual(data.code, 10000)
       assert.strictEqual(data.message, '角色分配成功')
     })
 
@@ -732,14 +734,13 @@ describe('Admin Roles API Tests', () => {
           authorization: `Bearer ${accessToken}`
         },
         payload: {
-          name: testRoleName + '_second',
-          description: '第二个测试角色',
-          type: 'custom',
+          roleName: testRoleName + '_second',
+          roleDesc: '第二个测试角色',
           status: 1
         }
       })
 
-      if (roleResponse.statusCode === 201) {
+      if (roleResponse.statusCode === 200) {
         const roleData = JSON.parse(roleResponse.body)
         const secondRoleId = roleData.data.id
 
@@ -781,7 +782,9 @@ describe('Admin Roles API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 500) // 可能返回500或其他错误码
+      assert.strictEqual(response.statusCode, 404)
+      const data = JSON.parse(response.body)
+      assert.strictEqual(data.code, 30001)
     })
   })
 
@@ -799,7 +802,7 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20000) // SUCCESS
+      assert.strictEqual(data.code, 10000)
       assert.ok(Array.isArray(data.data))
       
       // 检查是否包含之前分配的角色
@@ -824,7 +827,7 @@ describe('Admin Roles API Tests', () => {
         }
       })
 
-      if (userResponse.statusCode === 201) {
+      if (userResponse.statusCode === 200) {
         const userData = JSON.parse(userResponse.body)
         const noRoleUserId = userData.data.id
 
@@ -861,9 +864,9 @@ describe('Admin Roles API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 500)
+      assert.strictEqual(response.statusCode, 404)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 50000) // INTERNAL_SERVER_ERROR
+      assert.strictEqual(data.code, 30001)
     })
   })
 
@@ -884,7 +887,7 @@ describe('Admin Roles API Tests', () => {
         }
       })
 
-      if (createResponse.statusCode === 201) {
+      if (createResponse.statusCode === 200) {
         const createData = JSON.parse(createResponse.body)
         const tempRoleId = createData.data.id
 
@@ -898,8 +901,8 @@ describe('Admin Roles API Tests', () => {
 
         assert.strictEqual(response.statusCode, 200)
         const data = JSON.parse(response.body)
-        assert.strictEqual(data.code, 20003) // DELETED
-        assert.strictEqual(data.message, '角色删除成功')
+        assert.strictEqual(data.code, 10000)
+        assert.strictEqual(data.message, '删除成功')
       }
     })
 
@@ -913,6 +916,8 @@ describe('Admin Roles API Tests', () => {
       })
 
       assert.strictEqual(response.statusCode, 404)
+      const data = JSON.parse(response.body)
+      assert.strictEqual(data.code, 32001)
     })
 
     test('应该拒绝未认证的请求', async () => {
@@ -921,9 +926,9 @@ describe('Admin Roles API Tests', () => {
         url: `/api/v1/admin/roles/${testRoleId}`
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED (Authorization头缺失)
+      assert.strictEqual(data.code, 22001)
     })
   })
 
@@ -939,7 +944,7 @@ describe('Admin Roles API Tests', () => {
 
       assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(data.code, 22001)
     })
 
     test('应该正确处理格式错误的Authorization头', async () => {
@@ -951,9 +956,9 @@ describe('Admin Roles API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED
     })
 
     test('应该正确处理空的Authorization头', async () => {
@@ -965,9 +970,9 @@ describe('Admin Roles API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED
     })
 
     test('应该支持大小写不敏感的Bearer令牌格式', async () => {
@@ -979,10 +984,10 @@ describe('Admin Roles API Tests', () => {
         }
       })
 
-      // 根据JWT认证插件实现，Bearer是大小写敏感的，应该返回400
-      assert.strictEqual(response.statusCode, 400)
+      // Bearer大小写错误按未授权处理
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED
     })
 
     test('应该正确处理超长的角色名称', async () => {
@@ -1069,7 +1074,7 @@ describe('Admin Roles API Tests', () => {
       assert.strictEqual(response.statusCode, 400)
       const data = JSON.parse(response.body)
       if (data.code !== undefined) {
-        assert.strictEqual(data.code, 40001) // BAD_REQUEST
+        assert.strictEqual(data.code, 21003) // VALIDATION_ERROR
       }
     })
   })

@@ -1,226 +1,306 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { FastifyInstance } from 'fastify';
 import { AuthService } from '../../../services/authService.js'
-import { LoginDTO } from '../../../domain/auth.js'
+import { UserService } from '../../../services/userService.js'
+import { ErrorCode } from '../../../constants/business-code.js'
 import { ResponseUtil } from '../../../utils/response.js'
-import { UserBusinessCode } from '../../../constants/business-code.js'
-
+import { LoginDTO, RefreshTokenDTO } from '../../../domain/auth.js'
 
 export default async function authRoutes(fastify: FastifyInstance) {
   const authService = new AuthService(fastify)
+  const userService = new UserService(fastify)
 
   // 用户登录
-  fastify.post('/auth/login', {
+  fastify.post('/login', {
     schema: {
-      tags: ['sysAuth'],
+      operationId: 'userLogin',
       summary: '用户登录',
-      description: '使用用户名/邮箱和密码进行用户登录',
-      operationId: 'postAuthLogin',
-      body: { $ref: 'sysUserLoginRequest#' },
+      description: '用户登录接口',
+      tags: ['sysAuth'],
+      body: {
+        type: 'object',
+        required: ['password'],
+        properties: {
+          username: { type: 'string', description: '用户名' },
+          email: { type: 'string', format: 'email', description: '邮箱' },
+          password: { type: 'string', minLength: 6, description: '密码' }
+        },
+        anyOf: [
+          { required: ['username', 'password'] },
+          { required: ['email', 'password'] }
+        ]
+      },
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20001 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '登录成功' },
-            isSuccess: { type: 'boolean', example: true },
-            data: { $ref: 'sysUserTokenResponse#' }
+            data: { $ref: 'sysUserTokenResponse#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' }
           }
         },
         400: { $ref: 'errorResponse#' },
-        401: { $ref: 'errorResponse#' },
-        404: { $ref: 'errorResponse#' }
+        401: { $ref: 'unauthorizedResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest<{ Body: LoginDTO }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const result = await authService.login(request.body, request.ip)
-      
-      return ResponseUtil.send(
-        reply,
-        request,
-        result,
-        '登录成功',
-        UserBusinessCode.USER_LOGIN_SUCCESS
-      )
-    } catch (error) {
-      fastify.log.error(error)
-      
-      const errorMessage = error instanceof Error ? error.message : '登录失败'
-      const errorCode = errorMessage === '用户不存在' 
-        ? UserBusinessCode.USER_NOT_FOUND 
-        : errorMessage === '密码错误' 
-        ? UserBusinessCode.INVALID_CREDENTIALS
-        : UserBusinessCode.USER_LOGIN_FAILED
-
-      return ResponseUtil.error(
-        reply,
-        request,
-        errorMessage,
-        errorCode,
-        error
-      )
+    },
+    handler: async (request, reply) => {
+      try {
+        const loginData = request.body as LoginDTO
+        const clientIp = request.ip || ''
+        
+        // 验证输入参数
+        if (!loginData.username && !loginData.email) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.MISSING_PARAMETER,
+            '请提供用户名或邮箱'
+          )
+        }
+        
+        if (!loginData.password) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.MISSING_PARAMETER,
+            '请提供密码'
+          )
+        }
+        
+        const result = await authService.login(loginData, clientIp)
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          result,
+          '登录成功'
+        )
+      } catch (error) {
+        fastify.log.error(error)
+        
+        if (error instanceof Error) {
+          if (error.message.includes('用户不存在') || error.message.includes('user not found')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.USER_NOT_FOUND,
+              '用户不存在'
+            )
+          }
+          if (error.message.includes('密码错误') || error.message.includes('invalid password')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.INVALID_CREDENTIALS,
+              '用户名或密码错误'
+            )
+          }
+          if (error.message.includes('账户已被禁用')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.USER_ACCOUNT_DISABLED,
+              '账户已被禁用'
+            )
+          }
+          if (error.message.includes('账户已被锁定')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.USER_ACCOUNT_LOCKED,
+              '账户已被锁定'
+            )
+          }
+        }
+        
+        const errorMessage = error instanceof Error ? error.message : '登录失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
+      }
     }
   })
 
-  // 获取当前用户信息（需要鉴权）
-  fastify.get('/auth/me', {
+  // 获取当前用户信息
+  fastify.get('/me', {
     preHandler: fastify.authenticate,
     schema: {
-      tags: ['sysAuth'],
+      operationId: 'getCurrentUser',
       summary: '获取当前用户信息',
       description: '获取当前登录用户的详细信息',
-      operationId: 'getCurrentUser',
+      tags: ['sysAuth'],
       security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20002 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取用户信息成功' },
-            isSuccess: { type: 'boolean', example: true },
-            data: { $ref: 'sysUser#' }
+            data: { $ref: 'sysUser#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' }
           }
         },
-        401: { $ref: 'unauthorizedResponse#' }
+        401: { $ref: 'unauthorizedResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
-    try {
-      const userId = request.user!.id
-      const user = await authService.getCurrentUser(userId)
-      
-      return ResponseUtil.send(
-        reply,
-        request,
-        user,
-        '获取用户信息成功',
-        UserBusinessCode.USER_RETRIEVED
-      )
-    } catch (error) {
-      fastify.log.error(error)
-      return ResponseUtil.error(
-        reply,
-        request,
-        '获取用户信息失败',
-        UserBusinessCode.USER_FETCH_FAILED,
-        error
-      )
+    },
+    handler: async (request, reply) => {
+      try {
+        const userId = (request.user as any).id
+        const user = await userService.getUserById(userId)
+        
+        if (!user) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.USER_NOT_FOUND,
+            '用户不存在'
+          )
+        }
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          user,
+          '获取用户信息成功'
+        )
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '获取用户信息失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
+      }
     }
   })
 
-  // 刷新token
-  fastify.post('/auth/refresh', {
+  // 刷新令牌
+  fastify.post('/refresh', {
     schema: {
-      tags: ['sysAuth'],
+      operationId: 'refreshToken',
       summary: '刷新访问令牌',
-      description: '使用refreshToken获取新的accessToken和refreshToken',
-      operationId: 'postAuthRefresh',
+      description: '使用刷新令牌获取新的访问令牌',
+      tags: ['sysAuth'],
       body: { $ref: 'sysUserRefreshTokenRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20003 },
-            message: { type: 'string', example: 'token刷新成功' },
-            isSuccess: { type: 'boolean', example: true },
-            data: { $ref: 'sysUserTokenResponse#' }
+            code: { type: 'number', example: 10000 },
+            message: { type: 'string', example: '刷新令牌成功' },
+            data: { $ref: 'sysUserTokenResponse#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' }
           }
         },
         400: { $ref: 'errorResponse#' },
-        401: { $ref: 'unauthorizedResponse#' }
+        401: { $ref: 'unauthorizedResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest<{ Body: { refreshToken: string } }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const { refreshToken } = request.body
-      const clientIp = request.ip // 获取客户端IP
-      const tokenData = await authService.refreshToken(refreshToken, clientIp)
-      
-      return ResponseUtil.send(
-        reply,
-        request,
-        tokenData,
-        'token刷新成功',
-        UserBusinessCode.USER_LOGIN_SUCCESS
-      )
-    } catch (error) {
-      fastify.log.error(error)
-      return ResponseUtil.error(
-        reply,
-        request,
-        'token刷新失败',
-        UserBusinessCode.TOKEN_GENERATION_FAILED,
-        error,
-        401
-      )
+    },
+    handler: async (request, reply) => {
+      try {
+        const refreshTokenData = request.body as RefreshTokenDTO
+        const clientIp = request.ip || ''
+        
+        const result = await authService.refreshToken(refreshTokenData.refresh_token, clientIp)
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          result,
+          '刷新令牌成功'
+        )
+      } catch (error) {
+        fastify.log.error(error)
+        
+        const msg = error instanceof Error ? error.message : ''
+        const lowered = msg.toLowerCase()
+        const isAuthFailure = (
+          msg.includes('无效') ||
+          msg.includes('不存在') ||
+          msg.includes('撤销') ||
+          msg.includes('过期') ||
+          lowered.includes('invalid') ||
+          lowered.includes('expired') ||
+          lowered.includes('revoked') ||
+          lowered.includes('not found')
+        )
+        
+        if (isAuthFailure) {
+          return ResponseUtil.unauthorized(
+            reply,
+            request,
+            '刷新令牌失败'
+          )
+        }
+        
+        const errorMessage = error instanceof Error ? msg : '令牌刷新失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
+      }
     }
   })
 
-  // 退出登录
-  fastify.post('/auth/logout', {
+  // 用户登出
+  fastify.post('/logout', {
     preHandler: fastify.authenticate,
     schema: {
-      tags: ['sysAuth'],
-      summary: '用户登出',
-      description: '用户退出登录状态',
       operationId: 'userLogout',
+      summary: '用户登出',
+      description: '用户登出接口',
+      tags: ['sysAuth'],
       security: [{ bearerAuth: [] }],
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20004 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '退出登录成功' },
-            isSuccess: { type: 'boolean', example: true },
-            data: { type: 'null' }
+            data: { type: 'null' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' }
           }
         },
-        400: { $ref: 'errorResponse#' },
-        401: { $ref: 'unauthorizedResponse#' }
+        401: { $ref: 'unauthorizedResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest,
-    reply: FastifyReply
-  ) => {
-    try {
-      const userId = request.user!.id
-      
-      // 从Authorization头中提取accessToken
-      const authHeader = request.headers.authorization
-      let accessToken: string | undefined
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        accessToken = authHeader.substring(7) // 移除 'Bearer ' 前缀
+    },
+    handler: async (request, reply) => {
+      try {
+        const userId = (request.user as any).id
+        
+        await authService.logout(userId)
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          null,
+          '退出登录成功'
+        )
+      } catch (error) {
+        fastify.log.error(error)
+        
+        const errorMessage = error instanceof Error ? error.message : '登出失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
       }
-      
-      // 调用AuthService的logout方法，传递userId和accessToken
-      await authService.logout(userId, accessToken)
-      
-      return ResponseUtil.send(
-        reply,
-        request,
-        null,
-        '退出登录成功',
-        UserBusinessCode.USER_LOGOUT_SUCCESS
-      )
-    } catch (error) {
-      fastify.log.error(error)
-      return ResponseUtil.error(
-        reply,
-        request,
-        '退出登录失败',
-        UserBusinessCode.USER_LOGOUT_FAILED,
-        error
-      )
     }
   })
 }

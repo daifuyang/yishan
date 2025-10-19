@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { ResponseUtil } from '../../../../utils/response.js';
 
 export default async function adminIndexRoutes(fastify: FastifyInstance) {
   // GET /api/v1/admin - 管理员首页
@@ -14,35 +15,26 @@ export default async function adminIndexRoutes(fastify: FastifyInstance) {
           200: {
             type: "object",
             properties: {
-              code: { type: "number", example: 20000 },
-              message: { type: "string", example: "success" },
+              code: { type: "number", example: 10000 },
+              message: { type: "string", example: "访问成功" },
+              success: { type: "boolean", example: true },
               data: {
                 type: "object",
                 properties: {
                   message: { type: "string", example: "hello admin" },
                 },
               },
+              timestamp: { type: "string", example: "2024-01-01T00:00:00.000Z" },
+              request_id: { type: "string", example: "uuid-string" }
             },
           },
-          401: {
-            type: "object",
-            properties: {
-              code: { type: "number", example: 40003 },
-              message: { type: "string", example: "未授权访问" },
-            },
-          },
-          403: {
-            type: "object",
-            properties: {
-              code: { type: "number", example: 40004 },
-              message: { type: "string", example: "权限不足" },
-            },
-          },
+          401: { $ref: 'unauthorizedResponse#' },
+          403: { $ref: 'forbiddenResponse#' },
         },
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      return reply.sendSuccess({ message: "hello admin" }, "访问成功");
+      return ResponseUtil.success(reply, request, { message: "hello admin" }, "访问成功");
     }
   );
 }

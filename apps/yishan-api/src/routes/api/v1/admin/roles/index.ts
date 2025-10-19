@@ -1,327 +1,141 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import { FastifyPluginAsync } from 'fastify'
 import { RoleService } from '../../../../../services/roleService.js'
-import { CreateRoleDTO, UpdateRoleDTO, RoleQueryDTO, RoleStatus, AssignRoleDTO, BatchDeleteRoleDTO, SortConfig, SortField, SortOrder } from '../../../../../domain/role.js'
+import { ErrorCode } from '../../../../../constants/business-code.js'
 import { ResponseUtil } from '../../../../../utils/response.js'
-import { CommonBusinessCode } from '../../../../../constants/business-code.js'
 
-export default async function roleRoutes(fastify: FastifyInstance) {
+const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
   const roleService = new RoleService(fastify)
 
   // 创建角色
   fastify.post('/', {
     schema: {
+      operationId: 'createRole',
+      summary: '创建角色',
+      description: '创建新角色',
       tags: ['sysRoles'],
-      summary: '创建新角色',
-      description: '创建一个新的系统角色',
-      operationId: 'postAdminRoles',
       security: [{ bearerAuth: [] }],
       body: { $ref: 'sysRoleCreateRequest#' },
       response: {
-        201: {
+        200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20001 },
-            message: { type: 'string', example: '角色创建成功' },
-            isSuccess: { type: 'boolean', example: true },
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '创建成功' },
             data: { $ref: 'sysRole#' }
           }
         },
         400: { $ref: 'errorResponse#' },
         401: { $ref: 'unauthorizedResponse#' },
-        409: { $ref: 'errorResponse#' }
+        409: { $ref: 'conflictResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest<{ Body: CreateRoleDTO }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const creatorId = request.user?.id
-      const newRole = await roleService.createRole(request.body, creatorId)
+    },
+    handler: async (request, reply) => {
+      try {
+        const body = request.body as any
+        const creatorId = (request as any).user.id
 
-      return ResponseUtil.send(
-        reply,
-        request,
-        newRole,
-        '角色创建成功',
-        CommonBusinessCode.CREATED
-      )
-    } catch (error) {
-      fastify.log.error(error)
-
-      if (error instanceof Error) {
-        if (error.message.includes('已存在')) {
-          return ResponseUtil.error(
-            reply,
-            request,
-            error.message,
-            CommonBusinessCode.CONFLICT,
-            error
-          )
+        const createData = {
+          ...body,
+          creatorId
         }
-      }
 
-      return ResponseUtil.error(
-        reply,
-        request,
-        '角色创建失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
+        const role = await roleService.createRole(createData)
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          role,
+          '角色创建成功'
+        )
+      } catch (error) {
+        fastify.log.error(error)
+        
+        if (error instanceof Error) {
+          if (error.message.includes('角色名称已存在') || error.message.includes('name')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.ROLE_ALREADY_EXISTS,
+              '角色名称已存在'
+            )
+          }
+          if (error.message.includes('角色代码已存在') || error.message.includes('code')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.ROLE_ALREADY_EXISTS,
+              '角色代码已存在'
+            )
+          }
+        }
+        
+        const errorMessage = error instanceof Error ? error.message : '创建失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
+      }
     }
   })
 
   // 获取角色列表
   fastify.get('/', {
     schema: {
-      tags: ['sysRoles'],
-      summary: '获取角色列表',
-      description: '获取系统角色列表，支持分页、搜索和排序',
       operationId: 'getRoleList',
+      summary: '获取角色列表',
+      description: '获取角色列表，支持分页和筛选',
+      tags: ['sysRoles'],
       security: [{ bearerAuth: [] }],
       querystring: { $ref: 'sysRoleQueryRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20000 },
-            message: { type: 'string', example: '操作成功' },
-            isSuccess: { type: 'boolean', example: true },
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '获取成功' },
             data: { $ref: 'sysRoleListResponse#' }
           }
         },
-        400: { $ref: 'errorResponse#' },
-        401: { $ref: 'unauthorizedResponse#' }
+        401: { $ref: 'unauthorizedResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest<{ Querystring: RoleQueryDTO }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const query = request.query as RoleQueryDTO
-
-      // 参数验证和转换
-      const validatedQuery: RoleQueryDTO = {
-        page: Math.max(1, query.page || 1),
-        pageSize: Math.max(1, Math.min(100, query.pageSize || 10)),
-        search: query.search,
-        roleName: query.roleName,
-        code: query.code,
-        type: query.type,
-        status: query.status,
-        sortBy: query.sortBy || 'sortOrder',
-        sortOrder: query.sortOrder || 'asc'
+    },
+    handler: async (request, reply) => {
+      try {
+        const query = request.query as any
+        const result = await roleService.getRoles(query)
+        
+        return ResponseUtil.paginated(
+          reply,
+          request,
+          result.roles,
+          result.total,
+          result.page,
+          result.pageSize,
+          '获取成功'
+        )
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '获取失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
       }
-
-      // 处理多字段排序参数
-      if (query.sorts) {
-        try {
-          let sorts: any[] = []
-          
-          // 如果sorts是字符串，尝试解析JSON
-          if (typeof query.sorts === 'string') {
-            sorts = JSON.parse(query.sorts)
-          } else if (Array.isArray(query.sorts)) {
-            sorts = query.sorts
-          }
-          
-          if (Array.isArray(sorts) && sorts.length > 0) {
-            // 验证sorts参数格式
-            const validSorts: SortConfig[] = sorts
-              .filter((sort: any): sort is { field: string; order: string } => 
-                sort && typeof sort === 'object' && sort.field && sort.order)
-              .slice(0, 3) // 最多支持3个排序字段
-              .map((sort): SortConfig => ({
-                field: sort.field as SortField,
-                order: (sort.order === 'desc' ? 'desc' : 'asc') as SortOrder
-              }))
-            
-            if (validSorts.length > 0) {
-              validatedQuery.sorts = validSorts
-            }
-          }
-        } catch (error) {
-          // JSON解析失败，忽略sorts参数
-          fastify.log.warn('Failed to parse sorts parameter: %s', error)
-        }
-      }
-
-      const result = await roleService.getRoles(validatedQuery)
-      return ResponseUtil.paginated(
-        reply,
-        request,
-        result.roles,
-        result.total,
-        result.page,
-        result.pageSize,
-        '获取角色列表成功'
-      )
-    } catch (error) {
-      fastify.log.error(error)
-      return ResponseUtil.error(
-        reply,
-        request,
-        '获取角色列表失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
     }
   })
 
-  // 获取单个角色详情
+  // 获取角色详情
   fastify.get('/:id', {
     schema: {
-      tags: ['sysRoles'],
+      operationId: 'getRoleById',
       summary: '获取角色详情',
-      description: '根据ID获取角色的详细信息',
-      operationId: 'getRoleDetail',
-      security: [{ bearerAuth: [] }],
-      params: { $ref: 'idParam#' },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 20000 },
-            message: { type: 'string', example: '获取成功' },
-            isSuccess: { type: 'boolean', example: true },
-            data: { $ref: 'sysRole#' }
-          }
-        },
-        400: { $ref: 'errorResponse#' },
-        401: { $ref: 'unauthorizedResponse#' },
-        404: { $ref: 'errorResponse#' }
-      }
-    }
-  }, async (
-    request: FastifyRequest<{ Params: { id: number } }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const role = await roleService.getRoleById(request.params.id)
-
-      if (!role) {
-        return ResponseUtil.error(
-          reply,
-          request,
-          '角色不存在',
-          CommonBusinessCode.NOT_FOUND
-        )
-      }
-
-      return ResponseUtil.send(
-        reply,
-        request,
-        role,
-        '获取角色详情成功',
-        CommonBusinessCode.SUCCESS
-      )
-    } catch (error) {
-      fastify.log.error(error)
-      return ResponseUtil.error(
-        reply,
-        request,
-        '获取角色详情失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
-    }
-  })
-
-  // 更新角色
-  fastify.put('/:id', {
-    schema: {
+      description: '根据ID获取角色详细信息',
       tags: ['sysRoles'],
-      summary: '更新角色',
-      description: '更新指定角色的信息',
-      operationId: 'updateRole',
-      security: [{ bearerAuth: [] }],
-      params: { $ref: 'idParam#' },
-      body: { $ref: 'sysRoleUpdateRequest#' },
-      response: {
-        200: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 20002 },
-            message: { type: 'string', example: '角色更新成功' },
-            isSuccess: { type: 'boolean', example: true },
-            data: { $ref: 'sysRole#' }
-          }
-        },
-        404: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 40003 },
-            message: { type: 'string', example: '角色不存在' }
-          }
-        }
-      }
-    }
-  }, async (
-    request: FastifyRequest<{ Params: { id: number }, Body: UpdateRoleDTO }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const updaterId = request.user?.id
-      const updatedRole = await roleService.updateRole(request.params.id, request.body, updaterId)
-
-      if (!updatedRole) {
-        return ResponseUtil.error(
-          reply,
-          request,
-          '角色不存在',
-          CommonBusinessCode.NOT_FOUND
-        )
-      }
-
-      return ResponseUtil.send(
-        reply,
-        request,
-        updatedRole,
-        '角色更新成功',
-        CommonBusinessCode.UPDATED
-      )
-    } catch (error) {
-      fastify.log.error(error)
-
-      if (error instanceof Error) {
-        if (error.message.includes('不存在')) {
-          return ResponseUtil.error(
-            reply,
-            request,
-            error.message,
-            CommonBusinessCode.NOT_FOUND,
-            error
-          )
-        }
-        if (error.message.includes('已存在')) {
-          return ResponseUtil.error(
-            reply,
-            request,
-            error.message,
-            CommonBusinessCode.CONFLICT,
-            error
-          )
-        }
-      }
-
-      return ResponseUtil.error(
-        reply,
-        request,
-        '角色更新失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
-    }
-  })
-
-  // 删除角色
-  fastify.delete('/:id', {
-    schema: {
-      tags: ['sysRoles'],
-      summary: '删除角色',
-      description: '删除指定的角色',
-      operationId: 'deleteRole',
       security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
@@ -334,203 +148,421 @@ export default async function roleRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20003 },
-            message: { type: 'string', example: '角色删除成功' }
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '获取成功' },
+            data: { $ref: 'sysRole#' }
           }
         },
-        404: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 40003 },
-            message: { type: 'string', example: '角色不存在' }
-          }
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'notFoundResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request, reply) => {
+      try {
+        const { id } = request.params as { id: number }
+        const role = await roleService.getRoleById(id)
+        
+        if (!role) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.ROLE_NOT_FOUND,
+            '角色不存在'
+          )
         }
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          role,
+          '获取成功'
+        )
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '获取失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
       }
     }
-  }, async (
-    request: FastifyRequest<{ Params: { id: number } }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const deleterId = request.user?.id
-      const result = await roleService.deleteRole(request.params.id, deleterId)
+  })
 
-      if (!result) {
+  // 更新角色信息
+  fastify.put('/:id', {
+    schema: {
+      operationId: 'updateRole',
+      summary: '更新角色信息',
+      description: '更新指定角色的信息',
+      tags: ['sysRoles'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'number', description: '角色ID' }
+        }
+      },
+      body: { $ref: 'sysRoleUpdateRequest#' },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '更新成功' },
+            data: { $ref: 'sysRole#' }
+          }
+        },
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'notFoundResponse#' },
+        409: { $ref: 'conflictResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request, reply) => {
+      try {
+        const { id } = request.params as { id: number }
+        const body = request.body as any
+        const updaterId = (request as any).user.id
+
+        const updateData = {
+          ...body,
+          updaterId
+        }
+
+        const role = await roleService.updateRole(id, updateData)
+        
+        if (!role) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.ROLE_NOT_FOUND,
+            '角色不存在'
+          )
+        }
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          role,
+          '更新成功'
+        )
+      } catch (error) {
+        fastify.log.error(error)
+        
+        if (error instanceof Error) {
+          if (error.message.includes('角色不存在')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.ROLE_NOT_FOUND,
+              '角色不存在'
+            )
+          }
+          if (error.message.includes('已存在') || error.message.includes('duplicate')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.ROLE_ALREADY_EXISTS,
+              error.message
+            )
+          }
+        }
+        
+        const errorMessage = error instanceof Error ? error.message : '更新失败'
         return ResponseUtil.error(
           reply,
           request,
-          '角色不存在',
-          CommonBusinessCode.NOT_FOUND
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
         )
       }
+    }
+  })
 
-      return ResponseUtil.send(
-        reply,
-        request,
-        null,
-        '角色删除成功',
-        CommonBusinessCode.DELETED
-      )
-    } catch (error) {
-      fastify.log.error(error)
+  // 删除角色
+  fastify.delete('/:id', {
+    schema: {
+      operationId: 'deleteRole',
+      summary: '删除角色',
+      description: '删除指定角色',
+      tags: ['sysRoles'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'number', description: '角色ID' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '删除成功' },
+            data: { type: 'null' }
+          }
+        },
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'notFoundResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request, reply) => {
+      try {
+        const { id } = request.params as { id: number }
+        const deleterId = (request as any).user.id
 
-      if (error instanceof Error && error.message.includes('不存在')) {
+        const result = await roleService.deleteRole(id, deleterId)
+        
+        if (!result) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.ROLE_NOT_FOUND,
+            '角色不存在'
+          )
+        }
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          null,
+          '删除成功'
+        )
+      } catch (error) {
+        fastify.log.error(error)
+        
+        if (error instanceof Error) {
+          if (error.message.includes('角色正在使用中')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.ROLE_IN_USE,
+              '角色正在使用中，无法删除'
+            )
+          }
+          if (error.message.includes('角色不存在')) {
+            return ResponseUtil.error(
+              reply,
+              request,
+              ErrorCode.ROLE_NOT_FOUND,
+              '角色不存在'
+            )
+          }
+        }
+        
+        const errorMessage = error instanceof Error ? error.message : '删除失败'
         return ResponseUtil.error(
           reply,
           request,
-          error.message,
-          CommonBusinessCode.NOT_FOUND,
-          error
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
         )
       }
-
-      return ResponseUtil.error(
-        reply,
-        request,
-        '角色删除失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
     }
   })
 
   // 修改角色状态
   fastify.patch('/:id/status', {
     schema: {
-      tags: ['sysRoles'],
+      operationId: 'updateRoleStatus',
       summary: '修改角色状态',
       description: '修改指定角色的状态',
-      operationId: 'updateRoleStatus',
+      tags: ['sysRoles'],
       security: [{ bearerAuth: [] }],
-      params: { $ref: 'idParam#' },
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'number', description: '角色ID' }
+        }
+      },
       body: { $ref: 'sysRoleStatusUpdateRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20002 },
-            message: { type: 'string', example: '状态修改成功' }
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '状态更新成功' },
+            data: { $ref: 'sysRole#' }
           }
         },
-        404: {
-          type: 'object',
-          properties: {
-            code: { type: 'number', example: 40003 },
-            message: { type: 'string', example: '角色不存在' }
-          }
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'notFoundResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request, reply) => {
+      try {
+        const { id } = request.params as { id: number }
+        const { status } = request.body as { status: number }
+        const updaterId = (request as any).user.id
+
+        const role = await roleService.changeRoleStatus(id, status, updaterId)
+        
+        if (!role) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.ROLE_NOT_FOUND,
+            '角色不存在'
+          )
         }
-      }
-    }
-  }, async (
-    request: FastifyRequest<{ Params: { id: number }, Body: { status: RoleStatus } }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const updaterId = request.user?.id
-      const result = await roleService.changeRoleStatus(request.params.id, request.body.status, updaterId)
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          role,
+          '状态更新成功'
+        )
+      } catch (error) {
+        fastify.log.error(error)
+        const errorMessage = error instanceof Error ? error.message : '状态更新失败'
 
-      if (!result) {
+        if (error instanceof Error) {
+          if (error.message.includes('角色不存在')) {
+            return ResponseUtil.error(reply, request, ErrorCode.ROLE_NOT_FOUND, '角色不存在')
+          }
+          if (error.message.includes('系统角色不允许禁用')) {
+              return ResponseUtil.error(reply, request, ErrorCode.INVALID_PARAMETER, '系统角色不允许禁用')
+            }
+        }
+
         return ResponseUtil.error(
           reply,
           request,
-          '角色不存在',
-          CommonBusinessCode.NOT_FOUND
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
         )
       }
-
-      return ResponseUtil.send(
-        reply,
-        request,
-        null,
-        '角色状态修改成功',
-        CommonBusinessCode.UPDATED
-      )
-    } catch (error) {
-      fastify.log.error(error)
-
-      if (error instanceof Error && error.message.includes('不存在')) {
-        return ResponseUtil.error(
-          reply,
-          request,
-          error.message,
-          CommonBusinessCode.NOT_FOUND,
-          error
-        )
-      }
-
-      return ResponseUtil.error(
-        reply,
-        request,
-        '角色状态修改失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
     }
   })
 
-  // 为用户分配角色
+  // 获取角色权限
+  fastify.get('/:id/permissions', {
+    schema: {
+      operationId: 'getRolePermissions',
+      summary: '获取角色权限',
+      description: '获取指定角色的权限列表',
+      tags: ['sysRoles'],
+      security: [{ bearerAuth: [] }],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'number', description: '角色ID' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '获取成功' },
+            data: {
+              type: 'array',
+              items: { $ref: 'sysPermission#' }
+            }
+          }
+        },
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'notFoundResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request, reply) => {
+      try {
+        const { id } = request.params as { id: number }
+        const permissions = await roleService.getRolePermissions(id)
+        
+        return ResponseUtil.success(
+          reply,
+          request,
+          permissions,
+          '获取成功'
+        )
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '获取失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
+      }
+    }
+  })
+
+  // 分配用户角色
   fastify.post('/assign', {
     schema: {
-      tags: ['sysRoles'],
+      operationId: 'assignUserRoles',
       summary: '为用户分配角色',
       description: '为指定用户分配一个或多个角色',
-      operationId: 'assignRolesToUser',
+      tags: ['sysRoles'],
       security: [{ bearerAuth: [] }],
       body: { $ref: 'sysRoleAssignRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20000 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '角色分配成功' },
-            isSuccess: { type: 'boolean', example: true },
-            data: { type: 'boolean', example: true }
+            data: { type: 'null' }
           }
         },
-        400: { $ref: 'errorResponse#' },
         401: { $ref: 'unauthorizedResponse#' },
-        404: { $ref: 'errorResponse#' }
+        404: { $ref: 'notFoundResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest<{ Body: AssignRoleDTO }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const assignedBy = request.user?.id
-      const assignData = {
-        ...request.body,
-        assignedBy
+    },
+    handler: async (request, reply) => {
+      try {
+        const { userId, roleIds } = request.body as { userId: number; roleIds: number[] }
+        const assignedBy = (request as any).user?.id
+
+        await roleService.assignRolesToUser({ userId, roleIds, assignedBy })
+
+        return ResponseUtil.success(
+          reply,
+          request,
+          null,
+          '角色分配成功'
+        )
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : '角色分配失败'
+
+        if (error instanceof Error) {
+          if (msg.includes('用户不存在')) {
+            return ResponseUtil.error(reply, request, ErrorCode.USER_NOT_FOUND, '用户不存在')
+          }
+          if (msg.includes('角色ID') && msg.includes('不存在')) {
+              return ResponseUtil.error(reply, request, ErrorCode.ROLE_NOT_FOUND, '角色不存在')
+            }
+          if (msg.includes('禁用')) {
+            return ResponseUtil.error(reply, request, ErrorCode.INVALID_PARAMETER, '角色已禁用，无法分配')
+          }
+        }
+
+        return ResponseUtil.error(reply, request, ErrorCode.SYSTEM_ERROR, msg)
       }
-
-      await roleService.assignRolesToUser(assignData)
-
-      return ResponseUtil.send(
-        reply,
-        request,
-        null,
-        '角色分配成功',
-        CommonBusinessCode.SUCCESS
-      )
-    } catch (error) {
-      fastify.log.error(error)
-      return ResponseUtil.error(
-        reply,
-        request,
-        '角色分配失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
     }
   })
 
-  // 获取用户的角色列表
+  // 获取指定用户的角色列表
   fastify.get('/user/:userId', {
     schema: {
-      tags: ['sysRoles'],
+      operationId: 'getUserRoles',
       summary: '获取用户角色',
       description: '获取指定用户的角色列表',
-      operationId: 'getUserRoles',
+      tags: ['sysRoles'],
       security: [{ bearerAuth: [] }],
       params: {
         type: 'object',
@@ -543,137 +575,110 @@ export default async function roleRoutes(fastify: FastifyInstance) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20000 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取成功' },
             data: {
               type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'number', description: '角色ID' },
-                  roleName: { type: 'string', description: '角色名称' },
-                  roleDesc: { type: 'string', description: '角色描述' },
-                  status: { type: 'number', description: '状态' },
-                  isSystem: { type: 'number', description: '是否系统角色' }
-                }
-              }
+              items: { $ref: 'sysRole#' }
             }
           }
-        }
+        },
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'notFoundResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest<{ Params: { userId: number } }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const roles = await roleService.getUserRoles(request.params.userId)
+    },
+    handler: async (request, reply) => {
+      try {
+        const { userId } = request.params as { userId: number }
+        const roles = await roleService.getUserRoles(userId)
 
-      return ResponseUtil.send(
-        reply,
-        request,
-        roles,
-        '获取用户角色成功',
-        CommonBusinessCode.SUCCESS
-      )
-    } catch (error) {
-      fastify.log.error(error)
-      return ResponseUtil.error(
-        reply,
-        request,
-        '获取用户角色失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
+        return ResponseUtil.success(
+          reply,
+          request,
+          roles,
+          '获取成功'
+        )
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : '获取失败'
+
+        if (error instanceof Error) {
+          if (msg.includes('用户不存在')) {
+            return ResponseUtil.error(reply, request, ErrorCode.USER_NOT_FOUND, '用户不存在')
+          }
+        }
+
+        return ResponseUtil.error(reply, request, ErrorCode.SYSTEM_ERROR, msg)
+      }
     }
   })
 
-  // 批量删除角色
-  fastify.delete('/batch', {
+  // 获取角色用户列表
+  fastify.get('/:id/users', {
     schema: {
+      operationId: 'getRoleUsers',
+      summary: '获取角色用户列表',
+      description: '获取指定角色的用户列表',
       tags: ['sysRoles'],
-      summary: '批量删除角色',
-      description: '批量删除指定的角色',
-      operationId: 'batchDeleteRoles',
       security: [{ bearerAuth: [] }],
-      body: { $ref: 'sysRoleBatchDeleteRequest#' },
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'number', description: '角色ID' }
+        }
+      },
+      querystring: { $ref: 'sysRoleUserQueryRequest#' },
       response: {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 20003 },
-            message: { type: 'string', example: '批量删除完成' },
-            isSuccess: { type: 'boolean', example: true },
-            data: {
-              type: 'object',
-              properties: {
-                success: { type: 'boolean', description: '是否全部删除成功' },
-                deletedCount: { type: 'number', description: '成功删除的角色数量' },
-                failedRoles: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'number', description: '失败的角色ID' },
-                      reason: { type: 'string', description: '失败原因' }
-                    }
-                  },
-                  description: '删除失败的角色列表'
-                }
-              }
-            }
+            code: { type: 'number', example: 200 },
+            message: { type: 'string', example: '获取成功' },
+            data: { $ref: 'sysRoleUserListResponse#' }
           }
         },
-        400: { $ref: 'errorResponse#' },
-        401: { $ref: 'unauthorizedResponse#' }
+        401: { $ref: 'unauthorizedResponse#' },
+        404: { $ref: 'notFoundResponse#' },
+        500: { $ref: 'errorResponse#' }
       }
-    }
-  }, async (
-    request: FastifyRequest<{ Body: { roleIds: number[] } }>,
-    reply: FastifyReply
-  ) => {
-    try {
-      const deleterId = request.user?.id
-      const batchDeleteData: BatchDeleteRoleDTO = {
-        roleIds: request.body.roleIds,
-        deleterId
-      }
+    },
+    handler: async (request, reply) => {
+      try {
+        const query = request.query as any
 
-      const result = await roleService.batchDeleteRoles(batchDeleteData)
-
-      const message = result.success 
-        ? `成功删除 ${result.deletedCount} 个角色`
-        : `删除完成，成功 ${result.deletedCount} 个，失败 ${result.failedRoles.length} 个`
-
-      return ResponseUtil.send(
-        reply,
-        request,
-        result,
-        message,
-        CommonBusinessCode.SUCCESS
-      )
-    } catch (error) {
-      fastify.log.error(error)
-
-      if (error instanceof Error) {
-        if (error.message.includes('请选择')) {
-          return ResponseUtil.error(
-            reply,
-            request,
-            error.message,
-            CommonBusinessCode.BAD_REQUEST,
-            error
-          )
+        // TODO: 实现 getRoleUsers 方法
+        // const { id } = request.params as { id: number }
+        // const result = await roleService.getRoleUsers(id, query)
+        
+        // 临时返回空数据
+        const result = {
+          data: [],
+          total: 0,
+          page: query.page || 1,
+          limit: query.limit || 10
         }
+        
+        return ResponseUtil.paginated(
+          reply,
+          request,
+          result.data,
+          result.total,
+          result.page,
+          result.limit,
+          '获取成功'
+        )
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '获取失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
       }
-
-      return ResponseUtil.error(
-        reply,
-        request,
-        '批量删除角色失败',
-        CommonBusinessCode.INTERNAL_SERVER_ERROR,
-        error
-      )
     }
   })
 }
+
+export default roleRoutes

@@ -207,56 +207,149 @@ export class RoleRepository {
    */
   private applySorting(queryBuilder: any, query: RoleQueryDTO): void {
     // 系统角色始终优先显示
-    // queryBuilder.orderBy('isSystem', 'desc')
+    // 移除默认的 isSystem 排序，尊重用户提供的排序字段
+ 
+    // 测试环境调试：打印传入的 sorts
+    if (process.env.NODE_ENV === 'test') {
+      try {
+        console.log('[applySorting] raw sorts:', query.sorts)
+      } catch (_) {}
+    }
+ 
+    // 映射前端字段到数据库列（带上表名前缀，避免歧义）
+    const mapField = (f: string) => {
+      switch (f) {
+        case 'id':
+          return 'sys_role.id'
+        case 'roleName':
+          return 'sys_role.role_name'
+        case 'status':
+          return 'sys_role.status'
+        case 'isSystem':
+          return 'sys_role.is_system'
+        case 'sortOrder':
+          return 'sys_role.sort_order'
+        case 'createdAt':
+          return 'sys_role.created_at'
+        case 'updatedAt':
+          return 'sys_role.updated_at'
+        default:
+          return `sys_role.${f}`
+      }
+    }
+ 
+    // 辅助：解析字符串形式的 sorts（支持 URL 编码）
+    const parseSortsString = (raw: string): Array<{ field: string; order: 'asc' | 'desc' }> => {
+      let jsonStr = raw
+      try {
+        jsonStr = decodeURIComponent(raw)
+      } catch (_) {
+        // ignore
+      }
+      try {
+        const parsed = JSON.parse(jsonStr)
+        if (Array.isArray(parsed)) return parsed.slice(0, 3)
+      } catch (_) {
+        if (jsonStr !== raw) {
+          try {
+            const fallback = JSON.parse(raw)
+            if (Array.isArray(fallback)) return fallback.slice(0, 3)
+          } catch (_) {
+            // ignore
+          }
+        }
+      }
+      return []
+    }
+ 
+     // 处理多字段排序（支持字符串或数组），最多3个字段
+    let sortsArray: Array<{ field: string; order: 'asc' | 'desc' }> = []
+    if (query.sorts) {
+      if (typeof query.sorts === 'string') {
+        sortsArray = parseSortsString(query.sorts as string)
+      } else if (Array.isArray(query.sorts)) {
+        const arr = (query.sorts as any[])
+        // 兼容: ["[{...}]" ] 这类数组中包含一个JSON字符串的情况
+        if (arr.length === 1 && typeof arr[0] === 'string') {
+          sortsArray = parseSortsString(arr[0])
+        } else {
+          const normalized: Array<{ field: string; order: 'asc' | 'desc' }> = []
+          for (const item of arr) {
+            if (typeof item === 'string') {
+              const parsed = parseSortsString(item)
+              normalized.push(...parsed)
+            } else if (item && typeof item === 'object' && item.field && item.order) {
+              normalized.push({ field: item.field, order: item.order })
+            }
+            if (normalized.length >= 3) break
+          }
+          sortsArray = normalized.slice(0, 3)
+        }
+      }
+    }
 
-    if (query.sorts && Array.isArray(query.sorts) && query.sorts.length > 0) {
+    // 测试环境调试：打印解析后的 sortsArray
+    if (process.env.NODE_ENV === 'test') {
+      try {
+        console.log('[applySorting] parsed sortsArray:', sortsArray)
+      } catch (_) {}
+    }
+
+    if (sortsArray.length > 0) {
       // 多字段排序模式
-      const appliedFields = new Set(['isSystem']) // 已应用的字段
-      
-      // 应用用户指定的排序字段
-      query.sorts.forEach(sort => {
+      const appliedFields = new Set<string>() // 已应用的字段
+
+      // 应用用户指定的排序字段（优先级按数组顺序）
+      sortsArray.forEach(sort => {
         if (sort.field && sort.order && !appliedFields.has(sort.field)) {
-          queryBuilder.orderBy(sort.field, sort.order)
+          queryBuilder.orderBy(mapField(sort.field), sort.order)
           appliedFields.add(sort.field)
         }
       })
 
+      // 测试环境调试：打印最终应用的排序字段顺序
+      if (process.env.NODE_ENV === 'test') {
+        try {
+          console.log('[applySorting] applied fields:', Array.from(appliedFields))
+        } catch (_) {}
+      }
+
       // 如果没有指定sortOrder排序，添加默认的sortOrder排序
       if (!appliedFields.has('sortOrder')) {
-        queryBuilder.orderBy('sortOrder', 'asc')
+        queryBuilder.orderBy(mapField('sortOrder'), 'asc')
         appliedFields.add('sortOrder')
       }
 
       // 如果没有指定updatedAt排序，添加updatedAt作为次要排序
       if (!appliedFields.has('updatedAt')) {
-        queryBuilder.orderBy('updatedAt', 'desc')
+        queryBuilder.orderBy(mapField('updatedAt'), 'desc')
         appliedFields.add('updatedAt')
       }
 
       // 最后按id排序保证结果稳定
       if (!appliedFields.has('id')) {
-        queryBuilder.orderBy('id', 'asc')
+        queryBuilder.orderBy(mapField('id'), 'asc')
       }
     } else {
       // 单字段排序模式（向后兼容）
       const sortBy = query.sortBy || 'sortOrder'
       const sortOrder = query.sortOrder || 'asc'
-      
+
       // 应用主要排序字段
-      queryBuilder.orderBy(sortBy, sortOrder)
-      
+      queryBuilder.orderBy(mapField(sortBy), sortOrder)
+
       // 添加次要排序字段
       if (sortBy !== 'sortOrder') {
-        queryBuilder.orderBy('sortOrder', 'asc')
+        queryBuilder.orderBy(mapField('sortOrder'), 'asc')
       }
-      
+
       if (sortBy !== 'updatedAt') {
-        queryBuilder.orderBy('updatedAt', 'desc')
+        queryBuilder.orderBy(mapField('updatedAt'), 'desc')
       }
-      
+
       // 最后按id排序保证结果稳定
       if (sortBy !== 'id') {
-        queryBuilder.orderBy('id', 'asc')
+        queryBuilder.orderBy(mapField('id'), 'asc')
       }
     }
   }
@@ -350,10 +443,10 @@ export class RoleRepository {
 
       // 插入新的角色分配
       const userRoles = roleIds.map(roleId => ({
-        user_id: userId,
-        role_id: roleId,
+        userId: userId,
+        roleId: roleId,
         status: 1,
-        creator_id: assignedBy || null
+        creatorId: assignedBy || null
       }))
 
       await UserRole.query().insert(userRoles)

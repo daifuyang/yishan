@@ -5,7 +5,7 @@ import { FastifyInstance, FastifyPluginOptions } from "fastify";
 export const options = {
   ajv: {
     customOptions: {
-      coerceTypes: "array",
+      coerceTypes: true,
       removeAdditional: "all",
     },
   },
@@ -41,10 +41,15 @@ export default async function serviceApp(
     options: { ...opts },
   });
 
+  // Global error handler
   fastify.setErrorHandler((err, request, reply) => {
-    fastify.log.error(
+    request.log.error(
       {
-        err,
+        error: {
+          message: err.message,
+          stack: err.stack,
+          statusCode: err.statusCode,
+        },
         request: {
           method: request.method,
           url: request.url,
@@ -62,7 +67,8 @@ export default async function serviceApp(
       message = err.message;
     }
 
-    return { message };
+    // 使用 ResponseUtil.error 返回统一的错误响应格式
+    return reply.sendError(message, err.statusCode ?? 500);
   });
 
   // An attacker could search for valid URLs if your 404 error handling is not rate limited.

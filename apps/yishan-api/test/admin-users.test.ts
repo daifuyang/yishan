@@ -24,7 +24,7 @@ describe('Admin Users API Tests', () => {
     // 使用admin账号登录获取访问令牌
     const loginResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/auth/login',
+      url: '/api/v1/login',
       payload: {
         username: 'admin',
         password: 'admin123'
@@ -65,7 +65,7 @@ describe('Admin Users API Tests', () => {
       })
 
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20101) // USER_CREATED
+      assert.strictEqual(data.code, 10000) // USER_CREATED
       assert.strictEqual(data.message, '用户创建成功')
       assert.ok(data.data)
       assert.ok(data.data.id)
@@ -92,7 +92,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 409)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40111) // USER_ALREADY_EXISTS
+      assert.strictEqual(data.code, 30002) // USER_ALREADY_EXISTS
     })
 
     test('应该拒绝无效的请求数据', async () => {
@@ -126,9 +126,9 @@ describe('Admin Users API Tests', () => {
         payload
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED (Authorization头缺失)
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED (Authorization头缺失)
     })
   })
 
@@ -144,7 +144,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20103) // USERS_RETRIEVED
+      assert.strictEqual(data.code, 10000) // USERS_RETRIEVED
       assert.ok(Array.isArray(data.data.list))
       assert.ok(typeof data.data.pagination.total === 'number')
       assert.ok(typeof data.data.pagination.page === 'number')
@@ -163,12 +163,8 @@ describe('Admin Users API Tests', () => {
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
       // 检查返回的数据结构，可能字段名不同或不存在
-      if (data.data.page !== undefined) {
-        assert.strictEqual(data.data.page, 1)
-      }
-      if (data.data.pageSize !== undefined) {
-        assert.strictEqual(data.data.pageSize, 5)
-      }
+      assert.strictEqual(data.data.pagination.page, 1)
+      assert.strictEqual(data.data.pagination.pageSize, 5)
       assert(data.data.list.length <= 5)
     })
 
@@ -213,9 +209,9 @@ describe('Admin Users API Tests', () => {
         url: '/api/v1/admin/users'
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED (Authorization头缺失)
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED (Authorization头缺失)
     })
   })
 
@@ -231,7 +227,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20102) // USER_RETRIEVED
+      assert.strictEqual(data.code, 10000) // USER_RETRIEVED
       assert.ok(data.data)
       assert.strictEqual(data.data.id, testUserId)
       assert.strictEqual(data.data.username, testUserName)
@@ -248,7 +244,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 404)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40004) // USER_NOT_FOUND
+      assert.strictEqual(data.code, 30001) // USER_NOT_FOUND
     })
 
     test('应该拒绝无效的用户ID', async () => {
@@ -281,7 +277,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20104) // UPDATED
+      assert.strictEqual(data.code, 10000) // UPDATED
       assert.strictEqual(data.message, '更新成功')
     })
 
@@ -335,7 +331,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(disableResponse.statusCode, 200)
       const disableData = JSON.parse(disableResponse.body)
-      assert.strictEqual(disableData.code, 20112) // USER_STATUS_CHANGED
+      assert.strictEqual(disableData.code, 10000) // USER_STATUS_CHANGED
 
       // 恢复用户状态为启用，确保不影响后续测试
       const enableResponse = await app.inject({
@@ -351,7 +347,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(enableResponse.statusCode, 200)
       const enableData = JSON.parse(enableResponse.body)
-      assert.strictEqual(enableData.code, 20112) // USER_STATUS_CHANGED
+      assert.strictEqual(enableData.code, 10000) // USER_STATUS_CHANGED
       assert.strictEqual(enableData.message, '用户状态修改成功')
     })
 
@@ -390,7 +386,7 @@ describe('Admin Users API Tests', () => {
     test('应该成功重置用户密码', async () => {
       const response = await app.inject({
         method: 'PATCH',
-        url: `/api/v1/admin/users/${testUserId}/password`,
+        url: `/api/v1/admin/users/${testUserId}/password/reset`,
         headers: {
           authorization: `Bearer ${accessToken}`
         },
@@ -401,14 +397,14 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20113) // PASSWORD_RESET_SUCCESS
+      assert.strictEqual(data.code, 10000) // PASSWORD_RESET_SUCCESS
       assert.strictEqual(data.message, '密码重置成功')
     })
 
     test('应该拒绝过短的密码', async () => {
       const response = await app.inject({
         method: 'PATCH',
-        url: `/api/v1/admin/users/${testUserId}/password`,
+        url: `/api/v1/admin/users/${testUserId}/password/reset`,
         headers: {
           authorization: `Bearer ${accessToken}`
         },
@@ -423,7 +419,7 @@ describe('Admin Users API Tests', () => {
     test('应该返回404当用户不存在', async () => {
       const response = await app.inject({
         method: 'PATCH',
-        url: '/api/v1/admin/users/99999/password',
+        url: '/api/v1/admin/users/99999/password/reset',
         headers: {
           authorization: `Bearer ${accessToken}`
         },
@@ -448,7 +444,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20000) // SUCCESS
+      assert.strictEqual(data.code, 10000) // SUCCESS
       assert.strictEqual(data.message, '用户缓存清除成功')
     })
 
@@ -458,9 +454,9 @@ describe('Admin Users API Tests', () => {
         url: '/api/v1/admin/users/cache'
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED (Authorization头缺失)
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED (Authorization头缺失)
     })
   })
 
@@ -476,7 +472,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 200)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 20003) // DELETED
+      assert.strictEqual(data.code, 10000) // DELETED
       assert.strictEqual(data.message, '删除成功')
     })
 
@@ -498,9 +494,9 @@ describe('Admin Users API Tests', () => {
         url: `/api/v1/admin/users/${testUserId}`
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED (Authorization头缺失)
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED (Authorization头缺失)
     })
   })
 
@@ -516,7 +512,7 @@ describe('Admin Users API Tests', () => {
 
       assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED
     })
 
     test('应该正确处理格式错误的Authorization头', async () => {
@@ -528,9 +524,9 @@ describe('Admin Users API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED
     })
 
     test('应该正确处理空的Authorization头', async () => {
@@ -542,9 +538,9 @@ describe('Admin Users API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED
     })
 
     test('应该支持大小写不敏感的Bearer令牌格式', async () => {
@@ -557,9 +553,9 @@ describe('Admin Users API Tests', () => {
       })
 
       // 根据JWT认证插件实现，Bearer是大小写敏感的，应该返回400
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       const data = JSON.parse(response.body)
-      assert.strictEqual(data.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(data.code, 22001) // UNAUTHORIZED
     })
   })
 })

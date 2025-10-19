@@ -26,7 +26,7 @@ describe('Admin API Tests', () => {
     // 获取有效的访问令牌用于认证测试
     const loginResponse = await app.inject({
       method: 'POST',
-      url: '/api/v1/auth/login',
+      url: '/api/v1/login',
       payload: {
         username: 'admin',
         password: 'admin123'
@@ -57,7 +57,7 @@ describe('Admin API Tests', () => {
       assert.strictEqual(response.statusCode, 200)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 20000) // 成功状态码
+      assert.strictEqual(body.code, 10000) // 统一成功码
       assert.strictEqual(body.message, '访问成功')
       assert.ok(body.data)
       assert.strictEqual(body.data.message, 'hello admin')
@@ -69,10 +69,10 @@ describe('Admin API Tests', () => {
         url: '/api/v1/admin'
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40118)
+      assert.strictEqual(body.code, 22001)
       assert.ok(body.message.includes('Authorization头缺失或格式错误'))
     })
 
@@ -88,7 +88,7 @@ describe('Admin API Tests', () => {
       assert.strictEqual(response.statusCode, 401)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40118)
+      assert.strictEqual(body.code, 22001)
       assert.ok(body.message.includes('无效的token') || body.message.includes('未授权'))
     })
 
@@ -101,10 +101,10 @@ describe('Admin API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40118)
+      assert.strictEqual(body.code, 22001)
       assert.ok(body.message.includes('Authorization头缺失或格式错误'))
     })
 
@@ -117,10 +117,10 @@ describe('Admin API Tests', () => {
         }
       })
 
-      assert.strictEqual(response.statusCode, 400)
+      assert.strictEqual(response.statusCode, 401)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40118)
+      assert.strictEqual(body.code, 22001)
       assert.ok(body.message.includes('Authorization头缺失或格式错误'))
     })
 
@@ -139,11 +139,11 @@ describe('Admin API Tests', () => {
       assert.strictEqual(response.statusCode, 401)
       
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40118)
+      assert.ok([22001, 22002].includes(body.code))
       assert.ok(body.message.includes('无效的token') || body.message.includes('过期'))
     })
 
-    test('应该正确处理Bearer令牌格式（大小写不敏感）', async () => {
+    test('应该正确处理Bearer令牌格式（大小写敏感）', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/api/v1/admin',
@@ -152,10 +152,10 @@ describe('Admin API Tests', () => {
         }
       })
 
-      // 根据JWT认证插件实现，Bearer是大小写敏感的，应该返回400
-      assert.strictEqual(response.statusCode, 400)
+      // Bearer必须大小写匹配，否则按未授权处理
+      assert.strictEqual(response.statusCode, 401)
       const body = JSON.parse(response.body)
-      assert.strictEqual(body.code, 40118) // TOKEN_EXPIRED
+      assert.strictEqual(body.code, 22001)
     })
 
     test('应该返回正确的响应格式和数据类型', async () => {

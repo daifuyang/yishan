@@ -17,8 +17,11 @@ export default fp(async function (fastify) {
         version: '0.0.0'
       },
       tags: [
-        { name: 'sysAuth', description: '系统用户认证' },
-        { name: 'sysUsers', description: '系统用户接口' },
+        { name: 'sysAuth', description: 'System authentication and authorization' },
+        { name: 'sysUsers', description: 'System user management' },
+        { name: 'sysRoles', description: 'System role management' },
+        { name: 'sysDepartments', description: 'System department management' },
+        { name: 'sysCleanup', description: 'System cleanup operations' },
       ],
       components: {
         securitySchemes: {

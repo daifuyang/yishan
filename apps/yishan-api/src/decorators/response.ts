@@ -26,15 +26,10 @@ export function Success(message?: string, code?: number) {
         const result = await originalMethod.apply(this, args)
         
         if (result && typeof result === 'object' && 'data' in result && 'total' in result) {
-          // 分页数据
           const { data, total, page = 1, pageSize = 10 } = result
           return ResponseUtil.paginated(reply, request, data, total, page, pageSize, message)
-        } else if (Array.isArray(result)) {
-          // 列表数据
-          return ResponseUtil.list(reply, request, result, message)
         } else {
-          // 单个数据
-          return ResponseUtil.send(reply, request, result, message, code)
+          return ResponseUtil.success(reply, request, result, message)
         }
       } catch (error) {
         throw error
@@ -62,7 +57,7 @@ export function Created(message?: string) {
       
       try {
         const result = await originalMethod.apply(this, args)
-        return ResponseUtil.created(reply, request, result, message)
+        return ResponseUtil.success(reply, request, result, message)
       } catch (error) {
         throw error
       }
@@ -89,7 +84,7 @@ export function Updated(message?: string) {
       
       try {
         const result = await originalMethod.apply(this, args)
-        return ResponseUtil.updated(reply, request, result, message)
+        return ResponseUtil.success(reply, request, result, message)
       } catch (error) {
         throw error
       }
@@ -116,7 +111,7 @@ export function Deleted(message?: string) {
       
       try {
         await originalMethod.apply(this, args)
-        return ResponseUtil.deleted(reply, request, message)
+        return ResponseUtil.success(reply, request, null, message)
       } catch (error) {
         throw error
       }
@@ -147,7 +142,7 @@ export function HandleError() {
         const statusCode = error.statusCode || error.status || 500
         const message = error.message || 'Internal Server Error'
         
-        return ResponseUtil.error(reply, request, message, statusCode, error)
+        return ResponseUtil.error(reply, request, statusCode, message)
       }
     }
 
@@ -201,7 +196,7 @@ export function List(message?: string) {
       
       try {
         const result = await originalMethod.apply(this, args)
-        return ResponseUtil.list(reply, request, result, message)
+        return ResponseUtil.success(reply, request, result, message)
       } catch (error) {
         throw error
       }

@@ -160,6 +160,14 @@ interface ErrorResponse extends BaseResponse {
 - 格式：`{序号}.{操作}.{表名}.sql`
 - 示例：`001.do.users.sql`, `001.undo.users.sql`
 
+### 迁移文件组织规范
+- **主表与关联表合并原则**：相关联的主表和关联表应合并到同一个迁移文件中
+- **文件组织方式**：
+  - `003.do.roles.sql` - 包含 `sys_role` 表和 `sys_user_role` 关联表的创建
+  - `008.do.departments.sql` - 包含 `sys_department` 表和相关关联表的创建
+- **回滚文件对应**：回滚文件应包含所有相关表的删除操作，按依赖关系逆序执行
+- **避免过度拆分**：不要将紧密关联的表拆分到不同的迁移文件中
+
 ### 表结构规范
 - 使用小写蛇形命名：`user_profiles`, `order_items`
 - 必须包含时间戳字段：`created_at`, `updated_at`
@@ -282,7 +290,7 @@ interface PaginationResponse<T> {
 
 #### 状态码规范
 分页查询统一使用系统的业务状态码规范：
-- **成功响应**: 20000 (SUCCESS) - 操作成功
+- **成功响应**: 10000 (SUCCESS_CODE) - 操作成功
 - **参数错误**: 40010 (INVALID_PARAMETER) - 参数无效
 - **服务器错误**: 50000 (INTERNAL_ERROR) - 内部服务器错误
 
@@ -352,7 +360,7 @@ return {
 #### 响应格式
 ```json
 {
-  "code": 20000,
+  "code": 10000,
   "message": "操作成功",
   "timestamp": 1640995200000,
   "requestId": "uuid-12345",

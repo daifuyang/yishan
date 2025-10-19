@@ -19,7 +19,6 @@ declare module 'fastify' {
     sendValidationError(validation: Record<string, string[]>, message?: string): FastifyReply
     sendUnauthorized(message?: string): FastifyReply
     sendForbidden(message?: string): FastifyReply
-    sendNotFound(message?: string): FastifyReply
     sendTooManyRequests(message?: string): FastifyReply
     sendServiceUnavailable(message?: string): FastifyReply
   }

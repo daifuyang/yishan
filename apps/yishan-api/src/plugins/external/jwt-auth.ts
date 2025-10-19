@@ -1,7 +1,7 @@
 import fp from 'fastify-plugin'
 import fastifyJwt from '@fastify/jwt'
 import { ResponseUtil } from '../../utils/response.js'
-import { UserBusinessCode } from '../../constants/business-code.js'
+import { ErrorCode } from '../../constants/business-code.js'
 
 export const autoConfig = {
   secret: process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
@@ -26,13 +26,12 @@ export default fp(async (fastify) => {
       // 检查Authorization头是否存在且格式正确
       const authHeader = request.headers.authorization
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        // 缺失或格式错误按请求数据校验错误处理，返回400
         return ResponseUtil.error(
           reply,
           request,
-          'Authorization头缺失或格式错误',
-          UserBusinessCode.TOKEN_EXPIRED,
-          null,
-          400
+          ErrorCode.VALIDATION_ERROR,
+          'Authorization头缺失或格式错误'
         )
       }
 
@@ -44,21 +43,27 @@ export default fp(async (fastify) => {
           return ResponseUtil.error(
             reply,
             request,
-            'Token格式非法',
-            UserBusinessCode.TOKEN_EXPIRED,
-            jwtErr,
-            400
+            ErrorCode.UNAUTHORIZED,
+            'Token格式非法'
           )
         }
         
-        // Token过期或签名验证失败
+        // Token过期
+        if (jwtErr.code === 'FAST_JWT_EXPIRED') {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.TOKEN_EXPIRED,
+            'Token已过期'
+          )
+        }
+        
+        // 其他JWT验证失败
         return ResponseUtil.error(
           reply,
           request,
-          '无效的token或token已过期',
-          UserBusinessCode.TOKEN_EXPIRED,
-          jwtErr,
-          401
+          ErrorCode.UNAUTHORIZED,
+          '无效的token'
         )
       }
       
@@ -74,10 +79,8 @@ export default fp(async (fastify) => {
       return ResponseUtil.error(
         reply,
         request,
-        '无效的token或token已过期',
-        UserBusinessCode.TOKEN_EXPIRED,
-        err,
-        401
+        ErrorCode.UNAUTHORIZED,
+        '无效的token'
       )
     }
   })
