@@ -2,7 +2,7 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
-/** 获取用户列表 获取系统用户列表，支持分页、搜索和排序 GET /api/v1/admin/users/ */
+/** 获取用户列表 获取用户列表，支持分页和筛选 GET /api/v1/admin/users/ */
 export async function getUserList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getUserListParams,
@@ -11,8 +11,10 @@ export async function getUserList(
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
     data?: API.sysUserListResponse;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>("/api/v1/admin/users/", {
     method: "GET",
     params: {
@@ -31,16 +33,18 @@ export async function getUserList(
   });
 }
 
-/** 创建新用户 创建一个新的用户账户 POST /api/v1/admin/users/ */
-export async function postAdminUsers(
+/** 创建用户 创建新用户 POST /api/v1/admin/users/ */
+export async function createUser(
   body: API.sysUserCreateRequest,
   options?: { [key: string]: any }
 ) {
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
     data?: API.sysUser;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>("/api/v1/admin/users/", {
     method: "POST",
     headers: {
@@ -51,18 +55,20 @@ export async function postAdminUsers(
   });
 }
 
-/** 获取用户详情 根据用户ID获取用户详细信息 GET /api/v1/admin/users/${param0} */
-export async function getUserDetail(
+/** 获取用户详情 根据ID获取用户详细信息 GET /api/v1/admin/users/${param0} */
+export async function getUserById(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getUserDetailParams,
+  params: API.getUserByIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
     data?: API.sysUser;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>(`/api/v1/admin/users/${param0}`, {
     method: "GET",
     params: { ...queryParams },
@@ -70,7 +76,7 @@ export async function getUserDetail(
   });
 }
 
-/** 更新用户信息 更新指定用户的信息 PUT /api/v1/admin/users/${param0} */
+/** 更新用户信息 根据ID更新用户信息 PUT /api/v1/admin/users/${param0} */
 export async function updateUser(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.updateUserParams,
@@ -78,30 +84,28 @@ export async function updateUser(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{
-    code?: number;
-    message?: string;
-    isSuccess?: boolean;
-    data?: API.sysUser;
-  }>(`/api/v1/admin/users/${param0}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    params: { ...queryParams },
-    data: body,
-    ...(options || {}),
-  });
+  return request<{ code?: number; message?: string; data?: API.sysUser }>(
+    `/api/v1/admin/users/${param0}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      params: { ...queryParams },
+      data: body,
+      ...(options || {}),
+    }
+  );
 }
 
-/** 删除用户 删除指定用户（软删除） DELETE /api/v1/admin/users/${param0} */
+/** 删除用户 根据ID删除用户 DELETE /api/v1/admin/users/${param0} */
 export async function deleteUser(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.deleteUserParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ code?: number; message?: string; isSuccess?: boolean }>(
+  return request<{ code?: number; message?: string; data?: null }>(
     `/api/v1/admin/users/${param0}`,
     {
       method: "DELETE",
@@ -111,19 +115,65 @@ export async function deleteUser(
   );
 }
 
-/** 重置用户密码 重置指定用户的密码 PATCH /api/v1/admin/users/${param0}/password */
+/** 修改用户密码 修改指定用户的密码 PATCH /api/v1/admin/users/${param0}/password */
+export async function updateUserPassword(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.updateUserPasswordParams,
+  body: API.sysUserPasswordChangeRequest,
+  options?: { [key: string]: any }
+) {
+  const { id: param0, ...queryParams } = params;
+  return request<{
+    code?: number;
+    message?: string;
+    data?: { success?: boolean };
+  }>(`/api/v1/admin/users/${param0}/password`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...queryParams },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 重置用户密码 重置指定用户的密码为默认密码 PATCH /api/v1/admin/users/${param0}/password/reset */
 export async function resetUserPassword(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.resetUserPasswordParams,
   body: {
-    /** 新密码 */
-    newPassword: string;
+    /** 新密码（可选，不提供则使用默认密码） */
+    newPassword?: string;
   },
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ code?: number; message?: string }>(
-    `/api/v1/admin/users/${param0}/password`,
+  return request<{
+    code?: number;
+    message?: string;
+    data?: { success?: boolean; defaultPassword?: string };
+  }>(`/api/v1/admin/users/${param0}/password/reset`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...queryParams },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 修改用户状态 修改指定用户的状态 PATCH /api/v1/admin/users/${param0}/status */
+export async function updateUserStatus(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.updateUserStatusParams,
+  body: API.sysUserStatusRequest,
+  options?: { [key: string]: any }
+) {
+  const { id: param0, ...queryParams } = params;
+  return request<{ code?: number; message?: string; data?: API.sysUser }>(
+    `/api/v1/admin/users/${param0}/status`,
     {
       method: "PATCH",
       headers: {
@@ -136,46 +186,37 @@ export async function resetUserPassword(
   );
 }
 
-/** 修改用户状态 修改指定用户的状态 PATCH /api/v1/admin/users/${param0}/status */
-export async function updateUserStatus(
-  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.updateUserStatusParams,
-  body: API.sysUserStatusRequest,
-  options?: { [key: string]: any }
-) {
-  const { id: param0, ...queryParams } = params;
+/** 清除用户缓存 DELETE /api/v1/admin/users/cache */
+export async function clearUserCache(options?: { [key: string]: any }) {
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
-    data?: API.sysUserStatusResponse;
-  }>(`/api/v1/admin/users/${param0}/status`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    params: { ...queryParams },
-    data: body,
+    data?: null;
+    success?: boolean;
+    timestamp?: string;
+  }>("/api/v1/admin/users/cache", {
+    method: "DELETE",
     ...(options || {}),
   });
 }
 
-/** 根据搜索条件获取单个管理员信息 根据搜索条件(用户名、邮箱、真实姓名、手机号)获取单个管理员信息 GET /api/v1/admin/users/findOne */
-export async function getUserBySearch(
+/** 根据用户名获取用户详情 根据用户名获取用户详细信息 GET /api/v1/admin/users/username/${param0} */
+export async function getUserByUsername(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getUserBySearchParams,
+  params: API.getUserByUsernameParams,
   options?: { [key: string]: any }
 ) {
+  const { username: param0, ...queryParams } = params;
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
     data?: API.sysUser;
-  }>("/api/v1/admin/users/findOne", {
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
+  }>(`/api/v1/admin/users/username/${param0}`, {
     method: "GET",
-    params: {
-      ...params,
-    },
+    params: { ...queryParams },
     ...(options || {}),
   });
 }

@@ -19,9 +19,12 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
-            message: { type: 'string', example: '创建成功' },
-            data: { $ref: 'sysRole#' }
+            code: { type: 'number', example: 10000 },
+            message: { type: 'string', example: '角色创建成功' },
+            data: { $ref: 'sysRole#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         400: { $ref: 'errorResponse#' },
@@ -94,9 +97,12 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取成功' },
-            data: { $ref: 'sysRoleListResponse#' }
+            data: { $ref: 'sysRoleListResponse#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         401: { $ref: 'unauthorizedResponse#' },
@@ -148,9 +154,12 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取成功' },
-            data: { $ref: 'sysRole#' }
+            data: { $ref: 'sysRole#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         401: { $ref: 'unauthorizedResponse#' },
@@ -210,9 +219,12 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '更新成功' },
-            data: { $ref: 'sysRole#' }
+            data: { $ref: 'sysRole#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         400: { $ref: 'errorResponse#' },
@@ -302,9 +314,12 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '删除成功' },
-            data: { type: 'null' }
+            data: { type: 'null' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         400: { $ref: 'errorResponse#' },
@@ -388,9 +403,12 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '状态更新成功' },
-            data: { $ref: 'sysRole#' }
+            data: { $ref: 'sysRole#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         400: { $ref: 'errorResponse#' },
@@ -464,12 +482,15 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取成功' },
             data: {
               type: 'array',
               items: { $ref: 'sysPermission#' }
-            }
+            },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         401: { $ref: 'unauthorizedResponse#' },
@@ -515,7 +536,10 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
           properties: {
             code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '角色分配成功' },
-            data: { type: 'null' }
+            data: { type: 'null' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         401: { $ref: 'unauthorizedResponse#' },
@@ -580,7 +604,10 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
             data: {
               type: 'array',
               items: { $ref: 'sysRole#' }
-            }
+            },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         401: { $ref: 'unauthorizedResponse#' },
@@ -633,9 +660,12 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取成功' },
-            data: { $ref: 'sysRoleUserListResponse#' }
+            data: { $ref: 'sysRoleUserListResponse#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         401: { $ref: 'unauthorizedResponse#' },

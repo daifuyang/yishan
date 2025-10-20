@@ -22,7 +22,7 @@ import { createStyles } from "antd-style";
 import React, { useState } from "react";
 import { flushSync } from "react-dom";
 import { Footer } from "@/components";
-import { postAuthLogin } from "@/services/yishan-admin/sysAuth";
+import { userLogin } from "@/services/yishan-admin/sysAuth";
 import { getCurrentUser } from "@/services/yishan-admin/sysAuth";
 import { saveTokens } from "@/utils/token";
 import Settings from "../../../../config/defaultSettings";
@@ -141,7 +141,7 @@ const Login: React.FC = () => {
 
       // 标准流程：通过用户信息接口获取
       const response = await getCurrentUser();
-      if (response.isSuccess && response.data) {
+      if (response.success && response.data) {
         flushSync(() => {
           setInitialState((s) => ({
             ...s,
@@ -163,10 +163,10 @@ const Login: React.FC = () => {
 
     try {
       // 登录
-      const msg = await postAuthLogin({ ...values });
+      const msg = await userLogin({ ...values });
 
-      // 完全依赖API返回的isSuccess字段判断成功或失败
-      if (msg.isSuccess) {
+      // 完全依赖API返回的success字段判断成功或失败
+      if (msg.success) {
         const defaultLoginSuccessMessage = intl.formatMessage({
           id: "pages.login.success",
           defaultMessage: "登录成功！",

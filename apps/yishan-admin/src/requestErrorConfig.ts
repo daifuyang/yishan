@@ -7,7 +7,7 @@ import {
   isRefreshTokenExpired,
   clearTokens,
 } from "@/utils/token";
-import { postAuthRefresh } from "@/services/yishan-admin/sysAuth";
+import { refreshToken as refreshTokenService } from "@/services/yishan-admin/sysAuth";
 
 // 错误处理方案： 错误类型
 enum ErrorShowType {
@@ -94,7 +94,7 @@ export const errorConfig: RequestConfig = {
             return;
           }
 
-          const refreshResponse = await postAuthRefresh({ refreshToken });
+          const refreshResponse = await refreshTokenService({ refreshToken });
 
           if (
             refreshResponse.code?.toString().startsWith("200") &&

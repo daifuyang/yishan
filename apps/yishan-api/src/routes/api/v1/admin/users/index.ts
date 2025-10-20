@@ -19,9 +19,12 @@ const userRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '创建成功' },
-            data: { $ref: 'sysUser#' }
+            data: { $ref: 'sysUser#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         400: { $ref: 'errorResponse#' },
@@ -110,9 +113,12 @@ const userRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取成功' },
-            data: { $ref: 'sysUserListResponse#' }
+            data: { $ref: 'sysUserListResponse#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         401: { $ref: 'unauthorizedResponse#' },
@@ -171,9 +177,12 @@ const userRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取成功' },
-            data: { $ref: 'sysUser#' }
+            data: { $ref: 'sysUser#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         404: { $ref: 'notFoundResponse#' },
@@ -233,9 +242,12 @@ const userRoutes: FastifyPluginAsync = async function (fastify, opts) {
         200: {
           type: 'object',
           properties: {
-            code: { type: 'number', example: 200 },
+            code: { type: 'number', example: 10000 },
             message: { type: 'string', example: '获取成功' },
-            data: { $ref: 'sysUser#' }
+            data: { $ref: 'sysUser#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
           }
         },
         404: { $ref: 'notFoundResponse#' },

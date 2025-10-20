@@ -77,7 +77,7 @@ export const sysUserRefreshTokenRequestSchema = {
   type: "object",
   required: ["refresh_token"],
   properties: {
-    refresh_token: { type: "string", description: "刷新令牌" },
+    refreshToken: { type: "string", description: "刷新令牌" },
   },
 };
 

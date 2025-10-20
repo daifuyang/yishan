@@ -9,6 +9,7 @@ const departmentRoutes: FastifyPluginAsync = async function (fastify, opts) {
   // 创建部门
   fastify.post('/', {
     schema: {
+      operationId: 'createDepartment',
       summary: '创建部门',
       description: '创建新的部门',
       tags: ['sysDepartments'],
@@ -77,6 +78,7 @@ const departmentRoutes: FastifyPluginAsync = async function (fastify, opts) {
   // 获取部门列表
   fastify.get('/', {
     schema: {
+      operationId: 'getDepartmentList',
       summary: '获取部门列表',
       description: '获取部门列表，支持分页和筛选',
       tags: ['sysDepartments'],
@@ -124,6 +126,7 @@ const departmentRoutes: FastifyPluginAsync = async function (fastify, opts) {
   // 获取部门树结构
   fastify.get('/tree', {
     schema: {
+      operationId: 'getDepartmentTree',
       summary: '获取部门树结构',
       description: '获取完整的部门树结构',
       tags: ['sysDepartments'],

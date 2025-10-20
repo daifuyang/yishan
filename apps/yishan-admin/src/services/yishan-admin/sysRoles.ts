@@ -2,7 +2,7 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
-/** 获取角色列表 获取系统角色列表，支持分页、搜索和排序 GET /api/v1/admin/roles/ */
+/** 获取角色列表 获取角色列表，支持分页和筛选 GET /api/v1/admin/roles/ */
 export async function getRoleList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getRoleListParams,
@@ -11,8 +11,10 @@ export async function getRoleList(
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
     data?: API.sysRoleListResponse;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>("/api/v1/admin/roles/", {
     method: "GET",
     params: {
@@ -31,16 +33,18 @@ export async function getRoleList(
   });
 }
 
-/** 创建新角色 创建一个新的系统角色 POST /api/v1/admin/roles/ */
-export async function postAdminRoles(
+/** 创建角色 创建新角色 POST /api/v1/admin/roles/ */
+export async function createRole(
   body: API.sysRoleCreateRequest,
   options?: { [key: string]: any }
 ) {
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
     data?: API.sysRole;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>("/api/v1/admin/roles/", {
     method: "POST",
     headers: {
@@ -51,18 +55,20 @@ export async function postAdminRoles(
   });
 }
 
-/** 获取角色详情 根据ID获取角色的详细信息 GET /api/v1/admin/roles/${param0} */
-export async function getRoleDetail(
+/** 获取角色详情 根据ID获取角色详细信息 GET /api/v1/admin/roles/${param0} */
+export async function getRoleById(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getRoleDetailParams,
+  params: API.getRoleByIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
     data?: API.sysRole;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>(`/api/v1/admin/roles/${param0}`, {
     method: "GET",
     params: { ...queryParams },
@@ -70,7 +76,7 @@ export async function getRoleDetail(
   });
 }
 
-/** 更新角色 更新指定角色的信息 PUT /api/v1/admin/roles/${param0} */
+/** 更新角色信息 更新指定角色的信息 PUT /api/v1/admin/roles/${param0} */
 export async function updateRole(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.updateRoleParams,
@@ -81,8 +87,10 @@ export async function updateRole(
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
     data?: API.sysRole;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>(`/api/v1/admin/roles/${param0}`, {
     method: "PUT",
     headers: {
@@ -94,21 +102,46 @@ export async function updateRole(
   });
 }
 
-/** 删除角色 删除指定的角色 DELETE /api/v1/admin/roles/${param0} */
+/** 删除角色 删除指定角色 DELETE /api/v1/admin/roles/${param0} */
 export async function deleteRole(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.deleteRoleParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ code?: number; message?: string }>(
-    `/api/v1/admin/roles/${param0}`,
-    {
-      method: "DELETE",
-      params: { ...queryParams },
-      ...(options || {}),
-    }
-  );
+  return request<{
+    code?: number;
+    message?: string;
+    data?: null;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
+  }>(`/api/v1/admin/roles/${param0}`, {
+    method: "DELETE",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
+}
+
+/** 获取角色权限 获取指定角色的权限列表 GET /api/v1/admin/roles/${param0}/permissions */
+export async function getRolePermissions(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getRolePermissionsParams,
+  options?: { [key: string]: any }
+) {
+  const { id: param0, ...queryParams } = params;
+  return request<{
+    code?: number;
+    message?: string;
+    data?: API.sysPermission[];
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
+  }>(`/api/v1/admin/roles/${param0}/permissions`, {
+    method: "GET",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
 }
 
 /** 修改角色状态 修改指定角色的状态 PATCH /api/v1/admin/roles/${param0}/status */
@@ -119,56 +152,66 @@ export async function updateRoleStatus(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ code?: number; message?: string }>(
-    `/api/v1/admin/roles/${param0}/status`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      params: { ...queryParams },
-      data: body,
-      ...(options || {}),
-    }
-  );
+  return request<{
+    code?: number;
+    message?: string;
+    data?: API.sysRole;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
+  }>(`/api/v1/admin/roles/${param0}/status`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...queryParams },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 获取角色用户列表 获取指定角色的用户列表 GET /api/v1/admin/roles/${param0}/users */
+export async function getRoleUsers(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getRoleUsersParams,
+  options?: { [key: string]: any }
+) {
+  const { id: param0, ...queryParams } = params;
+  return request<{
+    code?: number;
+    message?: string;
+    data?: API.sysRoleUserListResponse;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
+  }>(`/api/v1/admin/roles/${param0}/users`, {
+    method: "GET",
+    params: {
+      // page has a default value: 1
+      page: "1",
+      // pageSize has a default value: 10
+      pageSize: "10",
+
+      ...queryParams,
+    },
+    ...(options || {}),
+  });
 }
 
 /** 为用户分配角色 为指定用户分配一个或多个角色 POST /api/v1/admin/roles/assign */
-export async function assignRolesToUser(
+export async function assignUserRoles(
   body: API.sysRoleAssignRequest,
   options?: { [key: string]: any }
 ) {
   return request<{
     code?: number;
     message?: string;
-    isSuccess?: boolean;
-    data?: boolean;
+    data?: null;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>("/api/v1/admin/roles/assign", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    data: body,
-    ...(options || {}),
-  });
-}
-
-/** 批量删除角色 批量删除指定的角色 DELETE /api/v1/admin/roles/batch */
-export async function batchDeleteRoles(
-  body: API.sysRoleBatchDeleteRequest,
-  options?: { [key: string]: any }
-) {
-  return request<{
-    code?: number;
-    message?: string;
-    isSuccess?: boolean;
-    data?: {
-      success?: boolean;
-      deletedCount?: number;
-      failedRoles?: { id?: number; reason?: string }[];
-    };
-  }>("/api/v1/admin/roles/batch", {
-    method: "DELETE",
     headers: {
       "Content-Type": "application/json",
     },
@@ -187,13 +230,10 @@ export async function getUserRoles(
   return request<{
     code?: number;
     message?: string;
-    data?: {
-      id?: number;
-      roleName?: string;
-      roleDesc?: string;
-      status?: number;
-      isSystem?: number;
-    }[];
+    data?: API.sysRole[];
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
   }>(`/api/v1/admin/roles/user/${param0}`, {
     method: "GET",
     params: { ...queryParams },

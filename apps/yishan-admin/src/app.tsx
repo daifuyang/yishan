@@ -29,7 +29,7 @@ export async function getInitialState(): Promise<{
 }> {
   const fetchUserInfo = async () => {
     const response = await getCurrentUser();
-    if (response.isSuccess && response.data) {
+    if (response.success && response.data) {
       return response.data;
     }
     return undefined;

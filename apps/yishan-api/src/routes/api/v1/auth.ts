@@ -127,7 +127,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
   })
 
   // 获取当前用户信息
-  fastify.get('/me', {
+  fastify.get('/getCurrentUser', {
     preHandler: fastify.authenticate,
     schema: {
       operationId: 'getCurrentUser',
@@ -211,7 +211,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         const refreshTokenData = request.body as RefreshTokenDTO
         const clientIp = request.ip || ''
         
-        const result = await authService.refreshToken(refreshTokenData.refresh_token, clientIp)
+        const result = await authService.refreshToken(refreshTokenData.refreshToken, clientIp)
         
         return ResponseUtil.success(
           reply,

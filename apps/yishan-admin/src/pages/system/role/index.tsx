@@ -2,7 +2,7 @@ import { PlusOutlined, DownOutlined } from '@ant-design/icons';
 import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, Form, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
 import React, { useRef, useState } from 'react';
-import { getRoleList, updateRole, postAdminRoles, getRoleDetail, deleteRole, batchDeleteRoles } from '@/services/yishan-admin/sysRoles';
+import { getRoleList, updateRole, createRole, getRoleById, deleteRole } from '@/services/yishan-admin/sysRoles';
 import RoleForm from './components/RoleForm';
 
 /**
@@ -86,8 +86,8 @@ const RoleList: React.FC = () => {
   const handleEdit = async (id: number) => {
     try {
       setFormTitle('编辑角色');
-      const result = await getRoleDetail({ id });
-      if (result.isSuccess && result.data) {
+      const result = await getRoleById({ id });
+      if (result.success && result.data) {
         setCurrentRole(result.data);
         setFormOpen(true);
       }
@@ -121,33 +121,24 @@ const RoleList: React.FC = () => {
     setBatchDeleteLoading(true);
     
     try {
-      const roleIds = selectedRowKeys.map(key => Number(key));
-      const result = await batchDeleteRoles({ roleIds });
+      // 由于没有批量删除接口，使用单个删除的方式
+      const deletePromises = selectedRowKeys.map(key => deleteRole({ id: Number(key) }));
+      const results = await Promise.allSettled(deletePromises);
       
-      if (result.isSuccess && result.data) {
-        const { success, deletedCount, failedRoles } = result.data;
-        
-        if (success) {
-          message.success(`成功删除 ${deletedCount} 个角色`);
-        } else {
-          const failedCount = failedRoles?.length || 0;
-          const successCount = deletedCount || 0;
-          
-          if (successCount > 0) {
-            message.warning(
-              `删除完成，成功 ${successCount} 个，失败 ${failedCount} 个。失败的角色可能为系统角色、正在被使用或已不存在。`
-            );
-          } else {
-            message.error('批量删除失败，所选角色可能为系统角色、正在被使用或已不存在');
-          }
-        }
-        
-        // 清空选中项并刷新列表
-        setSelectedRowKeys([]);
-        actionRef.current?.reload();
+      const successCount = results.filter(result => result.status === 'fulfilled').length;
+      const failedCount = results.length - successCount;
+      
+      if (failedCount === 0) {
+        message.success(`成功删除 ${successCount} 个角色`);
       } else {
-        message.error(result.message || '批量删除失败');
+        message.warning(
+          `删除完成，成功 ${successCount} 个，失败 ${failedCount} 个。失败的角色可能为系统角色、正在被使用或已不存在。`
+        );
       }
+      
+      // 清空选中项并刷新列表
+      setSelectedRowKeys([]);
+      actionRef.current?.reload();
     } catch (error: any) {
       console.error('批量删除操作失败:', error);
       
@@ -181,7 +172,7 @@ const RoleList: React.FC = () => {
         message.success('角色更新成功');
       } else {
         // 新建角色
-        await postAdminRoles(values);
+        await createRole(values);
         message.success('角色创建成功');
       }
       setFormOpen(false);
@@ -315,7 +306,7 @@ const RoleList: React.FC = () => {
           });
           return {
             data: result.data?.list || [],
-            success: result.isSuccess === true,
+            success: result.success,
             total: result.data?.pagination?.total || 0,
           };
         }}

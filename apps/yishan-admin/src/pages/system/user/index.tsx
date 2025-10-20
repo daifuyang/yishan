@@ -2,7 +2,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space, Tag } from 'antd';
 import React, { useRef, useState } from 'react';
-import { useIntl } from '@umijs/max';
+import { useIntl, FormattedMessage } from '@umijs/max';
 import { deleteUser, getUserList, updateUserStatus } from '@/services/yishan-admin/sysUsers';
 
 /**
@@ -164,7 +164,7 @@ const UserList: React.FC = () => {
         });
         return {
           data: result.data?.list || [],
-          success: result.isSuccess === true,
+          success: result.success,
           total: result.data?.pagination?.total || 0,
         };
       }}
