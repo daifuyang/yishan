@@ -3,6 +3,8 @@
  * 统一成功码，分层错误码，自动映射HTTP状态
  */
 
+import DateTimeUtil from "../utils/datetime.js";
+
 // ============= 成功码 =============
 export const SUCCESS_CODE = 10000;
 
@@ -147,7 +149,7 @@ export class BusinessCode {
    * 获取HTTP状态码
    */
   static getHttpStatus(code: number): number {
-    return HttpStatusMap[code as keyof typeof HttpStatusMap] || 500;
+    return HttpStatusMap[code as keyof typeof HttpStatusMap] || 200;
   }
   
   /**
@@ -170,7 +172,7 @@ export class ResponseBuilder {
       data: data ?? null,
       success: true,
       request_id: requestId,
-      timestamp: new Date().toISOString()
+      timestamp: DateTimeUtil.now()
     };
     
     return result;
@@ -187,7 +189,7 @@ export class ResponseBuilder {
       success: false,
       sub_code: subCode,
       request_id: requestId,
-      timestamp: new Date().toISOString()
+      timestamp: DateTimeUtil.now()
     };
   }
 }

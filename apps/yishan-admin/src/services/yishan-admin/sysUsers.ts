@@ -186,6 +186,28 @@ export async function updateUserStatus(
   );
 }
 
+/** 批量删除用户 根据ID批量删除用户 DELETE /api/v1/admin/users/batch */
+export async function batchDeleteUsers(
+  body: API.sysUserBatchDeleteRequest,
+  options?: { [key: string]: any }
+) {
+  return request<{
+    code?: number;
+    message?: string;
+    data?: API.sysUserBatchResponse;
+    success?: boolean;
+    timestamp?: string;
+    request_id?: string;
+  }>("/api/v1/admin/users/batch", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** 清除用户缓存 DELETE /api/v1/admin/users/cache */
 export async function clearUserCache(options?: { [key: string]: any }) {
   return request<{

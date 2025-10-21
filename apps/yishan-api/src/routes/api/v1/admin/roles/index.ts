@@ -263,8 +263,6 @@ const roleRoutes: FastifyPluginAsync = async function (fastify, opts) {
           '更新成功'
         )
       } catch (error) {
-        fastify.log.error(error)
-        
         if (error instanceof Error) {
           if (error.message.includes('角色不存在')) {
             return ResponseUtil.error(

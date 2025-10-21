@@ -416,6 +416,72 @@ const departmentRoutes: FastifyPluginAsync = async function (fastify, opts) {
       }
     }
   })
+
+  // 批量删除部门
+  fastify.delete('/batch', {
+    schema: {
+      operationId: 'batchDeleteDepartments',
+      summary: '批量删除部门',
+      description: '根据ID列表批量软删除部门',
+      tags: ['sysDepartments'],
+      security: [{ bearerAuth: [] }],
+      body: { $ref: 'sysDepartmentBatchDeleteRequest#' },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 10000 },
+            message: { type: 'string', example: '批量删除完成' },
+            data: { $ref: 'sysDepartmentBatchResponse#' }
+          }
+        },
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request, reply) => {
+      try {
+        const body = request.body as { deptIds: number[] }
+        const deleterId = (request as any).user.id
+
+        const ids = Array.isArray(body?.deptIds) ? body.deptIds : []
+        if (!ids.length) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.INVALID_PARAMETER,
+            '参数错误：deptIds不能为空'
+          )
+        }
+
+        const result = await departmentService.batchDeleteDepartments(ids, deleterId)
+        const data = {
+          successCount: result.deletedCount,
+          failureCount: result.failed.length,
+          details: [
+            ...result.success.map(id => ({ id, success: true, message: '删除成功' })),
+            ...result.failed.map(id => ({ id, success: false, message: '删除失败' }))
+          ]
+        }
+
+        return ResponseUtil.success(
+          reply,
+          request,
+          data,
+          '批量删除完成'
+        )
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '批量删除失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
+      }
+    }
+  })
 }
 
 export default departmentRoutes

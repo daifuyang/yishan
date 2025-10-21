@@ -125,6 +125,25 @@ export async function putAdminDepartmentsIdStatus(
   );
 }
 
+/** 批量删除部门 根据ID列表批量软删除部门 DELETE /api/v1/admin/departments/batch */
+export async function batchDeleteDepartments(
+  body: API.sysDepartmentBatchDeleteRequest,
+  options?: { [key: string]: any }
+) {
+  return request<{
+    code?: number;
+    message?: string;
+    data?: API.sysDepartmentBatchResponse;
+  }>("/api/v1/admin/departments/batch", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** 获取部门树结构 获取完整的部门树结构 GET /api/v1/admin/departments/tree */
 export async function getDepartmentTree(options?: { [key: string]: any }) {
   return request<{

@@ -64,6 +64,11 @@ export default [
         name: 'role',
         component: './system/role',
       },
+      {
+        path: '/system/department',
+        name: 'department',
+        component: './system/department',
+      },
     ],
   },
   {

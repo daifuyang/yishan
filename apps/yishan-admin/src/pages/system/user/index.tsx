@@ -2,8 +2,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space, Tag } from 'antd';
 import React, { useRef, useState } from 'react';
-import { useIntl, FormattedMessage } from '@umijs/max';
-import { deleteUser, getUserList, updateUserStatus } from '@/services/yishan-admin/sysUsers';
+import { useIntl } from '@umijs/max';
+import { deleteUser, getUserList, updateUserStatus, batchDeleteUsers } from '@/services/yishan-admin/sysUsers';
 
 /**
  * 用户状态枚举
@@ -65,6 +65,42 @@ const UserList: React.FC = () => {
   };
 
   /**
+   * 批量删除选中用户
+   */
+  const handleBatchRemove = async () => {
+    if (!selectedRowKeys.length) {
+      message.warning('请先选择要删除的用户');
+      return;
+    }
+    try {
+      const ids = selectedRowKeys.map((key) => Number(key));
+      const res = await batchDeleteUsers({ userIds: ids });
+      const successCount = res.data?.successCount || 0;
+      const failureCount = res.data?.failureCount || 0;
+
+      if (successCount > 0) {
+        message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
+      } else {
+        message.error('批量删除失败');
+      }
+
+      // 可选：提示失败详情
+      if (failureCount > 0 && res.data?.details?.length) {
+        const failed = res.data.details.filter((d) => d.success === false);
+        const tip = failed.map((f) => `ID ${f.id}: ${f.message}`).join('\n');
+        if (tip) {
+          message.warning(tip);
+        }
+      }
+
+      actionRef.current?.reload();
+      setSelectedRowKeys([]);
+    } catch (error) {
+      message.error('批量删除失败');
+    }
+  };
+
+  /**
    * 表格列定义
    */
   const columns: ProColumns<API.sysUser>[] = [
@@ -116,7 +152,7 @@ const UserList: React.FC = () => {
       dataIndex: 'option',
       valueType: 'option',
       render: (_, record) => [
-        <a key="edit" onClick={() => {}}>
+        <a key="edit" onClick={() => { }}>
           编辑
         </a>,
         record.status !== UserStatus.LOCKED && (
@@ -132,7 +168,9 @@ const UserList: React.FC = () => {
           title="确定要删除该用户吗？"
           onConfirm={() => handleRemove(record.id || 0)}
         >
-          <a>删除</a>
+          <Button className='p-0' type="link" danger disabled={record.status === UserStatus.LOCKED}>
+            删除
+          </Button>
         </Popconfirm>,
       ],
     },
@@ -150,7 +188,7 @@ const UserList: React.FC = () => {
         <Button
           type="primary"
           key="primary"
-          onClick={() => {}}
+          onClick={() => { }}
         >
           <PlusOutlined /> 新建
         </Button>,
@@ -185,9 +223,19 @@ const UserList: React.FC = () => {
       )}
       tableAlertOptionRender={() => {
         return (
-          <Space size={16}>
-            <a>批量删除</a>
-            <a>批量导出</a>
+          <Space>
+            <Popconfirm
+              title={`确定要删除选中的 ${selectedRowKeys.length} 个用户吗？`}
+              onConfirm={handleBatchRemove}
+              disabled={selectedRowKeys.length === 0}
+            >
+              <Button className='p-0' type="link" danger disabled={selectedRowKeys.length === 0}>
+                批量删除
+              </Button>
+            </Popconfirm>
+            <Button className='p-0' type="link" onClick={() => message.info('暂未实现')}>
+              批量导出
+            </Button>
           </Space>
         );
       }}

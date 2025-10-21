@@ -198,3 +198,56 @@ export const sysUserPasswordChangeRequestSchema = {
     }
   }
 };
+
+// 新增：用户批量删除请求（兼容userIds或ids）
+export const sysUserBatchDeleteRequestSchema = {
+  $id: "sysUserBatchDeleteRequest",
+  type: "object",
+  required: ["userIds"],
+  properties: {
+    userIds: {
+      type: "array",
+      items: { type: "number" },
+      minItems: 1,
+      description: "用户ID列表"
+    }
+  },
+  additionalProperties: false
+};
+
+// 新增：用户批量请求（更通用的命名，与部门保持一致）
+export const sysUserBatchRequestSchema = {
+  $id: "sysUserBatchRequest",
+  type: "object",
+  required: ["userIds"],
+  properties: {
+    userIds: {
+      type: "array",
+      items: { type: "number" },
+      minItems: 1,
+      description: "用户ID列表"
+    }
+  },
+  additionalProperties: false
+};
+
+// 新增：用户批量响应
+export const sysUserBatchResponseSchema = {
+  $id: "sysUserBatchResponse",
+  type: "object",
+  properties: {
+    successCount: { type: "number", description: "成功处理的数量" },
+    failureCount: { type: "number", description: "失败处理的数量" },
+    details: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "number", description: "用户ID" },
+          success: { type: "boolean", description: "是否成功" },
+          message: { type: "string", description: "处理结果消息" }
+        }
+      }
+    }
+  }
+};

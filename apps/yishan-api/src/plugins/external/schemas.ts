@@ -13,7 +13,7 @@ import {
   conflictResponseSchema,
   forbiddenResponseSchema
 } from '../../schemas/auth.schema.js'
-import { sysUserCreateRequestSchema, sysUserQueryRequestSchema, sysUserListResponseSchema, sysUserSearchRequestSchema, sysUserIdParamSchema, sysUserUpdateRequestSchema, sysUserStatusRequestSchema, sysUserStatusResponseSchema, sysRoleUserQueryRequestSchema, sysRoleUserListResponseSchema, sysUserPasswordChangeRequestSchema } from '../../schemas/user.schema.js'
+import { sysUserCreateRequestSchema, sysUserQueryRequestSchema, sysUserListResponseSchema, sysUserSearchRequestSchema, sysUserIdParamSchema, sysUserUpdateRequestSchema, sysUserStatusRequestSchema, sysUserStatusResponseSchema, sysRoleUserQueryRequestSchema, sysRoleUserListResponseSchema, sysUserPasswordChangeRequestSchema, sysUserBatchDeleteRequestSchema, sysUserBatchRequestSchema, sysUserBatchResponseSchema } from '../../schemas/user.schema.js'
 import {
   sysRoleSchema,
   sysRoleCreateRequestSchema,
@@ -82,6 +82,9 @@ async function schemasPlugin(fastify: FastifyInstance) {
   fastify.addSchema(sysRoleUserQueryRequestSchema)
   fastify.addSchema(sysRoleUserListResponseSchema)
   fastify.addSchema(sysUserPasswordChangeRequestSchema)
+  fastify.addSchema(sysUserBatchDeleteRequestSchema)
+  fastify.addSchema(sysUserBatchRequestSchema)
+  fastify.addSchema(sysUserBatchResponseSchema)
   
   // 角色管理相关schema
   fastify.addSchema(sysRoleSchema)

@@ -735,6 +735,24 @@ declare namespace API {
     updatedAt?: string;
   };
 
+  type sysUserBatchDeleteRequest = {
+    /** 用户ID列表 */
+    userIds: number[];
+  };
+
+  type sysUserBatchRequest = {
+    /** 用户ID列表 */
+    userIds: number[];
+  };
+
+  type sysUserBatchResponse = {
+    /** 成功处理的数量 */
+    successCount?: number;
+    /** 失败处理的数量 */
+    failureCount?: number;
+    details?: { id?: number; success?: boolean; message?: string }[];
+  };
+
   type sysUserCreateRequest = {
     /** 用户名 */
     username: string;

@@ -521,7 +521,6 @@ const userRoutes: FastifyPluginAsync = async function (fastify, opts) {
           '用户状态修改成功'
         )
       } catch (error) {
-        fastify.log.error(error)
         if (error instanceof Error && (error.message.includes('不存在') || error.message.toLowerCase().includes('not found'))) {
           return ResponseUtil.error(
             reply,
@@ -698,6 +697,76 @@ const userRoutes: FastifyPluginAsync = async function (fastify, opts) {
           )
         }
         const errorMessage = error instanceof Error ? error.message : '密码修改失败'
+        return ResponseUtil.error(
+          reply,
+          request,
+          ErrorCode.SYSTEM_ERROR,
+          errorMessage
+        )
+      }
+    }
+  })
+
+  // 批量删除用户
+  fastify.delete('/batch', {
+    
+    schema: {
+      operationId: 'batchDeleteUsers',
+      summary: '批量删除用户',
+      description: '根据ID批量删除用户',
+      tags: ['sysUsers'],
+      security: [{ bearerAuth: [] }],
+      body: { $ref: 'sysUserBatchDeleteRequest#' },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            code: { type: 'number', example: 10000 },
+            message: { type: 'string', example: '批量删除完成' },
+            data: { $ref: 'sysUserBatchResponse#' },
+            success: { type: 'boolean', example: true },
+            timestamp: { type: 'string', format: 'date-time' },
+            request_id: { type: 'string' }
+          }
+        },
+        400: { $ref: 'errorResponse#' },
+        401: { $ref: 'unauthorizedResponse#' },
+        500: { $ref: 'errorResponse#' }
+      }
+    },
+    handler: async (request, reply) => {
+      try {
+        const body = request.body as { userIds: number[] }
+        const deleterId = (request as any).user.id
+
+        const ids = Array.isArray(body?.userIds) ? body.userIds : []
+        if (!ids.length) {
+          return ResponseUtil.error(
+            reply,
+            request,
+            ErrorCode.INVALID_PARAMETER,
+            '参数错误：userIds不能为空'
+          )
+        }
+
+        const result = await userService.batchDeleteUsers(ids, deleterId)
+        const data = {
+          successCount: result.deletedCount,
+          failureCount: result.failed.length,
+          details: [
+            ...result.success.map(id => ({ id, success: true, message: '删除成功' })),
+            ...result.failed.map(item => ({ id: item.id, success: false, message: item.message }))
+          ]
+        }
+
+        return ResponseUtil.success(
+          reply,
+          request,
+          data,
+          '批量删除完成'
+        )
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : '批量删除失败'
         return ResponseUtil.error(
           reply,
           request,

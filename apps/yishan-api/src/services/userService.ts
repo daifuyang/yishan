@@ -217,4 +217,40 @@ export class UserService {
     // 直接使用仓库层的findOneBySearch方法，只查询一条记录
     return this.userRepository.findOneBySearch(search)
   }
+
+  /**
+   * 批量删除用户
+   * @param ids - 用户ID列表
+   * @param deleterId - 删除者ID
+   */
+  async batchDeleteUsers(ids: number[], deleterId?: number): Promise<{ deletedCount: number; success: number[]; failed: { id: number; message: string }[] }> {
+    const success: number[] = []
+    const failed: { id: number; message: string }[] = []
+
+    for (const id of ids) {
+      try {
+        const user = await this.userRepository.findById(id)
+        if (!user) {
+          failed.push({ id, message: '用户不存在' })
+          continue
+        }
+        if (user.username === 'admin') {
+          failed.push({ id, message: '不允许删除管理员账户' })
+          continue
+        }
+
+        const deleted = await this.userRepository.delete(id, deleterId)
+        if (deleted) {
+          success.push(id)
+        } else {
+          failed.push({ id, message: '删除失败' })
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '删除失败'
+        failed.push({ id, message })
+      }
+    }
+
+    return { deletedCount: success.length, success, failed }
+  }
 }

@@ -75,7 +75,7 @@ export const sysUserLoginRequestSchema = {
 export const sysUserRefreshTokenRequestSchema = {
   $id: "sysUserRefreshTokenRequest",
   type: "object",
-  required: ["refresh_token"],
+  required: ["refreshToken"],
   properties: {
     refreshToken: { type: "string", description: "刷新令牌" },
   },

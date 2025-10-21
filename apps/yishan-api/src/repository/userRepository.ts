@@ -437,4 +437,25 @@ export class UserRepository {
   async clearCache(): Promise<void> {
     await this.invalidateCache(`${CACHE_PREFIX}*`)
   }
+
+  // 批量删除用户
+  async batchDelete(ids: number[], deleterId?: number): Promise<{ success: number[]; failed: number[] }> {
+    const success: number[] = []
+    const failed: number[] = []
+
+    for (const id of ids) {
+      try {
+        const result = await this.delete(id, deleterId)
+        if (result) {
+          success.push(id)
+        } else {
+          failed.push(id)
+        }
+      } catch (error) {
+        failed.push(id)
+      }
+    }
+
+    return { success, failed }
+  }
 }

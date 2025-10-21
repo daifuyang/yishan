@@ -73,7 +73,7 @@ export const errorConfig: RequestConfig = {
       if (opts?.skipErrorHandler) throw error;
 
       // 处理401未授权错误 - 尝试自动刷新token
-      if (error.response?.status === 401) {
+      if ([400, 401].includes(error.response?.status)) {
         // 跳过刷新token的请求，避免无限循环
         if (opts?.url?.includes("/auth/refresh")) {
           await logout();
