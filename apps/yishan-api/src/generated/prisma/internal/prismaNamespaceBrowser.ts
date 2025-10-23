@@ -48,7 +48,7 @@ export const AnyNull = runtime.objectEnumValues.instances.AnyNull
 
 
 export const ModelName = {
-  User: 'User'
+  SysUser: 'SysUser'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -67,15 +67,30 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
-export const UserScalarFieldEnum = {
+export const SysUserScalarFieldEnum = {
   id: 'id',
+  username: 'username',
   email: 'email',
-  name: 'name',
+  phone: 'phone',
+  passwordHash: 'passwordHash',
+  salt: 'salt',
+  realName: 'realName',
+  avatar: 'avatar',
+  gender: 'gender',
+  birthDate: 'birthDate',
+  status: 'status',
+  lastLoginTime: 'lastLoginTime',
+  lastLoginIp: 'lastLoginIp',
+  loginCount: 'loginCount',
+  creatorId: 'creatorId',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updaterId: 'updaterId',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt',
+  version: 'version'
 } as const
 
-export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
+export type SysUserScalarFieldEnum = (typeof SysUserScalarFieldEnum)[keyof typeof SysUserScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -94,10 +109,16 @@ export const NullsOrder = {
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
 
-export const UserOrderByRelevanceFieldEnum = {
+export const SysUserOrderByRelevanceFieldEnum = {
+  username: 'username',
   email: 'email',
-  name: 'name'
+  phone: 'phone',
+  passwordHash: 'passwordHash',
+  salt: 'salt',
+  realName: 'realName',
+  avatar: 'avatar',
+  lastLoginIp: 'lastLoginIp'
 } as const
 
-export type UserOrderByRelevanceFieldEnum = (typeof UserOrderByRelevanceFieldEnum)[keyof typeof UserOrderByRelevanceFieldEnum]
+export type SysUserOrderByRelevanceFieldEnum = (typeof SysUserOrderByRelevanceFieldEnum)[keyof typeof SysUserOrderByRelevanceFieldEnum]
 

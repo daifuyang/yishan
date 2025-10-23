@@ -150,12 +150,33 @@ importers:
       '@fastify/autoload':
         specifier: ^6.0.0
         version: 6.3.1
+      '@fastify/jwt':
+        specifier: ^10.0.0
+        version: 10.0.0
+      '@fastify/redis':
+        specifier: ^7.0.2
+        version: 7.0.2
       '@fastify/sensible':
         specifier: ^6.0.0
         version: 6.0.3
+      '@fastify/swagger':
+        specifier: ^9.5.1
+        version: 9.5.1
+      '@fastify/swagger-ui':
+        specifier: ^5.2.3
+        version: 5.2.3
+      '@fastify/type-provider-typebox':
+        specifier: ^6.1.0
+        version: 6.1.0(typebox@1.0.43)
       '@prisma/client':
         specifier: ^6.18.0
         version: 6.18.0(prisma@6.18.0)(typescript@5.8.3)
+      '@sinclair/typebox':
+        specifier: ^0.34.41
+        version: 0.34.41
+      dayjs:
+        specifier: ^1.11.18
+        version: 1.11.18
       fastify:
         specifier: ^5.0.0
         version: 5.6.0
@@ -6538,6 +6559,14 @@ packages:
       - supports-color
     dev: false
 
+  /@fastify/type-provider-typebox@6.1.0(typebox@1.0.43):
+    resolution: {integrity: sha512-k29cOitDRcZhMXVjtRq0+caKxdWoArz7su+dQWGzGWnFG+fSKhevgiZ7nexHWuXOEEQzgJlh6cptIMu69beaTA==}
+    peerDependencies:
+      typebox: ^1.0.13
+    dependencies:
+      typebox: 1.0.43
+    dev: false
+
   /@floating-ui/core@0.6.2:
     resolution: {integrity: sha512-jktYRmZwmau63adUG3GKOAVCofBXkk55S/zQ94XOorAHhwqFIOFAy1rSp2N0Wp6/tGbe9V3u/ExlGZypyY17rg==}
     dev: true
@@ -8312,7 +8341,6 @@ packages:
 
   /@sinclair/typebox@0.34.41:
     resolution: {integrity: sha512-6gS8pZzSXdyRHTIqoqSVknxolr1kzfy4/CeDnrzsVz8TTIWUbOBr6gnzOmTYJ3eXQNh4IYHIGi5aIL7sOZ2G/g==}
-    dev: true
 
   /@sindresorhus/is@0.14.0:
     resolution: {integrity: sha512-9NET910DNaIPngYnLLPeg+Ogzqsi9uM4mSboU5y6p8S5DzMTVEsJZrawi+BoDNUVBa2DhJqQYUFvMDfgU062LQ==}
@@ -29640,6 +29668,10 @@ packages:
   /type@2.7.3:
     resolution: {integrity: sha512-8j+1QmAbPvLZow5Qpi6NCaN8FB60p/6x8/vfNqOk/hC+HuvFZhL4+WfekuhQLiqFZXOgQdrs3B+XxEmCc6b3FQ==}
     dev: true
+
+  /typebox@1.0.43:
+    resolution: {integrity: sha512-NALtTG+DfndC+48JURdOQ6y6CrCEZl9xLM+BMNwFduUIUJv6AqqVT3ZcCf+jQ9uEJlLAhLyds/gkfufkpBh+2g==}
+    dev: false
 
   /typed-array-buffer@1.0.3:
     resolution: {integrity: sha512-nAYYwfY3qnzX30IkA6AQZjVbtK6duGontcQm1WSG1MD94YLqK0515GNApXkoxKOWMusVssAHWLh9SeaoefYFGw==}
