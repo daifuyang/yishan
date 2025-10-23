@@ -22,7 +22,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   // through your application
   // eslint-disable-next-line no-void
   void fastify.register(AutoLoad, {
-    dir: join(__dirname, 'plugins'),
+    dir: join(import.meta.dirname, 'plugins'),
     options: opts
   })
 
@@ -30,7 +30,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   // define your routes in one of these
   // eslint-disable-next-line no-void
   void fastify.register(AutoLoad, {
-    dir: join(__dirname, 'routes'),
+    dir: join(import.meta.dirname, 'routes'),
     options: opts
   })
 }
