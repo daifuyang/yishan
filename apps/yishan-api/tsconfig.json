@@ -2,9 +2,7 @@
   "extends": "fastify-tsconfig",
   "compilerOptions": {
     "outDir": "dist",
-    "sourceMap": true,
-    "typeRoots": ["node_modules/@types", "src/types"]
+    "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "test", "dist"]
+  "include": ["src/**/*.ts"]
 }
