@@ -70,15 +70,15 @@ class PrismaManager {
       await this.prisma.$connect();
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      console.log('✅ Database connected successfully');
+      console.log('Database connected successfully');
     } catch (error) {
       this.isConnected = false;
       this.reconnectAttempts++;
       
-      console.error('❌ Database connection failed:', error);
+      console.error('Database connection failed:', error);
       
       if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        console.log(`🔄 Retrying connection... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        console.log(`Retrying connection... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
         await this.delay(2000 * this.reconnectAttempts); // 指数退避
         return this.connect();
       }
@@ -92,9 +92,9 @@ class PrismaManager {
     try {
       await this.prisma.$disconnect();
       this.isConnected = false;
-      console.log('📴 Database disconnected successfully');
+      console.log('Database disconnected successfully');
     } catch (error) {
-      console.error('❌ Database disconnection failed:', error);
+      console.error('Database disconnection failed:', error);
       throw error;
     }
   }
@@ -102,7 +102,7 @@ class PrismaManager {
   // 获取PrismaClient实例
   getClient(): ExtendedPrismaClient {
     if (!this.isConnected) {
-      console.warn('⚠️  Database may not be connected. Call connect() first.');
+      console.warn('Database may not be connected. Call connect() first.');
     }
     return this.prisma;
   }
@@ -113,7 +113,7 @@ class PrismaManager {
       await this.prisma.$queryRaw`SELECT 1`;
       return true;
     } catch (error) {
-      console.error('❌ Database health check failed:', error);
+      console.error('Database health check failed:', error);
       return false;
     }
   }
@@ -134,14 +134,14 @@ class PrismaManager {
   // 设置优雅关闭
   private setupGracefulShutdown(): void {
     const gracefulShutdown = async (signal: string) => {
-      console.log(`\n📥 Received ${signal}, shutting down gracefully...`);
+      console.log(`\n Received ${signal}, shutting down gracefully...`);
       
       try {
         await this.disconnect();
         console.log('✅ Database disconnected, process exiting');
         process.exit(0);
       } catch (error) {
-        console.error('❌ Error during shutdown:', error);
+        console.error('Error during shutdown:', error);
         process.exit(1);
       }
     };
@@ -151,12 +151,12 @@ class PrismaManager {
     
     // 处理未捕获的异常
     process.on('uncaughtException', (error) => {
-      console.error('💥 Uncaught Exception:', error);
+      console.error('Uncaught Exception:', error);
       gracefulShutdown('uncaughtException');
     });
 
     process.on('unhandledRejection', (reason, promise) => {
-      console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
       gracefulShutdown('unhandledRejection');
     });
   }

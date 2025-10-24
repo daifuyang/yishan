@@ -107,9 +107,9 @@ export class ResponseUtil {
   static sendPaginated<T>(
     reply: FastifyReply,
     data: T[],
-    page: number,
-    pageSize: number,
-    total: number,
+    page: number = 1,
+    pageSize: number = 10,
+    total: number = 0,
     message = '获取成功'
   ): FastifyReply {
     return reply.code(200).send(this.paginated(data, page, pageSize, total, message));

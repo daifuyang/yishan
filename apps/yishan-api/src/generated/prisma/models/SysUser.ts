@@ -36,17 +36,17 @@ export type SysUserAvgAggregateOutputType = {
 }
 
 export type SysUserSumAggregateOutputType = {
-  id: bigint | null
+  id: number | null
   gender: number | null
   status: number | null
   loginCount: number | null
-  creatorId: bigint | null
-  updaterId: bigint | null
+  creatorId: number | null
+  updaterId: number | null
   version: number | null
 }
 
 export type SysUserMinAggregateOutputType = {
-  id: bigint | null
+  id: number | null
   username: string | null
   email: string | null
   phone: string | null
@@ -60,16 +60,16 @@ export type SysUserMinAggregateOutputType = {
   lastLoginTime: Date | null
   lastLoginIp: string | null
   loginCount: number | null
-  creatorId: bigint | null
+  creatorId: number | null
   createdAt: Date | null
-  updaterId: bigint | null
+  updaterId: number | null
   updatedAt: Date | null
   deletedAt: Date | null
   version: number | null
 }
 
 export type SysUserMaxAggregateOutputType = {
-  id: bigint | null
+  id: number | null
   username: string | null
   email: string | null
   phone: string | null
@@ -83,9 +83,9 @@ export type SysUserMaxAggregateOutputType = {
   lastLoginTime: Date | null
   lastLoginIp: string | null
   loginCount: number | null
-  creatorId: bigint | null
+  creatorId: number | null
   createdAt: Date | null
-  updaterId: bigint | null
+  updaterId: number | null
   updatedAt: Date | null
   deletedAt: Date | null
   version: number | null
@@ -293,7 +293,7 @@ export type SysUserGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
 }
 
 export type SysUserGroupByOutputType = {
-  id: bigint
+  id: number
   username: string
   email: string
   phone: string | null
@@ -307,9 +307,9 @@ export type SysUserGroupByOutputType = {
   lastLoginTime: Date | null
   lastLoginIp: string | null
   loginCount: number
-  creatorId: bigint | null
+  creatorId: number
   createdAt: Date
-  updaterId: bigint | null
+  updaterId: number
   updatedAt: Date
   deletedAt: Date | null
   version: number
@@ -339,7 +339,7 @@ export type SysUserWhereInput = {
   AND?: Prisma.SysUserWhereInput | Prisma.SysUserWhereInput[]
   OR?: Prisma.SysUserWhereInput[]
   NOT?: Prisma.SysUserWhereInput | Prisma.SysUserWhereInput[]
-  id?: Prisma.BigIntFilter<"SysUser"> | bigint | number
+  id?: Prisma.IntFilter<"SysUser"> | number
   username?: Prisma.StringFilter<"SysUser"> | string
   email?: Prisma.StringFilter<"SysUser"> | string
   phone?: Prisma.StringNullableFilter<"SysUser"> | string | null
@@ -353,15 +353,15 @@ export type SysUserWhereInput = {
   lastLoginTime?: Prisma.DateTimeNullableFilter<"SysUser"> | Date | string | null
   lastLoginIp?: Prisma.StringNullableFilter<"SysUser"> | string | null
   loginCount?: Prisma.IntFilter<"SysUser"> | number
-  creatorId?: Prisma.BigIntNullableFilter<"SysUser"> | bigint | number | null
+  creatorId?: Prisma.IntFilter<"SysUser"> | number
   createdAt?: Prisma.DateTimeFilter<"SysUser"> | Date | string
-  updaterId?: Prisma.BigIntNullableFilter<"SysUser"> | bigint | number | null
+  updaterId?: Prisma.IntFilter<"SysUser"> | number
   updatedAt?: Prisma.DateTimeFilter<"SysUser"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"SysUser"> | Date | string | null
   version?: Prisma.IntFilter<"SysUser"> | number
-  creator?: Prisma.XOR<Prisma.SysUserNullableScalarRelationFilter, Prisma.SysUserWhereInput> | null
+  creator?: Prisma.XOR<Prisma.SysUserScalarRelationFilter, Prisma.SysUserWhereInput>
   createdUsers?: Prisma.SysUserListRelationFilter
-  updater?: Prisma.XOR<Prisma.SysUserNullableScalarRelationFilter, Prisma.SysUserWhereInput> | null
+  updater?: Prisma.XOR<Prisma.SysUserScalarRelationFilter, Prisma.SysUserWhereInput>
   updatedUsers?: Prisma.SysUserListRelationFilter
 }
 
@@ -380,9 +380,9 @@ export type SysUserOrderByWithRelationInput = {
   lastLoginTime?: Prisma.SortOrderInput | Prisma.SortOrder
   lastLoginIp?: Prisma.SortOrderInput | Prisma.SortOrder
   loginCount?: Prisma.SortOrder
-  creatorId?: Prisma.SortOrderInput | Prisma.SortOrder
+  creatorId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-  updaterId?: Prisma.SortOrderInput | Prisma.SortOrder
+  updaterId?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   version?: Prisma.SortOrder
@@ -394,7 +394,7 @@ export type SysUserOrderByWithRelationInput = {
 }
 
 export type SysUserWhereUniqueInput = Prisma.AtLeast<{
-  id?: bigint | number
+  id?: number
   username?: string
   email?: string
   phone?: string
@@ -411,15 +411,15 @@ export type SysUserWhereUniqueInput = Prisma.AtLeast<{
   lastLoginTime?: Prisma.DateTimeNullableFilter<"SysUser"> | Date | string | null
   lastLoginIp?: Prisma.StringNullableFilter<"SysUser"> | string | null
   loginCount?: Prisma.IntFilter<"SysUser"> | number
-  creatorId?: Prisma.BigIntNullableFilter<"SysUser"> | bigint | number | null
+  creatorId?: Prisma.IntFilter<"SysUser"> | number
   createdAt?: Prisma.DateTimeFilter<"SysUser"> | Date | string
-  updaterId?: Prisma.BigIntNullableFilter<"SysUser"> | bigint | number | null
+  updaterId?: Prisma.IntFilter<"SysUser"> | number
   updatedAt?: Prisma.DateTimeFilter<"SysUser"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"SysUser"> | Date | string | null
   version?: Prisma.IntFilter<"SysUser"> | number
-  creator?: Prisma.XOR<Prisma.SysUserNullableScalarRelationFilter, Prisma.SysUserWhereInput> | null
+  creator?: Prisma.XOR<Prisma.SysUserScalarRelationFilter, Prisma.SysUserWhereInput>
   createdUsers?: Prisma.SysUserListRelationFilter
-  updater?: Prisma.XOR<Prisma.SysUserNullableScalarRelationFilter, Prisma.SysUserWhereInput> | null
+  updater?: Prisma.XOR<Prisma.SysUserScalarRelationFilter, Prisma.SysUserWhereInput>
   updatedUsers?: Prisma.SysUserListRelationFilter
 }, "id" | "username" | "email" | "phone">
 
@@ -438,9 +438,9 @@ export type SysUserOrderByWithAggregationInput = {
   lastLoginTime?: Prisma.SortOrderInput | Prisma.SortOrder
   lastLoginIp?: Prisma.SortOrderInput | Prisma.SortOrder
   loginCount?: Prisma.SortOrder
-  creatorId?: Prisma.SortOrderInput | Prisma.SortOrder
+  creatorId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-  updaterId?: Prisma.SortOrderInput | Prisma.SortOrder
+  updaterId?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   version?: Prisma.SortOrder
@@ -455,7 +455,7 @@ export type SysUserScalarWhereWithAggregatesInput = {
   AND?: Prisma.SysUserScalarWhereWithAggregatesInput | Prisma.SysUserScalarWhereWithAggregatesInput[]
   OR?: Prisma.SysUserScalarWhereWithAggregatesInput[]
   NOT?: Prisma.SysUserScalarWhereWithAggregatesInput | Prisma.SysUserScalarWhereWithAggregatesInput[]
-  id?: Prisma.BigIntWithAggregatesFilter<"SysUser"> | bigint | number
+  id?: Prisma.IntWithAggregatesFilter<"SysUser"> | number
   username?: Prisma.StringWithAggregatesFilter<"SysUser"> | string
   email?: Prisma.StringWithAggregatesFilter<"SysUser"> | string
   phone?: Prisma.StringNullableWithAggregatesFilter<"SysUser"> | string | null
@@ -469,16 +469,15 @@ export type SysUserScalarWhereWithAggregatesInput = {
   lastLoginTime?: Prisma.DateTimeNullableWithAggregatesFilter<"SysUser"> | Date | string | null
   lastLoginIp?: Prisma.StringNullableWithAggregatesFilter<"SysUser"> | string | null
   loginCount?: Prisma.IntWithAggregatesFilter<"SysUser"> | number
-  creatorId?: Prisma.BigIntNullableWithAggregatesFilter<"SysUser"> | bigint | number | null
+  creatorId?: Prisma.IntWithAggregatesFilter<"SysUser"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SysUser"> | Date | string
-  updaterId?: Prisma.BigIntNullableWithAggregatesFilter<"SysUser"> | bigint | number | null
+  updaterId?: Prisma.IntWithAggregatesFilter<"SysUser"> | number
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"SysUser"> | Date | string
   deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"SysUser"> | Date | string | null
   version?: Prisma.IntWithAggregatesFilter<"SysUser"> | number
 }
 
 export type SysUserCreateInput = {
-  id?: bigint | number
   username: string
   email: string
   phone?: string | null
@@ -496,14 +495,14 @@ export type SysUserCreateInput = {
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
-  creator?: Prisma.SysUserCreateNestedOneWithoutCreatedUsersInput
+  creator: Prisma.SysUserCreateNestedOneWithoutCreatedUsersInput
   createdUsers?: Prisma.SysUserCreateNestedManyWithoutCreatorInput
-  updater?: Prisma.SysUserCreateNestedOneWithoutUpdatedUsersInput
+  updater: Prisma.SysUserCreateNestedOneWithoutUpdatedUsersInput
   updatedUsers?: Prisma.SysUserCreateNestedManyWithoutUpdaterInput
 }
 
 export type SysUserUncheckedCreateInput = {
-  id?: bigint | number
+  id?: number
   username: string
   email: string
   phone?: string | null
@@ -517,9 +516,9 @@ export type SysUserUncheckedCreateInput = {
   lastLoginTime?: Date | string | null
   lastLoginIp?: string | null
   loginCount?: number
-  creatorId?: bigint | number | null
+  creatorId: number
   createdAt?: Date | string
-  updaterId?: bigint | number | null
+  updaterId: number
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
@@ -528,7 +527,6 @@ export type SysUserUncheckedCreateInput = {
 }
 
 export type SysUserUpdateInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -546,14 +544,14 @@ export type SysUserUpdateInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
-  creator?: Prisma.SysUserUpdateOneWithoutCreatedUsersNestedInput
+  creator?: Prisma.SysUserUpdateOneRequiredWithoutCreatedUsersNestedInput
   createdUsers?: Prisma.SysUserUpdateManyWithoutCreatorNestedInput
-  updater?: Prisma.SysUserUpdateOneWithoutUpdatedUsersNestedInput
+  updater?: Prisma.SysUserUpdateOneRequiredWithoutUpdatedUsersNestedInput
   updatedUsers?: Prisma.SysUserUpdateManyWithoutUpdaterNestedInput
 }
 
 export type SysUserUncheckedUpdateInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -567,9 +565,9 @@ export type SysUserUncheckedUpdateInput = {
   lastLoginTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   loginCount?: Prisma.IntFieldUpdateOperationsInput | number
-  creatorId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  creatorId?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updaterId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  updaterId?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -578,7 +576,7 @@ export type SysUserUncheckedUpdateInput = {
 }
 
 export type SysUserCreateManyInput = {
-  id?: bigint | number
+  id?: number
   username: string
   email: string
   phone?: string | null
@@ -592,16 +590,15 @@ export type SysUserCreateManyInput = {
   lastLoginTime?: Date | string | null
   lastLoginIp?: string | null
   loginCount?: number
-  creatorId?: bigint | number | null
+  creatorId: number
   createdAt?: Date | string
-  updaterId?: bigint | number | null
+  updaterId: number
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
 }
 
 export type SysUserUpdateManyMutationInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -622,7 +619,7 @@ export type SysUserUpdateManyMutationInput = {
 }
 
 export type SysUserUncheckedUpdateManyInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -636,17 +633,17 @@ export type SysUserUncheckedUpdateManyInput = {
   lastLoginTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   loginCount?: Prisma.IntFieldUpdateOperationsInput | number
-  creatorId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  creatorId?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updaterId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  updaterId?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
-export type SysUserNullableScalarRelationFilter = {
-  is?: Prisma.SysUserWhereInput | null
-  isNot?: Prisma.SysUserWhereInput | null
+export type SysUserScalarRelationFilter = {
+  is?: Prisma.SysUserWhereInput
+  isNot?: Prisma.SysUserWhereInput
 }
 
 export type SysUserListRelationFilter = {
@@ -794,14 +791,6 @@ export type SysUserUncheckedCreateNestedManyWithoutUpdaterInput = {
   connect?: Prisma.SysUserWhereUniqueInput | Prisma.SysUserWhereUniqueInput[]
 }
 
-export type BigIntFieldUpdateOperationsInput = {
-  set?: bigint | number
-  increment?: bigint | number
-  decrement?: bigint | number
-  multiply?: bigint | number
-  divide?: bigint | number
-}
-
 export type StringFieldUpdateOperationsInput = {
   set?: string
 }
@@ -826,12 +815,10 @@ export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
 }
 
-export type SysUserUpdateOneWithoutCreatedUsersNestedInput = {
+export type SysUserUpdateOneRequiredWithoutCreatedUsersNestedInput = {
   create?: Prisma.XOR<Prisma.SysUserCreateWithoutCreatedUsersInput, Prisma.SysUserUncheckedCreateWithoutCreatedUsersInput>
   connectOrCreate?: Prisma.SysUserCreateOrConnectWithoutCreatedUsersInput
   upsert?: Prisma.SysUserUpsertWithoutCreatedUsersInput
-  disconnect?: Prisma.SysUserWhereInput | boolean
-  delete?: Prisma.SysUserWhereInput | boolean
   connect?: Prisma.SysUserWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.SysUserUpdateToOneWithWhereWithoutCreatedUsersInput, Prisma.SysUserUpdateWithoutCreatedUsersInput>, Prisma.SysUserUncheckedUpdateWithoutCreatedUsersInput>
 }
@@ -850,12 +837,10 @@ export type SysUserUpdateManyWithoutCreatorNestedInput = {
   deleteMany?: Prisma.SysUserScalarWhereInput | Prisma.SysUserScalarWhereInput[]
 }
 
-export type SysUserUpdateOneWithoutUpdatedUsersNestedInput = {
+export type SysUserUpdateOneRequiredWithoutUpdatedUsersNestedInput = {
   create?: Prisma.XOR<Prisma.SysUserCreateWithoutUpdatedUsersInput, Prisma.SysUserUncheckedCreateWithoutUpdatedUsersInput>
   connectOrCreate?: Prisma.SysUserCreateOrConnectWithoutUpdatedUsersInput
   upsert?: Prisma.SysUserUpsertWithoutUpdatedUsersInput
-  disconnect?: Prisma.SysUserWhereInput | boolean
-  delete?: Prisma.SysUserWhereInput | boolean
   connect?: Prisma.SysUserWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.SysUserUpdateToOneWithWhereWithoutUpdatedUsersInput, Prisma.SysUserUpdateWithoutUpdatedUsersInput>, Prisma.SysUserUncheckedUpdateWithoutUpdatedUsersInput>
 }
@@ -872,14 +857,6 @@ export type SysUserUpdateManyWithoutUpdaterNestedInput = {
   update?: Prisma.SysUserUpdateWithWhereUniqueWithoutUpdaterInput | Prisma.SysUserUpdateWithWhereUniqueWithoutUpdaterInput[]
   updateMany?: Prisma.SysUserUpdateManyWithWhereWithoutUpdaterInput | Prisma.SysUserUpdateManyWithWhereWithoutUpdaterInput[]
   deleteMany?: Prisma.SysUserScalarWhereInput | Prisma.SysUserScalarWhereInput[]
-}
-
-export type NullableBigIntFieldUpdateOperationsInput = {
-  set?: bigint | number | null
-  increment?: bigint | number
-  decrement?: bigint | number
-  multiply?: bigint | number
-  divide?: bigint | number
 }
 
 export type SysUserUncheckedUpdateManyWithoutCreatorNestedInput = {
@@ -911,7 +888,6 @@ export type SysUserUncheckedUpdateManyWithoutUpdaterNestedInput = {
 }
 
 export type SysUserCreateWithoutCreatedUsersInput = {
-  id?: bigint | number
   username: string
   email: string
   phone?: string | null
@@ -929,13 +905,13 @@ export type SysUserCreateWithoutCreatedUsersInput = {
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
-  creator?: Prisma.SysUserCreateNestedOneWithoutCreatedUsersInput
-  updater?: Prisma.SysUserCreateNestedOneWithoutUpdatedUsersInput
+  creator: Prisma.SysUserCreateNestedOneWithoutCreatedUsersInput
+  updater: Prisma.SysUserCreateNestedOneWithoutUpdatedUsersInput
   updatedUsers?: Prisma.SysUserCreateNestedManyWithoutUpdaterInput
 }
 
 export type SysUserUncheckedCreateWithoutCreatedUsersInput = {
-  id?: bigint | number
+  id?: number
   username: string
   email: string
   phone?: string | null
@@ -949,9 +925,9 @@ export type SysUserUncheckedCreateWithoutCreatedUsersInput = {
   lastLoginTime?: Date | string | null
   lastLoginIp?: string | null
   loginCount?: number
-  creatorId?: bigint | number | null
+  creatorId: number
   createdAt?: Date | string
-  updaterId?: bigint | number | null
+  updaterId: number
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
@@ -964,7 +940,6 @@ export type SysUserCreateOrConnectWithoutCreatedUsersInput = {
 }
 
 export type SysUserCreateWithoutCreatorInput = {
-  id?: bigint | number
   username: string
   email: string
   phone?: string | null
@@ -983,12 +958,12 @@ export type SysUserCreateWithoutCreatorInput = {
   deletedAt?: Date | string | null
   version?: number
   createdUsers?: Prisma.SysUserCreateNestedManyWithoutCreatorInput
-  updater?: Prisma.SysUserCreateNestedOneWithoutUpdatedUsersInput
+  updater: Prisma.SysUserCreateNestedOneWithoutUpdatedUsersInput
   updatedUsers?: Prisma.SysUserCreateNestedManyWithoutUpdaterInput
 }
 
 export type SysUserUncheckedCreateWithoutCreatorInput = {
-  id?: bigint | number
+  id?: number
   username: string
   email: string
   phone?: string | null
@@ -1003,7 +978,7 @@ export type SysUserUncheckedCreateWithoutCreatorInput = {
   lastLoginIp?: string | null
   loginCount?: number
   createdAt?: Date | string
-  updaterId?: bigint | number | null
+  updaterId: number
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
@@ -1022,7 +997,6 @@ export type SysUserCreateManyCreatorInputEnvelope = {
 }
 
 export type SysUserCreateWithoutUpdatedUsersInput = {
-  id?: bigint | number
   username: string
   email: string
   phone?: string | null
@@ -1040,13 +1014,13 @@ export type SysUserCreateWithoutUpdatedUsersInput = {
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
-  creator?: Prisma.SysUserCreateNestedOneWithoutCreatedUsersInput
+  creator: Prisma.SysUserCreateNestedOneWithoutCreatedUsersInput
   createdUsers?: Prisma.SysUserCreateNestedManyWithoutCreatorInput
-  updater?: Prisma.SysUserCreateNestedOneWithoutUpdatedUsersInput
+  updater: Prisma.SysUserCreateNestedOneWithoutUpdatedUsersInput
 }
 
 export type SysUserUncheckedCreateWithoutUpdatedUsersInput = {
-  id?: bigint | number
+  id?: number
   username: string
   email: string
   phone?: string | null
@@ -1060,9 +1034,9 @@ export type SysUserUncheckedCreateWithoutUpdatedUsersInput = {
   lastLoginTime?: Date | string | null
   lastLoginIp?: string | null
   loginCount?: number
-  creatorId?: bigint | number | null
+  creatorId: number
   createdAt?: Date | string
-  updaterId?: bigint | number | null
+  updaterId: number
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
@@ -1075,7 +1049,6 @@ export type SysUserCreateOrConnectWithoutUpdatedUsersInput = {
 }
 
 export type SysUserCreateWithoutUpdaterInput = {
-  id?: bigint | number
   username: string
   email: string
   phone?: string | null
@@ -1093,13 +1066,13 @@ export type SysUserCreateWithoutUpdaterInput = {
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
-  creator?: Prisma.SysUserCreateNestedOneWithoutCreatedUsersInput
+  creator: Prisma.SysUserCreateNestedOneWithoutCreatedUsersInput
   createdUsers?: Prisma.SysUserCreateNestedManyWithoutCreatorInput
   updatedUsers?: Prisma.SysUserCreateNestedManyWithoutUpdaterInput
 }
 
 export type SysUserUncheckedCreateWithoutUpdaterInput = {
-  id?: bigint | number
+  id?: number
   username: string
   email: string
   phone?: string | null
@@ -1113,7 +1086,7 @@ export type SysUserUncheckedCreateWithoutUpdaterInput = {
   lastLoginTime?: Date | string | null
   lastLoginIp?: string | null
   loginCount?: number
-  creatorId?: bigint | number | null
+  creatorId: number
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1144,7 +1117,6 @@ export type SysUserUpdateToOneWithWhereWithoutCreatedUsersInput = {
 }
 
 export type SysUserUpdateWithoutCreatedUsersInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1162,13 +1134,13 @@ export type SysUserUpdateWithoutCreatedUsersInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
-  creator?: Prisma.SysUserUpdateOneWithoutCreatedUsersNestedInput
-  updater?: Prisma.SysUserUpdateOneWithoutUpdatedUsersNestedInput
+  creator?: Prisma.SysUserUpdateOneRequiredWithoutCreatedUsersNestedInput
+  updater?: Prisma.SysUserUpdateOneRequiredWithoutUpdatedUsersNestedInput
   updatedUsers?: Prisma.SysUserUpdateManyWithoutUpdaterNestedInput
 }
 
 export type SysUserUncheckedUpdateWithoutCreatedUsersInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1182,9 +1154,9 @@ export type SysUserUncheckedUpdateWithoutCreatedUsersInput = {
   lastLoginTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   loginCount?: Prisma.IntFieldUpdateOperationsInput | number
-  creatorId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  creatorId?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updaterId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  updaterId?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1211,7 +1183,7 @@ export type SysUserScalarWhereInput = {
   AND?: Prisma.SysUserScalarWhereInput | Prisma.SysUserScalarWhereInput[]
   OR?: Prisma.SysUserScalarWhereInput[]
   NOT?: Prisma.SysUserScalarWhereInput | Prisma.SysUserScalarWhereInput[]
-  id?: Prisma.BigIntFilter<"SysUser"> | bigint | number
+  id?: Prisma.IntFilter<"SysUser"> | number
   username?: Prisma.StringFilter<"SysUser"> | string
   email?: Prisma.StringFilter<"SysUser"> | string
   phone?: Prisma.StringNullableFilter<"SysUser"> | string | null
@@ -1225,9 +1197,9 @@ export type SysUserScalarWhereInput = {
   lastLoginTime?: Prisma.DateTimeNullableFilter<"SysUser"> | Date | string | null
   lastLoginIp?: Prisma.StringNullableFilter<"SysUser"> | string | null
   loginCount?: Prisma.IntFilter<"SysUser"> | number
-  creatorId?: Prisma.BigIntNullableFilter<"SysUser"> | bigint | number | null
+  creatorId?: Prisma.IntFilter<"SysUser"> | number
   createdAt?: Prisma.DateTimeFilter<"SysUser"> | Date | string
-  updaterId?: Prisma.BigIntNullableFilter<"SysUser"> | bigint | number | null
+  updaterId?: Prisma.IntFilter<"SysUser"> | number
   updatedAt?: Prisma.DateTimeFilter<"SysUser"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"SysUser"> | Date | string | null
   version?: Prisma.IntFilter<"SysUser"> | number
@@ -1245,7 +1217,6 @@ export type SysUserUpdateToOneWithWhereWithoutUpdatedUsersInput = {
 }
 
 export type SysUserUpdateWithoutUpdatedUsersInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1263,13 +1234,13 @@ export type SysUserUpdateWithoutUpdatedUsersInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
-  creator?: Prisma.SysUserUpdateOneWithoutCreatedUsersNestedInput
+  creator?: Prisma.SysUserUpdateOneRequiredWithoutCreatedUsersNestedInput
   createdUsers?: Prisma.SysUserUpdateManyWithoutCreatorNestedInput
-  updater?: Prisma.SysUserUpdateOneWithoutUpdatedUsersNestedInput
+  updater?: Prisma.SysUserUpdateOneRequiredWithoutUpdatedUsersNestedInput
 }
 
 export type SysUserUncheckedUpdateWithoutUpdatedUsersInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1283,9 +1254,9 @@ export type SysUserUncheckedUpdateWithoutUpdatedUsersInput = {
   lastLoginTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   loginCount?: Prisma.IntFieldUpdateOperationsInput | number
-  creatorId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  creatorId?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updaterId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  updaterId?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1309,7 +1280,7 @@ export type SysUserUpdateManyWithWhereWithoutUpdaterInput = {
 }
 
 export type SysUserCreateManyCreatorInput = {
-  id?: bigint | number
+  id?: number
   username: string
   email: string
   phone?: string | null
@@ -1324,14 +1295,14 @@ export type SysUserCreateManyCreatorInput = {
   lastLoginIp?: string | null
   loginCount?: number
   createdAt?: Date | string
-  updaterId?: bigint | number | null
+  updaterId: number
   updatedAt?: Date | string
   deletedAt?: Date | string | null
   version?: number
 }
 
 export type SysUserCreateManyUpdaterInput = {
-  id?: bigint | number
+  id?: number
   username: string
   email: string
   phone?: string | null
@@ -1345,7 +1316,7 @@ export type SysUserCreateManyUpdaterInput = {
   lastLoginTime?: Date | string | null
   lastLoginIp?: string | null
   loginCount?: number
-  creatorId?: bigint | number | null
+  creatorId: number
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -1353,7 +1324,6 @@ export type SysUserCreateManyUpdaterInput = {
 }
 
 export type SysUserUpdateWithoutCreatorInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1372,12 +1342,12 @@ export type SysUserUpdateWithoutCreatorInput = {
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
   createdUsers?: Prisma.SysUserUpdateManyWithoutCreatorNestedInput
-  updater?: Prisma.SysUserUpdateOneWithoutUpdatedUsersNestedInput
+  updater?: Prisma.SysUserUpdateOneRequiredWithoutUpdatedUsersNestedInput
   updatedUsers?: Prisma.SysUserUpdateManyWithoutUpdaterNestedInput
 }
 
 export type SysUserUncheckedUpdateWithoutCreatorInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1392,7 +1362,7 @@ export type SysUserUncheckedUpdateWithoutCreatorInput = {
   lastLoginIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   loginCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updaterId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  updaterId?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -1401,7 +1371,7 @@ export type SysUserUncheckedUpdateWithoutCreatorInput = {
 }
 
 export type SysUserUncheckedUpdateManyWithoutCreatorInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1416,14 +1386,13 @@ export type SysUserUncheckedUpdateManyWithoutCreatorInput = {
   lastLoginIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   loginCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  updaterId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  updaterId?: Prisma.IntFieldUpdateOperationsInput | number
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type SysUserUpdateWithoutUpdaterInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1441,13 +1410,13 @@ export type SysUserUpdateWithoutUpdaterInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   version?: Prisma.IntFieldUpdateOperationsInput | number
-  creator?: Prisma.SysUserUpdateOneWithoutCreatedUsersNestedInput
+  creator?: Prisma.SysUserUpdateOneRequiredWithoutCreatedUsersNestedInput
   createdUsers?: Prisma.SysUserUpdateManyWithoutCreatorNestedInput
   updatedUsers?: Prisma.SysUserUpdateManyWithoutUpdaterNestedInput
 }
 
 export type SysUserUncheckedUpdateWithoutUpdaterInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1461,7 +1430,7 @@ export type SysUserUncheckedUpdateWithoutUpdaterInput = {
   lastLoginTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   loginCount?: Prisma.IntFieldUpdateOperationsInput | number
-  creatorId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  creatorId?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1471,7 +1440,7 @@ export type SysUserUncheckedUpdateWithoutUpdaterInput = {
 }
 
 export type SysUserUncheckedUpdateManyWithoutUpdaterInput = {
-  id?: Prisma.BigIntFieldUpdateOperationsInput | bigint | number
+  id?: Prisma.IntFieldUpdateOperationsInput | number
   username?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1485,7 +1454,7 @@ export type SysUserUncheckedUpdateManyWithoutUpdaterInput = {
   lastLoginTime?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastLoginIp?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   loginCount?: Prisma.IntFieldUpdateOperationsInput | number
-  creatorId?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  creatorId?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1553,9 +1522,9 @@ export type SysUserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   updatedAt?: boolean
   deletedAt?: boolean
   version?: boolean
-  creator?: boolean | Prisma.SysUser$creatorArgs<ExtArgs>
+  creator?: boolean | Prisma.SysUserDefaultArgs<ExtArgs>
   createdUsers?: boolean | Prisma.SysUser$createdUsersArgs<ExtArgs>
-  updater?: boolean | Prisma.SysUser$updaterArgs<ExtArgs>
+  updater?: boolean | Prisma.SysUserDefaultArgs<ExtArgs>
   updatedUsers?: boolean | Prisma.SysUser$updatedUsersArgs<ExtArgs>
   _count?: boolean | Prisma.SysUserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["sysUser"]>
@@ -1587,9 +1556,9 @@ export type SysUserSelectScalar = {
 
 export type SysUserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "username" | "email" | "phone" | "passwordHash" | "salt" | "realName" | "avatar" | "gender" | "birthDate" | "status" | "lastLoginTime" | "lastLoginIp" | "loginCount" | "creatorId" | "createdAt" | "updaterId" | "updatedAt" | "deletedAt" | "version", ExtArgs["result"]["sysUser"]>
 export type SysUserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  creator?: boolean | Prisma.SysUser$creatorArgs<ExtArgs>
+  creator?: boolean | Prisma.SysUserDefaultArgs<ExtArgs>
   createdUsers?: boolean | Prisma.SysUser$createdUsersArgs<ExtArgs>
-  updater?: boolean | Prisma.SysUser$updaterArgs<ExtArgs>
+  updater?: boolean | Prisma.SysUserDefaultArgs<ExtArgs>
   updatedUsers?: boolean | Prisma.SysUser$updatedUsersArgs<ExtArgs>
   _count?: boolean | Prisma.SysUserCountOutputTypeDefaultArgs<ExtArgs>
 }
@@ -1597,13 +1566,13 @@ export type SysUserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs
 export type $SysUserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "SysUser"
   objects: {
-    creator: Prisma.$SysUserPayload<ExtArgs> | null
+    creator: Prisma.$SysUserPayload<ExtArgs>
     createdUsers: Prisma.$SysUserPayload<ExtArgs>[]
-    updater: Prisma.$SysUserPayload<ExtArgs> | null
+    updater: Prisma.$SysUserPayload<ExtArgs>
     updatedUsers: Prisma.$SysUserPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: bigint
+    id: number
     username: string
     email: string
     phone: string | null
@@ -1617,9 +1586,9 @@ export type $SysUserPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     lastLoginTime: Date | null
     lastLoginIp: string | null
     loginCount: number
-    creatorId: bigint | null
+    creatorId: number
     createdAt: Date
-    updaterId: bigint | null
+    updaterId: number
     updatedAt: Date
     deletedAt: Date | null
     version: number
@@ -1963,9 +1932,9 @@ readonly fields: SysUserFieldRefs;
  */
 export interface Prisma__SysUserClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  creator<T extends Prisma.SysUser$creatorArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SysUser$creatorArgs<ExtArgs>>): Prisma.Prisma__SysUserClient<runtime.Types.Result.GetResult<Prisma.$SysUserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  creator<T extends Prisma.SysUserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SysUserDefaultArgs<ExtArgs>>): Prisma.Prisma__SysUserClient<runtime.Types.Result.GetResult<Prisma.$SysUserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   createdUsers<T extends Prisma.SysUser$createdUsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SysUser$createdUsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SysUserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  updater<T extends Prisma.SysUser$updaterArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SysUser$updaterArgs<ExtArgs>>): Prisma.Prisma__SysUserClient<runtime.Types.Result.GetResult<Prisma.$SysUserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  updater<T extends Prisma.SysUserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SysUserDefaultArgs<ExtArgs>>): Prisma.Prisma__SysUserClient<runtime.Types.Result.GetResult<Prisma.$SysUserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   updatedUsers<T extends Prisma.SysUser$updatedUsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.SysUser$updatedUsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SysUserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -1996,7 +1965,7 @@ export interface Prisma__SysUserClient<T, Null = never, ExtArgs extends runtime.
  * Fields of the SysUser model
  */
 export interface SysUserFieldRefs {
-  readonly id: Prisma.FieldRef<"SysUser", 'BigInt'>
+  readonly id: Prisma.FieldRef<"SysUser", 'Int'>
   readonly username: Prisma.FieldRef<"SysUser", 'String'>
   readonly email: Prisma.FieldRef<"SysUser", 'String'>
   readonly phone: Prisma.FieldRef<"SysUser", 'String'>
@@ -2010,9 +1979,9 @@ export interface SysUserFieldRefs {
   readonly lastLoginTime: Prisma.FieldRef<"SysUser", 'DateTime'>
   readonly lastLoginIp: Prisma.FieldRef<"SysUser", 'String'>
   readonly loginCount: Prisma.FieldRef<"SysUser", 'Int'>
-  readonly creatorId: Prisma.FieldRef<"SysUser", 'BigInt'>
+  readonly creatorId: Prisma.FieldRef<"SysUser", 'Int'>
   readonly createdAt: Prisma.FieldRef<"SysUser", 'DateTime'>
-  readonly updaterId: Prisma.FieldRef<"SysUser", 'BigInt'>
+  readonly updaterId: Prisma.FieldRef<"SysUser", 'Int'>
   readonly updatedAt: Prisma.FieldRef<"SysUser", 'DateTime'>
   readonly deletedAt: Prisma.FieldRef<"SysUser", 'DateTime'>
   readonly version: Prisma.FieldRef<"SysUser", 'Int'>
@@ -2359,25 +2328,6 @@ export type SysUserDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
 }
 
 /**
- * SysUser.creator
- */
-export type SysUser$creatorArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the SysUser
-   */
-  select?: Prisma.SysUserSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the SysUser
-   */
-  omit?: Prisma.SysUserOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.SysUserInclude<ExtArgs> | null
-  where?: Prisma.SysUserWhereInput
-}
-
-/**
  * SysUser.createdUsers
  */
 export type SysUser$createdUsersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2399,25 +2349,6 @@ export type SysUser$createdUsersArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   distinct?: Prisma.SysUserScalarFieldEnum | Prisma.SysUserScalarFieldEnum[]
-}
-
-/**
- * SysUser.updater
- */
-export type SysUser$updaterArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the SysUser
-   */
-  select?: Prisma.SysUserSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the SysUser
-   */
-  omit?: Prisma.SysUserOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.SysUserInclude<ExtArgs> | null
-  where?: Prisma.SysUserWhereInput
 }
 
 /**

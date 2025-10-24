@@ -2,15 +2,9 @@
 /* eslint-disable */
 // API 更新时间：
 // API 唯一标识：
-import * as sysAuth from "./sysAuth";
-import * as sysDepartments from "./sysDepartments";
-import * as sysRoles from "./sysRoles";
-import * as sysUsers from "./sysUsers";
-import * as sysCleanup from "./sysCleanup";
+import * as admin from "./admin";
+import * as user from "./user";
 export default {
-  sysAuth,
-  sysDepartments,
-  sysRoles,
-  sysUsers,
-  sysCleanup,
+  admin,
+  user,
 };

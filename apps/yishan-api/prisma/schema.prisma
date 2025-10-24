@@ -10,38 +10,39 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 // 系统用户表
 model SysUser {
-  id              BigInt    @id @default(autoincrement()) @map("id") @db.BigInt
-  username        String    @unique @map("username") @db.VarChar(50)
-  email           String    @unique @map("email") @db.VarChar(100)
-  phone           String?   @unique @map("phone") @db.VarChar(20)
-  passwordHash    String    @map("password_hash") @db.VarChar(255)
-  salt            String    @map("salt") @db.VarChar(32)
-  realName        String    @map("real_name") @db.VarChar(50)
-  avatar          String?   @map("avatar") @db.VarChar(500)
-  gender          Int       @default(0) @map("gender") @db.TinyInt
-  birthDate       DateTime? @map("birth_date") @db.Date
-  status          Int       @default(1) @map("status") @db.TinyInt
-  lastLoginTime   DateTime? @map("last_login_time") @db.DateTime(0)
-  lastLoginIp     String?   @map("last_login_ip") @db.VarChar(45)
-  loginCount      Int       @default(0) @map("login_count")
-  creatorId       BigInt?   @map("creator_id") @db.BigInt
-  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(0)
-  updaterId       BigInt?   @map("updater_id") @db.BigInt
-  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  deletedAt       DateTime? @map("deleted_at") @db.DateTime(0)
-  version         Int       @default(1) @map("version")
+  id            Int       @id @default(autoincrement()) @map("id")
+  username      String    @unique @map("username") @db.VarChar(50)
+  email         String    @unique @map("email") @db.VarChar(100)
+  phone         String?   @unique @map("phone") @db.VarChar(20)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  salt          String    @map("salt") @db.VarChar(32)
+  realName      String    @map("real_name") @db.VarChar(50)
+  avatar        String?   @map("avatar") @db.VarChar(500)
+  gender        Int       @default(0) @map("gender") @db.TinyInt
+  birthDate     DateTime? @map("birth_date") @db.Date
+  status        Int       @default(1) @map("status") @db.TinyInt
+  lastLoginTime DateTime? @map("last_login_time") @db.DateTime(0)
+  lastLoginIp   String?   @map("last_login_ip") @db.VarChar(45)
+  loginCount    Int       @default(0) @map("login_count")
+  creatorId     Int       @map("creator_id")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId     Int       @map("updater_id")
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt     DateTime? @map("deleted_at") @db.DateTime(0)
+  version       Int       @default(1) @map("version")
 
   // 自引用关系
-  creator         SysUser?  @relation("UserCreator", fields: [creatorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  createdUsers    SysUser[] @relation("UserCreator")
-  updater         SysUser?  @relation("UserUpdater", fields: [updaterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  updatedUsers    SysUser[] @relation("UserUpdater")
+  creator      SysUser   @relation("UserCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  createdUsers SysUser[] @relation("UserCreator")
+  updater      SysUser   @relation("UserUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  updatedUsers SysUser[] @relation("UserUpdater")
 
   // 索引定义
   @@index([status], map: "idx_status")
@@ -51,6 +52,5 @@ model SysUser {
   @@index([updaterId], map: "idx_updater_id")
   @@index([status, createdAt], map: "idx_status_created")
   @@index([realName, status], map: "idx_real_name_status")
-  
   @@map("sys_user")
 }
