@@ -5,11 +5,40 @@ export default fp(async (fastify, opts) => {
   // 测试环境特殊配置
   const isTestEnv = process.env.NODE_ENV === 'test'
   
-  const redisConfig = {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-    password: process.env.REDIS_PASSWORD,
-    db: parseInt(process.env.REDIS_DB || '0'),
+  // 解析 REDIS_URL 或使用单独的环境变量
+  let redisConfig: any = {}
+  
+  if (process.env.REDIS_URL) {
+    // 解析 REDIS_URL 格式: redis://:password@host:port/db
+    try {
+      const url = new URL(process.env.REDIS_URL)
+      redisConfig = {
+        host: url.hostname || 'localhost',
+        port: parseInt(url.port) || 6379,
+        password: url.password || undefined,
+        db: parseInt(url.pathname.slice(1)) || 0, // 移除开头的 '/'
+      }
+    } catch (error) {
+      fastify.log.error('REDIS_URL 格式错误，使用默认配置')
+      redisConfig = {
+        host: 'localhost',
+        port: 6379,
+        db: 0
+      }
+    }
+  } else {
+    // 使用单独的环境变量
+    redisConfig = {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_DB || '0'),
+    }
+  }
+  
+  // 添加通用配置
+  redisConfig = {
+    ...redisConfig,
     connectTimeout: isTestEnv ? 5000 : 10000, // 测试环境缩短超时时间
     lazyConnect: isTestEnv ? true : false, // 测试环境使用延迟连接
     retryDelayOnFailover: 100,

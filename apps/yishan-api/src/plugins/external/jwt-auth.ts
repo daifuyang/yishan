@@ -1,7 +1,9 @@
 import fp from 'fastify-plugin'
 import fastifyJwt from '@fastify/jwt'
 import { ResponseUtil } from '../../utils/response.js'
-import { ErrorCode } from '../../constants/business-code.js'
+import { ValidationErrorCode } from '../../constants/business-codes/validation.js'
+import { AuthErrorCode } from '../../constants/business-codes/auth.js'
+import { BusinessError } from '../../exceptions/business-error.js'
 
 export const autoConfig = {
   secret: process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
@@ -25,13 +27,13 @@ export default fp(async (fastify) => {
     try {
       // 检查Authorization头是否存在且格式正确
       const authHeader = request.headers.authorization
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        // 缺失或格式错误按请求数据校验错误处理，返回400
-        return ResponseUtil.sendError(
-          reply,
-          ErrorCode.VALIDATION_ERROR,
-          'Authorization头缺失或格式错误'
-        )
+      if (!authHeader) {
+        throw new BusinessError(ValidationErrorCode.VALIDATION_ERROR, 'Authorization头缺失')
+      }
+
+      // 检查Bearer格式
+      if (!authHeader.startsWith('Bearer ')) {
+        throw new BusinessError(ValidationErrorCode.VALIDATION_ERROR, 'Authorization头格式错误')
       }
 
       try {
@@ -39,28 +41,16 @@ export default fp(async (fastify) => {
       } catch (jwtErr: any) {
         // JWT格式错误或签名验证失败
         if (jwtErr.code === 'FAST_JWT_MALFORMED' || jwtErr.code === 'FAST_JWT_FORMAT_INVALID') {
-          return ResponseUtil.sendError(
-            reply,
-            ErrorCode.UNAUTHORIZED,
-            'Token格式非法'
-          )
+          throw new BusinessError(AuthErrorCode.UNAUTHORIZED, 'Token格式非法')
         }
         
         // Token过期
         if (jwtErr.code === 'FAST_JWT_EXPIRED') {
-          return ResponseUtil.sendError(
-            reply,
-            ErrorCode.TOKEN_EXPIRED,
-            'Token已过期'
-          )
+          throw new BusinessError(AuthErrorCode.TOKEN_EXPIRED, 'Token已过期')
         }
         
         // 其他JWT验证失败
-        return ResponseUtil.sendError(
-          reply,
-          ErrorCode.UNAUTHORIZED,
-          '无效的token'
-        )
+        throw new BusinessError(AuthErrorCode.UNAUTHORIZED, '无效的token')
       }
       
       // 注意：由于AuthService还未实现，暂时跳过数据库token验证
@@ -72,9 +62,9 @@ export default fp(async (fastify) => {
       
     } catch (err) {
       // 其他验证错误（如数据库验证失败）
-      return ResponseUtil.sendError(
+      return ResponseUtil.error(
         reply,
-        ErrorCode.UNAUTHORIZED,
+        AuthErrorCode.UNAUTHORIZED,
         '无效的token'
       )
     }

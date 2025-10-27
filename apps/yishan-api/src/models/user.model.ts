@@ -5,7 +5,7 @@
 import { prismaManager } from "../utils/prisma.js";
 import { UserListQuery, SaveUserReq, SysUserResp } from "../schemas/user.js";
 import { SysUser } from "../generated/prisma/client.js";
-import { randomBytes } from "crypto";
+import { hashPassword } from "../utils/password.js";
 
 const genderMap = {
   0: "未知",
@@ -169,17 +169,28 @@ export class UserModel {
   }
 
   /**
+   * 根据用户名或邮箱获取用户信息（用于登录）
+   */
+  static async getUserByUsernameOrEmail(usernameOrEmail: string): Promise<SysUser | null> {
+    const sysUser = await this.prisma.sysUser.findFirst({
+      where: {
+        OR: [
+          { username: usernameOrEmail },
+          { email: usernameOrEmail }
+        ],
+        deletedAt: null,
+      },
+    });
+
+    return sysUser;
+  }
+
+  /**
    * 创建用户
    */
   static async createUser(userReq: SaveUserReq): Promise<SysUserResp> {
-    // 生成盐值
-    const salt = randomBytes(16).toString("hex");
-
-    // 生成密码哈希（简化处理，实际应该从请求中获取密码）
-    // 注意：在真实场景中，应该从请求中传递密码，并使用passwordManager.hash进行加密
-    const defaultPassword = "123456"; // 默认密码
-    const passwordWithSalt = defaultPassword + salt;
-    const passwordHash = Buffer.from(passwordWithSalt).toString("hex"); // 简化的哈希处理
+    // 使用统一的密码加密工具
+    const passwordHash = await hashPassword(userReq.password);
 
     // 创建用户
     const sysUser = await this.prisma.sysUser.create({
@@ -193,10 +204,10 @@ export class UserModel {
         birthDate: userReq.birthDate ? new Date(userReq.birthDate) : undefined,
         status: userReq.status ?? 1,
         passwordHash,
-        salt,
+        salt: '', // salt 已经包含在 passwordHash 中
         loginCount: 0,
-        creatorId: 1,
-        updaterId: 1
+        creatorId: 1, // TODO: 从当前登录用户上下文获取
+        updaterId: 1  // TODO: 从当前登录用户上下文获取
       },
       include: {
         creator: {

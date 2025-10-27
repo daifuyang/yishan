@@ -67,15 +67,23 @@ const SaveUserReqSchema = Type.Object(
       description: "用户名",
       minLength: 1,
       maxLength: 50,
+      default: 'test'
     }),
     email: Type.String({ format: "email", description: "邮箱" }),
+    password: Type.String({
+      description: "用户密码",
+      minLength: 6,
+      maxLength: 50,
+      pattern: "^(?=.*[a-zA-Z])(?=.*\\d)[a-zA-Z\\d@$!%*?&]{6,}$"
+    }),
     phone: Type.Optional(Type.String({ description: "手机号" })),
     realName: Type.String({
       description: "真实姓名",
       minLength: 1,
       maxLength: 50,
+       default: 'test'
     }),
-    avatar: Type.Optional(Type.String({ description: "头像URL" })),
+    avatar: Type.Optional(Type.String({ description: "头像URL", default: '' })),
     gender: Type.Optional(
       Type.Number({
         enum: [0, 1, 2],

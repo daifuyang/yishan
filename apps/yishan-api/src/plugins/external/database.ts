@@ -98,14 +98,14 @@ async function databasePlugin(
   if (autoConnect) {
     fastify.addHook('onReady', async () => {
       try {
-        fastify.log.info('🔄 Initializing database connection...')
+        fastify.log.info('Initializing database connection...')
         await connectWithRetry()
       } catch (error) {
         // 根据环境决定是否抛出错误
         if (process.env.NODE_ENV === 'production') {
           throw error // 生产环境必须有数据库连接
         } else {
-          fastify.log.warn('⚠️ Development mode: Application will continue without database connection')
+          fastify.log.warn('Development mode: Application will continue without database connection')
         }
       }
     })
@@ -115,7 +115,7 @@ async function databasePlugin(
   fastify.addHook('onClose', async () => {
     try {
       await prismaManager.disconnect()
-      fastify.log.info('📴 Database connection closed successfully')
+      fastify.log.info('Database connection closed successfully')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       fastify.log.error(`Database disconnection error: ${errorMessage}`)

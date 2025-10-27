@@ -1,7 +1,8 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../utils/response.js";
-import { ErrorCode } from "../../../../../constants/business-code.js";
+import { ValidationErrorCode } from "../../../../../constants/business-codes/validation.js";
+import { BusinessError } from "../../../../../exceptions/business-error.js";
 import {
   UserListQuery,
   SaveUserReq
@@ -29,28 +30,19 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       request: FastifyRequest<{ Querystring: UserListQuery }>,
       reply: FastifyReply
     ) => {
-      try {
-        const { page, pageSize } = request.query;
+      const { page, pageSize } = request.query;
 
-        // 使用UserService获取管理员列表 
-        const result = await UserService.getUserList(request.query);
+      // 使用UserService获取管理员列表 
+      const result = await UserService.getUserList(request.query);
 
-        return ResponseUtil.sendPaginated(
-          reply,
-          result.list,
-          page,
-          pageSize,
-          result.total,
-          "获取用户列表成功"
-        );
-      } catch (error: unknown) {
-        fastify.log.error(error);
-        return ResponseUtil.sendError(
-          reply,
-          ErrorCode.DATABASE_ERROR,
-          "获取用户列表失败"
-        );
-      }
+      return ResponseUtil.paginated(
+        reply,
+        result.list,
+        page,
+        pageSize,
+        result.total,
+        "获取用户列表成功"
+      );
     }
   );
 
@@ -74,31 +66,9 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       request: FastifyRequest<{ Body: SaveUserReq }>,
       reply: FastifyReply
     ) => {
-      try {
-        // 使用UserService创建用户
-        const user = await UserService.createUser(request.body);
-
-        console.log('user', user)
-
-        return ResponseUtil.sendSuccess(reply, user, "创建用户成功");
-      } catch (error: any) {
-        fastify.log.error(error);
-
-        // 处理业务错误
-        if (error.message === `${ErrorCode.USER_ALREADY_EXISTS}`) {
-          return ResponseUtil.sendError(
-            reply,
-            ErrorCode.USER_ALREADY_EXISTS,
-            "用户已存在"
-          );
-        }
-
-        return ResponseUtil.sendError(
-          reply,
-          ErrorCode.DATABASE_ERROR,
-          "创建用户失败"
-        );
-      }
+      // 使用UserService创建用户，异常将由全局异常处理器处理
+      const user = await UserService.createUser(request.body); 
+      return ResponseUtil.success(reply, user, "创建用户成功");
     }
   );
 
@@ -128,48 +98,17 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       }>,
       reply: FastifyReply
     ) => {
-      try {
-        const userId = parseInt(request.params.id);
+      const userId = parseInt(request.params.id);
 
-        // 验证用户ID
-        if (isNaN(userId)) {
-          return ResponseUtil.sendError(
-            reply,
-            ErrorCode.INVALID_PARAMETER,
-            "用户ID无效"
-          );
-        }
-
-        // 使用UserService更新用户
-        const user = await UserService.updateUser(userId, request.body);
-
-        return ResponseUtil.sendSuccess(reply, user, "更新用户成功");
-      } catch (error: any) {
-        fastify.log.error(error);
-
-        // 处理业务错误
-        if (error.message === `${ErrorCode.USER_NOT_FOUND}`) {
-          return ResponseUtil.sendError(
-            reply,
-            ErrorCode.USER_NOT_FOUND,
-            "用户不存在"
-          );
-        }
-
-        if (error.message === `${ErrorCode.USER_ALREADY_EXISTS}`) {
-          return ResponseUtil.sendError(
-            reply,
-            ErrorCode.USER_ALREADY_EXISTS,
-            "用户已存在"
-          );
-        }
-
-        return ResponseUtil.sendError(
-          reply,
-          ErrorCode.DATABASE_ERROR,
-          "更新用户失败"
-        );
+      // 验证用户ID
+      if (isNaN(userId)) {
+        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "用户ID不能为空");
       }
+
+      // 使用UserService更新用户，异常将由全局异常处理器处理
+      const user = await UserService.updateUser(userId, request.body);
+
+      return ResponseUtil.success(reply, user, "更新用户成功");
     }
   );
 };

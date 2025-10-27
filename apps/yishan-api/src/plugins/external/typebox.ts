@@ -12,7 +12,6 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox'
 export default fp(async (fastify) => {
   // 注册 TypeBox 类型提供者
   fastify.withTypeProvider<TypeBoxTypeProvider>()
-  
   fastify.log.info('TypeBox type provider registered successfully')
 }, {
   name: 'typebox-provider',
