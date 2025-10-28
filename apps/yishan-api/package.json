@@ -15,7 +15,9 @@
     "dev": "npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
     "dev:start": "fastify start --ignore-watch=.ts$ -w -l info -P dist/app.js",
     "postinstall": "npx prisma generate",
-    "db:init": "npx prisma migrate dev --name init"
+    "db:init": "npx prisma migrate dev --name init",
+    "db:seed": "npx prisma generate && npm run build:ts && node dist/scripts/seed.js",
+    "db:reset": "npx prisma migrate reset && npm run db:seed"
   },
   "keywords": [],
   "author": "",
@@ -39,6 +41,7 @@
     "@types/node": "^22.1.0",
     "c8": "^10.1.2",
     "concurrently": "^9.0.0",
+    "dotenv": "^17.2.3",
     "fastify-tsconfig": "^3.0.0",
     "prisma": "^6.18.0",
     "ts-node": "^10.4.0",
