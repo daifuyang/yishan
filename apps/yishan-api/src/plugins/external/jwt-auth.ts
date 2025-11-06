@@ -4,11 +4,12 @@ import { ResponseUtil } from '../../utils/response.js'
 import { ValidationErrorCode } from '../../constants/business-codes/validation.js'
 import { AuthErrorCode } from '../../constants/business-codes/auth.js'
 import { BusinessError } from '../../exceptions/business-error.js'
+import { JWT_CONFIG } from '../../config/index.js'
 
 export const autoConfig = {
-  secret: process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
+  secret: JWT_CONFIG.secret,
   sign: {
-    expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+    expiresIn: JWT_CONFIG.expiresIn
   },
   messages: {
     badRequestErrorMessage: 'Format is Authorization: Bearer [token]',

@@ -22,7 +22,6 @@ model SysUser {
   email         String    @unique @map("email") @db.VarChar(100)
   phone         String?   @unique @map("phone") @db.VarChar(20)
   passwordHash  String    @map("password_hash") @db.VarChar(255)
-  salt          String    @map("salt") @db.VarChar(32)
   realName      String    @map("real_name") @db.VarChar(50)
   avatar        String?   @map("avatar") @db.VarChar(500)
   gender        Int       @default(0) @map("gender") @db.TinyInt
@@ -44,6 +43,9 @@ model SysUser {
   updater      SysUser   @relation("UserUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   updatedUsers SysUser[] @relation("UserUpdater")
 
+  // 用户令牌关联
+  tokens SysUserToken[]
+
   // 索引定义
   @@index([status], map: "idx_status")
   @@index([createdAt], map: "idx_created_at")
@@ -53,4 +55,30 @@ model SysUser {
   @@index([status, createdAt], map: "idx_status_created")
   @@index([realName, status], map: "idx_real_name_status")
   @@map("sys_user")
+}
+
+// 用户令牌表 - 用于存储JWT令牌和刷新令牌
+model SysUserToken {
+  id                    Int       @id @default(autoincrement()) @map("id")
+  userId                Int       @map("user_id")
+  accessToken           String    @map("access_token") @db.VarChar(512)
+  refreshToken          String    @map("refresh_token") @db.VarChar(512)
+  accessTokenExpiresAt  DateTime  @map("access_token_expires_at") @db.DateTime(0)
+  refreshTokenExpiresAt DateTime  @map("refresh_token_expires_at") @db.DateTime(0)
+  isRevoked             Boolean   @default(false) @map("is_revoked")
+  revokedAt             DateTime? @map("revoked_at") @db.DateTime(0)
+  ipAddress             String?   @map("ip_address") @db.VarChar(45)
+  userAgent             String?   @map("user_agent") @db.VarChar(500)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt             DateTime? @map("deleted_at") @db.DateTime(0)
+
+  user SysUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_user_token_user_id")
+  @@index([isRevoked], map: "idx_is_revoked")
+  @@index([accessTokenExpiresAt], map: "idx_access_token_expires")
+  @@index([refreshTokenExpiresAt], map: "idx_refresh_token_expires")
+  @@index([userId, isRevoked], map: "idx_user_revoked")
+  @@map("sys_user_token")
 }

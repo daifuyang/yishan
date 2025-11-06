@@ -3,7 +3,8 @@ import { ResponseUtil } from "../../../../utils/response.js";
 import { ValidationErrorCode } from "../../../../constants/business-codes/validation.js";
 import { BusinessError } from "../../../../exceptions/business-error.js";
 import {
-  LoginReq
+  LoginReq,
+  RefreshTokenReq
 } from "../../../../schemas/auth.js";
 import { AuthService } from "../../../../services/auth.service.js";
 
@@ -28,7 +29,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       // 使用AuthService进行登录验证
-      const result = await AuthService.login(request.body);
+      const result = await AuthService.login(request.body, fastify, request.ip);
       return ResponseUtil.success(reply, result, "登录成功");
     }
   );
@@ -68,7 +69,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       }
 
       // 使用AuthService进行登出处理
-      await AuthService.logout(token);
+      await AuthService.logout(token, fastify);
       return ResponseUtil.success(reply, null, "登出成功");
     }
   );
@@ -100,8 +101,39 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       }
 
       // 使用AuthService获取用户信息
-      const user = await AuthService.getCurrentUser(token);
+      const user = await AuthService.getCurrentUser(token, fastify);
       return ResponseUtil.success(reply, user, "获取用户信息成功");
+    }
+  );
+
+  // POST /api/v1/auth/refresh - 刷新访问令牌
+  fastify.post(
+    "/refresh",
+    {
+      schema: {
+        summary: "刷新访问令牌",
+        description: "使用刷新令牌获取新的访问令牌和刷新令牌",
+        operationId: "refreshToken",
+        tags: ["auth"],
+        body: { $ref: "refreshTokenReq#" },
+        response: {
+          200: { $ref: "refreshTokenResp#" },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{ Body: RefreshTokenReq }>,
+      reply: FastifyReply
+    ) => {
+      const { refreshToken } = request.body;
+      
+      if (!refreshToken) {
+        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "缺少刷新令牌");
+      }
+
+      // 使用AuthService刷新令牌
+      const result = await AuthService.refreshToken(refreshToken, fastify);
+      return ResponseUtil.success(reply, result, "令牌刷新成功");
     }
   );
 };

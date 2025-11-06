@@ -31,23 +31,23 @@ const LoginReqSchema = Type.Object(
 
 export type LoginReq = Static<typeof LoginReqSchema>;
 
-// 登录响应数据 Schema
+// 登录响应数据 Schema - 优化为只返回认证信息
 const LoginDataSchema = Type.Object(
   {
     token: Type.String({ description: "访问令牌" }),
     refreshToken: Type.Optional(
       Type.String({ description: "刷新令牌" })
     ),
-    expiresIn: Type.Number({ description: "令牌过期时间（秒）" }),
-    user: Type.Object({
-      id: Type.Number({ description: "用户ID" }),
-      username: Type.String({ description: "用户名" }),
-      email: Type.String({ description: "邮箱" }),
-      realName: Type.String({ description: "真实姓名" }),
-      avatar: Type.Optional(Type.String({ description: "头像URL" })),
-      status: Type.Number({ description: "用户状态" }),
-      statusName: Type.String({ description: "状态名称" })
-    })
+    expiresIn: Type.Number({ description: "访问令牌过期时间（秒）" }),
+    refreshTokenExpiresIn: Type.Optional(
+      Type.Number({ description: "刷新令牌过期时间（秒）" })
+    ),
+    expiresAt: Type.Optional(
+      Type.Number({ description: "访问令牌过期时间戳（毫秒）" })
+    ),
+    refreshTokenExpiresAt: Type.Optional(
+      Type.Number({ description: "刷新令牌过期时间戳（毫秒）" })
+    )
   },
   { $id: "loginData" }
 );
@@ -110,6 +110,27 @@ const UserProfileRespSchema = successResponse({
 
 export type UserProfileResp = Static<typeof UserProfileRespSchema>;
 
+// 刷新令牌请求 Schema
+const RefreshTokenReqSchema = Type.Object(
+  {
+    refreshToken: Type.String({
+      description: "刷新令牌",
+      minLength: 1
+    })
+  },
+  { $id: "refreshTokenReq" }
+);
+
+export type RefreshTokenReq = Static<typeof RefreshTokenReqSchema>;
+
+// 刷新令牌响应 Schema - 与登录响应相同
+const RefreshTokenRespSchema = successResponse({
+  data: Type.Ref("loginData"),
+  $id: "refreshTokenResp",
+});
+
+export type RefreshTokenResp = Static<typeof RefreshTokenRespSchema>;
+
 // 注册 Schema 到 Fastify 实例
 const registerAuth = (fastify: FastifyInstance) => {
   fastify.addSchema(LoginReqSchema);
@@ -117,6 +138,8 @@ const registerAuth = (fastify: FastifyInstance) => {
   fastify.addSchema(LoginRespSchema);
   fastify.addSchema(UserProfileSchema);
   fastify.addSchema(UserProfileRespSchema);
+  fastify.addSchema(RefreshTokenReqSchema);
+  fastify.addSchema(RefreshTokenRespSchema);
 };
 
 export default registerAuth;

@@ -28,7 +28,7 @@ async function main() {
         username: 'admin',
         email: 'admin@yishan.com',
         passwordHash: hashedPassword,
-        salt: '', // 使用新的密码工具，salt包含在hash中
+        // salt 已经包含在 passwordHash 中，不需要单独存储
         realName: '系统管理员',
         avatar: '',
         gender: 1, // 男性

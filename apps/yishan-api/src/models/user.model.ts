@@ -204,7 +204,6 @@ export class UserModel {
         birthDate: userReq.birthDate ? new Date(userReq.birthDate) : undefined,
         status: userReq.status ?? 1,
         passwordHash,
-        salt: '', // salt 已经包含在 passwordHash 中
         loginCount: 0,
         creatorId: 1, // TODO: 从当前登录用户上下文获取
         updaterId: 1  // TODO: 从当前登录用户上下文获取
