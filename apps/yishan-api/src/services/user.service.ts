@@ -7,6 +7,7 @@ import { SaveUserReq, UserListQuery, SysUserResp } from "../schemas/user.js";
 import { SysUser } from "../generated/prisma/client.js";
 import { UserErrorCode } from "../constants/business-codes/user.js";
 import { BusinessError } from "../exceptions/business-error.js";
+import { SysUserTokenModel } from "../models/user-token.model.js";
 
 export class UserService {
   /**
@@ -44,20 +45,11 @@ export class UserService {
    * @returns 创建的用户信息
    */
   static async createUser(userReq: SaveUserReq): Promise<SysUserResp> {
-    // 密码强度验证
+    // 密码强度验证（创建场景要求提供密码）
     this.validatePassword(userReq.password);
 
-    // 检查用户名是否已存在
-    const existingUser = await UserModel.getUserByUsername(userReq.username);
-    if (existingUser) {
-      throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "用户名已存在");
-    }
-
-    // 检查邮箱是否已存在
-    const existingEmail = await UserModel.getUserByEmail(userReq.email);
-    if (existingEmail) {
-      throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "邮箱已存在");
-    }
+    // 统一校验用户名/邮箱唯一性
+    await this.ensureUniqueFields(userReq.username, userReq.email);
 
     // 创建用户
     return await UserModel.createUser(userReq);
@@ -97,32 +89,62 @@ export class UserService {
   static async updateUser(
     id: number,
     userReq: SaveUserReq
-  ): Promise<SysUser | null> {
+  ): Promise<SysUserResp | null> {
     // 检查用户是否存在
     const existingUser = await UserModel.getUserById(id);
     if (!existingUser) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
     }
 
-    // 检查用户名是否已存在（如果提供了用户名）
-    if (userReq.username) {
-      const userWithSameUsername = await UserModel.getUserByUsername(
-        userReq.username
-      );
-      if (userWithSameUsername && userWithSameUsername.id !== id) {
-        throw new Error(`${UserErrorCode.USER_ALREADY_EXISTS}`);
-      }
-    }
-
-    // 检查邮箱是否已存在（如果提供了邮箱）
-    if (userReq.email) {
-      const userWithSameEmail = await UserModel.getUserByEmail(userReq.email);
-      if (userWithSameEmail && userWithSameEmail.id !== id) {
-        throw new Error(`${UserErrorCode.USER_ALREADY_EXISTS}`);
-      }
-    }
+    // 统一校验用户名/邮箱唯一性（排除当前用户ID）
+    await this.ensureUniqueFields(userReq.username, userReq.email, id);
 
     // 更新用户
     return await UserModel.updateUser(id, userReq);
+  }
+
+  /**
+   * 删除用户（软删除）并撤销所有令牌
+   */
+  static async deleteUser(id: number): Promise<{ id: number; deleted: boolean }> {
+    const existingUser = await UserModel.getUserById(id)
+    if (!existingUser) {
+      throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在")
+    }
+
+    const res = await UserModel.deleteUser(id)
+    if (!res) {
+      throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在或已删除")
+    }
+
+    await SysUserTokenModel.revokeAllByUserId(id)
+
+    return { id, deleted: true }
+  }
+
+  /**
+   * 统一校验用户名/邮箱的唯一性
+   * @param username 可选用户名
+   * @param email 可选邮箱
+   * @param excludeUserId 更新场景排除的用户ID
+   */
+  private static async ensureUniqueFields(
+    username?: string,
+    email?: string,
+    excludeUserId?: number
+  ): Promise<void> {
+    if (username) {
+      const userWithSameUsername = await UserModel.getUserByUsername(username);
+      if (userWithSameUsername && userWithSameUsername.id !== excludeUserId) {
+        throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "用户名已存在");
+      }
+    }
+
+    if (email) {
+      const userWithSameEmail = await UserModel.getUserByEmail(email);
+      if (userWithSameEmail && userWithSameEmail.id !== excludeUserId) {
+        throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "邮箱已存在");
+      }
+    }
   }
 }

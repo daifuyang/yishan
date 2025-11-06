@@ -23,6 +23,31 @@ const statusMap = {
 export class UserModel {
   private static prisma = prismaManager.getClient();
 
+  private static mapToResp(sysUser: any): SysUserResp {
+    return {
+      id: sysUser.id,
+      username: sysUser.username,
+      email: sysUser.email,
+      phone: sysUser.phone ?? undefined,
+      realName: sysUser.realName,
+      avatar: sysUser.avatar ?? undefined,
+      gender: sysUser.gender,
+      genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
+      birthDate: sysUser.birthDate?.toISOString().split("T")[0],
+      status: sysUser.status,
+      statusName: statusMap[sysUser.status as keyof typeof statusMap] || "未知",
+      lastLoginTime: sysUser.lastLoginTime?.toISOString(),
+      lastLoginIp: sysUser.lastLoginIp ?? undefined,
+      loginCount: sysUser.loginCount,
+      creatorId: sysUser.creatorId,
+      creatorName: sysUser.creator?.username ?? sysUser.creatorName,
+      createdAt: sysUser.createdAt.toISOString(),
+      updaterId: sysUser.updaterId,
+      updaterName: sysUser.updater?.username ?? sysUser.updaterName,
+      updatedAt: sysUser.updatedAt.toISOString(),
+    };
+  }
+
   /**
    * 获取用户列表
    */
@@ -127,18 +152,61 @@ export class UserModel {
   /**
    * 根据ID获取用户信息
    */
-  static async getUserById(id: number): Promise<SysUser | null> {
-    const sysUser = await this.prisma.sysUser.findUnique({
+  static async getUserById(id: number): Promise<SysUserResp | null> {
+    const sysUser = await this.prisma.sysUser.findFirst({
       where: {
         id,
         deletedAt: null,
       },
+      include: {
+        creator: { select: { username: true } },
+        updater: { select: { username: true } }
+      }
     });
 
     if (!sysUser) return null;
 
-    // 转换数据格式以匹配SysUser类型
-    return sysUser;
+    return {
+      id: sysUser.id,
+      username: sysUser.username,
+      email: sysUser.email,
+      phone: sysUser.phone ?? undefined,
+      realName: sysUser.realName,
+      avatar: sysUser.avatar ?? undefined,
+      gender: sysUser.gender,
+      genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
+      birthDate: sysUser.birthDate?.toISOString().split("T")[0],
+      status: sysUser.status,
+      statusName: statusMap[sysUser.status as keyof typeof statusMap] || "未知",
+      lastLoginTime: sysUser.lastLoginTime?.toISOString(),
+      lastLoginIp: sysUser.lastLoginIp ?? undefined,
+      loginCount: sysUser.loginCount,
+      creatorId: sysUser.creatorId,
+      creatorName: sysUser.creator.username,
+      createdAt: sysUser.createdAt.toISOString(),
+      updaterId: sysUser.updaterId,
+      updaterName: sysUser.updater.username,
+      updatedAt: sysUser.updatedAt.toISOString(),
+    };
+  }
+
+  /**
+   * 软删除用户
+   */
+  static async deleteUser(id: number): Promise<SysUser | null> {
+    const existing = await this.prisma.sysUser.findFirst({
+      where: { id, deletedAt: null }
+    });
+    if (!existing) return null;
+
+    const deleted = await this.prisma.sysUser.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        status: 0,
+      }
+    });
+    return deleted;
   }
 
   /**
@@ -218,35 +286,13 @@ export class UserModel {
       }
     });
 
-    // 转换数据格式以匹配SysUserResp类型
-    return {
-      id: sysUser.id,
-      username: sysUser.username,
-      email: sysUser.email,
-      phone: sysUser.phone ?? undefined,
-      realName: sysUser.realName,
-      avatar: sysUser.avatar ?? undefined,
-      gender: sysUser.gender,
-      genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
-      birthDate: sysUser.birthDate?.toISOString().split("T")[0],
-      status: sysUser.status,
-      statusName: statusMap[sysUser.status as keyof typeof statusMap] || "未知",
-      lastLoginTime: sysUser.lastLoginTime?.toISOString(),
-      lastLoginIp: sysUser.lastLoginIp ?? undefined,
-      loginCount: sysUser.loginCount,
-      creatorId: sysUser.creatorId,
-      creatorName: sysUser.creator.username,
-      createdAt: sysUser.createdAt.toISOString(),
-      updaterId: sysUser.updaterId,
-      updaterName: sysUser.updater.username,
-      updatedAt: sysUser.updatedAt.toISOString(),
-    };
+    return this.mapToResp(sysUser);
   }
 
   /**
    * 更新用户
    */
-  static async updateUser(id: number, userReq: SaveUserReq): Promise<SysUser> {
+  static async updateUser(id: number, userReq: SaveUserReq): Promise<SysUserResp> {
     // 构建更新数据
     const updateData: any = {};
 
@@ -270,8 +316,12 @@ export class UserModel {
         deletedAt: null,
       },
       data: updateData,
+      include: {
+        creator: { select: { username: true } },
+        updater: { select: { username: true } }
+      }
     });
 
-    return sysUser;
+    return this.mapToResp(sysUser);
   }
 }

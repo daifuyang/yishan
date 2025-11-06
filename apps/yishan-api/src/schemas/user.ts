@@ -153,12 +153,23 @@ const UserDetailRespSchema = successResponse({
   $id: "userDetailResp",
 });
 
+// 删除用户响应
+const UserDeleteRespSchema = successResponse({
+  data: Type.Object({
+    id: Type.Number({ description: "用户ID" }),
+    deleted: Type.Boolean({ description: "是否已删除", example: true })
+  }),
+  $id: "userDeleteResp",
+  message: "删除成功"
+});
+
 const registerUser = (fastify: FastifyInstance) => {
   fastify.addSchema(SysUserSchema);
   fastify.addSchema(UserListQuerySchema);
   fastify.addSchema(UserListRespSchema);
   fastify.addSchema(SaveUserReqSchema);
   fastify.addSchema(UserDetailRespSchema);
+  fastify.addSchema(UserDeleteRespSchema);
 };
 
 export default registerUser;

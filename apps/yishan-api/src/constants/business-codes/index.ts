@@ -10,6 +10,7 @@ export * from './auth.js';
 export * from './user.js';
 export * from './resource.js';
 export * from './business.js';
+export * from './system.js';
 
 // 重新导出常用的业务码
 import { SUCCESS_CODE, SystemErrorCode } from './common.js';
@@ -18,6 +19,7 @@ import { AuthErrorCode } from './auth.js';
 import { UserErrorCode } from './user.js';
 import { ResourceErrorCode } from './resource.js';
 import { BusinessErrorCode } from './business.js';
+import { SystemManageErrorCode } from './system.js';
 
 // 合并所有错误码
 export const ErrorCode = {
@@ -27,6 +29,7 @@ export const ErrorCode = {
   ...UserErrorCode,
   ...ResourceErrorCode,
   ...BusinessErrorCode,
+  ...SystemManageErrorCode,
   // 添加一些常用的别名
   NOT_FOUND: ResourceErrorCode.RESOURCE_NOT_FOUND,
 } as const;
@@ -54,6 +57,10 @@ import {
 import { 
   BusinessErrorMessages
 } from './business.js';
+import { 
+  SystemManageErrorMessages,
+  SystemManageHttpStatusMap
+} from './system.js';
 
 // 合并所有错误消息
 const ErrorMessages = {
@@ -63,6 +70,7 @@ const ErrorMessages = {
   ...UserErrorMessages,
   ...ResourceErrorMessages,
   ...BusinessErrorMessages,
+  ...SystemManageErrorMessages,
 } as const;
 
 // 合并所有HTTP状态码映射
@@ -71,6 +79,7 @@ const HttpStatusMap = {
   ...ValidationHttpStatusMap,
   ...AuthHttpStatusMap,
   ...ResourceHttpStatusMap,
+  ...SystemManageHttpStatusMap,
 } as const;
 
 /**
