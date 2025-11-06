@@ -1,0 +1,252 @@
+/* 使用系统字体栈，避免依赖外部字体服务 */
+
+body {
+  --tt-toolbar-height: 44px;
+  --tt-theme-text: var(--tt-gray-light-900);
+
+  .dark & {
+    --tt-theme-text: var(--tt-gray-dark-900);
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans SC", sans-serif;
+  color: var(--tt-theme-text);
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  padding: 0;
+  overscroll-behavior-y: none;
+  line-height: 1.6;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.02em;
+  word-spacing: 0.1em;
+}
+
+html,
+body {
+  overscroll-behavior-x: none;
+}
+
+html,
+body,
+#root,
+#app {
+  height: 100%;
+  background-color: var(--tt-bg-color);
+}
+
+::-webkit-scrollbar {
+  width: 0.25rem;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tt-scrollbar-color) transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--tt-scrollbar-color);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tiptap.ProseMirror {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei", "Noto Sans SC", sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  word-spacing: 0.1em;
+  text-align: justify;
+  text-justify: inter-ideograph;
+  hyphens: auto;
+}
+
+.tiptap.ProseMirror h1,
+.tiptap.ProseMirror h2,
+.tiptap.ProseMirror h3,
+.tiptap.ProseMirror h4,
+.tiptap.ProseMirror h5,
+.tiptap.ProseMirror h6 {
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  color: var(--tt-theme-text);
+}
+
+.tiptap.ProseMirror h1 {
+  font-size: 2em;
+  font-weight: 700;
+}
+
+.tiptap.ProseMirror h2 {
+  font-size: 1.5em;
+}
+
+.tiptap.ProseMirror h3 {
+  font-size: 1.25em;
+}
+
+.tiptap.ProseMirror h4 {
+  font-size: 1.125em;
+}
+
+.tiptap.ProseMirror h5 {
+  font-size: 1em;
+}
+
+.tiptap.ProseMirror h6 {
+  font-size: 0.875em;
+}
+
+.tiptap.ProseMirror p {
+  margin-bottom: 1em;
+  line-height: 1.8;
+  text-indent: 2em;
+}
+
+.tiptap.ProseMirror ul,
+.tiptap.ProseMirror ol {
+  margin: 1em 0;
+  padding-left: 2em;
+}
+
+.tiptap.ProseMirror li {
+  margin: 0.5em 0;
+  line-height: 1.7;
+}
+
+.tiptap.ProseMirror blockquote {
+  border-left: 4px solid var(--tt-gray-light-300);
+  margin: 1.5em 0;
+  padding: 0.5em 1em;
+  background-color: var(--tt-gray-light-50);
+  font-style: italic;
+  line-height: 1.7;
+}
+
+.dark .tiptap.ProseMirror blockquote {
+  border-left-color: var(--tt-gray-dark-300);
+  background-color: var(--tt-gray-dark-50);
+}
+
+.tiptap.ProseMirror code {
+  font-family: "Monaco", "Consolas", "Courier New", monospace;
+  font-size: 0.875em;
+  background-color: var(--tt-gray-light-100);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+}
+
+.dark .tiptap.ProseMirror code {
+  background-color: var(--tt-gray-dark-100);
+}
+
+.tiptap.ProseMirror pre {
+  background-color: var(--tt-gray-light-50);
+  padding: 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.5;
+  margin: 1.5em 0;
+}
+
+.dark .tiptap.ProseMirror pre {
+  background-color: var(--tt-gray-dark-50);
+}
+
+.tiptap.ProseMirror table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+}
+
+.tiptap.ProseMirror th,
+.tiptap.ProseMirror td {
+  border: 1px solid var(--tt-gray-light-300);
+  padding: 0.75em;
+  text-align: left;
+}
+
+.dark .tiptap.ProseMirror th,
+.dark .tiptap.ProseMirror td {
+  border-color: var(--tt-gray-dark-300);
+}
+
+.tiptap.ProseMirror th {
+  background-color: var(--tt-gray-light-100);
+  font-weight: 600;
+}
+
+.dark .tiptap.ProseMirror th {
+  background-color: var(--tt-gray-dark-100);
+}
+
+.simple-editor-wrapper {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+}
+
+.simple-editor-content {
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor {
+  flex: 1;
+  padding: 2.5rem 2.5rem 30vh;
+}
+
+@media screen and (max-width: 768px) {
+  .simple-editor-content {
+    max-width: 100%;
+    padding: 0 1rem;
+  }
+  
+  .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    padding: 1.5rem 1rem 30vh;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  
+  .tiptap.ProseMirror p {
+    text-indent: 1.5em;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    padding: 1rem 0.75rem 30vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  
+  .tiptap.ProseMirror p {
+    text-indent: 1em;
+  }
+  
+  .tiptap.ProseMirror h1 {
+    font-size: 1.75em;
+  }
+  
+  .tiptap.ProseMirror h2 {
+    font-size: 1.375em;
+  }
+  
+  .tiptap.ProseMirror h3 {
+    font-size: 1.125em;
+  }
+}

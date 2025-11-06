@@ -3,8 +3,14 @@ import commonjs from "@rollup/plugin-commonjs";
 import typescript from "@rollup/plugin-typescript";
 import peerDepsExternal from "rollup-plugin-peer-deps-external";
 import dts from "rollup-plugin-dts";
-import { readFileSync } from "fs";
+import alias from "@rollup/plugin-alias";
+import json from "@rollup/plugin-json";
 import postcss from "rollup-plugin-postcss";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, resolve as pathResolve } from "path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // 自定义插件：清理类型定义中的 SCSS 导入
 const cleanScssImports = () => ({
@@ -40,6 +46,12 @@ export default [
     ],
     plugins: [
       peerDepsExternal(),
+      json(),
+      alias({
+        entries: [
+          { find: "@", replacement: pathResolve(__dirname, "src") }
+        ]
+      }),
       resolve(),
       commonjs(),
       typescript({

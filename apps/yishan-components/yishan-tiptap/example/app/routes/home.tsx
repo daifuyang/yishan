@@ -1,5 +1,5 @@
 import type { Route } from "./+types/home";
-import { TiptapEditor } from "yishan-tiptap";
+import { SimpleEditor } from "yishan-tiptap";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -13,8 +13,8 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Home() {
   return (
-    <div className="container mx-auto">
-      <TiptapEditor />
+    <div>
+      <SimpleEditor />
     </div>
   );
 }

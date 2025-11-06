@@ -1,5 +1,3 @@
-"use client"
-
 import * as React from "react"
 
 // --- Icons ---
@@ -23,6 +21,16 @@ import {
   DropdownMenuItem,
 } from "@/components/tiptap-ui-primitive/dropdown-menu"
 import { Card, CardBody } from "@/components/tiptap-ui-primitive/card"
+
+// 标题级别到中文名称的映射
+const HEADING_LEVEL_MAP: Record<number, string> = {
+  1: "一级标题",
+  2: "二级标题", 
+  3: "三级标题",
+  4: "四级标题",
+  5: "五级标题",
+  6: "六级标题",
+}
 
 export interface HeadingDropdownMenuProps
   extends Omit<ButtonProps, "type">,
@@ -92,7 +100,7 @@ export const HeadingDropdownMenu = React.forwardRef<
             data-disabled={!canToggle}
             aria-label="Format text as heading"
             aria-pressed={isActive}
-            tooltip="Heading"
+            tooltip="标题"
             {...buttonProps}
             ref={ref}
           >
@@ -110,7 +118,7 @@ export const HeadingDropdownMenu = React.forwardRef<
                     <HeadingButton
                       editor={editor}
                       level={level}
-                      text={`Heading ${level}`}
+                      text={HEADING_LEVEL_MAP[level] || `标题 ${level}`}
                       showTooltip={false}
                     />
                   </DropdownMenuItem>
