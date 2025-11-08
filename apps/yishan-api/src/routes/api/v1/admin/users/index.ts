@@ -5,10 +5,15 @@ import { ValidationErrorCode } from "../../../../../constants/business-codes/val
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import {
   UserListQuery,
-  SaveUserReq
+  SaveUserReq,
+  UpdateUserReq
 } from "../../../../../schemas/user.js";
 import { UserService } from "../../../../../services/user.service.js";
 import { UserErrorCode } from "../../../../../constants/business-codes/user.js";
+import { CACHE_CONFIG } from "../../../../../config/index.js";
+
+// 用户详情缓存：键格式集中定义（TTL 使用配置中心）
+const getUserDetailCacheKey = (userId: number) => `user:detail:${userId}`;
 
 const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET /api/v1/admin/user - 获取管理员用户列表
@@ -47,13 +52,13 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
-  // GET /api/v1/admin/user/{id} - 获取用户详情（带Redis缓存）
+  // GET /api/v1/admin/user/{id} - 获取用户详情
   fastify.get(
     "/:id",
     {
       schema: {
         summary: "获取用户详情",
-        description: "根据用户ID获取用户详情，使用Redis缓存加速",
+        description: "根据用户ID获取用户详情",
         operationId: "getUserDetail",
         tags: ["sysUsers"],
         security: [{ bearerAuth: [] }],
@@ -73,9 +78,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       if (isNaN(userId)) {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "用户ID不能为空");
       }
-
-      const CACHE_KEY = `user:detail:${userId}`;
-      const TTL_SECONDS = parseInt(process.env.USER_DETAIL_CACHE_TTL || "300");
+      const CACHE_KEY = getUserDetailCacheKey(userId);
 
       // 优先尝试缓存
       if (fastify.redis) {
@@ -83,7 +86,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           const cached = await fastify.redis.get(CACHE_KEY);
           if (cached) {
             const data = JSON.parse(cached);
-            return ResponseUtil.success(reply, data, "获取用户详情成功（缓存）");
+            return ResponseUtil.success(reply, data, "获取用户详情成功");
           }
         } catch (err) {
           fastify.log.warn(`读取用户详情缓存失败: ${(err as Error).message}`);
@@ -98,7 +101,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       // 写入缓存
       if (fastify.redis) {
         try {
-          await fastify.redis.setex(CACHE_KEY, TTL_SECONDS, JSON.stringify(user));
+          await fastify.redis.setex(CACHE_KEY, CACHE_CONFIG.userDetailTTLSeconds, JSON.stringify(user));
         } catch (err) {
           fastify.log.warn(`写入用户详情缓存失败: ${(err as Error).message}`);
         }
@@ -118,7 +121,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         operationId: "createUser",
         tags: ["sysUsers"],
         security: [{ bearerAuth: [] }],
-        body: { $ref: "saveUserReq#" },
+        body: { $ref: "updateUserReq#" },
         response: {
           200: { $ref: "userDetailResp#" },
         },
@@ -129,7 +132,17 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       // 使用UserService创建用户，异常将由全局异常处理器处理
-      const user = await UserService.createUser(request.body); 
+      const user = await UserService.createUser(request.body);
+
+      // 新增后写入详情缓存
+      if (fastify.redis && user && typeof user.id === "number") {
+        try {
+          const cacheKey = getUserDetailCacheKey(user.id);
+          await fastify.redis.setex(cacheKey, CACHE_CONFIG.userDetailTTLSeconds, JSON.stringify(user));
+        } catch (err) {
+          fastify.log.warn(`创建用户后写入详情缓存失败: ${(err as Error).message}`);
+        }
+      }
       return ResponseUtil.success(reply, user, "创建用户成功");
     }
   );
@@ -147,7 +160,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         params: Type.Object({
           id: Type.String({ description: "用户ID" }),
         }),
-        body: { $ref: "saveUserReq#" },
+        body: { $ref: "updateUserReq#" },
         response: {
           200: { $ref: "userDetailResp#" },
         },
@@ -156,7 +169,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     async (
       request: FastifyRequest<{
         Params: { id: string };
-        Body: SaveUserReq;
+        Body: UpdateUserReq;
       }>,
       reply: FastifyReply
     ) => {
@@ -169,6 +182,16 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
       // 使用UserService更新用户，异常将由全局异常处理器处理
       const user = await UserService.updateUser(userId, request.body);
+
+      // 更新后同步刷新详情缓存
+      if (fastify.redis && user && typeof user.id === "number") {
+        try {
+          const cacheKey = getUserDetailCacheKey(user.id);
+          await fastify.redis.setex(cacheKey, CACHE_CONFIG.userDetailTTLSeconds, JSON.stringify(user));
+        } catch (err) {
+          fastify.log.warn(`更新用户后刷新详情缓存失败: ${(err as Error).message}`);
+        }
+      }
 
       return ResponseUtil.success(reply, user, "更新用户成功");
     }
@@ -205,7 +228,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
       // 删除缓存
       if (fastify.redis) {
-        const CACHE_KEY = `user:detail:${userId}`;
+        const CACHE_KEY = getUserDetailCacheKey(userId);
         try {
           await fastify.redis.del(CACHE_KEY);
         } catch (err) {

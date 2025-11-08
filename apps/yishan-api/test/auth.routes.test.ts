@@ -8,6 +8,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 async function buildApp() {
   const app = Fastify({ logger: false })
+  // 注入轻量鉴权装饰器，模拟公共鉴权插件的行为
+  app.decorate('authenticate', async (request: any) => {
+    const auth = request.headers.authorization
+    if (!auth || !auth.startsWith('Bearer ')) {
+      throw new Error('Unauthorized')
+    }
+    request.currentUser = {
+      id: 1,
+      username: 'admin',
+      email: 'admin@example.com',
+      realName: 'Admin',
+      gender: 1,
+      genderName: '男',
+      status: 1,
+      statusName: '启用',
+      loginCount: 10,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastLoginTime: new Date().toISOString()
+    }
+  })
   await app.register(errorHandlerPlugin)
   registerAuthSchemas(app)
   await app.register(authPlugin)
@@ -80,21 +101,6 @@ describe('Auth routes', () => {
 
   it('GET /me 成功返回用户信息', async () => {
     const app = await buildApp()
-    const userProfile = {
-      id: 1,
-      username: 'admin',
-      email: 'admin@example.com',
-      realName: 'Admin',
-      gender: 1,
-      genderName: '男',
-      status: 1,
-      statusName: '启用',
-      loginCount: 10,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastLoginTime: new Date().toISOString()
-    }
-    vi.spyOn(AuthService, 'getCurrentUser').mockResolvedValue(userProfile as any)
 
     const res = await app.inject({
       method: 'GET',

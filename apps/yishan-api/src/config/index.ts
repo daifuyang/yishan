@@ -72,3 +72,15 @@ export const SECURITY_CONFIG = {
     lockoutDuration: parseInt(process.env.LOGIN_LOCKOUT_DURATION || '3600'), // 1小时
   }
 };
+
+// 缓存配置（统一TTL管理）
+export const CACHE_CONFIG = {
+  // 全局默认TTL（秒）
+  defaultTTLSeconds: parseInt(process.env.CACHE_TTL_DEFAULT || '300'),
+  // 具体场景TTL（可按需扩展），支持向后兼容旧变量
+  userDetailTTLSeconds: parseInt(
+    process.env.CACHE_TTL_USER_DETAIL
+      || process.env.USER_DETAIL_CACHE_TTL
+      || (process.env.CACHE_TTL_DEFAULT || '300')
+  ),
+};

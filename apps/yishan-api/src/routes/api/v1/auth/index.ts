@@ -63,7 +63,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       // 从请求头获取token
       const token = request.headers.authorization?.replace('Bearer ', '');
-      
+
       if (!token) {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "缺少认证token");
       }
@@ -78,6 +78,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/me",
     {
+      preHandler: fastify.authenticate,
       schema: {
         summary: "获取当前用户信息",
         description: "获取当前登录用户的详细信息",
@@ -93,16 +94,8 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       request: FastifyRequest,
       reply: FastifyReply
     ) => {
-      // 从请求头获取token
-      const token = request.headers.authorization?.replace('Bearer ', '');
-      
-      if (!token) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "缺少认证token");
-      }
-
-      // 使用AuthService获取用户信息
-      const user = await AuthService.getCurrentUser(token, fastify);
-      return ResponseUtil.success(reply, user, "获取用户信息成功");
+      const currentUser =request.currentUser;
+      return ResponseUtil.success(reply, currentUser, "获取用户信息成功");
     }
   );
 
@@ -126,7 +119,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       const { refreshToken } = request.body;
-      
+
       if (!refreshToken) {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "缺少刷新令牌");
       }

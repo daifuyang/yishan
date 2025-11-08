@@ -2,7 +2,7 @@
  * 系统管理服务 - 用于系统维护和定时任务
  */
 
-import { SysUserTokenModel } from "../models/user-token.model.js";
+import { SysUserTokenModel } from "../models/sys-user-token.model.js";
 import { SystemManageErrorCode } from "../constants/business-codes/system.js";
 import { BusinessError } from "../exceptions/business-error.js";
 import { prisma } from "../utils/prisma.js";

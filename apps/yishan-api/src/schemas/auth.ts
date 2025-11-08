@@ -43,10 +43,10 @@ const LoginDataSchema = Type.Object(
       Type.Number({ description: "刷新令牌过期时间（秒）" })
     ),
     expiresAt: Type.Optional(
-      Type.Number({ description: "访问令牌过期时间戳（毫秒）" })
+      Type.Number({ description: "访问令牌过期时间戳（秒）" })
     ),
     refreshTokenExpiresAt: Type.Optional(
-      Type.Number({ description: "刷新令牌过期时间戳（毫秒）" })
+      Type.Number({ description: "刷新令牌过期时间戳（秒）" })
     )
   },
   { $id: "loginData" }

@@ -2,12 +2,11 @@
  * 用户业务逻辑服务
  */
 
-import { UserModel } from "../models/user.model.js";
-import { SaveUserReq, UserListQuery, SysUserResp } from "../schemas/user.js";
-import { SysUser } from "../generated/prisma/client.js";
+import { SysUserModel } from "../models/sys-user.model.js";
+import { SaveUserReq, UserListQuery, SysUserResp, UpdateUserReq } from "../schemas/user.js";
 import { UserErrorCode } from "../constants/business-codes/user.js";
 import { BusinessError } from "../exceptions/business-error.js";
-import { SysUserTokenModel } from "../models/user-token.model.js";
+import { SysUserTokenModel } from "../models/sys-user-token.model.js";
 
 export class UserService {
   /**
@@ -17,10 +16,10 @@ export class UserService {
    */
   static async getUserList(query: UserListQuery) {
     // 获取用户列表
-    const list = await UserModel.getUserList(query);
+    const list = await SysUserModel.getUserList(query);
 
     // 获取总数量
-    const total = await UserModel.getUserTotal(query);
+    const total = await SysUserModel.getUserTotal(query);
 
     return {
       list,
@@ -36,7 +35,7 @@ export class UserService {
    * @returns 用户信息
    */
   static async getUserById(id: number) {
-    return await UserModel.getUserById(id);
+    return await SysUserModel.getUserById(id);
   }
 
   /**
@@ -52,7 +51,7 @@ export class UserService {
     await this.ensureUniqueFields(userReq.username, userReq.email);
 
     // 创建用户
-    return await UserModel.createUser(userReq);
+    return await SysUserModel.createUser(userReq);
   }
 
   /**
@@ -88,10 +87,10 @@ export class UserService {
    */
   static async updateUser(
     id: number,
-    userReq: SaveUserReq
+    userReq: UpdateUserReq
   ): Promise<SysUserResp | null> {
     // 检查用户是否存在
-    const existingUser = await UserModel.getUserById(id);
+    const existingUser = await SysUserModel.getUserById(id);
     if (!existingUser) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
     }
@@ -100,19 +99,19 @@ export class UserService {
     await this.ensureUniqueFields(userReq.username, userReq.email, id);
 
     // 更新用户
-    return await UserModel.updateUser(id, userReq);
+    return await SysUserModel.updateUser(id, userReq);
   }
 
   /**
    * 删除用户（软删除）并撤销所有令牌
    */
   static async deleteUser(id: number): Promise<{ id: number; deleted: boolean }> {
-    const existingUser = await UserModel.getUserById(id)
+    const existingUser = await SysUserModel.getUserById(id)
     if (!existingUser) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在")
     }
 
-    const res = await UserModel.deleteUser(id)
+    const res = await SysUserModel.deleteUser(id)
     if (!res) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在或已删除")
     }
@@ -134,14 +133,14 @@ export class UserService {
     excludeUserId?: number
   ): Promise<void> {
     if (username) {
-      const userWithSameUsername = await UserModel.getUserByUsername(username);
+      const userWithSameUsername = await SysUserModel.getUserByUsername(username);
       if (userWithSameUsername && userWithSameUsername.id !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "用户名已存在");
       }
     }
 
     if (email) {
-      const userWithSameEmail = await UserModel.getUserByEmail(email);
+      const userWithSameEmail = await SysUserModel.getUserByEmail(email);
       if (userWithSameEmail && userWithSameEmail.id !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "邮箱已存在");
       }

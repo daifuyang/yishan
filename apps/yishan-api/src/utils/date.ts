@@ -34,5 +34,10 @@ export const dateUtils = {
   // 当前时间 ISO 字符串
   nowISO(): string {
     return dayjs().toDate().toISOString()
+  },
+
+  // 当前时间的秒级时间戳（10位）
+  nowUnix(): number {
+    return dayjs().unix()
   }
 }

@@ -3,7 +3,7 @@
  */
 
 import { prismaManager } from "../utils/prisma.js";
-import { UserListQuery, SaveUserReq, SysUserResp } from "../schemas/user.js";
+import { UserListQuery, SaveUserReq, SysUserResp, UpdateUserReq } from "../schemas/user.js";
 import { SysUser } from "../generated/prisma/client.js";
 import { hashPassword } from "../utils/password.js";
 
@@ -20,7 +20,7 @@ const statusMap = {
   2: "锁定",
 };
 
-export class UserModel {
+export class SysUserModel {
   private static prisma = prismaManager.getClient();
 
   private static mapToResp(sysUser: any): SysUserResp {
@@ -292,7 +292,7 @@ export class UserModel {
   /**
    * 更新用户
    */
-  static async updateUser(id: number, userReq: SaveUserReq): Promise<SysUserResp> {
+  static async updateUser(id: number, userReq: UpdateUserReq): Promise<SysUserResp> {
     // 构建更新数据
     const updateData: any = {};
 

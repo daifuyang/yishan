@@ -104,6 +104,12 @@ const SaveUserReqSchema = Type.Object(
   { $id: "saveUserReq" }
 );
 
+// 更新用户请求 Schema（全部字段可选，至少提供一个字段）
+const UpdateUserReqSchema = Type.Partial(SaveUserReqSchema, {
+  $id: "updateUserReq",
+  minProperties: 1,
+});
+
 // 用户列表查询参数 Schema
 const UserListQuerySchema = Type.Object(
   {
@@ -139,6 +145,7 @@ const UserListQuerySchema = Type.Object(
 
 export type UserListQuery = Static<typeof UserListQuerySchema>;
 export type SaveUserReq = Static<typeof SaveUserReqSchema>;
+export type UpdateUserReq = Static<typeof UpdateUserReqSchema>;
 
 // 获取用户列表
 const UserListRespSchema = successResponse({
@@ -168,6 +175,7 @@ const registerUser = (fastify: FastifyInstance) => {
   fastify.addSchema(UserListQuerySchema);
   fastify.addSchema(UserListRespSchema);
   fastify.addSchema(SaveUserReqSchema);
+  fastify.addSchema(UpdateUserReqSchema);
   fastify.addSchema(UserDetailRespSchema);
   fastify.addSchema(UserDeleteRespSchema);
 };

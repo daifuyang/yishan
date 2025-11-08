@@ -3,9 +3,12 @@ import fastifyJwt from '@fastify/jwt'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { ValidationErrorCode } from '../../constants/business-codes/validation.js'
 import { AuthErrorCode } from '../../constants/business-codes/auth.js'
+import { UserErrorCode } from '../../constants/business-codes/user.js'
 import { BusinessError } from '../../exceptions/business-error.js'
 import { JWT_CONFIG } from '../../config/index.js'
-import { SysUserTokenModel } from '../../models/user-token.model.js'
+import { SysUserTokenModel } from '../../models/sys-user-token.model.js'
+import { SysUserModel } from '../../models/sys-user.model.js'
+import { SysUserResp } from '../../schemas/user.js'
 
 export const autoConfig = {
   secret: JWT_CONFIG.secret,
@@ -47,7 +50,7 @@ export default fp(async (fastify) => {
 
     // 验证JWT签名与有效性
     try {
-      await (request as any).jwtVerify()
+      await request.jwtVerify()
     } catch (jwtErr: any) {
       // JWT格式错误或签名验证失败
       if (jwtErr.code === 'FAST_JWT_MALFORMED' || jwtErr.code === 'FAST_JWT_FORMAT_INVALID') {
@@ -70,7 +73,7 @@ export default fp(async (fastify) => {
     }
 
     // 仅允许访问令牌用于接口访问
-    const userPayload = (request as any).user
+    const userPayload = request.user
     if (userPayload?.type && userPayload.type !== 'access_token') {
       throw new BusinessError(
         AuthErrorCode.TOKEN_INVALID,
@@ -86,6 +89,36 @@ export default fp(async (fastify) => {
         '当前访问令牌已失效或已被注销，请重新登录。'
       )
     }
+
+    // 鉴权成功将当前用户信息挂载到request对象上
+    const currentUser = await SysUserModel.getUserById(record.userId)
+    if (!currentUser) {
+      throw new BusinessError(
+        AuthErrorCode.TOKEN_INVALID,
+        '当前用户不存在，请联系管理员处理。'
+      )
+    }
+
+    // 检测用户的状态，是否被删除，拉黑等
+    // 账号被禁用
+    if (currentUser.status === 0) {
+      throw new BusinessError(
+        UserErrorCode.USER_DISABLED,
+        '账号已被禁用，无法访问。'
+      )
+    }
+
+    // 账号被锁定
+    if (currentUser.status === 2) {
+      throw new BusinessError(
+        AuthErrorCode.ACCOUNT_LOCKED,
+        '账号已被锁定，请联系管理员。'
+      )
+    }
+
+    // 挂载当前用户信息到request对象
+    request.currentUser = currentUser
+
   })
 }, {
   name: 'jwt-auth'
@@ -97,23 +130,22 @@ declare module 'fastify' {
   }
 }
 
+// 扩展 FastifyRequest 类型以包含错误上下文
+declare module 'fastify' {
+  interface FastifyRequest {
+    currentUser: SysUserResp
+  }
+}
+
 declare module '@fastify/jwt' {
   interface FastifyJWT {
     payload: {
       id: number
-      email: string
-      username: string
-      real_name?: string
-      status?: number
-      type?: string  // 用于区分accessToken和refreshToken
+      type: 'access_token' | 'refresh_token'  // 用于区分accessToken和refreshToken
     }
     user: {
       id: number
-      email: string
-      username: string
-      real_name?: string
-      status?: number
-      type?: string  // 用于区分accessToken和refreshToken
+      type: 'access_token' | 'refresh_token'
     }
   }
 }
