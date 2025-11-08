@@ -46,6 +46,26 @@ model SysUser {
   // 用户令牌关联
   tokens SysUserToken[]
 
+  // 角色关联（通过中间表）
+  userRoles SysUserRole[]
+
+  // 角色创建/更新的反向关系
+  rolesCreated SysRole[] @relation("RoleCreator")
+  rolesUpdated SysRole[] @relation("RoleUpdater")
+
+  // 部门创建/负责人/更新的反向关系
+  leaderDepts  SysDept[] @relation("DeptLeader")
+  createdDepts SysDept[] @relation("DeptCreator")
+  updatedDepts SysDept[] @relation("DeptUpdater")
+
+  // 岗位创建/更新的反向关系
+  postsCreated SysPost[] @relation("PostCreator")
+  postsUpdated SysPost[] @relation("PostUpdater")
+
+  // 菜单创建/更新的反向关系
+  menusCreated SysMenu[] @relation("MenuCreator")
+  menusUpdated SysMenu[] @relation("MenuUpdater")
+
   // 索引定义
   @@index([status], map: "idx_status")
   @@index([createdAt], map: "idx_created_at")
@@ -81,4 +101,175 @@ model SysUserToken {
   @@index([refreshTokenExpiresAt], map: "idx_refresh_token_expires")
   @@index([userId, isRevoked], map: "idx_user_revoked")
   @@map("sys_user_token")
+}
+
+// 角色表（使用自增ID，不使用权限字符）
+model SysRole {
+  id          Int       @id @default(autoincrement()) @map("id")
+  name        String    @unique @map("name") @db.VarChar(50)
+  description String?   @map("description") @db.VarChar(255)
+  status      Int       @default(1) @map("status") @db.TinyInt
+  isSystemDefault Boolean @default(false) @map("is_system_default")
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
+
+  // 关联
+  creator SysUser? @relation("RoleCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("RoleUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  userRoles SysUserRole[]
+
+  // 菜单关联（通过中间表）
+  roleMenus SysRoleMenu[]
+
+  // 索引
+  @@index([status], map: "idx_role_status")
+  @@index([createdAt], map: "idx_role_created_at")
+  @@index([deletedAt], map: "idx_role_deleted_at")
+  @@map("sys_role")
+}
+
+// 用户角色关联表（显式多对多）
+model SysUserRole {
+  id        Int       @id @default(autoincrement()) @map("id")
+  userId    Int       @map("user_id")
+  roleId    Int       @map("role_id")
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(0)
+
+  user SysUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role SysRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId], map: "uniq_user_role")
+  @@index([userId], map: "idx_user_role_user_id")
+  @@index([roleId], map: "idx_user_role_role_id")
+  @@map("sys_user_role")
+}
+
+// 部门表（支持层级结构）
+model SysDept {
+  id          Int       @id @default(autoincrement()) @map("id")
+  name        String    @unique @map("name") @db.VarChar(100)
+  code        String?   @unique @map("code") @db.VarChar(50)
+  parentId    Int?      @map("parent_id")
+  status      Int       @default(1) @map("status") @db.TinyInt
+  sort_order  Int       @default(0)
+  description String?   @map("description") @db.VarChar(255)
+  leaderId    Int?      @map("leader_id")
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
+
+  // 自引用层级关系
+  parent   SysDept?  @relation("DeptParent", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children SysDept[] @relation("DeptParent")
+
+  // 负责人、创建人、更新人关联
+  leader  SysUser? @relation("DeptLeader", fields: [leaderId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  creator SysUser? @relation("DeptCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("DeptUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  // 索引
+  @@index([status], map: "idx_dept_status")
+  @@index([createdAt], map: "idx_dept_created_at")
+  @@index([deletedAt], map: "idx_dept_deleted_at")
+  @@index([parentId], map: "idx_dept_parent_id")
+  @@index([sort_order], map: "idx_dept_sort_order")
+  @@map("sys_dept")
+}
+
+// 岗位表（职位管理）
+model SysPost {
+  id          Int       @id @default(autoincrement()) @map("id")
+  name        String    @unique @map("name") @db.VarChar(100)
+  code        String?   @unique @map("code") @db.VarChar(50)
+  status      Int       @default(1) @map("status") @db.TinyInt
+  sort_order  Int       @default(0)
+  description String?   @map("description") @db.VarChar(255)
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
+
+  // 创建人、更新人关联
+  creator SysUser? @relation("PostCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("PostUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  // 索引
+  @@index([status], map: "idx_post_status")
+  @@index([createdAt], map: "idx_post_created_at")
+  @@index([deletedAt], map: "idx_post_deleted_at")
+  @@index([sort_order], map: "idx_post_sort_order")
+  @@map("sys_post")
+}
+
+// 菜单表（遵循 Ant Design Pro menu 规范，支持层级与外链）
+model SysMenu {
+  id                 Int       @id @default(autoincrement()) @map("id")
+  name               String    @map("name") @db.VarChar(100)
+  path               String?   @unique @map("path") @db.VarChar(255)
+  icon               String?   @map("icon") @db.VarChar(100)
+  component          String?   @map("component") @db.VarChar(255)
+  type               Int       @default(1) @map("type") @db.TinyInt // 0: 目录, 1: 菜单, 2: 按钮
+  parentId           Int?      @map("parent_id")
+  status             Int       @default(1) @map("status") @db.TinyInt
+  sort_order         Int       @default(0)
+  hideInMenu         Boolean   @default(false) @map("hide_in_menu")
+  isExternalLink     Boolean   @default(false) @map("is_external_link")
+  perm               String?   @map("perm") @db.VarChar(100)
+  keepAlive          Boolean   @default(false) @map("keep_alive")
+  creatorId          Int?      @map("creator_id")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId          Int?      @map("updater_id")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt          DateTime? @map("deleted_at") @db.DateTime(0)
+  version            Int       @default(1) @map("version")
+
+  // 自引用层级关系
+  parent   SysMenu?  @relation("MenuParent", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children SysMenu[] @relation("MenuParent")
+
+  // 创建人、更新人关联
+  creator SysUser? @relation("MenuCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("MenuUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  // 角色菜单关联
+  roleMenus SysRoleMenu[]
+
+  // 索引
+  @@index([status], map: "idx_menu_status")
+  @@index([createdAt], map: "idx_menu_created_at")
+  @@index([deletedAt], map: "idx_menu_deleted_at")
+  @@index([parentId], map: "idx_menu_parent_id")
+  @@index([sort_order], map: "idx_menu_sort_order")
+  @@unique([parentId, name], map: "uniq_menu_parent_name")
+  @@map("sys_menu")
+}
+
+// 角色-菜单关联表
+model SysRoleMenu {
+  id        Int       @id @default(autoincrement()) @map("id")
+  roleId    Int       @map("role_id")
+  menuId    Int       @map("menu_id")
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(0)
+
+  role SysRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  menu SysMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, menuId], map: "uniq_role_menu")
+  @@index([roleId], map: "idx_role_menu_role_id")
+  @@index([menuId], map: "idx_role_menu_menu_id")
+  @@map("sys_role_menu")
 }

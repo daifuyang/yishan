@@ -11,6 +11,10 @@ export * from './user.js';
 export * from './resource.js';
 export * from './business.js';
 export * from './system.js';
+export * from './role.js';
+export * from './dept.js';
+export * from './post.js';
+export * from './menu.js';
 
 // 重新导出常用的业务码
 import { SUCCESS_CODE, SystemErrorCode } from './common.js';
@@ -20,6 +24,10 @@ import { UserErrorCode } from './user.js';
 import { ResourceErrorCode } from './resource.js';
 import { BusinessErrorCode } from './business.js';
 import { SystemManageErrorCode } from './system.js';
+import { RoleErrorCode } from './role.js';
+import { DeptErrorCode } from './dept.js';
+import { PostErrorCode } from './post.js';
+import { MenuErrorCode } from './menu.js';
 
 // 合并所有错误码
 export const ErrorCode = {
@@ -30,6 +38,10 @@ export const ErrorCode = {
   ...ResourceErrorCode,
   ...BusinessErrorCode,
   ...SystemManageErrorCode,
+  ...RoleErrorCode,
+  ...DeptErrorCode,
+  ...PostErrorCode,
+  ...MenuErrorCode,
   // 添加一些常用的别名
   NOT_FOUND: ResourceErrorCode.RESOURCE_NOT_FOUND,
 } as const;
@@ -61,6 +73,18 @@ import {
   SystemManageErrorMessages,
   SystemManageHttpStatusMap
 } from './system.js';
+import { 
+  RoleErrorMessages
+} from './role.js';
+import { 
+  DeptErrorMessages
+} from './dept.js';
+import { 
+  PostErrorMessages
+} from './post.js';
+import { 
+  MenuErrorMessages
+} from './menu.js';
 
 // 合并所有错误消息
 const ErrorMessages = {
@@ -71,6 +95,10 @@ const ErrorMessages = {
   ...ResourceErrorMessages,
   ...BusinessErrorMessages,
   ...SystemManageErrorMessages,
+  ...RoleErrorMessages,
+  ...DeptErrorMessages,
+  ...PostErrorMessages,
+  ...MenuErrorMessages,
 } as const;
 
 // 合并所有HTTP状态码映射

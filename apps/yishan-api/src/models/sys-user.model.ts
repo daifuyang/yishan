@@ -5,7 +5,20 @@
 import { prismaManager } from "../utils/prisma.js";
 import { UserListQuery, SaveUserReq, SysUserResp, UpdateUserReq } from "../schemas/user.js";
 import { SysUser } from "../generated/prisma/client.js";
+import type { Prisma } from "../generated/prisma/client.js";
 import { hashPassword } from "../utils/password.js";
+import { dateUtils } from "../utils/date.js";
+
+// Prisma 生成类型，包含 creator/updater 的必要选择集
+type UserWithRelations = Prisma.SysUserGetPayload<{
+  include: {
+    creator: { select: { username: true } };
+    updater: { select: { username: true } };
+  };
+}> & {
+  creatorName?: string;
+  updaterName?: string;
+};
 
 const genderMap = {
   0: "未知",
@@ -23,7 +36,7 @@ const statusMap = {
 export class SysUserModel {
   private static prisma = prismaManager.getClient();
 
-  private static mapToResp(sysUser: any): SysUserResp {
+  private static mapToResp(sysUser: UserWithRelations): SysUserResp {
     return {
       id: sysUser.id,
       username: sysUser.username,
@@ -33,18 +46,18 @@ export class SysUserModel {
       avatar: sysUser.avatar ?? undefined,
       gender: sysUser.gender,
       genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
-      birthDate: sysUser.birthDate?.toISOString().split("T")[0],
+      birthDate: dateUtils.formatDate(sysUser.birthDate) ?? undefined,
       status: sysUser.status,
       statusName: statusMap[sysUser.status as keyof typeof statusMap] || "未知",
-      lastLoginTime: sysUser.lastLoginTime?.toISOString(),
+      lastLoginTime: dateUtils.formatISO(sysUser.lastLoginTime) ?? undefined,
       lastLoginIp: sysUser.lastLoginIp ?? undefined,
       loginCount: sysUser.loginCount,
       creatorId: sysUser.creatorId,
       creatorName: sysUser.creator?.username ?? sysUser.creatorName,
-      createdAt: sysUser.createdAt.toISOString(),
+      createdAt: dateUtils.formatISO(sysUser.createdAt)!,
       updaterId: sysUser.updaterId,
       updaterName: sysUser.updater?.username ?? sysUser.updaterName,
-      updatedAt: sysUser.updatedAt.toISOString(),
+      updatedAt: dateUtils.formatISO(sysUser.updatedAt)!,
     };
   }
 
@@ -105,13 +118,13 @@ export class SysUserModel {
       return {
         ...item,
         genderName: genderMap[item.gender as keyof typeof genderMap] || "未知",
-        birthDate: item.birthDate?.toISOString().split("T")[0],
+        birthDate: dateUtils.formatDate(item.birthDate) ?? undefined,
         statusName: statusMap[item.status as keyof typeof statusMap] || "未知",
-        lastLoginTime: item.lastLoginTime?.toISOString(),
-        creatorName: item.creator.username, // 需要根据creatorId查询创建人名称
-        createdAt: item.createdAt.toISOString(),
-        updaterName: item.updater.username, // 需要根据updaterId查询更新人名称
-        updatedAt: item.updatedAt.toISOString(),
+        lastLoginTime: dateUtils.formatISO(item.lastLoginTime) ?? undefined,
+        creatorName: item.creator.username,
+        createdAt: dateUtils.formatISO(item.createdAt)!,
+        updaterName: item.updater.username,
+        updatedAt: dateUtils.formatISO(item.updatedAt)!,
       } as SysUserResp;
     });
   }
@@ -175,18 +188,18 @@ export class SysUserModel {
       avatar: sysUser.avatar ?? undefined,
       gender: sysUser.gender,
       genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
-      birthDate: sysUser.birthDate?.toISOString().split("T")[0],
+      birthDate: dateUtils.formatDate(sysUser.birthDate) ?? undefined,
       status: sysUser.status,
       statusName: statusMap[sysUser.status as keyof typeof statusMap] || "未知",
-      lastLoginTime: sysUser.lastLoginTime?.toISOString(),
+      lastLoginTime: dateUtils.formatISO(sysUser.lastLoginTime) ?? undefined,
       lastLoginIp: sysUser.lastLoginIp ?? undefined,
       loginCount: sysUser.loginCount,
       creatorId: sysUser.creatorId,
       creatorName: sysUser.creator.username,
-      createdAt: sysUser.createdAt.toISOString(),
+      createdAt: dateUtils.formatISO(sysUser.createdAt)!,
       updaterId: sysUser.updaterId,
       updaterName: sysUser.updater.username,
-      updatedAt: sysUser.updatedAt.toISOString(),
+      updatedAt: dateUtils.formatISO(sysUser.updatedAt)!,
     };
   }
 

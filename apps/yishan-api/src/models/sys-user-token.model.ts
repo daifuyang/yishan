@@ -3,6 +3,7 @@
  */
 
 import { prisma } from "../utils/prisma.js";
+import { dateUtils } from "../utils/date.js";
 
 export interface CreateUserTokenData {
   userId: number;
@@ -51,7 +52,7 @@ export class SysUserTokenModel {
         isRevoked: false,
         deletedAt: null,
         accessTokenExpiresAt: {
-          gt: new Date()
+          gt: dateUtils.now()
         }
       },
       include: {
@@ -70,7 +71,7 @@ export class SysUserTokenModel {
         isRevoked: false,
         deletedAt: null,
         refreshTokenExpiresAt: {
-          gt: new Date()
+          gt: dateUtils.now()
         }
       },
       include: {
@@ -89,7 +90,7 @@ export class SysUserTokenModel {
         isRevoked: false,
         deletedAt: null,
         accessTokenExpiresAt: {
-          gt: new Date()
+          gt: dateUtils.now()
         }
       },
       orderBy: {
@@ -106,7 +107,7 @@ export class SysUserTokenModel {
       where: { id },
       data: {
         ...data,
-        updatedAt: new Date()
+        updatedAt: dateUtils.now()
       }
     });
   }
@@ -119,8 +120,8 @@ export class SysUserTokenModel {
       where: { id },
       data: {
         isRevoked: true,
-        revokedAt: new Date(),
-        updatedAt: new Date()
+        revokedAt: dateUtils.now(),
+        updatedAt: dateUtils.now()
       }
     });
   }
@@ -137,8 +138,8 @@ export class SysUserTokenModel {
       },
       data: {
         isRevoked: true,
-        revokedAt: new Date(),
-        updatedAt: new Date()
+        revokedAt: dateUtils.now(),
+        updatedAt: dateUtils.now()
       }
     });
   }
@@ -147,7 +148,7 @@ export class SysUserTokenModel {
    * 清理过期令牌
    */
   static async cleanupExpiredTokens() {
-    const now = new Date();
+    const now = dateUtils.now();
     return await prisma.sysUserToken.updateMany({
       where: {
         OR: [
@@ -169,7 +170,7 @@ export class SysUserTokenModel {
    * 物理删除过期令牌（用于定时任务）
    */
   static async deleteExpiredTokens(daysToKeep = 30) {
-    const cutoffDate = new Date();
+    const cutoffDate = dateUtils.now();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
     
     return await prisma.sysUserToken.deleteMany({
@@ -186,7 +187,7 @@ export class SysUserTokenModel {
    * 获取用户令牌统计
    */
   static async getUserTokenStats(userId: number) {
-    const now = new Date();
+    const now = dateUtils.now();
     const [activeTokens, totalTokens] = await Promise.all([
       prisma.sysUserToken.count({
         where: {

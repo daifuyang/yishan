@@ -19,6 +19,9 @@ export default fp(async function (fastify) {
       tags: [
         { name: 'auth', description: 'Authentication endpoints' },
         { name: 'sysUsers', description: 'System user management' },
+        { name: 'sysRoles', description: 'System role management' },
+        { name: 'sysDepts', description: 'System department management' },
+        { name: 'sysPosts', description: 'System post management' },
         { name: 'system', description: 'System endpoints' }
       ],
       components: {
@@ -28,9 +31,6 @@ export default fp(async function (fastify) {
             scheme: 'bearer',
             bearerFormat: 'JWT'
           }
-        },
-        schemas: {
-          
         }
       }
     },
