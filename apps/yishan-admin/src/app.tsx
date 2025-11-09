@@ -10,7 +10,7 @@ import {
   Question,
   SelectLang,
 } from "@/components";
-import { getCurrentUser } from "@/services/yishan-admin/sysAuth";
+import { getCurrentUser } from "@/services/yishan-admin/auth";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
 import "@ant-design/v5-patch-for-react-19";
@@ -23,9 +23,9 @@ const loginPath = "/user/login";
  * */
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
-  currentUser?: API.sysUser;
+  currentUser?: API.userProfile;
   loading?: boolean;
-  fetchUserInfo?: () => Promise<API.sysUser | undefined>;
+  fetchUserInfo?: () => Promise<API.userProfile | undefined>;
 }> {
   const fetchUserInfo = async () => {
     const response = await getCurrentUser();

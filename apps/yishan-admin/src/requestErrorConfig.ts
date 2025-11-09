@@ -6,8 +6,9 @@ import {
   getAuthorizationHeader,
   isRefreshTokenExpired,
   clearTokens,
+  saveTokens,
 } from "@/utils/token";
-import { refreshToken as refreshTokenService } from "@/services/yishan-admin/sysAuth";
+import { refreshToken as apiRefreshToken } from "@/services/yishan-admin/auth";
 
 // 错误处理方案： 错误类型
 enum ErrorShowType {
@@ -51,10 +52,7 @@ export const errorConfig: RequestConfig = {
       // 兼容处理：支持两种响应格式
       const responseCode = code || errorCode;
       const responseMessage = message || errorMessage;
-      const isSuccess =
-        success !== undefined
-          ? success
-          : responseCode && responseCode.toString().startsWith("200");
+      const isSuccess = success === true;
 
       if (!isSuccess) {
         const error: any = new Error(responseMessage || "业务处理失败");
@@ -73,7 +71,7 @@ export const errorConfig: RequestConfig = {
       if (opts?.skipErrorHandler) throw error;
 
       // 处理401未授权错误 - 尝试自动刷新token
-      if ([400, 401].includes(error.response?.status)) {
+      if (error.response?.status === 401) {
         // 跳过刷新token的请求，避免无限循环
         if (opts?.url?.includes("/auth/refresh")) {
           await logout();
@@ -94,32 +92,26 @@ export const errorConfig: RequestConfig = {
             return;
           }
 
-          const refreshResponse = await refreshTokenService({ refreshToken });
+          const refreshResponse = await apiRefreshToken({ refreshToken });
 
-          if (
-            refreshResponse.code?.toString().startsWith("200") &&
-            refreshResponse.data
-          ) {
-            // 保存新的token
+          if (refreshResponse.success === true && refreshResponse.data) {
+            // 保存新的token（映射 OpenAPI loginData 字段）
             const {
-              accessToken,
+              token,
               refreshToken: newRefreshToken,
-              accessTokenExpiresIn,
+              expiresIn,
               refreshTokenExpiresIn,
             } = refreshResponse.data;
 
-            // 使用统一的token管理工具保存新token
-            const now = Math.floor(Date.now() / 1000);
-            localStorage.setItem("accessToken", accessToken);
-            localStorage.setItem("refreshToken", newRefreshToken);
-            localStorage.setItem(
-              "accessTokenExpiry",
-              String(now + (accessTokenExpiresIn || 900))
-            );
-            localStorage.setItem(
-              "refreshTokenExpiry",
-              String(now + (refreshTokenExpiresIn || 604800))
-            );
+            // 兼容后端可能只返回新的 access token 的情况
+            const effectiveRefreshToken = newRefreshToken || refreshToken;
+
+            saveTokens({
+              accessToken: token,
+              refreshToken: effectiveRefreshToken,
+              accessTokenExpiresIn: expiresIn,
+              refreshTokenExpiresIn,
+            });
 
             message.success("登录状态已刷新");
 

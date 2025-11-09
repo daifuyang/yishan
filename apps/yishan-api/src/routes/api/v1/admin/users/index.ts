@@ -1,11 +1,10 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../utils/response.js";
-import { ValidationErrorCode } from "../../../../../constants/business-codes/validation.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import {
   UserListQuery,
-  SaveUserReq,
+  CreateUserReq,
   UpdateUserReq
 } from "../../../../../schemas/user.js";
 import { UserService } from "../../../../../services/user.service.js";
@@ -63,7 +62,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         tags: ["sysUsers"],
         security: [{ bearerAuth: [] }],
         params: Type.Object({
-          id: Type.String({ description: "用户ID" }),
+          id: Type.Integer({ description: "用户ID", minimum: 1 }),
         }),
         response: {
           200: { $ref: "userDetailResp#" },
@@ -71,13 +70,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Params: { id: string } }>,
+      request: FastifyRequest<{ Params: { id: number } }>,
       reply: FastifyReply
     ) => {
-      const userId = parseInt(request.params.id);
-      if (isNaN(userId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "用户ID不能为空");
-      }
+      const userId = request.params.id;
       const CACHE_KEY = getUserDetailCacheKey(userId);
 
       // 优先尝试缓存
@@ -121,14 +117,14 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         operationId: "createUser",
         tags: ["sysUsers"],
         security: [{ bearerAuth: [] }],
-        body: { $ref: "updateUserReq#" },
+        body: { $ref: "createUserReq#" },
         response: {
           200: { $ref: "userDetailResp#" },
         },
       },
     },
     async (
-      request: FastifyRequest<{ Body: SaveUserReq }>,
+      request: FastifyRequest<{ Body: CreateUserReq }>,
       reply: FastifyReply
     ) => {
       // 使用UserService创建用户，异常将由全局异常处理器处理
@@ -158,7 +154,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         tags: ["sysUsers"],
         security: [{ bearerAuth: [] }],
         params: Type.Object({
-          id: Type.String({ description: "用户ID" }),
+          id: Type.Integer({ description: "用户ID", minimum: 1 }),
         }),
         body: { $ref: "updateUserReq#" },
         response: {
@@ -168,16 +164,28 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     },
     async (
       request: FastifyRequest<{
-        Params: { id: string };
+        Params: { id: number };
         Body: UpdateUserReq;
       }>,
       reply: FastifyReply
     ) => {
-      const userId = parseInt(request.params.id);
+      const userId = request.params.id;
 
-      // 验证用户ID
-      if (isNaN(userId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "用户ID不能为空");
+      // 禁用限制：不允许禁用超级管理员（ID=1）或当前登录用户自身
+      const nextStatus = request.body?.status;
+      if (typeof nextStatus === "number" && nextStatus === 0) {
+        if (userId === 1) {
+          throw new BusinessError(
+            UserErrorCode.USER_STATUS_ERROR,
+            "系统管理员不可禁用"
+          );
+        }
+        if (request.currentUser && request.currentUser.id === userId) {
+          throw new BusinessError(
+            UserErrorCode.USER_STATUS_ERROR,
+            "不能禁用当前登录用户"
+          );
+        }
       }
 
       // 使用UserService更新用户，异常将由全局异常处理器处理
@@ -208,7 +216,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         tags: ["sysUsers"],
         security: [{ bearerAuth: [] }],
         params: Type.Object({
-          id: Type.String({ description: "用户ID" }),
+          id: Type.Integer({ description: "用户ID", minimum: 1 }),
         }),
         response: {
           200: { $ref: "userDeleteResp#" },
@@ -216,12 +224,23 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Params: { id: string } }>,
+      request: FastifyRequest<{ Params: { id: number } }>,
       reply: FastifyReply
     ) => {
-      const userId = parseInt(request.params.id);
-      if (isNaN(userId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "用户ID不能为空");
+      const userId = request.params.id;
+
+      // 删除限制：不允许删除超级管理员（ID=1）或当前登录用户自身
+      if (userId === 1) {
+        throw new BusinessError(
+          UserErrorCode.USER_STATUS_ERROR,
+          "系统管理员不可删除"
+        );
+      }
+      if (request.currentUser && request.currentUser.id === userId) {
+        throw new BusinessError(
+          UserErrorCode.USER_STATUS_ERROR,
+          "不能删除当前登录用户"
+        );
       }
 
       const result = await UserService.deleteUser(userId);

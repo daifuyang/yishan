@@ -61,7 +61,7 @@ const SysUserSchema = Type.Object(
 export type SysUserResp = Static<typeof SysUserSchema>;
 
 // 创建用户请求 Schema
-const SaveUserReqSchema = Type.Object(
+const CreateUserReqSchema = Type.Object(
   {
     username: Type.String({
       description: "用户名",
@@ -101,11 +101,11 @@ const SaveUserReqSchema = Type.Object(
       })
     ),
   },
-  { $id: "saveUserReq" }
+  { $id: "createUserReq" }
 );
 
 // 更新用户请求 Schema（全部字段可选，至少提供一个字段）
-const UpdateUserReqSchema = Type.Partial(SaveUserReqSchema, {
+const UpdateUserReqSchema = Type.Partial(CreateUserReqSchema, {
   $id: "updateUserReq",
   minProperties: 1,
 });
@@ -144,7 +144,7 @@ const UserListQuerySchema = Type.Object(
 );
 
 export type UserListQuery = Static<typeof UserListQuerySchema>;
-export type SaveUserReq = Static<typeof SaveUserReqSchema>;
+export type CreateUserReq = Static<typeof CreateUserReqSchema>;
 export type UpdateUserReq = Static<typeof UpdateUserReqSchema>;
 
 // 获取用户列表
@@ -174,7 +174,7 @@ const registerUser = (fastify: FastifyInstance) => {
   fastify.addSchema(SysUserSchema);
   fastify.addSchema(UserListQuerySchema);
   fastify.addSchema(UserListRespSchema);
-  fastify.addSchema(SaveUserReqSchema);
+  fastify.addSchema(CreateUserReqSchema);
   fastify.addSchema(UpdateUserReqSchema);
   fastify.addSchema(UserDetailRespSchema);
   fastify.addSchema(UserDeleteRespSchema);

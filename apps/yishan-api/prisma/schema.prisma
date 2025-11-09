@@ -155,7 +155,6 @@ model SysUserRole {
 model SysDept {
   id          Int       @id @default(autoincrement()) @map("id")
   name        String    @unique @map("name") @db.VarChar(100)
-  code        String?   @unique @map("code") @db.VarChar(50)
   parentId    Int?      @map("parent_id")
   status      Int       @default(1) @map("status") @db.TinyInt
   sort_order  Int       @default(0)

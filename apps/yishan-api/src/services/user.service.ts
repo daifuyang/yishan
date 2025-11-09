@@ -3,7 +3,7 @@
  */
 
 import { SysUserModel } from "../models/sys-user.model.js";
-import { SaveUserReq, UserListQuery, SysUserResp, UpdateUserReq } from "../schemas/user.js";
+import { CreateUserReq, UserListQuery, SysUserResp, UpdateUserReq } from "../schemas/user.js";
 import { UserErrorCode } from "../constants/business-codes/user.js";
 import { BusinessError } from "../exceptions/business-error.js";
 import { SysUserTokenModel } from "../models/sys-user-token.model.js";
@@ -43,7 +43,7 @@ export class UserService {
    * @param userReq 用户数据
    * @returns 创建的用户信息
    */
-  static async createUser(userReq: SaveUserReq): Promise<SysUserResp> {
+  static async createUser(userReq: CreateUserReq): Promise<SysUserResp> {
     // 密码强度验证（创建场景要求提供密码）
     this.validatePassword(userReq.password);
 

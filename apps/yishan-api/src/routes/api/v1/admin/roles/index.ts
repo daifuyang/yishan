@@ -1,7 +1,6 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../utils/response.js";
-import { ValidationErrorCode } from "../../../../../constants/business-codes/validation.js";
 import { RoleErrorCode } from "../../../../../constants/business-codes/role.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { RoleListQuery, SaveRoleReq, UpdateRoleReq } from "../../../../../schemas/role.js";
@@ -52,7 +51,7 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         tags: ["sysRoles"],
         security: [{ bearerAuth: [] }],
         params: Type.Object({
-          id: Type.String({ description: "角色ID" }),
+          id: Type.Integer({ description: "角色ID", minimum: 1 }),
         }),
         response: {
           200: { $ref: "roleDetailResp#" },
@@ -60,13 +59,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Params: { id: string } }>,
+      request: FastifyRequest<{ Params: { id: number } }>,
       reply: FastifyReply
     ) => {
-      const roleId = parseInt(request.params.id);
-      if (isNaN(roleId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "角色ID不能为空");
-      }
+      const roleId = request.params.id;
       const role = await RoleService.getRoleById(roleId);
       if (!role) {
         throw new BusinessError(RoleErrorCode.ROLE_NOT_FOUND, "角色不存在");
@@ -111,7 +107,7 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         tags: ["sysRoles"],
         security: [{ bearerAuth: [] }],
         params: Type.Object({
-          id: Type.String({ description: "角色ID" }),
+          id: Type.Integer({ description: "角色ID", minimum: 1 }),
         }),
         body: { $ref: "updateRoleReq#" },
         response: {
@@ -120,13 +116,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Params: { id: string }; Body: UpdateRoleReq }>,
+      request: FastifyRequest<{ Params: { id: number }; Body: UpdateRoleReq }>,
       reply: FastifyReply
     ) => {
-      const roleId = parseInt(request.params.id);
-      if (isNaN(roleId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "角色ID不能为空");
-      }
+      const roleId = request.params.id;
       const role = await RoleService.updateRole(roleId, request.body);
       return ResponseUtil.success(reply, role, "更新角色成功");
     }
@@ -143,7 +136,7 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         tags: ["sysRoles"],
         security: [{ bearerAuth: [] }],
         params: Type.Object({
-          id: Type.String({ description: "角色ID" }),
+          id: Type.Integer({ description: "角色ID", minimum: 1 }),
         }),
         response: {
           200: { $ref: "roleDeleteResp#" },
@@ -151,17 +144,14 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Params: { id: string } }>,
+      request: FastifyRequest<{ Params: { id: number } }>,
       reply: FastifyReply
     ) => {
-      const roleId = parseInt(request.params.id);
-      if (isNaN(roleId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "角色ID不能为空");
-      }
+      const roleId = request.params.id;
       const result = await RoleService.deleteRole(roleId);
       return ResponseUtil.success(reply, result, "删除角色成功");
     }
   );
-};
+}; 
 
 export default adminRoles;

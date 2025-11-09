@@ -3,7 +3,7 @@
  */
 
 import { SysDeptModel } from "../models/sys-dept.model.js";
-import { SaveDeptReq, DeptListQuery, SysDeptResp, UpdateDeptReq } from "../schemas/department.js";
+import { CreateDeptReq, DeptListQuery, SysDeptResp, UpdateDeptReq } from "../schemas/department.js";
 import { BusinessError } from "../exceptions/business-error.js";
 import { DeptErrorCode } from "../constants/business-codes/dept.js";
 
@@ -26,21 +26,21 @@ export class DeptService {
     return await SysDeptModel.getDeptById(id);
   }
 
-  /** 创建部门（校验名称/编码唯一） */
-  static async createDept(req: SaveDeptReq): Promise<SysDeptResp> {
-    await this.ensureUnique(req.name, req.code);
+  /** 创建部门（校验名称唯一） */
+  static async createDept(req: CreateDeptReq): Promise<SysDeptResp> {
+    await this.ensureUnique(req.name);
     return await SysDeptModel.createDept(req);
   }
 
-  /** 更新部门（校验名称/编码唯一） */
+  /** 更新部门（校验名称唯一） */
   static async updateDept(id: number, req: UpdateDeptReq): Promise<SysDeptResp> {
     const existing = await SysDeptModel.getDeptById(id);
     if (!existing) {
       throw new BusinessError(DeptErrorCode.DEPT_NOT_FOUND, "部门不存在");
     }
 
-    if (req.name || req.code) {
-      await this.ensureUnique(req.name, req.code, id);
+    if (req.name) {
+      await this.ensureUnique(req.name, id);
     }
 
     return await SysDeptModel.updateDept(id, req);
@@ -66,12 +66,17 @@ export class DeptService {
     return res;
   }
 
-  /** 校验名称与编码唯一性（排除自身） */
-  private static async ensureUnique(name?: string, code?: string, excludeId?: number): Promise<void> {
-    if (!name && !code) return;
-    const dup = await SysDeptModel.getDeptByNameOrCode(name, code);
+  /** 获取部门树 */
+  static async getDeptTree(rootId?: number | null) {
+    return await SysDeptModel.getDeptTree(rootId);
+  }
+
+  /** 校验名称唯一性（排除自身） */
+  private static async ensureUnique(name?: string, excludeId?: number): Promise<void> {
+    if (!name) return;
+    const dup = await SysDeptModel.getDeptByName(name);
     if (dup && dup.id !== excludeId) {
-      throw new BusinessError(DeptErrorCode.DEPT_ALREADY_EXISTS, "部门名称或编码已存在");
+      throw new BusinessError(DeptErrorCode.DEPT_ALREADY_EXISTS, "部门名称已存在");
     }
   }
 }

@@ -35,7 +35,7 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../utils/response.js";
 import { ErrorCode } from "../../../../../constants/business-code.js";
-import { UserListQuery, SaveUserReq } from "../../../../../schemas/user.js";
+import { UserListQuery, CreateUserReq } from "../../../../../schemas/user.js";
 import { UserService } from "../../../../../services/user.service.js";
 
 const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
@@ -94,14 +94,14 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         operationId: "createUser",
         tags: ["sysUsers"],
         security: [{ bearerAuth: [] }],
-        body: { $ref: "saveUserReq#" },
+ body: { $ref: "createUserReq#" },
         response: {
           200: { $ref: "userDetailResp#" },
         },
       },
     },
     async (
-      request: FastifyRequest<{ Body: SaveUserReq }>,
+request: FastifyRequest<{ Body: CreateUserReq }>,
       reply: FastifyReply
     ) => {
       try {
@@ -140,7 +140,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         params: Type.Object({
           id: Type.String({ description: "用户ID" }),
         }),
-        body: { $ref: "saveUserReq#" },
+ body: { $ref: "createUserReq#" },
         response: {
           200: { $ref: "sysUser#" },
         },
@@ -149,7 +149,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     async (
       request: FastifyRequest<{
         Params: { id: string };
-        Body: SaveUserReq;
+Body: CreateUserReq;
       }>,
       reply: FastifyReply
     ) => {
@@ -272,23 +272,23 @@ export const UserListResponseSchema = successResponse({
   $id: "userListResponse",
 });
 
-export const SaveUserReqSchema = Type.Object(
+export const CreateUserReqSchema = Type.Object(
   {
     username: Type.String({ minLength: 3, maxLength: 50, description: "用户名" }),
     email: Type.String({ format: "email", description: "邮箱地址" }),
     password: Type.String({ minLength: 6, maxLength: 20, description: "密码" }),
     status: Type.Optional(Type.Integer({ description: "状态" })),
   },
-  { $id: "saveUserReq" }
+{ $id: "createUserReq" }
 );
 
-export type SaveUserReq = Static<typeof SaveUserReqSchema>;
+export type CreateUserReq = Static<typeof CreateUserReqSchema>;
 
 const registerUser = (fastify: FastifyInstance) => {
   fastify.addSchema(SysUserSchema);
   fastify.addSchema(UserListQuerySchema);
   fastify.addSchema(UserListResponseSchema);
-  fastify.addSchema(SaveUserReqSchema);
+fastify.addSchema(CreateUserReqSchema);
 };
 
 export default registerUser;

@@ -6,17 +6,16 @@
 import { history } from '@umijs/max';
 import { message } from 'antd';
 import { clearTokens, isLoggedIn } from './token';
-import { userLogout } from '@/services/yishan-admin/sysAuth';
+import { logout as apiLogout } from '@/services/yishan-admin/auth';
 
 /**
  * 用户注销
  */
 export const logout = async (redirectToLogin = true) => {
   try {
-    // 调用后端注销接口
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (refreshToken) {
-      await userLogout({ refreshToken });
+    // 已登录时调用后端注销接口（使用Authorization头，不传body）
+    if (isLoggedIn()) {
+      await apiLogout();
     }
   } catch (error) {
     console.error('注销失败:', error);

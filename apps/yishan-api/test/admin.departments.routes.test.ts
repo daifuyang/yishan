@@ -33,7 +33,6 @@ describe('Admin Departments routes', () => {
       {
         id: 1,
         name: '技术部',
-        code: 'TECH',
         parentId: null,
         parentName: undefined,
         status: 1,
@@ -73,7 +72,6 @@ describe('Admin Departments routes', () => {
     const created = {
       id: 100,
       name: '市场部',
-      code: 'MKT',
       parentId: null,
       parentName: undefined,
       status: 1,
@@ -94,7 +92,7 @@ describe('Admin Departments routes', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/',
-      payload: { name: '市场部', code: 'MKT', status: 1 }
+      payload: { name: '市场部', status: 1 }
     })
 
     expect(res.statusCode).toBe(200)
@@ -115,7 +113,7 @@ describe('Admin Departments routes', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/',
-      payload: { name: '技术部', code: 'TECH' }
+      payload: { name: '技术部' }
     })
 
     expect(res.statusCode).toBe(200)
@@ -133,7 +131,6 @@ describe('Admin Departments routes', () => {
     const updated = {
       id: 5,
       name: '技术支持部',
-      code: 'TECHSUP',
       parentId: 1,
       parentName: '技术部',
       status: 1,
@@ -211,7 +208,6 @@ describe('Admin Departments routes', () => {
     const deptDetail = {
       id: 5,
       name: '研发部',
-      code: 'RD',
       parentId: 0,
       parentName: '总部',
       status: 1,
@@ -233,7 +229,7 @@ describe('Admin Departments routes', () => {
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.success).toBe(true)
-    expect(body.data).toMatchObject({ id: 5, name: '研发部', code: 'RD' })
+    expect(body.data).toMatchObject({ id: 5, name: '研发部' })
 
     await app.close()
   })
@@ -283,7 +279,7 @@ describe('Admin Departments routes', () => {
   it('POST / 参数不合法应返回 400', async () => {
     const app = await buildApp()
 
-    const res = await app.inject({ method: 'POST', url: '/', payload: { code: 'NO_NAME' } })
+    const res = await app.inject({ method: 'POST', url: '/', payload: {} })
     expect(res.statusCode).toBe(400)
     const body = res.json()
     expect(body.success).toBe(false)

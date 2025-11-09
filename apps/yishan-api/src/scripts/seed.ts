@@ -100,6 +100,62 @@ async function main() {
       role: superAdminRole.name
     });
 
+    // ================================
+    // 树形部门结构（愚公软件为一级目录）
+    // ================================
+    console.log('开始创建树形部门结构（愚公软件）...');
+
+    // 辅助函数：按名称唯一进行 upsert
+    const upsertDept = async (
+      name: string,
+      parentId: number | null,
+      sortOrder: number,
+      description?: string
+    ) => {
+      const dept = await prisma.sysDept.upsert({
+        where: { name },
+        update: {
+          parentId: parentId ?? undefined,
+          description,
+          status: 1,
+          sort_order: sortOrder,
+          leaderId: adminUser!.id,
+          updaterId: adminUser!.id
+        },
+        create: {
+          name,
+          parentId: parentId ?? undefined,
+          description,
+          status: 1,
+          sort_order: sortOrder,
+          leaderId: adminUser!.id,
+          creatorId: adminUser!.id,
+          updaterId: adminUser!.id
+        }
+      });
+      return dept;
+    };
+
+    // 一级目录：愚公软件
+    const rootYugong = await upsertDept('愚公软件', null, 0, '公司根节点');
+
+    // 二级目录：公司层级
+    const shHq = await upsertDept('上海总公司', rootYugong.id, 1, '总部');
+    const czBranch = await upsertDept('常州分公司', rootYugong.id, 2, '分公司');
+
+    // 三级目录：深圳总公司下的部门
+    await upsertDept('研发部门（上海）', shHq.id, 1, '研发部门');
+    await upsertDept('市场部门（上海）', shHq.id, 2, '市场部门');
+    await upsertDept('测试部门（上海）', shHq.id, 3, '测试部门');
+    await upsertDept('财务部门（上海）', shHq.id, 4, '财务部门');
+    await upsertDept('运维部门（上海）', shHq.id, 5, '运维部门');
+
+    // 三级目录：长沙分公司下的部门
+    await upsertDept('市场部门（常州）', czBranch.id, 1, '市场部门');
+    await upsertDept('财务部门（常州）', czBranch.id, 2, '财务部门');
+
+    console.log('✅ 树形部门结构创建完成');
+
   } catch (error) {
     console.error('❌ 种子数据创建失败:', error);
     throw error;

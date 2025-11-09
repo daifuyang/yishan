@@ -4,7 +4,7 @@
 
 import { prismaManager } from "../utils/prisma.js";
 import type { Prisma } from "../generated/prisma/client.js";
-import { DeptListQuery, SaveDeptReq, SysDeptResp, UpdateDeptReq } from "../schemas/department.js";
+import { DeptListQuery, CreateDeptReq, SysDeptResp, UpdateDeptReq } from "../schemas/department.js";
 import { dateUtils } from "../utils/date.js";
 
 // Prisma 生成类型，包含 parent/leader/creator/updater 的必要选择集
@@ -29,7 +29,6 @@ export class SysDeptModel {
     return {
       id: dept.id,
       name: dept.name,
-      code: dept.code ?? undefined,
       parentId: dept.parentId ?? undefined,
       parentName: dept.parent?.name ?? dept.parentName,
       status: dept.status,
@@ -63,7 +62,6 @@ export class SysDeptModel {
     if (keyword) {
       where.OR = [
         { name: { contains: keyword } },
-        { code: { contains: keyword } },
         { description: { contains: keyword } },
       ];
     }
@@ -103,7 +101,6 @@ export class SysDeptModel {
     if (keyword) {
       where.OR = [
         { name: { contains: keyword } },
-        { code: { contains: keyword } },
         { description: { contains: keyword } },
       ];
     }
@@ -127,29 +124,19 @@ export class SysDeptModel {
     return this.mapToResp(dept);
   }
 
-  /** 根据名称或编码获取部门 */
-  static async getDeptByNameOrCode(name?: string, code?: string) {
+  /** 根据名称获取部门 */
+  static async getDeptByName(name?: string) {
+    if (!name) return null;
     return await this.prisma.sysDept.findFirst({
-      where: {
-        AND: [
-          { deletedAt: null },
-          {
-            OR: [
-              ...(name ? [{ name }] : []),
-              ...(code ? [{ code }] : []),
-            ],
-          },
-        ],
-      },
+      where: { deletedAt: null, name },
     });
   }
 
   /** 创建部门 */
-  static async createDept(req: SaveDeptReq): Promise<SysDeptResp> {
+  static async createDept(req: CreateDeptReq): Promise<SysDeptResp> {
     const dept = await this.prisma.sysDept.create({
       data: {
         name: req.name,
-        code: req.code,
         parentId: req.parentId ?? null,
         status: req.status ?? 1,
         sort_order: req.sort_order ?? 0,
@@ -172,7 +159,6 @@ export class SysDeptModel {
   static async updateDept(id: number, req: UpdateDeptReq): Promise<SysDeptResp> {
     const updateData: any = {};
     if (req.name !== undefined) updateData.name = req.name;
-    if (req.code !== undefined) updateData.code = req.code;
     if (req.parentId !== undefined) updateData.parentId = req.parentId;
     if (req.status !== undefined) updateData.status = req.status;
     if (req.sort_order !== undefined) updateData.sort_order = req.sort_order;
@@ -203,5 +189,45 @@ export class SysDeptModel {
     });
 
     return { id };
+  }
+
+  /** 获取部门树（全部或某个根节点下） */
+  static async getDeptTree(rootId?: number | null): Promise<(SysDeptResp & { children: any[] | null })[]> {
+    const depts = await this.prisma.sysDept.findMany({
+      where: { deletedAt: null },
+      orderBy: { sort_order: "asc" },
+      include: {
+        parent: { select: { name: true } },
+        leader: { select: { username: true } },
+        creator: { select: { username: true } },
+        updater: { select: { username: true } },
+      },
+    });
+
+    // 映射为响应节点并建立索引
+    const nodeMap = new Map<number, SysDeptResp & { children: any[] | null }>();
+    const roots: (SysDeptResp & { children: any[] | null })[] = [];
+
+    for (const d of depts) {
+      const node = { ...this.mapToResp(d), children: null as any[] | null };
+      nodeMap.set(d.id, node);
+    }
+
+    for (const d of depts) {
+      const node = nodeMap.get(d.id)!;
+      const pid = d.parentId ?? null;
+      const isRootMatch = rootId === undefined ? pid === null : pid === (rootId ?? null);
+      if (isRootMatch) {
+        roots.push(node);
+      } else if (pid !== null) {
+        const parentNode = nodeMap.get(pid);
+        if (parentNode) {
+          if (!parentNode.children) parentNode.children = [];
+          parentNode.children.push(node);
+        }
+      }
+    }
+
+    return roots;
   }
 }

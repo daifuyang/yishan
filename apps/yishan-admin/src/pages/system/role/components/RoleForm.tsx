@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Form, Input, Radio, Select, Modal } from 'antd';
+import React from 'react';
+import { Form, Input, Radio, Modal } from 'antd';
 import type { FormInstance } from 'antd';
 
 export interface RoleFormProps {
@@ -8,7 +8,7 @@ export interface RoleFormProps {
   title: string;
   initialValues?: API.sysRole;
   onCancel: () => void;
-  onSubmit: (values: API.sysRoleCreateRequest) => Promise<void>;
+  onSubmit: (values: API.saveRoleReq) => Promise<void>;
   confirmLoading: boolean;
 }
 
@@ -43,11 +43,15 @@ const RoleForm: React.FC<RoleFormProps> = ({
     if (open) {
       if (initialValues) {
         // 编辑模式：设置表单值
-        form.setFieldsValue(initialValues);
+        form.setFieldsValue({
+          name: initialValues.name,
+          description: initialValues.description,
+          status: initialValues.status ?? 1,
+        });
       } else {
         // 新增模式：重置表单并设置默认值
         form.resetFields();
-        form.setFieldsValue({ status: 1, isSystem: 0, sortOrder: 0 });
+        form.setFieldsValue({ status: 1 });
       }
     }
   };
@@ -60,7 +64,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
       onOk={handleSubmit}
       confirmLoading={confirmLoading}
       maskClosable={false}
-      destroyOnHidden={true}
+      destroyOnClose={true}
       afterOpenChange={handleAfterOpenChange}
     >
       <Form
@@ -69,7 +73,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
         preserve={false}
       >
         <Form.Item
-          name="roleName"
+          name="name"
           label="角色名称"
           rules={[
             { required: true, message: '请输入角色名称' },
@@ -79,26 +83,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
           <Input placeholder="请输入角色名称" />
         </Form.Item>
 
-        <Form.Item
-          name="sortOrder"
-          label="排序顺序"
-          rules={[
-            { required: true, message: '请输入排序顺序' },
-          ]}
-        >
-          <Input type="number" placeholder="请输入排序顺序" />
-        </Form.Item>
-
-        <Form.Item
-          name="isSystem"
-          label="角色类型"
-          rules={[{ required: true, message: '请选择角色类型' }]}
-        >
-          <Radio.Group>
-            <Radio value={1}>系统角色</Radio>
-            <Radio value={0}>自定义角色</Radio>
-          </Radio.Group>
-        </Form.Item>
+        {/* 系统默认角色由后端生成或配置，不在此处修改 */}
 
         <Form.Item
           name="status"
@@ -112,7 +97,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
         </Form.Item>
 
         <Form.Item
-          name="roleDesc"
+          name="description"
           label="角色描述"
           rules={[{ max: 200, message: '描述最多200个字符' }]}
         >

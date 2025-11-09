@@ -2,7 +2,7 @@ import { PlusOutlined, DownOutlined } from '@ant-design/icons';
 import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, Form, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
 import React, { useRef, useState } from 'react';
-import { getRoleList, updateRole, createRole, getRoleById, deleteRole } from '@/services/yishan-admin/sysRoles';
+import { getRoleList, updateRole, createRole, getRoleDetail, deleteRole } from '@/services/yishan-admin/sysRoles';
 import RoleForm from './components/RoleForm';
 
 /**
@@ -86,7 +86,7 @@ const RoleList: React.FC = () => {
   const handleEdit = async (id: number) => {
     try {
       setFormTitle('编辑角色');
-      const result = await getRoleById({ id });
+      const result = await getRoleDetail({ id });
       if (result.success && result.data) {
         setCurrentRole(result.data);
         setFormOpen(true);
@@ -160,14 +160,19 @@ const RoleList: React.FC = () => {
   /**
    * 处理表单提交
    */
-  const handleFormSubmit = async (values: API.sysRoleCreateRequest) => {
+  const handleFormSubmit = async (values: API.saveRoleReq) => {
     try {
       setConfirmLoading(true);
       if (currentRole?.id) {
         // 编辑角色
+        const payload: API.updateRoleReq = {
+          name: values.name,
+          description: values.description,
+          status: values.status,
+        };
         await updateRole(
           { id: currentRole.id },
-          values
+          payload
         );
         message.success('角色更新成功');
       } else {
@@ -195,22 +200,18 @@ const RoleList: React.FC = () => {
     },
     {
       title: '角色名称',
-      dataIndex: 'roleName',
+      dataIndex: 'name',
     },
     {
       title: '角色描述',
-      dataIndex: 'roleDesc',
+      dataIndex: 'description',
       search: false,
       ellipsis: true,
     },
     {
       title: '系统角色',
-      dataIndex: 'isSystem',
-      valueEnum: {
-        [IsSystem.YES]: { text: '系统角色', status: 'Processing' },
-        [IsSystem.NO]: { text: '自定义角色', status: 'Success' },
-      },
-      render: (_, record) => <SystemRoleTag isSystem={record.isSystem} />,
+      dataIndex: 'isSystemDefault',
+      render: (_, record) => <SystemRoleTag isSystem={record.isSystemDefault ? IsSystem.YES : IsSystem.NO} />,
     },
     {
       title: '状态',
@@ -220,11 +221,6 @@ const RoleList: React.FC = () => {
         [RoleStatus.DISABLED]: { text: '禁用', status: 'Error' },
       },
       render: (_, record) => <RoleStatusTag status={record.status} />,
-    },
-    {
-      title: '排序',
-      dataIndex: 'sortOrder',
-      search: false,
     },
     {
       title: '创建时间',
@@ -305,9 +301,9 @@ const RoleList: React.FC = () => {
             ...restParams,
           });
           return {
-            data: result.data?.list || [],
+            data: result.data || [],
             success: result.success,
-            total: result.data?.pagination?.total || 0,
+            total: result.pagination?.total || 0,
           };
         }}
         columns={columns}

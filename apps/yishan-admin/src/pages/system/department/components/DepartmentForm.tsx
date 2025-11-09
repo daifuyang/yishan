@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Form, Input, Radio, Modal, TreeSelect } from 'antd';
-import type { FormInstance } from 'antd';
-import { getDepartmentTree } from '@/services/yishan-admin/sysDepartments';
+import type { FormInstance, TreeDataNode } from 'antd';
+import { getDeptTree } from '@/services/yishan-admin/sysDepts';
+import { DataNode } from 'antd/es/tree';
 
 export interface DepartmentFormProps {
   form: FormInstance;
   open: boolean;
   title: string;
-  initialValues?: API.sysDepartment;
+  initialValues?: API.sysDept;
   onCancel: () => void;
-  onSubmit: (values: API.sysDepartmentCreateRequest) => Promise<void>;
+  onSubmit: (values: API.createDeptReq) => Promise<void>;
   confirmLoading: boolean;
 }
 
@@ -23,24 +24,17 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
   confirmLoading,
 }) => {
   const [treeLoading, setTreeLoading] = useState(false);
-  const [treeData, setTreeData] = useState<{ title: string; value: number | undefined; children?: any[] }[]>([]);
 
-  const buildTreeData = (list: API.sysDepartment[] = []): any[] => {
-    return (list || []).map((d) => ({
-      title: d.deptName || `未命名(${d.id})`,
-      value: (d.id as number) ?? 0,
-      children: buildTreeData(d.children || []),
-    }));
-  };
+  const [treeData, setTreeData] = useState<API.deptTreeList>([]);
+
 
   const fetchTree = async () => {
     try {
       setTreeLoading(true);
-      const res = await getDepartmentTree();
-      const nodes = buildTreeData(res.data?.tree || []);
-      setTreeData([{ title: '顶级部门', value: 0, children: nodes }]);
-    } catch (err) {
-      setTreeData([{ title: '顶级部门', value: 0 }]);
+      const result = await getDeptTree();
+      setTreeData(result.data || []);
+    } catch {
+      setTreeData([]);
     } finally {
       setTreeLoading(false);
     }
@@ -49,34 +43,49 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      await onSubmit(values);
-    } catch (error) {
+      const payload: API.createDeptReq = {
+        name: values.name,
+        parentId: values.parentId === 0 ? undefined : values.parentId,
+        status: values.status,
+        sort_order: Number(values.sort_order ?? 0),
+        description: values.description,
+        leaderId: values.leaderId ? Number(values.leaderId) : undefined,
+      };
+      await onSubmit(payload);
+    } catch {
       // ignore
     }
   };
 
-  const handleAfterOpenChange = (opened: boolean) => {
-    if (opened) {
+  useEffect(() => {
+    if (open) {
       fetchTree();
       if (initialValues) {
         form.setFieldsValue({
           parentId: initialValues.parentId ?? 0,
-          deptName: initialValues.deptName,
-          deptDesc: initialValues.deptDesc,
-          deptType: initialValues.deptType ?? 2,
+          name: initialValues.name,
           status: initialValues.status ?? 1,
-          sortOrder: initialValues.sortOrder ?? 0,
+          sort_order: initialValues.sort_order ?? 0,
+          description: initialValues.description,
           leaderId: initialValues.leaderId,
-          phone: initialValues.phone,
-          email: initialValues.email,
-          address: initialValues.address,
         });
       } else {
         form.resetFields();
-        form.setFieldsValue({ status: 1, deptType: 2, sortOrder: 0, parentId: 0 });
+        // 新增时先不设置 parentId，待树数据加载完成后再默认选中顶级部门，避免短暂显示为数值“0”
+        form.setFieldsValue({ status: 1, sort_order: 0 });
       }
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // 树数据到达后，如果是新增模式，默认选择“顶级部门”（id=0），确保显示为标签而非数值“0”
+  useEffect(() => {
+    if (open && !initialValues && treeData && treeData.length) {
+      const firstApiNodeId = treeData[0]?.id;
+      form.setFieldValue('parentId', firstApiNodeId ?? 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeData]);
 
   return (
     <Modal
@@ -87,12 +96,12 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
       confirmLoading={confirmLoading}
       maskClosable={false}
       destroyOnClose={true}
-      afterOpenChange={handleAfterOpenChange}
     >
       <Form form={form} layout="vertical" preserve={false}>
         <Form.Item name="parentId" label="上级部门" rules={[{ required: true, message: '请选择上级部门' }]}>
           <TreeSelect
-            treeData={treeData}
+            treeData={(treeData || []) as unknown as DataNode[]}
+            fieldNames={{ label: 'name', value: 'id', children: 'children' }}
             allowClear
             placeholder="请选择上级部门"
             treeDefaultExpandAll
@@ -101,16 +110,8 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
           />
         </Form.Item>
 
-        <Form.Item name="deptName" label="部门名称" rules={[{ required: true, message: '请输入部门名称' }, { max: 50, message: '最多50个字符' }]}>
+        <Form.Item name="name" label="部门名称" rules={[{ required: true, message: '请输入部门名称' }, { max: 50, message: '最多50个字符' }]}>
           <Input placeholder="请输入部门名称" />
-        </Form.Item>
-
-        <Form.Item name="deptType" label="部门类型" rules={[{ required: true, message: '请选择部门类型' }]}>
-          <Radio.Group>
-            <Radio value={1}>公司</Radio>
-            <Radio value={2}>部门</Radio>
-            <Radio value={3}>小组</Radio>
-          </Radio.Group>
         </Form.Item>
 
         <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
@@ -120,28 +121,16 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
           </Radio.Group>
         </Form.Item>
 
-        <Form.Item name="sortOrder" label="排序" rules={[{ required: true, message: '请输入排序值' }]}>
+        <Form.Item name="sort_order" label="排序" rules={[{ required: true, message: '请输入排序值' }]}>
           <Input type="number" placeholder="请输入排序值" />
         </Form.Item>
 
-        <Form.Item name="deptDesc" label="部门描述" rules={[{ max: 200, message: '最多200个字符' }]}>
-          <Input.TextArea rows={3} placeholder="请输入部门描述" />
+        <Form.Item name="description" label="部门描述" rules={[{ max: 200, message: '最多200个字符' }]}>
+          <Input.TextArea rows={3} placeholder="请输入部门描述（可选）" />
         </Form.Item>
 
         <Form.Item name="leaderId" label="负责人ID">
           <Input type="number" placeholder="请输入负责人用户ID（可选）" />
-        </Form.Item>
-
-        <Form.Item name="phone" label="联系电话" rules={[{ max: 20, message: '最多20个字符' }]}>
-          <Input placeholder="请输入联系电话（可选）" />
-        </Form.Item>
-
-        <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '邮箱格式不正确' }]}>
-          <Input placeholder="请输入邮箱（可选）" />
-        </Form.Item>
-
-        <Form.Item name="address" label="地址" rules={[{ max: 200, message: '最多200个字符' }]}>
-          <Input.TextArea rows={3} placeholder="请输入地址（可选）" />
         </Form.Item>
       </Form>
     </Modal>

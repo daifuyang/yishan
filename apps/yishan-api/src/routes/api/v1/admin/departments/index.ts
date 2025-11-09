@@ -1,10 +1,9 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../utils/response.js";
-import { ValidationErrorCode } from "../../../../../constants/business-codes/validation.js";
 import { DeptErrorCode } from "../../../../../constants/business-codes/dept.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
-import { DeptListQuery, SaveDeptReq, UpdateDeptReq } from "../../../../../schemas/department.js";
+import { DeptListQuery, CreateDeptReq, UpdateDeptReq } from "../../../../../schemas/department.js";
 import { DeptService } from "../../../../../services/dept.service.js";
 
 const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
@@ -51,18 +50,15 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         operationId: "getDeptDetail",
         tags: ["sysDepts"],
         security: [{ bearerAuth: [] }],
-        params: Type.Object({ id: Type.String({ description: "部门ID" }) }),
+        params: Type.Object({ id: Type.Integer({ description: "部门ID", minimum: 1 }) }),
         response: { 200: { $ref: "deptDetailResp#" } },
       },
     },
     async (
-      request: FastifyRequest<{ Params: { id: string } }>,
+      request: FastifyRequest<{ Params: { id: number } }>,
       reply: FastifyReply
     ) => {
-      const deptId = parseInt(request.params.id);
-      if (isNaN(deptId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "部门ID不能为空");
-      }
+      const deptId = request.params.id;
       const dept = await DeptService.getDeptById(deptId);
       if (!dept) {
         throw new BusinessError(DeptErrorCode.DEPT_NOT_FOUND, "部门不存在");
@@ -81,12 +77,12 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         operationId: "createDept",
         tags: ["sysDepts"],
         security: [{ bearerAuth: [] }],
-        body: { $ref: "saveDeptReq#" },
+        body: { $ref: "createDeptReq#" },
         response: { 200: { $ref: "deptDetailResp#" } },
       },
     },
     async (
-      request: FastifyRequest<{ Body: SaveDeptReq }>,
+      request: FastifyRequest<{ Body: CreateDeptReq }>,
       reply: FastifyReply
     ) => {
       const dept = await DeptService.createDept(request.body);
@@ -104,19 +100,16 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         operationId: "updateDept",
         tags: ["sysDepts"],
         security: [{ bearerAuth: [] }],
-        params: Type.Object({ id: Type.String({ description: "部门ID" }) }),
+        params: Type.Object({ id: Type.Integer({ description: "部门ID", minimum: 1 }) }),
         body: { $ref: "updateDeptReq#" },
         response: { 200: { $ref: "deptDetailResp#" } },
       },
     },
     async (
-      request: FastifyRequest<{ Params: { id: string }; Body: UpdateDeptReq }>,
+      request: FastifyRequest<{ Params: { id: number }; Body: UpdateDeptReq }>,
       reply: FastifyReply
     ) => {
-      const deptId = parseInt(request.params.id);
-      if (isNaN(deptId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "部门ID不能为空");
-      }
+      const deptId = request.params.id;
       const dept = await DeptService.updateDept(deptId, request.body);
       return ResponseUtil.success(reply, dept, "更新部门成功");
     }
@@ -132,20 +125,39 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         operationId: "deleteDept",
         tags: ["sysDepts"],
         security: [{ bearerAuth: [] }],
-        params: Type.Object({ id: Type.String({ description: "部门ID" }) }),
+        params: Type.Object({ id: Type.Integer({ description: "部门ID", minimum: 1 }) }),
         response: { 200: { $ref: "deptDeleteResp#" } },
       },
     },
     async (
-      request: FastifyRequest<{ Params: { id: string } }>,
+      request: FastifyRequest<{ Params: { id: number } }>,
       reply: FastifyReply
     ) => {
-      const deptId = parseInt(request.params.id);
-      if (isNaN(deptId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "部门ID不能为空");
-      }
+      const deptId = request.params.id;
       const result = await DeptService.deleteDept(deptId);
       return ResponseUtil.success(reply, result, "删除部门成功");
+    }
+  );
+
+  // GET /api/v1/admin/departments/tree - 获取部门树形结构
+  fastify.get(
+    "/tree",
+    {
+      schema: {
+        summary: "获取部门树",
+        description: "返回部门树形结构（按 sort_order 排序）",
+        operationId: "getDeptTree",
+        tags: ["sysDepts"],
+        security: [{ bearerAuth: [] }],
+        response: { 200: { $ref: "deptTreeResp#" } },
+      },
+    },
+    async (
+      request: FastifyRequest,
+      reply: FastifyReply
+    ) => {
+      const tree = await DeptService.getDeptTree();
+      return ResponseUtil.success(reply, tree, "获取部门树成功");
     }
   );
 };

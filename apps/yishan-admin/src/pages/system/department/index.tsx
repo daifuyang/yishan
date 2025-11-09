@@ -3,15 +3,15 @@ import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, Form, message, Popconfirm, Space, Tag } from 'antd';
 import React, { useRef, useState } from 'react';
 import { 
-  getDepartmentList,
-  createDepartment,
-  getAdminDepartmentsId,
-  putAdminDepartmentsId,
-  putAdminDepartmentsIdStatus,
-  deleteAdminDepartmentsId,
-  batchDeleteDepartments,
-} from '@/services/yishan-admin/sysDepartments';
+  getDeptTree,
+  createDept,
+  getDeptDetail,
+  updateDept,
+  deleteDept,
+} from '@/services/yishan-admin/sysDepts';
 import DepartmentForm from './components/DepartmentForm';
+
+type DeptTreeNode = API.deptTreeNode;
 
 const DeptStatus = {
   ENABLED: 1,
@@ -36,19 +36,20 @@ const DeptTypeTag: React.FC<{ type?: number }> = ({ type }) => {
 };
 
 const DepartmentList: React.FC = () => {
-  const actionRef = useRef<ActionType>(null);
+  const actionRef = useRef<ActionType | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [form] = Form.useForm();
   const [formOpen, setFormOpen] = useState(false);
   const [formTitle, setFormTitle] = useState('新建部门');
-  const [currentDept, setCurrentDept] = useState<API.sysDepartment | undefined>(undefined);
+  const [currentDept, setCurrentDept] = useState<API.sysDept | undefined>(undefined);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
 
   const handleStatusChange = async (id: number, status: number) => {
     try {
       const newStatus = status === DeptStatus.ENABLED ? DeptStatus.DISABLED : DeptStatus.ENABLED;
-      await putAdminDepartmentsIdStatus(
+      await updateDept(
         { id },
         { status: newStatus as 0 | 1 }
       );
@@ -68,11 +69,9 @@ const DepartmentList: React.FC = () => {
   const handleEdit = async (id: number) => {
     try {
       setFormTitle('编辑部门');
-      const result = await getAdminDepartmentsId({ id });
-      const data = (result as any).data; // service response may not have success flag
-      const department = (data && (data as any).data) ? (data as any).data : result.data;
-      if (department) {
-        setCurrentDept(department);
+      const result = await getDeptDetail({ id });
+      if (result.success && result.data) {
+        setCurrentDept(result.data);
         setFormOpen(true);
       }
     } catch (error) {
@@ -82,7 +81,7 @@ const DepartmentList: React.FC = () => {
 
   const handleRemove = async (id: number) => {
     try {
-      await deleteAdminDepartmentsId({ id });
+      await deleteDept({ id });
       message.success('删除成功');
       actionRef.current?.reload();
     } catch (error) {
@@ -90,17 +89,28 @@ const DepartmentList: React.FC = () => {
     }
   };
 
-  const handleFormSubmit = async (values: API.sysDepartmentCreateRequest) => {
+  const handleFormSubmit = async (values: API.createDeptReq) => {
     try {
       setConfirmLoading(true);
       if (currentDept?.id) {
-        await putAdminDepartmentsId(
+        const payload: API.updateDeptReq = {
+          name: values.name,
+          parentId: values.parentId === 0 ? undefined : values.parentId,
+          status: values.status,
+          sort_order: values.sort_order,
+          description: values.description,
+          leaderId: values.leaderId,
+        };
+        await updateDept(
           { id: currentDept.id },
-          values
+          payload
         );
         message.success('部门更新成功');
       } else {
-        await createDepartment(values);
+        await createDept({
+          ...values,
+          parentId: values.parentId === 0 ? undefined : values.parentId,
+        });
         message.success('部门创建成功');
       }
       setFormOpen(false);
@@ -120,22 +130,16 @@ const DepartmentList: React.FC = () => {
     setBatchDeleteLoading(true);
     try {
       const ids = selectedRowKeys.map((key) => Number(key));
-      const res = await batchDeleteDepartments({ deptIds: ids });
-      const successCount = res.data?.successCount || 0;
-      const failureCount = res.data?.failureCount || 0;
+      const deletePromises = ids.map((id) => deleteDept({ id }));
+      const results = await Promise.allSettled(deletePromises);
+
+      const successCount = results.filter((r) => r.status === 'fulfilled').length;
+      const failureCount = results.length - successCount;
 
       if (successCount > 0) {
         message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
       } else {
         message.error('批量删除失败');
-      }
-
-      if (failureCount > 0 && res.data?.details?.length) {
-        const failed = res.data.details.filter((d) => d.success === false);
-        const tip = failed.map((f) => `ID ${f.id}: ${f.message}`).join('\n');
-        if (tip) {
-          message.warning(tip);
-        }
       }
 
       actionRef.current?.reload();
@@ -147,19 +151,23 @@ const DepartmentList: React.FC = () => {
     }
   };
 
-  const columns: ProColumns<API.sysDepartment>[] = [
+  const collectExpandKeys = (nodes: DeptTreeNode[] = []): React.Key[] => {
+    const keys: React.Key[] = [];
+    const dfs = (arr: DeptTreeNode[]) => {
+      arr.forEach((n) => {
+        if (n.children && n.children.length) {
+          keys.push(n.id as React.Key);
+          dfs(n.children);
+        }
+      });
+    };
+    dfs(nodes);
+    return keys;
+  };
+
+  const columns: ProColumns<DeptTreeNode>[] = [
     { title: 'ID', dataIndex: 'id', search: false },
-    { title: '部门名称', dataIndex: 'deptName' },
-    {
-      title: '类型',
-      dataIndex: 'deptType',
-      valueEnum: {
-        [DeptType.COMPANY]: { text: '公司', status: 'Default' },
-        [DeptType.DEPARTMENT]: { text: '部门', status: 'Processing' },
-        [DeptType.TEAM]: { text: '小组', status: 'Success' },
-      },
-      render: (_, record) => <DeptTypeTag type={record.deptType} />,
-    },
+    { title: '部门名称', dataIndex: 'name' },
     {
       title: '状态',
       dataIndex: 'status',
@@ -169,10 +177,9 @@ const DepartmentList: React.FC = () => {
       },
       render: (_, record) => <DeptStatusTag status={record.status} />,
     },
+    { title: '上级部门', dataIndex: 'parentName', search: false },
     { title: '负责人', dataIndex: 'leaderName', search: false },
-    { title: '电话', dataIndex: 'phone', search: false },
-    { title: '邮箱', dataIndex: 'email', search: false },
-    { title: '排序', dataIndex: 'sortOrder', search: false },
+    { title: '排序', dataIndex: 'sort_order', search: false },
     { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
     { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime' },
     {
@@ -195,8 +202,8 @@ const DepartmentList: React.FC = () => {
 
   return (
     <>
-      <ProTable<API.sysDepartment>
-        headerTitle="部门列表"
+      <ProTable<DeptTreeNode>
+        headerTitle="部门树"
         actionRef={actionRef}
         rowKey="id"
         search={{ labelWidth: 120 }}
@@ -205,21 +212,26 @@ const DepartmentList: React.FC = () => {
             <PlusOutlined /> 新建
           </Button>,
         ]}
-        request={async (params) => {
-          const { current, pageSize, ...restParams } = params;
-          const result = await getDepartmentList({
-            page: current,
-            pageSize,
-            ...restParams,
-          });
+        request={async () => {
+          const result = await getDeptTree();
+          const treeData: DeptTreeNode[] = result.data || [];
+          // 控制展开：接口数据到达后，收集所有父节点并设置为展开
+          setExpandedRowKeys(collectExpandKeys(treeData));
           return {
-            data: result.data?.list || [],
-            success: (result as any).success ?? true,
-            total: result.data?.pagination?.total || 0,
+            data: treeData,
+            success: result.success,
           };
         }}
+        pagination={false}
+        expandable={{
+          expandedRowKeys,
+          onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]),
+        }}
         columns={columns}
-        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: (keys: React.Key[], _rows: DeptTreeNode[]) => setSelectedRowKeys(keys),
+        }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

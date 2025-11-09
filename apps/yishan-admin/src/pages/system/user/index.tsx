@@ -1,9 +1,10 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, message, Popconfirm, Space, Tag } from 'antd';
+import { Button, message, Popconfirm, Space, Tag, Form } from 'antd';
 import React, { useRef, useState } from 'react';
 import { useIntl } from '@umijs/max';
-import { deleteUser, getUserList, updateUserStatus, batchDeleteUsers } from '@/services/yishan-admin/sysUsers';
+import { deleteUser, getUserList, updateUser, getUserDetail, createUser } from '@/services/yishan-admin/sysUsers';
+import UserForm from './components/UserForm';
 
 /**
  * 用户状态枚举
@@ -33,35 +34,61 @@ const UserList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const intl = useIntl();
+  const [form] = Form.useForm();
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
+  const [formTitle, setFormTitle] = useState('新建用户');
+  const [currentUser, setCurrentUser] = useState<API.sysUser | undefined>(undefined);
 
   /**
    * 处理用户状态变更
    */
   const handleStatusChange = async (id: number, status: number) => {
-    try {
-      const newStatus = status === UserStatus.ACTIVE ? UserStatus.DISABLED : UserStatus.ACTIVE;
-      await updateUserStatus(
+    const newStatus = status === UserStatus.ACTIVE ? UserStatus.DISABLED : UserStatus.ACTIVE;
+      const res = await updateUser(
         { id },
         { status: newStatus as 0 | 1 | 2 }
       );
-      message.success('状态更新成功');
+      message.success(res.message);
       actionRef.current?.reload();
-    } catch (error) {
-      message.error('操作失败');
+  };
+
+  const handleAdd = () => {
+    setFormMode('create');
+    setFormTitle('新建用户');
+    setCurrentUser(undefined);
+    setFormOpen(true);
+  };
+
+  const handleEdit = async (id: number) => {
+    setFormMode('edit');
+    setFormTitle('编辑用户');
+    const detail = await getUserDetail({ id });
+    if (detail.success && detail.data) {
+      setCurrentUser(detail.data);
+      setFormOpen(true);
     }
+  };
+
+  const handleFormSubmit = async (values: API.createUserReq | API.updateUserReq) => {
+    if (formMode === 'edit' && currentUser?.id) {
+      await updateUser({ id: currentUser.id }, values as API.updateUserReq);
+      message.success('用户更新成功');
+    } else {
+      await createUser(values as API.createUserReq);
+      message.success('用户创建成功');
+    }
+    setFormOpen(false);
+    actionRef.current?.reload();
   };
 
   /**
    * 处理用户删除
    */
   const handleRemove = async (id: number) => {
-    try {
-      await deleteUser({ id });
-      message.success('删除成功');
-      actionRef.current?.reload();
-    } catch (error) {
-      message.error('删除失败');
-    }
+    const res = await deleteUser({ id });
+    message.success(res.message);
+    actionRef.current?.reload();
   };
 
   /**
@@ -72,32 +99,21 @@ const UserList: React.FC = () => {
       message.warning('请先选择要删除的用户');
       return;
     }
-    try {
-      const ids = selectedRowKeys.map((key) => Number(key));
-      const res = await batchDeleteUsers({ userIds: ids });
-      const successCount = res.data?.successCount || 0;
-      const failureCount = res.data?.failureCount || 0;
+    const ids = selectedRowKeys.map((key) => Number(key));
+    const deletePromises = ids.map((id) => deleteUser({ id }));
+    const results = await Promise.allSettled(deletePromises);
 
-      if (successCount > 0) {
-        message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
-      } else {
-        message.error('批量删除失败');
-      }
+    const successCount = results.filter((r) => r.status === 'fulfilled').length;
+    const failureCount = results.length - successCount;
 
-      // 可选：提示失败详情
-      if (failureCount > 0 && res.data?.details?.length) {
-        const failed = res.data.details.filter((d) => d.success === false);
-        const tip = failed.map((f) => `ID ${f.id}: ${f.message}`).join('\n');
-        if (tip) {
-          message.warning(tip);
-        }
-      }
-
-      actionRef.current?.reload();
-      setSelectedRowKeys([]);
-    } catch (error) {
+    if (successCount > 0) {
+      message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
+    } else {
       message.error('批量删除失败');
     }
+
+    actionRef.current?.reload();
+    setSelectedRowKeys([]);
   };
 
   /**
@@ -152,13 +168,13 @@ const UserList: React.FC = () => {
       dataIndex: 'option',
       valueType: 'option',
       render: (_, record) => [
-        <a key="edit" onClick={() => { }}>
+        <a key="edit" onClick={() => handleEdit(record.id)}>
           编辑
         </a>,
         record.status !== UserStatus.LOCKED && (
           <a
             key="status"
-            onClick={() => handleStatusChange(record.id || 0, record.status || 0)}
+            onClick={() => handleStatusChange(record.id, record.status)}
           >
             {record.status === UserStatus.ACTIVE ? '禁用' : '启用'}
           </a>
@@ -166,7 +182,7 @@ const UserList: React.FC = () => {
         <Popconfirm
           key="delete"
           title="确定要删除该用户吗？"
-          onConfirm={() => handleRemove(record.id || 0)}
+          onConfirm={() => handleRemove(record.id)}
         >
           <Button className='p-0' type="link" danger disabled={record.status === UserStatus.LOCKED}>
             删除
@@ -177,6 +193,7 @@ const UserList: React.FC = () => {
   ];
 
   return (
+    <>
     <ProTable<API.sysUser>
       headerTitle="用户列表"
       actionRef={actionRef}
@@ -188,7 +205,7 @@ const UserList: React.FC = () => {
         <Button
           type="primary"
           key="primary"
-          onClick={() => { }}
+          onClick={handleAdd}
         >
           <PlusOutlined /> 新建
         </Button>,
@@ -201,9 +218,9 @@ const UserList: React.FC = () => {
           ...restParams,
         });
         return {
-          data: result.data?.list || [],
+          data: result.data || [],
           success: result.success,
-          total: result.data?.pagination?.total || 0,
+          total: (result as any).pagination?.total || 0,
         };
       }}
       columns={columns}
@@ -240,6 +257,16 @@ const UserList: React.FC = () => {
         );
       }}
     />
+    <UserForm
+      form={form}
+      open={formOpen}
+      mode={formMode}
+      title={formTitle}
+      initialValues={currentUser}
+      onOpenChange={setFormOpen}
+      onSubmit={handleFormSubmit}
+    />
+    </>
   );
 };
 

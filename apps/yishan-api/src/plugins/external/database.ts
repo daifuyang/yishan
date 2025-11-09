@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import { prismaManager } from '../../utils/prisma.js'
+import type { PrismaClient } from '../../generated/prisma/client.js'
 
 /**
  * 数据库连接插件选项接口
@@ -126,7 +127,7 @@ async function databasePlugin(
 // 声明 Fastify 类型扩展
 declare module 'fastify' {
   interface FastifyInstance {
-    prisma: ReturnType<typeof prismaManager.getClient>
+    prisma: PrismaClient
     dbHealthCheck(): Promise<{
       status: 'healthy' | 'unhealthy' | 'error'
       timestamp: string

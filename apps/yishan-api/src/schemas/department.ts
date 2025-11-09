@@ -11,7 +11,6 @@ const SysDeptSchema = Type.Object(
   {
     id: Type.Number({ description: "部门ID", example: 1 }),
     name: Type.String({ description: "部门名称", example: "技术部" }),
-    code: Type.Optional(Type.String({ description: "部门编码", example: "TECH" })),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID", example: 0 })),
     parentName: Type.Optional(Type.String({ description: "上级部门名称", example: "总部" })),
     status: Type.Number({ enum: [0, 1], description: "状态（0-禁用，1-启用）", example: 1 }),
@@ -32,30 +31,29 @@ const SysDeptSchema = Type.Object(
 export type SysDeptResp = Static<typeof SysDeptSchema>;
 
 // 创建部门请求 Schema
-const SaveDeptReqSchema = Type.Object(
+const CreateDeptReqSchema = Type.Object(
   {
     name: Type.String({ description: "部门名称", minLength: 1, maxLength: 100 }),
-    code: Type.Optional(Type.String({ description: "部门编码", minLength: 1, maxLength: 50 })),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID" })),
     status: Type.Optional(Type.Number({ enum: [0, 1], description: "状态", default: 1 })),
     sort_order: Type.Optional(Type.Number({ description: "排序序号", default: 0 })),
     description: Type.Optional(Type.String({ description: "部门描述", maxLength: 255 })),
     leaderId: Type.Optional(Type.Number({ description: "负责人ID" })),
   },
-  { $id: "saveDeptReq" }
+  { $id: "createDeptReq" }
 );
 
 // 更新部门请求 Schema
-const UpdateDeptReqSchema = Type.Partial(SaveDeptReqSchema, { $id: "updateDeptReq", minProperties: 1 });
+const UpdateDeptReqSchema = Type.Partial(CreateDeptReqSchema, { $id: "updateDeptReq", minProperties: 1 });
 
-export type SaveDeptReq = Static<typeof SaveDeptReqSchema>;
+export type CreateDeptReq = Static<typeof CreateDeptReqSchema>;
 export type UpdateDeptReq = Static<typeof UpdateDeptReqSchema>;
 
 // 部门列表查询参数 Schema
 const DeptListQuerySchema = Type.Object(
   {
     ...PaginationQuerySchema.properties,
-    keyword: Type.Optional(Type.String({ description: "搜索关键词（名称、编码、描述）" })),
+    keyword: Type.Optional(Type.String({ description: "搜索关键词（名称、描述）" })),
     status: Type.Optional(Type.Integer({ enum: [0, 1], description: "部门状态" })),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID过滤" })),
     sortBy: Type.Optional(
@@ -81,14 +79,36 @@ const DeptDeleteRespSchema = successResponse({
   message: "删除成功",
 });
 
+const DeptTreeNodeSchema = Type.Object(
+  {
+    ...SysDeptSchema.properties,
+    children: Type.Union([Type.Array(Type.Ref("deptTreeNode")), Type.Null()]),
+  },
+  { $id: "deptTreeNode" }
+);
+
+export type DeptTreeNode = Static<typeof DeptTreeNodeSchema>;
+
+const DeptDeptTreeListSchema = Type.Array((Type.Ref("deptTreeNode")), { $id: "deptTreeList" });
+
+// 部门树响应（内联递归定义，避免外部 $ref 解析问题）
+const DeptTreeRespSchema = successResponse({
+  data: Type.Ref('deptTreeList'),
+  $id: "deptTreeResp",
+  message: "获取部门树成功",
+});
+
 const registerDepartment = (fastify: FastifyInstance) => {
   fastify.addSchema(SysDeptSchema);
   fastify.addSchema(DeptListQuerySchema);
   fastify.addSchema(DeptListRespSchema);
-  fastify.addSchema(SaveDeptReqSchema);
+  fastify.addSchema(CreateDeptReqSchema);
   fastify.addSchema(UpdateDeptReqSchema);
   fastify.addSchema(DeptDetailRespSchema);
   fastify.addSchema(DeptDeleteRespSchema);
+  fastify.addSchema(DeptTreeNodeSchema);
+  fastify.addSchema(DeptDeptTreeListSchema);
+  fastify.addSchema(DeptTreeRespSchema);
 };
 
 export default registerDepartment;

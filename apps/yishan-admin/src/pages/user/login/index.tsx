@@ -22,8 +22,7 @@ import { createStyles } from "antd-style";
 import React, { useState } from "react";
 import { flushSync } from "react-dom";
 import { Footer } from "@/components";
-import { userLogin } from "@/services/yishan-admin/sysAuth";
-import { getCurrentUser } from "@/services/yishan-admin/sysAuth";
+import { login as userLogin, getCurrentUser } from "@/services/yishan-admin/auth";
 import { saveTokens } from "@/utils/token";
 import Settings from "../../../../config/defaultSettings";
 
@@ -157,7 +156,7 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (values: API.sysUserLoginRequest) => {
+  const handleSubmit = async (values: API.loginReq) => {
     setLoading(true);
     setLoginError("");
 
@@ -175,12 +174,12 @@ const Login: React.FC = () => {
 
         // 处理不同的响应格式
         if (msg.data) {
+          // 统一使用 OpenAPI 返回的字段名：token、expiresIn、refreshToken、refreshTokenExpiresIn
           saveTokens({
-            accessToken: msg.data.accessToken,
-            refreshToken: msg.data.refreshToken,
-            accessTokenExpiresIn: msg.data.accessTokenExpiresIn,
+            accessToken: msg.data.token,
+            refreshToken: msg.data.refreshToken || "",
+            accessTokenExpiresIn: msg.data.expiresIn,
             refreshTokenExpiresIn: msg.data.refreshTokenExpiresIn,
-            tokenType: msg.data.tokenType || "Bearer",
           });
         }
 
@@ -225,7 +224,7 @@ const Login: React.FC = () => {
           padding: "32px 0",
         }}
       >
-        <LoginForm<API.sysUserLoginRequest>
+        <LoginForm<API.loginReq>
           contentStyle={{
             minWidth: 280,
             maxWidth: "75vw",

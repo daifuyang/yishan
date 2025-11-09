@@ -3,7 +3,7 @@
  */
 
 import { prismaManager } from "../utils/prisma.js";
-import { UserListQuery, SaveUserReq, SysUserResp, UpdateUserReq } from "../schemas/user.js";
+import { UserListQuery, CreateUserReq, SysUserResp, UpdateUserReq } from "../schemas/user.js";
 import { SysUser } from "../generated/prisma/client.js";
 import type { Prisma } from "../generated/prisma/client.js";
 import { hashPassword } from "../utils/password.js";
@@ -269,7 +269,7 @@ export class SysUserModel {
   /**
    * 创建用户
    */
-  static async createUser(userReq: SaveUserReq): Promise<SysUserResp> {
+  static async createUser(userReq: CreateUserReq): Promise<SysUserResp> {
     // 使用统一的密码加密工具
     const passwordHash = await hashPassword(userReq.password);
 
