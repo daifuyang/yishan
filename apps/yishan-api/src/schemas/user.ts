@@ -10,16 +10,15 @@ import { FastifyInstance } from "fastify";
 const SysUserSchema = Type.Object(
   {
     id: Type.Number({ description: "用户ID", example: 1 }),
-    username: Type.String({ description: "用户名", example: "admin" }),
-    email: Type.String({
+    username: Type.Optional(Type.String({ description: "用户名", example: "admin" })),
+    email: Type.Optional(Type.String({
       format: "email",
       description: "邮箱",
       example: "admin@yishan.com",
-    }),
-    phone: Type.Optional(
-      Type.String({ description: "手机号", example: "8888888" })
-    ),
-    realName: Type.String({ description: "真实姓名", example: "愚公" }),
+    })),
+    phone: Type.String({ description: "手机号", example: "8888888" }),
+    realName: Type.Optional(Type.String({ description: "真实姓名", example: "愚公" })),
+    nickname: Type.Optional(Type.String({ description: "昵称", example: "愚公移山", maxLength: 50 })),
     avatar: Type.Optional(Type.String({ description: "头像URL" })),
     gender: Type.Number({
       enum: [0, 1, 2],
@@ -48,10 +47,10 @@ const SysUserSchema = Type.Object(
     ),
     loginCount: Type.Number({ description: "登录次数", example: "8" }),
     creatorId: Type.Number({ description: "创建人Id", example: 1 }),
-    creatorName: Type.String({ description: "创建人名称", example: "admin" }),
+    creatorName: Type.Optional(Type.String({ description: "创建人名称", example: "admin" })),
     createdAt: Type.String({ format: "date-time", description: "创建时间" }),
     updaterId: Type.Number({ description: "更新人Id", example: 1 }),
-    updaterName: Type.String({ description: "更新人名称", example: "admin" }),
+    updaterName: Type.Optional(Type.String({ description: "更新人名称", example: "admin" })),
     updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
   },
   { $id: "sysUser" }
@@ -63,26 +62,33 @@ export type SysUserResp = Static<typeof SysUserSchema>;
 // 创建用户请求 Schema
 const CreateUserReqSchema = Type.Object(
   {
-    username: Type.String({
+    username: Type.Optional(Type.String({
       description: "用户名",
-      minLength: 1,
       maxLength: 50,
-      default: 'test'
-    }),
-    email: Type.String({ format: "email", description: "邮箱" }),
+      default: ''
+    })),
+    email: Type.Optional(Type.String({ format: "email", description: "邮箱" })),
     password: Type.String({
       description: "用户密码",
       minLength: 6,
       maxLength: 50,
       pattern: "^(?=.*[a-zA-Z])(?=.*\\d)[a-zA-Z\\d@$!%*?&]{6,}$"
     }),
-    phone: Type.Optional(Type.String({ description: "手机号" })),
-    realName: Type.String({
-      description: "真实姓名",
+    phone: Type.String({
+      description: "手机号",
       minLength: 1,
-      maxLength: 50,
-       default: 'test'
+      maxLength: 20
     }),
+    realName: Type.Optional(Type.String({
+      description: "真实姓名",
+      maxLength: 50,
+      default: ''
+    })),
+    nickname: Type.Optional(Type.String({
+      description: "昵称",
+      maxLength: 50,
+      default: ''
+    })),
     avatar: Type.Optional(Type.String({ description: "头像URL", default: '' })),
     gender: Type.Optional(
       Type.Number({
@@ -91,7 +97,10 @@ const CreateUserReqSchema = Type.Object(
       })
     ),
     birthDate: Type.Optional(
-      Type.String({ format: "date", description: "出生日期" })
+      Type.Union([
+        Type.String({ format: "date", description: "出生日期" }),
+        Type.Literal('')
+      ])
     ),
     status: Type.Optional(
       Type.Number({
@@ -105,10 +114,13 @@ const CreateUserReqSchema = Type.Object(
 );
 
 // 更新用户请求 Schema（全部字段可选，至少提供一个字段）
-const UpdateUserReqSchema = Type.Partial(CreateUserReqSchema, {
-  $id: "updateUserReq",
-  minProperties: 1,
-});
+const UpdateUserReqSchema = Type.Partial(
+  Type.Omit(CreateUserReqSchema, ['password']),
+  {
+    $id: "updateUserReq",
+    minProperties: 1,
+  }
+);
 
 // 用户列表查询参数 Schema
 const UserListQuerySchema = Type.Object(
@@ -116,7 +128,7 @@ const UserListQuerySchema = Type.Object(
     ...PaginationQuerySchema.properties,
     keyword: Type.Optional(
       Type.String({
-        description: "搜索关键词（用户名、邮箱、真实姓名）",
+        description: "搜索关键词（用户名、邮箱、真实姓名、昵称）",
       })
     ),
     status: Type.Optional(

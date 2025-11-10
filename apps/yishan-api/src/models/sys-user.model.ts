@@ -39,10 +39,11 @@ export class SysUserModel {
   private static mapToResp(sysUser: UserWithRelations): SysUserResp {
     return {
       id: sysUser.id,
-      username: sysUser.username,
-      email: sysUser.email,
+      username: sysUser.username ?? undefined,
+      email: sysUser.email ?? undefined,
       phone: sysUser.phone ?? undefined,
-      realName: sysUser.realName,
+      realName: sysUser.realName ?? undefined,
+      nickname: sysUser.nickname ?? undefined,
       avatar: sysUser.avatar ?? undefined,
       gender: sysUser.gender,
       genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
@@ -53,10 +54,10 @@ export class SysUserModel {
       lastLoginIp: sysUser.lastLoginIp ?? undefined,
       loginCount: sysUser.loginCount,
       creatorId: sysUser.creatorId,
-      creatorName: sysUser.creator?.username ?? sysUser.creatorName,
+      creatorName: sysUser.creator?.username ?? sysUser.creatorName ?? undefined,
       createdAt: dateUtils.formatISO(sysUser.createdAt)!,
       updaterId: sysUser.updaterId,
-      updaterName: sysUser.updater?.username ?? sysUser.updaterName,
+      updaterName: sysUser.updater?.username ?? sysUser.updaterName ?? undefined,
       updatedAt: dateUtils.formatISO(sysUser.updatedAt)!,
     };
   }
@@ -85,6 +86,7 @@ export class SysUserModel {
         { username: { contains: keyword } },
         { email: { contains: keyword } },
         { realName: { contains: keyword } },
+        { nickname: { contains: keyword } },
       ];
     }
 
@@ -117,13 +119,17 @@ export class SysUserModel {
     return sysUsers.map((item) => {
       return {
         ...item,
+        username: item.username ?? undefined,
+        email: item.email ?? undefined,
+        realName: item.realName ?? undefined,
+        nickname: item.nickname ?? undefined,
         genderName: genderMap[item.gender as keyof typeof genderMap] || "未知",
         birthDate: dateUtils.formatDate(item.birthDate) ?? undefined,
         statusName: statusMap[item.status as keyof typeof statusMap] || "未知",
         lastLoginTime: dateUtils.formatISO(item.lastLoginTime) ?? undefined,
-        creatorName: item.creator.username,
+        creatorName: item.creator?.username ?? undefined,
         createdAt: dateUtils.formatISO(item.createdAt)!,
-        updaterName: item.updater.username,
+        updaterName: item.updater?.username ?? undefined,
         updatedAt: dateUtils.formatISO(item.updatedAt)!,
       } as SysUserResp;
     });
@@ -146,6 +152,7 @@ export class SysUserModel {
         { username: { contains: keyword } },
         { email: { contains: keyword } },
         { realName: { contains: keyword } },
+        { nickname: { contains: keyword } },
       ];
     }
 
@@ -181,10 +188,11 @@ export class SysUserModel {
 
     return {
       id: sysUser.id,
-      username: sysUser.username,
-      email: sysUser.email,
+      username: sysUser.username ?? undefined,
+      email: sysUser.email ?? undefined,
       phone: sysUser.phone ?? undefined,
-      realName: sysUser.realName,
+      realName: sysUser.realName ?? undefined,
+      nickname: sysUser.nickname ?? undefined,
       avatar: sysUser.avatar ?? undefined,
       gender: sysUser.gender,
       genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
@@ -195,10 +203,10 @@ export class SysUserModel {
       lastLoginIp: sysUser.lastLoginIp ?? undefined,
       loginCount: sysUser.loginCount,
       creatorId: sysUser.creatorId,
-      creatorName: sysUser.creator.username,
+      creatorName: sysUser.creator?.username ?? undefined,
       createdAt: dateUtils.formatISO(sysUser.createdAt)!,
       updaterId: sysUser.updaterId,
-      updaterName: sysUser.updater.username,
+      updaterName: sysUser.updater?.username ?? undefined,
       updatedAt: dateUtils.formatISO(sysUser.updatedAt)!,
     };
   }
@@ -273,22 +281,30 @@ export class SysUserModel {
     // 使用统一的密码加密工具
     const passwordHash = await hashPassword(userReq.password);
 
+    // 构建用户数据，只包含提供的字段
+    const userData: any = {
+      passwordHash,
+      phone: userReq.phone,
+      loginCount: 0,
+      gender: userReq.gender ?? 0,
+      status: userReq.status ?? 1,
+      creatorId: 1, // TODO: 从当前登录用户上下文获取
+      updaterId: 1  // TODO: 从当前登录用户上下文获取
+    };
+
+    // 添加可选字段（如果提供）
+    if (userReq.username !== undefined) userData.username = userReq.username;
+    if (userReq.email !== undefined) userData.email = userReq.email;
+    if (userReq.realName !== undefined) userData.realName = userReq.realName;
+    if (userReq.nickname !== undefined) userData.nickname = userReq.nickname;
+    if (userReq.avatar !== undefined) userData.avatar = userReq.avatar;
+    if (userReq.birthDate !== undefined) {
+      userData.birthDate = userReq.birthDate ? new Date(userReq.birthDate) : undefined;
+    }
+
     // 创建用户
     const sysUser = await this.prisma.sysUser.create({
-      data: {
-        username: userReq.username,
-        email: userReq.email,
-        phone: userReq.phone,
-        realName: userReq.realName,
-        avatar: userReq.avatar,
-        gender: userReq.gender ?? 0,
-        birthDate: userReq.birthDate ? new Date(userReq.birthDate) : undefined,
-        status: userReq.status ?? 1,
-        passwordHash,
-        loginCount: 0,
-        creatorId: 1, // TODO: 从当前登录用户上下文获取
-        updaterId: 1  // TODO: 从当前登录用户上下文获取
-      },
+      data: userData,
       include: {
         creator: {
           select: { username: true }
@@ -313,6 +329,7 @@ export class SysUserModel {
     if (userReq.email !== undefined) updateData.email = userReq.email;
     if (userReq.phone !== undefined) updateData.phone = userReq.phone;
     if (userReq.realName !== undefined) updateData.realName = userReq.realName;
+    if (userReq.nickname !== undefined) updateData.nickname = userReq.nickname;
     if (userReq.avatar !== undefined) updateData.avatar = userReq.avatar;
     if (userReq.gender !== undefined) updateData.gender = userReq.gender;
     if (userReq.birthDate !== undefined) {

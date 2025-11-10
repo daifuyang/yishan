@@ -23,9 +23,10 @@ async function main() {
         data: {
           username: 'admin',
           email: 'admin@yishan.com',
+          phone: '13800138000', // 添加手机号
           passwordHash: hashedPassword,
-          // salt 已经包含在 passwordHash 中，不需要单独存储
-          realName: '系统管理员',
+          realName: '愚公',
+          nickname: '超级管理员',
           avatar: '',
           gender: 1, // 男性
           status: 1, // 启用状态
@@ -40,7 +41,8 @@ async function main() {
         id: adminUser.id,
         username: adminUser.username,
         email: adminUser.email,
-        realName: adminUser.realName
+        realName: adminUser.realName,
+        nickname: adminUser.nickname
       });
 
       console.log('🔑 管理员登录信息:');

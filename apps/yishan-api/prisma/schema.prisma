@@ -18,11 +18,12 @@ datasource db {
 // 系统用户表
 model SysUser {
   id            Int       @id @default(autoincrement()) @map("id")
-  username      String    @unique @map("username") @db.VarChar(50)
-  email         String    @unique @map("email") @db.VarChar(100)
-  phone         String?   @unique @map("phone") @db.VarChar(20)
+  username      String?    @unique @map("username") @db.VarChar(50)
+  email         String?    @unique @map("email") @db.VarChar(100)
+  phone         String   @unique @map("phone") @db.VarChar(20)
   passwordHash  String    @map("password_hash") @db.VarChar(255)
-  realName      String    @map("real_name") @db.VarChar(50)
+  realName      String?    @map("real_name") @db.VarChar(50)
+  nickname      String?   @map("nickname") @db.VarChar(50)
   avatar        String?   @map("avatar") @db.VarChar(500)
   gender        Int       @default(0) @map("gender") @db.TinyInt
   birthDate     DateTime? @map("birth_date") @db.Date

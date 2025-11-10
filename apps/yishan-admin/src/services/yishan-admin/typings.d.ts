@@ -40,6 +40,8 @@ declare namespace API {
     phone?: string;
     /** 真实姓名 */
     realName: string;
+    /** 昵称 */
+    nickname?: string;
     /** 头像URL */
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
@@ -257,7 +259,7 @@ declare namespace API {
     page?: number;
     /** 每页数量 */
     pageSize?: number;
-    /** 搜索关键词（用户名、邮箱、真实姓名） */
+    /** 搜索关键词（用户名、邮箱、真实姓名、昵称） */
     keyword?: string;
     /** 用户状态（0-禁用，1-启用，2-锁定） */
     status?: 0 | 1 | 2;
@@ -631,6 +633,8 @@ declare namespace API {
     phone?: string;
     /** 真实姓名 */
     realName: string;
+    /** 昵称 */
+    nickname?: string;
     /** 头像URL */
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
@@ -770,12 +774,12 @@ declare namespace API {
     username?: string;
     /** 邮箱 */
     email?: string;
-    /** 用户密码 */
-    password?: string;
     /** 手机号 */
     phone?: string;
     /** 真实姓名 */
     realName?: string;
+    /** 昵称 */
+    nickname?: string;
     /** 头像URL */
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
@@ -807,7 +811,7 @@ declare namespace API {
     page?: number;
     /** 每页数量 */
     pageSize?: number;
-    /** 搜索关键词（用户名、邮箱、真实姓名） */
+    /** 搜索关键词（用户名、邮箱、真实姓名、昵称） */
     keyword?: string;
     /** 用户状态（0-禁用，1-启用，2-锁定） */
     status?: 0 | 1 | 2;

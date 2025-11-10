@@ -134,6 +134,10 @@ const UserList: React.FC = () => {
       dataIndex: 'realName',
     },
     {
+      title: '昵称',
+      dataIndex: 'nickname',
+    },
+    {
       title: '邮箱',
       dataIndex: 'email',
     },
