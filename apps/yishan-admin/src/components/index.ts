@@ -5,8 +5,20 @@
 /**
  * 布局组件
  */
-import Footer from './Footer';
-import { Question, SelectLang } from './RightContent';
-import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
+import Footer from "./Footer";
+import { Question, SelectLang } from "./RightContent";
+import { AvatarDropdown, AvatarName } from "./RightContent/AvatarDropdown";
 
-export { AvatarDropdown, AvatarName, Footer, Question, SelectLang };
+/**
+ * 部门树选择组件
+ */
+import { ProFormDeptTreeSelect } from "./DeptTreeSelect";
+
+export {
+  AvatarDropdown,
+  AvatarName,
+  Footer,
+  Question,
+  SelectLang,
+  ProFormDeptTreeSelect,
+};

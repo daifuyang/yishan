@@ -9,9 +9,9 @@ import {
 } from "@ant-design/pro-components";
 import type { FormInstance } from "antd";
 import dayjs from "dayjs";
-import { getDeptList } from "@/services/yishan-admin/sysDepts";
 import { getRoleList } from "@/services/yishan-admin/sysRoles";
 import { getPostList } from "@/services/yishan-admin/sysPosts";
+import { ProFormDeptTreeSelect } from "@/components";
 
 export interface UserFormProps {
   form: FormInstance;
@@ -98,25 +98,16 @@ const UserForm: React.FC<UserFormProps> = ({
         label="登录名称"
         placeholder="请输入登录名称"
         colProps={{ span: 12 }}
+        fieldProps={{
+          autoComplete: 'off'
+        }}
       />
-      <ProFormSelect
+
+      <ProFormDeptTreeSelect
         name="deptId"
         label="归属部门"
         placeholder="请选择归属部门"
-        showSearch
-        request={async () => {
-          const res = await getDeptList({
-            page: 1,
-            pageSize: 100,
-            status: 1,
-            sortBy: "sort_order",
-            sortOrder: "asc",
-          });
-          return (res.data || []).map((d: API.sysDept) => ({
-            label: d.name,
-            value: d.id,
-          }));
-        }}
+        allowClear
         colProps={{ span: 12 }}
       />
 
@@ -158,6 +149,9 @@ const UserForm: React.FC<UserFormProps> = ({
           { min: 6, message: "至少6位" },
         ]}
         colProps={{ span: 12 }}
+        fieldProps={{
+          autoComplete: 'new-password'
+        }}
       />
 
       <ProFormRadio.Group
@@ -229,7 +223,7 @@ const UserForm: React.FC<UserFormProps> = ({
       <ProFormDatePicker
         name="birthDate"
         label="出生日期"
-        placeholder="请选择出生日期（可选）"
+        placeholder="请选择出生日期"
         fieldProps={{ style: { width: "100%" } }}
         colProps={{ span: 12 }}
       />
