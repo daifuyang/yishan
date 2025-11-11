@@ -43,7 +43,7 @@ export class UserService {
    * @param userReq 用户数据
    * @returns 创建的用户信息
    */
-  static async createUser(userReq: CreateUserReq): Promise<SysUserResp> {
+  static async createUser(userReq: CreateUserReq, currentUserId: number): Promise<SysUserResp> {
     // 密码强度验证（创建场景要求提供密码）
     this.validatePassword(userReq.password);
 
@@ -51,7 +51,7 @@ export class UserService {
     await this.ensureUniqueFields(userReq.username, userReq.email);
 
     // 创建用户
-    return await SysUserModel.createUser(userReq);
+    return await SysUserModel.createUser(userReq, currentUserId);
   }
 
   /**
@@ -87,7 +87,8 @@ export class UserService {
    */
   static async updateUser(
     id: number,
-    userReq: UpdateUserReq
+    userReq: UpdateUserReq,
+    currentUserId: number
   ): Promise<SysUserResp | null> {
     // 检查用户是否存在
     const existingUser = await SysUserModel.getUserById(id);
@@ -99,7 +100,7 @@ export class UserService {
     await this.ensureUniqueFields(userReq.username, userReq.email, id);
 
     // 更新用户
-    return await SysUserModel.updateUser(id, userReq);
+    return await SysUserModel.updateUser(id, userReq, currentUserId);
   }
 
   /**

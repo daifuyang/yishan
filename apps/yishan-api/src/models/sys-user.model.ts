@@ -14,11 +14,10 @@ type UserWithRelations = Prisma.SysUserGetPayload<{
   include: {
     creator: { select: { username: true } };
     updater: { select: { username: true } };
+    userDepts: { select: { deptId: true } };
+    userRoles: { select: { roleId: true } };
   };
-}> & {
-  creatorName?: string;
-  updaterName?: string;
-};
+}>;
 
 const genderMap = {
   0: "未知",
@@ -54,11 +53,13 @@ export class SysUserModel {
       lastLoginIp: sysUser.lastLoginIp ?? undefined,
       loginCount: sysUser.loginCount,
       creatorId: sysUser.creatorId,
-      creatorName: sysUser.creator?.username ?? sysUser.creatorName ?? undefined,
+      creatorName: sysUser.creator?.username ?? undefined,
       createdAt: dateUtils.formatISO(sysUser.createdAt)!,
       updaterId: sysUser.updaterId,
-      updaterName: sysUser.updater?.username ?? sysUser.updaterName ?? undefined,
+      updaterName: sysUser.updater?.username ?? undefined,
       updatedAt: dateUtils.formatISO(sysUser.updatedAt)!,
+      deptIds: sysUser.userDepts.map((d) => d.deptId),
+      roleIds: sysUser.userRoles.map((r) => r.roleId),
     };
   }
 
@@ -180,35 +181,15 @@ export class SysUserModel {
       },
       include: {
         creator: { select: { username: true } },
-        updater: { select: { username: true } }
+        updater: { select: { username: true } },
+        userDepts: { select: { deptId: true } },
+        userRoles: { select: { roleId: true } },
       }
     });
 
     if (!sysUser) return null;
 
-    return {
-      id: sysUser.id,
-      username: sysUser.username ?? undefined,
-      email: sysUser.email ?? undefined,
-      phone: sysUser.phone ?? undefined,
-      realName: sysUser.realName ?? undefined,
-      nickname: sysUser.nickname ?? undefined,
-      avatar: sysUser.avatar ?? undefined,
-      gender: sysUser.gender,
-      genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
-      birthDate: dateUtils.formatDate(sysUser.birthDate) ?? undefined,
-      status: sysUser.status,
-      statusName: statusMap[sysUser.status as keyof typeof statusMap] || "未知",
-      lastLoginTime: dateUtils.formatISO(sysUser.lastLoginTime) ?? undefined,
-      lastLoginIp: sysUser.lastLoginIp ?? undefined,
-      loginCount: sysUser.loginCount,
-      creatorId: sysUser.creatorId,
-      creatorName: sysUser.creator?.username ?? undefined,
-      createdAt: dateUtils.formatISO(sysUser.createdAt)!,
-      updaterId: sysUser.updaterId,
-      updaterName: sysUser.updater?.username ?? undefined,
-      updatedAt: dateUtils.formatISO(sysUser.updatedAt)!,
-    };
+    return this.mapToResp(sysUser);
   }
 
   /**
@@ -277,81 +258,145 @@ export class SysUserModel {
   /**
    * 创建用户
    */
-  static async createUser(userReq: CreateUserReq): Promise<SysUserResp> {
-    // 使用统一的密码加密工具
-    const passwordHash = await hashPassword(userReq.password);
+  static async createUser(userReq: CreateUserReq, currentUserId: number): Promise<SysUserResp> {
+    const { deptIds, roleIds, ...restUserReq } = userReq;
+    const passwordHash = await hashPassword(restUserReq.password);
 
-    // 构建用户数据，只包含提供的字段
-    const userData: any = {
-      passwordHash,
-      phone: userReq.phone,
-      loginCount: 0,
-      gender: userReq.gender ?? 0,
-      status: userReq.status ?? 1,
-      creatorId: 1, // TODO: 从当前登录用户上下文获取
-      updaterId: 1  // TODO: 从当前登录用户上下文获取
-    };
-
-    // 添加可选字段（如果提供）
-    if (userReq.username !== undefined) userData.username = userReq.username;
-    if (userReq.email !== undefined) userData.email = userReq.email;
-    if (userReq.realName !== undefined) userData.realName = userReq.realName;
-    if (userReq.nickname !== undefined) userData.nickname = userReq.nickname;
-    if (userReq.avatar !== undefined) userData.avatar = userReq.avatar;
-    if (userReq.birthDate !== undefined) {
-      userData.birthDate = userReq.birthDate ? new Date(userReq.birthDate) : undefined;
-    }
-
-    // 创建用户
-    const sysUser = await this.prisma.sysUser.create({
-      data: userData,
-      include: {
-        creator: {
-          select: { username: true }
+    const result = await this.prisma.$transaction(async (prisma) => {
+      const sysUser = await prisma.sysUser.create({
+        data: {
+          ...restUserReq,
+          passwordHash,
+          loginCount: 0,
+          gender: restUserReq.gender ?? 0,
+          status: restUserReq.status ?? 1,
+          creatorId: currentUserId,
+          updaterId: currentUserId,
+          birthDate: restUserReq.birthDate ? new Date(restUserReq.birthDate) : undefined,
         },
-        updater: {
-          select: { username: true }
-        }
+      });
+
+      if (deptIds && deptIds.length > 0) {
+        await prisma.sysUserDept.createMany({
+          data: deptIds.map((deptId) => ({
+            userId: sysUser.id,
+            deptId,
+            creatorId: currentUserId,
+          })),
+        });
       }
+
+      if (roleIds && roleIds.length > 0) {
+        await prisma.sysUserRole.createMany({
+          data: roleIds.map((roleId) => ({
+            userId: sysUser.id,
+            roleId,
+            creatorId: currentUserId,
+          })),
+        });
+      }
+
+      return sysUser;
     });
 
-    return this.mapToResp(sysUser);
+    const finalUser = await this.prisma.sysUser.findUniqueOrThrow({
+      where: { id: result.id },
+      include: {
+        creator: { select: { username: true } },
+        updater: { select: { username: true } },
+        userDepts: { select: { deptId: true } },
+        userRoles: { select: { roleId: true } },
+      },
+    });
+
+    return this.mapToResp(finalUser);
   }
 
   /**
    * 更新用户
    */
-  static async updateUser(id: number, userReq: UpdateUserReq): Promise<SysUserResp> {
-    // 构建更新数据
-    const updateData: any = {};
+  static async updateUser(id: number, userReq: UpdateUserReq, currentUserId: number): Promise<SysUserResp> {
+    const { deptIds = [], roleIds = [], ...restUserReq } = userReq;
 
-    if (userReq.username !== undefined) updateData.username = userReq.username;
-    if (userReq.email !== undefined) updateData.email = userReq.email;
-    if (userReq.phone !== undefined) updateData.phone = userReq.phone;
-    if (userReq.realName !== undefined) updateData.realName = userReq.realName;
-    if (userReq.nickname !== undefined) updateData.nickname = userReq.nickname;
-    if (userReq.avatar !== undefined) updateData.avatar = userReq.avatar;
-    if (userReq.gender !== undefined) updateData.gender = userReq.gender;
-    if (userReq.birthDate !== undefined) {
-      updateData.birthDate = userReq.birthDate
-        ? new Date(userReq.birthDate)
-        : null;
-    }
-    if (userReq.status !== undefined) updateData.status = userReq.status;
+    const result = await this.prisma.$transaction(async (prisma) => {
+      // 1. 更新用户基本信息
+      const sysUser = await prisma.sysUser.update({
+        where: {
+          id,
+          deletedAt: null,
+        },
+        data: {
+          ...restUserReq,
+          updaterId: currentUserId,
+          birthDate: restUserReq.birthDate
+            ? new Date(restUserReq.birthDate)
+            : null,
+        },
+      });
 
-    // 更新用户
-    const sysUser = await this.prisma.sysUser.update({
-      where: {
-        id,
-        deletedAt: null,
-      },
-      data: updateData,
-      include: {
-        creator: { select: { username: true } },
-        updater: { select: { username: true } }
+      // 2. 部门关联差异更新
+      const existingDeptLinks = await prisma.sysUserDept.findMany({
+        where: { userId: id },
+        select: { deptId: true },
+      });
+      const existingDeptIds = existingDeptLinks.map((link) => link.deptId);
+
+      const deptsToCreate = deptIds.filter((deptId) => !existingDeptIds.includes(deptId));
+      const deptsToDelete = existingDeptIds.filter((deptId) => !deptIds.includes(deptId));
+
+      if (deptsToCreate.length > 0) {
+        await prisma.sysUserDept.createMany({
+          data: deptsToCreate.map((deptId) => ({
+            userId: id,
+            deptId,
+            creatorId: currentUserId,
+          })),
+        });
       }
+      if (deptsToDelete.length > 0) {
+        await prisma.sysUserDept.deleteMany({
+          where: { userId: id, deptId: { in: deptsToDelete } },
+        });
+      }
+
+      // 3. 角色关联差异更新
+      const existingRoleLinks = await prisma.sysUserRole.findMany({
+        where: { userId: id },
+        select: { roleId: true },
+      });
+      const existingRoleIds = existingRoleLinks.map((link) => link.roleId);
+
+      const rolesToCreate = roleIds.filter((roleId) => !existingRoleIds.includes(roleId));
+      const rolesToDelete = existingRoleIds.filter((roleId) => !roleIds.includes(roleId));
+
+      if (rolesToCreate.length > 0) {
+        await prisma.sysUserRole.createMany({
+          data: rolesToCreate.map((roleId) => ({
+            userId: id,
+            roleId,
+            creatorId: currentUserId,
+          })),
+        });
+      }
+      if (rolesToDelete.length > 0) {
+        await prisma.sysUserRole.deleteMany({
+          where: { userId: id, roleId: { in: rolesToDelete } },
+        });
+      }
+
+      return sysUser;
     });
 
-    return this.mapToResp(sysUser);
+    const finalUser = await this.prisma.sysUser.findUniqueOrThrow({
+      where: { id: result.id },
+      include: {
+        creator: { select: { username: true } },
+        updater: { select: { username: true } },
+        userDepts: { select: { deptId: true } },
+        userRoles: { select: { roleId: true } },
+      },
+    });
+
+    return this.mapToResp(finalUser);
   }
 }

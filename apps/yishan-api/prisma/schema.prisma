@@ -50,6 +50,9 @@ model SysUser {
   // 角色关联（通过中间表）
   userRoles SysUserRole[]
 
+  // 部门关联（通过中间表）
+  userDepts SysUserDept[]
+
   // 角色创建/更新的反向关系
   rolesCreated SysRole[] @relation("RoleCreator")
   rolesUpdated SysRole[] @relation("RoleUpdater")
@@ -152,6 +155,24 @@ model SysUserRole {
   @@map("sys_user_role")
 }
 
+// 用户部门关联表（显式多对多）
+model SysUserDept {
+  id        Int       @id @default(autoincrement()) @map("id")
+  userId    Int       @map("user_id")
+  deptId    Int       @map("dept_id")
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(0)
+
+  user SysUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dept SysDept @relation(fields: [deptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deptId], map: "uniq_user_dept")
+  @@index([userId], map: "idx_user_dept_user_id")
+  @@index([deptId], map: "idx_user_dept_dept_id")
+  @@map("sys_user_dept")
+}
+
 // 部门表（支持层级结构）
 model SysDept {
   id          Int       @id @default(autoincrement()) @map("id")
@@ -176,6 +197,8 @@ model SysDept {
   leader  SysUser? @relation("DeptLeader", fields: [leaderId], references: [id], onUpdate: NoAction, onDelete: SetNull)
   creator SysUser? @relation("DeptCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
   updater SysUser? @relation("DeptUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  userDepts SysUserDept[]
 
   // 索引
   @@index([status], map: "idx_dept_status")
@@ -213,7 +236,7 @@ model SysPost {
   @@map("sys_post")
 }
 
-// 菜单表（遵循 Ant Design Pro menu 规范，支持层级与外链）
+// 菜单表
 model SysMenu {
   id                 Int       @id @default(autoincrement()) @map("id")
   name               String    @map("name") @db.VarChar(100)

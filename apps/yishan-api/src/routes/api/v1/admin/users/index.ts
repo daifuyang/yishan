@@ -128,7 +128,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       // 使用UserService创建用户，异常将由全局异常处理器处理
-      const user = await UserService.createUser(request.body);
+      const user = await UserService.createUser(request.body, request.currentUser.id);
 
       // 新增后写入详情缓存
       if (fastify.redis && user && typeof user.id === "number") {
@@ -189,7 +189,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       }
 
       // 使用UserService更新用户，异常将由全局异常处理器处理
-      const user = await UserService.updateUser(userId, request.body);
+      const user = await UserService.updateUser(userId, request.body, request.currentUser.id);
 
       // 更新后同步刷新详情缓存
       if (fastify.redis && user && typeof user.id === "number") {

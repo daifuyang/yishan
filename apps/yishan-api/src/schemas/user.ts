@@ -52,6 +52,8 @@ const SysUserSchema = Type.Object(
     updaterId: Type.Number({ description: "更新人Id", example: 1 }),
     updaterName: Type.Optional(Type.String({ description: "更新人名称", example: "admin" })),
     updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
+    deptIds: Type.Optional(Type.Array(Type.Number(), { description: "部门ID列表" })),
+    roleIds: Type.Optional(Type.Array(Type.Number(), { description: "角色ID列表" })),
   },
   { $id: "sysUser" }
 );
@@ -109,6 +111,8 @@ const CreateUserReqSchema = Type.Object(
         default: 1,
       })
     ),
+    deptIds: Type.Optional(Type.Array(Type.Number(), { description: "部门ID列表" })),
+    roleIds: Type.Optional(Type.Array(Type.Number(), { description: "角色ID列表" })),
   },
   { $id: "createUserReq" }
 );
