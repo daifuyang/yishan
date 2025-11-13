@@ -239,6 +239,20 @@ export class SysUserModel {
   }
 
   /**
+   * 根据手机号获取用户信息
+   */
+  static async getUserByPhone(phone: string): Promise<SysUser | null> {
+    const sysUser = await this.prisma.sysUser.findFirst({
+      where: {
+        phone,
+        deletedAt: null,
+      },
+    });
+
+    return sysUser;
+  }
+
+  /**
    * 根据用户名或邮箱获取用户信息（用于登录）
    */
   static async getUserByUsernameOrEmail(usernameOrEmail: string): Promise<SysUser | null> {
@@ -259,8 +273,8 @@ export class SysUserModel {
    * 创建用户
    */
   static async createUser(userReq: CreateUserReq, currentUserId: number): Promise<SysUserResp> {
-    const { deptIds, roleIds, ...restUserReq } = userReq;
-    const passwordHash = await hashPassword(restUserReq.password);
+    const { deptIds, roleIds, password, ...restUserReq } = userReq;
+    const passwordHash = await hashPassword(password);
 
     const result = await this.prisma.$transaction(async (prisma) => {
       const sysUser = await prisma.sysUser.create({
@@ -281,7 +295,6 @@ export class SysUserModel {
           data: deptIds.map((deptId) => ({
             userId: sysUser.id,
             deptId,
-            creatorId: currentUserId,
           })),
         });
       }
@@ -291,7 +304,6 @@ export class SysUserModel {
           data: roleIds.map((roleId) => ({
             userId: sysUser.id,
             roleId,
-            creatorId: currentUserId,
           })),
         });
       }
@@ -349,7 +361,6 @@ export class SysUserModel {
           data: deptsToCreate.map((deptId) => ({
             userId: id,
             deptId,
-            creatorId: currentUserId,
           })),
         });
       }
@@ -374,7 +385,6 @@ export class SysUserModel {
           data: rolesToCreate.map((roleId) => ({
             userId: id,
             roleId,
-            creatorId: currentUserId,
           })),
         });
       }

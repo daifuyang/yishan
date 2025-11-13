@@ -47,8 +47,8 @@ export class UserService {
     // 密码强度验证（创建场景要求提供密码）
     this.validatePassword(userReq.password);
 
-    // 统一校验用户名/邮箱唯一性
-    await this.ensureUniqueFields(userReq.username, userReq.email);
+    // 校验用户名/邮箱/手机号的唯一性
+    await this.ensureUniqueFields(userReq.username, userReq.email, userReq.phone);
 
     // 创建用户
     return await SysUserModel.createUser(userReq, currentUserId);
@@ -96,8 +96,8 @@ export class UserService {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
     }
 
-    // 统一校验用户名/邮箱唯一性（排除当前用户ID）
-    await this.ensureUniqueFields(userReq.username, userReq.email, id);
+    // 统一校验用户名/邮箱/手机号唯一性（排除当前用户ID）
+    await this.ensureUniqueFields(userReq.username, userReq.email, userReq.phone, id);
 
     // 更新用户
     return await SysUserModel.updateUser(id, userReq, currentUserId);
@@ -123,27 +123,36 @@ export class UserService {
   }
 
   /**
-   * 统一校验用户名/邮箱的唯一性
+   * 统一校验用户名/邮箱/手机号的唯一性
    * @param username 可选用户名
    * @param email 可选邮箱
+   * @param phone 可选手机号
    * @param excludeUserId 更新场景排除的用户ID
    */
   private static async ensureUniqueFields(
     username?: string,
     email?: string,
+    phone?: string,
     excludeUserId?: number
   ): Promise<void> {
-    if (username) {
+    if (username !== undefined) {
       const userWithSameUsername = await SysUserModel.getUserByUsername(username);
       if (userWithSameUsername && userWithSameUsername.id !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "用户名已存在");
       }
     }
 
-    if (email) {
+    if (email !== undefined) {
       const userWithSameEmail = await SysUserModel.getUserByEmail(email);
       if (userWithSameEmail && userWithSameEmail.id !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "邮箱已存在");
+      }
+    }
+
+    if (phone !== undefined) {
+      const userWithSamePhone = await SysUserModel.getUserByPhone(phone);
+      if (userWithSamePhone && userWithSamePhone.id !== excludeUserId) {
+        throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "手机号已存在");
       }
     }
   }

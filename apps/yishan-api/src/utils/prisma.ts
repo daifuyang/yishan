@@ -17,21 +17,18 @@ class ExtendedPrismaClient extends PrismaClient {
   private startTime = Date.now();
 
   constructor() {
-    const enableQueryEvent = process.env.NODE_ENV !== 'production';
     super({
       log: [
         { emit: 'stdout', level: 'error' },
         { emit: 'stdout', level: 'warn' },
-        // 在开发环境开启查询事件以便性能监控
-        ...(enableQueryEvent ? ([{ emit: 'event', level: 'query' }] as any) : []),
       ],
     });
 
-    // 监听查询事件以进行性能监控（仅在事件模式开启时有效）
+    // 监听查询事件以进行性能监控
     try {
       (this as any).$on('query', (e: any) => {
         this.queryCount++;
-        console.log(`[Prisma] Query #${this.queryCount}: ${e.query} (${e.duration}ms)`);
+        console.log(`Query ${this.queryCount}: ${e.query} (${e.duration}ms)`);
       });
     } catch (error) {
       // 如果查询事件监听失败，不影响主要功能
@@ -52,9 +49,12 @@ class PrismaManager {
   private static instance: PrismaManager;
   private prisma: ExtendedPrismaClient;
   private isConnected = false;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
 
   private constructor() {
     this.prisma = new ExtendedPrismaClient();
+    this.setupGracefulShutdown();
   }
 
   static getInstance(): PrismaManager {
@@ -69,11 +69,21 @@ class PrismaManager {
     try {
       await this.prisma.$connect();
       this.isConnected = true;
+      this.reconnectAttempts = 0;
       console.log('Database connected successfully');
     } catch (error) {
       this.isConnected = false;
+      this.reconnectAttempts++;
+      
       console.error('Database connection failed:', error);
-      throw error;
+      
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        console.log(`Retrying connection... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        await this.delay(2000 * this.reconnectAttempts); // 指数退避
+        return this.connect();
+      }
+      
+      throw new Error(`Failed to connect after ${this.maxReconnectAttempts} attempts`);
     }
   }
 
@@ -92,7 +102,7 @@ class PrismaManager {
   // 获取PrismaClient实例
   getClient(): ExtendedPrismaClient {
     if (!this.isConnected) {
-      // console.warn('Database may not be connected. Call connect() first.');
+      console.warn('Database may not be connected. Call connect() first.');
     }
     return this.prisma;
   }
@@ -114,6 +124,41 @@ class PrismaManager {
       connected: this.isConnected,
       stats: this.prisma.getStats(),
     };
+  }
+
+  // 延迟函数
+  private delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // 设置优雅关闭
+  private setupGracefulShutdown(): void {
+    const gracefulShutdown = async (signal: string) => {
+      console.log(`\n Received ${signal}, shutting down gracefully...`);
+      
+      try {
+        await this.disconnect();
+        console.log('✅ Database disconnected, process exiting');
+        process.exit(0);
+      } catch (error) {
+        console.error('Error during shutdown:', error);
+        process.exit(1);
+      }
+    };
+
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    
+    // 处理未捕获的异常
+    process.on('uncaughtException', (error) => {
+      console.error('Uncaught Exception:', error);
+      gracefulShutdown('uncaughtException');
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      gracefulShutdown('unhandledRejection');
+    });
   }
 
   // 事务包装器
