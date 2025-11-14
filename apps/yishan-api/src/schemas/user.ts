@@ -141,6 +141,18 @@ const UserListQuerySchema = Type.Object(
         description: "用户状态（0-禁用，1-启用，2-锁定）",
       })
     ),
+    startTime: Type.Optional(
+      Type.String({
+        format: "date-time",
+        description: "开始时间",
+      })
+    ),
+    endTime: Type.Optional(
+      Type.String({
+        format: "date-time",
+        description: "结束时间",
+      })
+    ),
     sortBy: Type.Optional(
       Type.String({
         enum: ["createdAt", "updatedAt", "lastLoginTime", "loginCount"],

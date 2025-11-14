@@ -72,6 +72,8 @@ export class SysUserModel {
       pageSize = 10,
       keyword,
       status,
+      startTime,
+      endTime,
       sortBy = "createdAt",
       sortOrder = "desc",
     } = query;
@@ -94,6 +96,16 @@ export class SysUserModel {
     // 添加状态筛选条件
     if (status !== undefined) {
       where.status = status;
+    }
+
+    // 添加时间范围筛选条件
+    if (startTime) {
+      where.createdAt = where.createdAt || {};
+      where.createdAt.gte = new Date(startTime);
+    }
+    if (endTime) {
+      where.createdAt = where.createdAt || {};
+      where.createdAt.lte = new Date(endTime);
     }
 
     // 构建排序条件
@@ -140,7 +152,7 @@ export class SysUserModel {
    * 获取用户总数
    */
   static async getUserTotal(query: UserListQuery): Promise<number> {
-    const { keyword, status } = query;
+    const { keyword, status, startTime, endTime } = query;
 
     // 构建查询条件
     const where: any = {
@@ -160,6 +172,16 @@ export class SysUserModel {
     // 添加状态筛选条件
     if (status !== undefined) {
       where.status = status;
+    }
+
+    // 添加时间范围筛选条件
+    if (startTime) {
+      where.createdAt = where.createdAt || {};
+      where.createdAt.gte = new Date(startTime);
+    }
+    if (endTime) {
+      where.createdAt = where.createdAt || {};
+      where.createdAt.lte = new Date(endTime);
     }
 
     // 执行计数查询

@@ -101,9 +101,6 @@ class PrismaManager {
 
   // 获取PrismaClient实例
   getClient(): ExtendedPrismaClient {
-    if (!this.isConnected) {
-      console.warn('Database may not be connected. Call connect() first.');
-    }
     return this.prisma;
   }
 

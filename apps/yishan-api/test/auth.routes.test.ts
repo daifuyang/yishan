@@ -31,7 +31,8 @@ async function buildApp() {
   })
   await app.register(errorHandlerPlugin)
   registerAuthSchemas(app)
-  await app.register(authPlugin)
+  // 注册auth路由时指定正确的路径前缀
+  await app.register(authPlugin, { prefix: '/api/v1/auth' })
   await app.ready()
   return app
 }
@@ -41,7 +42,7 @@ beforeEach(() => {
 })
 
 describe('Auth routes', () => {
-  it('POST /login 成功返回登录数据', async () => {
+  it('POST /api/v1/auth/login 成功返回登录数据', async () => {
     const app = await buildApp()
 
     const loginData = {
@@ -56,7 +57,7 @@ describe('Auth routes', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/login',
+      url: '/api/v1/auth/login',
       payload: { username: 'admin', password: 'password', rememberMe: false }
     })
 
@@ -68,10 +69,10 @@ describe('Auth routes', () => {
     await app.close()
   })
 
-  it('POST /logout 缺少 Authorization 返回 400 和业务码', async () => {
+  it('POST /api/v1/auth/logout 缺少 Authorization 返回 400 和业务码', async () => {
     const app = await buildApp()
 
-    const res = await app.inject({ method: 'POST', url: '/logout' })
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/logout' })
 
     expect(res.statusCode).toBe(400)
     const body = res.json()
@@ -81,13 +82,13 @@ describe('Auth routes', () => {
     await app.close()
   })
 
-  it('POST /logout 正常返回成功', async () => {
+  it('POST /api/v1/auth/logout 正常返回成功', async () => {
     const app = await buildApp()
     vi.spyOn(AuthService, 'logout').mockResolvedValue()
 
     const res = await app.inject({
       method: 'POST',
-      url: '/logout',
+      url: '/api/v1/auth/logout',
       headers: { Authorization: 'Bearer any-token' }
     })
 
@@ -99,12 +100,12 @@ describe('Auth routes', () => {
     await app.close()
   })
 
-  it('GET /me 成功返回用户信息', async () => {
+  it('GET /api/v1/auth/me 成功返回用户信息', async () => {
     const app = await buildApp()
 
     const res = await app.inject({
       method: 'GET',
-      url: '/me',
+      url: '/api/v1/auth/me',
       headers: { Authorization: 'Bearer access-token' }
     })
 
@@ -116,7 +117,7 @@ describe('Auth routes', () => {
     await app.close()
   })
 
-  it('POST /refresh 成功返回新的令牌', async () => {
+  it('POST /api/v1/auth/refresh 成功返回新的令牌', async () => {
     const app = await buildApp()
     const refreshed = {
       token: 'new-access-token',
@@ -130,7 +131,7 @@ describe('Auth routes', () => {
 
     const res = await app.inject({
       method: 'POST',
-      url: '/refresh',
+      url: '/api/v1/auth/refresh',
       payload: { refreshToken: 'rt' }
     })
 
@@ -142,10 +143,10 @@ describe('Auth routes', () => {
     await app.close()
   })
 
-  it('POST /refresh 缺少刷新令牌返回 400', async () => {
+  it('POST /api/v1/auth/refresh 缺少刷新令牌返回 400', async () => {
     const app = await buildApp()
 
-    const res = await app.inject({ method: 'POST', url: '/refresh', payload: {} })
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/refresh', payload: {} })
 
     expect(res.statusCode).toBe(400)
     const body = res.json()

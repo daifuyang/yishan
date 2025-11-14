@@ -82,7 +82,7 @@ export default fp(async (fastify: FastifyInstance) => {
     return ResponseUtil.error(
       reply, 
       20001, // SystemErrorCode.SYSTEM_ERROR
-      process.env.NODE_ENV === 'development' ? error.message : "服务器内部错误"
+      process.env.NODE_ENV === 'production' ? "服务器内部错误" : error.message
     )
   })
 
