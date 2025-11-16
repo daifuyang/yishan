@@ -22,42 +22,49 @@ export default [
       },
     ],
   },
-  // {
-  //   path: '/system',
-  //   name: 'system',
-  //   icon: 'setting',
-  //   routes: [
-  //     {
-  //       path: '/system',
-  //       redirect: '/system/user',
-  //     },
-  //     {
-  //       path: '/system/user',
-  //       name: 'user',
-  //       component: './system/user',
-  //     },
-  //     {
-  //       path: '/system/role',
-  //       name: 'role',
-  //       component: './system/role',
-  //     },
-  //     {
-  //       path: '/system/menu',
-  //       name: 'menu',
-  //       component: './system/menu',
-  //     },
-  //     {
-  //       path: '/system/department',
-  //       name: 'department',
-  //       component: './system/department',
-  //     },
-  //     {
-  //       path: '/system/post',
-  //       name: 'post',
-  //       component: './system/post',
-  //     },
-  //   ],
-  // },
+  {
+    path: '/system',
+    name: 'system',
+    icon: 'setting',
+    access: 'canDo',
+    routes: [
+      {
+        path: '/system',
+        redirect: '/system/user',
+        access: 'canDo',
+      },
+      {
+        path: '/system/user',
+        name: 'user',
+        component: './system/user',
+        access: 'canDo',
+      },
+      {
+        path: '/system/role',
+        name: 'role',
+        component: './system/role',
+        access: 'canDo',
+      },
+      {
+        path: '/system/menu',
+        name: 'menu',
+        component: './system/menu',
+        access: 'canDo',
+      },
+      {
+        path: '/system/department',
+        name: 'department',
+        component: './system/department',
+        access: 'canDo',
+      },
+      {
+        path: '/system/post',
+        name: 'post',
+        component: './system/post',
+        access: 'canDo',
+      },
+    ],
+  },
   {
     path: '*',
     layout: false,

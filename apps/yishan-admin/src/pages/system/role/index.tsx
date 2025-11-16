@@ -96,6 +96,19 @@ const RoleList: React.FC = () => {
     }
   };
 
+  const handlePermission = async (id: number) => {
+    try {
+      setFormTitle('权限设置');
+      const result = await getRoleDetail({ id });
+      if (result.success && result.data) {
+        setCurrentRole(result.data);
+        setFormOpen(true);
+      }
+    } catch (error) {
+      message.error('获取角色详情失败');
+    }
+  };
+
   /**
    * 处理角色删除
    */
@@ -251,7 +264,7 @@ const RoleList: React.FC = () => {
           },
           {
             key: 'permission',
-            label: <a onClick={() => {}}>权限设置</a>,
+            label: <a onClick={() => handlePermission(record.id || 0)}>权限设置</a>,
           },
         ];
         

@@ -60,6 +60,52 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
+  fastify.get(
+    "/tree/authorized",
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        summary: "获取已授权菜单树",
+        description: "根据当前用户角色并集返回授权菜单树",
+        operationId: "getAuthorizedMenuTree",
+        tags: ["sysMenus"],
+        security: [{ bearerAuth: [] }],
+        response: { 200: { $ref: "menuTreeResp#" } },
+      },
+    },
+    async (
+      request: FastifyRequest,
+      reply: FastifyReply
+    ) => {
+      const roleIds = request.currentUser?.roleIds ?? [];
+      const tree = await MenuService.getAuthorizedMenuTree(roleIds);
+      return ResponseUtil.success(reply, tree, "获取菜单树成功");
+    }
+  );
+
+  fastify.get(
+    "/paths/authorized",
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        summary: "获取已授权菜单路径",
+        description: "根据当前用户角色并集返回允许访问的菜单路径列表",
+        operationId: "getAuthorizedMenuPaths",
+        tags: ["sysMenus"],
+        security: [{ bearerAuth: [] }],
+        response: { 200: { $ref: "menuPathsResp#" } },
+      },
+    },
+    async (
+      request: FastifyRequest,
+      reply: FastifyReply
+    ) => {
+      const roleIds = request.currentUser?.roleIds ?? [];
+      const paths = await MenuService.getAuthorizedMenuPaths(roleIds);
+      return ResponseUtil.success(reply, paths, "获取授权路径成功");
+    }
+  );
+
   // GET /api/v1/admin/menus/{id} - 获取菜单详情
   fastify.get(
     "/:id",

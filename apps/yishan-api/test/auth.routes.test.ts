@@ -3,6 +3,7 @@ import authPlugin from '../src/routes/api/v1/auth/index.ts'
 import registerAuthSchemas from '../src/schemas/auth.ts'
 import errorHandlerPlugin from '../src/plugins/external/error-handler.ts'
 import { AuthService } from '../src/services/auth.service.ts'
+import { MenuService } from '../src/services/menu.service.ts'
 import { ValidationErrorCode } from '../src/constants/business-codes/validation.ts'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -102,7 +103,7 @@ describe('Auth routes', () => {
 
   it('GET /api/v1/auth/me 成功返回用户信息', async () => {
     const app = await buildApp()
-
+    vi.spyOn(MenuService, 'getAuthorizedMenuPaths').mockResolvedValue(['/system', '/dashboard'])
     const res = await app.inject({
       method: 'GET',
       url: '/api/v1/auth/me',
@@ -113,6 +114,7 @@ describe('Auth routes', () => {
     const body = res.json()
     expect(body.success).toBe(true)
     expect(body.data).toMatchObject({ id: 1, username: 'admin' })
+    expect(body.data.accessPath).toEqual(['/system', '/dashboard'])
 
     await app.close()
   })

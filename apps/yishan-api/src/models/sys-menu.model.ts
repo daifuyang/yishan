@@ -260,4 +260,114 @@ export class SysMenuModel {
 
     return roots;
   }
+
+  static async getAuthorizedMenuTreeByRoleIds(roleIds: number[]): Promise<MenuTreeNode[]> {
+    if (!roleIds || roleIds.length === 0) return [] as any;
+    const links = await this.prisma.sysRoleMenu.findMany({
+      where: { roleId: { in: roleIds }, deletedAt: null },
+      select: { menuId: true },
+    });
+    const assignedIds = Array.from(new Set(links.map((l) => l.menuId)));
+
+    const superAdminOnly = roleIds.length === 1 && roleIds[0] === 1;
+
+    const menus = await this.prisma.sysMenu.findMany({
+      where: { deletedAt: null },
+      orderBy: { sort_order: "asc" },
+      include: {
+        parent: { select: { name: true } },
+        creator: { select: { username: true } },
+        updater: { select: { username: true } },
+      },
+    });
+
+    const byId = new Map<number, typeof menus[number]>();
+    for (const m of menus) byId.set(m.id, m);
+
+    const allow = new Set<number>();
+    if (assignedIds.length === 0 && superAdminOnly) {
+      for (const m of menus) allow.add(m.id);
+    } else {
+      for (const id of assignedIds) {
+        let cur = byId.get(id);
+        while (cur) {
+          allow.add(cur.id);
+          const pid = cur.parentId ?? null;
+          if (pid === null) break;
+          cur = byId.get(pid!);
+        }
+      }
+    }
+
+    const filtered = menus.filter((m) => allow.has(m.id) && m.status === 1);
+
+    const nodeMap = new Map<number, MenuTreeNode>();
+    const roots: MenuTreeNode[] = [];
+
+    for (const m of filtered) {
+      const node: MenuTreeNode = { ...this.mapToResp(m), children: null } as any;
+      nodeMap.set(m.id, node);
+    }
+
+    for (const m of filtered) {
+      const node = nodeMap.get(m.id)!;
+      const pid = m.parentId ?? null;
+      if (pid === null || !nodeMap.has(pid)) {
+        roots.push(node);
+      } else {
+        const parentNode = nodeMap.get(pid)!;
+        if (!parentNode.children) parentNode.children = [];
+        (parentNode.children as MenuTreeNode[]).push(node);
+      }
+    }
+
+    return roots;
+  }
+
+  static async getAuthorizedMenuPathsByRoleIds(roleIds: number[]): Promise<string[]> {
+    if (!roleIds || roleIds.length === 0) return [] as any;
+    const links = await this.prisma.sysRoleMenu.findMany({
+      where: { roleId: { in: roleIds }, deletedAt: null },
+      select: { menuId: true },
+    });
+    const assignedIds = Array.from(new Set(links.map((l) => l.menuId)));
+
+    const superAdminOnly = roleIds.length === 1 && roleIds[0] === 1;
+
+    const menus = await this.prisma.sysMenu.findMany({
+      where: { deletedAt: null, status: 1 },
+      orderBy: { sort_order: "asc" },
+      select: {
+        id: true,
+        parentId: true,
+        path: true,
+        isExternalLink: true,
+      },
+    });
+
+    const byId = new Map<number, { id: number; parentId: number | null; path: string | null; isExternalLink: boolean | null }>();
+    for (const m of menus) byId.set(m.id, { id: m.id, parentId: m.parentId ?? null, path: m.path ?? null, isExternalLink: !!m.isExternalLink });
+
+    const allow = new Set<number>();
+    if (assignedIds.length === 0 && superAdminOnly) {
+      for (const m of menus) allow.add(m.id);
+    } else {
+      for (const id of assignedIds) {
+        let cur = byId.get(id);
+        while (cur) {
+          allow.add(cur.id);
+          if (cur.parentId === null) break;
+          cur = byId.get(cur.parentId);
+        }
+      }
+    }
+
+    const paths = new Set<string>();
+    for (const id of allow) {
+      const m = byId.get(id);
+      if (!m) continue;
+      if (m.path && !m.isExternalLink) paths.add(m.path);
+    }
+    return Array.from(paths);
+  }
 }

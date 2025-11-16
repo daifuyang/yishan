@@ -352,6 +352,16 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type menuPaths = Record<string, any>;
+
+  type menuPathsResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: string[];
+    timestamp: string;
+  };
+
   type menuTreeList = menuTreeNode[];
 
   type menuTreeNode = {
@@ -937,6 +947,8 @@ declare namespace API {
     createdAt: string;
     /** 更新时间 */
     updatedAt: string;
+    /** 已授权菜单路径列表 */
+    accessPath?: string[];
   };
 
   type userProfileResp = {

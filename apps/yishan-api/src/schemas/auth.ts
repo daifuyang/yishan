@@ -96,6 +96,7 @@ const UserProfileSchema = Type.Object(
     loginCount: Type.Number({ description: "登录次数" }),
     createdAt: Type.String({ format: "date-time", description: "创建时间" }),
     updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
+    accessPath: Type.Optional(Type.Array(Type.String(), { description: "已授权菜单路径列表" })),
   },
   { $id: "userProfile" }
 );

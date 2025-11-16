@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Form, Input, Radio, Modal, TreeSelect } from 'antd';
-import type { FormInstance, TreeDataNode } from 'antd';
+import React, { useEffect, useMemo, useState } from 'react';
+import type { FormInstance } from 'antd';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormTreeSelect } from '@ant-design/pro-components';
 import { getDeptTree } from '@/services/yishan-admin/sysDepts';
 import type { DataNode } from 'antd/es/tree';
 
@@ -24,9 +24,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
   confirmLoading,
 }) => {
   const [treeLoading, setTreeLoading] = useState(false);
-
   const [treeData, setTreeData] = useState<API.deptTreeList>([]);
-
 
   const fetchTree = async () => {
     try {
@@ -40,100 +38,112 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
     }
   };
 
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      const payload: API.createDeptReq = {
-        name: values.name,
-        parentId: values.parentId === 0 ? undefined : values.parentId,
-        status: values.status,
-        sort_order: Number(values.sort_order ?? 0),
-        description: values.description,
-        leaderId: values.leaderId ? Number(values.leaderId) : undefined,
-      };
-      await onSubmit(payload);
-    } catch {
-      // ignore
-    }
-  };
-
   useEffect(() => {
     if (open) {
       fetchTree();
-      if (initialValues) {
-        form.setFieldsValue({
-          parentId: initialValues.parentId ?? 0,
-          name: initialValues.name,
-          status: initialValues.status ?? 1,
-          sort_order: initialValues.sort_order ?? 0,
-          description: initialValues.description,
-          leaderId: initialValues.leaderId,
-        });
-      } else {
-        form.resetFields();
-        // 新增时先不设置 parentId，待树数据加载完成后再默认选中顶级部门，避免短暂显示为数值“0”
-        form.setFieldsValue({ status: 1, sort_order: 0 });
-      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // 树数据到达后，如果是新增模式，默认选择“顶级部门”（id=0），确保显示为标签而非数值“0”
   useEffect(() => {
     if (open && !initialValues && treeData && treeData.length) {
       const firstApiNodeId = treeData[0]?.id;
       form.setFieldValue('parentId', firstApiNodeId ?? 0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [treeData]);
+  }, [treeData, open, initialValues, form]);
+
+  const initialVals = useMemo(() => (
+    initialValues
+      ? {
+          parentId: initialValues.parentId ?? 0,
+          name: initialValues.name,
+          status: (initialValues.status ?? 1) as 0 | 1,
+          sort_order: Number(initialValues.sort_order ?? 0),
+          description: initialValues.description,
+          leaderId: initialValues.leaderId,
+        }
+      : { status: 1 as 0 | 1, sort_order: 0 }
+  ), [initialValues]);
 
   return (
-    <Modal
+    <ModalForm
+      form={form}
       title={title}
       open={open}
-      onCancel={onCancel}
-      onOk={handleSubmit}
-      confirmLoading={confirmLoading}
-      maskClosable={false}
-      destroyOnClose={true}
+      onOpenChange={(o) => { if (!o) onCancel(); }}
+      modalProps={{ destroyOnClose: true, maskClosable: false, confirmLoading }}
+      autoFocusFirstInput
+      grid
+      initialValues={initialVals}
+      syncToInitialValues
+      onFinish={async (values) => {
+        const payload: API.createDeptReq = {
+          name: values.name,
+          parentId: values.parentId === 0 ? undefined : values.parentId,
+          status: values.status,
+          sort_order: Number(values.sort_order ?? 0),
+          description: values.description,
+          leaderId: values.leaderId ? Number(values.leaderId) : undefined,
+        };
+        await onSubmit(payload);
+        return true;
+      }}
     >
-      <Form form={form} layout="vertical" preserve={false}>
-        <Form.Item name="parentId" label="上级部门" rules={[{ required: true, message: '请选择上级部门' }]}>
-          <TreeSelect
-            treeData={(treeData || []) as unknown as DataNode[]}
-            fieldNames={{ label: 'name', value: 'id', children: 'children' }}
-            allowClear
-            placeholder="请选择上级部门"
-            treeDefaultExpandAll
-            disabled={treeLoading}
-            style={{ width: '100%' }}
-          />
-        </Form.Item>
+      <ProFormTreeSelect
+        name="parentId"
+        label="上级部门"
+        rules={[{ required: true, message: '请选择上级部门' }]}
+        colProps={{ span: 24 }}
+        fieldProps={{
+          treeData: (treeData || []) as unknown as DataNode[],
+          fieldNames: { label: 'name', value: 'id', children: 'children' },
+          allowClear: true,
+          treeDefaultExpandAll: true,
+          disabled: treeLoading,
+          style: { width: '100%' },
+          showSearch: true,
+        }}
+      />
 
-        <Form.Item name="name" label="部门名称" rules={[{ required: true, message: '请输入部门名称' }, { max: 50, message: '最多50个字符' }]}>
-          <Input placeholder="请输入部门名称" />
-        </Form.Item>
+      <ProFormText
+        name="name"
+        label="部门名称"
+        placeholder="请输入部门名称"
+        rules={[{ required: true, message: '请输入部门名称' }, { max: 50, message: '最多50个字符' }]}
+        colProps={{ span: 24 }}
+      />
 
-        <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
-          <Radio.Group>
-            <Radio value={1}>启用</Radio>
-            <Radio value={0}>禁用</Radio>
-          </Radio.Group>
-        </Form.Item>
+      <ProFormRadio.Group
+        name="status"
+        label="状态"
+        rules={[{ required: true, message: '请选择状态' }]}
+        options={[{ label: '启用', value: 1 }, { label: '禁用', value: 0 }]}
+        colProps={{ span: 24 }}
+      />
 
-        <Form.Item name="sort_order" label="排序" rules={[{ required: true, message: '请输入排序值' }]}>
-          <Input type="number" placeholder="请输入排序值" />
-        </Form.Item>
+      <ProFormDigit
+        name="sort_order"
+        label="排序"
+        placeholder="请输入排序值"
+        rules={[{ required: true, message: '请输入排序值' }]}
+        fieldProps={{ min: 0 }}
+        colProps={{ span: 24 }}
+      />
 
-        <Form.Item name="description" label="部门描述" rules={[{ max: 200, message: '最多200个字符' }]}>
-          <Input.TextArea rows={3} placeholder="请输入部门描述（可选）" />
-        </Form.Item>
+      <ProFormTextArea
+        name="description"
+        label="部门描述"
+        rules={[{ max: 200, message: '最多200个字符' }]}
+        fieldProps={{ rows: 3, placeholder: '请输入部门描述（可选）' }}
+        colProps={{ span: 24 }}
+      />
 
-        <Form.Item name="leaderId" label="负责人ID">
-          <Input type="number" placeholder="请输入负责人用户ID（可选）" />
-        </Form.Item>
-      </Form>
-    </Modal>
+      <ProFormDigit
+        name="leaderId"
+        label="负责人ID"
+        placeholder="请输入负责人用户ID（可选）"
+        colProps={{ span: 24 }}
+      />
+    </ModalForm>
   );
 };
 

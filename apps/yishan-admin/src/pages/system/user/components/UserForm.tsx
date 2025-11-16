@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useMemo } from "react";
 import {
-  DrawerForm,
+  ModalForm,
   ProFormText,
   ProFormRadio,
   ProFormDatePicker,
@@ -9,6 +9,7 @@ import {
 } from "@ant-design/pro-components";
 import type { FormInstance } from "antd";
 import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import { getRoleList } from "@/services/yishan-admin/sysRoles";
 import { getPostList } from "@/services/yishan-admin/sysPosts";
 import { ProFormDeptTreeSelect } from "@/components";
@@ -32,50 +33,44 @@ const UserForm: React.FC<UserFormProps> = ({
   onOpenChange,
   onSubmit,
 }) => {
-  useEffect(() => {
-    if (open) {
-      if (initialValues) {
-        form.setFieldsValue({
-          username: initialValues.username,
-          realName: initialValues.realName,
-          email: initialValues.email,
-          phone: initialValues.phone,
-          gender: initialValues.gender,
-          status: initialValues.status,
-          birthDate: initialValues.birthDate
-            ? dayjs(initialValues.birthDate)
-            : undefined,
-          avatar: initialValues.avatar,
-          deptId: (initialValues as any).deptId,
-          postIds: (initialValues as any).postIds,
-          roleIds: (initialValues as any).roleIds,
-          remark: (initialValues as any).remark,
-        });
-      } else {
-        form.resetFields();
-        form.setFieldsValue({ status: 1, gender: 0 });
-      }
+  const initialVals = useMemo(() => {
+    if (initialValues) {
+      return {
+        username: initialValues.username,
+        realName: initialValues.realName,
+        nickname: (initialValues as any).nickname,
+        email: initialValues.email,
+        phone: initialValues.phone,
+        gender: initialValues.gender,
+        status: initialValues.status,
+        birthDate: initialValues.birthDate ? dayjs(initialValues.birthDate) : undefined,
+        deptId: (initialValues as any).deptId,
+        postIds: (initialValues as any).postIds,
+        roleIds: (initialValues as any).roleIds,
+        remark: (initialValues as any).remark,
+      } as any;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    return { status: 1, gender: 0 } as any;
+  }, [initialValues]);
 
   const handleFinish = async (values: any) => {
     const payload: any = {
       username: values.username,
       realName: values.realName,
+      nickname: values.nickname,
       email: values.email,
       phone: values.phone,
       gender: values.gender,
       status: values.status,
-      birthDate: values.birthDate
-        ? values.birthDate.format("YYYY-MM-DD")
-        : undefined,
-      avatar: values.avatar,
+      birthDate: values.birthDate,
+      deptId: values.deptId,
+      postIds: values.postIds,
+      roleIds: values.roleIds,
+      remark: values.remark,
     };
     if (mode === "create") {
       payload.password = values.password;
     } else if (values.password && String(values.password).trim().length > 0) {
-      // 编辑模式下，如果输入了密码则更新密码；未输入则保持原密码
       payload.password = values.password;
     }
     await onSubmit(payload);
@@ -83,14 +78,16 @@ const UserForm: React.FC<UserFormProps> = ({
   };
 
   return (
-    <DrawerForm
+    <ModalForm
       form={form}
       title={title}
       open={open}
       onOpenChange={onOpenChange}
       autoFocusFirstInput
-      drawerProps={{ destroyOnClose: true, maskClosable: false }}
+      modalProps={{ destroyOnClose: true, maskClosable: false }}
       grid
+      initialValues={initialVals}
+      syncToInitialValues
       onFinish={handleFinish}
     >
       <ProFormText
@@ -98,6 +95,7 @@ const UserForm: React.FC<UserFormProps> = ({
         label="登录名称"
         placeholder="请输入登录名称"
         colProps={{ span: 12 }}
+        rules={[{ required: true, message: "请输入登录名称" }]}
         fieldProps={{
           autoComplete: 'off'
         }}
@@ -109,6 +107,7 @@ const UserForm: React.FC<UserFormProps> = ({
         placeholder="请选择归属部门"
         allowClear
         colProps={{ span: 12 }}
+        rules={[{ required: true, message: "请选择归属部门" }]}
       />
 
       <ProFormText
@@ -226,6 +225,7 @@ const UserForm: React.FC<UserFormProps> = ({
         placeholder="请选择出生日期"
         fieldProps={{ style: { width: "100%" } }}
         colProps={{ span: 12 }}
+        transform={(value: Dayjs | null) => ({ birthDate: value ? value.format("YYYY-MM-DD") : undefined })}
       />
 
       <ProFormTextArea
@@ -234,7 +234,7 @@ const UserForm: React.FC<UserFormProps> = ({
         placeholder="请输入内容"
         colProps={{ span: 24 }}
       />
-    </DrawerForm>
+    </ModalForm>
   );
 };
 

@@ -7,6 +7,7 @@ import {
   RefreshTokenReq
 } from "../../../../schemas/auth.js";
 import { AuthService } from "../../../../services/auth.service.js";
+import { MenuService } from "../../../../services/menu.service.js";
 
 const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // POST /api/v1/auth/login - 用户登录
@@ -94,8 +95,11 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       request: FastifyRequest,
       reply: FastifyReply
     ) => {
-      const currentUser =request.currentUser;
-      return ResponseUtil.success(reply, currentUser, "获取用户信息成功");
+      const currentUser = request.currentUser;
+      const roleIds = currentUser?.roleIds ?? [];
+      const accessPath = await MenuService.getAuthorizedMenuPaths(roleIds);
+      const result = { ...currentUser, accessPath } as any;
+      return ResponseUtil.success(reply, result, "获取用户信息成功");
     }
   );
 

@@ -37,7 +37,7 @@ const PostList: React.FC = () => {
       await updatePost({ id: String(id) }, { status: newStatus as 0 | 1 });
       message.success('状态更新成功');
       actionRef.current?.reload();
-    } catch (error) {
+    } catch (_error) {
       message.error('操作失败');
     }
   };
@@ -56,7 +56,7 @@ const PostList: React.FC = () => {
         setCurrentPost(result.data);
         setFormOpen(true);
       }
-    } catch (error) {
+    } catch (_error) {
       message.error('获取岗位详情失败');
     }
   };
@@ -66,7 +66,7 @@ const PostList: React.FC = () => {
       await deletePost({ id: String(id) });
       message.success('删除成功');
       actionRef.current?.reload();
-    } catch (error) {
+    } catch (_error) {
       message.error('删除失败');
     }
   };

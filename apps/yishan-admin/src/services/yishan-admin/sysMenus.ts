@@ -88,9 +88,25 @@ export async function deleteMenu(
   });
 }
 
+/** 获取已授权菜单路径 根据当前用户角色并集返回允许访问的菜单路径列表 GET /api/v1/admin/menus/paths/authorized */
+export async function getAuthorizedMenuPaths(options?: { [key: string]: any }) {
+  return request<API.menuPathsResp>("/api/v1/admin/menus/paths/authorized", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
 /** 获取菜单树 获取全部树形菜单 GET /api/v1/admin/menus/tree */
 export async function getMenuTree(options?: { [key: string]: any }) {
   return request<API.menuTreeResp>("/api/v1/admin/menus/tree", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
+/** 获取已授权菜单树 根据当前用户角色并集返回授权菜单树 GET /api/v1/admin/menus/tree/authorized */
+export async function getAuthorizedMenuTree(options?: { [key: string]: any }) {
+  return request<API.menuTreeResp>("/api/v1/admin/menus/tree/authorized", {
     method: "GET",
     ...(options || {}),
   });

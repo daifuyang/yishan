@@ -127,6 +127,12 @@ const MenuTreeRespSchema = successResponse({
   message: "获取菜单树成功",
 });
 
+const MenuPathsRespSchema = successResponse({
+  data: Type.Array(Type.String(), { $id: "menuPaths" }),
+  $id: "menuPathsResp",
+  message: "获取授权路径成功",
+});
+
 const registerMenu = (fastify: FastifyInstance) => {
   fastify.addSchema(SysMenuSchema);
   fastify.addSchema(MenuListQuerySchema);
@@ -138,6 +144,7 @@ const registerMenu = (fastify: FastifyInstance) => {
   fastify.addSchema(MenuTreeNodeSchema);
   fastify.addSchema(MenuTreeListSchema);
   fastify.addSchema(MenuTreeRespSchema);
+  fastify.addSchema(MenuPathsRespSchema);
 };
 
 export default registerMenu;

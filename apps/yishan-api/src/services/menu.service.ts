@@ -25,6 +25,14 @@ export class MenuService {
     return await SysMenuModel.getMenuTree(rootId);
   }
 
+  static async getAuthorizedMenuTree(roleIds: number[]) {
+    return await SysMenuModel.getAuthorizedMenuTreeByRoleIds(roleIds);
+  }
+
+  static async getAuthorizedMenuPaths(roleIds: number[]) {
+    return await SysMenuModel.getAuthorizedMenuPathsByRoleIds(roleIds);
+  }
+
   /** 获取菜单详情 */
   static async getMenuById(id: number) {
     return await SysMenuModel.getMenuById(id);

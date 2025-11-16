@@ -1,11 +1,18 @@
 /**
  * @see https://umijs.org/docs/max/access#access
  * */
+
+interface Route {
+  path: string;
+}
+
 export default function access(
-  initialState: { currentUser?: API.sysUser } | undefined,
+  initialState: { currentUser?: API.userProfile } | undefined,
 ) {
   const { currentUser } = initialState ?? {};
   return {
-    
+    canDo: (route: Route) => {
+      return currentUser?.accessPath?.includes(route.path);
+    },
   };
 }

@@ -1,5 +1,5 @@
-import { LinkOutlined } from "@ant-design/icons";
-import type { Settings as LayoutSettings } from "@ant-design/pro-components";
+import { LinkOutlined, SettingOutlined } from "@ant-design/icons";
+import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
 import { history, Link, Navigate } from "@umijs/max";
@@ -15,11 +15,15 @@ import { App as AntdApp, Spin } from "antd";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
 import "@ant-design/v5-patch-for-react-19";
-import { getMenuTree } from "@/services/yishan-admin/sysMenus";
+import { getAuthorizedMenuTree } from "@/services/yishan-admin/sysMenus";
 import React from "react";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
+
+const IconMap: Record<string, React.ReactNode> = {
+  setting: <SettingOutlined />,
+};
 
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
@@ -29,6 +33,7 @@ export async function getInitialState(): Promise<{
   currentUser?: API.userProfile;
   loading?: boolean;
   fetchUserInfo?: () => Promise<API.userProfile | undefined>;
+  fetchMenus?: () => Promise<MenuDataItem[] | undefined>;
 }> {
   const fetchUserInfo = async () => {
     const response = await getCurrentUser();
@@ -36,6 +41,33 @@ export async function getInitialState(): Promise<{
       return response.data;
     }
     return undefined;
+  };
+
+  const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
+
+    const toItem = (n: API.menuTreeNode): MenuDataItem => {
+      const item: MenuDataItem = {
+        name: n.name,
+        path: n.path,
+        icon: n.icon ? IconMap[String(n.icon).toLowerCase()] : undefined,
+        hideInMenu: n.hideInMenu,
+      };
+      if (Array.isArray(n.children) && n.children.length) {
+        item.children = transformToMenuData(n.children);
+      }
+      return item;
+    };
+    return nodes.filter((n) => n.type !== 2).map(toItem);
+  };
+
+  const fetchMenus = async () => {
+    try {
+      const res = await getAuthorizedMenuTree();
+      const data = res?.data || [];
+      return transformToMenuData(data);
+    } catch {
+      return undefined;
+    }
   };
   // 如果不是登录页面，执行
   const { location } = history;
@@ -48,12 +80,14 @@ export async function getInitialState(): Promise<{
 
     return {
       fetchUserInfo,
+      fetchMenus,
       currentUser,
       settings: defaultSettings as Partial<LayoutSettings>,
     };
   }
   return {
     fetchUserInfo,
+    fetchMenus,
     settings: defaultSettings as Partial<LayoutSettings>,
   };
 }
@@ -77,6 +111,14 @@ export const layout: RunTimeLayoutConfig = ({
     },
     menu: {
       locale: false,
+      params: {
+        userId: initialState?.currentUser?.id,
+      },
+      // 从服务器加载菜单
+      request: async () => {
+        const menus = await initialState?.fetchMenus?.();
+        return menus || [];
+      },
     },
     waterMarkProps: {
       content: initialState?.currentUser?.username,
@@ -156,7 +198,7 @@ export const request: RequestConfig = {
   ...errorConfig,
 };
 
-let extraRoutes: any[] = [];
+/* let extraRoutes: any[] = [];
 
 type UmiRoute = {
   id: string;
@@ -256,4 +298,4 @@ export function render(oldRender: () => void) {
     .finally(() => {
       oldRender();
     });
-}
+} */

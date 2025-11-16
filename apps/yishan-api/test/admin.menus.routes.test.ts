@@ -11,6 +11,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 async function buildApp() {
   const app = Fastify({ logger: false })
+  app.decorate('authenticate', async (request: any) => {
+    const auth = request.headers.authorization
+    if (!auth || !auth.startsWith('Bearer ')) {
+      throw new Error('Unauthorized')
+    }
+    request.currentUser = {
+      id: 1,
+      username: 'admin',
+      email: 'admin@example.com',
+      realName: 'Admin',
+      gender: 1,
+      genderName: '男',
+      status: 1,
+      statusName: '启用',
+      loginCount: 10,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      lastLoginTime: new Date().toISOString(),
+      roleIds: [1, 2]
+    }
+  })
   await app.register(errorHandlerPlugin)
   // 注册通用与菜单相关Schema
   registerCommonSchemas(app)
@@ -342,6 +363,83 @@ describe('Admin Menus routes', () => {
     expect(body.data.length).toBe(1)
     expect(Array.isArray(body.data[0].children)).toBe(true)
     expect(body.data[0].children[0].id).toBe(2)
+
+    await app.close()
+  })
+
+  it('GET /tree/authorized 返回授权菜单树（角色并集）', async () => {
+    const app = await buildApp()
+
+    const now = new Date().toISOString()
+    const tree = [
+      {
+        id: 1,
+        name: '系统',
+        type: 0,
+        path: '/system',
+        icon: 'SettingOutlined',
+        status: 1,
+        sort_order: 1,
+        hideInMenu: false,
+        isExternalLink: false,
+        keepAlive: false,
+        creatorId: 1,
+        creatorName: 'system',
+        createdAt: now,
+        updaterId: 1,
+        updaterName: 'system',
+        updatedAt: now,
+        children: [
+          {
+            id: 2,
+            name: '菜单管理',
+            type: 1,
+            path: '/system/menu',
+            icon: 'MenuOutlined',
+            status: 1,
+            sort_order: 2,
+            hideInMenu: false,
+            isExternalLink: false,
+            keepAlive: false,
+            creatorId: 1,
+            creatorName: 'system',
+            createdAt: now,
+            updaterId: 1,
+            updaterName: 'system',
+            updatedAt: now,
+            children: null,
+          },
+        ],
+      },
+    ] as any
+
+    vi.spyOn(MenuService, 'getAuthorizedMenuTree').mockResolvedValue(tree)
+
+    const res = await app.inject({ method: 'GET', url: '/tree/authorized', headers: { Authorization: 'Bearer access-token' } })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.success).toBe(true)
+    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data.length).toBe(1)
+    expect(Array.isArray(body.data[0].children)).toBe(true)
+    expect(body.data[0].children[0].id).toBe(2)
+
+    await app.close()
+  })
+
+  it('GET /paths/authorized 返回授权路径列表', async () => {
+    const app = await buildApp()
+
+    const paths = ['/system', '/system/menu', '/audit']
+
+    vi.spyOn(MenuService, 'getAuthorizedMenuPaths').mockResolvedValue(paths)
+
+    const res = await app.inject({ method: 'GET', url: '/paths/authorized', headers: { Authorization: 'Bearer access-token' } })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.success).toBe(true)
+    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data).toEqual(paths)
 
     await app.close()
   })
