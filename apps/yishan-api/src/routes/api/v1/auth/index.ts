@@ -90,7 +90,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         tags: ["auth"],
         security: [{ bearerAuth: [] }],
         response: {
-          200: { $ref: "userProfileResp#" },
+          200: { $ref: "currentUserResp#" },
         },
       },
     },

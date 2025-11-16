@@ -32,7 +32,7 @@ export async function logout(options?: { [key: string]: any }) {
 
 /** 获取当前用户信息 获取当前登录用户的详细信息 GET /api/v1/auth/me */
 export async function getCurrentUser(options?: { [key: string]: any }) {
-  return request<API.userProfileResp>("/api/v1/auth/me", {
+  return request<API.currentUserResp>("/api/v1/auth/me", {
     method: "GET",
     ...(options || {}),
   });

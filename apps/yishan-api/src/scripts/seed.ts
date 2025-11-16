@@ -250,6 +250,7 @@ async function main() {
       { path: '/system/department', name: '部门管理', component: './system/department' },
       { path: '/system/post', name: '岗位管理', component: './system/post' },
       { path: '/system/menu', name: '菜单管理', component: './system/menu' },
+      { path: '/system/dict', name: '字典管理', component: './system/dict' },
     ];
 
     let childOrder = 1;
@@ -261,6 +262,85 @@ async function main() {
     }
 
     console.log('✅ 系统菜单结构创建完成');
+
+    console.log('开始创建系统字典数据...');
+
+    const upsertDictType = async (
+      name: string,
+      type: string,
+      sortOrder: number,
+      remark?: string
+    ) => {
+      const dictType = await prisma.sysDictType.upsert({
+        where: { type },
+        update: {
+          name,
+          status: 1,
+          sort_order: sortOrder,
+          remark,
+          updaterId: adminUser!.id,
+        },
+        create: {
+          name,
+          type,
+          status: 1,
+          sort_order: sortOrder,
+          remark,
+          creatorId: adminUser!.id,
+          updaterId: adminUser!.id,
+        },
+      });
+      return dictType;
+    };
+
+    const upsertDictData = async (
+      typeId: number,
+      label: string,
+      value: string,
+      sortOrder: number,
+      isDefault = false,
+      remark?: string
+    ) => {
+      const dictData = await prisma.sysDictData.upsert({
+        where: { typeId_value: { typeId, value } },
+        update: {
+          label,
+          status: 1,
+          sort_order: sortOrder,
+          remark,
+          isDefault,
+          updaterId: adminUser!.id,
+        },
+        create: {
+          typeId,
+          label,
+          value,
+          status: 1,
+          sort_order: sortOrder,
+          remark,
+          isDefault,
+          creatorId: adminUser!.id,
+          updaterId: adminUser!.id,
+        },
+      });
+      return dictData;
+    };
+
+    const userGenderType = await upsertDictType('用户性别', 'user_gender', 1, '用户性别字典');
+    await upsertDictData(userGenderType.id, '保密', '0', 0);
+    await upsertDictData(userGenderType.id, '男', '1', 1);
+    await upsertDictData(userGenderType.id, '女', '2', 2);
+
+    const userStatusType = await upsertDictType('用户状态', 'user_status', 2, '用户状态字典');
+    await upsertDictData(userStatusType.id, '禁用', '0', 0);
+    await upsertDictData(userStatusType.id, '启用', '1', 1, true);
+    await upsertDictData(userStatusType.id, '拉黑', '2', 2);
+
+    const defaultStatusType = await upsertDictType('默认状态', 'default_status', 3, '通用启用/禁用状态字典');
+    await upsertDictData(defaultStatusType.id, '禁用', '0', 0);
+    await upsertDictData(defaultStatusType.id, '启用', '1', 1, true);
+
+    console.log('✅ 系统字典数据创建完成');
   } catch (error) {
     console.error('❌ 种子数据创建失败:', error);
     throw error;

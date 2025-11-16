@@ -55,8 +55,61 @@ declare namespace API {
     roleIds?: number[];
   };
 
+  type currentUser = {
+    /** 用户ID */
+    id: number;
+    /** 用户名 */
+    username: string;
+    /** 邮箱 */
+    email?: string;
+    /** 手机号 */
+    phone?: string;
+    /** 真实姓名 */
+    realName: string;
+    /** 头像URL */
+    avatar?: string;
+    /** 性别（0-未知，1-男，2-女） */
+    gender: 0 | 1 | 2;
+    /** 性别名称 */
+    genderName: string;
+    /** 出生日期 */
+    birthDate?: string;
+    /** 状态（0-禁用，1-启用，2-锁定） */
+    status: 0 | 1 | 2;
+    /** 状态名称 */
+    statusName: string;
+    /** 最后登录时间 */
+    lastLoginTime?: string;
+    /** 最后登录IP */
+    lastLoginIp?: string;
+    /** 登录次数 */
+    loginCount: number;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新时间 */
+    updatedAt: string;
+    /** 已授权菜单路径列表 */
+    accessPath?: string[];
+  };
+
+  type currentUserResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: currentUser;
+    timestamp: string;
+  };
+
   type deleteDeptParams = {
     /** 部门ID */
+    id: number;
+  };
+
+  type deleteDictDataParams = {
+    id: number;
+  };
+
+  type deleteDictTypeParams = {
     id: number;
   };
 
@@ -166,6 +219,80 @@ declare namespace API {
     timestamp: string;
   };
 
+  type dictDataDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type dictDataDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysDictData;
+    timestamp: string;
+  };
+
+  type dictDataListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    typeId?: number;
+    type?: string;
+    keyword?: string;
+    status?: 0 | 1;
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type dictDataListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysDictData[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type dictTypeDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type dictTypeDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysDictType;
+    timestamp: string;
+  };
+
+  type dictTypeListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    status?: 0 | 1;
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type dictTypeListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysDictType[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
   type getDeptDetailParams = {
     /** 部门ID */
     id: number;
@@ -185,6 +312,38 @@ declare namespace API {
     /** 排序字段 */
     sortBy?: "sort_order" | "createdAt" | "updatedAt";
     /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getDictDataDetailParams = {
+    id: number;
+  };
+
+  type getDictDataListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    typeId?: number;
+    type?: string;
+    keyword?: string;
+    status?: 0 | 1;
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getDictTypeDetailParams = {
+    id: number;
+  };
+
+  type getDictTypeListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    status?: 0 | 1;
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -516,6 +675,25 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type saveDictDataReq = {
+    typeId: number;
+    label: string;
+    value: string;
+    status?: 0 | 1;
+    sort_order?: number;
+    tag?: string;
+    remark?: string;
+    isDefault?: boolean;
+  };
+
+  type saveDictTypeReq = {
+    name: string;
+    type: string;
+    status?: 0 | 1;
+    sort_order?: number;
+    remark?: string;
+  };
+
   type saveMenuReq = {
     /** 菜单名称 */
     name: string;
@@ -595,6 +773,40 @@ declare namespace API {
     /** 更新人名称 */
     updaterName?: string;
     /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type sysDictData = {
+    id: number;
+    typeId: number;
+    type: string;
+    label: string;
+    value: string;
+    status: 0 | 1;
+    sort_order: number;
+    tag?: string;
+    remark?: string;
+    isDefault: boolean;
+    creatorId?: number;
+    creatorName?: string;
+    createdAt: string;
+    updaterId?: number;
+    updaterName?: string;
+    updatedAt: string;
+  };
+
+  type sysDictType = {
+    id: number;
+    name: string;
+    type: string;
+    status: 0 | 1;
+    sort_order: number;
+    remark?: string;
+    creatorId?: number;
+    creatorName?: string;
+    createdAt: string;
+    updaterId?: number;
+    updaterName?: string;
     updatedAt: string;
   };
 
@@ -775,6 +987,33 @@ declare namespace API {
     leaderId?: number;
   };
 
+  type updateDictDataParams = {
+    id: number;
+  };
+
+  type updateDictDataReq = {
+    typeId?: number;
+    label?: string;
+    value?: string;
+    status?: 0 | 1;
+    sort_order?: number;
+    tag?: string;
+    remark?: string;
+    isDefault?: boolean;
+  };
+
+  type updateDictTypeParams = {
+    id: number;
+  };
+
+  type updateDictTypeReq = {
+    name?: string;
+    type?: string;
+    status?: 0 | 1;
+    sort_order?: number;
+    remark?: string;
+  };
+
   type updateMenuParams = {
     /** 菜单ID */
     id: string;
@@ -912,50 +1151,5 @@ declare namespace API {
     data: sysUser[];
     timestamp: string;
     pagination: paginationResponse;
-  };
-
-  type userProfile = {
-    /** 用户ID */
-    id: number;
-    /** 用户名 */
-    username: string;
-    /** 邮箱 */
-    email: string;
-    /** 手机号 */
-    phone?: string;
-    /** 真实姓名 */
-    realName: string;
-    /** 头像URL */
-    avatar?: string;
-    /** 性别（0-未知，1-男，2-女） */
-    gender: 0 | 1 | 2;
-    /** 性别名称 */
-    genderName: string;
-    /** 出生日期 */
-    birthDate?: string;
-    /** 状态（0-禁用，1-启用，2-锁定） */
-    status: 0 | 1 | 2;
-    /** 状态名称 */
-    statusName: string;
-    /** 最后登录时间 */
-    lastLoginTime?: string;
-    /** 最后登录IP */
-    lastLoginIp?: string;
-    /** 登录次数 */
-    loginCount: number;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新时间 */
-    updatedAt: string;
-    /** 已授权菜单路径列表 */
-    accessPath?: string[];
-  };
-
-  type userProfileResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: userProfile;
-    timestamp: string;
   };
 }

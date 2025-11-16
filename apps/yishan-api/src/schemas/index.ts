@@ -7,6 +7,7 @@ import registerRole from "./role.js";
 import registerDepartment from "./department.js";
 import registerPost from "./post.js";
 import registerMenu from "./menu.js";
+import registerDict from "./dict.js";
 
 // Schema插件，定义共享的Schema引用
 export default fp(async (fastify, opts) => {
@@ -18,4 +19,5 @@ export default fp(async (fastify, opts) => {
   registerDepartment(fastify);
   registerPost(fastify);
   registerMenu(fastify);
+  registerDict(fastify);
 });

@@ -68,7 +68,7 @@ export const isAccessTokenExpired = (): boolean => {
   if (!expiry) return true;
   
   const now = Math.floor(Date.now() / 1000);
-  return now >= parseInt(expiry);
+  return now >= parseInt(expiry, 10);
 };
 
 /**
@@ -79,7 +79,7 @@ export const isRefreshTokenExpired = (): boolean => {
   if (!expiry) return true;
   
   const now = Math.floor(Date.now() / 1000);
-  return now >= parseInt(expiry);
+  return now >= parseInt(expiry, 10);
 };
 
 /**

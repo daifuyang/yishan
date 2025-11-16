@@ -63,6 +63,12 @@ export default [
         component: './system/post',
         access: 'canDo',
       },
+      {
+        path: '/system/dict',
+        name: 'dict',
+        component: './system/dict',
+        access: 'canDo',
+      },
     ],
   },
   {

@@ -30,9 +30,9 @@ const IconMap: Record<string, React.ReactNode> = {
  * */
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
-  currentUser?: API.userProfile;
+  currentUser?: API.currentUser;
   loading?: boolean;
-  fetchUserInfo?: () => Promise<API.userProfile | undefined>;
+  fetchUserInfo?: () => Promise<API.currentUser | undefined>;
   fetchMenus?: () => Promise<MenuDataItem[] | undefined>;
 }> {
   const fetchUserInfo = async () => {

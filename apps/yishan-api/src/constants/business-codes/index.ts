@@ -15,6 +15,7 @@ export * from './role.js';
 export * from './dept.js';
 export * from './post.js';
 export * from './menu.js';
+export * from './dict.js';
 
 // 重新导出常用的业务码
 import { SUCCESS_CODE, SystemErrorCode } from './common.js';
@@ -28,6 +29,7 @@ import { RoleErrorCode } from './role.js';
 import { DeptErrorCode } from './dept.js';
 import { PostErrorCode } from './post.js';
 import { MenuErrorCode } from './menu.js';
+import { DictErrorCode } from './dict.js';
 
 // 合并所有错误码
 export const ErrorCode = {
@@ -42,6 +44,7 @@ export const ErrorCode = {
   ...DeptErrorCode,
   ...PostErrorCode,
   ...MenuErrorCode,
+  ...DictErrorCode,
   // 添加一些常用的别名
   NOT_FOUND: ResourceErrorCode.RESOURCE_NOT_FOUND,
 } as const;
@@ -85,6 +88,9 @@ import {
 import { 
   MenuErrorMessages
 } from './menu.js';
+import { 
+  DictErrorMessages
+} from './dict.js';
 
 // 合并所有错误消息
 const ErrorMessages = {
@@ -99,6 +105,7 @@ const ErrorMessages = {
   ...DeptErrorMessages,
   ...PostErrorMessages,
   ...MenuErrorMessages,
+  ...DictErrorMessages,
 } as const;
 
 // 合并所有HTTP状态码映射

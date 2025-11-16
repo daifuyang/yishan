@@ -63,7 +63,7 @@ const LoginRespSchema = successResponse({
 export type LoginResp = Static<typeof LoginRespSchema>;
 
 // 用户详细信息 Schema
-const UserProfileSchema = Type.Object(
+const CurrentUserSchema = Type.Object(
   {
     id: Type.Number({ description: "用户ID" }),
     username: Type.String({ description: "用户名" }),
@@ -98,18 +98,18 @@ const UserProfileSchema = Type.Object(
     updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
     accessPath: Type.Optional(Type.Array(Type.String(), { description: "已授权菜单路径列表" })),
   },
-  { $id: "userProfile" }
+  { $id: "currentUser" }
 );
 
-export type UserProfile = Static<typeof UserProfileSchema>;
+export type CurrentUser = Static<typeof CurrentUserSchema>;
 
 // 用户资料响应 Schema
-const UserProfileRespSchema = successResponse({
-  data: Type.Ref("userProfile"),
-  $id: "userProfileResp",
+const CurrentUserRespSchema = successResponse({
+  data: Type.Ref("currentUser"),
+  $id: "currentUserResp",
 });
 
-export type UserProfileResp = Static<typeof UserProfileRespSchema>;
+export type CurrentUserResp = Static<typeof CurrentUserRespSchema>;
 
 // 刷新令牌请求 Schema
 const RefreshTokenReqSchema = Type.Object(
@@ -137,8 +137,8 @@ const registerAuth = (fastify: FastifyInstance) => {
   fastify.addSchema(LoginReqSchema);
   fastify.addSchema(LoginDataSchema);
   fastify.addSchema(LoginRespSchema);
-  fastify.addSchema(UserProfileSchema);
-  fastify.addSchema(UserProfileRespSchema);
+  fastify.addSchema(CurrentUserSchema);
+  fastify.addSchema(CurrentUserRespSchema);
   fastify.addSchema(RefreshTokenReqSchema);
   fastify.addSchema(RefreshTokenRespSchema);
 };

@@ -70,6 +70,12 @@ model SysUser {
   menusCreated SysMenu[] @relation("MenuCreator")
   menusUpdated SysMenu[] @relation("MenuUpdater")
 
+  // 字典创建/更新的反向关系
+  dictTypesCreated SysDictType[] @relation("DictTypeCreator")
+  dictTypesUpdated SysDictType[] @relation("DictTypeUpdater")
+  dictDatasCreated SysDictData[] @relation("DictDataCreator")
+  dictDatasUpdated SysDictData[] @relation("DictDataUpdater")
+
   // 索引定义
   @@index([status], map: "idx_status")
   @@index([createdAt], map: "idx_created_at")
@@ -294,4 +300,59 @@ model SysRoleMenu {
   @@index([roleId], map: "idx_role_menu_role_id")
   @@index([menuId], map: "idx_role_menu_menu_id")
   @@map("sys_role_menu")
+}
+
+model SysDictType {
+  id        Int       @id @default(autoincrement()) @map("id")
+  name      String    @map("name") @db.VarChar(100)
+  type      String    @unique @map("type") @db.VarChar(100)
+  status    Int       @default(1) @map("status") @db.TinyInt
+  sort_order Int      @default(0)
+  remark    String?   @map("remark") @db.VarChar(255)
+  creatorId Int?      @map("creator_id")
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId Int?      @map("updater_id")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(0)
+  version   Int       @default(1) @map("version")
+
+  creator   SysUser?    @relation("DictTypeCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater   SysUser?    @relation("DictTypeUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  dictDatas SysDictData[]
+
+  @@index([status], map: "idx_dict_type_status")
+  @@index([createdAt], map: "idx_dict_type_created_at")
+  @@index([deletedAt], map: "idx_dict_type_deleted_at")
+  @@index([sort_order], map: "idx_dict_type_sort_order")
+  @@map("sys_dict_type")
+}
+
+model SysDictData {
+  id         Int       @id @default(autoincrement()) @map("id")
+  typeId     Int       @map("type_id")
+  label      String    @map("label") @db.VarChar(100)
+  value      String    @map("value") @db.VarChar(100)
+  status     Int       @default(1) @map("status") @db.TinyInt
+  sort_order Int       @default(0)
+  tag        String?   @map("tag") @db.VarChar(50)
+  remark     String?   @map("remark") @db.VarChar(255)
+  isDefault  Boolean   @default(false) @map("is_default")
+  creatorId  Int?      @map("creator_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId  Int?      @map("updater_id")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt  DateTime? @map("deleted_at") @db.DateTime(0)
+  version    Int       @default(1) @map("version")
+
+  type    SysDictType @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  creator SysUser?    @relation("DictDataCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser?    @relation("DictDataUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  @@unique([typeId, value], map: "uniq_dict_data_value")
+  @@index([typeId], map: "idx_dict_data_type_id")
+  @@index([status], map: "idx_dict_data_status")
+  @@index([createdAt], map: "idx_dict_data_created_at")
+  @@index([deletedAt], map: "idx_dict_data_deleted_at")
+  @@index([sort_order], map: "idx_dict_data_sort_order")
+  @@map("sys_dict_data")
 }

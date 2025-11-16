@@ -7,7 +7,7 @@ interface Route {
 }
 
 export default function access(
-  initialState: { currentUser?: API.userProfile } | undefined,
+  initialState: { currentUser?: API.currentUser } | undefined,
 ) {
   const { currentUser } = initialState ?? {};
   return {
