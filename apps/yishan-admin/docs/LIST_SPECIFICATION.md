@@ -22,16 +22,17 @@ const result = await getUserList({
 
 ### 1.3 响应处理规范
 
-- **完全依赖 `isSuccess` 字段**：前端判断操作是否成功时，必须使用 API 返回的 `isSuccess` 字段
+- **完全依赖 `success` 字段**：前端判断操作是否成功时，必须使用 API 返回的 `success` 字段
 - **统一错误处理**：错误信息直接使用 API 返回的 `message` 字段，不进行前端特殊处理
 
 ```typescript
-// 严格按照规范处理响应
+// 严格按照规范处理响应（结合 ProTable 的 request）
 return {
-  data: result.data?.list || [],
-  // 使用isSuccess字段判断操作是否成功
-  success: result.isSuccess === true,
-  total: result.data?.pagination?.total || 0,
+  // 列表接口统一返回为数组：result.data
+  data: result.data || [],
+  success: result.success === true,
+  // 分页信息统一从 result.pagination.total 读取
+  total: (result as any).pagination?.total || 0,
 };
 ```
 
@@ -63,25 +64,32 @@ return {
 
 所有 API 响应都包含以下字段：
 ```typescript
-interface ApiResponse<T = any> {
+interface BaseResponse<T = any> {
   code: number;        // 业务状态码
   message: string;     // 响应消息
-  data?: T;           // 响应数据
-  isSuccess: boolean; // 操作是否成功
+  success: boolean;    // 操作是否成功
+  data?: T;            // 响应数据
+  timestamp?: string;  // 响应时间戳
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };                   // 列表分页信息（仅列表接口返回）
 }
 ```
 
 ### 3.2 列表数据结构
 
-列表数据结构应符合以下格式：
+列表数据结构统一为：
 ```typescript
-type sysUserListResponse = {
-  list?: sysUser[];
-  pagination?: {
-    page?: number;
-    pageSize?: number;
-    total?: number;
-    totalPages?: number;
+type ListResponse<T> = {
+  data: T[]; // 列表数据为数组
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
   };
 };
 ```
@@ -91,15 +99,13 @@ type sysUserListResponse = {
 ### 4.1 正确的响应处理示例
 
 ```typescript
-// ✅ 正确：完全依赖 isSuccess 字段
+// ✅ 正确：完全依赖 success 字段
 const handleApiResponse = async () => {
   const response = await apiCall();
-  if (response.isSuccess) {
-    // 处理成功逻辑
+  if (response.success) {
     message.success(response.message || '操作成功');
     return response.data;
   } else {
-    // 处理失败逻辑
     message.error(response.message || '操作失败');
     return null;
   }

@@ -9,6 +9,8 @@
 3. [API 集成规范](#api-集成规范)
 4. [路由和菜单配置规范](#路由和菜单配置规范)
 5. [国际化配置规范](#国际化配置规范)
+6. [页面开发规范](#页面开发规范)
+7. [当前页面目录概览](#当前页面目录概览)
 
 ## 模块结构和目录规范
 
@@ -150,27 +152,27 @@ API 服务应放在 `src/services/yishan-admin/` 目录下，按功能模块分�
 
 ```ts
 // src/services/yishan-admin/sysRoles.ts
+import { request } from '@umijs/max';
 
-import { request } from "@umijs/max";
-
-/** 获取角色列表 GET /api/v1/admin/roles/ */
+/** 获取角色列表 分页获取系统角色列表，支持关键词搜索和状态筛选 */
 export async function getRoleList(
   params: API.getRoleListParams,
   options?: { [key: string]: any }
 ) {
-  return request<API.ApiResponse<API.sysRoleListResponse>>("/api/v1/admin/roles/", {
-    method: "GET",
+  return request<API.roleListResp>('/api/v1/admin/roles/', {
+    method: 'GET',
     params: {
-      // 默认参数
-      page: "1",
-      pageSize: "10",
+      page: '1',
+      pageSize: '10',
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
       ...params,
     },
     ...(options || {}),
   });
 }
 
-// 其他 API 函数
+// 其他 API 函数保持相同返回结构（success、message、data、pagination）
 ```
 
 ### 最佳实践
@@ -185,6 +187,7 @@ export async function getRoleList(
 
 3. **错误处理**：
    - 在组件中统一处理 API 错误
+   - 使用 `success` 字段判断接口调用是否成功
    - 使用 try/catch 捕获异常
 
 4. **注释**：
@@ -311,3 +314,67 @@ export default {
 ---
 
 遵循以上规范，可以确保新模块的开发符合项目标准，提高代码质量和可维护性。以角色管理模块为例，我们展示了如何正确地组织代码结构、实现功能和配置路由菜单，为后续模块开发提供了参考模板。
+
+## 页面开发规范
+
+### 列表页（ProTable）
+
+```tsx
+// 统一的列表请求与响应处理
+request={async (params) => {
+  const { current, pageSize, ...rest } = params;
+  const result = await getXXXList({ page: current, pageSize, ...rest });
+  return {
+    data: result.data || [],
+    success: result.success,
+    total: (result as any).pagination?.total || 0,
+  };
+}}
+```
+
+- 使用 `headerTitle` 设置标题
+- 使用 `rowKey` 指定行唯一标识
+- 使用 `search` 控制查询项展示；分页查询统一映射 `current -> page`
+- 使用 `toolBarRender` 放置“新建”等操作按钮（文案统一使用“新建”）
+- 使用 `rowSelection` + `tableAlertRender` + `tableAlertOptionRender` 承载批量操作（如批量删除）
+
+### 树形列表页（部门/菜单）
+
+- 列表请求使用树接口（如 `getDeptTree`、`getMenuTree`），`pagination` 关闭
+- 使用 `expandable` 控制展开，首次渲染后统一收集并展开父节点 ID
+- 列展示统一包含状态、排序、时间等信息
+
+### 表单组件交互
+
+- 列表页通过本地 `Form.useForm()` 创建实例并传递给子表单组件
+- 子表单统一使用以下属性：`form`、`open`、`title`、`initialValues`、`onSubmit`、`onCancel`、`confirmLoading`
+- 新建与编辑文案统一：`新建xxx`、`编辑xxx`
+
+### 状态枚举与标签
+
+- 在页面内定义状态枚举（如 `ENABLED/DISABLED`），避免魔法数
+- 使用 `Tag` 组件统一展示状态（颜色规范：成功绿、禁用红、警告黄等）
+
+## 当前页面目录概览
+
+```
+src/pages/
+├── system/
+│   ├── user/            # 用户管理（列表 + 表单）
+│   ├── role/            # 角色管理（列表 + 表单）
+│   ├── department/      # 部门管理（树形列表 + 表单）
+│   ├── menu/            # 菜单管理（树形列表 + 表单）
+│   └── post/            # 岗位管理（列表 + 表单）
+├── user/
+│   └── login/           # 登录页
+├── Admin.tsx             # 管理页示例
+├── Welcome.tsx           # 欢迎页
+└── 404.tsx               # 404 页面
+```
+
+示例参考：
+- 用户列表页：`src/pages/system/user/index.tsx`
+- 角色列表页：`src/pages/system/role/index.tsx`
+- 部门树页：`src/pages/system/department/index.tsx`
+- 菜单树页：`src/pages/system/menu/index.tsx`
+- 岗位列表页：`src/pages/system/post/index.tsx`
