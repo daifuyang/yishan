@@ -20,8 +20,20 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/intro">
-            Docusaurus Tutorial - 5min ⏱️
+            to="/docs/quick-start/run">
+            快速开始
+          </Link>
+          <Link
+            className="button button--outline button--lg"
+            style={{marginLeft: 12}}
+            to="/docs/frontend/overview">
+            前端文档
+          </Link>
+          <Link
+            className="button button--outline button--lg"
+            style={{marginLeft: 12}}
+            to="/docs/api/overview">
+            后端文档
           </Link>
         </div>
       </div>
@@ -33,8 +45,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />">
+      title="首页"
+      description="移山后台管理系统文档站首页">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

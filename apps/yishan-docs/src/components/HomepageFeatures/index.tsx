@@ -11,32 +11,56 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Easy to Use',
+    title: '前后端分离架构',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        前端基于 Umi Max + Ant Design Pro，后端基于 Fastify + Prisma，模块清晰、职责明确。
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
+    title: '统一业务码与响应',
     Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        标准化 <code>success/code/message/data/timestamp</code> 输出与分页结构，前端处理更简单稳定。
       </>
     ),
   },
   {
-    title: 'Powered by React',
+    title: '完善认证与缓存',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        JWT 访问/刷新令牌与 Redis 缓存策略，支持令牌撤销与自动刷新，性能与安全兼顾。
+      </>
+    ),
+  },
+  {
+    title: '模块即插即用',
+    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    description: (
+      <>
+        用户、角色、菜单、部门、岗位等通用模块开箱可用，权限以路径为核心，搭配 <code>accessPath</code> 控制。
+      </>
+    ),
+  },
+  {
+    title: '开发体验友好',
+    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    description: (
+      <>
+        请求拦截与错误处理、自动刷新令牌、TypeScript 与 Biome Lint，全链路提升开发效率与质量。
+      </>
+    ),
+  },
+  {
+    title: '文档与示例完善',
+    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    description: (
+      <>
+        Docusaurus 文档与 Swagger UI 结合，示例与规范齐备，便于团队协作与扩展。
       </>
     ),
   },

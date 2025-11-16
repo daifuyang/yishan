@@ -1,47 +1,18 @@
 ---
 sidebar_position: 1
+title: 简介
 ---
 
-# Tutorial Intro
+# 移山后台管理系统
 
-Let's discover **Docusaurus in less than 5 minutes**.
+移山是一套前后端分离的后台管理系统，参考若依（RuoYi）文档风格，提供开箱即用的用户、角色、菜单、部门、岗位等通用模块。前端基于 Umi Max 与 Ant Design Pro，后端基于 Fastify + TypeScript + Prisma，统一的业务码与响应规范使前后端交互更简洁。
 
-## Getting Started
+本网站为项目文档中心，涵盖快速开始、前端说明、后端说明、系统模块、部署运维与常见问题。
 
-Get started by **creating a new site**.
+• 前端代码：`c:\Workspace\Frontend\yishan\apps\yishan-admin`
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+• 后端代码：`c:\Workspace\Frontend\yishan\apps\yishan-api`
 
-### What you'll need
+• 文档站点：`c:\Workspace\Frontend\yishan\apps\yishan-docs`
 
-- [Node.js](https://nodejs.org/en/download/) version 18.0 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
-
-## Generate a new site
-
-Generate a new Docusaurus site using the **classic template**.
-
-The classic template will automatically be added to your project after you run the command:
-
-```bash
-npm init docusaurus@latest my-website classic
-```
-
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
-
-The command also installs all necessary dependencies you need to run Docusaurus.
-
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+建议从“快速开始”开始配置并运行项目，然后根据需要阅读前后端章节。
