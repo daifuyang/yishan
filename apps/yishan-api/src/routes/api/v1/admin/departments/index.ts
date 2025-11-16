@@ -5,6 +5,7 @@ import { DeptErrorCode } from "../../../../../constants/business-codes/dept.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { DeptListQuery, CreateDeptReq, UpdateDeptReq } from "../../../../../schemas/department.js";
 import { DeptService } from "../../../../../services/dept.service.js";
+import { getDepartmentMessage, DepartmentMessageKeys } from "../../../../../constants/messages/department.js";
 
 const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET /api/v1/admin/departments - 获取部门列表
@@ -29,13 +30,14 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const { page, pageSize } = request.query;
       const result = await DeptService.getDeptList(request.query);
+      const message = getDepartmentMessage(DepartmentMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.paginated(
         reply,
         result.list,
         page,
         pageSize,
         result.total,
-        "获取部门列表成功"
+        message
       );
     }
   );
@@ -63,7 +65,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       if (!dept) {
         throw new BusinessError(DeptErrorCode.DEPT_NOT_FOUND, "部门不存在");
       }
-      return ResponseUtil.success(reply, dept, "获取部门详情成功");
+      {
+        const message = getDepartmentMessage(DepartmentMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, dept, message);
+      }
     }
   );
 
@@ -86,7 +91,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       const dept = await DeptService.createDept(request.body);
-      return ResponseUtil.success(reply, dept, "创建部门成功");
+      {
+        const message = getDepartmentMessage(DepartmentMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, dept, message);
+      }
     }
   );
 
@@ -111,7 +119,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const deptId = request.params.id;
       const dept = await DeptService.updateDept(deptId, request.body);
-      return ResponseUtil.success(reply, dept, "更新部门成功");
+      {
+        const message = getDepartmentMessage(DepartmentMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, dept, message);
+      }
     }
   );
 
@@ -135,7 +146,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const deptId = request.params.id;
       const result = await DeptService.deleteDept(deptId);
-      return ResponseUtil.success(reply, result, "删除部门成功");
+      {
+        const message = getDepartmentMessage(DepartmentMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, result, message);
+      }
     }
   );
 
@@ -157,7 +171,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       const tree = await DeptService.getDeptTree();
-      return ResponseUtil.success(reply, tree, "获取部门树成功");
+      {
+        const message = getDepartmentMessage(DepartmentMessageKeys.TREE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, tree, message);
+      }
     }
   );
 };

@@ -6,6 +6,7 @@ import { MenuErrorCode } from "../../../../../constants/business-codes/menu.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { MenuListQuery, SaveMenuReq, UpdateMenuReq } from "../../../../../schemas/menu.js";
 import { MenuService } from "../../../../../services/menu.service.js";
+import { getMenuMessage, MenuMessageKeys } from "../../../../../constants/messages/menu.js";
 
 const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET /api/v1/admin/menus - 获取菜单列表
@@ -28,13 +29,14 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const { page, pageSize } = request.query;
       const result = await MenuService.getMenuList(request.query);
+      const message = getMenuMessage(MenuMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.paginated(
         reply,
         result.list,
         page,
         pageSize,
         result.total,
-        "获取菜单列表成功"
+        message
       );
     }
   );
@@ -56,7 +58,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       const tree = await MenuService.getMenuTree();
-      return ResponseUtil.success(reply, tree, "获取菜单树成功");
+      {
+        const message = getMenuMessage(MenuMessageKeys.TREE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, tree, message);
+      }
     }
   );
 
@@ -79,7 +84,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const roleIds = request.currentUser?.roleIds ?? [];
       const tree = await MenuService.getAuthorizedMenuTree(roleIds);
-      return ResponseUtil.success(reply, tree, "获取菜单树成功");
+      {
+        const message = getMenuMessage(MenuMessageKeys.TREE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, tree, message);
+      }
     }
   );
 
@@ -102,7 +110,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const roleIds = request.currentUser?.roleIds ?? [];
       const paths = await MenuService.getAuthorizedMenuPaths(roleIds);
-      return ResponseUtil.success(reply, paths, "获取授权路径成功");
+      {
+        const message = getMenuMessage(MenuMessageKeys.AUTH_PATHS_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, paths, message);
+      }
     }
   );
 
@@ -132,7 +143,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       if (!menu) {
         throw new BusinessError(MenuErrorCode.MENU_NOT_FOUND, "菜单不存在");
       }
-      return ResponseUtil.success(reply, menu, "获取菜单详情成功");
+      {
+        const message = getMenuMessage(MenuMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, menu, message);
+      }
     }
   );
 
@@ -155,7 +169,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       const menu = await MenuService.createMenu(request.body);
-      return ResponseUtil.success(reply, menu, "创建菜单成功");
+      {
+        const message = getMenuMessage(MenuMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, menu, message);
+      }
     }
   );
 
@@ -183,7 +200,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "菜单ID不能为空");
       }
       const menu = await MenuService.updateMenu(menuId, request.body);
-      return ResponseUtil.success(reply, menu, "更新菜单成功");
+      {
+        const message = getMenuMessage(MenuMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, menu, message);
+      }
     }
   );
 
@@ -210,7 +230,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "菜单ID不能为空");
       }
       const result = await MenuService.deleteMenu(menuId);
-      return ResponseUtil.success(reply, result, "删除菜单成功");
+      {
+        const message = getMenuMessage(MenuMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, result, message);
+      }
     }
   );
 };

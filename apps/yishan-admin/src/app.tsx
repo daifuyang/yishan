@@ -115,7 +115,8 @@ export const layout: RunTimeLayoutConfig = ({
         userId: initialState?.currentUser?.id,
       },
       // 从服务器加载菜单
-      request: async () => {
+      request: async (params) => {
+        if (!params?.userId) return [];
         const menus = await initialState?.fetchMenus?.();
         return menus || [];
       },
@@ -198,62 +199,21 @@ export const request: RequestConfig = {
   ...errorConfig,
 };
 
-/* let extraRoutes: any[] = [];
-
-type UmiRoute = {
+type Route = {
   id: string;
   path: string;
   type?: 0 | 1 | 2;
   name?: string;
   component?: string;
-  children?: UmiRoute[];
+  children?: Route[];
   redirect?: string;
   element?: React.ReactNode;
 };
 
-const Wrapper = ({ children }: any) => (
-  <React.Suspense>{children}</React.Suspense>
-)
-
-// 保留原层级递归，将extraRoutes中的路由替换为systemRoutesMap中的路由
-const recursiveRoutes = (routes: UmiRoute[] = []): UmiRoute[] => {
-  if (!Array.isArray(routes) || routes.length === 0) return [];
-  const acc: UmiRoute[] = [];
-  routes.forEach((item) => {
-
-    const newItem: UmiRoute = { id: item.path, path: item.path, name: item.name, children: item.children };
-    if (item.type === 1) {
-
-      // 使用 require 动态加载组件，避免动态 import 的模块系统限制
-      // 兼容一下item.component有可能是./开头的情况，也有可能是/开头的情况
-      item.component = item.component?.replace(/^\.?\//, '');
-
-      const Component = React.lazy(() =>
-        Promise.resolve(require(`./pages/${item.component}`))
-      );
-
-      newItem.element = <Wrapper><Component /></Wrapper>;
-    }
-
-    if (item.children) {
-      const childRoutes = recursiveRoutes(item.children || []);
-      if (item.type === 0) {
-        const path = item.children[0].path;
-        childRoutes.unshift({
-          id: item.path, path: item.path, element: <Navigate to={path} replace />, redirect: path
-        });
-      }
-      newItem.children = childRoutes;
-    }
-    acc.push(newItem);
-  });
-  return acc;
-};
-
-const resolveFirstPath = (routes: UmiRoute[] = []): string => {
+const resolveFirstPath = (routes: Route[] = []): string => {
   if (!Array.isArray(routes) || routes.length === 0) return "/";
-  const routeMap = new Map<string, UmiRoute>();
-  const build = (list: UmiRoute[] = []) => {
+  const routeMap = new Map<string, Route>();
+  const build = (list: Route[] = []) => {
     list.forEach((r) => {
       if (r?.path) routeMap.set(r.path, r);
       if (Array.isArray(r.children)) build(r.children);
@@ -276,26 +236,11 @@ const resolveFirstPath = (routes: UmiRoute[] = []): string => {
 };
 
 export function patchClientRoutes({ routes }: { routes: any[] }) {
-  if (!Array.isArray(extraRoutes) || extraRoutes.length === 0) return;
-  // 找到路由为/的路由
-  const rootRoute = routes.find((r: any) => r.path === '/');
-  if (rootRoute) {
-    // 递归extraRoutes
-    const systemRoutes = recursiveRoutes(extraRoutes);
-    if (!rootRoute.children) rootRoute.children = [];
-
-    const firstPath = resolveFirstPath(systemRoutes);
-    systemRoutes.unshift({ id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath });
-    rootRoute.children.push(...systemRoutes);
+   const rootRoute = routes.find((r: any) => r.path === '/');
+  if (rootRoute && rootRoute.children.length > 0) {
+    const firstPath = resolveFirstPath(rootRoute.children || []);
+    rootRoute.children.unshift({
+      id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath
+    });
   }
 }
-
-export function render(oldRender: () => void) {
-  getMenuTree()
-    .then((res) => {
-      extraRoutes = (res as any)?.data || [];
-    })
-    .finally(() => {
-      oldRender();
-    });
-} */

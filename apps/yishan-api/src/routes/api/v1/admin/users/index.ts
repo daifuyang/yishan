@@ -10,6 +10,7 @@ import {
 import { UserService } from "../../../../../services/user.service.js";
 import { UserErrorCode } from "../../../../../constants/business-codes/user.js";
 import { CACHE_CONFIG } from "../../../../../config/index.js";
+import { getUserMessage, UserMessageKeys } from "../../../../../constants/messages/user.js";
 
 // 用户详情缓存：键格式集中定义（TTL 使用配置中心）
 const getUserDetailCacheKey = (userId: number) => `user:detail:${userId}`;
@@ -40,13 +41,14 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       // 使用UserService获取管理员列表 
       const result = await UserService.getUserList(request.query);
 
+      const message = getUserMessage(UserMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.paginated(
         reply,
         result.list,
         page,
         pageSize,
         result.total,
-        "获取用户列表成功"
+        message
       );
     }
   );
@@ -82,7 +84,8 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           const cached = await fastify.redis.get(CACHE_KEY);
           if (cached) {
             const data = JSON.parse(cached);
-            return ResponseUtil.success(reply, data, "获取用户详情成功");
+            const message = getUserMessage(UserMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
+            return ResponseUtil.success(reply, data, message);
           }
         } catch (err) {
           fastify.log.warn(`读取用户详情缓存失败: ${(err as Error).message}`);
@@ -103,7 +106,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         }
       }
 
-      return ResponseUtil.success(reply, user, "获取用户详情成功");
+      {
+        const message = getUserMessage(UserMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, user, message);
+      }
     }
   );
 
@@ -139,7 +145,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           fastify.log.warn(`创建用户后写入详情缓存失败: ${(err as Error).message}`);
         }
       }
-      return ResponseUtil.success(reply, user, "创建用户成功");
+      {
+        const message = getUserMessage(UserMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, user, message);
+      }
     }
   );
 
@@ -201,7 +210,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         }
       }
 
-      return ResponseUtil.success(reply, user, "更新用户成功");
+      {
+        const message = getUserMessage(UserMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, user, message);
+      }
     }
   );
 
@@ -255,7 +267,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         }
       }
 
-      return ResponseUtil.success(reply, result, "删除用户成功");
+      {
+        const message = getUserMessage(UserMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, result, message);
+      }
     }
   );
 };

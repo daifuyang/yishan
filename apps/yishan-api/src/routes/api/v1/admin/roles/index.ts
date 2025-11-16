@@ -5,6 +5,7 @@ import { RoleErrorCode } from "../../../../../constants/business-codes/role.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { RoleListQuery, SaveRoleReq, UpdateRoleReq } from "../../../../../schemas/role.js";
 import { RoleService } from "../../../../../services/role.service.js";
+import { getRoleMessage, RoleMessageKeys } from "../../../../../constants/messages/role.js";
 
 const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET /api/v1/admin/roles - 获取角色列表
@@ -29,13 +30,14 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const { page, pageSize } = request.query;
       const result = await RoleService.getRoleList(request.query);
+      const message = getRoleMessage(RoleMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.paginated(
         reply,
         result.list,
         page,
         pageSize,
         result.total,
-        "获取角色列表成功"
+        message
       );
     }
   );
@@ -67,7 +69,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       if (!role) {
         throw new BusinessError(RoleErrorCode.ROLE_NOT_FOUND, "角色不存在");
       }
-      return ResponseUtil.success(reply, role, "获取角色详情成功");
+      {
+        const message = getRoleMessage(RoleMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, role, message);
+      }
     }
   );
 
@@ -92,7 +97,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       const role = await RoleService.createRole(request.body);
-      return ResponseUtil.success(reply, role, "创建角色成功");
+      {
+        const message = getRoleMessage(RoleMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, role, message);
+      }
     }
   );
 
@@ -121,7 +129,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const roleId = request.params.id;
       const role = await RoleService.updateRole(roleId, request.body);
-      return ResponseUtil.success(reply, role, "更新角色成功");
+      {
+        const message = getRoleMessage(RoleMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, role, message);
+      }
     }
   );
 
@@ -149,7 +160,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const roleId = request.params.id;
       const result = await RoleService.deleteRole(roleId);
-      return ResponseUtil.success(reply, result, "删除角色成功");
+      {
+        const message = getRoleMessage(RoleMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, result, message);
+      }
     }
   );
 }; 

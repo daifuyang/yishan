@@ -1,5 +1,6 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { ResponseUtil } from "../../../../utils/response.js";
+import { getAuthMessage, AuthMessageKeys } from "../../../../constants/messages/auth.js";
 import { ValidationErrorCode } from "../../../../constants/business-codes/validation.js";
 import { BusinessError } from "../../../../exceptions/business-error.js";
 import {
@@ -31,7 +32,8 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       // 使用AuthService进行登录验证
       const result = await AuthService.login(request.body, fastify, request.ip);
-      return ResponseUtil.success(reply, result, "登录成功");
+      const message = getAuthMessage(AuthMessageKeys.LOGIN_SUCCESS, request.headers["accept-language"] as string);
+      return ResponseUtil.success(reply, result, message);
     }
   );
 
@@ -71,7 +73,8 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
       // 使用AuthService进行登出处理
       await AuthService.logout(token, fastify);
-      return ResponseUtil.success(reply, null, "登出成功");
+      const message = getAuthMessage(AuthMessageKeys.LOGOUT_SUCCESS, request.headers["accept-language"] as string);
+      return ResponseUtil.success(reply, null, message);
     }
   );
 
@@ -99,7 +102,8 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       const roleIds = currentUser?.roleIds ?? [];
       const accessPath = await MenuService.getAuthorizedMenuPaths(roleIds);
       const result = { ...currentUser, accessPath } as any;
-      return ResponseUtil.success(reply, result, "获取用户信息成功");
+      const message = getAuthMessage(AuthMessageKeys.USER_INFO_SUCCESS, request.headers["accept-language"] as string);
+      return ResponseUtil.success(reply, result, message);
     }
   );
 
@@ -130,7 +134,8 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
       // 使用AuthService刷新令牌
       const result = await AuthService.refreshToken(refreshToken, fastify);
-      return ResponseUtil.success(reply, result, "令牌刷新成功");
+      const message = getAuthMessage(AuthMessageKeys.REFRESH_SUCCESS, request.headers["accept-language"] as string);
+      return ResponseUtil.success(reply, result, message);
     }
   );
 };

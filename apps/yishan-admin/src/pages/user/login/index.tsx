@@ -209,7 +209,7 @@ const Login: React.FC = () => {
       <div className={styles.loginWrap}>
         <div className={styles.loginCard}>
           <h1 className={styles.loginTitle}>欢迎登录系统</h1>
-          <p className={styles.loginSubTitle}> WELCOME!</p>
+          <p className={styles.loginSubTitle}> 下午好!</p>
           <Form
             onFinish={async (values: any) => {
               const { username, password, remember } = values || {};
@@ -227,14 +227,14 @@ const Login: React.FC = () => {
                   message: (
                     <FormattedMessage
                       id="pages.login.username.required"
-                      defaultMessage="请输入用户名或邮箱!"
+                      defaultMessage="请输入用户名"
                     />
                   ),
                 },
                 {
                   validator: (_, value) => {
                     if (!value) {
-                      return Promise.reject(new Error("请输入用户名或邮箱"));
+                      return Promise.reject(new Error("请输入用户名"));
                     }
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (value.length < 3 && !emailRegex.test(value)) {
@@ -250,7 +250,7 @@ const Login: React.FC = () => {
                 variant="filled"
                 placeholder={intl.formatMessage({
                   id: "pages.login.username.placeholder",
-                  defaultMessage: "用户名或邮箱",
+                  defaultMessage: "用户名",
                 })}
                 prefix={<UserOutlined className={styles.loginItemIcon} />}
               />

@@ -13,26 +13,26 @@ import { logout as apiLogout } from '@/services/yishan-admin/auth';
  */
 export const logout = async (redirectToLogin = true) => {
   try {
-    // 已登录时调用后端注销接口（使用Authorization头，不传body）
     if (isLoggedIn()) {
-      await apiLogout();
+      const res = await apiLogout();
+      if(res.success) {
+        message.success(res.message || '注销成功');
+      }
     }
   } catch (error) {
-    console.error('注销失败:', error);
     // 即使后端注销失败，也继续本地清理
   } finally {
     // 清除本地存储的token和用户信息
     clearTokens();
-    
     // 清除用户信息缓存
     localStorage.removeItem('currentUser');
-    
     if (redirectToLogin) {
-      message.success('已安全退出');
-      
-      // 跳转到登录页面，并记录当前页面用于重定向
-      const currentPath = window.location.pathname + window.location.search;
-      history.push(`/user/login?redirect=${encodeURIComponent(currentPath)}`);
+      const urlSearch = window.location.search;
+      const params = new URLSearchParams(urlSearch);
+      const redirectParam = params.get('redirect');
+      const isLogin = window.location.pathname.startsWith('/user/login');
+      const target = isLogin ? (redirectParam || '/') : window.location.pathname + urlSearch;
+      history.push(`/user/login?redirect=${encodeURIComponent(target)}`);
     }
   }
 };

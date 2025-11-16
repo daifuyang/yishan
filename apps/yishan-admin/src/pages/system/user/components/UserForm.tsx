@@ -95,7 +95,6 @@ const UserForm: React.FC<UserFormProps> = ({
         label="登录名称"
         placeholder="请输入登录名称"
         colProps={{ span: 12 }}
-        rules={[{ required: true, message: "请输入登录名称" }]}
         fieldProps={{
           autoComplete: 'off'
         }}
@@ -107,7 +106,6 @@ const UserForm: React.FC<UserFormProps> = ({
         placeholder="请选择归属部门"
         allowClear
         colProps={{ span: 12 }}
-        rules={[{ required: true, message: "请选择归属部门" }]}
       />
 
       <ProFormText

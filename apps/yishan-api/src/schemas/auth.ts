@@ -67,7 +67,7 @@ const UserProfileSchema = Type.Object(
   {
     id: Type.Number({ description: "用户ID" }),
     username: Type.String({ description: "用户名" }),
-    email: Type.String({ description: "邮箱" }),
+    email: Type.Optional(Type.String({ format: "email", description: "邮箱" })),
     phone: Type.Optional(Type.String({ description: "手机号" })),
     realName: Type.String({ description: "真实姓名" }),
     avatar: Type.Optional(Type.String({ description: "头像URL" })),

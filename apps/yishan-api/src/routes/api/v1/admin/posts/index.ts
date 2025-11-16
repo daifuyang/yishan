@@ -6,6 +6,7 @@ import { PostErrorCode } from "../../../../../constants/business-codes/post.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { PostListQuery, SavePostReq, UpdatePostReq } from "../../../../../schemas/post.js";
 import { PostService } from "../../../../../services/post.service.js";
+import { getPostMessage, PostMessageKeys } from "../../../../../constants/messages/post.js";
 
 const adminPosts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET /api/v1/admin/posts - 获取岗位列表
@@ -30,13 +31,14 @@ const adminPosts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       const { page, pageSize } = request.query;
       const result = await PostService.getPostList(request.query);
+      const message = getPostMessage(PostMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.paginated(
         reply,
         result.list,
         page,
         pageSize,
         result.total,
-        "获取岗位列表成功"
+        message
       );
     }
   );
@@ -67,7 +69,10 @@ const adminPosts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       if (!post) {
         throw new BusinessError(PostErrorCode.POST_NOT_FOUND, "岗位不存在");
       }
-      return ResponseUtil.success(reply, post, "获取岗位详情成功");
+      {
+        const message = getPostMessage(PostMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, post, message);
+      }
     }
   );
 
@@ -90,7 +95,10 @@ const adminPosts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       const post = await PostService.createPost(request.body);
-      return ResponseUtil.success(reply, post, "创建岗位成功");
+      {
+        const message = getPostMessage(PostMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, post, message);
+      }
     }
   );
 
@@ -118,7 +126,10 @@ const adminPosts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "岗位ID不能为空");
       }
       const post = await PostService.updatePost(postId, request.body);
-      return ResponseUtil.success(reply, post, "更新岗位成功");
+      {
+        const message = getPostMessage(PostMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, post, message);
+      }
     }
   );
 
@@ -145,7 +156,10 @@ const adminPosts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "岗位ID不能为空");
       }
       const result = await PostService.deletePost(postId);
-      return ResponseUtil.success(reply, result, "删除岗位成功");
+      {
+        const message = getPostMessage(PostMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
+        return ResponseUtil.success(reply, result, message);
+      }
     }
   );
 };
