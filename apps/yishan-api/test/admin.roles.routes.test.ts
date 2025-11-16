@@ -97,6 +97,46 @@ describe('Admin Roles routes', () => {
     await app.close()
   })
 
+  it('POST / 创建角色可携带菜单权限并返回', async () => {
+    const app = await buildApp()
+
+    const now = new Date().toISOString()
+    const created = {
+      id: 101,
+      name: 'operator',
+      description: '运维角色',
+      status: 1,
+      creatorId: 1,
+      creatorName: 'system',
+      createdAt: now,
+      updaterId: 1,
+      updaterName: 'system',
+      updatedAt: now,
+      menuIds: [1, 2, 5]
+    } as any
+
+    vi.spyOn(RoleService, 'createRole').mockResolvedValue(created)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/',
+      payload: {
+        name: 'operator',
+        description: '运维角色',
+        status: 1,
+        menuIds: [1, 2, 5]
+      }
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.success).toBe(true)
+    expect(body.data).toMatchObject({ id: 101, name: 'operator' })
+    expect(body.data.menuIds).toEqual([1, 2, 5])
+
+    await app.close()
+  })
+
   it('POST / 当角色已存在返回业务错误码', async () => {
     const app = await buildApp()
 
@@ -159,6 +199,45 @@ describe('Admin Roles routes', () => {
     await app.close()
   })
 
+  it('PUT /:id 更新角色菜单权限并返回', async () => {
+    const app = await buildApp()
+
+    const now = new Date().toISOString()
+    const updated = {
+      id: 6,
+      name: 'reviewer',
+      description: '评审角色',
+      status: 1,
+      creatorId: 1,
+      creatorName: 'system',
+      createdAt: now,
+      updaterId: 1,
+      updaterName: 'system',
+      updatedAt: now,
+      menuIds: [2, 4]
+    } as any
+
+    vi.spyOn(RoleService, 'updateRole').mockResolvedValue(updated)
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/6',
+      payload: {
+        name: 'reviewer',
+        description: '评审角色',
+        menuIds: [2, 4]
+      }
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.success).toBe(true)
+    expect(body.data).toMatchObject({ id: 6, name: 'reviewer' })
+    expect(body.data.menuIds).toEqual([2, 4])
+
+    await app.close()
+  })
+
   it('PUT /:id 非法ID应返回 400 和验证错误码', async () => {
     const app = await buildApp()
 
@@ -193,6 +272,36 @@ describe('Admin Roles routes', () => {
     const body = res.json()
     expect(body.success).toBe(false)
     expect(body.code).toBe(RoleErrorCode.ROLE_NOT_FOUND)
+
+    await app.close()
+  })
+
+  it('GET /:id 返回角色详情包含菜单权限', async () => {
+    const app = await buildApp()
+
+    const now = new Date().toISOString()
+    const detail = {
+      id: 8,
+      name: 'guest',
+      description: '访客角色',
+      status: 1,
+      creatorId: 1,
+      creatorName: 'system',
+      createdAt: now,
+      updaterId: 1,
+      updaterName: 'system',
+      updatedAt: now,
+      menuIds: [1, 3]
+    } as any
+
+    vi.spyOn(RoleService, 'getRoleById').mockResolvedValue(detail)
+
+    const res = await app.inject({ method: 'GET', url: '/8' })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.success).toBe(true)
+    expect(body.data).toMatchObject({ id: 8, name: 'guest' })
+    expect(body.data.menuIds).toEqual([1, 3])
 
     await app.close()
   })

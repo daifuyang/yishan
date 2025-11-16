@@ -22,59 +22,42 @@ export default [
       },
     ],
   },
-  {
-    path: '/welcome',
-    name: 'welcome',
-    icon: 'smile',
-    component: './Welcome',
-  },
-  {
-    path: '/admin',
-    name: 'admin',
-    icon: 'crown',
-    access: 'canAdmin',
-    routes: [
-      {
-        path: '/admin',
-        redirect: '/admin/sub-page',
-      },
-      {
-        path: '/admin/sub-page',
-        name: 'sub-page',
-        component: './Admin',
-      },
-    ],
-  },
-  {
-    path: '/system',
-    name: 'system',
-    icon: 'setting',
-    routes: [
-      {
-        path: '/system',
-        redirect: '/system/user',
-      },
-      {
-        path: '/system/user',
-        name: 'user',
-        component: './system/user',
-      },
-      {
-        path: '/system/role',
-        name: 'role',
-        component: './system/role',
-      },
-      {
-        path: '/system/department',
-        name: 'department',
-        component: './system/department',
-      },
-    ],
-  },
-  {
-    path: '/',
-    redirect: '/welcome',
-  },
+  // {
+  //   path: '/system',
+  //   name: 'system',
+  //   icon: 'setting',
+  //   routes: [
+  //     {
+  //       path: '/system',
+  //       redirect: '/system/user',
+  //     },
+  //     {
+  //       path: '/system/user',
+  //       name: 'user',
+  //       component: './system/user',
+  //     },
+  //     {
+  //       path: '/system/role',
+  //       name: 'role',
+  //       component: './system/role',
+  //     },
+  //     {
+  //       path: '/system/menu',
+  //       name: 'menu',
+  //       component: './system/menu',
+  //     },
+  //     {
+  //       path: '/system/department',
+  //       name: 'department',
+  //       component: './system/department',
+  //     },
+  //     {
+  //       path: '/system/post',
+  //       name: 'post',
+  //       component: './system/post',
+  //     },
+  //   ],
+  // },
   {
     path: '*',
     layout: false,

@@ -158,6 +158,109 @@ async function main() {
 
     console.log('✅ 树形部门结构创建完成');
 
+    const upsertPost = async (
+      name: string,
+      sortOrder: number,
+      description?: string
+    ) => {
+      const post = await prisma.sysPost.upsert({
+        where: { name },
+        update: {
+          status: 1,
+          sort_order: sortOrder,
+          description,
+          updaterId: adminUser!.id,
+        },
+        create: {
+          name,
+          status: 1,
+          sort_order: sortOrder,
+          description,
+          creatorId: adminUser!.id,
+          updaterId: adminUser!.id,
+        },
+      });
+      return post;
+    };
+
+    await upsertPost('董事长', 1, '公司最高负责人');
+    await upsertPost('项目经理', 2, '项目管理与协调');
+    await upsertPost('人力资源', 3, '人事管理');
+    await upsertPost('普通员工', 4, '基础岗位');
+
+    console.log('✅ 岗位数据创建完成');
+
+    console.log('开始创建系统菜单结构...');
+
+    const upsertMenuByPath = async (
+      name: string,
+      path: string,
+      type: number,
+      sortOrder: number,
+      parentId: number | null,
+      icon?: string,
+      component?: string
+    ) => {
+      const existing = await prisma.sysMenu.findFirst({ where: { path } });
+      if (existing) {
+        const menu = await prisma.sysMenu.update({
+          where: { id: existing.id },
+          data: {
+            name,
+            type,
+            parentId,
+            path,
+            icon,
+            component,
+            status: 1,
+            sort_order: sortOrder,
+            hideInMenu: false,
+            isExternalLink: false,
+            keepAlive: false,
+            updaterId: adminUser!.id,
+          },
+        });
+        return menu;
+      } else {
+        const menu = await prisma.sysMenu.create({
+          data: {
+            name,
+            type,
+            parentId,
+            path,
+            icon,
+            component,
+            status: 1,
+            sort_order: sortOrder,
+            hideInMenu: false,
+            isExternalLink: false,
+            keepAlive: false,
+            creatorId: adminUser!.id,
+            updaterId: adminUser!.id,
+          },
+        });
+        return menu;
+      }
+    };
+
+    const systemRoot = await upsertMenuByPath('系统管理', '/system', 0, 1, null, 'setting');
+    const childRoutes = [
+      { path: '/system/user', name: '用户管理', component: './system/user' },
+      { path: '/system/role', name: '角色管理', component: './system/role' },
+      { path: '/system/department', name: '部门管理', component: './system/department' },
+      { path: '/system/post', name: '岗位管理', component: './system/post' },
+      { path: '/system/menu', name: '菜单管理', component: './system/menu' },
+    ];
+
+    let childOrder = 1;
+    for (const r of childRoutes) {
+      if ((r as any).component) {
+        const item = r as any;
+        await upsertMenuByPath(item.name, item.path, 1, childOrder++, systemRoot.id, undefined, item.component);
+      }
+    }
+
+    console.log('✅ 系统菜单结构创建完成');
   } catch (error) {
     console.error('❌ 种子数据创建失败:', error);
     throw error;

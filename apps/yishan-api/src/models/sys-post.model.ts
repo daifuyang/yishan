@@ -25,7 +25,6 @@ export class SysPostModel {
     return {
       id: post.id,
       name: post.name,
-      code: post.code ?? undefined,
       status: post.status,
       sort_order: post.sort_order ?? 0,
       description: post.description ?? undefined,
@@ -54,7 +53,6 @@ export class SysPostModel {
     if (keyword) {
       where.OR = [
         { name: { contains: keyword } },
-        { code: { contains: keyword } },
         { description: { contains: keyword } },
       ];
     }
@@ -88,7 +86,6 @@ export class SysPostModel {
     if (keyword) {
       where.OR = [
         { name: { contains: keyword } },
-        { code: { contains: keyword } },
         { description: { contains: keyword } },
       ];
     }
@@ -109,19 +106,12 @@ export class SysPostModel {
     return this.mapToResp(post);
   }
 
-  /** 根据名称或编码获取岗位 */
-  static async getPostByNameOrCode(name?: string, code?: string) {
+  /** 根据名称获取岗位 */
+  static async getPostByName(name: string) {
     return await this.prisma.sysPost.findFirst({
       where: {
-        AND: [
-          { deletedAt: null },
-          {
-            OR: [
-              ...(name ? [{ name }] : []),
-              ...(code ? [{ code }] : []),
-            ],
-          },
-        ],
+        name,
+        deletedAt: null,
       },
     });
   }
@@ -131,7 +121,6 @@ export class SysPostModel {
     const post = await this.prisma.sysPost.create({
       data: {
         name: req.name,
-        code: req.code,
         status: req.status ?? 1,
         sort_order: req.sort_order ?? 0,
         description: req.description,
@@ -150,7 +139,6 @@ export class SysPostModel {
   static async updatePost(id: number, req: UpdatePostReq): Promise<SysPostResp> {
     const updateData: any = {};
     if (req.name !== undefined) updateData.name = req.name;
-    if (req.code !== undefined) updateData.code = req.code;
     if (req.status !== undefined) updateData.status = req.status;
     if (req.sort_order !== undefined) updateData.sort_order = req.sort_order;
     if (req.description !== undefined) updateData.description = req.description;

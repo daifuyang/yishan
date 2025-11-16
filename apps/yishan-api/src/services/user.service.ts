@@ -99,6 +99,11 @@ export class UserService {
     // 统一校验用户名/邮箱/手机号唯一性（排除当前用户ID）
     await this.ensureUniqueFields(userReq.username, userReq.email, userReq.phone, id);
 
+    // 若传入密码，进行强度校验
+    if (userReq.password !== undefined) {
+      this.validatePassword(userReq.password);
+    }
+
     // 更新用户
     return await SysUserModel.updateUser(id, userReq, currentUserId);
   }

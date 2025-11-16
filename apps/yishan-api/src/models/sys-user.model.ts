@@ -350,10 +350,11 @@ export class SysUserModel {
    * 更新用户
    */
   static async updateUser(id: number, userReq: UpdateUserReq, currentUserId: number): Promise<SysUserResp> {
-    const { deptIds = [], roleIds = [], ...restUserReq } = userReq;
+    const { deptIds, roleIds, password, ...restUserReq } = userReq;
 
     const result = await this.prisma.$transaction(async (prisma) => {
       // 1. 更新用户基本信息
+      const passwordHashUpdate = password !== undefined ? await hashPassword(password) : undefined;
       const sysUser = await prisma.sysUser.update({
         where: {
           id,
@@ -361,6 +362,7 @@ export class SysUserModel {
         },
         data: {
           ...restUserReq,
+          ...(passwordHashUpdate ? { passwordHash: passwordHashUpdate } : {}),
           updaterId: currentUserId,
           birthDate: restUserReq.birthDate
             ? new Date(restUserReq.birthDate)
@@ -368,52 +370,54 @@ export class SysUserModel {
         },
       });
 
-      // 2. 部门关联差异更新
-      const existingDeptLinks = await prisma.sysUserDept.findMany({
-        where: { userId: id },
-        select: { deptId: true },
-      });
-      const existingDeptIds = existingDeptLinks.map((link) => link.deptId);
-
-      const deptsToCreate = deptIds.filter((deptId) => !existingDeptIds.includes(deptId));
-      const deptsToDelete = existingDeptIds.filter((deptId) => !deptIds.includes(deptId));
-
-      if (deptsToCreate.length > 0) {
-        await prisma.sysUserDept.createMany({
-          data: deptsToCreate.map((deptId) => ({
-            userId: id,
-            deptId,
-          })),
+      if (deptIds !== undefined) {
+        const existingDeptLinks = await prisma.sysUserDept.findMany({
+          where: { userId: id },
+          select: { deptId: true },
         });
+        const existingDeptIds = existingDeptLinks.map((link) => link.deptId);
+
+        const deptsToCreate = deptIds.filter((deptId) => !existingDeptIds.includes(deptId));
+        const deptsToDelete = existingDeptIds.filter((deptId) => !deptIds.includes(deptId));
+
+        if (deptsToCreate.length > 0) {
+          await prisma.sysUserDept.createMany({
+            data: deptsToCreate.map((deptId) => ({
+              userId: id,
+              deptId,
+            })),
+          });
+        }
+        if (deptsToDelete.length > 0) {
+          await prisma.sysUserDept.deleteMany({
+            where: { userId: id, deptId: { in: deptsToDelete } },
+          });
+        }
       }
-      if (deptsToDelete.length > 0) {
-        await prisma.sysUserDept.deleteMany({
-          where: { userId: id, deptId: { in: deptsToDelete } },
-        });
-      }
 
-      // 3. 角色关联差异更新
-      const existingRoleLinks = await prisma.sysUserRole.findMany({
-        where: { userId: id },
-        select: { roleId: true },
-      });
-      const existingRoleIds = existingRoleLinks.map((link) => link.roleId);
-
-      const rolesToCreate = roleIds.filter((roleId) => !existingRoleIds.includes(roleId));
-      const rolesToDelete = existingRoleIds.filter((roleId) => !roleIds.includes(roleId));
-
-      if (rolesToCreate.length > 0) {
-        await prisma.sysUserRole.createMany({
-          data: rolesToCreate.map((roleId) => ({
-            userId: id,
-            roleId,
-          })),
+      if (roleIds !== undefined) {
+        const existingRoleLinks = await prisma.sysUserRole.findMany({
+          where: { userId: id },
+          select: { roleId: true },
         });
-      }
-      if (rolesToDelete.length > 0) {
-        await prisma.sysUserRole.deleteMany({
-          where: { userId: id, roleId: { in: rolesToDelete } },
-        });
+        const existingRoleIds = existingRoleLinks.map((link) => link.roleId);
+
+        const rolesToCreate = roleIds.filter((roleId) => !existingRoleIds.includes(roleId));
+        const rolesToDelete = existingRoleIds.filter((roleId) => !roleIds.includes(roleId));
+
+        if (rolesToCreate.length > 0) {
+          await prisma.sysUserRole.createMany({
+            data: rolesToCreate.map((roleId) => ({
+              userId: id,
+              roleId,
+            })),
+          });
+        }
+        if (rolesToDelete.length > 0) {
+          await prisma.sysUserRole.deleteMany({
+            where: { userId: id, roleId: { in: rolesToDelete } },
+          });
+        }
       }
 
       return sysUser;

@@ -31,25 +31,28 @@ declare namespace API {
 
   type createUserReq = {
     /** 用户名 */
-    username: string;
+    username?: string;
     /** 邮箱 */
-    email: string;
+    email?: string;
     /** 用户密码 */
     password: string;
     /** 手机号 */
-    phone?: string;
+    phone: string;
     /** 真实姓名 */
-    realName: string;
+    realName?: string;
     /** 昵称 */
     nickname?: string;
     /** 头像URL */
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
     gender?: 0 | 1 | 2;
-    /** 出生日期 */
-    birthDate?: string;
+    birthDate?: string | "";
     /** 状态（0-禁用，1-启用，2-锁定） */
     status?: 0 | 1 | 2;
+    /** 部门ID列表 */
+    deptIds?: number[];
+    /** 角色ID列表 */
+    roleIds?: number[];
   };
 
   type deleteDeptParams = {
@@ -219,7 +222,7 @@ declare namespace API {
     page?: number;
     /** 每页数量 */
     pageSize?: number;
-    /** 搜索关键词（名称、编码、描述） */
+    /** 搜索关键词（名称、描述） */
     keyword?: string;
     /** 岗位状态 */
     status?: 0 | 1;
@@ -263,6 +266,10 @@ declare namespace API {
     keyword?: string;
     /** 用户状态（0-禁用，1-启用，2-锁定） */
     status?: 0 | 1 | 2;
+    /** 开始时间 */
+    startTime?: string;
+    /** 结束时间 */
+    endTime?: string;
     /** 排序字段 */
     sortBy?: "createdAt" | "updatedAt" | "lastLoginTime" | "loginCount";
     /** 排序方向 */
@@ -345,6 +352,60 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type menuTreeList = menuTreeNode[];
+
+  type menuTreeNode = {
+    /** 菜单ID */
+    id: number;
+    /** 菜单名称 */
+    name: string;
+    /** 类型（0:目录,1:菜单,2:按钮） */
+    type: 0 | 1 | 2;
+    /** 路由路径/URL */
+    path?: string;
+    /** 图标名 */
+    icon?: string;
+    /** 前端组件路径 */
+    component?: string;
+    /** 父级菜单ID */
+    parentId?: number;
+    /** 父级菜单名称 */
+    parentName?: string;
+    /** 状态（0-禁用，1-启用） */
+    status: 0 | 1;
+    /** 排序序号 */
+    sort_order: number;
+    /** 是否在菜单中隐藏 */
+    hideInMenu: boolean;
+    /** 是否外链 */
+    isExternalLink: boolean;
+    /** 权限标识 */
+    perm?: string;
+    /** 是否缓存页面 */
+    keepAlive: boolean;
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+    children: menuTreeNode[] | null;
+  };
+
+  type menuTreeResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: menuTreeList;
+    timestamp: string;
+  };
+
   type paginationResponse = {
     page: number;
     pageSize: number;
@@ -373,7 +434,7 @@ declare namespace API {
     page?: number;
     /** 每页数量 */
     pageSize?: number;
-    /** 搜索关键词（名称、编码、描述） */
+    /** 搜索关键词（名称、描述） */
     keyword?: string;
     /** 岗位状态 */
     status?: 0 | 1;
@@ -475,8 +536,6 @@ declare namespace API {
   type savePostReq = {
     /** 岗位名称 */
     name: string;
-    /** 岗位编码 */
-    code?: string;
     /** 状态 */
     status?: 0 | 1;
     /** 排序序号 */
@@ -492,6 +551,8 @@ declare namespace API {
     description?: string;
     /** 状态（0-禁用，1-启用） */
     status?: 0 | 1;
+    /** 菜单ID列表 */
+    menuIds?: number[];
   };
 
   type sysDept = {
@@ -575,8 +636,6 @@ declare namespace API {
     id: number;
     /** 岗位名称 */
     name: string;
-    /** 岗位编码 */
-    code?: string;
     /** 状态（0-禁用，1-启用） */
     status: 0 | 1;
     /** 排序序号 */
@@ -620,19 +679,21 @@ declare namespace API {
     updaterName?: string;
     /** 更新时间 */
     updatedAt: string;
+    /** 菜单ID列表 */
+    menuIds?: number[];
   };
 
   type sysUser = {
     /** 用户ID */
     id: number;
     /** 用户名 */
-    username: string;
+    username?: string;
     /** 邮箱 */
-    email: string;
+    email?: string;
     /** 手机号 */
-    phone?: string;
+    phone: string;
     /** 真实姓名 */
-    realName: string;
+    realName?: string;
     /** 昵称 */
     nickname?: string;
     /** 头像URL */
@@ -656,15 +717,19 @@ declare namespace API {
     /** 创建人Id */
     creatorId: number;
     /** 创建人名称 */
-    creatorName: string;
+    creatorName?: string;
     /** 创建时间 */
     createdAt: string;
     /** 更新人Id */
     updaterId: number;
     /** 更新人名称 */
-    updaterName: string;
+    updaterName?: string;
     /** 更新时间 */
     updatedAt: string;
+    /** 部门ID列表 */
+    deptIds?: number[];
+    /** 角色ID列表 */
+    roleIds?: number[];
   };
 
   type tokenStatsResp = {
@@ -740,8 +805,6 @@ declare namespace API {
   type updatePostReq = {
     /** 岗位名称 */
     name?: string;
-    /** 岗位编码 */
-    code?: string;
     /** 状态 */
     status?: 0 | 1;
     /** 排序序号 */
@@ -762,6 +825,8 @@ declare namespace API {
     description?: string;
     /** 状态（0-禁用，1-启用） */
     status?: 0 | 1;
+    /** 菜单ID列表 */
+    menuIds?: number[];
   };
 
   type updateUserParams = {
@@ -774,6 +839,8 @@ declare namespace API {
     username?: string;
     /** 邮箱 */
     email?: string;
+    /** 用户密码 */
+    password?: string;
     /** 手机号 */
     phone?: string;
     /** 真实姓名 */
@@ -784,10 +851,13 @@ declare namespace API {
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
     gender?: 0 | 1 | 2;
-    /** 出生日期 */
-    birthDate?: string;
+    birthDate?: string | "";
     /** 状态（0-禁用，1-启用，2-锁定） */
     status?: 0 | 1 | 2;
+    /** 部门ID列表 */
+    deptIds?: number[];
+    /** 角色ID列表 */
+    roleIds?: number[];
   };
 
   type userDeleteResp = {
@@ -815,6 +885,10 @@ declare namespace API {
     keyword?: string;
     /** 用户状态（0-禁用，1-启用，2-锁定） */
     status?: 0 | 1 | 2;
+    /** 开始时间 */
+    startTime?: string;
+    /** 结束时间 */
+    endTime?: string;
     /** 排序字段 */
     sortBy?: "createdAt" | "updatedAt" | "lastLoginTime" | "loginCount";
     /** 排序方向 */

@@ -21,6 +21,10 @@ export class MenuService {
     };
   }
 
+  static async getMenuTree(rootId?: number | null) {
+    return await SysMenuModel.getMenuTree(rootId);
+  }
+
   /** 获取菜单详情 */
   static async getMenuById(id: number) {
     return await SysMenuModel.getMenuById(id);

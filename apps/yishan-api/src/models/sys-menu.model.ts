@@ -5,7 +5,7 @@
 import { prismaManager } from "../utils/prisma.js";
 import { dateUtils } from "../utils/date.js";
 import type { Prisma } from "../generated/prisma/client.js";
-import { MenuListQuery, SaveMenuReq, SysMenuResp, UpdateMenuReq } from "../schemas/menu.js";
+import { MenuListQuery, SaveMenuReq, SysMenuResp, UpdateMenuReq, MenuTreeNode } from "../schemas/menu.js";
 
 // 使用 Prisma 生成的类型（包含 parent/creator/updater 的最小选择集）
 type MenuWithRelations = Prisma.SysMenuGetPayload<{
@@ -222,5 +222,42 @@ export class SysMenuModel {
     return await this.prisma.sysRoleMenu.count({
       where: { menuId, deletedAt: null },
     });
+  }
+
+  static async getMenuTree(rootId?: number | null): Promise<MenuTreeNode[]> {
+    const menus = await this.prisma.sysMenu.findMany({
+      where: { deletedAt: null },
+      orderBy: { sort_order: "asc" },
+      include: {
+        parent: { select: { name: true } },
+        creator: { select: { username: true } },
+        updater: { select: { username: true } },
+      },
+    });
+
+    const nodeMap = new Map<number, MenuTreeNode>();
+    const roots: MenuTreeNode[] = [];
+
+    for (const m of menus) {
+      const node: MenuTreeNode = { ...this.mapToResp(m), children: null } as any;
+      nodeMap.set(m.id, node);
+    }
+
+    for (const m of menus) {
+      const node = nodeMap.get(m.id)!;
+      const pid = m.parentId ?? null;
+      const isRootMatch = rootId === undefined ? pid === null : pid === (rootId ?? null);
+      if (isRootMatch) {
+        roots.push(node);
+      } else if (pid !== null) {
+        const parentNode = nodeMap.get(pid);
+        if (parentNode) {
+          if (!parentNode.children) parentNode.children = [];
+          (parentNode.children as MenuTreeNode[]).push(node);
+        }
+      }
+    }
+
+    return roots;
   }
 }

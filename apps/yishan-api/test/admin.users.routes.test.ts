@@ -17,8 +17,6 @@ async function buildApp() {
   app.decorate("authenticate", async (request: any) => {
     const auth = request.headers.authorization;
 
-    console.log("Authorization header:", auth);
-
     if (!auth || !auth.startsWith("Bearer ")) {
       // 抛出带有statusCode的FastifyError，这样全局错误处理器能正确返回401
       const error = new Error("Unauthorized") as any;
@@ -161,8 +159,6 @@ describe("Admin Users routes", () => {
       method: "GET",
       url: "/api/v1/admin/users?page=1&pageSize=10",
     });
-
-    console.log("GET /api/v1/admin/users 未授权访问应返回401错误", res.json());
 
     expect(res.statusCode).toBe(401);
     const body = res.json();
@@ -323,8 +319,6 @@ describe("Admin Users routes", () => {
         phone: "13800138000",
       },
     });
-
-    console.log("POST /api/v1/admin/users 用户名已存在响应:", res.json());
 
     expect(res.statusCode).toBe(200);
     const body = res.json();

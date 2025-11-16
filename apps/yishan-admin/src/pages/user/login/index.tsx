@@ -1,97 +1,96 @@
-import {
-  AlipayCircleOutlined,
-  LockOutlined,
-  TaobaoCircleOutlined,
-  UserOutlined,
-  WeiboCircleOutlined,
-} from "@ant-design/icons";
-import {
-  LoginForm,
-  ProFormCheckbox,
-  ProFormText,
-} from "@ant-design/pro-components";
-import {
-  FormattedMessage,
-  Helmet,
-  SelectLang,
-  useIntl,
-  useModel,
-} from "@umijs/max";
-import { Alert, App, Tabs } from "antd";
+import { LockOutlined, UserOutlined } from "@ant-design/icons";
+import { useIntl, useModel, FormattedMessage } from "@umijs/max";
+import { Alert, App, Button, Checkbox, Form, Input } from "antd";
 import { createStyles } from "antd-style";
 import React, { useState } from "react";
 import { flushSync } from "react-dom";
-import { Footer } from "@/components";
 import { login as userLogin, getCurrentUser } from "@/services/yishan-admin/auth";
 import { saveTokens } from "@/utils/token";
-import Settings from "../../../../config/defaultSettings";
 
-const useStyles = createStyles(({ token }) => {
+const useStyles = createStyles(({ css }) => {
   return {
-    action: {
-      marginLeft: "8px",
-      color: "rgba(0, 0, 0, 0.2)",
-      fontSize: "24px",
-      verticalAlign: "middle",
-      cursor: "pointer",
-      transition: "color 0.3s",
-      "&:hover": {
-        color: token.colorPrimaryActive,
-      },
-    },
-    lang: {
-      width: 42,
-      height: 42,
-      lineHeight: "42px",
-      position: "fixed",
-      right: 16,
-      borderRadius: token.borderRadius,
-      ":hover": {
-        backgroundColor: token.colorBgTextHover,
-      },
-    },
-    container: {
+    root: {
       display: "flex",
-      flexDirection: "column",
+      backgroundImage: "url('/images/login-bg.png')",
+      backgroundSize: "cover",
+      width: "100%",
       height: "100vh",
-      overflow: "auto",
-      backgroundImage:
-        "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
-      backgroundSize: "100% 100%",
     },
+    brand: {
+      backgroundImage: "url('/images/login-brand.png')",
+      backgroundSize: "100% 100%",
+      width: "56.67%",
+      height: "100%",
+    },
+    loginWrap: {
+      flex: 1,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    loginCard: {
+      width: "481px",
+      backgroundColor: "#fff",
+      padding: "56px 48px 88px 48px",
+      borderRadius: "20px",
+      boxShadow:
+        " 0px 0px 0px  rgba(0, 0, 0, 0.1), 0px 17px 36px  rgba(23, 57, 222, 0.25)",
+    },
+    loginTitle: {
+      fontFamily: "Noto Sans SC",
+      textAlign: "center",
+      fontSize: "36px",
+      fontWeight: 700,
+      color: "#000",
+    },
+    loginSubTitle: {
+      fontFamily: "Noto Sans SC",
+      textAlign: "center",
+      marginTop: "12px",
+      fontSize: "14px",
+      fontWeight: 400,
+      color: "#000",
+      margin: 0,
+    },
+    loginForm: {
+      marginTop: "40px",
+    },
+    loginFormItem: css`
+      background-color: rgba(231, 241, 253, 0.4);
+      &.ant-input-affix-wrapper > input.ant-input {
+        &::placeholder {
+          font-size: 20px;
+          color: rgba(4, 19, 74, 0.4);
+          font-family: 'Noto Sans SC';
+          font-weight: 400;
+        }
+        padding: 6px 8px;
+        font-size: 20px;
+        color: rgba(4, 19, 74, 0.4);
+        font-family: 'Noto Sans SC';
+        font-weight: 400;
+      }
+    `,
+    loginItemIcon: {
+      fontSize: "24px",
+      color: "rgba(28, 53, 145, 0.6)",
+    },
+    loginFormChexkBox: css`
+      & .ant-checkbox + span {
+        color: rgba(4, 19, 74, 0.4);
+        font-size: 20px;
+        font-weight: 400;
+      }
+      margin-bottom: 86px;
+    `,
+    loginFormBtn: css`
+      &.ant-btn {
+        padding: 24px 15px;
+        font-size: 20px;
+      }
+    `,
   };
 });
-
-const ActionIcons = () => {
-  const { styles } = useStyles();
-
-  return (
-    <>
-      <AlipayCircleOutlined
-        key="AlipayCircleOutlined"
-        className={styles.action}
-      />
-      <TaobaoCircleOutlined
-        key="TaobaoCircleOutlined"
-        className={styles.action}
-      />
-      <WeiboCircleOutlined
-        key="WeiboCircleOutlined"
-        className={styles.action}
-      />
-    </>
-  );
-};
-
-const Lang = () => {
-  const { styles } = useStyles();
-
-  return (
-    <div className={styles.lang} data-lang>
-      {SelectLang && <SelectLang />}
-    </div>
-  );
-};
 
 const LoginMessage: React.FC<{
   content: string;
@@ -111,7 +110,7 @@ const LoginMessage: React.FC<{
 const Login: React.FC = () => {
   const [loginError, setLoginError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const { initialState, setInitialState } = useModel("@@initialState");
+  const { setInitialState } = useModel("@@initialState");
   const { styles } = useStyles();
   const { message } = App.useApp();
   const intl = useIntl();
@@ -151,7 +150,6 @@ const Login: React.FC = () => {
       }
       return null;
     } catch (error) {
-      console.error("获取用户信息失败:", error);
       return null;
     }
   };
@@ -194,7 +192,6 @@ const Login: React.FC = () => {
       message.error(errorMessage);
       setLoginError(errorMessage);
     } catch (error: any) {
-      console.error("登录错误:", error);
       const defaultLoginFailureMessage = intl.formatMessage({
         id: "pages.login.failure",
         defaultMessage: "登录失败，请重试！",
@@ -207,70 +204,23 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <Helmet>
-        <title>
-          {intl.formatMessage({
-            id: "menu.login",
-            defaultMessage: "登录页",
-          })}
-          {Settings.title && ` - ${Settings.title}`}
-        </title>
-      </Helmet>
-      <Lang />
-      <div
-        style={{
-          flex: "1",
-          padding: "32px 0",
-        }}
-      >
-        <LoginForm<API.loginReq>
-          contentStyle={{
-            minWidth: 280,
-            maxWidth: "75vw",
-          }}
-          logo={<img alt="logo" src="/logo.svg" />}
-          title="Ant Design"
-          subTitle={intl.formatMessage({
-            id: "pages.layouts.userLayout.title",
-          })}
-          initialValues={{
-            autoLogin: true,
-          }}
-          actions={[
-            <FormattedMessage
-              key="loginWith"
-              id="pages.login.loginWith"
-              defaultMessage="其他登录方式"
-            />,
-            <ActionIcons key="icons" />,
-          ]}
-          loading={loading}
-          onFinish={async (values) => {
-            await handleSubmit(values);
-          }}
-        >
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <h2>
-              {intl.formatMessage({
-                id: "pages.login.accountLogin.tab",
-                defaultMessage: "账户密码登录",
-              })}
-            </h2>
-          </div>
-
-          {loginError && <LoginMessage content={loginError} />}
-          <>
-            <ProFormText
+    <div className={styles.root}>
+      <div className={styles.brand}></div>
+      <div className={styles.loginWrap}>
+        <div className={styles.loginCard}>
+          <h1 className={styles.loginTitle}>欢迎登录系统</h1>
+          <p className={styles.loginSubTitle}> WELCOME!</p>
+          <Form
+            onFinish={async (values: any) => {
+              const { username, password, remember } = values || {};
+              await handleSubmit({ username, password, rememberMe: !!remember });
+            }}
+            className={styles.loginForm}
+            name="basic"
+          >
+            {loginError && <LoginMessage content={loginError} />}
+            <Form.Item
               name="username"
-              fieldProps={{
-                size: "large",
-                prefix: <UserOutlined />,
-              }}
-              placeholder={intl.formatMessage({
-                id: "pages.login.username.placeholder",
-                defaultMessage: "用户名或邮箱",
-              })}
               rules={[
                 {
                   required: true,
@@ -286,7 +236,6 @@ const Login: React.FC = () => {
                     if (!value) {
                       return Promise.reject(new Error("请输入用户名或邮箱"));
                     }
-                    // 简单的邮箱格式验证
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (value.length < 3 && !emailRegex.test(value)) {
                       return Promise.reject(new Error("用户名至少需要3个字符"));
@@ -295,17 +244,19 @@ const Login: React.FC = () => {
                   },
                 },
               ]}
-            />
-            <ProFormText.Password
+            >
+              <Input
+                className={styles.loginFormItem}
+                variant="filled"
+                placeholder={intl.formatMessage({
+                  id: "pages.login.username.placeholder",
+                  defaultMessage: "用户名或邮箱",
+                })}
+                prefix={<UserOutlined className={styles.loginItemIcon} />}
+              />
+            </Form.Item>
+            <Form.Item
               name="password"
-              fieldProps={{
-                size: "large",
-                prefix: <LockOutlined />,
-              }}
-              placeholder={intl.formatMessage({
-                id: "pages.login.password.placeholder",
-                defaultMessage: "密码",
-              })}
               rules={[
                 {
                   required: true,
@@ -317,33 +268,30 @@ const Login: React.FC = () => {
                   ),
                 },
               ]}
-            />
-          </>
-          <div
-            style={{
-              marginBottom: 24,
-            }}
-          >
-            <ProFormCheckbox noStyle name="autoLogin">
-              <FormattedMessage
-                id="pages.login.rememberMe"
-                defaultMessage="自动登录"
-              />
-            </ProFormCheckbox>
-            <a
-              style={{
-                float: "right",
-              }}
             >
-              <FormattedMessage
-                id="pages.login.forgotPassword"
-                defaultMessage="忘记密码"
+              <Input.Password
+                className={styles.loginFormItem}
+                variant="filled"
+                placeholder={intl.formatMessage({
+                  id: "pages.login.password.placeholder",
+                  defaultMessage: "密码",
+                })}
+                prefix={<LockOutlined className={styles.loginItemIcon} />}
               />
-            </a>
-          </div>
-        </LoginForm>
+            </Form.Item>
+            <Form.Item name="remember" valuePropName="checked">
+              <Checkbox className={styles.loginFormChexkBox}>
+                <FormattedMessage id="pages.login.rememberMe" defaultMessage="自动登录" />
+              </Checkbox>
+            </Form.Item>
+            <Form.Item>
+              <Button className={styles.loginFormBtn} type="primary" htmlType="submit" block loading={loading}>
+                立即登录
+              </Button>
+            </Form.Item>
+          </Form>
+        </div>
       </div>
-      <Footer />
     </div>
   );
 };

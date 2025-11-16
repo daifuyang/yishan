@@ -28,19 +28,19 @@ export class PostService {
 
   /** 创建岗位（校验名称/编码唯一） */
   static async createPost(req: SavePostReq): Promise<SysPostResp> {
-    await this.ensureUnique(req.name, req.code);
+    await this.ensureUnique(req.name);
     return await SysPostModel.createPost(req);
   }
 
-  /** 更新岗位（校验名称/编码唯一） */
+  /** 更新岗位（校验名称唯一） */
   static async updatePost(id: number, req: UpdatePostReq): Promise<SysPostResp> {
     const existing = await SysPostModel.getPostById(id);
     if (!existing) {
       throw new BusinessError(PostErrorCode.POST_NOT_FOUND, "岗位不存在");
     }
 
-    if (req.name || req.code) {
-      await this.ensureUnique(req.name, req.code, id);
+    if (req.name) {
+      await this.ensureUnique(req.name, id);
     }
 
     return await SysPostModel.updatePost(id, req);
@@ -60,12 +60,12 @@ export class PostService {
     return res;
   }
 
-  /** 校验名称与编码唯一性（排除自身） */
-  private static async ensureUnique(name?: string, code?: string, excludeId?: number): Promise<void> {
-    if (!name && !code) return;
-    const dup = await SysPostModel.getPostByNameOrCode(name, code);
+  /** 校验名称唯一性（排除自身） */
+  private static async ensureUnique(name?: string, excludeId?: number): Promise<void> {
+    if (!name) return;
+    const dup = await SysPostModel.getPostByName(name);
     if (dup && dup.id !== excludeId) {
-      throw new BusinessError(PostErrorCode.POST_ALREADY_EXISTS, "岗位名称或编码已存在");
+      throw new BusinessError(PostErrorCode.POST_ALREADY_EXISTS, "岗位名称已存在");
     }
   }
 }

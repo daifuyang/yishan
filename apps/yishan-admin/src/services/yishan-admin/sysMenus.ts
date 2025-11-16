@@ -87,3 +87,11 @@ export async function deleteMenu(
     ...(options || {}),
   });
 }
+
+/** 获取菜单树 获取全部树形菜单 GET /api/v1/admin/menus/tree */
+export async function getMenuTree(options?: { [key: string]: any }) {
+  return request<API.menuTreeResp>("/api/v1/admin/menus/tree", {
+    method: "GET",
+    ...(options || {}),
+  });
+}

@@ -28,6 +28,7 @@ const SysRoleSchema = Type.Object(
     updaterId: Type.Optional(Type.Number({ description: "更新人Id", example: 1 })),
     updaterName: Type.Optional(Type.String({ description: "更新人名称", example: "admin" })),
     updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
+    menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),
   },
   { $id: "sysRole" }
 );
@@ -48,6 +49,7 @@ const SaveRoleReqSchema = Type.Object(
     status: Type.Optional(
       Type.Number({ enum: [0, 1], description: "状态（0-禁用，1-启用）", default: 1 })
     ),
+    menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),
   },
   { $id: "saveRoleReq" }
 );

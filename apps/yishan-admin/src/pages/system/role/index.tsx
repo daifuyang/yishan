@@ -160,7 +160,7 @@ const RoleList: React.FC = () => {
   /**
    * 处理表单提交
    */
-  const handleFormSubmit = async (values: API.saveRoleReq) => {
+  const handleFormSubmit = async (values: API.saveRoleReq & { menuIds?: number[] }) => {
     try {
       setConfirmLoading(true);
       if (currentRole?.id) {
@@ -169,6 +169,7 @@ const RoleList: React.FC = () => {
           name: values.name,
           description: values.description,
           status: values.status,
+          menuIds: values.menuIds,
         };
         await updateRole(
           { id: currentRole.id },

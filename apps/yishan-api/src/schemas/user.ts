@@ -119,7 +119,7 @@ const CreateUserReqSchema = Type.Object(
 
 // 更新用户请求 Schema（全部字段可选，至少提供一个字段）
 const UpdateUserReqSchema = Type.Partial(
-  Type.Omit(CreateUserReqSchema, ['password']),
+  CreateUserReqSchema,
   {
     $id: "updateUserReq",
     minProperties: 1,

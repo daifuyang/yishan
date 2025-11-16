@@ -109,6 +109,24 @@ const MenuDeleteRespSchema = successResponse({
   message: "删除成功",
 });
 
+const MenuTreeNodeSchema = Type.Object(
+  {
+    ...SysMenuSchema.properties,
+    children: Type.Union([Type.Array(Type.Ref("menuTreeNode")), Type.Null()]),
+  },
+  { $id: "menuTreeNode" }
+);
+
+export type MenuTreeNode = Static<typeof MenuTreeNodeSchema>;
+
+const MenuTreeListSchema = Type.Array(Type.Ref("menuTreeNode"), { $id: "menuTreeList" });
+
+const MenuTreeRespSchema = successResponse({
+  data: Type.Ref("menuTreeList"),
+  $id: "menuTreeResp",
+  message: "获取菜单树成功",
+});
+
 const registerMenu = (fastify: FastifyInstance) => {
   fastify.addSchema(SysMenuSchema);
   fastify.addSchema(MenuListQuerySchema);
@@ -117,6 +135,9 @@ const registerMenu = (fastify: FastifyInstance) => {
   fastify.addSchema(UpdateMenuReqSchema);
   fastify.addSchema(MenuDetailRespSchema);
   fastify.addSchema(MenuDeleteRespSchema);
+  fastify.addSchema(MenuTreeNodeSchema);
+  fastify.addSchema(MenuTreeListSchema);
+  fastify.addSchema(MenuTreeRespSchema);
 };
 
 export default registerMenu;

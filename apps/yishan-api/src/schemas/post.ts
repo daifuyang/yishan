@@ -11,9 +11,6 @@ const SysPostSchema = Type.Object(
   {
     id: Type.Number({ description: "岗位ID", example: 1 }),
     name: Type.String({ description: "岗位名称", example: "Java工程师" }),
-    code: Type.Optional(
-      Type.String({ description: "岗位编码", example: "JAVA_DEV" })
-    ),
     status: Type.Number({
       enum: [0, 1],
       description: "状态（0-禁用，1-启用）",
@@ -43,9 +40,6 @@ export type SysPostResp = Static<typeof SysPostSchema>;
 const SavePostReqSchema = Type.Object(
   {
     name: Type.String({ description: "岗位名称", minLength: 1, maxLength: 100 }),
-    code: Type.Optional(
-      Type.String({ description: "岗位编码", minLength: 1, maxLength: 50 })
-    ),
     status: Type.Optional(
       Type.Number({ enum: [0, 1], description: "状态", default: 1 })
     ),
@@ -59,11 +53,23 @@ const SavePostReqSchema = Type.Object(
   { $id: "savePostReq" }
 );
 
-// 更新岗位请求 Schema（部分字段）
-const UpdatePostReqSchema = Type.Partial(SavePostReqSchema, {
-  $id: "updatePostReq",
-  minProperties: 1,
-});
+const UpdatePostReqSchema = Type.Object(
+  {
+    name: Type.Optional(
+      Type.String({ description: "岗位名称", minLength: 1, maxLength: 100 })
+    ),
+    status: Type.Optional(
+      Type.Number({ enum: [0, 1], description: "状态" })
+    ),
+    sort_order: Type.Optional(
+      Type.Number({ description: "排序序号" })
+    ),
+    description: Type.Optional(
+      Type.String({ description: "岗位描述", maxLength: 255 })
+    ),
+  },
+  { $id: "updatePostReq", minProperties: 1 }
+);
 
 export type SavePostReq = Static<typeof SavePostReqSchema>;
 export type UpdatePostReq = Static<typeof UpdatePostReqSchema>;
@@ -73,7 +79,7 @@ const PostListQuerySchema = Type.Object(
   {
     ...PaginationQuerySchema.properties,
     keyword: Type.Optional(
-      Type.String({ description: "搜索关键词（名称、编码、描述）" })
+      Type.String({ description: "搜索关键词（名称、描述）" })
     ),
     status: Type.Optional(
       Type.Integer({ enum: [0, 1], description: "岗位状态" })

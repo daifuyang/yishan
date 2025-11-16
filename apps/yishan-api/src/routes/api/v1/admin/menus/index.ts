@@ -39,6 +39,27 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
+  fastify.get(
+    "/tree",
+    {
+      schema: {
+        summary: "获取菜单树",
+        description: "获取全部树形菜单",
+        operationId: "getMenuTree",
+        tags: ["sysMenus"],
+        security: [{ bearerAuth: [] }],
+        response: { 200: { $ref: "menuTreeResp#" } },
+      },
+    },
+    async (
+      request: FastifyRequest,
+      reply: FastifyReply
+    ) => {
+      const tree = await MenuService.getMenuTree();
+      return ResponseUtil.success(reply, tree, "获取菜单树成功");
+    }
+  );
+
   // GET /api/v1/admin/menus/{id} - 获取菜单详情
   fastify.get(
     "/:id",

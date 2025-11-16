@@ -285,4 +285,64 @@ describe('Admin Menus routes', () => {
 
     await app.close()
   })
+
+  it('GET /tree 成功返回树形菜单', async () => {
+    const app = await buildApp()
+
+    const now = new Date().toISOString()
+    const tree = [
+      {
+        id: 1,
+        name: '系统',
+        type: 0,
+        path: '/system',
+        icon: 'SettingOutlined',
+        status: 1,
+        sort_order: 1,
+        hideInMenu: false,
+        isExternalLink: false,
+        keepAlive: false,
+        creatorId: 1,
+        creatorName: 'system',
+        createdAt: now,
+        updaterId: 1,
+        updaterName: 'system',
+        updatedAt: now,
+        children: [
+          {
+            id: 2,
+            name: '菜单管理',
+            type: 1,
+            path: '/system/menu',
+            icon: 'MenuOutlined',
+            status: 1,
+            sort_order: 2,
+            hideInMenu: false,
+            isExternalLink: false,
+            keepAlive: false,
+            creatorId: 1,
+            creatorName: 'system',
+            createdAt: now,
+            updaterId: 1,
+            updaterName: 'system',
+            updatedAt: now,
+            children: null,
+          },
+        ],
+      },
+    ] as any
+
+    vi.spyOn(MenuService, 'getMenuTree').mockResolvedValue(tree)
+
+    const res = await app.inject({ method: 'GET', url: '/tree' })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.success).toBe(true)
+    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data.length).toBe(1)
+    expect(Array.isArray(body.data[0].children)).toBe(true)
+    expect(body.data[0].children[0].id).toBe(2)
+
+    await app.close()
+  })
 })

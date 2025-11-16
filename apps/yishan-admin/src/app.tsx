@@ -2,7 +2,7 @@ import { LinkOutlined } from "@ant-design/icons";
 import type { Settings as LayoutSettings } from "@ant-design/pro-components";
 import { SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
-import { history, Link } from "@umijs/max";
+import { history, Link, Navigate } from "@umijs/max";
 import {
   AvatarDropdown,
   AvatarName,
@@ -11,9 +11,12 @@ import {
   SelectLang,
 } from "@/components";
 import { getCurrentUser } from "@/services/yishan-admin/auth";
+import { App as AntdApp, Spin } from "antd";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
 import "@ant-design/v5-patch-for-react-19";
+import { getMenuTree } from "@/services/yishan-admin/sysMenus";
+import React from "react";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
@@ -72,6 +75,9 @@ export const layout: RunTimeLayoutConfig = ({
         return <AvatarDropdown>{avatarChildren}</AvatarDropdown>;
       },
     },
+    menu: {
+      locale: false,
+    },
     waterMarkProps: {
       content: initialState?.currentUser?.username,
     },
@@ -105,20 +111,21 @@ export const layout: RunTimeLayoutConfig = ({
     ],
     links: isDev
       ? [
-          <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
-            <LinkOutlined />
-            <span>OpenAPI 文档</span>
-          </Link>,
-        ]
+        <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
+          <LinkOutlined />
+          <span>OpenAPI 文档</span>
+        </Link>,
+      ]
       : [],
     menuHeaderRender: undefined,
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
     // 增加一个 loading 的状态
     childrenRender: (children) => {
+      // 使用 antd App 提供上下文，避免 message 等静态方法的上下文警告
       // if (initialState?.loading) return <PageLoading />;
       return (
-        <>
+        <AntdApp>
           {children}
           {isDev && (
             <SettingDrawer
@@ -133,7 +140,7 @@ export const layout: RunTimeLayoutConfig = ({
               }}
             />
           )}
-        </>
+        </AntdApp>
       );
     },
     ...initialState?.settings,
@@ -148,3 +155,105 @@ export const layout: RunTimeLayoutConfig = ({
 export const request: RequestConfig = {
   ...errorConfig,
 };
+
+let extraRoutes: any[] = [];
+
+type UmiRoute = {
+  id: string;
+  path: string;
+  type?: 0 | 1 | 2;
+  name?: string;
+  component?: string;
+  children?: UmiRoute[];
+  redirect?: string;
+  element?: React.ReactNode;
+};
+
+const Wrapper = ({ children }: any) => (
+  <React.Suspense>{children}</React.Suspense>
+)
+
+// 保留原层级递归，将extraRoutes中的路由替换为systemRoutesMap中的路由
+const recursiveRoutes = (routes: UmiRoute[] = []): UmiRoute[] => {
+  if (!Array.isArray(routes) || routes.length === 0) return [];
+  const acc: UmiRoute[] = [];
+  routes.forEach((item) => {
+
+    const newItem: UmiRoute = { id: item.path, path: item.path, name: item.name, children: item.children };
+    if (item.type === 1) {
+
+      // 使用 require 动态加载组件，避免动态 import 的模块系统限制
+      // 兼容一下item.component有可能是./开头的情况，也有可能是/开头的情况
+      item.component = item.component?.replace(/^\.?\//, '');
+
+      const Component = React.lazy(() =>
+        Promise.resolve(require(`./pages/${item.component}`))
+      );
+
+      newItem.element = <Wrapper><Component /></Wrapper>;
+    }
+
+    if (item.children) {
+      const childRoutes = recursiveRoutes(item.children || []);
+      if (item.type === 0) {
+        const path = item.children[0].path;
+        childRoutes.unshift({
+          id: item.path, path: item.path, element: <Navigate to={path} replace />, redirect: path
+        });
+      }
+      newItem.children = childRoutes;
+    }
+    acc.push(newItem);
+  });
+  return acc;
+};
+
+const resolveFirstPath = (routes: UmiRoute[] = []): string => {
+  if (!Array.isArray(routes) || routes.length === 0) return "/";
+  const routeMap = new Map<string, UmiRoute>();
+  const build = (list: UmiRoute[] = []) => {
+    list.forEach((r) => {
+      if (r?.path) routeMap.set(r.path, r);
+      if (Array.isArray(r.children)) build(r.children);
+    });
+  };
+  build(routes);
+
+  let path = routes[0].redirect || routes[0].path || "/";
+  const visited = new Set<string>();
+  while (path && !visited.has(path)) {
+    visited.add(path);
+    const n = routeMap.get(path);
+    if (n && n.redirect && n.redirect !== path) {
+      path = n.redirect;
+      continue;
+    }
+    break;
+  }
+  return path || "/";
+};
+
+export function patchClientRoutes({ routes }: { routes: any[] }) {
+  if (!Array.isArray(extraRoutes) || extraRoutes.length === 0) return;
+  // 找到路由为/的路由
+  const rootRoute = routes.find((r: any) => r.path === '/');
+  if (rootRoute) {
+    // 递归extraRoutes
+    const systemRoutes = recursiveRoutes(extraRoutes);
+    if (!rootRoute.children) rootRoute.children = [];
+
+    const firstPath = resolveFirstPath(systemRoutes);
+    systemRoutes.unshift({ id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath });
+    rootRoute.children.push(...systemRoutes);
+  }
+}
+
+export function render(oldRender: () => void) {
+  getMenuTree()
+    .then((res) => {
+      extraRoutes = (res as any)?.data || [];
+    })
+    .finally(() => {
+      oldRender();
+    });
+}

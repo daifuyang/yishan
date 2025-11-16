@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Form, Input, Radio, Modal, TreeSelect } from 'antd';
 import type { FormInstance, TreeDataNode } from 'antd';
 import { getDeptTree } from '@/services/yishan-admin/sysDepts';
-import { DataNode } from 'antd/es/tree';
+import type { DataNode } from 'antd/es/tree';
 
 export interface DepartmentFormProps {
   form: FormInstance;
