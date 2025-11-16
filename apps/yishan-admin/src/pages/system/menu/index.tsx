@@ -38,14 +38,12 @@ const MenuList: React.FC = () => {
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
 
   const handleStatusChange = async (id: number, status: number) => {
-    try {
-      const newStatus = status === MenuStatus.ENABLED ? MenuStatus.DISABLED : MenuStatus.ENABLED;
-      await updateMenu({ id: String(id) }, { status: newStatus as 0 | 1 });
-      message.success('状态更新成功');
-      actionRef.current?.reload();
-    } catch {
-      message.error('操作失败');
+    const newStatus = status === MenuStatus.ENABLED ? MenuStatus.DISABLED : MenuStatus.ENABLED;
+    const res = await updateMenu({ id: String(id) }, { status: newStatus as 0 | 1 });
+    if (res.success) {
+      message.success(res.message);
     }
+    actionRef.current?.reload();
   };
 
   const handleAdd = () => {
@@ -55,26 +53,20 @@ const MenuList: React.FC = () => {
   };
 
   const handleEdit = async (id: number) => {
-    try {
-      setFormTitle('编辑菜单');
-      const result = await getMenuDetail({ id: String(id) });
-      if (result.success && result.data) {
-        setCurrentMenu(result.data);
-        setFormOpen(true);
-      }
-    } catch {
-      message.error('获取菜单详情失败');
+    setFormTitle('编辑菜单');
+    const result = await getMenuDetail({ id: String(id) });
+    if (result.success && result.data) {
+      setCurrentMenu(result.data);
+      setFormOpen(true);
     }
   };
 
   const handleRemove = async (id: number) => {
-    try {
-      await deleteMenu({ id: String(id) });
-      message.success('删除成功');
-      actionRef.current?.reload();
-    } catch {
-      message.error('删除失败');
+    const res = await deleteMenu({ id: String(id) });
+    if (res.success) {
+      message.success(res.message);
     }
+    actionRef.current?.reload();
   };
 
   const handleBatchRemove = async () => {
@@ -83,32 +75,27 @@ const MenuList: React.FC = () => {
       return;
     }
     setBatchDeleteLoading(true);
-    try {
-      const ids = selectedRowKeys.map((key) => Number(key));
-      const deletePromises = ids.map((id) => deleteMenu({ id: String(id) }));
-      const results = await Promise.allSettled(deletePromises);
+    const ids = selectedRowKeys.map((key) => Number(key));
+    const deletePromises = ids.map((id) => deleteMenu({ id: String(id) }));
+    const results = await Promise.allSettled(deletePromises);
 
-      const successCount = results.filter((r) => r.status === 'fulfilled').length;
-      const failureCount = results.length - successCount;
+    const successCount = results.filter((r) => r.status === 'fulfilled').length;
+    const failureCount = results.length - successCount;
 
-      if (successCount > 0) {
-        message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
-      } else {
-        message.error('批量删除失败');
-      }
-
-      actionRef.current?.reload();
-      setSelectedRowKeys([]);
-    } catch {
+    if (successCount > 0) {
+      message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
+    } else {
       message.error('批量删除失败');
-    } finally {
-      setBatchDeleteLoading(false);
     }
+
+    actionRef.current?.reload();
+    setSelectedRowKeys([]);
+    setBatchDeleteLoading(false);
   };
 
   const handleFormSubmit = async (values: API.saveMenuReq | API.updateMenuReq) => {
+    setConfirmLoading(true);
     try {
-      setConfirmLoading(true);
       if (currentMenu?.id) {
         const payload: API.updateMenuReq = {
           name: values.name,
@@ -124,16 +111,18 @@ const MenuList: React.FC = () => {
           perm: values.perm,
           keepAlive: values.keepAlive,
         };
-        await updateMenu({ id: String(currentMenu.id) }, payload);
-        message.success('菜单更新成功');
+        const res = await updateMenu({ id: String(currentMenu.id) }, payload);
+        if (res.success) {
+          message.success(res.message);
+        }
       } else {
-        await createMenu(values as API.saveMenuReq);
-        message.success('菜单创建成功');
+        const res = await createMenu(values as API.saveMenuReq);
+        if (res.success) {
+          message.success(res.message);
+        }
       }
       setFormOpen(false);
       actionRef.current?.reload();
-    } catch {
-      message.error('操作失败');
     } finally {
       setConfirmLoading(false);
     }

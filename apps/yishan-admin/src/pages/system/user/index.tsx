@@ -49,7 +49,9 @@ const UserList: React.FC = () => {
         { id },
         { status: newStatus as 0 | 1 | 2 }
       );
-      message.success(res.message);
+      if (res.success) {
+        message.success(res.message);
+      }
       actionRef.current?.reload();
   };
 
@@ -72,11 +74,15 @@ const UserList: React.FC = () => {
 
   const handleFormSubmit = async (values: API.createUserReq | API.updateUserReq) => {
     if (formMode === 'edit' && currentUser?.id) {
-      await updateUser({ id: currentUser.id }, values as API.updateUserReq);
-      message.success('用户更新成功');
+      const res = await updateUser({ id: currentUser.id }, values as API.updateUserReq);
+      if (res.success) {
+        message.success(res.message);
+      }
     } else {
-      await createUser(values as API.createUserReq);
-      message.success('用户创建成功');
+      const res = await createUser(values as API.createUserReq);
+      if (res.success) {
+        message.success(res.message);
+      }
     }
     setFormOpen(false);
     actionRef.current?.reload();
@@ -87,7 +93,9 @@ const UserList: React.FC = () => {
    */
   const handleRemove = async (id: number) => {
     const res = await deleteUser({ id });
-    message.success(res.message);
+    if (res.success) {
+      message.success(res.message);
+    }
     actionRef.current?.reload();
   };
 

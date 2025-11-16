@@ -32,14 +32,12 @@ const PostList: React.FC = () => {
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
 
   const handleStatusChange = async (id: number, status: number) => {
-    try {
-      const newStatus = status === PostStatus.ENABLED ? PostStatus.DISABLED : PostStatus.ENABLED;
-      await updatePost({ id: String(id) }, { status: newStatus as 0 | 1 });
-      message.success('状态更新成功');
-      actionRef.current?.reload();
-    } catch (_error) {
-      message.error('操作失败');
+    const newStatus = status === PostStatus.ENABLED ? PostStatus.DISABLED : PostStatus.ENABLED;
+    const res = await updatePost({ id: String(id) }, { status: newStatus as 0 | 1 });
+    if (res.success) {
+      message.success(res.message);
     }
+    actionRef.current?.reload();
   };
 
   const handleAdd = () => {
@@ -49,26 +47,20 @@ const PostList: React.FC = () => {
   };
 
   const handleEdit = async (id: number) => {
-    try {
-      setFormTitle('编辑岗位');
-      const result = await getPostDetail({ id: String(id) });
-      if (result.success && result.data) {
-        setCurrentPost(result.data);
-        setFormOpen(true);
-      }
-    } catch (_error) {
-      message.error('获取岗位详情失败');
+    setFormTitle('编辑岗位');
+    const result = await getPostDetail({ id: String(id) });
+    if (result.success && result.data) {
+      setCurrentPost(result.data);
+      setFormOpen(true);
     }
   };
 
   const handleRemove = async (id: number) => {
-    try {
-      await deletePost({ id: String(id) });
-      message.success('删除成功');
-      actionRef.current?.reload();
-    } catch (_error) {
-      message.error('删除失败');
+    const res = await deletePost({ id: String(id) });
+    if (res.success) {
+      message.success(res.message);
     }
+    actionRef.current?.reload();
   };
 
   const handleBatchRemove = async () => {
@@ -77,32 +69,27 @@ const PostList: React.FC = () => {
       return;
     }
     setBatchDeleteLoading(true);
-    try {
-      const ids = selectedRowKeys.map((key) => Number(key));
-      const deletePromises = ids.map((id) => deletePost({ id: String(id) }));
-      const results = await Promise.allSettled(deletePromises);
+    const ids = selectedRowKeys.map((key) => Number(key));
+    const deletePromises = ids.map((id) => deletePost({ id: String(id) }));
+    const results = await Promise.allSettled(deletePromises);
 
-      const successCount = results.filter((r) => r.status === 'fulfilled').length;
-      const failureCount = results.length - successCount;
+    const successCount = results.filter((r) => r.status === 'fulfilled').length;
+    const failureCount = results.length - successCount;
 
-      if (successCount > 0) {
-        message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
-      } else {
-        message.error('批量删除失败');
-      }
-
-      actionRef.current?.reload();
-      setSelectedRowKeys([]);
-    } catch (error) {
+    if (successCount > 0) {
+      message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
+    } else {
       message.error('批量删除失败');
-    } finally {
-      setBatchDeleteLoading(false);
     }
+
+    actionRef.current?.reload();
+    setSelectedRowKeys([]);
+    setBatchDeleteLoading(false);
   };
 
   const handleFormSubmit = async (values: API.savePostReq | API.updatePostReq) => {
+    setConfirmLoading(true);
     try {
-      setConfirmLoading(true);
       if (currentPost?.id) {
         const payload: API.updatePostReq = {
           name: values.name,
@@ -110,16 +97,18 @@ const PostList: React.FC = () => {
           sort_order: values.sort_order,
           description: values.description,
         };
-        await updatePost({ id: String(currentPost.id) }, payload);
-        message.success('岗位更新成功');
+        const res = await updatePost({ id: String(currentPost.id) }, payload);
+        if (res.success) {
+          message.success(res.message);
+        }
       } else {
-        await createPost(values as API.savePostReq);
-        message.success('岗位创建成功');
+        const res = await createPost(values as API.savePostReq);
+        if (res.success) {
+          message.success(res.message);
+        }
       }
       setFormOpen(false);
       actionRef.current?.reload();
-    } catch (error) {
-      message.error('操作失败');
     } finally {
       setConfirmLoading(false);
     }

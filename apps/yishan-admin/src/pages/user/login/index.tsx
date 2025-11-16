@@ -149,7 +149,7 @@ const Login: React.FC = () => {
         return response.data;
       }
       return null;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   };
@@ -168,7 +168,7 @@ const Login: React.FC = () => {
           id: "pages.login.success",
           defaultMessage: "登录成功！",
         });
-        message.success(defaultLoginSuccessMessage);
+        message.success(msg.message || defaultLoginSuccessMessage);
 
         // 处理不同的响应格式
         if (msg.data) {
@@ -191,7 +191,7 @@ const Login: React.FC = () => {
       const errorMessage = msg.message || "登录失败，请重试";
       message.error(errorMessage);
       setLoginError(errorMessage);
-    } catch (error: any) {
+    } catch (_error: any) {
       const defaultLoginFailureMessage = intl.formatMessage({
         id: "pages.login.failure",
         defaultMessage: "登录失败，请重试！",
@@ -224,12 +224,10 @@ const Login: React.FC = () => {
               rules={[
                 {
                   required: true,
-                  message: (
-                    <FormattedMessage
-                      id="pages.login.username.required"
-                      defaultMessage="请输入用户名"
-                    />
-                  ),
+                  message: intl.formatMessage({
+                    id: "pages.login.username.required",
+                    defaultMessage: "请输入用户名",
+                  }),
                 },
                 {
                   validator: (_, value) => {
@@ -260,12 +258,10 @@ const Login: React.FC = () => {
               rules={[
                 {
                   required: true,
-                  message: (
-                    <FormattedMessage
-                      id="pages.login.password.required"
-                      defaultMessage="请输入密码！"
-                    />
-                  ),
+                  message: intl.formatMessage({
+                    id: "pages.login.password.required",
+                    defaultMessage: "请输入密码！",
+                  }),
                 },
               ]}
             >

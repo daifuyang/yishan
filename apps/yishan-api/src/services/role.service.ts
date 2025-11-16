@@ -41,6 +41,10 @@ export class RoleService {
       throw new BusinessError(RoleErrorCode.ROLE_NOT_FOUND, "角色不存在");
     }
 
+    if (typeof req.status === "number" && req.status === 0 && id === 1) {
+      throw new BusinessError(RoleErrorCode.ROLE_STATUS_ERROR, "系统管理员角色不可禁用");
+    }
+
     if (req.name) {
       await this.ensureUniqueName(req.name, id);
     }

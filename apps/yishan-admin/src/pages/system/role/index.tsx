@@ -1,5 +1,5 @@
 import { PlusOutlined, DownOutlined } from '@ant-design/icons';
-import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
+import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, Form, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
 import React, { useRef, useState } from 'react';
 import { getRoleList, updateRole, createRole, getRoleDetail, deleteRole } from '@/services/yishan-admin/sysRoles';
@@ -58,17 +58,15 @@ const RoleList: React.FC = () => {
    * 处理角色状态变更
    */
   const handleStatusChange = async (id: number, status: number) => {
-    try {
-      const newStatus = status === RoleStatus.ENABLED ? RoleStatus.DISABLED : RoleStatus.ENABLED;
-      await updateRole(
-        { id },
-        { status: newStatus as 0 | 1 }
-      );
-      message.success('状态更新成功');
-      actionRef.current?.reload();
-    } catch (error) {
-      message.error('操作失败');
+    const newStatus = status === RoleStatus.ENABLED ? RoleStatus.DISABLED : RoleStatus.ENABLED;
+    const res = await updateRole(
+      { id },
+      { status: newStatus as 0 | 1 }
+    );
+    if (res.success) {
+      message.success(res.message);
     }
+    actionRef.current?.reload();
   };
 
   /**
@@ -84,28 +82,20 @@ const RoleList: React.FC = () => {
    * 打开编辑角色表单
    */
   const handleEdit = async (id: number) => {
-    try {
-      setFormTitle('编辑角色');
-      const result = await getRoleDetail({ id });
-      if (result.success && result.data) {
-        setCurrentRole(result.data);
-        setFormOpen(true);
-      }
-    } catch (error) {
-      message.error('获取角色详情失败');
+    setFormTitle('编辑角色');
+    const result = await getRoleDetail({ id });
+    if (result.success && result.data) {
+      setCurrentRole(result.data);
+      setFormOpen(true);
     }
   };
 
   const handlePermission = async (id: number) => {
-    try {
-      setFormTitle('权限设置');
-      const result = await getRoleDetail({ id });
-      if (result.success && result.data) {
-        setCurrentRole(result.data);
-        setFormOpen(true);
-      }
-    } catch (error) {
-      message.error('获取角色详情失败');
+    setFormTitle('权限设置');
+    const result = await getRoleDetail({ id });
+    if (result.success && result.data) {
+      setCurrentRole(result.data);
+      setFormOpen(true);
     }
   };
 
@@ -113,13 +103,11 @@ const RoleList: React.FC = () => {
    * 处理角色删除
    */
   const handleRemove = async (id: number) => {
-    try {
-      await deleteRole({ id });
-      message.success('删除成功');
-      actionRef.current?.reload();
-    } catch (error) {
-      message.error('删除失败');
+    const res = await deleteRole({ id });
+    if (res.success) {
+      message.success(res.message);
     }
+    actionRef.current?.reload();
   };
 
   /**
@@ -133,71 +121,55 @@ const RoleList: React.FC = () => {
 
     setBatchDeleteLoading(true);
     
-    try {
-      // 由于没有批量删除接口，使用单个删除的方式
-      const deletePromises = selectedRowKeys.map(key => deleteRole({ id: Number(key) }));
-      const results = await Promise.allSettled(deletePromises);
-      
-      const successCount = results.filter(result => result.status === 'fulfilled').length;
-      const failedCount = results.length - successCount;
-      
-      if (failedCount === 0) {
-        message.success(`成功删除 ${successCount} 个角色`);
-      } else {
-        message.warning(
-          `删除完成，成功 ${successCount} 个，失败 ${failedCount} 个。失败的角色可能为系统角色、正在被使用或已不存在。`
-        );
-      }
-      
-      // 清空选中项并刷新列表
-      setSelectedRowKeys([]);
-      actionRef.current?.reload();
-    } catch (error: any) {
-      console.error('批量删除操作失败:', error);
-      
-      // 根据错误类型提供更具体的错误信息
-      if (error?.response?.status === 403) {
-        message.error('没有权限执行批量删除操作');
-      } else if (error?.response?.status === 400) {
-        message.error('请求参数错误，请检查选中的角色');
-      } else if (error?.response?.status >= 500) {
-        message.error('服务器错误，请稍后重试');
-      } else {
-        message.error('批量删除操作失败，请稍后重试');
-      }
-    } finally {
-      setBatchDeleteLoading(false);
+    // 由于没有批量删除接口，使用单个删除的方式
+    const deletePromises = selectedRowKeys.map(key => deleteRole({ id: Number(key) }));
+    const results = await Promise.allSettled(deletePromises);
+    
+    const successCount = results.filter(result => result.status === 'fulfilled').length;
+    const failedCount = results.length - successCount;
+    
+    if (failedCount === 0) {
+      message.success(`成功删除 ${successCount} 个角色`);
+    } else {
+      message.warning(
+        `删除完成，成功 ${successCount} 个，失败 ${failedCount} 个。失败的角色可能为系统角色、正在被使用或已不存在。`
+      );
     }
+    
+    // 清空选中项并刷新列表
+    setSelectedRowKeys([]);
+    actionRef.current?.reload();
+    setBatchDeleteLoading(false);
   };
 
   /**
    * 处理表单提交
    */
   const handleFormSubmit = async (values: API.saveRoleReq & { menuIds?: number[] }) => {
+    setConfirmLoading(true);
     try {
-      setConfirmLoading(true);
       if (currentRole?.id) {
-        // 编辑角色
         const payload: API.updateRoleReq = {
           name: values.name,
           description: values.description,
           status: values.status,
           menuIds: values.menuIds,
         };
-        await updateRole(
+        const res = await updateRole(
           { id: currentRole.id },
           payload
         );
-        message.success('角色更新成功');
+        if (res.success) {
+          message.success(res.message);
+        }
       } else {
-        // 新建角色
-        await createRole(values);
-        message.success('角色创建成功');
+        const res = await createRole(values);
+        if (res.success) {
+          message.success(res.message);
+        }
       }
       setFormOpen(false);
       actionRef.current?.reload();
-    } catch (error) {
-      message.error('操作失败');
     } finally {
       setConfirmLoading(false);
     }
@@ -261,11 +233,7 @@ const RoleList: React.FC = () => {
                 {record.status === RoleStatus.ENABLED ? '禁用' : '启用'}
               </a>
             ),
-          },
-          {
-            key: 'permission',
-            label: <a onClick={() => handlePermission(record.id || 0)}>权限设置</a>,
-          },
+          }
         ];
         
         return [

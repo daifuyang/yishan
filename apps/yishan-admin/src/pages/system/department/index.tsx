@@ -29,12 +29,6 @@ const DeptStatusTag: React.FC<{ status?: number }> = ({ status }) => {
   return <Tag color="error">禁用</Tag>;
 };
 
-const DeptTypeTag: React.FC<{ type?: number }> = ({ type }) => {
-  if (type === DeptType.COMPANY) return <Tag color="blue">公司</Tag>;
-  if (type === DeptType.DEPARTMENT) return <Tag color="processing">部门</Tag>;
-  return <Tag color="purple">小组</Tag>;
-};
-
 const DepartmentList: React.FC = () => {
   const actionRef = useRef<ActionType | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -47,17 +41,15 @@ const DepartmentList: React.FC = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
 
   const handleStatusChange = async (id: number, status: number) => {
-    try {
-      const newStatus = status === DeptStatus.ENABLED ? DeptStatus.DISABLED : DeptStatus.ENABLED;
-      await updateDept(
-        { id },
-        { status: newStatus as 0 | 1 }
-      );
-      message.success('状态更新成功');
-      actionRef.current?.reload();
-    } catch (error) {
-      message.error('操作失败');
+    const newStatus = status === DeptStatus.ENABLED ? DeptStatus.DISABLED : DeptStatus.ENABLED;
+    const res = await updateDept(
+      { id },
+      { status: newStatus as 0 | 1 }
+    );
+    if (res.success) {
+      message.success(res.message);
     }
+    actionRef.current?.reload();
   };
 
   const handleAdd = () => {
@@ -67,31 +59,25 @@ const DepartmentList: React.FC = () => {
   };
 
   const handleEdit = async (id: number) => {
-    try {
-      setFormTitle('编辑部门');
-      const result = await getDeptDetail({ id });
-      if (result.success && result.data) {
-        setCurrentDept(result.data);
-        setFormOpen(true);
-      }
-    } catch (error) {
-      message.error('获取部门详情失败');
+    setFormTitle('编辑部门');
+    const result = await getDeptDetail({ id });
+    if (result.success && result.data) {
+      setCurrentDept(result.data);
+      setFormOpen(true);
     }
   };
 
   const handleRemove = async (id: number) => {
-    try {
-      await deleteDept({ id });
-      message.success('删除成功');
-      actionRef.current?.reload();
-    } catch (error) {
-      message.error('删除失败');
+    const res = await deleteDept({ id });
+    if (res.success) {
+      message.success(res.message);
     }
+    actionRef.current?.reload();
   };
 
   const handleFormSubmit = async (values: API.createDeptReq) => {
+    setConfirmLoading(true);
     try {
-      setConfirmLoading(true);
       if (currentDept?.id) {
         const payload: API.updateDeptReq = {
           name: values.name,
@@ -101,22 +87,24 @@ const DepartmentList: React.FC = () => {
           description: values.description,
           leaderId: values.leaderId,
         };
-        await updateDept(
+        const res = await updateDept(
           { id: currentDept.id },
           payload
         );
-        message.success('部门更新成功');
+        if (res.success) {
+          message.success(res.message);
+        }
       } else {
-        await createDept({
+        const res = await createDept({
           ...values,
           parentId: values.parentId === 0 ? undefined : values.parentId,
         });
-        message.success('部门创建成功');
+        if (res.success) {
+          message.success(res.message);
+        }
       }
       setFormOpen(false);
       actionRef.current?.reload();
-    } catch (error) {
-      message.error('操作失败');
     } finally {
       setConfirmLoading(false);
     }
@@ -128,27 +116,22 @@ const DepartmentList: React.FC = () => {
       return;
     }
     setBatchDeleteLoading(true);
-    try {
-      const ids = selectedRowKeys.map((key) => Number(key));
-      const deletePromises = ids.map((id) => deleteDept({ id }));
-      const results = await Promise.allSettled(deletePromises);
+    const ids = selectedRowKeys.map((key) => Number(key));
+    const deletePromises = ids.map((id) => deleteDept({ id }));
+    const results = await Promise.allSettled(deletePromises);
 
-      const successCount = results.filter((r) => r.status === 'fulfilled').length;
-      const failureCount = results.length - successCount;
+    const successCount = results.filter((r) => r.status === 'fulfilled').length;
+    const failureCount = results.length - successCount;
 
-      if (successCount > 0) {
-        message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
-      } else {
-        message.error('批量删除失败');
-      }
-
-      actionRef.current?.reload();
-      setSelectedRowKeys([]);
-    } catch (error) {
+    if (successCount > 0) {
+      message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
+    } else {
       message.error('批量删除失败');
-    } finally {
-      setBatchDeleteLoading(false);
     }
+
+    actionRef.current?.reload();
+    setSelectedRowKeys([]);
+    setBatchDeleteLoading(false);
   };
 
   const collectExpandKeys = (nodes: DeptTreeNode[] = []): React.Key[] => {
