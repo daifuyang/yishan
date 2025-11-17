@@ -74,6 +74,33 @@ pnpm run db:init
 pnpm run db:seed
 ```
 
+### fc函数部署
+
+1. 安装 Serverless Framework：
+```bash
+npm install -g serverless
+```
+
+2. 配置 Serverless Framework：
+```bash
+s config add
+```
+
+3. 模拟线上环境
+```bash
+docker run --platform linux/amd64 -it --name yishan-api-serverless-dev  -v C:\Workspace\Frontend\yishan\apps\yishan-api\:/code registry.cn-beijing.aliyuncs.com/aliyunfc/runtime-custom.debian10:build-3.1.0 bash  
+```
+
+4. 执行部署脚本
+```bash
+./install.sh
+```
+
+3. 部署函数：
+```bash
+s deploy -y
+```
+
 ## 可用脚本
 
 ```bash
