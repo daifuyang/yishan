@@ -33,6 +33,7 @@
     "@fastify/type-provider-typebox": "^6.1.0",
     "@prisma/client": "^6.18.0",
     "@sinclair/typebox": "^0.34.41",
+    "close-with-grace": "^2.3.0",
     "dayjs": "^1.11.18",
     "fastify": "^5.0.0",
     "fastify-cli": "^7.4.0",

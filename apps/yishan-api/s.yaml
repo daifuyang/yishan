@@ -1,0 +1,61 @@
+# ------------------------------------
+#   官方手册: https://manual.serverless-devs.com/user-guide/aliyun/#fc3
+#   有问题快来钉钉群问一下吧：33947367
+# ------------------------------------
+
+edition: 3.0.0
+name: fastify-api
+access: "default"
+vars:
+  region: "cn-shanghai"
+  functionName: "fastify-api"
+resources:
+  start_fastify:
+    component: fc3
+    actions:
+      pre-deploy:
+    props:
+      region: ${vars.region}
+      description: Serverless Devs Web Framework Function
+      runtime: custom.debian10
+      timeout: 60
+      cpu: 2
+      memorySize: 4096
+      diskSize: 512
+      instanceConcurrency: 100
+      layers:
+        - acs:fc:${vars.region}:official:layers/Nodejs20/versions/1
+        - acs:fc:${vars.region}:1650595695532785:layers/yishan-layer-code/versions/1
+      environmentVariables:
+        PATH: >-
+          /opt/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin
+        NODE_PATH: >-
+          /opt/nodejs/node_modules    
+      customRuntimeConfig:
+        command:
+          - node
+          - --env-file=.env
+          - ./server.js
+        port: 3000
+      functionName: ${vars.functionName}
+      code: ./dist
+      triggers:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+            authType: anonymous
+  fc3_domain_0:
+    component: fc3-domain
+    props:
+      region: ${vars.region}
+      domainName: auto
+      protocol: HTTP
+      routeConfig:
+        routes:
+          - path: /*
+            functionName: ${vars.functionName}

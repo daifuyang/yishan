@@ -1,4 +1,5 @@
-import { join } from 'node:path'
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
 
@@ -15,12 +16,16 @@ const app: FastifyPluginAsync<AppOptions> = async (
 ): Promise<void> => {
   // Place here your custom code!
 
+  const __dirname = typeof import.meta.dirname !== 'undefined'
+  ? import.meta.dirname
+  : dirname(fileURLToPath(import.meta.url));
+
   // Do not touch the following lines
 
   // This loads all external plugins defined in plugins/external
   // those should be registered first as your application plugins might depend on them
   await fastify.register(AutoLoad, {
-    dir: join(import.meta.dirname, 'plugins/external'),
+    dir: join(__dirname, 'plugins/external'),
     options: {}
   })
 
@@ -28,7 +33,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   // those should be support plugins that are reused
   // through your application
   fastify.register(AutoLoad, {
-    dir: join(import.meta.dirname, 'plugins/app'),
+    dir: join(__dirname, 'plugins/app'),
     options: { ...opts }
   })
 
@@ -36,7 +41,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   // define your routes in one of these
   // eslint-disable-next-line no-void
   void fastify.register(AutoLoad, {
-    dir: join(import.meta.dirname, 'routes'),
+    dir: join(__dirname, 'routes'),
     autoHooks: true,
     cascadeHooks: true,
     options: opts
