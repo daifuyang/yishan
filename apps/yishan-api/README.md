@@ -65,7 +65,7 @@ JWT_SECRET="your-secret-key"
 
 ```bash
 # 生成 Prisma 客户端
-pnpm run postinstall
+pnpm run db:generate
 
 # 运行数据库迁移
 pnpm run db:init
@@ -93,7 +93,7 @@ docker run --platform linux/amd64 -it --name yishan-api-serverless-dev  -v C:\Wo
 
 4. 执行部署脚本
 ```bash
-./install.sh
+./deploy/fc3/deploy.sh
 ```
 
 3. 部署函数：

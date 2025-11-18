@@ -5,14 +5,15 @@ echo "1. 安装依赖"
 npm install
 chmod +x node_modules
 
-echo "2. 执行 postinstall 钩子"
-npm run postinstall
+export NODE_TLS_REJECT_UNAUTHORIZED=0
+
+echo "2. 生成 Prisma 客户端"
+npm run db:generate
 
 echo "3. 编译 TypeScript"
 npm run build:ts
 
 echo "4. 拷贝运行时文件到 dist"
-mkdir -p dist/generated/prisma
 cp .env dist/
 cp package.json dist/
 cp src/generated/prisma/libquery_engine-debian-openssl-1.1.x.so.node dist/generated/prisma/

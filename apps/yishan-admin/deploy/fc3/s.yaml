@@ -4,39 +4,33 @@
 # ------------------------------------
 
 edition: 3.0.0
-name: fastify-api
+name: nginx-yishan-admin
 access: "default"
 vars:
   region: "cn-shanghai"
-  functionName: "fastify-api"
+  functionName: "nginx-yishan-admin"
 resources:
-  start_fastify:
+  start_nginx:
     component: fc3
-    actions:
-      pre-deploy:
     props:
       region: ${vars.region}
-      description: Serverless Devs Web Framework Function
+      description: nginx-yishan-admin
       runtime: custom.debian10
+      layers:
+        - acs:fc:${vars.region}:official:layers/Nginx/versions/1
       timeout: 60
-      cpu: 2
-      memorySize: 4096
+      cpu: 1
+      memorySize: 2048
       diskSize: 512
       instanceConcurrency: 100
-      layers:
-        - acs:fc:${vars.region}:official:layers/Nodejs20/versions/1
-        - acs:fc:${vars.region}:1650595695532785:layers/yishan-layer-code/versions/3
-      environmentVariables:
-        PATH: >-
-          /opt/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin
-        NODE_PATH: >-
-          /opt/nodejs/node_modules    
       customRuntimeConfig:
         command:
-          - node
-          - --env-file=.env
-          - ./server.js
-        port: 3000
+          - "/opt/bin/nginx"
+          - "-c"
+          - "/code/nginx.conf"
+          - "-g"
+          - "daemon off;"
+        port: 9000
       functionName: ${vars.functionName}
       code: ./dist
       triggers:

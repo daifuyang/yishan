@@ -72,6 +72,10 @@ export default [
     ],
   },
   {
+    path: '/',
+    redirect: '/user/login',
+  },
+  {
     path: '*',
     layout: false,
     component: './404',
