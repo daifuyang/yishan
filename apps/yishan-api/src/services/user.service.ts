@@ -216,21 +216,21 @@ export class UserService {
     excludeUserId?: number
   ): Promise<void> {
     if (username !== undefined) {
-      const userWithSameUsername = await SysUserModel.getUserByUsername(username);
+      const userWithSameUsername = await SysUserModel.getRawUserByUsername(username);
       if (userWithSameUsername && userWithSameUsername.id !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "用户名已存在");
       }
     }
 
     if (email !== undefined) {
-      const userWithSameEmail = await SysUserModel.getUserByEmail(email);
+      const userWithSameEmail = await SysUserModel.getRawUserByEmail(email);
       if (userWithSameEmail && userWithSameEmail.id !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "邮箱已存在");
       }
     }
 
     if (phone !== undefined) {
-      const userWithSamePhone = await SysUserModel.getUserByPhone(phone);
+      const userWithSamePhone = await SysUserModel.getRawUserByPhone(phone);
       if (userWithSamePhone && userWithSamePhone.id !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "手机号已存在");
       }

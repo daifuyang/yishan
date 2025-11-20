@@ -25,7 +25,7 @@ export class AuthService {
     const { username, password, rememberMe } = loginReq;
 
     // 根据用户名或邮箱查找用户
-    const user = await SysUserModel.getUserByUsernameOrEmail(username);
+    const user = await SysUserModel.getRawUserByUsernameOrEmail(username);
 
     if (!user) {
       throw new BusinessError(AuthErrorCode.LOGIN_FAILED, "用户名或密码错误");
@@ -183,11 +183,11 @@ export class AuthService {
       }
 
       // 检查用户状态
-      if (user.status === 0) {
+      if (user.status === "0") {
         throw new BusinessError(UserErrorCode.USER_DISABLED, "账号已被禁用");
       }
 
-      if (user.status === 2) {
+      if (user.status === "2") {
         throw new BusinessError(AuthErrorCode.ACCOUNT_LOCKED, "账号已被锁定");
       }
 

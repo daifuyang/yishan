@@ -64,7 +64,10 @@ export class SysUserModel {
   }
 
   /**
-   * 获取用户列表
+   * 获取用户列表（返回API响应格式，status为字符串类型）
+   * 主要用于API响应，已包含关联数据和格式转换
+   * @param query 查询参数
+   * @returns 转换后的用户响应对象数组
    */
   static async getUserList(query: UserListQuery): Promise<SysUserResp[]> {
     const {
@@ -151,7 +154,10 @@ export class SysUserModel {
   }
 
   /**
-   * 获取用户总数
+   * 获取用户总数（返回数字类型）
+   * 主要用于分页统计，返回符合条件的用户总数
+   * @param query 查询参数
+   * @returns 用户总数
    */
   static async getUserTotal(query: UserListQuery): Promise<number> {
     const { keyword, status, startTime, endTime } = query;
@@ -195,7 +201,10 @@ export class SysUserModel {
   }
 
   /**
-   * 根据ID获取用户信息
+   * 根据用户ID获取用户信息（返回API响应格式，status为字符串类型）
+   * 主要用于API响应，已包含关联数据和格式转换
+   * @param id 用户ID
+   * @returns 转换后的用户响应对象或null
    */
   static async getUserById(id: number): Promise<SysUserResp | null> {
     const sysUser = await this.prisma.sysUser.findFirst({
@@ -236,9 +245,12 @@ export class SysUserModel {
   }
 
   /**
-   * 根据用户名获取用户信息
+   * 根据用户名获取原始用户信息（返回数据库原始对象，status为数字类型）
+   * 主要用于内部业务逻辑，如登录验证、唯一性检查等
+   * @param username 用户名
+   * @returns 原始用户对象或null
    */
-  static async getUserByUsername(username: string): Promise<SysUser | null> {
+  static async getRawUserByUsername(username: string): Promise<SysUser | null> {
     const sysUser = await this.prisma.sysUser.findFirst({
       where: {
         username,
@@ -249,9 +261,12 @@ export class SysUserModel {
   }
 
   /**
-   * 根据邮箱获取用户信息
+   * 根据邮箱获取原始用户信息（返回数据库原始对象，status为数字类型）
+   * 主要用于内部业务逻辑，如登录验证、唯一性检查等
+   * @param email 邮箱地址
+   * @returns 原始用户对象或null
    */
-  static async getUserByEmail(email: string): Promise<SysUser | null> {
+  static async getRawUserByEmail(email: string): Promise<SysUser | null> {
     const sysUser = await this.prisma.sysUser.findFirst({
       where: {
         email,
@@ -263,9 +278,12 @@ export class SysUserModel {
   }
 
   /**
-   * 根据手机号获取用户信息
+   * 根据手机号获取原始用户信息（返回数据库原始对象，status为数字类型）
+   * 主要用于内部业务逻辑，如登录验证、唯一性检查等
+   * @param phone 手机号
+   * @returns 原始用户对象或null
    */
-  static async getUserByPhone(phone: string): Promise<SysUser | null> {
+  static async getRawUserByPhone(phone: string): Promise<SysUser | null> {
     const sysUser = await this.prisma.sysUser.findFirst({
       where: {
         phone,
@@ -277,9 +295,12 @@ export class SysUserModel {
   }
 
   /**
-   * 根据用户名或邮箱获取用户信息（用于登录）
+   * 根据用户名或邮箱获取原始用户信息（返回数据库原始对象，status为数字类型）
+   * 主要用于登录验证等内部业务逻辑
+   * @param usernameOrEmail 用户名或邮箱地址
+   * @returns 原始用户对象或null
    */
-  static async getUserByUsernameOrEmail(usernameOrEmail: string): Promise<SysUser | null> {
+  static async getRawUserByUsernameOrEmail(usernameOrEmail: string): Promise<SysUser | null> {
     const sysUser = await this.prisma.sysUser.findFirst({
       where: {
         OR: [
@@ -294,7 +315,11 @@ export class SysUserModel {
   }
 
   /**
-   * 创建用户
+   * 创建用户（返回API响应格式，status为字符串类型）
+   * 主要用于API响应，已包含关联数据和格式转换
+   * @param userReq 用户创建请求数据
+   * @param currentUserId 当前操作用户ID
+   * @returns 转换后的用户响应对象
    */
   static async createUser(userReq: CreateUserReq, currentUserId: number): Promise<SysUserResp> {
     const { deptIds, roleIds, password, gender, status, ...restUserReq } = userReq;
@@ -353,7 +378,12 @@ export class SysUserModel {
   }
 
   /**
-   * 更新用户
+   * 更新用户（返回API响应格式，status为字符串类型）
+   * 主要用于API响应，已包含关联数据和格式转换
+   * @param id 用户ID
+   * @param userReq 用户更新请求数据
+   * @param currentUserId 当前操作用户ID
+   * @returns 转换后的用户响应对象
    */
   static async updateUser(id: number, userReq: UpdateUserReq, currentUserId: number): Promise<SysUserResp> {
     const { deptIds, roleIds, password, gender, status, ...restUserReq } = userReq;

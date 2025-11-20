@@ -45,10 +45,10 @@ declare namespace API {
     /** 头像URL */
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
-    gender?: 0 | 1 | 2;
+    gender?: "0" | "1" | "2";
     birthDate?: string | "";
     /** 状态（0-禁用，1-启用，2-锁定） */
-    status?: 0 | 1 | 2;
+    status?: "0" | "1" | "2";
     /** 部门ID列表 */
     deptIds?: number[];
     /** 角色ID列表 */
@@ -69,13 +69,13 @@ declare namespace API {
     /** 头像URL */
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
-    gender: 0 | 1 | 2;
+    gender: "0" | "1" | "2";
     /** 性别名称 */
     genderName: string;
     /** 出生日期 */
     birthDate?: string;
     /** 状态（0-禁用，1-启用，2-锁定） */
-    status: 0 | 1 | 2;
+    status: "0" | "1" | "2";
     /** 状态名称 */
     statusName: string;
     /** 最后登录时间 */
@@ -432,7 +432,7 @@ declare namespace API {
     /** 搜索关键词（用户名、邮箱、真实姓名、昵称） */
     keyword?: string;
     /** 用户状态（0-禁用，1-启用，2-锁定） */
-    status?: 0 | 1 | 2;
+    status?: "0" | "1" | "2";
     /** 开始时间 */
     startTime?: string;
     /** 结束时间 */
@@ -929,13 +929,13 @@ declare namespace API {
     /** 头像URL */
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
-    gender: 0 | 1 | 2;
+    gender: "0" | "1" | "2";
     /** 性别名称 */
     genderName: string;
     /** 出生日期 */
     birthDate?: string;
     /** 状态（0-禁用，1-启用，2-锁定） */
-    status: 0 | 1 | 2;
+    status: "0" | "1" | "2";
     /** 状态名称 */
     statusName: string;
     /** 最后登录时间 */
@@ -1107,10 +1107,10 @@ declare namespace API {
     /** 头像URL */
     avatar?: string;
     /** 性别（0-未知，1-男，2-女） */
-    gender?: 0 | 1 | 2;
+    gender?: "0" | "1" | "2";
     birthDate?: string | "";
     /** 状态（0-禁用，1-启用，2-锁定） */
-    status?: 0 | 1 | 2;
+    status?: "0" | "1" | "2";
     /** 部门ID列表 */
     deptIds?: number[];
     /** 角色ID列表 */
@@ -1141,7 +1141,7 @@ declare namespace API {
     /** 搜索关键词（用户名、邮箱、真实姓名、昵称） */
     keyword?: string;
     /** 用户状态（0-禁用，1-启用，2-锁定） */
-    status?: 0 | 1 | 2;
+    status?: "0" | "1" | "2";
     /** 开始时间 */
     startTime?: string;
     /** 结束时间 */
