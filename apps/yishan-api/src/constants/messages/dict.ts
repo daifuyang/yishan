@@ -4,6 +4,7 @@ export const DictMessageKeys = {
   CREATE_SUCCESS: "CREATE_SUCCESS",
   UPDATE_SUCCESS: "UPDATE_SUCCESS",
   DELETE_SUCCESS: "DELETE_SUCCESS",
+  MAP_SUCCESS: "MAP_SUCCESS",
 } as const;
 
 export type DictMessageKey = typeof DictMessageKeys[keyof typeof DictMessageKeys];
@@ -15,6 +16,7 @@ const DICT_MESSAGES = {
     CREATE_SUCCESS: "创建字典成功",
     UPDATE_SUCCESS: "更新字典成功",
     DELETE_SUCCESS: "删除字典成功",
+    MAP_SUCCESS: "获取字典映射成功",
   },
   "en-US": {
     LIST_SUCCESS: "Fetched dictionary list successfully",
@@ -22,6 +24,7 @@ const DICT_MESSAGES = {
     CREATE_SUCCESS: "Dictionary created successfully",
     UPDATE_SUCCESS: "Dictionary updated successfully",
     DELETE_SUCCESS: "Dictionary deleted successfully",
+    MAP_SUCCESS: "Fetched dictionary map successfully",
   },
 } as const;
 

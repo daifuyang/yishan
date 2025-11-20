@@ -123,6 +123,17 @@ const DictDataListResp = successResponse({ data: Type.Array(Type.Ref("sysDictDat
 const DictDataDetailResp = successResponse({ data: Type.Ref("sysDictData"), $id: "dictDataDetailResp" });
 const DictDataDeleteResp = successResponse({ data: Type.Object({ id: Type.Number() }), $id: "dictDataDeleteResp" });
 
+const DictDataMapResp = successResponse({ 
+  data: Type.Record(
+    Type.String(),
+    Type.Array(Type.Object({
+      label: Type.String(),
+      value: Type.String(),
+    }))
+  ), 
+  $id: "dictDataMapResp" 
+});
+
 const registerDict = (fastify: FastifyInstance) => {
   fastify.addSchema(SysDictTypeSchema);
   fastify.addSchema(SaveDictTypeReqSchema);
@@ -139,6 +150,7 @@ const registerDict = (fastify: FastifyInstance) => {
   fastify.addSchema(DictDataListResp);
   fastify.addSchema(DictDataDetailResp);
   fastify.addSchema(DictDataDeleteResp);
+  fastify.addSchema(DictDataMapResp);
 };
 
 export default registerDict;

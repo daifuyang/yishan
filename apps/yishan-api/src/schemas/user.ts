@@ -20,10 +20,10 @@ const SysUserSchema = Type.Object(
     realName: Type.Optional(Type.String({ description: "真实姓名", example: "愚公" })),
     nickname: Type.Optional(Type.String({ description: "昵称", example: "愚公移山", maxLength: 50 })),
     avatar: Type.Optional(Type.String({ description: "头像URL" })),
-    gender: Type.Number({
-      enum: [0, 1, 2],
+    gender: Type.String({
+      enum: ["0", "1", "2"],
       description: "性别（0-未知，1-男，2-女）",
-      example: 1,
+      example: "1",
     }),
     genderName: Type.String({ description: "性别名称", example: "男" }),
     birthDate: Type.Optional(
@@ -33,10 +33,10 @@ const SysUserSchema = Type.Object(
         example: "2008-08-08",
       })
     ),
-    status: Type.Number({
-      enum: [0, 1, 2],
+    status: Type.String({
+      enum: ["0", "1", "2"],
       description: "状态（0-禁用，1-启用，2-锁定）",
-      example: 1,
+      example: "1",
     }),
     statusName: Type.String({ description: "状态名称", example: "启用" }),
     lastLoginTime: Type.Optional(
@@ -93,8 +93,8 @@ const CreateUserReqSchema = Type.Object(
     })),
     avatar: Type.Optional(Type.String({ description: "头像URL", default: '' })),
     gender: Type.Optional(
-      Type.Number({
-        enum: [0, 1, 2],
+      Type.String({
+        enum: ["0", "1", "2"],
         description: "性别（0-未知，1-男，2-女）",
       })
     ),
@@ -105,10 +105,10 @@ const CreateUserReqSchema = Type.Object(
       ])
     ),
     status: Type.Optional(
-      Type.Number({
-        enum: [0, 1, 2],
+      Type.String({
+        enum: ["0", "1", "2"],
         description: "状态（0-禁用，1-启用，2-锁定）",
-        default: 1,
+        default: "1",
       })
     ),
     deptIds: Type.Optional(Type.Array(Type.Number(), { description: "部门ID列表" })),
@@ -136,8 +136,8 @@ const UserListQuerySchema = Type.Object(
       })
     ),
     status: Type.Optional(
-      Type.Integer({
-        enum: [0, 1, 2],
+      Type.String({
+        enum: ["0", "1", "2"],
         description: "用户状态（0-禁用，1-启用，2-锁定）",
       })
     ),

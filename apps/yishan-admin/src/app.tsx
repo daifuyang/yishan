@@ -11,11 +11,12 @@ import {
   SelectLang,
 } from "@/components";
 import { getCurrentUser } from "@/services/yishan-admin/auth";
-import { App as AntdApp, Spin } from "antd";
+import { App as AntdApp } from "antd";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
 import "@ant-design/v5-patch-for-react-19";
 import { getAuthorizedMenuTree } from "@/services/yishan-admin/sysMenus";
+import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
 import React from "react";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -34,6 +35,8 @@ export async function getInitialState(): Promise<{
   loading?: boolean;
   fetchUserInfo?: () => Promise<API.currentUser | undefined>;
   fetchMenus?: () => Promise<MenuDataItem[] | undefined>;
+  dictDataMap?: Record<string, any>;
+  fetchDictDataMap?: () => Promise<Record<string, any> | undefined>;
 }> {
   const fetchUserInfo = async () => {
     const response = await getCurrentUser();
@@ -69,6 +72,19 @@ export async function getInitialState(): Promise<{
       return undefined;
     }
   };
+
+  const fetchDictDataMap = async () => {
+    try {
+      const res = await getDictDataMap();
+      if (res.success && res.data) {
+        return res.data;
+      }
+      return {};
+    } catch {
+      return {};
+    }
+  };
+
   // 如果不是登录页面，执行
   const { location } = history;
   if (
@@ -77,17 +93,21 @@ export async function getInitialState(): Promise<{
     )
   ) {
     const currentUser = await fetchUserInfo();
+    const dictDataMap = await fetchDictDataMap();
 
     return {
       fetchUserInfo,
       fetchMenus,
+      fetchDictDataMap,
       currentUser,
+      dictDataMap,
       settings: defaultSettings as Partial<LayoutSettings>,
     };
   }
   return {
     fetchUserInfo,
     fetchMenus,
+    fetchDictDataMap,
     settings: defaultSettings as Partial<LayoutSettings>,
   };
 }

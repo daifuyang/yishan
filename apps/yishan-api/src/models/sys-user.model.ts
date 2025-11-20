@@ -44,10 +44,10 @@ export class SysUserModel {
       realName: sysUser.realName ?? undefined,
       nickname: sysUser.nickname ?? undefined,
       avatar: sysUser.avatar ?? undefined,
-      gender: sysUser.gender,
+      gender: sysUser.gender.toString(),
       genderName: genderMap[sysUser.gender as keyof typeof genderMap] || "未知",
       birthDate: dateUtils.formatDate(sysUser.birthDate) ?? undefined,
-      status: sysUser.status,
+      status: sysUser.status.toString(),
       statusName: statusMap[sysUser.status as keyof typeof statusMap] || "未知",
       lastLoginTime: dateUtils.formatISO(sysUser.lastLoginTime) ?? undefined,
       lastLoginIp: sysUser.lastLoginIp ?? undefined,
@@ -132,6 +132,8 @@ export class SysUserModel {
     return sysUsers.map((item) => {
       return {
         ...item,
+        gender: item.gender.toString(),
+        status: item.status.toString(),
         username: item.username ?? undefined,
         email: item.email ?? undefined,
         realName: item.realName ?? undefined,
@@ -295,8 +297,12 @@ export class SysUserModel {
    * 创建用户
    */
   static async createUser(userReq: CreateUserReq, currentUserId: number): Promise<SysUserResp> {
-    const { deptIds, roleIds, password, ...restUserReq } = userReq;
+    const { deptIds, roleIds, password, gender, status, ...restUserReq } = userReq;
     const passwordHash = await hashPassword(password);
+
+    // 将字符串类型的gender和status转换为数字类型
+    const genderNum = gender ? parseInt(gender, 10) : 0;
+    const statusNum = status ? parseInt(status, 10) : 1;
 
     const result = await this.prisma.$transaction(async (prisma) => {
       const sysUser = await prisma.sysUser.create({
@@ -304,8 +310,8 @@ export class SysUserModel {
           ...restUserReq,
           passwordHash,
           loginCount: 0,
-          gender: restUserReq.gender ?? 0,
-          status: restUserReq.status ?? 1,
+          gender: genderNum,
+          status: statusNum,
           creatorId: currentUserId,
           updaterId: currentUserId,
           birthDate: restUserReq.birthDate ? new Date(restUserReq.birthDate) : undefined,
@@ -350,7 +356,24 @@ export class SysUserModel {
    * 更新用户
    */
   static async updateUser(id: number, userReq: UpdateUserReq, currentUserId: number): Promise<SysUserResp> {
-    const { deptIds, roleIds, password, ...restUserReq } = userReq;
+    const { deptIds, roleIds, password, gender, status, ...restUserReq } = userReq;
+
+    // 准备更新数据，处理字符串到数字的转换
+    const updateData: any = {
+      ...restUserReq,
+      updaterId: currentUserId,
+      birthDate: restUserReq.birthDate
+        ? new Date(restUserReq.birthDate)
+        : null,
+    };
+
+    // 将字符串类型的gender和status转换为数字类型
+    if (gender !== undefined) {
+      updateData.gender = parseInt(gender, 10);
+    }
+    if (status !== undefined) {
+      updateData.status = parseInt(status, 10);
+    }
 
     const result = await this.prisma.$transaction(async (prisma) => {
       // 1. 更新用户基本信息
@@ -361,12 +384,8 @@ export class SysUserModel {
           deletedAt: null,
         },
         data: {
-          ...restUserReq,
+          ...updateData,
           ...(passwordHashUpdate ? { passwordHash: passwordHashUpdate } : {}),
-          updaterId: currentUserId,
-          birthDate: restUserReq.birthDate
-            ? new Date(restUserReq.birthDate)
-            : null,
         },
       });
 

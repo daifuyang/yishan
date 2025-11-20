@@ -7,8 +7,18 @@ import { CreateUserReq, UserListQuery, SysUserResp, UpdateUserReq } from "../sch
 import { UserErrorCode } from "../constants/business-codes/user.js";
 import { BusinessError } from "../exceptions/business-error.js";
 import { SysUserTokenModel } from "../models/sys-user-token.model.js";
+import { CACHE_CONFIG } from "../config/index.js";
 
 export class UserService {
+  private static readonly USER_DETAIL_CACHE_KEY_PREFIX = 'user:detail:';
+
+  /**
+   * 获取用户详情缓存键
+   */
+  private static getUserDetailCacheKey(userId: number): string {
+    return `${this.USER_DETAIL_CACHE_KEY_PREFIX}${userId}`;
+  }
+
   /**
    * 获取管理员列表
    * @param query 查询参数
@@ -30,20 +40,51 @@ export class UserService {
   }
 
   /**
-   * 获取单个用户信息
+   * 获取单个用户信息（默认带缓存）
    * @param id 用户ID
+   * @param fastify Fastify实例（可选，用于缓存）
    * @returns 用户信息
    */
-  static async getUserById(id: number) {
-    return await SysUserModel.getUserById(id);
+  static async getUserById(id: number, fastify?: any): Promise<SysUserResp | null> {
+    // 如果提供了fastify实例，尝试使用缓存
+    if (fastify?.redis) {
+      try {
+        const cacheKey = this.getUserDetailCacheKey(id);
+        const cached = await fastify.redis.get(cacheKey);
+        if (cached) {
+          return JSON.parse(cached);
+        }
+      } catch (error) {
+        // 缓存失败不影响主流程，记录日志即可
+        fastify.log.warn(`Redis缓存获取失败: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    // 从数据库获取数据
+    const user = await SysUserModel.getUserById(id);
+
+    // 如果提供了fastify实例，将结果存入缓存
+    if (fastify?.redis && user) {
+      try {
+        const cacheKey = this.getUserDetailCacheKey(id);
+        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(user));
+      } catch (error) {
+        // 缓存失败不影响主流程，记录日志即可
+        fastify.log.warn(`Redis缓存设置失败: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    return user;
   }
 
   /**
-   * 创建用户
+   * 创建用户（默认带缓存）
    * @param userReq 用户数据
+   * @param currentUserId 当前用户ID
+   * @param fastify Fastify实例（可选，用于缓存）
    * @returns 创建的用户信息
    */
-  static async createUser(userReq: CreateUserReq, currentUserId: number): Promise<SysUserResp> {
+  static async createUser(userReq: CreateUserReq, currentUserId: number, fastify?: any): Promise<SysUserResp> {
     // 密码强度验证（创建场景要求提供密码）
     this.validatePassword(userReq.password);
 
@@ -51,7 +92,20 @@ export class UserService {
     await this.ensureUniqueFields(userReq.username, userReq.email, userReq.phone);
 
     // 创建用户
-    return await SysUserModel.createUser(userReq, currentUserId);
+    const user = await SysUserModel.createUser(userReq, currentUserId);
+    
+    // 写入缓存
+    if (fastify?.redis && user && typeof user.id === "number") {
+      try {
+        const cacheKey = this.getUserDetailCacheKey(user.id);
+        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(user));
+      } catch (error) {
+        // 缓存失败不影响主流程，记录日志即可
+        fastify.log.warn(`创建用户后写入缓存失败: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    
+    return user;
   }
 
   /**
@@ -80,15 +134,18 @@ export class UserService {
   }
 
   /**
-   * 更新用户
+   * 更新用户（默认带缓存刷新）
    * @param id 用户ID
    * @param userReq 用户数据
+   * @param currentUserId 当前用户ID
+   * @param fastify Fastify实例（可选，用于缓存）
    * @returns 更新的用户信息
    */
   static async updateUser(
     id: number,
     userReq: UpdateUserReq,
-    currentUserId: number
+    currentUserId: number,
+    fastify?: any
   ): Promise<SysUserResp | null> {
     // 检查用户是否存在
     const existingUser = await SysUserModel.getUserById(id);
@@ -105,13 +162,28 @@ export class UserService {
     }
 
     // 更新用户
-    return await SysUserModel.updateUser(id, userReq, currentUserId);
+    const user = await SysUserModel.updateUser(id, userReq, currentUserId);
+    
+    // 更新成功后刷新缓存
+    if (user && fastify?.redis) {
+      try {
+        const cacheKey = this.getUserDetailCacheKey(id);
+        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(user));
+      } catch (error) {
+        // 缓存刷新失败不影响主流程，记录日志即可
+        fastify.log.warn(`更新用户后刷新缓存失败: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    
+    return user;
   }
 
   /**
-   * 删除用户（软删除）并撤销所有令牌
+   * 删除用户（软删除）并撤销所有令牌（默认带缓存清除）
+   * @param id 用户ID
+   * @param fastify Fastify实例（可选，用于缓存）
    */
-  static async deleteUser(id: number): Promise<{ id: number; deleted: boolean }> {
+  static async deleteUser(id: number, fastify?: any): Promise<{ id: number; deleted: boolean }> {
     const existingUser = await SysUserModel.getUserById(id)
     if (!existingUser) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在")
@@ -123,6 +195,9 @@ export class UserService {
     }
 
     await SysUserTokenModel.revokeAllByUserId(id)
+
+    // 清除缓存
+    await this.clearUserDetailCache(id, fastify);
 
     return { id, deleted: true }
   }
@@ -158,6 +233,23 @@ export class UserService {
       const userWithSamePhone = await SysUserModel.getUserByPhone(phone);
       if (userWithSamePhone && userWithSamePhone.id !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "手机号已存在");
+      }
+    }
+  }
+
+  /**
+   * 清除用户详情缓存
+   * @param userId 用户ID
+   * @param fastify Fastify实例（可选）
+   */
+  private static async clearUserDetailCache(userId: number, fastify?: any): Promise<void> {
+    if (fastify?.redis) {
+      try {
+        const cacheKey = this.getUserDetailCacheKey(userId);
+        await fastify.redis.del(cacheKey);
+      } catch (error) {
+        // 缓存清除失败不影响主流程，记录日志即可
+        fastify.log.warn(`Redis缓存清除失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }

@@ -71,8 +71,8 @@ const CurrentUserSchema = Type.Object(
     phone: Type.Optional(Type.String({ description: "手机号" })),
     realName: Type.String({ description: "真实姓名" }),
     avatar: Type.Optional(Type.String({ description: "头像URL" })),
-    gender: Type.Number({
-      enum: [0, 1, 2],
+    gender: Type.String({
+      enum: ["0", "1", "2"],
       description: "性别（0-未知，1-男，2-女）"
     }),
     genderName: Type.String({ description: "性别名称" }),
@@ -82,8 +82,8 @@ const CurrentUserSchema = Type.Object(
         description: "出生日期"
       })
     ),
-    status: Type.Number({
-      enum: [0, 1, 2],
+    status: Type.String({
+      enum: ["0", "1", "2"],
       description: "状态（0-禁用，1-启用，2-锁定）"
     }),
     statusName: Type.String({ description: "状态名称" }),

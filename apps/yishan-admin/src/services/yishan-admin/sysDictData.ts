@@ -87,3 +87,11 @@ export async function deleteDictData(
     ...(options || {}),
   });
 }
+
+/** 获取全部字典数据映射 获取所有启用的字典数据，按字典类型分组，返回key:{label:'',value:''}的形式 GET /api/v1/admin/dicts/data/map */
+export async function getDictDataMap(options?: { [key: string]: any }) {
+  return request<API.dictDataMapResp>("/api/v1/admin/dicts/data/map", {
+    method: "GET",
+    ...(options || {}),
+  });
+}

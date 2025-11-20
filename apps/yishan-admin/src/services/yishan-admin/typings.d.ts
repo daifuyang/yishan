@@ -257,6 +257,14 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type dictDataMapResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: Record<string, any>;
+    timestamp: string;
+  };
+
   type dictTypeDeleteResp = {
     code: number;
     message: string;

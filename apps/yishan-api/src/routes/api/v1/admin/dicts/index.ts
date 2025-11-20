@@ -72,7 +72,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (request: FastifyRequest<{ Body: SaveDictTypeReq }>, reply: FastifyReply) => {
-      const d = await DictService.createDictType(request.body);
+      const d = await DictService.createDictType(request.body, fastify);
       const message = getDictMessage(DictMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, d, message);
     }
@@ -94,7 +94,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     },
     async (request: FastifyRequest<{ Params: { id: number }; Body: UpdateDictTypeReq }>, reply: FastifyReply) => {
       const id = request.params.id;
-      const d = await DictService.updateDictType(id, request.body);
+      const d = await DictService.updateDictType(id, request.body, fastify);
       const message = getDictMessage(DictMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, d, message);
     }
@@ -115,7 +115,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     },
     async (request: FastifyRequest<{ Params: { id: number } }>, reply: FastifyReply) => {
       const id = request.params.id;
-      const res = await DictService.deleteDictType(id);
+      const res = await DictService.deleteDictType(id, fastify);
       const message = getDictMessage(DictMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, res, message);
     }
@@ -178,7 +178,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (request: FastifyRequest<{ Body: SaveDictDataReq }>, reply: FastifyReply) => {
-      const d = await DictService.createDictData(request.body);
+      const d = await DictService.createDictData(request.body, fastify);
       const message = getDictMessage(DictMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, d, message);
     }
@@ -200,7 +200,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     },
     async (request: FastifyRequest<{ Params: { id: number }; Body: UpdateDictDataReq }>, reply: FastifyReply) => {
       const id = request.params.id;
-      const d = await DictService.updateDictData(id, request.body);
+      const d = await DictService.updateDictData(id, request.body, fastify);
       const message = getDictMessage(DictMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, d, message);
     }
@@ -221,9 +221,28 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     },
     async (request: FastifyRequest<{ Params: { id: number } }>, reply: FastifyReply) => {
       const id = request.params.id;
-      const res = await DictService.deleteDictData(id);
+      const res = await DictService.deleteDictData(id, fastify);
       const message = getDictMessage(DictMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, res, message);
+    }
+  );
+
+  fastify.get(
+    "/data/map",
+    {
+      schema: {
+        summary: "获取全部字典数据映射",
+        description: "获取所有启用的字典数据，按字典类型分组，返回key:{label:'',value:''}的形式",
+        operationId: "getDictDataMap",
+        tags: ["sysDictData"],
+        security: [{ bearerAuth: [] }],
+        response: { 200: { $ref: "dictDataMapResp#" } },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const result = await DictService.getAllDictDataMap(fastify);
+      const message = getDictMessage(DictMessageKeys.MAP_SUCCESS, request.headers["accept-language"] as string);
+      return ResponseUtil.success(reply, result, message);
     }
   );
 };

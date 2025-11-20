@@ -10,6 +10,7 @@ import {
 import type { FormInstance } from "antd";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
+import { useModel } from "@umijs/max";
 import { getRoleList } from "@/services/yishan-admin/sysRoles";
 import { getPostList } from "@/services/yishan-admin/sysPosts";
 import { ProFormDeptTreeSelect } from "@/components";
@@ -33,6 +34,15 @@ const UserForm: React.FC<UserFormProps> = ({
   onOpenChange,
   onSubmit,
 }) => {
+  // 获取全局字典数据
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+
+  // 获取性别字典
+  const genderDict = dictDataMap.user_gender || [];
+  // 获取用户状态字典
+  const userStatusDict = dictDataMap.user_status || [];
+
   const initialVals = useMemo(() => {
     if (initialValues) {
       return {
@@ -154,22 +164,14 @@ const UserForm: React.FC<UserFormProps> = ({
       <ProFormRadio.Group
         name="gender"
         label="用户性别"
-        options={[
-          { label: "未知", value: 0 },
-          { label: "男", value: 1 },
-          { label: "女", value: 2 },
-        ]}
+        options={genderDict}
         colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
         name="status"
         label="状态"
-        options={[
-          { label: "禁用", value: 0 },
-          { label: "启用", value: 1 },
-          { label: "锁定", value: 2 },
-        ]}
+        options={userStatusDict}
         colProps={{ span: 12 }}
       />
 

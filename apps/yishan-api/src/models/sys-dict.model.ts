@@ -295,4 +295,31 @@ export class SysDictModel {
     await this.prisma.sysDictData.update({ where: { id }, data: { deletedAt: new Date(), status: 0 } });
     return { id };
   }
+
+  static async getAllDictDataMap(): Promise<Record<string, { label: string; value: string }[]>> {
+    const rows = await this.prisma.sysDictData.findMany({
+      where: { deletedAt: null, status: 1 },
+      include: {
+        type: { select: { type: true } },
+      },
+      orderBy: {
+        sort_order: 'asc',
+      },
+    });
+
+    const result: Record<string, { label: string; value: string }[]> = {};
+    
+    rows.forEach((row) => {
+      const type = row.type.type;
+      if (!result[type]) {
+        result[type] = [];
+      }
+      result[type].push({
+        label: row.label,
+        value: row.value,
+      });
+    });
+
+    return result;
+  }
 }

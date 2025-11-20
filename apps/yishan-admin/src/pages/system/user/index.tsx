@@ -2,30 +2,9 @@ import { PlusOutlined } from '@ant-design/icons';
 import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space, Tag, Form } from 'antd';
 import React, { useRef, useState } from 'react';
-import { useIntl } from '@umijs/max';
+import { useModel } from '@umijs/max';
 import { deleteUser, getUserList, updateUser, getUserDetail, createUser } from '@/services/yishan-admin/sysUsers';
 import UserForm from './components/UserForm';
-
-/**
- * 用户状态枚举
- */
-const UserStatus = {
-  ACTIVE: 1,
-  DISABLED: 0,
-  LOCKED: 2,
-};
-
-/**
- * 用户状态标签
- */
-const UserStatusTag: React.FC<{ status?: number }> = ({ status }) => {
-  if (status === UserStatus.ACTIVE) {
-    return <Tag color="success">正常</Tag>;
-  } else if (status === UserStatus.LOCKED) {
-    return <Tag color="warning">锁定</Tag>;
-  }
-  return <Tag color="error">禁用</Tag>;
-};
 
 /**
  * 用户管理列表页面
@@ -33,26 +12,34 @@ const UserStatusTag: React.FC<{ status?: number }> = ({ status }) => {
 const UserList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const intl = useIntl();
+
   const [form] = Form.useForm();
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
   const [formTitle, setFormTitle] = useState('新建用户');
   const [currentUser, setCurrentUser] = useState<API.sysUser | undefined>(undefined);
 
+  // 获取全局字典数据
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+
+  // 获取用户状态字典
+  const userStatusDict = dictDataMap.user_status || [];
+
   /**
    * 处理用户状态变更
    */
   const handleStatusChange = async (id: number, status: number) => {
-    const newStatus = status === UserStatus.ACTIVE ? UserStatus.DISABLED : UserStatus.ACTIVE;
-      const res = await updateUser(
-        { id },
-        { status: newStatus as 0 | 1 | 2 }
-      );
-      if (res.success) {
-        message.success(res.message);
-      }
-      actionRef.current?.reload();
+    // 从启用切换到禁用，或从禁用切换到启用
+    const newStatus = status === 1 ? 0 : 1;
+    const res = await updateUser(
+      { id },
+      { status: newStatus as 0 | 1 | 2 }
+    );
+    if (res.success) {
+      message.success(res.message);
+    }
+    actionRef.current?.reload();
   };
 
   const handleAdd = () => {
@@ -156,12 +143,13 @@ const UserList: React.FC = () => {
     {
       title: '状态',
       dataIndex: 'status',
-      valueEnum: {
-        [UserStatus.ACTIVE]: { text: '正常', status: 'Success' },
-        [UserStatus.DISABLED]: { text: '禁用', status: 'Error' },
-        [UserStatus.LOCKED]: { text: '锁定', status: 'Warning' },
-      },
-      render: (_, record) => <UserStatusTag status={record.status} />,
+      valueEnum: userStatusDict.reduce((acc: any, item: any) => {
+        acc[item.value] = {
+          text: item.label,
+          status: item.value === "1" ? 'Success' : item.value === "2" ? 'Warning' : 'Error'
+        };
+        return acc;
+      }, {}),
     },
     {
       title: '最后登录',
@@ -183,12 +171,12 @@ const UserList: React.FC = () => {
         <a key="edit" onClick={() => handleEdit(record.id)}>
           编辑
         </a>,
-        record.status !== UserStatus.LOCKED && (
+        record.status !== 2 && (
           <a
             key="status"
             onClick={() => handleStatusChange(record.id, record.status)}
           >
-            {record.status === UserStatus.ACTIVE ? '禁用' : '启用'}
+            {record.status === 1 ? '禁用' : '启用'}
           </a>
         ),
         <Popconfirm
@@ -196,7 +184,7 @@ const UserList: React.FC = () => {
           title="确定要删除该用户吗？"
           onConfirm={() => handleRemove(record.id)}
         >
-          <Button className='p-0' type="link" danger disabled={record.status === UserStatus.LOCKED}>
+          <Button className='p-0' type="link" danger disabled={record.status === 2}>
             删除
           </Button>
         </Popconfirm>,
