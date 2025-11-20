@@ -3,7 +3,7 @@
  */
 
 import { prismaManager } from "../utils/prisma.js";
-import type { Prisma } from "../generated/prisma/client.js";
+import type { Prisma, SysRole } from "../generated/prisma/client.js";
 import { RoleListQuery, SaveRoleReq, SysRoleResp, UpdateRoleReq } from "../schemas/role.js";
 import { dateUtils } from "../utils/date.js";
 
@@ -27,7 +27,7 @@ export class SysRoleModel {
       id: role.id,
       name: role.name,
       description: role.description ?? undefined,
-      status: role.status,
+      status: role.status.toString(),
       isSystemDefault: role.isSystemDefault ?? false,
       creatorId: role.creatorId ?? undefined,
       creatorName: role.creator?.username ?? role.creatorName,
@@ -40,7 +40,10 @@ export class SysRoleModel {
   }
 
   /**
-   * 获取角色列表
+   * 获取角色列表（返回API响应格式，status为字符串类型）
+   * 主要用于API响应，已包含关联数据和格式转换
+   * @param query 查询参数
+   * @returns 转换后的角色响应对象数组
    */
   static async getRoleList(query: RoleListQuery): Promise<SysRoleResp[]> {
     const {
@@ -62,17 +65,18 @@ export class SysRoleModel {
     }
 
     if (status !== undefined) {
-      where.status = status;
+      where.status = parseInt(status as string, 10);
     }
 
     const orderBy: any = {};
     orderBy[sortBy] = sortOrder;
 
+    // 如果pageSize为0，直接返回全部数据，不应用分页
     const roles = await this.prisma.sysRole.findMany({
       where,
       orderBy,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip: pageSize === 0 ? undefined : (page - 1) * pageSize,
+      take: pageSize === 0 ? undefined : pageSize,
       include: {
         creator: { select: { username: true } },
         updater: { select: { username: true } },
@@ -83,7 +87,10 @@ export class SysRoleModel {
   }
 
   /**
-   * 获取角色总数
+   * 获取角色总数（返回数字类型）
+   * 主要用于分页统计，返回符合条件的角色总数
+   * @param query 查询参数
+   * @returns 角色总数
    */
   static async getRoleTotal(query: RoleListQuery): Promise<number> {
     const { keyword, status } = query;
@@ -98,14 +105,17 @@ export class SysRoleModel {
     }
 
     if (status !== undefined) {
-      where.status = status;
+      where.status = parseInt(status as string, 10);
     }
 
     return await this.prisma.sysRole.count({ where });
   }
 
   /**
-   * 根据ID获取角色信息
+   * 根据角色ID获取角色信息（返回API响应格式，status为字符串类型）
+   * 主要用于API响应，已包含关联数据和格式转换
+   * @param id 角色ID
+   * @returns 转换后的角色响应对象或null
    */
   static async getRoleById(id: number): Promise<SysRoleResp | null> {
     const role = await this.prisma.sysRole.findFirst({
@@ -121,24 +131,33 @@ export class SysRoleModel {
   }
 
   /**
-   * 根据名称获取角色
+   * 根据角色名称获取原始角色信息（返回数据库原始对象，status为数字类型）
+   * 主要用于内部业务逻辑，如唯一性检查等
+   * @param name 角色名称
+   * @returns 原始角色对象或null
    */
-  static async getRoleByName(name: string) {
+  static async getRawRoleByName(name: string): Promise<SysRole | null> {
     return await this.prisma.sysRole.findFirst({
       where: { name, deletedAt: null },
     });
   }
 
   /**
-   * 创建角色
+   * 创建角色（返回API响应格式，status为字符串类型）
+   * 主要用于API响应，已包含关联数据和格式转换
+   * @param req 角色创建请求数据
+   * @returns 转换后的角色响应对象
    */
   static async createRole(req: SaveRoleReq): Promise<SysRoleResp> {
     const result = await this.prisma.$transaction(async (prisma) => {
+      // 将字符串类型的status转换为数字类型
+      const statusNum = req.status ? parseInt(req.status, 10) : 1;
+      
       const role = await prisma.sysRole.create({
         data: {
           name: req.name,
           description: req.description,
-          status: req.status ?? 1,
+          status: statusNum,
           isSystemDefault: false,
           creatorId: 1,
           updaterId: 1,
@@ -166,14 +185,21 @@ export class SysRoleModel {
   }
 
   /**
-   * 更新角色
+   * 更新角色（返回API响应格式，status为字符串类型）
+   * 主要用于API响应，已包含关联数据和格式转换
+   * @param id 角色ID
+   * @param req 角色更新请求数据
+   * @returns 转换后的角色响应对象
    */
   static async updateRole(id: number, req: UpdateRoleReq): Promise<SysRoleResp> {
     const result = await this.prisma.$transaction(async (prisma) => {
       const updateData: any = {};
       if (req.name !== undefined) updateData.name = req.name;
       if (req.description !== undefined) updateData.description = req.description;
-      if (req.status !== undefined) updateData.status = req.status;
+      if (req.status !== undefined) {
+        // 将字符串类型的status转换为数字类型
+        updateData.status = parseInt(req.status, 10);
+      }
 
       const role = await prisma.sysRole.update({
         where: { id, deletedAt: null },
@@ -218,9 +244,11 @@ export class SysRoleModel {
   }
 
   /**
-   * 软删除角色
+   * 软删除角色（将状态设置为禁用并标记删除时间）
+   * @param id 角色ID
+   * @returns 删除结果或null
    */
-  static async deleteRole(id: number): Promise<{ id: number } | null> {
+  static async deleteRole(id: number): Promise<SysRole | null> {
     const existing = await this.prisma.sysRole.findFirst({
       where: { id, deletedAt: null },
     });
@@ -234,6 +262,6 @@ export class SysRoleModel {
       },
     });
 
-    return { id };
+    return existing;
   }
 }

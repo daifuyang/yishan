@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
   ModalForm,
   ProFormText,
@@ -7,7 +7,6 @@ import {
   ProFormSelect,
   ProFormTextArea,
 } from "@ant-design/pro-components";
-import type { FormInstance } from "antd";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import { useModel } from "@umijs/max";
@@ -16,23 +15,19 @@ import { getPostList } from "@/services/yishan-admin/sysPosts";
 import { ProFormDeptTreeSelect } from "@/components";
 
 export interface UserFormProps {
-  form: FormInstance;
-  open: boolean;
   mode: "create" | "edit";
   title: string;
-  initialValues?: API.sysUser;
-  onOpenChange: (open: boolean) => void;
+  trigger: React.ReactNode;
   onSubmit: (values: API.createUserReq | API.updateUserReq) => Promise<void>;
+  onInit?: () => Promise<API.sysUser | undefined>;
 }
 
 const UserForm: React.FC<UserFormProps> = ({
-  form,
-  open,
   mode,
   title,
-  initialValues,
-  onOpenChange,
+  trigger,
   onSubmit,
+  onInit,
 }) => {
   // 获取全局字典数据
   const { initialState } = useModel('@@initialState');
@@ -42,26 +37,6 @@ const UserForm: React.FC<UserFormProps> = ({
   const genderDict = dictDataMap.user_gender || [];
   // 获取用户状态字典
   const userStatusDict = dictDataMap.user_status || [];
-
-  const initialVals = useMemo(() => {
-    if (initialValues) {
-      return {
-        username: initialValues.username,
-        realName: initialValues.realName,
-        nickname: (initialValues as any).nickname,
-        email: initialValues.email,
-        phone: initialValues.phone,
-        gender: initialValues.gender,
-        status: initialValues.status,
-        birthDate: initialValues.birthDate ? dayjs(initialValues.birthDate) : undefined,
-        deptId: (initialValues as any).deptId,
-        postIds: (initialValues as any).postIds,
-        roleIds: (initialValues as any).roleIds,
-        remark: (initialValues as any).remark,
-      } as any;
-    }
-    return { status: 1, gender: 0 } as any;
-  }, [initialValues]);
 
   const handleFinish = async (values: any) => {
     const payload: any = {
@@ -89,16 +64,34 @@ const UserForm: React.FC<UserFormProps> = ({
 
   return (
     <ModalForm
-      form={form}
       title={title}
-      open={open}
-      onOpenChange={onOpenChange}
+      trigger={trigger}
       autoFocusFirstInput
       modalProps={{ destroyOnClose: true, maskClosable: false }}
       grid
-      initialValues={initialVals}
-      syncToInitialValues
       onFinish={handleFinish}
+      request={async () => {
+        if (onInit) {
+          const data = await onInit();
+          if (data) {
+            return {
+              username: data.username,
+              realName: data.realName,
+              nickname: (data as any).nickname,
+              email: data.email,
+              phone: data.phone,
+              gender: data.gender,
+              status: data.status,
+              birthDate: data.birthDate ? dayjs(data.birthDate) : undefined,
+              deptId: (data as any).deptId,
+              postIds: (data as any).postIds,
+              roleIds: (data as any).roleIds,
+              remark: (data as any).remark,
+            };
+          }
+        }
+        return { status: "1", gender: "0" };
+      }}
     >
       <ProFormText
         name="username"
@@ -205,8 +198,8 @@ const UserForm: React.FC<UserFormProps> = ({
         request={async () => {
           const res = await getRoleList({
             page: 1,
-            pageSize: 100,
-            status: 1,
+            pageSize: 0,
+            status: "1",
             sortBy: "createdAt",
             sortOrder: "desc",
           });

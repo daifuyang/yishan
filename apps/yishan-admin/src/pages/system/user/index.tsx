@@ -1,6 +1,6 @@
 import { PlusOutlined } from "@ant-design/icons";
 import { ActionType, ProColumns, ProTable } from "@ant-design/pro-components";
-import { Button, message, Popconfirm, Space, Tag, Form } from "antd";
+import { Button, message, Popconfirm, Space } from "antd";
 import React, { useRef, useState } from "react";
 import { useModel } from "@umijs/max";
 import {
@@ -18,14 +18,6 @@ import UserForm from "./components/UserForm";
 const UserList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-
-  const [form] = Form.useForm();
-  const [formOpen, setFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState<"create" | "edit">("create");
-  const [formTitle, setFormTitle] = useState("新建用户");
-  const [currentUser, setCurrentUser] = useState<API.sysUser | undefined>(
-    undefined
-  );
 
   // 获取全局字典数据
   const { initialState } = useModel("@@initialState");
@@ -47,42 +39,34 @@ const UserList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  const handleAdd = () => {
-    setFormMode("create");
-    setFormTitle("新建用户");
-    setCurrentUser(undefined);
-    setFormOpen(true);
-  };
-
-  const handleEdit = async (id: number) => {
-    setFormMode("edit");
-    setFormTitle("编辑用户");
-    const detail = await getUserDetail({ id });
-    if (detail.success && detail.data) {
-      setCurrentUser(detail.data);
-      setFormOpen(true);
-    }
-  };
-
+  /**
+   * 处理表单提交
+   */
   const handleFormSubmit = async (
-    values: API.createUserReq | API.updateUserReq
+    values: API.createUserReq | API.updateUserReq,
+    mode: "create" | "edit",
+    id?: number
   ) => {
-    if (formMode === "edit" && currentUser?.id) {
-      const res = await updateUser(
-        { id: currentUser.id },
-        values as API.updateUserReq
-      );
+    try {
+      let res;
+      if (mode === "edit" && id) {
+        res = await updateUser({ id }, values as API.updateUserReq);
+      } else {
+        res = await createUser(values as API.createUserReq);
+      }
+
       if (res.success) {
         message.success(res.message);
+        actionRef.current?.reload();
+        return true;
+      } else {
+        message.error(res.message || "操作失败");
+        return false;
       }
-    } else {
-      const res = await createUser(values as API.createUserReq);
-      if (res.success) {
-        message.success(res.message);
-      }
+    } catch (error) {
+      message.error("操作失败，请稍后重试");
+      return false;
     }
-    setFormOpen(false);
-    actionRef.current?.reload();
   };
 
   /**
@@ -185,9 +169,19 @@ const UserList: React.FC = () => {
       dataIndex: "option",
       valueType: "option",
       render: (_, record) => [
-        <a key="edit" onClick={() => handleEdit(record.id)}>
-          编辑
-        </a>,
+        <UserForm
+          key="edit"
+          mode="edit"
+          title="编辑用户"
+          trigger={<a>编辑</a>}
+          onSubmit={async (values) => {
+            await handleFormSubmit(values, "edit", record.id);
+          }}
+          onInit={async () => {
+            const detail = await getUserDetail({ id: record.id });
+            return detail.data;
+          }}
+        />,
         record.status !== "2" && (
           <a
             key="status"
@@ -226,9 +220,19 @@ const UserList: React.FC = () => {
           labelWidth: 120,
         }}
         toolBarRender={() => [
-          <Button type="primary" key="primary" onClick={handleAdd}>
-            <PlusOutlined /> 新建
-          </Button>,
+          <UserForm
+            key="create"
+            mode="create"
+            title="新建用户"
+            trigger={
+              <Button type="primary">
+                <PlusOutlined /> 新建
+              </Button>
+            }
+            onSubmit={async (values) => {
+              await handleFormSubmit(values, "create");
+            }}
+          />,
         ]}
         request={async (params) => {
           const { current, pageSize, ...restParams } = params;
@@ -285,15 +289,6 @@ const UserList: React.FC = () => {
             </Space>
           );
         }}
-      />
-      <UserForm
-        form={form}
-        open={formOpen}
-        mode={formMode}
-        title={formTitle}
-        initialValues={currentUser}
-        onOpenChange={setFormOpen}
-        onSubmit={handleFormSubmit}
       />
     </>
   );

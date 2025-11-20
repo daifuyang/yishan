@@ -10,7 +10,8 @@
 4. [路由和菜单配置规范](#路由和菜单配置规范)
 5. [国际化配置规范](#国际化配置规范)
 6. [页面开发规范](#页面开发规范)
-7. [当前页面目录概览](#当前页面目录概览)
+7. [字典数据使用规范](#字典数据使用规范)
+8. [当前页面目录概览](#当前页面目录概览)
 
 ## 模块结构和目录规范
 
@@ -354,6 +355,90 @@ request={async (params) => {
 
 - 在页面内定义状态枚举（如 `ENABLED/DISABLED`），避免魔法数
 - 使用 `Tag` 组件统一展示状态（颜色规范：成功绿、禁用红、警告黄等）
+
+## 字典数据使用规范
+
+### 概述
+
+项目采用统一的字典数据管理方案，所有枚举数据从后端字典接口获取，前端不定义硬编码的枚举值。
+
+### 字典接口
+
+**获取全部字典数据映射**: `GET /api/v1/admin/dicts/data/map`
+
+### 使用方式
+
+#### 1. 在组件中获取字典数据
+
+```typescript
+import { useModel } from '@umijs/max';
+
+const YourComponent: React.FC = () => {
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+  
+  // 获取特定字典类型
+  const userStatusDict = dictDataMap.user_status || [];
+  const genderDict = dictDataMap.user_gender || [];
+};
+```
+
+#### 2. 在列表页面中使用
+
+```typescript
+// 表格列定义
+const columns: ProColumns<API.sysUser>[] = [
+  {
+    title: '状态',
+    dataIndex: 'status',
+    valueEnum: userStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
+      acc[item.value] = {
+        text: item.label,
+        status: item.value === "1" ? "Success" : item.value === "2" ? "Warning" : "Error"
+      };
+      return acc;
+    }, {}),
+  },
+];
+```
+
+#### 3. 在表单中使用
+
+```typescript
+<ProFormRadio.Group
+  name="gender"
+  label="用户性别"
+  options={genderDict}
+/>
+```
+
+#### 4. 状态切换逻辑
+
+```typescript
+const handleStatusChange = async (id: number, status: string) => {
+  const newStatus = status === "1" ? "0" : "1";
+  const res = await updateUser({ id }, { status: newStatus as "0" | "1" | "2" });
+  
+  if (res.success) {
+    message.success(res.message);
+    actionRef.current?.reload();
+  }
+};
+```
+
+### 字典键名规范
+
+- **用户状态**: `user_status`
+- **用户性别**: `user_gender` 
+- **通用状态**: `default_status`（适用于角色、部门、岗位等）
+
+### 最佳实践
+
+1. **类型安全**: 使用正确的 TypeScript 类型定义
+2. **错误处理**: 字典数据为空时提供默认值
+3. **性能优化**: 避免重复请求字典数据
+
+**详细规范请参考**: [字典数据规范文档](./DICTIONARY_SPECIFICATION.md)
 
 ## 当前页面目录概览
 

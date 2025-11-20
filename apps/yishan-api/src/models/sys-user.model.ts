@@ -3,7 +3,12 @@
  */
 
 import { prismaManager } from "../utils/prisma.js";
-import { UserListQuery, CreateUserReq, SysUserResp, UpdateUserReq } from "../schemas/user.js";
+import {
+  UserListQuery,
+  CreateUserReq,
+  SysUserResp,
+  UpdateUserReq,
+} from "../schemas/user.js";
 import { SysUser } from "../generated/prisma/client.js";
 import type { Prisma } from "../generated/prisma/client.js";
 import { hashPassword } from "../utils/password.js";
@@ -98,7 +103,7 @@ export class SysUserModel {
 
     // 添加状态筛选条件
     if (status !== undefined) {
-      where.status = status;
+      where.status = parseInt(status as string, 10);
     }
 
     // 添加时间范围筛选条件
@@ -115,20 +120,20 @@ export class SysUserModel {
     const orderBy: any = {};
     orderBy[sortBy] = sortOrder;
 
-    // 执行查询
+    // 如果pageSize为0，直接返回全部数据，不应用分页
     const sysUsers = await this.prisma.sysUser.findMany({
       where,
       orderBy,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
+      skip: pageSize === 0 ? undefined : (page - 1) * pageSize,
+      take: pageSize === 0 ? undefined : pageSize,
       include: {
         creator: {
-          select: { username: true }
+          select: { username: true },
         },
         updater: {
-          select: { username: true }
-        }
-      }
+          select: { username: true },
+        },
+      },
     });
 
     // 转换数据格式以匹配SysUserResp类型
@@ -178,8 +183,9 @@ export class SysUserModel {
     }
 
     // 添加状态筛选条件
+    // 添加状态筛选条件
     if (status !== undefined) {
-      where.status = status;
+      where.status = parseInt(status as string, 10);
     }
 
     // 添加时间范围筛选条件
@@ -217,7 +223,7 @@ export class SysUserModel {
         updater: { select: { username: true } },
         userDepts: { select: { deptId: true } },
         userRoles: { select: { roleId: true } },
-      }
+      },
     });
 
     if (!sysUser) return null;
@@ -230,7 +236,7 @@ export class SysUserModel {
    */
   static async deleteUser(id: number): Promise<SysUser | null> {
     const existing = await this.prisma.sysUser.findFirst({
-      where: { id, deletedAt: null }
+      where: { id, deletedAt: null },
     });
     if (!existing) return null;
 
@@ -239,7 +245,7 @@ export class SysUserModel {
       data: {
         deletedAt: new Date(),
         status: 0,
-      }
+      },
     });
     return deleted;
   }
@@ -300,13 +306,12 @@ export class SysUserModel {
    * @param usernameOrEmail 用户名或邮箱地址
    * @returns 原始用户对象或null
    */
-  static async getRawUserByUsernameOrEmail(usernameOrEmail: string): Promise<SysUser | null> {
+  static async getRawUserByUsernameOrEmail(
+    usernameOrEmail: string
+  ): Promise<SysUser | null> {
     const sysUser = await this.prisma.sysUser.findFirst({
       where: {
-        OR: [
-          { username: usernameOrEmail },
-          { email: usernameOrEmail }
-        ],
+        OR: [{ username: usernameOrEmail }, { email: usernameOrEmail }],
         deletedAt: null,
       },
     });
@@ -321,8 +326,12 @@ export class SysUserModel {
    * @param currentUserId 当前操作用户ID
    * @returns 转换后的用户响应对象
    */
-  static async createUser(userReq: CreateUserReq, currentUserId: number): Promise<SysUserResp> {
-    const { deptIds, roleIds, password, gender, status, ...restUserReq } = userReq;
+  static async createUser(
+    userReq: CreateUserReq,
+    currentUserId: number
+  ): Promise<SysUserResp> {
+    const { deptIds, roleIds, password, gender, status, ...restUserReq } =
+      userReq;
     const passwordHash = await hashPassword(password);
 
     // 将字符串类型的gender和status转换为数字类型
@@ -339,7 +348,9 @@ export class SysUserModel {
           status: statusNum,
           creatorId: currentUserId,
           updaterId: currentUserId,
-          birthDate: restUserReq.birthDate ? new Date(restUserReq.birthDate) : undefined,
+          birthDate: restUserReq.birthDate
+            ? new Date(restUserReq.birthDate)
+            : undefined,
         },
       });
 
@@ -385,16 +396,19 @@ export class SysUserModel {
    * @param currentUserId 当前操作用户ID
    * @returns 转换后的用户响应对象
    */
-  static async updateUser(id: number, userReq: UpdateUserReq, currentUserId: number): Promise<SysUserResp> {
-    const { deptIds, roleIds, password, gender, status, ...restUserReq } = userReq;
+  static async updateUser(
+    id: number,
+    userReq: UpdateUserReq,
+    currentUserId: number
+  ): Promise<SysUserResp> {
+    const { deptIds, roleIds, password, gender, status, ...restUserReq } =
+      userReq;
 
     // 准备更新数据，处理字符串到数字的转换
     const updateData: any = {
       ...restUserReq,
       updaterId: currentUserId,
-      birthDate: restUserReq.birthDate
-        ? new Date(restUserReq.birthDate)
-        : null,
+      birthDate: restUserReq.birthDate ? new Date(restUserReq.birthDate) : null,
     };
 
     // 将字符串类型的gender和status转换为数字类型
@@ -407,7 +421,8 @@ export class SysUserModel {
 
     const result = await this.prisma.$transaction(async (prisma) => {
       // 1. 更新用户基本信息
-      const passwordHashUpdate = password !== undefined ? await hashPassword(password) : undefined;
+      const passwordHashUpdate =
+        password !== undefined ? await hashPassword(password) : undefined;
       const sysUser = await prisma.sysUser.update({
         where: {
           id,
@@ -426,8 +441,12 @@ export class SysUserModel {
         });
         const existingDeptIds = existingDeptLinks.map((link) => link.deptId);
 
-        const deptsToCreate = deptIds.filter((deptId) => !existingDeptIds.includes(deptId));
-        const deptsToDelete = existingDeptIds.filter((deptId) => !deptIds.includes(deptId));
+        const deptsToCreate = deptIds.filter(
+          (deptId) => !existingDeptIds.includes(deptId)
+        );
+        const deptsToDelete = existingDeptIds.filter(
+          (deptId) => !deptIds.includes(deptId)
+        );
 
         if (deptsToCreate.length > 0) {
           await prisma.sysUserDept.createMany({
@@ -451,8 +470,12 @@ export class SysUserModel {
         });
         const existingRoleIds = existingRoleLinks.map((link) => link.roleId);
 
-        const rolesToCreate = roleIds.filter((roleId) => !existingRoleIds.includes(roleId));
-        const rolesToDelete = existingRoleIds.filter((roleId) => !roleIds.includes(roleId));
+        const rolesToCreate = roleIds.filter(
+          (roleId) => !existingRoleIds.includes(roleId)
+        );
+        const rolesToDelete = existingRoleIds.filter(
+          (roleId) => !roleIds.includes(roleId)
+        );
 
         if (rolesToCreate.length > 0) {
           await prisma.sysUserRole.createMany({

@@ -14,7 +14,6 @@ export class RoleService {
   static async getRoleList(query: RoleListQuery) {
     const list = await SysRoleModel.getRoleList(query);
     const total = await SysRoleModel.getRoleTotal(query);
-
     return {
       list,
       total,
@@ -71,7 +70,7 @@ export class RoleService {
 
   /** 校验角色名称唯一性 */
   private static async ensureUniqueName(name: string, excludeRoleId?: number): Promise<void> {
-    const roleWithSameName = await SysRoleModel.getRoleByName(name);
+    const roleWithSameName = await SysRoleModel.getRawRoleByName(name);
     if (roleWithSameName && roleWithSameName.id !== excludeRoleId) {
       throw new BusinessError(RoleErrorCode.ROLE_ALREADY_EXISTS, "角色名称已存在");
     }

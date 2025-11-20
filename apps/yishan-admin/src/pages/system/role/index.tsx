@@ -1,17 +1,10 @@
 import { PlusOutlined, DownOutlined } from '@ant-design/icons';
 import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, Form, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useModel } from '@umijs/max';
 import { getRoleList, updateRole, createRole, getRoleDetail, deleteRole } from '@/services/yishan-admin/sysRoles';
 import RoleForm from './components/RoleForm';
-
-/**
- * 角色状态枚举
- */
-const RoleStatus = {
-  ENABLED: 1,
-  DISABLED: 0,
-};
 
 /**
  * 是否系统角色枚举
@@ -19,16 +12,6 @@ const RoleStatus = {
 const IsSystem = {
   YES: 1,
   NO: 0,
-};
-
-/**
- * 角色状态标签
- */
-const RoleStatusTag: React.FC<{ status?: number }> = ({ status }) => {
-  if (status === RoleStatus.ENABLED) {
-    return <Tag color="success">启用</Tag>;
-  }
-  return <Tag color="error">禁用</Tag>;
 };
 
 /**
@@ -54,14 +37,22 @@ const RoleList: React.FC = () => {
   const [currentRole, setCurrentRole] = useState<API.sysRole | undefined>(undefined);
   const [confirmLoading, setConfirmLoading] = useState(false);
 
+  // 获取全局字典数据
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+
+  // 获取默认状态字典
+  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+
   /**
    * 处理角色状态变更
    */
-  const handleStatusChange = async (id: number, status: number) => {
-    const newStatus = status === RoleStatus.ENABLED ? RoleStatus.DISABLED : RoleStatus.ENABLED;
+  const handleStatusChange = async (id: number, status: string) => {
+    // 从启用切换到禁用，或从禁用切换到启用
+    const newStatus = status === "1" ? "0" : "1";
     const res = await updateRole(
       { id },
-      { status: newStatus as 0 | 1 }
+      { status: newStatus as "0" | "1" }
     );
     if (res.success) {
       message.success(res.message);
@@ -120,14 +111,14 @@ const RoleList: React.FC = () => {
     }
 
     setBatchDeleteLoading(true);
-    
+
     // 由于没有批量删除接口，使用单个删除的方式
     const deletePromises = selectedRowKeys.map(key => deleteRole({ id: Number(key) }));
     const results = await Promise.allSettled(deletePromises);
-    
+
     const successCount = results.filter(result => result.status === 'fulfilled').length;
     const failedCount = results.length - successCount;
-    
+
     if (failedCount === 0) {
       message.success(`成功删除 ${successCount} 个角色`);
     } else {
@@ -135,7 +126,7 @@ const RoleList: React.FC = () => {
         `删除完成，成功 ${successCount} 个，失败 ${failedCount} 个。失败的角色可能为系统角色、正在被使用或已不存在。`
       );
     }
-    
+
     // 清空选中项并刷新列表
     setSelectedRowKeys([]);
     actionRef.current?.reload();
@@ -202,11 +193,13 @@ const RoleList: React.FC = () => {
     {
       title: '状态',
       dataIndex: 'status',
-      valueEnum: {
-        [RoleStatus.ENABLED]: { text: '启用', status: 'Success' },
-        [RoleStatus.DISABLED]: { text: '禁用', status: 'Error' },
-      },
-      render: (_, record) => <RoleStatusTag status={record.status} />,
+      valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
+        acc[item.value] = {
+          text: item.label,
+          status: item.value === "1" ? "Success" : "Error"
+        };
+        return acc;
+      }, {} as Record<string, { text: string; status: string }>),
     },
     {
       title: '创建时间',
@@ -229,13 +222,15 @@ const RoleList: React.FC = () => {
           {
             key: 'status',
             label: (
-              <a onClick={() => handleStatusChange(record.id || 0, record.status || 0)}>
-                {record.status === RoleStatus.ENABLED ? '禁用' : '启用'}
+              <a onClick={() => handleStatusChange(record.id || 0, record.status || "0")}>
+                {record.status === "1"
+                  ? (defaultStatusDict.find(item => item.value === "0")?.label || '禁用')
+                  : (defaultStatusDict.find(item => item.value === "1")?.label || '启用')}
               </a>
             ),
           }
         ];
-        
+
         return [
           <a key="edit" onClick={() => handleEdit(record.id || 0)}>
             编辑
@@ -315,7 +310,7 @@ const RoleList: React.FC = () => {
                 cancelText="取消"
                 disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
               >
-                <a style={{ 
+                <a style={{
                   color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
                   cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
                 }}>

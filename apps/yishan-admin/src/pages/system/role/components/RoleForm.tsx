@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Form, Tree, Checkbox, Space, Spin } from 'antd';
 import type { FormInstance } from 'antd';
 import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea } from '@ant-design/pro-components';
+import { useModel } from '@umijs/max';
 import { getMenuTree } from '@/services/yishan-admin/sysMenus';
 import type { DataNode } from 'antd/es/tree';
 
@@ -34,6 +35,13 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const [linkageChecked, setLinkageChecked] = useState(true);
   const [expandAllChecked, setExpandAllChecked] = useState(false);
   const [checkAllChecked, setCheckAllChecked] = useState(false);
+
+  // 获取全局字典数据
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+
+  // 获取默认状态字典
+  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
   const buildTree = (nodes: API.menuTreeNode[] = []): DataNode[] => {
     return nodes.map((n) => ({
@@ -76,16 +84,6 @@ const RoleForm: React.FC<RoleFormProps> = ({
     }
   }, [open]);
 
-  const initialVals = useMemo(() => (
-    initialValues
-      ? {
-          name: initialValues.name,
-          description: initialValues.description,
-          status: (initialValues.status ?? 1) as 0 | 1,
-        }
-      : { status: 1 as 0 | 1 }
-  ), [initialValues]);
-
   return (
     <ModalForm
       form={form}
@@ -96,12 +94,13 @@ const RoleForm: React.FC<RoleFormProps> = ({
       modalProps={{ destroyOnClose: true, maskClosable: false, confirmLoading }}
       autoFocusFirstInput
       grid
-      initialValues={initialVals}
+      initialValues={initialValues}
       syncToInitialValues
       onFinish={async (values) => {
         await onSubmit({ ...values, menuIds: (checkedKeys as number[]) });
         return true;
       }}
+      preserve={false}
     >
       <ProFormText
         name="name"
@@ -117,10 +116,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
         name="status"
         label="角色状态"
         rules={[{ required: true, message: '请选择角色状态' }]}
-        options={[
-          { label: '启用', value: 1 },
-          { label: '禁用', value: 0 },
-        ]}
+        options={defaultStatusDict}
         colProps={{ span: 24 }}
       />
 

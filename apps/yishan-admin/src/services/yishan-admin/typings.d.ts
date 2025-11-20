@@ -412,7 +412,7 @@ declare namespace API {
     /** 搜索关键词（角色名称、描述） */
     keyword?: string;
     /** 角色状态（0-禁用，1-启用） */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序字段 */
     sortBy?: "createdAt" | "updatedAt";
     /** 排序方向 */
@@ -667,7 +667,7 @@ declare namespace API {
     /** 搜索关键词（角色名称、描述） */
     keyword?: string;
     /** 角色状态（0-禁用，1-启用） */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序字段 */
     sortBy?: "createdAt" | "updatedAt";
     /** 排序方向 */
@@ -746,7 +746,7 @@ declare namespace API {
     /** 角色描述 */
     description?: string;
     /** 状态（0-禁用，1-启用） */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 菜单ID列表 */
     menuIds?: number[];
   };
@@ -894,7 +894,7 @@ declare namespace API {
     /** 角色描述 */
     description?: string;
     /** 状态（0-禁用，1-启用） */
-    status: 0 | 1;
+    status: "0" | "1";
     /** 是否系统默认角色 */
     isSystemDefault?: boolean;
     /** 创建人Id */
@@ -1081,7 +1081,7 @@ declare namespace API {
     /** 角色描述 */
     description?: string;
     /** 状态（0-禁用，1-启用） */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 菜单ID列表 */
     menuIds?: number[];
   };

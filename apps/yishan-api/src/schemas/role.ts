@@ -14,10 +14,10 @@ const SysRoleSchema = Type.Object(
     description: Type.Optional(
       Type.String({ description: "角色描述", example: "系统管理员，拥有管理能力" })
     ),
-    status: Type.Number({
-      enum: [0, 1],
+    status: Type.String({
+      enum: ["0", "1"],
       description: "状态（0-禁用，1-启用）",
-      example: 1,
+      example: "1",
     }),
     isSystemDefault: Type.Optional(
       Type.Boolean({ description: "是否系统默认角色", default: false })
@@ -47,7 +47,7 @@ const SaveRoleReqSchema = Type.Object(
       Type.String({ description: "角色描述", maxLength: 255 })
     ),
     status: Type.Optional(
-      Type.Number({ enum: [0, 1], description: "状态（0-禁用，1-启用）", default: 1 })
+      Type.String({ enum: ["0", "1"], description: "状态（0-禁用，1-启用）", default: "1" })
     ),
     menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),
   },
@@ -71,7 +71,7 @@ const RoleListQuerySchema = Type.Object(
       Type.String({ description: "搜索关键词（角色名称、描述）" })
     ),
     status: Type.Optional(
-      Type.Integer({ enum: [0, 1], description: "角色状态（0-禁用，1-启用）" })
+      Type.String({ enum: ["0", "1"], description: "角色状态（0-禁用，1-启用）" })
     ),
     sortBy: Type.Optional(
       Type.String({
