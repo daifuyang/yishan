@@ -1,33 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Form, Tree, Checkbox, Space, Spin } from 'antd';
-import type { FormInstance } from 'antd';
 import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 import { getMenuTree } from '@/services/yishan-admin/sysMenus';
 import type { DataNode } from 'antd/es/tree';
 
 export interface RoleFormProps {
-  form: FormInstance;
-  open: boolean;
+  mode: 'create' | 'edit';
   title: string;
-  initialValues?: API.sysRole;
-  onCancel: () => void;
-  onSubmit: (values: API.saveRoleReq & { menuIds?: number[] }) => Promise<void>;
-  confirmLoading: boolean;
+  trigger: React.ReactNode;
+  onSubmit: (values: API.saveRoleReq | API.updateRoleReq) => Promise<void>;
+  onInit?: () => Promise<API.sysRole | undefined>;
 }
 
-/**
- * 角色表单组件
- */
-const RoleForm: React.FC<RoleFormProps> = ({
-  form,
-  open,
-  title,
-  initialValues,
-  onCancel,
-  onSubmit,
-  confirmLoading,
-}) => {
+const RoleForm: React.FC<RoleFormProps> = ({ mode: _mode, title, trigger, onSubmit, onInit }) => {
   const [menuTreeLoading, setMenuTreeLoading] = useState(false);
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
@@ -36,11 +22,8 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const [expandAllChecked, setExpandAllChecked] = useState(false);
   const [checkAllChecked, setCheckAllChecked] = useState(false);
 
-  // 获取全局字典数据
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
-
-  // 获取默认状态字典
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
   const buildTree = (nodes: API.menuTreeNode[] = []): DataNode[] => {
@@ -75,32 +58,43 @@ const RoleForm: React.FC<RoleFormProps> = ({
     }
   };
 
-  useEffect(() => {
-    if (open) {
-      fetchMenuTree();
-      const preset = initialValues?.menuIds || [];
-      setCheckedKeys(preset);
-      setCheckAllChecked(preset.length > 0 && preset.length === allKeys.length);
-    }
-  }, [open]);
-
   return (
     <ModalForm
-      form={form}
       width={520}
       title={title}
-      open={open}
-      onOpenChange={(o) => { if (!o) onCancel(); }}
-      modalProps={{ destroyOnClose: true, maskClosable: false, confirmLoading }}
+      trigger={trigger}
       autoFocusFirstInput
+      modalProps={{ destroyOnClose: true, maskClosable: false }}
       grid
-      initialValues={initialValues}
-      syncToInitialValues
       onFinish={async (values) => {
-        await onSubmit({ ...values, menuIds: (checkedKeys as number[]) });
+        const payload: any = {
+          name: values.name,
+          description: values.description,
+          status: values.status,
+          menuIds: (checkedKeys as number[]),
+        };
+        await onSubmit(payload);
         return true;
       }}
-      preserve={false}
+      request={async () => {
+        if (onInit) {
+          const data = await onInit();
+          if (data) {
+            const preset = data.menuIds || [];
+            setCheckedKeys(preset);
+            setCheckAllChecked(preset.length > 0 && preset.length === allKeys.length);
+            return {
+              name: data.name,
+              description: data.description,
+              status: data.status,
+            };
+          }
+        }
+        setCheckedKeys([]);
+        setCheckAllChecked(false);
+        return { status: '1' };
+      }}
+      onOpenChange={(o) => { if (o) { fetchMenuTree(); } }}
     >
       <ProFormText
         name="name"
@@ -115,7 +109,6 @@ const RoleForm: React.FC<RoleFormProps> = ({
       <ProFormRadio.Group
         name="status"
         label="角色状态"
-        rules={[{ required: true, message: '请选择角色状态' }]}
         options={defaultStatusDict}
         colProps={{ span: 24 }}
       />

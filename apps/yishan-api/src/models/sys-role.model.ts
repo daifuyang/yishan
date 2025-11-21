@@ -75,8 +75,8 @@ export class SysRoleModel {
     const roles = await this.prisma.sysRole.findMany({
       where,
       orderBy,
-      skip: pageSize === 0 ? undefined : (page - 1) * pageSize,
-      take: pageSize === 0 ? undefined : pageSize,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       include: {
         creator: { select: { username: true } },
         updater: { select: { username: true } },

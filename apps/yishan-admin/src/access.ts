@@ -2,7 +2,7 @@
  * @see https://umijs.org/docs/max/access#access
  * */
 
-interface Route {
+export interface Route {
   path: string;
 }
 

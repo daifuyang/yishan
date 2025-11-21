@@ -62,7 +62,8 @@ export const PaginationQuerySchema = Type.Object(
     ),
     pageSize: Type.Optional(
       Type.Integer({
-        minimum: 0,
+        minimum: 1,
+        maximum: 100,
         default: 10,
         description: "每页数量",
       })

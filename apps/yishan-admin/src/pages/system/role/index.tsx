@@ -1,22 +1,16 @@
 import { PlusOutlined, DownOutlined } from '@ant-design/icons';
 import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Form, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
-import React, { useEffect, useRef, useState } from 'react';
+import { Button, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
+import React, { useRef, useState } from 'react';
 import { useModel } from '@umijs/max';
 import { getRoleList, updateRole, createRole, getRoleDetail, deleteRole } from '@/services/yishan-admin/sysRoles';
 import RoleForm from './components/RoleForm';
 
-/**
- * 是否系统角色枚举
- */
 const IsSystem = {
   YES: 1,
   NO: 0,
 };
 
-/**
- * 系统角色标签
- */
 const SystemRoleTag: React.FC<{ isSystem?: number }> = ({ isSystem }) => {
   if (isSystem === IsSystem.YES) {
     return <Tag color="blue">系统角色</Tag>;
@@ -24,31 +18,16 @@ const SystemRoleTag: React.FC<{ isSystem?: number }> = ({ isSystem }) => {
   return <Tag color="green">自定义角色</Tag>;
 };
 
-/**
- * 角色管理列表页面
- */
 const RoleList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
-  const [form] = Form.useForm();
-  const [formOpen, setFormOpen] = useState(false);
-  const [formTitle, setFormTitle] = useState('新建角色');
-  const [currentRole, setCurrentRole] = useState<API.sysRole | undefined>(undefined);
-  const [confirmLoading, setConfirmLoading] = useState(false);
 
-  // 获取全局字典数据
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
-
-  // 获取默认状态字典
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
-  /**
-   * 处理角色状态变更
-   */
   const handleStatusChange = async (id: number, status: string) => {
-    // 从启用切换到禁用，或从禁用切换到启用
     const newStatus = status === "1" ? "0" : "1";
     const res = await updateRole(
       { id },
@@ -60,39 +39,6 @@ const RoleList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  /**
-   * 打开新建角色表单
-   */
-  const handleAdd = () => {
-    setFormTitle('新建角色');
-    setCurrentRole(undefined);
-    setFormOpen(true);
-  };
-
-  /**
-   * 打开编辑角色表单
-   */
-  const handleEdit = async (id: number) => {
-    setFormTitle('编辑角色');
-    const result = await getRoleDetail({ id });
-    if (result.success && result.data) {
-      setCurrentRole(result.data);
-      setFormOpen(true);
-    }
-  };
-
-  const handlePermission = async (id: number) => {
-    setFormTitle('权限设置');
-    const result = await getRoleDetail({ id });
-    if (result.success && result.data) {
-      setCurrentRole(result.data);
-      setFormOpen(true);
-    }
-  };
-
-  /**
-   * 处理角色删除
-   */
   const handleRemove = async (id: number) => {
     const res = await deleteRole({ id });
     if (res.success) {
@@ -101,9 +47,6 @@ const RoleList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  /**
-   * 处理批量删除角色
-   */
   const handleBatchDelete = async () => {
     if (selectedRowKeys.length === 0) {
       message.warning('请选择要删除的角色');
@@ -112,7 +55,6 @@ const RoleList: React.FC = () => {
 
     setBatchDeleteLoading(true);
 
-    // 由于没有批量删除接口，使用单个删除的方式
     const deletePromises = selectedRowKeys.map(key => deleteRole({ id: Number(key) }));
     const results = await Promise.allSettled(deletePromises);
 
@@ -127,48 +69,38 @@ const RoleList: React.FC = () => {
       );
     }
 
-    // 清空选中项并刷新列表
     setSelectedRowKeys([]);
     actionRef.current?.reload();
     setBatchDeleteLoading(false);
   };
 
-  /**
-   * 处理表单提交
-   */
-  const handleFormSubmit = async (values: API.saveRoleReq & { menuIds?: number[] }) => {
-    setConfirmLoading(true);
+  const handleFormSubmit = async (
+    values: API.saveRoleReq | API.updateRoleReq,
+    mode: 'create' | 'edit',
+    id?: number
+  ) => {
     try {
-      if (currentRole?.id) {
-        const payload: API.updateRoleReq = {
-          name: values.name,
-          description: values.description,
-          status: values.status,
-          menuIds: values.menuIds,
-        };
-        const res = await updateRole(
-          { id: currentRole.id },
-          payload
-        );
-        if (res.success) {
-          message.success(res.message);
-        }
+      let res: API.roleDetailResp;
+      if (mode === 'edit' && id) {
+        res = await updateRole({ id }, values as API.updateRoleReq);
       } else {
-        const res = await createRole(values);
-        if (res.success) {
-          message.success(res.message);
-        }
+        res = await createRole(values as API.saveRoleReq);
       }
-      setFormOpen(false);
-      actionRef.current?.reload();
-    } finally {
-      setConfirmLoading(false);
+
+      if (res.success) {
+        message.success(res.message);
+        actionRef.current?.reload();
+        return true;
+      } else {
+        message.error(res.message || '操作失败');
+        return false;
+      }
+    } catch (error) {
+      message.error('操作失败，请稍后重试');
+      return false;
     }
   };
 
-  /**
-   * 表格列定义
-   */
   const columns: ProColumns<API.sysRole>[] = [
     {
       title: 'ID',
@@ -232,9 +164,19 @@ const RoleList: React.FC = () => {
         ];
 
         return [
-          <a key="edit" onClick={() => handleEdit(record.id || 0)}>
-            编辑
-          </a>,
+          <RoleForm
+            key="edit"
+            mode="edit"
+            title="编辑角色"
+            trigger={<a>编辑</a>}
+            onSubmit={async (values) => {
+              await handleFormSubmit(values, 'edit', record.id);
+            }}
+            onInit={async () => {
+              const detail = await getRoleDetail({ id: record.id });
+              return detail.data;
+            }}
+          />, 
           <Popconfirm
             key="delete"
             title="确定要删除该角色吗？"
@@ -262,13 +204,19 @@ const RoleList: React.FC = () => {
           labelWidth: 120,
         }}
         toolBarRender={() => [
-          <Button
-            type="primary"
-            key="primary"
-            onClick={handleAdd}
-          >
-            <PlusOutlined /> 新建
-          </Button>,
+          <RoleForm
+            key="create"
+            mode="create"
+            title="新建角色"
+            trigger={
+              <Button type="primary">
+                <PlusOutlined /> 新建
+              </Button>
+            }
+            onSubmit={async (values) => {
+              await handleFormSubmit(values, 'create');
+            }}
+          />,
         ]}
         request={async (params) => {
           const { current, pageSize, ...restParams } = params;
@@ -320,16 +268,6 @@ const RoleList: React.FC = () => {
             </Space>
           );
         }}
-      />
-
-      <RoleForm
-        form={form}
-        open={formOpen}
-        title={formTitle}
-        initialValues={currentRole}
-        onCancel={() => setFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        confirmLoading={confirmLoading}
       />
     </>
   );

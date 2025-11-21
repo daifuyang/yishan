@@ -198,7 +198,7 @@ const UserForm: React.FC<UserFormProps> = ({
         request={async () => {
           const res = await getRoleList({
             page: 1,
-            pageSize: 0,
+            pageSize: 100,
             status: "1",
             sortBy: "createdAt",
             sortOrder: "desc",

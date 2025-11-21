@@ -48,7 +48,7 @@ const UserList: React.FC = () => {
     id?: number
   ) => {
     try {
-      let res;
+      let res: API.userDetailResp;
       if (mode === "edit" && id) {
         res = await updateUser({ id }, values as API.updateUserReq);
       } else {
@@ -63,7 +63,7 @@ const UserList: React.FC = () => {
         message.error(res.message || "操作失败");
         return false;
       }
-    } catch (error) {
+    } catch (_error) {
       message.error("操作失败，请稍后重试");
       return false;
     }
