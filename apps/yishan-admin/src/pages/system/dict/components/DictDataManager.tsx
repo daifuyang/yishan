@@ -1,14 +1,8 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Drawer, Form, Popconfirm, Space, Tag, Button } from 'antd';
+import { Drawer, Popconfirm, Space, Tag, Button } from 'antd';
 import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { PlusOutlined } from '@ant-design/icons';
-import {
-  getDictDataList,
-  createDictData,
-  getDictDataDetail,
-  updateDictData,
-  deleteDictData,
-} from '@/services/yishan-admin/sysDictData';
+import { getDictDataList, updateDictData, deleteDictData } from '@/services/yishan-admin/sysDictData';
 import DictDataForm from './DictDataForm';
 
 export interface DictDataManagerProps {
@@ -21,24 +15,10 @@ export interface DictDataManagerProps {
 
 const Status = { ENABLED: 1, DISABLED: 0 } as const;
 
-const StatusTag: React.FC<{ status?: 0 | 1 }> = ({ status }) => {
-  if (status === Status.ENABLED) return <Tag color="success">正常</Tag>;
-  return <Tag color="error">停用</Tag>;
-};
-
-const DefaultTag: React.FC<{ isDefault?: boolean; tag?: string }> = ({ isDefault, tag }) => {
-  if (isDefault) return <Tag color={tag || 'blue'}>默认</Tag>;
-  return <Tag color={tag || 'default'}>—</Tag>;
-};
-
 const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId, typeKey, typeName }) => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [form] = Form.useForm();
-  const [formOpen, setFormOpen] = useState(false);
-  const [formTitle, setFormTitle] = useState('新建字典数据');
-  const [currentData, setCurrentData] = useState<API.sysDictData | undefined>(undefined);
-  const [confirmLoading, setConfirmLoading] = useState(false);
+
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
 
   const typeLabel = useMemo(() => typeName || typeKey || `类型ID: ${typeId ?? '-'}`, [typeId, typeKey, typeName]);
@@ -54,20 +34,7 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
     actionRef.current?.reload();
   };
 
-  const handleAdd = () => {
-    setFormTitle('新建字典数据');
-    setCurrentData(undefined);
-    setFormOpen(true);
-  };
 
-  const handleEdit = async (id: number) => {
-    setFormTitle('编辑字典数据');
-    const result = await getDictDataDetail({ id });
-    if (result.success && result.data) {
-      setCurrentData(result.data);
-      setFormOpen(true);
-    }
-  };
 
   const handleRemove = async (id: number) => {
     await deleteDictData({ id });
@@ -85,38 +52,8 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
     actionRef.current?.reload();
   };
 
-  const handleFormSubmit = async (values: API.saveDictDataReq | API.updateDictDataReq) => {
-    setConfirmLoading(true);
-    try {
-      if (currentData?.id) {
-        const payload: API.updateDictDataReq = {
-          label: values.label,
-          value: values.value,
-          status: values.status,
-          sort_order: values.sort_order,
-          tag: values.tag,
-          remark: values.remark,
-          isDefault: values.isDefault,
-        };
-        await updateDictData({ id: currentData.id }, payload);
-      } else {
-        const payload: API.saveDictDataReq = {
-          typeId: typeId || 0,
-          label: values.label as string,
-          value: String(values.value ?? ''),
-          status: values.status,
-          sort_order: values.sort_order,
-          tag: values.tag,
-          remark: values.remark,
-          isDefault: values.isDefault,
-        };
-        await createDictData(payload);
-      }
-      setFormOpen(false);
-      actionRef.current?.reload();
-    } finally {
-      setConfirmLoading(false);
-    }
+  const handleFormSuccess = async () => {
+    actionRef.current?.reload();
   };
 
   const columns: ProColumns<API.sysDictData>[] = [
@@ -124,6 +61,17 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
     { title: '字典标签', dataIndex: 'label' },
     { title: '字典键值', dataIndex: 'value' },
     { title: '字典排序', dataIndex: 'sort_order', search: false },
+    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true },
+    {
+      title: '默认状态',
+      dataIndex: 'isDefault',
+      valueEnum: {
+        true: { text: '默认' },
+        false: { text: '否' },
+      },
+      search: false,
+    },
+    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
     {
       title: '状态',
       dataIndex: 'status',
@@ -131,23 +79,21 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
         [Status.ENABLED]: { text: '正常', status: 'Success' },
         [Status.DISABLED]: { text: '停用', status: 'Error' },
       },
-      render: (_, record) => <StatusTag status={record.status} />,
     },
-    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true },
-    {
-      title: '默认',
-      dataIndex: 'isDefault',
-      render: (_, record) => <DefaultTag isDefault={record.isDefault} tag={record.tag} />,
-      search: false,
-    },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
     {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
       width: 180,
       render: (_, record) => [
-        <a key="edit" onClick={() => handleEdit(record.id || 0)}>修改</a>,
+        <DictDataForm
+          key="edit"
+          title="编辑字典数据"
+          trigger={<a>修改</a>}
+          typeId={Number(typeId || 0)}
+          initialValues={record}
+          onFinish={handleFormSuccess}
+        />,
         <Popconfirm key="delete" title="确定要删除该字典数据吗？" onConfirm={() => handleRemove(record.id || 0)}>
           <a style={{ color: '#ff4d4f' }}>删除</a>
         </Popconfirm>,
@@ -175,9 +121,13 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
         rowKey="id"
         search={{ labelWidth: 120 }}
         toolBarRender={() => [
-          <Button type="primary" key="primary" onClick={handleAdd}>
-            <PlusOutlined /> 新建
-          </Button>,
+          <DictDataForm
+            key="create"
+            title="新建字典数据"
+            trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
+            typeId={Number(typeId || 0)}
+            onFinish={handleFormSuccess}
+          />
         ]}
         request={async (params) => {
           const { current, pageSize, ...rest } = params;
@@ -208,16 +158,7 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
         )}
       />
 
-      <DictDataForm
-        form={form}
-        open={formOpen}
-        title={formTitle}
-        typeId={Number(typeId || 0)}
-        initialValues={currentData}
-        onCancel={() => setFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        confirmLoading={confirmLoading}
-      />
+
     </Drawer>
   );
 };

@@ -1,26 +1,21 @@
-import React, { useMemo } from 'react';
-import type { FormInstance } from 'antd';
-import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea } from '@ant-design/pro-components';
+import React, { useMemo, useRef } from 'react';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, type ProFormInstance } from '@ant-design/pro-components';
+import { getDictTypeDetail, createDictType, updateDictType } from '@/services/yishan-admin/sysDictTypes';
 
 export interface DictTypeFormProps {
-  form: FormInstance;
-  open: boolean;
   title: string;
-  initialValues?: API.sysDictType;
-  onCancel: () => void;
-  onSubmit: (values: API.saveDictTypeReq | API.updateDictTypeReq) => Promise<void>;
-  confirmLoading: boolean;
+  trigger: React.ReactNode;
+  initialValues?: Partial<API.sysDictType>;
+  onFinish?: () => Promise<void>;
 }
 
 const DictTypeForm: React.FC<DictTypeFormProps> = ({
-  form,
-  open,
   title,
+  trigger,
   initialValues,
-  onCancel,
-  onSubmit,
-  confirmLoading,
+  onFinish,
 }) => {
+  const formRef = useRef<ProFormInstance>(null);
   const initialVals = useMemo(() => (
     initialValues
       ? {
@@ -35,26 +30,45 @@ const DictTypeForm: React.FC<DictTypeFormProps> = ({
 
   return (
     <ModalForm
-      form={form}
+      formRef={formRef}
       width={520}
       title={title}
-      open={open}
-      onOpenChange={(o) => { if (!o) onCancel(); }}
-      modalProps={{ destroyOnClose: true, maskClosable: false, confirmLoading }}
+      trigger={trigger}
       autoFocusFirstInput
+      modalProps={{ destroyOnClose: true, maskClosable: false }}
       grid
       initialValues={initialVals}
-      syncToInitialValues
+      onOpenChange={(open) => {
+        if (open && initialValues?.id) {
+          getDictTypeDetail({ id: Number(initialValues.id) }).then((res) => {
+            if (res.success && res.data) {
+              formRef.current?.setFieldsValue(res.data as any);
+            }
+          });
+        }
+      }}
       onFinish={async (values) => {
-        const payload: API.saveDictTypeReq = {
+        const payload = {
           name: values.name,
           type: values.type,
           status: values.status,
           sort_order: Number(values.sort_order ?? 0),
           remark: values.remark,
-        };
-        await onSubmit(payload);
-        return true;
+        } as API.saveDictTypeReq;
+        if (!initialValues?.id) {
+          const res = await createDictType(payload);
+          if (res.success) {
+            await onFinish?.();
+            return true;
+          }
+          return false;
+        }
+        const res = await updateDictType({ id: Number(initialValues.id) }, payload as API.updateDictTypeReq);
+        if (res.success) {
+          await onFinish?.();
+          return true;
+        }
+        return false;
       }}
     >
       <ProFormText

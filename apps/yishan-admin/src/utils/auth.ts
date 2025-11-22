@@ -19,7 +19,7 @@ export const logout = async (redirectToLogin = true) => {
         message.success(res.message || '注销成功');
       }
     }
-  } catch (_error) {
+  } catch (error) {
     // 即使后端注销失败，也继续本地清理
   } finally {
     // 清除本地存储的token和用户信息

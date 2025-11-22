@@ -5,8 +5,9 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "commonjs"
 }
 
 datasource db {
@@ -18,11 +19,11 @@ datasource db {
 // 系统用户表
 model SysUser {
   id            Int       @id @default(autoincrement()) @map("id")
-  username      String?    @unique @map("username") @db.VarChar(50)
-  email         String?    @unique @map("email") @db.VarChar(100)
-  phone         String   @unique @map("phone") @db.VarChar(20)
+  username      String?   @unique @map("username") @db.VarChar(50)
+  email         String?   @unique @map("email") @db.VarChar(100)
+  phone         String    @unique @map("phone") @db.VarChar(20)
   passwordHash  String    @map("password_hash") @db.VarChar(255)
-  realName      String?    @map("real_name") @db.VarChar(50)
+  realName      String?   @map("real_name") @db.VarChar(50)
   nickname      String?   @map("nickname") @db.VarChar(50)
   avatar        String?   @map("avatar") @db.VarChar(500)
   gender        Int       @default(0) @map("gender") @db.TinyInt
@@ -115,17 +116,17 @@ model SysUserToken {
 
 // 角色表（使用自增ID，不使用权限字符）
 model SysRole {
-  id          Int       @id @default(autoincrement()) @map("id")
-  name        String    @unique @map("name") @db.VarChar(50)
-  description String?   @map("description") @db.VarChar(255)
-  status      Int       @default(1) @map("status") @db.TinyInt
-  isSystemDefault Boolean @default(false) @map("is_system_default")
-  creatorId   Int?      @map("creator_id")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
-  updaterId   Int?      @map("updater_id")
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
-  version     Int       @default(1) @map("version")
+  id              Int       @id @default(autoincrement()) @map("id")
+  name            String    @unique @map("name") @db.VarChar(50)
+  description     String?   @map("description") @db.VarChar(255)
+  status          Int       @default(1) @map("status") @db.TinyInt
+  isSystemDefault Boolean   @default(false) @map("is_system_default")
+  creatorId       Int?      @map("creator_id")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId       Int?      @map("updater_id")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt       DateTime? @map("deleted_at") @db.DateTime(0)
+  version         Int       @default(1) @map("version")
 
   // 关联
   creator SysUser? @relation("RoleCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
@@ -243,25 +244,25 @@ model SysPost {
 
 // 菜单表
 model SysMenu {
-  id                 Int       @id @default(autoincrement()) @map("id")
-  name               String    @map("name") @db.VarChar(100)
-  path               String?   @unique @map("path") @db.VarChar(255)
-  icon               String?   @map("icon") @db.VarChar(100)
-  component          String?   @map("component") @db.VarChar(255)
-  type               Int       @default(1) @map("type") @db.TinyInt // 0: 目录, 1: 菜单, 2: 按钮
-  parentId           Int?      @map("parent_id")
-  status             Int       @default(1) @map("status") @db.TinyInt
-  sort_order         Int       @default(0)
-  hideInMenu         Boolean   @default(false) @map("hide_in_menu")
-  isExternalLink     Boolean   @default(false) @map("is_external_link")
-  perm               String?   @map("perm") @db.VarChar(100)
-  keepAlive          Boolean   @default(false) @map("keep_alive")
-  creatorId          Int?      @map("creator_id")
-  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(0)
-  updaterId          Int?      @map("updater_id")
-  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  deletedAt          DateTime? @map("deleted_at") @db.DateTime(0)
-  version            Int       @default(1) @map("version")
+  id             Int       @id @default(autoincrement()) @map("id")
+  name           String    @map("name") @db.VarChar(100)
+  path           String?   @unique @map("path") @db.VarChar(255)
+  icon           String?   @map("icon") @db.VarChar(100)
+  component      String?   @map("component") @db.VarChar(255)
+  type           Int       @default(1) @map("type") @db.TinyInt // 0: 目录, 1: 菜单, 2: 按钮
+  parentId       Int?      @map("parent_id")
+  status         Int       @default(1) @map("status") @db.TinyInt
+  sort_order     Int       @default(0)
+  hideInMenu     Boolean   @default(false) @map("hide_in_menu")
+  isExternalLink Boolean   @default(false) @map("is_external_link")
+  perm           String?   @map("perm") @db.VarChar(100)
+  keepAlive      Boolean   @default(false) @map("keep_alive")
+  creatorId      Int?      @map("creator_id")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId      Int?      @map("updater_id")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt      DateTime? @map("deleted_at") @db.DateTime(0)
+  version        Int       @default(1) @map("version")
 
   // 自引用层级关系
   parent   SysMenu?  @relation("MenuParent", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
@@ -274,13 +275,13 @@ model SysMenu {
   // 角色菜单关联
   roleMenus SysRoleMenu[]
 
+  @@unique([parentId, name], map: "uniq_menu_parent_name")
   // 索引
   @@index([status], map: "idx_menu_status")
   @@index([createdAt], map: "idx_menu_created_at")
   @@index([deletedAt], map: "idx_menu_deleted_at")
   @@index([parentId], map: "idx_menu_parent_id")
   @@index([sort_order], map: "idx_menu_sort_order")
-  @@unique([parentId, name], map: "uniq_menu_parent_name")
   @@map("sys_menu")
 }
 
@@ -303,21 +304,21 @@ model SysRoleMenu {
 }
 
 model SysDictType {
-  id        Int       @id @default(autoincrement()) @map("id")
-  name      String    @map("name") @db.VarChar(100)
-  type      String    @unique @map("type") @db.VarChar(100)
-  status    Int       @default(1) @map("status") @db.TinyInt
-  sort_order Int      @default(0)
-  remark    String?   @map("remark") @db.VarChar(255)
-  creatorId Int?      @map("creator_id")
-  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(0)
-  updaterId Int?      @map("updater_id")
-  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  deletedAt DateTime? @map("deleted_at") @db.DateTime(0)
-  version   Int       @default(1) @map("version")
+  id         Int       @id @default(autoincrement()) @map("id")
+  name       String    @map("name") @db.VarChar(100)
+  type       String    @unique @map("type") @db.VarChar(100)
+  status     Int       @default(1) @map("status") @db.TinyInt
+  sort_order Int       @default(0)
+  remark     String?   @map("remark") @db.VarChar(255)
+  creatorId  Int?      @map("creator_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId  Int?      @map("updater_id")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt  DateTime? @map("deleted_at") @db.DateTime(0)
+  version    Int       @default(1) @map("version")
 
-  creator   SysUser?    @relation("DictTypeCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
-  updater   SysUser?    @relation("DictTypeUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  creator   SysUser?      @relation("DictTypeCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater   SysUser?      @relation("DictTypeUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
   dictDatas SysDictData[]
 
   @@index([status], map: "idx_dict_type_status")

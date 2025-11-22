@@ -1,30 +1,52 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Tree, Checkbox, Space, Spin } from 'antd';
-import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea } from '@ant-design/pro-components';
+import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea, type ProFormInstance } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 import { getMenuTree } from '@/services/yishan-admin/sysMenus';
 import type { DataNode } from 'antd/es/tree';
+import { getRoleDetail, createRole, updateRole } from '@/services/yishan-admin/sysRoles';
 
 export interface RoleFormProps {
-  mode: 'create' | 'edit';
   title: string;
   trigger: React.ReactNode;
-  onSubmit: (values: API.saveRoleReq | API.updateRoleReq) => Promise<void>;
-  onInit?: () => Promise<API.sysRole | undefined>;
+  initialValues?: Partial<API.sysRole>;
+  onFinish?: () => Promise<void>;
 }
 
-const RoleForm: React.FC<RoleFormProps> = ({ mode: _mode, title, trigger, onSubmit, onInit }) => {
+const RoleForm: React.FC<RoleFormProps> = ({
+  title,
+  trigger,
+  initialValues = { status: '1' },
+  onFinish,
+}) => {
   const [menuTreeLoading, setMenuTreeLoading] = useState(false);
   const [treeData, setTreeData] = useState<DataNode[]>([]);
   const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const [linkageChecked, setLinkageChecked] = useState(true);
-  const [expandAllChecked, setExpandAllChecked] = useState(false);
+  const [expandAllChecked, setExpandAllChecked] = useState(true);
   const [checkAllChecked, setCheckAllChecked] = useState(false);
 
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+
+  const formRef = useRef<ProFormInstance>(null);
+
+  const fetchRoleDetail = async (id: number) => {
+    const res = await getRoleDetail({ id });
+    if (res.success && res.data) {
+      formRef.current?.setFieldsValue(res.data);
+      setCheckedKeys(res.data?.menuIds || []);
+    }
+  };
+
+  // 当菜单树数据加载完成后，更新全选状态
+  useEffect(() => {
+    if (checkedKeys.length > 0 && allKeys.length > 0) {
+      setCheckAllChecked(checkedKeys.length === allKeys.length);
+    }
+  }, [checkedKeys]);
 
   const buildTree = (nodes: API.menuTreeNode[] = []): DataNode[] => {
     return nodes.map((n) => ({
@@ -60,41 +82,46 @@ const RoleForm: React.FC<RoleFormProps> = ({ mode: _mode, title, trigger, onSubm
 
   return (
     <ModalForm
+      formRef={formRef}
       width={520}
       title={title}
       trigger={trigger}
       autoFocusFirstInput
       modalProps={{ destroyOnClose: true, maskClosable: false }}
       grid
+      initialValues={initialValues}
       onFinish={async (values) => {
-        const payload: any = {
+        const basePayload = {
           name: values.name,
           description: values.description,
           status: values.status,
-          menuIds: (checkedKeys as number[]),
+          menuIds: checkedKeys as number[],
         };
-        await onSubmit(payload);
-        return true;
+        if (!initialValues?.id) {
+          const res = await createRole(basePayload as API.saveRoleReq);
+          if (res.success) {
+            await onFinish?.();
+            return true;
+          }
+          return false;
+        }
+        const res = await updateRole({ id: Number(initialValues.id) }, basePayload as API.updateRoleReq);
+        if (res.success) {
+          await onFinish?.();
+          return true;
+        }
+        return false;
       }}
-      request={async () => {
-        if (onInit) {
-          const data = await onInit();
-          if (data) {
-            const preset = data.menuIds || [];
-            setCheckedKeys(preset);
-            setCheckAllChecked(preset.length > 0 && preset.length === allKeys.length);
-            return {
-              name: data.name,
-              description: data.description,
-              status: data.status,
-            };
+      onOpenChange={(open) => {
+        if (open) {
+          fetchMenuTree();
+          if (initialValues?.id) {
+            fetchRoleDetail(initialValues.id);
+          } else {
+            setCheckedKeys([]);
           }
         }
-        setCheckedKeys([]);
-        setCheckAllChecked(false);
-        return { status: '1' };
       }}
-      onOpenChange={(o) => { if (o) { fetchMenuTree(); } }}
     >
       <ProFormText
         name="name"

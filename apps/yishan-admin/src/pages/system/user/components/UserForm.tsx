@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   ModalForm,
   ProFormText,
@@ -6,28 +6,28 @@ import {
   ProFormDatePicker,
   ProFormSelect,
   ProFormTextArea,
+  type ProFormInstance,
 } from "@ant-design/pro-components";
-import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import { useModel } from "@umijs/max";
 import { getRoleList } from "@/services/yishan-admin/sysRoles";
 import { getPostList } from "@/services/yishan-admin/sysPosts";
+import { getUserDetail, createUser, updateUser } from "@/services/yishan-admin/sysUsers";
 import { ProFormDeptTreeSelect } from "@/components";
 
 export interface UserFormProps {
-  mode: "create" | "edit";
   title: string;
   trigger: React.ReactNode;
-  onSubmit: (values: API.createUserReq | API.updateUserReq) => Promise<void>;
+  initialValues?: Partial<API.sysUser>;
+  onFinish?: () => Promise<void>;
   onInit?: () => Promise<API.sysUser | undefined>;
 }
 
 const UserForm: React.FC<UserFormProps> = ({
-  mode,
   title,
   trigger,
-  onSubmit,
-  onInit,
+  initialValues = { status: "1", gender: "0" },
+  onFinish,
 }) => {
   // 获取全局字典数据
   const { initialState } = useModel('@@initialState');
@@ -38,8 +38,18 @@ const UserForm: React.FC<UserFormProps> = ({
   // 获取用户状态字典
   const userStatusDict = dictDataMap.user_status || [];
 
+  const formRef = useRef<ProFormInstance>(null);
+
+  // 获取用户详情
+  const fetchUserDetail = async (id: number) => {
+    const res = await getUserDetail({ id });
+    if (res.success && res.data) {
+      formRef.current?.setFieldsValue(res.data);
+    }
+  };
+
   const handleFinish = async (values: any) => {
-    const payload: any = {
+    const basePayload: any = {
       username: values.username,
       realName: values.realName,
       nickname: values.nickname,
@@ -53,13 +63,30 @@ const UserForm: React.FC<UserFormProps> = ({
       roleIds: values.roleIds,
       remark: values.remark,
     };
-    if (mode === "create") {
-      payload.password = values.password;
-    } else if (values.password && String(values.password).trim().length > 0) {
+
+    if (!initialValues?.id) {
+      const payload: API.createUserReq = {
+        ...basePayload,
+        password: values.password,
+      };
+      const res = await createUser(payload);
+      if (res.success) {
+        if (onFinish) await onFinish();
+        return true;
+      }
+      return false;
+    }
+
+    const payload: API.updateUserReq = { ...basePayload };
+    if (values.password && String(values.password).trim().length > 0) {
       payload.password = values.password;
     }
-    await onSubmit(payload);
-    return true;
+    const res = await updateUser({ id: Number(initialValues.id) }, payload);
+    if (res.success) {
+      if (onFinish) await onFinish();
+      return true;
+    }
+    return false;
   };
 
   return (
@@ -69,28 +96,15 @@ const UserForm: React.FC<UserFormProps> = ({
       autoFocusFirstInput
       modalProps={{ destroyOnClose: true, maskClosable: false }}
       grid
+      formRef={formRef}
+      initialValues={initialValues}
       onFinish={handleFinish}
-      request={async () => {
-        if (onInit) {
-          const data = await onInit();
-          if (data) {
-            return {
-              username: data.username,
-              realName: data.realName,
-              nickname: (data as any).nickname,
-              email: data.email,
-              phone: data.phone,
-              gender: data.gender,
-              status: data.status,
-              birthDate: data.birthDate ? dayjs(data.birthDate) : undefined,
-              deptId: (data as any).deptId,
-              postIds: (data as any).postIds,
-              roleIds: (data as any).roleIds,
-              remark: (data as any).remark,
-            };
+      onOpenChange={(open) => {
+        if (open) {
+          if (initialValues?.id) {
+            fetchUserDetail(initialValues.id);
           }
         }
-        return { status: "1", gender: "0" };
       }}
     >
       <ProFormText
@@ -143,9 +157,9 @@ const UserForm: React.FC<UserFormProps> = ({
       <ProFormText.Password
         name="password"
         label="用户密码"
-        placeholder={mode === "create" ? "请输入密码" : "不输入则保持原密码"}
+        placeholder={!initialValues?.id ? "请输入密码" : "不输入则保持原密码"}
         rules={[
-          { required: mode === "create", message: "请输入密码" },
+          { required: !initialValues?.id, message: "请输入密码" },
           { min: 6, message: "至少6位" },
         ]}
         colProps={{ span: 12 }}
@@ -173,11 +187,13 @@ const UserForm: React.FC<UserFormProps> = ({
         label="岗位"
         placeholder="请选择岗位"
         showSearch
-        request={async () => {
+        debounceTime={200}
+        request={async (params) => {
           const res = await getPostList({
             page: 1,
             pageSize: 100,
-            status: 1,
+            status: "1",
+            keyword: params.keyWords,
             sortBy: "sort_order",
             sortOrder: "asc",
           });
@@ -195,11 +211,13 @@ const UserForm: React.FC<UserFormProps> = ({
         label="角色"
         placeholder="请选择角色"
         showSearch
-        request={async () => {
+        debounceTime={200}
+        request={async (params) => {
           const res = await getRoleList({
             page: 1,
             pageSize: 100,
             status: "1",
+            keyword: params.keyWords,
             sortBy: "createdAt",
             sortOrder: "desc",
           });

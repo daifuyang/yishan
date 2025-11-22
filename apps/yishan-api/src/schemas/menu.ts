@@ -17,7 +17,7 @@ const SysMenuSchema = Type.Object(
     component: Type.Optional(Type.String({ description: "前端组件路径", example: "@/pages/Dashboard", maxLength: 255 })),
     parentId: Type.Optional(Type.Number({ description: "父级菜单ID", example: 0 })),
     parentName: Type.Optional(Type.String({ description: "父级菜单名称", example: "系统" })),
-    status: Type.Number({ enum: [0, 1], description: "状态（0-禁用，1-启用）", example: 1 }),
+    status: Type.String({ enum: ["0", "1"], description: "状态（0-禁用，1-启用）", example: "1" }),
     sort_order: Type.Number({ description: "排序序号", example: 10 }),
     hideInMenu: Type.Boolean({ description: "是否在菜单中隐藏", default: false }),
     isExternalLink: Type.Boolean({ description: "是否外链", default: false }),
@@ -44,7 +44,7 @@ const SaveMenuReqSchema = Type.Object(
     path: Type.Optional(Type.String({ description: "路由路径/URL", maxLength: 255 })),
     icon: Type.Optional(Type.String({ description: "图标名", maxLength: 100 })),
     component: Type.Optional(Type.String({ description: "组件路径", maxLength: 255 })),
-    status: Type.Optional(Type.Number({ enum: [0, 1], description: "状态", default: 1 })),
+    status: Type.Optional(Type.String({ enum: ["0", "1"], description: "状态", default: "1" })),
     sort_order: Type.Optional(Type.Number({ description: "排序序号", default: 0 })),
     hideInMenu: Type.Optional(Type.Boolean({ description: "隐藏菜单", default: false })),
     isExternalLink: Type.Optional(Type.Boolean({ description: "是否外链", default: false })),
@@ -70,7 +70,7 @@ const MenuListQuerySchema = Type.Object(
     keyword: Type.Optional(
       Type.String({ description: "搜索关键词（名称、路径、组件、权限）" })
     ),
-    status: Type.Optional(Type.Integer({ enum: [0, 1], description: "菜单状态" })),
+    status: Type.Optional(Type.String({ enum: ["0", "1"], description: "菜单状态" })),
     type: Type.Optional(Type.Integer({ enum: [0, 1, 2], description: "菜单类型" })),
     parentId: Type.Optional(Type.Number({ description: "父级菜单ID过滤" })),
     sortBy: Type.Optional(

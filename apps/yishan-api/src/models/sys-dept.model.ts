@@ -29,9 +29,9 @@ export class SysDeptModel {
     return {
       id: dept.id,
       name: dept.name,
-      parentId: dept.parentId ?? undefined,
+      parentId: dept.parentId ?? 0,
       parentName: dept.parent?.name ?? dept.parentName,
-      status: dept.status,
+      status: dept.status.toString(),
       sort_order: dept.sort_order ?? 0,
       description: dept.description ?? undefined,
       leaderId: dept.leaderId ?? undefined,
@@ -67,7 +67,7 @@ export class SysDeptModel {
     }
 
     if (status !== undefined) {
-      where.status = status;
+      where.status = parseInt(status as string, 10);
     }
 
     if (parentId !== undefined) {
@@ -138,7 +138,7 @@ export class SysDeptModel {
       data: {
         name: req.name,
         parentId: req.parentId ?? null,
-        status: req.status ?? 1,
+        status: req.status ? parseInt(req.status, 10) : 1,
         sort_order: req.sort_order ?? 0,
         description: req.description,
         leaderId: req.leaderId ?? null,
@@ -160,7 +160,7 @@ export class SysDeptModel {
     const updateData: any = {};
     if (req.name !== undefined) updateData.name = req.name;
     if (req.parentId !== undefined) updateData.parentId = req.parentId;
-    if (req.status !== undefined) updateData.status = req.status;
+    if (req.status !== undefined) updateData.status = parseInt(req.status, 10);
     if (req.sort_order !== undefined) updateData.sort_order = req.sort_order;
     if (req.description !== undefined) updateData.description = req.description;
     if (req.leaderId !== undefined) updateData.leaderId = req.leaderId;

@@ -1,28 +1,23 @@
-import React, { useMemo } from 'react';
-import type { FormInstance } from 'antd';
-import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormSwitch } from '@ant-design/pro-components';
+import React, { useMemo, useRef } from 'react';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormSwitch, type ProFormInstance } from '@ant-design/pro-components';
+import { getDictDataDetail, createDictData, updateDictData } from '@/services/yishan-admin/sysDictData';
 
 export interface DictDataFormProps {
-  form: FormInstance;
-  open: boolean;
   title: string;
+  trigger: React.ReactNode;
   typeId: number;
-  initialValues?: API.sysDictData;
-  onCancel: () => void;
-  onSubmit: (values: API.saveDictDataReq | API.updateDictDataReq) => Promise<void>;
-  confirmLoading: boolean;
+  initialValues?: Partial<API.sysDictData>;
+  onFinish?: () => Promise<void>;
 }
 
 const DictDataForm: React.FC<DictDataFormProps> = ({
-  form,
-  open,
   title,
+  trigger,
   typeId,
   initialValues,
-  onCancel,
-  onSubmit,
-  confirmLoading,
+  onFinish,
 }) => {
+  const formRef = useRef<ProFormInstance>(null);
   const initialVals = useMemo(() => (
     initialValues
       ? {
@@ -39,18 +34,25 @@ const DictDataForm: React.FC<DictDataFormProps> = ({
 
   return (
     <ModalForm
-      form={form}
+      formRef={formRef}
       width={520}
       title={title}
-      open={open}
-      onOpenChange={(o) => { if (!o) onCancel(); }}
-      modalProps={{ destroyOnClose: true, maskClosable: false, confirmLoading }}
+      trigger={trigger}
       autoFocusFirstInput
+      modalProps={{ destroyOnClose: true, maskClosable: false }}
       grid
       initialValues={initialVals}
-      syncToInitialValues
+      onOpenChange={(open) => {
+        if (open && initialValues?.id) {
+          getDictDataDetail({ id: Number(initialValues.id) }).then((res) => {
+            if (res.success && res.data) {
+              formRef.current?.setFieldsValue(res.data as any);
+            }
+          });
+        }
+      }}
       onFinish={async (values) => {
-        const payload: API.saveDictDataReq = {
+        const basePayload: API.saveDictDataReq = {
           typeId,
           label: values.label,
           value: String(values.value ?? ''),
@@ -60,8 +62,20 @@ const DictDataForm: React.FC<DictDataFormProps> = ({
           remark: values.remark,
           isDefault: !!values.isDefault,
         };
-        await onSubmit(payload);
-        return true;
+        if (!initialValues?.id) {
+          const res = await createDictData(basePayload);
+          if (res.success) {
+            await onFinish?.();
+            return true;
+          }
+          return false;
+        }
+        const res = await updateDictData({ id: Number(initialValues.id) }, basePayload as API.updateDictDataReq);
+        if (res.success) {
+          await onFinish?.();
+          return true;
+        }
+        return false;
       }}
     >
       <ProFormText

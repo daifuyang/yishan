@@ -1,15 +1,9 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { ActionType, ProColumns, ProTable } from "@ant-design/pro-components";
+import { type ActionType, type ProColumns, ProTable } from "@ant-design/pro-components";
 import { Button, message, Popconfirm, Space } from "antd";
 import React, { useRef, useState } from "react";
 import { useModel } from "@umijs/max";
-import {
-  deleteUser,
-  getUserList,
-  updateUser,
-  getUserDetail,
-  createUser,
-} from "@/services/yishan-admin/sysUsers";
+import { deleteUser, getUserList, updateUser } from "@/services/yishan-admin/sysUsers";
 import UserForm from "./components/UserForm";
 
 /**
@@ -39,34 +33,8 @@ const UserList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  /**
-   * 处理表单提交
-   */
-  const handleFormSubmit = async (
-    values: API.createUserReq | API.updateUserReq,
-    mode: "create" | "edit",
-    id?: number
-  ) => {
-    try {
-      let res: API.userDetailResp;
-      if (mode === "edit" && id) {
-        res = await updateUser({ id }, values as API.updateUserReq);
-      } else {
-        res = await createUser(values as API.createUserReq);
-      }
-
-      if (res.success) {
-        message.success(res.message);
-        actionRef.current?.reload();
-        return true;
-      } else {
-        message.error(res.message || "操作失败");
-        return false;
-      }
-    } catch (_error) {
-      message.error("操作失败，请稍后重试");
-      return false;
-    }
+  const handleFormSuccess = async () => {
+    actionRef.current?.reload();
   };
 
   /**
@@ -146,8 +114,8 @@ const UserList: React.FC = () => {
             item.value === "1"
               ? "Success"
               : item.value === "2"
-              ? "Warning"
-              : "Error",
+                ? "Warning"
+                : "Error",
         };
         return acc;
       }, {} as Record<string, { text: string; status: string }>),
@@ -171,16 +139,10 @@ const UserList: React.FC = () => {
       render: (_, record) => [
         <UserForm
           key="edit"
-          mode="edit"
           title="编辑用户"
           trigger={<a>编辑</a>}
-          onSubmit={async (values) => {
-            await handleFormSubmit(values, "edit", record.id);
-          }}
-          onInit={async () => {
-            const detail = await getUserDetail({ id: record.id });
-            return detail.data;
-          }}
+          onFinish={handleFormSuccess}
+          initialValues={record}
         />,
         record.status !== "2" && (
           <a
@@ -211,86 +173,81 @@ const UserList: React.FC = () => {
   ];
 
   return (
-    <>
-      <ProTable<API.sysUser>
-        headerTitle="用户列表"
-        actionRef={actionRef}
-        rowKey="id"
-        search={{
-          labelWidth: 120,
-        }}
-        toolBarRender={() => [
-          <UserForm
-            key="create"
-            mode="create"
-            title="新建用户"
-            trigger={
-              <Button type="primary">
-                <PlusOutlined /> 新建
-              </Button>
-            }
-            onSubmit={async (values) => {
-              await handleFormSubmit(values, "create");
-            }}
-          />,
-        ]}
-        request={async (params) => {
-          const { current, pageSize, ...restParams } = params;
-          const result = await getUserList({
-            page: current,
-            pageSize,
-            ...restParams,
-          });
-          return {
-            data: result.data || [],
-            success: result.success,
-            total: (result as any).pagination?.total || 0,
-          };
-        }}
-        columns={columns}
-        rowSelection={{
-          selectedRowKeys,
-          onChange: setSelectedRowKeys,
-        }}
-        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-          <Space size={24}>
-            <span>
-              已选 {selectedRowKeys.length} 项
-              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-                取消选择
-              </a>
-            </span>
-          </Space>
-        )}
-        tableAlertOptionRender={() => {
-          return (
-            <Space>
-              <Popconfirm
-                title={`确定要删除选中的 ${selectedRowKeys.length} 个用户吗？`}
-                onConfirm={handleBatchRemove}
-                disabled={selectedRowKeys.length === 0}
-              >
-                <Button
-                  className="p-0"
-                  type="link"
-                  danger
-                  disabled={selectedRowKeys.length === 0}
-                >
-                  批量删除
-                </Button>
-              </Popconfirm>
+    <ProTable<API.sysUser>
+      headerTitle="用户列表"
+      actionRef={actionRef}
+      rowKey="id"
+      search={{
+        labelWidth: 120,
+      }}
+      toolBarRender={() => [
+        <UserForm
+          key="create"
+          title="新建用户"
+          trigger={
+            <Button type="primary">
+              <PlusOutlined /> 新建
+            </Button>
+          }
+          onFinish={handleFormSuccess}
+        />,
+      ]}
+      request={async (params) => {
+        const { current, pageSize, ...restParams } = params;
+        const result = await getUserList({
+          page: current,
+          pageSize,
+          ...restParams,
+        });
+        return {
+          data: result.data || [],
+          success: result.success,
+          total: (result as any).pagination?.total || 0,
+        };
+      }}
+      columns={columns}
+      rowSelection={{
+        selectedRowKeys,
+        onChange: setSelectedRowKeys,
+      }}
+      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+        <Space size={24}>
+          <span>
+            已选 {selectedRowKeys.length} 项
+            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+              取消选择
+            </a>
+          </span>
+        </Space>
+      )}
+      tableAlertOptionRender={() => {
+        return (
+          <Space>
+            <Popconfirm
+              title={`确定要删除选中的 ${selectedRowKeys.length} 个用户吗？`}
+              onConfirm={handleBatchRemove}
+              disabled={selectedRowKeys.length === 0}
+            >
               <Button
                 className="p-0"
                 type="link"
-                onClick={() => message.info("暂未实现")}
+                danger
+                disabled={selectedRowKeys.length === 0}
               >
-                批量导出
+                批量删除
               </Button>
-            </Space>
-          );
-        }}
-      />
-    </>
+            </Popconfirm>
+            <Button
+              className="p-0"
+              type="link"
+              onClick={() => message.info("暂未实现")}
+            >
+              批量导出
+            </Button>
+          </Space>
+        );
+      }}
+    />
   );
 };
 

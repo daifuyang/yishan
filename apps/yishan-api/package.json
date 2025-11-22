@@ -2,7 +2,7 @@
   "name": "yishan-api",
   "version": "1.0.0",
   "description": "This project was bootstrapped with Fastify-CLI.",
-  "type": "module",
+  "type": "commonjs",
   "main": "app.js",
   "directories": {
     "test": "test"

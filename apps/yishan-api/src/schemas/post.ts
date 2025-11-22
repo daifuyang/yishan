@@ -11,10 +11,10 @@ const SysPostSchema = Type.Object(
   {
     id: Type.Number({ description: "岗位ID", example: 1 }),
     name: Type.String({ description: "岗位名称", example: "Java工程师" }),
-    status: Type.Number({
-      enum: [0, 1],
+    status: Type.String({
+      enum: ["0", "1"],
       description: "状态（0-禁用，1-启用）",
-      example: 1,
+      example: "1",
     }),
     sort_order: Type.Number({ description: "排序序号", example: 10 }),
     description: Type.Optional(
@@ -41,7 +41,7 @@ const SavePostReqSchema = Type.Object(
   {
     name: Type.String({ description: "岗位名称", minLength: 1, maxLength: 100 }),
     status: Type.Optional(
-      Type.Number({ enum: [0, 1], description: "状态", default: 1 })
+      Type.String({ enum: ["0", "1"], description: "状态", default: "1" })
     ),
     sort_order: Type.Optional(
       Type.Number({ description: "排序序号", default: 0 })
@@ -59,7 +59,7 @@ const UpdatePostReqSchema = Type.Object(
       Type.String({ description: "岗位名称", minLength: 1, maxLength: 100 })
     ),
     status: Type.Optional(
-      Type.Number({ enum: [0, 1], description: "状态" })
+      Type.String({ enum: ["0", "1"], description: "状态" })
     ),
     sort_order: Type.Optional(
       Type.Number({ description: "排序序号" })
@@ -82,7 +82,7 @@ const PostListQuerySchema = Type.Object(
       Type.String({ description: "搜索关键词（名称、描述）" })
     ),
     status: Type.Optional(
-      Type.Integer({ enum: [0, 1], description: "岗位状态" })
+      Type.String({ enum: ["0", "1"], description: "岗位状态" })
     ),
     sortBy: Type.Optional(
       Type.String({

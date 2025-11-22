@@ -1,7 +1,7 @@
 import React from "react";
 import {
   ProFormTreeSelect,
-  ProFormTreeSelectProps,
+  type ProFormTreeSelectProps,
 } from "@ant-design/pro-components";
 import { getDeptTree } from "@/services/yishan-admin/sysDepts";
 

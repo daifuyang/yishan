@@ -20,7 +20,7 @@ declare namespace API {
     /** 上级部门ID */
     parentId?: number;
     /** 状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序序号 */
     sort_order?: number;
     /** 部门描述 */
@@ -157,7 +157,7 @@ declare namespace API {
     /** 搜索关键词（名称、描述） */
     keyword?: string;
     /** 部门状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 上级部门ID过滤 */
     parentId?: number;
     /** 排序字段 */
@@ -187,7 +187,7 @@ declare namespace API {
     /** 上级部门名称 */
     parentName?: string;
     /** 状态（0-禁用，1-启用） */
-    status: 0 | 1;
+    status: "0" | "1";
     /** 排序序号 */
     sort_order: number;
     /** 部门描述 */
@@ -314,7 +314,7 @@ declare namespace API {
     /** 搜索关键词（名称、描述） */
     keyword?: string;
     /** 部门状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 上级部门ID过滤 */
     parentId?: number;
     /** 排序字段 */
@@ -368,7 +368,7 @@ declare namespace API {
     /** 搜索关键词（名称、路径、组件、权限） */
     keyword?: string;
     /** 菜单状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 菜单类型 */
     type?: 0 | 1 | 2;
     /** 父级菜单ID过滤 */
@@ -392,7 +392,7 @@ declare namespace API {
     /** 搜索关键词（名称、描述） */
     keyword?: string;
     /** 岗位状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序字段 */
     sortBy?: "sort_order" | "createdAt" | "updatedAt";
     /** 排序方向 */
@@ -499,7 +499,7 @@ declare namespace API {
     /** 搜索关键词（名称、路径、组件、权限） */
     keyword?: string;
     /** 菜单状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 菜单类型 */
     type?: 0 | 1 | 2;
     /** 父级菜单ID过滤 */
@@ -549,7 +549,7 @@ declare namespace API {
     /** 父级菜单名称 */
     parentName?: string;
     /** 状态（0-禁用，1-启用） */
-    status: 0 | 1;
+    status: "0" | "1";
     /** 排序序号 */
     sort_order: number;
     /** 是否在菜单中隐藏 */
@@ -614,7 +614,7 @@ declare namespace API {
     /** 搜索关键词（名称、描述） */
     keyword?: string;
     /** 岗位状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序字段 */
     sortBy?: "sort_order" | "createdAt" | "updatedAt";
     /** 排序方向 */
@@ -716,7 +716,7 @@ declare namespace API {
     /** 组件路径 */
     component?: string;
     /** 状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序序号 */
     sort_order?: number;
     /** 隐藏菜单 */
@@ -733,7 +733,7 @@ declare namespace API {
     /** 岗位名称 */
     name: string;
     /** 状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序序号 */
     sort_order?: number;
     /** 岗位描述 */
@@ -761,7 +761,7 @@ declare namespace API {
     /** 上级部门名称 */
     parentName?: string;
     /** 状态（0-禁用，1-启用） */
-    status: 0 | 1;
+    status: "0" | "1";
     /** 排序序号 */
     sort_order: number;
     /** 部门描述 */
@@ -836,7 +836,7 @@ declare namespace API {
     /** 父级菜单名称 */
     parentName?: string;
     /** 状态（0-禁用，1-启用） */
-    status: 0 | 1;
+    status: "0" | "1";
     /** 排序序号 */
     sort_order: number;
     /** 是否在菜单中隐藏 */
@@ -867,7 +867,7 @@ declare namespace API {
     /** 岗位名称 */
     name: string;
     /** 状态（0-禁用，1-启用） */
-    status: 0 | 1;
+    status: "0" | "1";
     /** 排序序号 */
     sort_order: number;
     /** 岗位描述 */
@@ -986,7 +986,7 @@ declare namespace API {
     /** 上级部门ID */
     parentId?: number;
     /** 状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序序号 */
     sort_order?: number;
     /** 部门描述 */
@@ -1041,7 +1041,7 @@ declare namespace API {
     /** 组件路径 */
     component?: string;
     /** 状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序序号 */
     sort_order?: number;
     /** 隐藏菜单 */
@@ -1063,7 +1063,7 @@ declare namespace API {
     /** 岗位名称 */
     name?: string;
     /** 状态 */
-    status?: 0 | 1;
+    status?: "0" | "1";
     /** 排序序号 */
     sort_order?: number;
     /** 岗位描述 */

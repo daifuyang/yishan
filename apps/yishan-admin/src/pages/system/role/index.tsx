@@ -3,7 +3,7 @@ import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-comp
 import { Button, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
 import React, { useRef, useState } from 'react';
 import { useModel } from '@umijs/max';
-import { getRoleList, updateRole, createRole, getRoleDetail, deleteRole } from '@/services/yishan-admin/sysRoles';
+import { getRoleList, updateRole, deleteRole } from '@/services/yishan-admin/sysRoles';
 import RoleForm from './components/RoleForm';
 
 const IsSystem = {
@@ -74,31 +74,8 @@ const RoleList: React.FC = () => {
     setBatchDeleteLoading(false);
   };
 
-  const handleFormSubmit = async (
-    values: API.saveRoleReq | API.updateRoleReq,
-    mode: 'create' | 'edit',
-    id?: number
-  ) => {
-    try {
-      let res: API.roleDetailResp;
-      if (mode === 'edit' && id) {
-        res = await updateRole({ id }, values as API.updateRoleReq);
-      } else {
-        res = await createRole(values as API.saveRoleReq);
-      }
-
-      if (res.success) {
-        message.success(res.message);
-        actionRef.current?.reload();
-        return true;
-      } else {
-        message.error(res.message || '操作失败');
-        return false;
-      }
-    } catch (error) {
-      message.error('操作失败，请稍后重试');
-      return false;
-    }
+  const handleFormSuccess = async () => {
+    actionRef.current?.reload();
   };
 
   const columns: ProColumns<API.sysRole>[] = [
@@ -166,17 +143,11 @@ const RoleList: React.FC = () => {
         return [
           <RoleForm
             key="edit"
-            mode="edit"
             title="编辑角色"
             trigger={<a>编辑</a>}
-            onSubmit={async (values) => {
-              await handleFormSubmit(values, 'edit', record.id);
-            }}
-            onInit={async () => {
-              const detail = await getRoleDetail({ id: record.id });
-              return detail.data;
-            }}
-          />, 
+            onFinish={handleFormSuccess}
+            initialValues={record}
+          />,
           <Popconfirm
             key="delete"
             title="确定要删除该角色吗？"
@@ -195,81 +166,76 @@ const RoleList: React.FC = () => {
   ];
 
   return (
-    <>
-      <ProTable<API.sysRole>
-        headerTitle="角色列表"
-        actionRef={actionRef}
-        rowKey="id"
-        search={{
-          labelWidth: 120,
-        }}
-        toolBarRender={() => [
-          <RoleForm
-            key="create"
-            mode="create"
-            title="新建角色"
-            trigger={
-              <Button type="primary">
-                <PlusOutlined /> 新建
-              </Button>
-            }
-            onSubmit={async (values) => {
-              await handleFormSubmit(values, 'create');
-            }}
-          />,
-        ]}
-        request={async (params) => {
-          const { current, pageSize, ...restParams } = params;
-          const result = await getRoleList({
-            page: current,
-            pageSize,
-            ...restParams,
-          });
-          return {
-            data: result.data || [],
-            success: result.success,
-            total: result.pagination?.total || 0,
-          };
-        }}
-        columns={columns}
-        rowSelection={{
-          selectedRowKeys,
-          onChange: setSelectedRowKeys,
-        }}
-        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-          <Space size={24}>
-            <span>
-              已选 {selectedRowKeys.length} 项
-              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-                取消选择
+    <ProTable<API.sysRole>
+      headerTitle="角色列表"
+      actionRef={actionRef}
+      rowKey="id"
+      search={{
+        labelWidth: 120,
+      }}
+      toolBarRender={() => [
+        <RoleForm
+          key="create"
+          title="新建角色"
+          trigger={
+            <Button type="primary">
+              <PlusOutlined /> 新建
+            </Button>
+          }
+          onFinish={handleFormSuccess}
+        />,
+      ]}
+      request={async (params) => {
+        const { current, pageSize, ...restParams } = params;
+        const result = await getRoleList({
+          page: current,
+          pageSize,
+          ...restParams,
+        });
+        return {
+          data: result.data || [],
+          success: result.success,
+          total: result.pagination?.total || 0,
+        };
+      }}
+      columns={columns}
+      rowSelection={{
+        selectedRowKeys,
+        onChange: setSelectedRowKeys,
+      }}
+      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+        <Space size={24}>
+          <span>
+            已选 {selectedRowKeys.length} 项
+            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+              取消选择
+            </a>
+          </span>
+        </Space>
+      )}
+      tableAlertOptionRender={() => {
+        return (
+          <Space size={16}>
+            <Popconfirm
+              placement='bottomRight'
+              title="确定要批量删除选中的角色吗？"
+              description={`将删除 ${selectedRowKeys.length} 个角色，此操作不可恢复`}
+              onConfirm={handleBatchDelete}
+              okText="确定"
+              cancelText="取消"
+              disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
+            >
+              <a style={{
+                color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
+                cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
+              }}>
+                {batchDeleteLoading ? '删除中...' : '批量删除'}
               </a>
-            </span>
+            </Popconfirm>
           </Space>
-        )}
-        tableAlertOptionRender={() => {
-          return (
-            <Space size={16}>
-              <Popconfirm
-                placement='bottomRight'
-                title="确定要批量删除选中的角色吗？"
-                description={`将删除 ${selectedRowKeys.length} 个角色，此操作不可恢复`}
-                onConfirm={handleBatchDelete}
-                okText="确定"
-                cancelText="取消"
-                disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
-              >
-                <a style={{
-                  color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
-                  cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
-                }}>
-                  {batchDeleteLoading ? '删除中...' : '批量删除'}
-                </a>
-              </Popconfirm>
-            </Space>
-          );
-        }}
-      />
-    </>
+        );
+      }}
+    />
   );
 };
 

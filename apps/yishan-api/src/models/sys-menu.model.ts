@@ -34,7 +34,7 @@ export class SysMenuModel {
       component: menu.component ?? undefined,
       parentId: menu.parentId ?? undefined,
       parentName: menu.parent?.name ?? menu.parentName,
-      status: menu.status,
+      status: menu.status.toString(),
       sort_order: menu.sort_order ?? 0,
       hideInMenu: !!menu.hideInMenu,
       isExternalLink: !!menu.isExternalLink,
@@ -73,7 +73,7 @@ export class SysMenuModel {
       ];
     }
 
-    if (status !== undefined) where.status = status;
+    if (status !== undefined) where.status = parseInt(status as string, 10);
     if (type !== undefined) where.type = type;
     if (parentId !== undefined) where.parentId = parentId;
 
@@ -107,7 +107,7 @@ export class SysMenuModel {
         { perm: { contains: keyword } },
       ];
     }
-    if (status !== undefined) where.status = status;
+    if (status !== undefined) where.status = parseInt(status as string, 10);
     if (type !== undefined) where.type = type;
     if (parentId !== undefined) where.parentId = parentId;
     return await this.prisma.sysMenu.count({ where });
@@ -158,7 +158,7 @@ export class SysMenuModel {
         path: req.path,
         icon: req.icon,
         component: req.component,
-        status: req.status ?? 1,
+        status: req.status ? parseInt(req.status, 10) : 1,
         sort_order: req.sort_order ?? 0,
         hideInMenu: req.hideInMenu ?? false,
         isExternalLink: req.isExternalLink ?? false,
@@ -185,7 +185,7 @@ export class SysMenuModel {
     if (req.path !== undefined) updateData.path = req.path;
     if (req.icon !== undefined) updateData.icon = req.icon;
     if (req.component !== undefined) updateData.component = req.component;
-    if (req.status !== undefined) updateData.status = req.status;
+    if (req.status !== undefined) updateData.status = parseInt(req.status, 10);
     if (req.sort_order !== undefined) updateData.sort_order = req.sort_order;
     if (req.hideInMenu !== undefined) updateData.hideInMenu = req.hideInMenu;
     if (req.isExternalLink !== undefined) updateData.isExternalLink = req.isExternalLink;

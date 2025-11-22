@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import type { FormInstance } from 'antd';
-import { getMenuTree } from '@/services/yishan-admin/sysMenus';
-import { ModalForm, ProFormText, ProFormDigit, ProFormRadio, ProFormTreeSelect, ProFormDependency, ProFormSwitch } from '@ant-design/pro-components';
+import React, { useMemo, useState, useRef } from 'react';
+import { getMenuTree, getMenuDetail, createMenu, updateMenu } from '@/services/yishan-admin/sysMenus';
+import { ModalForm, ProFormText, ProFormDigit, ProFormRadio, ProFormTreeSelect, ProFormDependency, ProFormSwitch, type ProFormInstance } from '@ant-design/pro-components';
+import { useModel } from '@umijs/max';
 
 type MenuType = 0 | 1 | 2;
 type MenuTreeData = Omit<API.menuTreeNode, 'children'> & { children?: MenuTreeData[] };
@@ -12,7 +12,7 @@ type MenuFormValues = {
     path?: string;
     icon?: string;
     component?: string;
-    status: 0 | 1;
+    status: "0" | "1";
     sort_order: number;
     hideInMenu: boolean;
     isExternalLink: boolean;
@@ -21,25 +21,24 @@ type MenuFormValues = {
 };
 
 export interface MenuFormProps {
-    form: FormInstance<MenuFormValues>;
-    open: boolean;
     title: string;
-    initialValues?: API.sysMenu;
-    onCancel: () => void;
-    onSubmit: (values: API.saveMenuReq | API.updateMenuReq) => Promise<void>;
-    confirmLoading: boolean;
+    trigger: React.ReactNode;
+    initialValues?: Partial<API.sysMenu>;
+    onFinish?: () => Promise<void>;
 }
 
 const MenuForm: React.FC<MenuFormProps> = ({
-    form,
-    open,
     title,
+    trigger,
     initialValues,
-    onCancel,
-    onSubmit,
-    confirmLoading,
+    onFinish,
 }) => {
     const [treeLoading, setTreeLoading] = useState(false);
+    const formRef = useRef<ProFormInstance>(null);
+
+    const { initialState } = useModel('@@initialState');
+    const dictDataMap = initialState?.dictDataMap || {};
+    const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
     const [treeData, setTreeData] = useState<MenuTreeData[]>([]);
 
 
@@ -59,7 +58,7 @@ const MenuForm: React.FC<MenuFormProps> = ({
                 id: 0,
                 name: '顶级菜单',
                 type: 0,
-                status: 1,
+                status: '1',
                 sort_order: 0,
                 hideInMenu: false,
                 isExternalLink: false,
@@ -75,44 +74,48 @@ const MenuForm: React.FC<MenuFormProps> = ({
         }
     };
 
-    useEffect(() => {
-        if (open) {
-            fetchTree();
-        }
-    }, [open]);
-
     const initialVals: MenuFormValues = useMemo(() => (
         initialValues
             ? {
-                name: initialValues.name,
-                type: initialValues.type,
-                parentId: initialValues.parentId ?? 0,
+                name: initialValues.name || '',
+                type: Number(initialValues.type ?? 0) as MenuType,
+                parentId: Number(initialValues.parentId ?? 0),
                 path: initialValues.path,
                 icon: initialValues.icon,
                 component: initialValues.component,
-                status: (initialValues.status ?? 1) as 0 | 1,
+                status: (initialValues.status ?? '1') as '0' | '1',
                 sort_order: Number(initialValues.sort_order ?? 0),
-                hideInMenu: initialValues.hideInMenu ?? false,
-                isExternalLink: initialValues.isExternalLink ?? false,
+                hideInMenu: !!initialValues.hideInMenu,
+                isExternalLink: !!initialValues.isExternalLink,
                 perm: initialValues.perm,
-                keepAlive: initialValues.keepAlive ?? false,
+                keepAlive: !!initialValues.keepAlive,
             }
-            : { name: '', type: 0, parentId: 0, status: 1, sort_order: 0, hideInMenu: false, isExternalLink: false, keepAlive: false }
+            : { name: '', type: 0, parentId: 0, status: '1', sort_order: 0, hideInMenu: false, isExternalLink: false, keepAlive: false }
     ), [initialValues]);
 
     return (
         <ModalForm<MenuFormValues>
-            form={form}
             title={title}
-            open={open}
-            onOpenChange={(o) => { if (!o) onCancel(); }}
-            modalProps={{ destroyOnClose: true, maskClosable: false, confirmLoading }}
+            trigger={trigger}
             autoFocusFirstInput
             grid
+            formRef={formRef}
             initialValues={initialVals}
-            syncToInitialValues
+            modalProps={{ destroyOnClose: true, maskClosable: false }}
+            onOpenChange={(o) => { 
+                if (o) {
+                    fetchTree();
+                    if (initialValues?.id) {
+                        getMenuDetail({ id: String(initialValues.id) }).then((res) => {
+                            if (res.success && res.data) {
+                                formRef.current?.setFieldsValue(res.data as any);
+                            }
+                        });
+                    }
+                }
+            }}
             onFinish={async (values) => {
-                const payload: API.saveMenuReq = {
+                const basePayload: API.saveMenuReq = {
                     name: values.name,
                     type: values.type,
                     parentId: values.parentId === 0 ? undefined : values.parentId,
@@ -126,8 +129,20 @@ const MenuForm: React.FC<MenuFormProps> = ({
                     perm: values.perm,
                     keepAlive: values.keepAlive,
                 };
-                await onSubmit(payload);
-                return true;
+                if (!initialValues?.id) {
+                    const res = await createMenu(basePayload);
+                    if (res.success) {
+                        await onFinish?.();
+                        return true;
+                    }
+                    return false;
+                }
+                const res = await updateMenu({ id: String(initialValues.id) }, basePayload as API.updateMenuReq);
+                if (res.success) {
+                    await onFinish?.();
+                    return true;
+                }
+                return false;
             }}
         >
             <ProFormTreeSelect
@@ -183,7 +198,7 @@ const MenuForm: React.FC<MenuFormProps> = ({
                             )}
 
                             <ProFormSwitch name="hideInMenu" label="显示状态" colProps={{ span: 12 }} />
-                            <ProFormRadio.Group name="status" label="菜单状态" options={[{ label: '正常', value: 1 }, { label: '停用', value: 0 }]} rules={[{ required: true, message: '请选择状态' }]} colProps={{ span: 12 }} />
+                            <ProFormRadio.Group name="status" label="菜单状态" options={defaultStatusDict} rules={[{ required: true, message: '请选择状态' }]} colProps={{ span: 12 }} />
 
                             {isButton && (
                                 <ProFormText name="perm" label="权限标识" placeholder="请输入权限标识（如 system:menu:list）" colProps={{ span: 24 }} />

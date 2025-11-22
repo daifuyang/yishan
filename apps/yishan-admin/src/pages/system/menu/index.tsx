@@ -1,64 +1,35 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Form, Popconfirm, Space, Tag, App } from 'antd';
+import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import { Button, Popconfirm, Space, App } from 'antd';
 import React, { useRef, useState } from 'react';
-import {
-  getMenuTree,
-  createMenu,
-  getMenuDetail,
-  updateMenu,
-  deleteMenu,
-} from '@/services/yishan-admin/sysMenus';
+import { getMenuTree, updateMenu, deleteMenu } from '@/services/yishan-admin/sysMenus';
 import MenuForm from './components/MenuForm';
+import { useModel } from '@umijs/max';
 
-const MenuStatus = { ENABLED: 1, DISABLED: 0 } as const;
-const MenuType = { DIR: 0, MENU: 1, BUTTON: 2 } as const;
-
-const MenuStatusTag: React.FC<{ status?: 0 | 1 }> = ({ status }) => {
-  if (status === MenuStatus.ENABLED) return <Tag color="success">启用</Tag>;
-  return <Tag color="error">禁用</Tag>;
-};
-
-const MenuTypeTag: React.FC<{ type?: 0 | 1 | 2 }> = ({ type }) => {
-  if (type === MenuType.DIR) return <Tag color="blue">目录</Tag>;
-  if (type === MenuType.MENU) return <Tag color="processing">菜单</Tag>;
-  return <Tag color="purple">按钮</Tag>;
-};
+const MenuStatus = { ENABLED: "1", DISABLED: "0" } as const;
 
 const MenuList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const { message } = App.useApp();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
-  const [form] = Form.useForm();
-  const [formOpen, setFormOpen] = useState(false);
-  const [formTitle, setFormTitle] = useState('新建菜单');
-  const [currentMenu, setCurrentMenu] = useState<API.sysMenu | undefined>(undefined);
-  const [confirmLoading, setConfirmLoading] = useState(false);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
 
-  const handleStatusChange = async (id: number, status: number) => {
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+
+  const handleStatusChange = async (id: number, status: "0" | "1") => {
     const newStatus = status === MenuStatus.ENABLED ? MenuStatus.DISABLED : MenuStatus.ENABLED;
-    const res = await updateMenu({ id: String(id) }, { status: newStatus as 0 | 1 });
+    const res = await updateMenu({ id: String(id) }, { status: newStatus as "0" | "1" });
     if (res.success) {
       message.success(res.message);
     }
     actionRef.current?.reload();
   };
 
-  const handleAdd = () => {
-    setFormTitle('新建菜单');
-    setCurrentMenu(undefined);
-    setFormOpen(true);
-  };
-
-  const handleEdit = async (id: number) => {
-    setFormTitle('编辑菜单');
-    const result = await getMenuDetail({ id: String(id) });
-    if (result.success && result.data) {
-      setCurrentMenu(result.data);
-      setFormOpen(true);
-    }
+  const handleFormSuccess = async () => {
+    actionRef.current?.reload();
   };
 
   const handleRemove = async (id: number) => {
@@ -93,40 +64,7 @@ const MenuList: React.FC = () => {
     setBatchDeleteLoading(false);
   };
 
-  const handleFormSubmit = async (values: API.saveMenuReq | API.updateMenuReq) => {
-    setConfirmLoading(true);
-    try {
-      if (currentMenu?.id) {
-        const payload: API.updateMenuReq = {
-          name: values.name,
-          type: values.type,
-          parentId: values.parentId,
-          path: values.path,
-          icon: values.icon,
-          component: values.component,
-          status: values.status,
-          sort_order: values.sort_order,
-          hideInMenu: values.hideInMenu,
-          isExternalLink: values.isExternalLink,
-          perm: values.perm,
-          keepAlive: values.keepAlive,
-        };
-        const res = await updateMenu({ id: String(currentMenu.id) }, payload);
-        if (res.success) {
-          message.success(res.message);
-        }
-      } else {
-        const res = await createMenu(values as API.saveMenuReq);
-        if (res.success) {
-          message.success(res.message);
-        }
-      }
-      setFormOpen(false);
-      actionRef.current?.reload();
-    } finally {
-      setConfirmLoading(false);
-    }
-  };
+
 
   const columns: ProColumns<API.menuTreeNode>[] = [
     { title: 'ID', dataIndex: 'id', search: false },
@@ -134,26 +72,36 @@ const MenuList: React.FC = () => {
     { title: '路由地址', dataIndex: 'path', search: false },
     { title: '组件', dataIndex: 'component', search: false },
     { title: '图标', dataIndex: 'icon', search: false },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      valueEnum: {
-        [MenuStatus.ENABLED]: { text: '启用', status: 'Success' },
-        [MenuStatus.DISABLED]: { text: '禁用', status: 'Error' },
-      },
-      render: (_, record) => <MenuStatusTag status={record.status} />,
-    },
     { title: '排序', dataIndex: 'sort_order', search: false },
     { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
     { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime' },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
+        acc[item.value] = {
+          text: item.label,
+          status: item.value === '1' ? 'Success' : 'Error',
+        };
+        return acc;
+      }, {} as Record<string, { text: string; status: string }>),
+    },
     {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
       render: (_, record) => [
-        <a key="edit" onClick={() => handleEdit(record.id || 0)}>编辑</a>,
-        <a key="status" onClick={() => handleStatusChange(record.id || 0, record.status || 0)}>
-          {record.status === MenuStatus.ENABLED ? '禁用' : '启用'}
+        <MenuForm
+          key="edit"
+          title="编辑菜单"
+          trigger={<a>编辑</a>}
+          initialValues={record}
+          onFinish={handleFormSuccess}
+        />,
+        <a key="status" onClick={() => handleStatusChange(record.id || 0, (record.status || '0'))}>
+          {record.status === MenuStatus.ENABLED
+            ? (defaultStatusDict.find(item => item.value === '0')?.label || '禁用')
+            : (defaultStatusDict.find(item => item.value === '1')?.label || '启用')}
         </a>,
         <Popconfirm key="delete" title="确定要删除该菜单吗？" onConfirm={() => handleRemove(record.id || 0)}>
           <Button className='p-0' type="link" danger>
@@ -165,80 +113,71 @@ const MenuList: React.FC = () => {
   ];
 
   return (
-    <>
-      <ProTable<API.menuTreeNode>
-        headerTitle="菜单列表"
-        actionRef={actionRef}
-        rowKey="id"
-        search={false}
-        pagination={false}
-        expandable={{ expandedRowKeys, onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]) }}
-        toolBarRender={() => [
-          <Button type="primary" key="primary" onClick={handleAdd}>
-            <PlusOutlined /> 新建
-          </Button>,
-        ]}
-        request={async () => {
-          const result = await getMenuTree();
-          const normalize = (nodes: API.menuTreeNode[] | null | undefined): API.menuTreeNode[] => {
-            if (!nodes) return [];
-            return nodes.map((n) => ({
-              ...n,
-              children: n.children ? normalize(n.children) : null,
-            }));
+    <ProTable<API.menuTreeNode>
+      headerTitle="菜单列表"
+      actionRef={actionRef}
+      rowKey="id"
+      search={false}
+      pagination={false}
+      expandable={{ expandedRowKeys, onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]) }}
+      toolBarRender={() => [
+        <MenuForm
+          key="create"
+          title="新建菜单"
+          trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
+          onFinish={handleFormSuccess}
+        />,
+      ]}
+      request={async () => {
+        const result = await getMenuTree();
+        const normalize = (nodes: API.menuTreeNode[] | null | undefined): API.menuTreeNode[] => {
+          if (!nodes) return [];
+          return nodes.map((n) => ({
+            ...n,
+            children: n.children ? normalize(n.children) : null,
+          }));
+        };
+        const collectIds = (nodes: API.menuTreeNode[] | null | undefined): number[] => {
+          if (!nodes) return [];
+          const acc: number[] = [];
+          const walk = (list: API.menuTreeNode[]) => {
+            list.forEach((n) => {
+              acc.push(n.id || 0);
+              if (Array.isArray(n.children)) {
+                walk(n.children as API.menuTreeNode[]);
+              }
+            });
           };
-          const collectIds = (nodes: API.menuTreeNode[] | null | undefined): number[] => {
-            if (!nodes) return [];
-            const acc: number[] = [];
-            const walk = (list: API.menuTreeNode[]) => {
-              list.forEach((n) => {
-                acc.push(n.id || 0);
-                if (Array.isArray(n.children)) {
-                  walk(n.children as API.menuTreeNode[]);
-                }
-              });
-            };
-            walk(nodes);
-            return acc;
-          };
-          const data = normalize(result.data) || [];
-          setExpandedRowKeys(collectIds(data));
-          return {
-            data,
-            success: result.success,
-          };
-        }}
-        columns={columns}
-        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-          <Space size={24}>
-            <span>
-              已选 {selectedRowKeys.length} 项
-              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-                取消选择
-              </a>
-            </span>
-          </Space>
-        )}
-        tableAlertOptionRender={() => (
-          <Space>
-            <Popconfirm title={`确定要删除选中的 ${selectedRowKeys.length} 个菜单吗？`} onConfirm={handleBatchRemove}>
-              <Button type="link" danger loading={batchDeleteLoading}>批量删除</Button>
-            </Popconfirm>
-          </Space>
-        )}
-      />
-
-      <MenuForm
-        form={form}
-        open={formOpen}
-        title={formTitle}
-        initialValues={currentMenu}
-        onCancel={() => setFormOpen(false)}
-        confirmLoading={confirmLoading}
-        onSubmit={handleFormSubmit}
-      />
-    </>
+          walk(nodes);
+          return acc;
+        };
+        const data = normalize(result.data) || [];
+        setExpandedRowKeys(collectIds(data));
+        return {
+          data,
+          success: result.success,
+        };
+      }}
+      columns={columns}
+      rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+        <Space size={24}>
+          <span>
+            已选 {selectedRowKeys.length} 项
+            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+              取消选择
+            </a>
+          </span>
+        </Space>
+      )}
+      tableAlertOptionRender={() => (
+        <Space>
+          <Popconfirm title={`确定要删除选中的 ${selectedRowKeys.length} 个菜单吗？`} onConfirm={handleBatchRemove}>
+            <Button type="link" danger loading={batchDeleteLoading}>批量删除</Button>
+          </Popconfirm>
+        </Space>
+      )}
+    />
   );
 };
 

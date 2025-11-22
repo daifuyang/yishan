@@ -1,50 +1,33 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { ActionType, ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Form, message, Popconfirm, Space, Tag } from 'antd';
+import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import { Button, message, Popconfirm, Space, Tag } from 'antd';
 import React, { useRef, useState } from 'react';
-import { 
-  getDeptTree,
-  createDept,
-  getDeptDetail,
-  updateDept,
-  deleteDept,
-} from '@/services/yishan-admin/sysDepts';
+import { getDeptTree, updateDept, deleteDept } from '@/services/yishan-admin/sysDepts';
 import DepartmentForm from './components/DepartmentForm';
+import { useModel } from '@umijs/max';
 
 type DeptTreeNode = API.deptTreeNode;
 
 const DeptStatus = {
-  ENABLED: 1,
-  DISABLED: 0,
-};
-
-const DeptType = {
-  COMPANY: 1,
-  DEPARTMENT: 2,
-  TEAM: 3,
-};
-
-const DeptStatusTag: React.FC<{ status?: number }> = ({ status }) => {
-  if (status === DeptStatus.ENABLED) return <Tag color="success">启用</Tag>;
-  return <Tag color="error">禁用</Tag>;
-};
+  ENABLED: "1",
+  DISABLED: "0",
+} as const;
 
 const DepartmentList: React.FC = () => {
   const actionRef = useRef<ActionType | null>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [form] = Form.useForm();
-  const [formOpen, setFormOpen] = useState(false);
-  const [formTitle, setFormTitle] = useState('新建部门');
-  const [currentDept, setCurrentDept] = useState<API.sysDept | undefined>(undefined);
-  const [confirmLoading, setConfirmLoading] = useState(false);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
 
-  const handleStatusChange = async (id: number, status: number) => {
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+
+  const handleStatusChange = async (id: number, status: "0" | "1") => {
     const newStatus = status === DeptStatus.ENABLED ? DeptStatus.DISABLED : DeptStatus.ENABLED;
     const res = await updateDept(
       { id },
-      { status: newStatus as 0 | 1 }
+      { status: newStatus as "0" | "1" }
     );
     if (res.success) {
       message.success(res.message);
@@ -52,19 +35,8 @@ const DepartmentList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  const handleAdd = () => {
-    setFormTitle('新建部门');
-    setCurrentDept(undefined);
-    setFormOpen(true);
-  };
-
-  const handleEdit = async (id: number) => {
-    setFormTitle('编辑部门');
-    const result = await getDeptDetail({ id });
-    if (result.success && result.data) {
-      setCurrentDept(result.data);
-      setFormOpen(true);
-    }
+  const handleFormSuccess = async () => {
+    actionRef.current?.reload();
   };
 
   const handleRemove = async (id: number) => {
@@ -75,40 +47,7 @@ const DepartmentList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  const handleFormSubmit = async (values: API.createDeptReq) => {
-    setConfirmLoading(true);
-    try {
-      if (currentDept?.id) {
-        const payload: API.updateDeptReq = {
-          name: values.name,
-          parentId: values.parentId === 0 ? undefined : values.parentId,
-          status: values.status,
-          sort_order: values.sort_order,
-          description: values.description,
-          leaderId: values.leaderId,
-        };
-        const res = await updateDept(
-          { id: currentDept.id },
-          payload
-        );
-        if (res.success) {
-          message.success(res.message);
-        }
-      } else {
-        const res = await createDept({
-          ...values,
-          parentId: values.parentId === 0 ? undefined : values.parentId,
-        });
-        if (res.success) {
-          message.success(res.message);
-        }
-      }
-      setFormOpen(false);
-      actionRef.current?.reload();
-    } finally {
-      setConfirmLoading(false);
-    }
-  };
+
 
   const handleBatchRemove = async () => {
     if (!selectedRowKeys.length) {
@@ -138,7 +77,7 @@ const DepartmentList: React.FC = () => {
     const keys: React.Key[] = [];
     const dfs = (arr: DeptTreeNode[]) => {
       arr.forEach((n) => {
-        if (n.children && n.children.length) {
+        if (n.children?.length) {
           keys.push(n.id as React.Key);
           dfs(n.children);
         }
@@ -151,28 +90,38 @@ const DepartmentList: React.FC = () => {
   const columns: ProColumns<DeptTreeNode>[] = [
     { title: 'ID', dataIndex: 'id', search: false },
     { title: '部门名称', dataIndex: 'name' },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      valueEnum: {
-        [DeptStatus.ENABLED]: { text: '启用', status: 'Success' },
-        [DeptStatus.DISABLED]: { text: '禁用', status: 'Error' },
-      },
-      render: (_, record) => <DeptStatusTag status={record.status} />,
-    },
     { title: '上级部门', dataIndex: 'parentName', search: false },
     { title: '负责人', dataIndex: 'leaderName', search: false },
     { title: '排序', dataIndex: 'sort_order', search: false },
     { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
     { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime' },
     {
+      title: '状态',
+      dataIndex: 'status',
+      valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
+        acc[item.value] = {
+          text: item.label,
+          status: item.value === '1' ? 'Success' : 'Error',
+        };
+        return acc;
+      }, {} as Record<string, { text: string; status: string }>),
+    },
+    {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
       render: (_, record) => [
-        <a key="edit" onClick={() => handleEdit(record.id || 0)}>编辑</a>,
-        <a key="status" onClick={() => handleStatusChange(record.id || 0, record.status || 0)}>
-          {record.status === DeptStatus.ENABLED ? '禁用' : '启用'}
+        <DepartmentForm
+          key="edit"
+          title="编辑部门"
+          trigger={<a>编辑</a>}
+          initialValues={record}
+          onFinish={handleFormSuccess}
+        />,
+        <a key="status" onClick={() => handleStatusChange(record.id || 0, (record.status || '0'))}>
+          {record.status === DeptStatus.ENABLED
+            ? (defaultStatusDict.find(item => item.value === '0')?.label || '禁用')
+            : (defaultStatusDict.find(item => item.value === '1')?.label || '启用')}
         </a>,
         <Popconfirm key="delete" title="确定要删除该部门吗？" onConfirm={() => handleRemove(record.id || 0)}>
           <Button className='p-0' type="link" danger>
@@ -184,77 +133,72 @@ const DepartmentList: React.FC = () => {
   ];
 
   return (
-    <>
-      <ProTable<DeptTreeNode>
-        headerTitle="部门树"
-        actionRef={actionRef}
-        rowKey="id"
-        search={{ labelWidth: 120 }}
-        toolBarRender={() => [
-          <Button type="primary" key="primary" onClick={handleAdd}>
-            <PlusOutlined /> 新建
-          </Button>,
-        ]}
-        request={async () => {
-          const result = await getDeptTree();
-          const treeData: DeptTreeNode[] = result.data || [];
-          // 控制展开：接口数据到达后，收集所有父节点并设置为展开
-          setExpandedRowKeys(collectExpandKeys(treeData));
-          return {
-            data: treeData,
-            success: result.success,
-          };
-        }}
-        pagination={false}
-        expandable={{
-          expandedRowKeys,
-          onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]),
-        }}
-        columns={columns}
-        rowSelection={{
-          selectedRowKeys,
-          onChange: (keys: React.Key[], _rows: DeptTreeNode[]) => setSelectedRowKeys(keys),
-        }}
-        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-          <Space size={24}>
-            <span>
-              已选 {selectedRowKeys.length} 项
-              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-                取消选择
-              </a>
-            </span>
-          </Space>
-        )}
-        tableAlertOptionRender={() => {
-          return (
-            <Space>
-              <Popconfirm
-                title={`确定要删除选中的 ${selectedRowKeys.length} 个部门吗？`}
-                onConfirm={handleBatchRemove}
-                disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
-              >
-                <Button className='p-0' type="link" danger disabled={selectedRowKeys.length === 0 || batchDeleteLoading}>
-                  {batchDeleteLoading ? '删除中...' : '批量删除'}
-                </Button>
-              </Popconfirm>
-              <Button className='p-0' type="link" onClick={() => message.info('暂未实现')}>
-                批量导出
+    <ProTable<DeptTreeNode>
+      headerTitle="部门树"
+      actionRef={actionRef}
+      rowKey="id"
+      search={{ labelWidth: 120 }}
+      toolBarRender={() => [
+        <DepartmentForm
+          key="create"
+          title="新建部门"
+          trigger={
+            <Button type="primary">
+              <PlusOutlined /> 新建
+            </Button>
+          }
+          onFinish={handleFormSuccess}
+        />,
+      ]}
+      request={async () => {
+        const result = await getDeptTree();
+        const treeData: DeptTreeNode[] = result.data || [];
+        // 控制展开：接口数据到达后，收集所有父节点并设置为展开
+        setExpandedRowKeys(collectExpandKeys(treeData));
+        return {
+          data: treeData,
+          success: result.success,
+        };
+      }}
+      pagination={false}
+      expandable={{
+        expandedRowKeys,
+        onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]),
+      }}
+      columns={columns}
+      rowSelection={{
+        selectedRowKeys,
+        onChange: (keys: React.Key[], _rows: DeptTreeNode[]) => setSelectedRowKeys(keys),
+      }}
+      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+        <Space size={24}>
+          <span>
+            已选 {selectedRowKeys.length} 项
+            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+              取消选择
+            </a>
+          </span>
+        </Space>
+      )}
+      tableAlertOptionRender={() => {
+        return (
+          <Space>
+            <Popconfirm
+              title={`确定要删除选中的 ${selectedRowKeys.length} 个部门吗？`}
+              onConfirm={handleBatchRemove}
+              disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
+            >
+              <Button className='p-0' type="link" danger disabled={selectedRowKeys.length === 0 || batchDeleteLoading}>
+                {batchDeleteLoading ? '删除中...' : '批量删除'}
               </Button>
-            </Space>
-          );
-        }}
-      />
-
-      <DepartmentForm
-        form={form}
-        open={formOpen}
-        title={formTitle}
-        initialValues={currentDept}
-        onCancel={() => setFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        confirmLoading={confirmLoading}
-      />
-    </>
+            </Popconfirm>
+            <Button className='p-0' type="link" onClick={() => message.info('暂未实现')}>
+              批量导出
+            </Button>
+          </Space>
+        );
+      }}
+    />
   );
 };
 

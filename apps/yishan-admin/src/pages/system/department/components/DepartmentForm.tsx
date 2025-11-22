@@ -1,104 +1,102 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import type { FormInstance } from 'antd';
-import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormTreeSelect } from '@ant-design/pro-components';
-import { getDeptTree } from '@/services/yishan-admin/sysDepts';
-import type { DataNode } from 'antd/es/tree';
+import React, { useRef } from 'react';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormTreeSelect, type ProFormInstance } from '@ant-design/pro-components';
+import { getDeptTree, createDept, updateDept, getDeptDetail } from '@/services/yishan-admin/sysDepts';
+import { useModel } from '@umijs/max';
 
 export interface DepartmentFormProps {
-  form: FormInstance;
-  open: boolean;
   title: string;
-  initialValues?: API.sysDept;
-  onCancel: () => void;
-  onSubmit: (values: API.createDeptReq) => Promise<void>;
-  confirmLoading: boolean;
+  trigger: React.ReactNode;
+  initialValues?: Partial<API.sysDept>;
+  onFinish?: () => Promise<void>;
+}
+
+const topDepartment = {
+  id: 0,
+  name: '顶级部门',
+  status: '1' as '0' | '1',
+  sort_order: 0,
+  createdAt: '',
+  updatedAt: '',
+  children: []
 }
 
 const DepartmentForm: React.FC<DepartmentFormProps> = ({
-  form,
-  open,
   title,
-  initialValues,
-  onCancel,
-  onSubmit,
-  confirmLoading,
+  trigger,
+  initialValues = {
+    parentId: 0,
+    status: '1'
+  },
+  onFinish,
 }) => {
-  const [treeLoading, setTreeLoading] = useState(false);
-  const [treeData, setTreeData] = useState<API.deptTreeList>([]);
+  const formRef = useRef<ProFormInstance>(null);
 
-  const fetchTree = async () => {
-    try {
-      setTreeLoading(true);
-      const result = await getDeptTree();
-      setTreeData(result.data || []);
-    } catch {
-      setTreeData([]);
-    } finally {
-      setTreeLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (open) {
-      fetchTree();
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (open && !initialValues && treeData && treeData.length) {
-      const firstApiNodeId = treeData[0]?.id;
-      form.setFieldValue('parentId', firstApiNodeId ?? 0);
-    }
-  }, [treeData, open, initialValues, form]);
-
-  const initialVals = useMemo(() => (
-    initialValues
-      ? {
-          parentId: initialValues.parentId ?? 0,
-          name: initialValues.name,
-          status: (initialValues.status ?? 1) as 0 | 1,
-          sort_order: Number(initialValues.sort_order ?? 0),
-          description: initialValues.description,
-          leaderId: initialValues.leaderId,
-        }
-      : { status: 1 as 0 | 1, sort_order: 0 }
-  ), [initialValues]);
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
   return (
-    <ModalForm
-      form={form}
-      title={title}
-      open={open}
-      onOpenChange={(o) => { if (!o) onCancel(); }}
-      modalProps={{ destroyOnClose: true, maskClosable: false, confirmLoading }}
-      autoFocusFirstInput
-      grid
-      initialValues={initialVals}
-      syncToInitialValues
-      onFinish={async (values) => {
-        const payload: API.createDeptReq = {
-          name: values.name,
-          parentId: values.parentId === 0 ? undefined : values.parentId,
-          status: values.status,
-          sort_order: Number(values.sort_order ?? 0),
-          description: values.description,
-          leaderId: values.leaderId ? Number(values.leaderId) : undefined,
-        };
-        await onSubmit(payload);
-        return true;
-      }}
-    >
+      <ModalForm
+        formRef={formRef}
+        width={520}
+        title={title}
+        trigger={trigger}
+        modalProps={{ destroyOnClose: true, maskClosable: false }}
+        autoFocusFirstInput
+        grid
+        initialValues={initialValues}
+        onOpenChange={(open) => {
+          if (open && initialValues?.id) {
+            getDeptDetail({ id: Number(initialValues.id) }).then((res) => {
+              if (res.success && res.data) {
+                formRef.current?.setFieldsValue(res.data as any);
+              }
+            });
+          }
+        }}
+        onFinish={async (values) => {
+          const basePayload: API.createDeptReq = {
+            name: values.name || '',
+            parentId: values.parentId === 0 ? undefined : values.parentId,
+            status: values.status,
+            sort_order: Number(values.sort_order ?? 0),
+            description: values.description,
+            leaderId: values.leaderId ? Number(values.leaderId) : undefined,
+          };
+          if (!initialValues?.id) {
+            const res = await createDept(basePayload);
+            if (res.success) {
+              await onFinish?.();
+              return true;
+            }
+            return false;
+          }
+          const updatePayload: API.updateDeptReq = { ...basePayload };
+          const res = await updateDept({ id: Number(initialValues.id) }, updatePayload);
+          if (res.success) {
+            await onFinish?.();
+            return true;
+          }
+          return false;
+        }}
+      >
       <ProFormTreeSelect
         name="parentId"
         label="上级部门"
         rules={[{ required: true, message: '请选择上级部门' }]}
         colProps={{ span: 24 }}
+        request={async () => {
+          try {
+            const response = await getDeptTree();
+            return [topDepartment, ...(response.data || [])];
+          } catch {
+            return [topDepartment];
+          }
+        }}
         fieldProps={{
-          treeData: (treeData || []) as unknown as DataNode[],
           fieldNames: { label: 'name', value: 'id', children: 'children' },
           allowClear: true,
           treeDefaultExpandAll: true,
-          disabled: treeLoading,
           style: { width: '100%' },
           showSearch: true,
         }}
@@ -116,7 +114,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
         name="status"
         label="状态"
         rules={[{ required: true, message: '请选择状态' }]}
-        options={[{ label: '启用', value: 1 }, { label: '禁用', value: 0 }]}
+        options={defaultStatusDict.map((item) => ({ label: item.label, value: item.value }))}
         colProps={{ span: 24 }}
       />
 

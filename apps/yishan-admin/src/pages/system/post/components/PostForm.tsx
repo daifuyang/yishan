@@ -1,58 +1,70 @@
-import React, { useMemo } from 'react';
-import type { FormInstance } from 'antd';
-import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea } from '@ant-design/pro-components';
+import React, { useRef } from 'react';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, type ProFormInstance } from '@ant-design/pro-components';
+import { useModel } from '@umijs/max';
+import { getPostDetail, createPost, updatePost } from '@/services/yishan-admin/sysPosts';
 
 export interface PostFormProps {
-  form: FormInstance;
-  open: boolean;
   title: string;
-  initialValues?: API.sysPost;
-  onCancel: () => void;
-  onSubmit: (values: API.savePostReq | API.updatePostReq) => Promise<void>;
-  confirmLoading: boolean;
+  trigger: React.ReactNode;
+  initialValues?: Partial<API.sysPost>;
+  onFinish?: () => Promise<void>;
 }
 
 const PostForm: React.FC<PostFormProps> = ({
-  form,
-  open,
   title,
-  initialValues,
-  onCancel,
-  onSubmit,
-  confirmLoading,
+  trigger,
+  initialValues = { status: '1', sort_order: 0 },
+  onFinish,
 }) => {
-  const initialVals = useMemo(() => (
-    initialValues
-      ? {
-          name: initialValues.name,
-          status: (initialValues.status ?? 1) as 0 | 1,
-          sort_order: Number(initialValues.sort_order ?? 0),
-          description: initialValues.description,
-        }
-      : { status: 1 as 0 | 1, sort_order: 0 }
-  ), [initialValues]);
+  const formRef = useRef<ProFormInstance>(null);
+
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+
+  const fetchDetail = async (id: number) => {
+    const res = await getPostDetail({ id: String(id) });
+    if (res.success && res.data) {
+      formRef.current?.setFieldsValue(res.data);
+    }
+  };
 
   return (
     <ModalForm
-      form={form}
       width={520}
       title={title}
-      open={open}
-      onOpenChange={(o) => { if (!o) onCancel(); }}
-      modalProps={{ destroyOnClose: true, maskClosable: false, confirmLoading }}
+      trigger={trigger}
       autoFocusFirstInput
       grid
-      initialValues={initialVals}
-      syncToInitialValues
+      formRef={formRef}
+      initialValues={initialValues}
+      modalProps={{ destroyOnClose: true, maskClosable: false }}
+      onOpenChange={(open) => {
+        if (open && initialValues?.id) {
+          fetchDetail(Number(initialValues.id));
+        }
+      }}
       onFinish={async (values) => {
-        const payload: API.savePostReq = {
+        const basePayload: API.savePostReq = {
           name: values.name,
           status: values.status,
           sort_order: Number(values.sort_order ?? 0),
           description: values.description,
         };
-        await onSubmit(payload);
-        return true;
+        if (!initialValues?.id) {
+          const res = await createPost(basePayload);
+          if (res.success) {
+            await onFinish?.();
+            return true;
+          }
+          return false;
+        }
+        const res = await updatePost({ id: String(initialValues.id) }, basePayload as API.updatePostReq);
+        if (res.success) {
+          await onFinish?.();
+          return true;
+        }
+        return false;
       }}
     >
       <ProFormText
@@ -66,8 +78,7 @@ const PostForm: React.FC<PostFormProps> = ({
       <ProFormRadio.Group
         name="status"
         label="状态"
-        rules={[{ required: true, message: '请选择状态' }]}
-        options={[{ label: '启用', value: 1 }, { label: '禁用', value: 0 }]}
+        options={defaultStatusDict}
         colProps={{ span: 24 }}
       />
 
@@ -83,7 +94,6 @@ const PostForm: React.FC<PostFormProps> = ({
       <ProFormTextArea
         name="description"
         label="岗位描述"
-        rules={[{ max: 200, message: '最多200个字符' }]}
         fieldProps={{ rows: 3, placeholder: '请输入岗位描述（可选）' }}
         colProps={{ span: 24 }}
       />

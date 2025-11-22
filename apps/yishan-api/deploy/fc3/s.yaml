@@ -25,7 +25,7 @@ resources:
       instanceConcurrency: 100
       layers:
         - acs:fc:${vars.region}:official:layers/Nodejs20/versions/1
-        - acs:fc:${vars.region}:1650595695532785:layers/yishan-layer-code/versions/3
+        - acs:fc:${vars.region}:1650595695532785:layers/yishan-layer-code/versions/7
       environmentVariables:
         PATH: >-
           /opt/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin
@@ -49,13 +49,3 @@ resources:
               - PUT
               - DELETE
             authType: anonymous
-  fc3_domain_0:
-    component: fc3-domain
-    props:
-      region: ${vars.region}
-      domainName: auto
-      protocol: HTTP
-      routeConfig:
-        routes:
-          - path: /*
-            functionName: ${vars.functionName}

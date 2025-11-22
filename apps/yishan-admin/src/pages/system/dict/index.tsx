@@ -1,33 +1,17 @@
 import { PlusOutlined, DownOutlined } from '@ant-design/icons';
 import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Form, Popconfirm, Space, Tag, Dropdown, App } from 'antd';
+import { Button, Popconfirm, Space, Tag, Dropdown, App } from 'antd';
 import React, { useRef, useState } from 'react';
-import {
-  getDictTypeList,
-  createDictType,
-  getDictTypeDetail,
-  updateDictType,
-  deleteDictType,
-} from '@/services/yishan-admin/sysDictTypes';
+import { getDictTypeList, updateDictType, deleteDictType } from '@/services/yishan-admin/sysDictTypes';
 import DictTypeForm from './components/DictTypeForm';
 import DictDataManager from './components/DictDataManager';
 
 const Status = { ENABLED: 1, DISABLED: 0 } as const;
 
-const StatusTag: React.FC<{ status?: 0 | 1 }> = ({ status }) => {
-  if (status === Status.ENABLED) return <Tag color="success">正常</Tag>;
-  return <Tag color="error">停用</Tag>;
-};
-
 const DictTypeList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const { message } = App.useApp();
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [form] = Form.useForm();
-  const [formOpen, setFormOpen] = useState(false);
-  const [formTitle, setFormTitle] = useState('新建字典类型');
-  const [currentType, setCurrentType] = useState<API.sysDictType | undefined>(undefined);
-  const [confirmLoading, setConfirmLoading] = useState(false);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
 
   const [dataOpen, setDataOpen] = useState(false);
@@ -49,19 +33,8 @@ const DictTypeList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  const handleAdd = () => {
-    setFormTitle('新建字典类型');
-    setCurrentType(undefined);
-    setFormOpen(true);
-  };
-
-  const handleEdit = async (id: number) => {
-    setFormTitle('编辑字典类型');
-    const result = await getDictTypeDetail({ id });
-    if (result.success && result.data) {
-      setCurrentType(result.data);
-      setFormOpen(true);
-    }
+  const handleFormSuccess = async () => {
+    actionRef.current?.reload();
   };
 
   const handleRemove = async (id: number) => {
@@ -88,29 +61,7 @@ const DictTypeList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  const handleFormSubmit = async (values: API.saveDictTypeReq | API.updateDictTypeReq) => {
-    setConfirmLoading(true);
-    try {
-      if (currentType?.id) {
-        const payload: API.updateDictTypeReq = {
-          name: values.name,
-          type: values.type,
-          status: values.status,
-          sort_order: values.sort_order,
-          remark: values.remark,
-        };
-        const res = await updateDictType({ id: currentType.id }, payload);
-        if (res.success) message.success(res.message);
-      } else {
-        const res = await createDictType(values as API.saveDictTypeReq);
-        if (res.success) message.success(res.message);
-      }
-      setFormOpen(false);
-      actionRef.current?.reload();
-    } finally {
-      setConfirmLoading(false);
-    }
-  };
+
 
   const columns: ProColumns<API.sysDictType>[] = [
     { title: '字典编号', dataIndex: 'id', search: false },
@@ -122,6 +73,8 @@ const DictTypeList: React.FC = () => {
         <a onClick={() => openDataManager(record)}>{record.type}</a>
       ),
     },
+    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true },
+    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
     {
       title: '状态',
       dataIndex: 'status',
@@ -129,10 +82,7 @@ const DictTypeList: React.FC = () => {
         [Status.ENABLED]: { text: '正常', status: 'Success' },
         [Status.DISABLED]: { text: '停用', status: 'Error' },
       },
-      render: (_, record) => <StatusTag status={record.status} />,
     },
-    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
     {
       title: '操作',
       dataIndex: 'option',
@@ -155,7 +105,13 @@ const DictTypeList: React.FC = () => {
           },
         ];
         return [
-          <a key="edit" onClick={() => handleEdit(record.id || 0)}>修改</a>,
+          <DictTypeForm
+            key="edit"
+            title="编辑字典类型"
+            trigger={<a>修改</a>}
+            initialValues={record}
+            onFinish={handleFormSuccess}
+          />,
           <Popconfirm key="delete" title="确定要删除该字典类型吗？" onConfirm={() => handleRemove(record.id || 0)}>
             <a style={{ color: '#ff4d4f' }}>删除</a>
           </Popconfirm>,
@@ -177,9 +133,12 @@ const DictTypeList: React.FC = () => {
         rowKey="id"
         search={{ labelWidth: 120 }}
         toolBarRender={() => [
-          <Button type="primary" key="primary" onClick={handleAdd}>
-            <PlusOutlined /> 新建
-          </Button>,
+          <DictTypeForm
+            key="create"
+            title="新建字典类型"
+            trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
+            onFinish={handleFormSuccess}
+          />,
         ]}
         request={async (params) => {
           const { current, pageSize, ...rest } = params;
@@ -210,7 +169,7 @@ const DictTypeList: React.FC = () => {
               cancelText="取消"
               disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
             >
-              <a style={{ 
+              <a style={{
                 color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
                 cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
               }}>
@@ -220,17 +179,6 @@ const DictTypeList: React.FC = () => {
           </Space>
         )}
       />
-
-      <DictTypeForm
-        form={form}
-        open={formOpen}
-        title={formTitle}
-        initialValues={currentType}
-        onCancel={() => setFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        confirmLoading={confirmLoading}
-      />
-
       <DictDataManager
         open={dataOpen}
         onClose={() => setDataOpen(false)}

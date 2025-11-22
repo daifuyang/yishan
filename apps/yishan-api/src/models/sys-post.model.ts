@@ -25,7 +25,7 @@ export class SysPostModel {
     return {
       id: post.id,
       name: post.name,
-      status: post.status,
+      status: post.status.toString(),
       sort_order: post.sort_order ?? 0,
       description: post.description ?? undefined,
       creatorId: post.creatorId ?? undefined,
@@ -58,7 +58,7 @@ export class SysPostModel {
     }
 
     if (status !== undefined) {
-      where.status = status;
+      where.status = parseInt(status as string, 10);
     }
 
     const orderBy: any = {};
@@ -89,7 +89,9 @@ export class SysPostModel {
         { description: { contains: keyword } },
       ];
     }
-    if (status !== undefined) where.status = status;
+    if (status !== undefined) {
+      where.status = parseInt(status as string, 10);
+    }
     return await this.prisma.sysPost.count({ where });
   }
 
@@ -121,7 +123,7 @@ export class SysPostModel {
     const post = await this.prisma.sysPost.create({
       data: {
         name: req.name,
-        status: req.status ?? 1,
+        status: req.status ? parseInt(req.status, 10) : 1,
         sort_order: req.sort_order ?? 0,
         description: req.description,
         creatorId: 1, // TODO: 从当前登录用户上下文获取
@@ -139,7 +141,7 @@ export class SysPostModel {
   static async updatePost(id: number, req: UpdatePostReq): Promise<SysPostResp> {
     const updateData: any = {};
     if (req.name !== undefined) updateData.name = req.name;
-    if (req.status !== undefined) updateData.status = req.status;
+    if (req.status !== undefined) updateData.status = parseInt(req.status, 10);
     if (req.sort_order !== undefined) updateData.sort_order = req.sort_order;
     if (req.description !== undefined) updateData.description = req.description;
 

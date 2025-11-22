@@ -6,12 +6,13 @@
 
 1. [模块结构和目录规范](#模块结构和目录规范)
 2. [组件开发规范](#组件开发规范)
-3. [API 集成规范](#api-集成规范)
-4. [路由和菜单配置规范](#路由和菜单配置规范)
-5. [国际化配置规范](#国际化配置规范)
-6. [页面开发规范](#页面开发规范)
-7. [字典数据使用规范](#字典数据使用规范)
-8. [当前页面目录概览](#当前页面目录概览)
+3. [表单组件开发规范](#表单组件开发规范)
+4. [API 集成规范](#api-集成规范)
+5. [路由和菜单配置规范](#路由和菜单配置规范)
+6. [国际化配置规范](#国际化配置规范)
+7. [页面开发规范](#页面开发规范)
+8. [字典数据使用规范](#字典数据使用规范)
+9. [当前页面目录概览](#当前页面目录概览)
 
 ## 模块结构和目录规范
 
@@ -144,6 +145,60 @@ const RoleList: React.FC = () => {
 
 export default RoleList;
 ```
+
+## 表单组件开发规范
+
+表单组件开发遵循统一的模式判断规范，详见 [表单组件规范文档](./FORM_COMPONENT_SPECIFICATION.md)。
+
+### 核心原则
+
+1. **通过 `id` 存在性判断编辑模式**，不使用 `mode` 参数
+2. **编辑时重新获取最新数据**，确保数据一致性
+3. **使用统一的属性接口**，提高组件复用性
+4. **合理设置默认值**，提升用户体验
+
+### 表单组件模板
+
+```tsx
+// 基础表单组件结构
+export interface FormComponentProps {
+  title: string;
+  trigger: React.ReactNode;
+  initialValues?: Partial<API.EntityType>;
+  onFinish: (values: API.CreateReq | API.UpdateReq) => Promise<void>;
+}
+
+const FormComponent: React.FC<FormComponentProps> = ({
+  initialValues = { status: "1" },
+  // ...
+}) => {
+  // 通过 id 判断编辑模式
+  const isEdit = !!initialValues?.id;
+  
+  // ModalForm 打开时获取编辑数据
+  const fetchDetail = async (id: number) => {
+    const res = await getDetail({ id });
+    if (res.success && res.data) {
+      formRef.current?.setFieldsValue(res.data);
+    }
+  };
+  
+  return (
+    <ModalForm
+      // ... 配置
+      onOpenChange={(open) => {
+        if (open && initialValues?.id) {
+          fetchDetail(initialValues.id);
+        }
+      }}
+    >
+      {/* 表单字段 */}
+    </ModalForm>
+  );
+};
+```
+
+详细规范请参考 [表单组件开发规范](./FORM_COMPONENT_SPECIFICATION.md)。
 
 ## API 集成规范
 
@@ -348,7 +403,7 @@ request={async (params) => {
 ### 表单组件交互
 
 - 列表页通过本地 `Form.useForm()` 创建实例并传递给子表单组件
-- 子表单统一使用以下属性：`form`、`open`、`title`、`initialValues`、`onSubmit`、`onCancel`、`confirmLoading`
+- 子表单统一使用以下属性：`form`、`open`、`title`、`initialValues`、`onFinish`、`onCancel`、`confirmLoading`
 - 新建与编辑文案统一：`新建xxx`、`编辑xxx`
 
 ### 状态枚举与标签
@@ -439,6 +494,12 @@ const handleStatusChange = async (id: number, status: string) => {
 3. **性能优化**: 避免重复请求字典数据
 
 **详细规范请参考**: [字典数据规范文档](./DICTIONARY_SPECIFICATION.md)
+
+## 相关规范文档
+
+- **[表单组件开发规范](./FORM_COMPONENT_SPECIFICATION.md)** - 详细的表单组件开发指南
+- **[字典数据规范](./DICTIONARY_SPECIFICATION.md)** - 字典数据使用规范
+- **[列表页面规范](./LIST_SPECIFICATION.md)** - 列表页面开发规范
 
 ## 当前页面目录概览
 

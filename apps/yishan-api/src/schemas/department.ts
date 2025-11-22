@@ -13,7 +13,7 @@ const SysDeptSchema = Type.Object(
     name: Type.String({ description: "部门名称", example: "技术部" }),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID", example: 0 })),
     parentName: Type.Optional(Type.String({ description: "上级部门名称", example: "总部" })),
-    status: Type.Number({ enum: [0, 1], description: "状态（0-禁用，1-启用）", example: 1 }),
+    status: Type.String({ enum: ["0", "1"], description: "状态（0-禁用，1-启用）", example: "1" }),
     sort_order: Type.Number({ description: "排序序号", example: 10 }),
     description: Type.Optional(Type.String({ description: "部门描述", example: "负责公司技术研发" })),
     leaderId: Type.Optional(Type.Number({ description: "负责人ID", example: 2 })),
@@ -35,7 +35,7 @@ const CreateDeptReqSchema = Type.Object(
   {
     name: Type.String({ description: "部门名称", minLength: 1, maxLength: 100 }),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID" })),
-    status: Type.Optional(Type.Number({ enum: [0, 1], description: "状态", default: 1 })),
+    status: Type.Optional(Type.String({ enum: ["0", "1"], description: "状态", default: "1" })),
     sort_order: Type.Optional(Type.Number({ description: "排序序号", default: 0 })),
     description: Type.Optional(Type.String({ description: "部门描述", maxLength: 255 })),
     leaderId: Type.Optional(Type.Number({ description: "负责人ID" })),
@@ -54,7 +54,7 @@ const DeptListQuerySchema = Type.Object(
   {
     ...PaginationQuerySchema.properties,
     keyword: Type.Optional(Type.String({ description: "搜索关键词（名称、描述）" })),
-    status: Type.Optional(Type.Integer({ enum: [0, 1], description: "部门状态" })),
+    status: Type.Optional(Type.String({ enum: ["0", "1"], description: "部门状态" })),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID过滤" })),
     sortBy: Type.Optional(
       Type.String({ enum: ["sort_order", "createdAt", "updatedAt"], default: "sort_order", description: "排序字段" })
