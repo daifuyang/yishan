@@ -1,0 +1,56 @@
+.form-editor-wrapper {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: var(--ant-color-bg-container);
+  border-width: var(--ant-line-width);
+  border-style: var(--ant-line-type);
+  border-color: var(--ant-color-border);
+  border-radius: var(--ant-border-radius);
+
+  &>.tiptap-toolbar {
+    width: 100%;
+    border-bottom: 1px solid var(--ant-color-border);
+  }
+
+  &>.tiptap-toolbar>.form-editor-toolbar {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  &>.form-editor-content {
+    min-height: 150px;
+    margin: 0;
+    padding: 4px 11px;
+    overflow-y: auto;
+  }
+
+  &.fullscreen {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 1000;
+    border-radius: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
+    &>.tiptap-toolbar>.form-editor-toolbar {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    &>.form-editor-content {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      height: 0;
+      flex: 1;
+      overflow-y: auto;
+    }
+  }
+
+}

@@ -1,0 +1,166 @@
+import React, { useRef } from "react";
+import {
+  DrawerForm,
+  ProFormText,
+  ProFormTextArea,
+  ProFormRadio,
+  ProFormSwitch,
+  ProFormDateTimePicker,
+  ProFormSelect,
+  ProFormList,
+  type ProFormInstance,
+  ProForm,
+} from "@ant-design/pro-components";
+import { FormEditor, type FormEditorProps } from "yishan-tiptap";
+import dayjs from "dayjs";
+import { getArticleDetail, createArticle, updateArticle } from "@/services/yishan-admin/portalArticles";
+import { getCategoryList } from "@/services/yishan-admin/portalCategories";
+
+export interface ArticleFormProps {
+  title: string;
+  trigger?: JSX.Element;
+  initialValues?: Partial<API.portalArticle>;
+  onFinish?: () => Promise<void>;
+}
+
+const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues = { status: "0", isPinned: false }, onFinish }) => {
+  const formRef = useRef<ProFormInstance>(null);
+
+  const fetchDetail = async (id: number) => {
+    const res = await getArticleDetail({ id });
+    if (res.success && res.data) {
+      const d: any = res.data;
+      const attributesList = d.attributes ? Object.entries(d.attributes).map(([k, v]) => ({ key: k, value: String(v) })) : [];
+      formRef.current?.setFieldsValue({
+        ...d,
+        publishTime: d.publishTime ? dayjs(d.publishTime) : undefined,
+        attributesList,
+      });
+    }
+  };
+
+  const handleFinish = async (values: any) => {
+    const attrs: Record<string, any> = Array.isArray(values.attributesList)
+      ? (values.attributesList as Array<{ key: string; value: string }>).reduce((acc, cur) => {
+        const k = String(cur.key || "").trim();
+        if (k.length > 0) acc[k] = cur.value;
+        return acc;
+      }, {} as Record<string, any>)
+      : values.attributes;
+
+    const basePayload: any = {
+      title: values.title,
+      slug: values.slug,
+      summary: values.summary,
+      content: values.content,
+      coverImage: values.coverImage,
+      status: values.status,
+      isPinned: values.isPinned,
+      publishTime: values.publishTime,
+      tags: values.tags,
+      categoryIds: values.categoryIds,
+      attributes: attrs,
+    };
+    if (!initialValues?.id) {
+      const res = await createArticle(basePayload as API.createArticleReq);
+      if (res.success) {
+        if (onFinish) await onFinish();
+        return true;
+      }
+      return false;
+    }
+    const res = await updateArticle({ id: Number(initialValues.id) }, basePayload as API.updateArticleReq);
+    if (res.success) {
+      if (onFinish) await onFinish();
+      return true;
+    }
+    return false;
+  };
+
+  return (
+    <DrawerForm
+      title={title}
+      trigger={trigger}
+      autoFocusFirstInput
+      grid
+      formRef={formRef}
+      initialValues={initialValues}
+      drawerProps={{ destroyOnClose: true, maskClosable: false }}
+      onOpenChange={(open) => {
+        if (open) {
+          if (initialValues?.id) fetchDetail(initialValues.id);
+        }
+      }}
+      onFinish={handleFinish}
+    >
+      <ProFormText name="title" label="标题" placeholder="请输入标题" colProps={{ span: 12 }} />
+      <ProFormText name="slug" label="URL标识" placeholder="请输入URL标识" colProps={{ span: 12 }} />
+      <ProFormText name="coverImage" label="封面图URL" placeholder="请输入封面图地址" colProps={{ span: 12 }} />
+      <ProFormSwitch name="isPinned" label="置顶" colProps={{ span: 12 }} />
+
+      <ProFormRadio.Group
+        name="status"
+        label="状态"
+        options={[{ label: "草稿", value: "0" }, { label: "已发布", value: "1" }]}
+        colProps={{ span: 12 }}
+      />
+
+      <ProFormDateTimePicker
+        name="publishTime"
+        label="发布时间"
+        colProps={{ span: 12 }}
+        fieldProps={{ style: { width: "100%" } }}
+        transform={(v: any) => {
+          if (!v) return { publishTime: undefined };
+          if (typeof v === "string") return { publishTime: v };
+          if (typeof v === "number") return { publishTime: dayjs(v).format("YYYY-MM-DD HH:mm:ss") };
+          if (v && typeof v === "object" && typeof v.format === "function") return { publishTime: v.format("YYYY-MM-DD HH:mm:ss") };
+          return { publishTime: dayjs(v).format("YYYY-MM-DD HH:mm:ss") };
+        }}
+      />
+
+      <ProFormSelect
+        name="categoryIds"
+        label="所属分类"
+        placeholder="请选择分类"
+        showSearch
+        debounceTime={200}
+        request={async (params) => {
+          const res = await getCategoryList({ page: 1, pageSize: 100, status: "1", keyword: params.keyWords, sortBy: "sort_order", sortOrder: "asc" });
+          return (res.data || []).map((c: API.portalCategory) => ({ label: c.name, value: c.id }));
+        }}
+        fieldProps={{ mode: "multiple", maxTagCount: "responsive" }}
+        colProps={{ span: 24 }}
+      />
+
+      <ProFormSelect
+        name="tags"
+        label="标签"
+        placeholder="请输入并按回车添加"
+        colProps={{ span: 24 }}
+        fieldProps={{ mode: "tags", tokenSeparators: [","] }}
+      />
+
+      <ProFormTextArea name="summary" label="摘要" placeholder="请输入摘要" colProps={{ span: 24 }} />
+
+      <ProForm.Item name="content" label="正文" colProps={{ span: 24 }}>
+        <FormEditor />
+      </ProForm.Item>
+
+      <ProFormList
+        name="attributesList"
+        label="自定义属性"
+        creatorButtonProps={{ position: "bottom", creatorButtonText: "新增属性" }}
+      >
+        {(f) => (
+          <>
+            <ProFormText name={[f.name, "key"]} label="键" colProps={{ span: 12 }} />
+            <ProFormText name={[f.name, "value"]} label="值" colProps={{ span: 12 }} />
+          </>
+        )}
+      </ProFormList>
+    </DrawerForm>
+  );
+};
+
+export default ArticleForm;

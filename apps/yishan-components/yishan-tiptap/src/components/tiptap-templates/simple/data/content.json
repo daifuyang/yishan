@@ -196,14 +196,6 @@
       ]
     },
     {
-      "type": "image",
-      "attrs": {
-        "src": "/images/tiptap-ui-placeholder-image.jpg",
-        "alt": "占位图",
-        "title": "占位图"
-      }
-    },
-    {
       "type": "bulletList",
       "content": [
         {

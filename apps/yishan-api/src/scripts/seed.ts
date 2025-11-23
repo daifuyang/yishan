@@ -341,6 +341,139 @@ async function main() {
     await upsertDictData(defaultStatusType.id, '启用', '1', 1, true);
 
     console.log('✅ 系统字典数据创建完成');
+
+    const upsertCategory = async (
+      name: string,
+      slug: string,
+      parentId: number | null,
+      sortOrder: number,
+      description?: string
+    ) => {
+      const category = await prisma.portalCategory.upsert({
+        where: { slug },
+        update: {
+          name,
+          parentId: parentId ?? undefined,
+          description,
+          status: 1,
+          sort_order: sortOrder,
+          updaterId: adminUser!.id,
+        },
+        create: {
+          name,
+          slug,
+          parentId: parentId ?? undefined,
+          description,
+          status: 1,
+          sort_order: sortOrder,
+          creatorId: adminUser!.id,
+          updaterId: adminUser!.id,
+        },
+      });
+      return category;
+    };
+
+    const newsCat = await upsertCategory('新闻', 'news', null, 1, '公司新闻');
+    const noticeCat = await upsertCategory('公告', 'notice', null, 2, '系统公告');
+    const blogCat = await upsertCategory('技术博客', 'blog', null, 3, '技术分享');
+
+    const upsertPage = async (
+      title: string,
+      path: string,
+      content: string,
+      attributes?: Record<string, any>
+    ) => {
+      const existing = await prisma.portalPage.findFirst({ where: { path } });
+      if (existing) {
+        const page = await prisma.portalPage.update({
+          where: { id: existing.id },
+          data: {
+            title,
+            path,
+            content,
+            status: 1,
+            publishTime: new Date(),
+            attributes,
+            updaterId: adminUser!.id,
+          },
+        });
+        return page;
+      } else {
+        const page = await prisma.portalPage.create({
+          data: {
+            title,
+            path,
+            content,
+            status: 1,
+            publishTime: new Date(),
+            attributes,
+            creatorId: adminUser!.id,
+            updaterId: adminUser!.id,
+          },
+        });
+        return page;
+      }
+    };
+
+    await upsertPage('首页', '/home', '欢迎访问门户网站', { banner: '/assets/banner.jpg' });
+    await upsertPage('关于我们', '/about', '关于我们页面内容', { layout: 'full' });
+    await upsertPage('联系我们', '/contact', '联系方式与地址', { form: true });
+
+    const upsertArticle = async (
+      title: string,
+      slug: string,
+      content: string,
+      categoryIds: number[],
+      status: number,
+      isPinned: boolean,
+      tags?: string[],
+      attributes?: Record<string, any>
+    ) => {
+      const article = await prisma.portalArticle.upsert({
+        where: { slug },
+        update: {
+          title,
+          content,
+          status,
+          isPinned,
+          publishTime: new Date(),
+          tags,
+          attributes,
+          updaterId: adminUser!.id,
+        },
+        create: {
+          title,
+          slug,
+          content,
+          status,
+          isPinned,
+          publishTime: new Date(),
+          tags,
+          attributes,
+          creatorId: adminUser!.id,
+          updaterId: adminUser!.id,
+        },
+      });
+      await prisma.portalArticleCategory.deleteMany({ where: { articleId: article.id } });
+      if (categoryIds.length > 0) {
+        await prisma.portalArticleCategory.createMany({
+          data: categoryIds.map((cid) => ({ articleId: article.id, categoryId: cid })),
+        });
+      }
+      return article;
+    };
+
+    await upsertArticle('欢迎使用门户', 'welcome', '这是门户的欢迎文章', [newsCat.id], 1, true, ['置顶', '公告'], { readingTime: 3 });
+    await upsertArticle('系统发布 1.0', 'release-1-0', '系统 1.0 版本发布说明', [noticeCat.id], 1, false, ['发布'], { version: '1.0.0' });
+    await upsertArticle('使用指南', 'how-to-use', '系统使用指南与最佳实践', [blogCat.id], 1, false, ['指南'], { level: 'beginner' });
+
+    const portalRoot = await upsertMenuByPath('门户管理', '/portal', 0, 2, null, 'global');
+    await upsertMenuByPath('文章管理', '/portal/articles', 1, 1, portalRoot.id, undefined, './portal/articles');
+    await upsertMenuByPath('页面管理', '/portal/pages', 1, 2, portalRoot.id, undefined, './portal/pages');
+    await upsertMenuByPath('分类管理', '/portal/categories', 1, 3, portalRoot.id, undefined, './portal/categories');
+
+    console.log('✅ 门户管理菜单创建完成');
+
   } catch (error) {
     console.error('❌ 种子数据创建失败:', error);
     throw error;

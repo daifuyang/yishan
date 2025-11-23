@@ -141,7 +141,7 @@ const MainToolbarContent = ({
       <ToolbarSeparator />
 
       <ToolbarGroup>
-        <ImageUploadButton text="Add" />
+        <ImageUploadButton text="" />
       </ToolbarGroup>
 
       <Spacer />

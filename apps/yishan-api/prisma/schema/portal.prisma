@@ -1,0 +1,105 @@
+// Portal models: categories, articles, pages
+
+model PortalCategory {
+  id          Int       @id @default(autoincrement()) @map("id")
+  name        String    @map("name") @db.VarChar(100)
+  slug        String?   @unique @map("slug") @db.VarChar(100)
+  parentId    Int?      @map("parent_id")
+  status      Int       @default(1) @map("status") @db.TinyInt
+  sort_order  Int       @default(0)
+  description String?   @map("description") @db.VarChar(255)
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
+
+  parent   PortalCategory?  @relation("CategoryParent", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children PortalCategory[] @relation("CategoryParent")
+
+  creator SysUser? @relation("PortalCategoryCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("PortalCategoryUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  articleCategories PortalArticleCategory[]
+
+  @@unique([parentId, name], map: "uniq_category_parent_name")
+  @@index([status], map: "idx_category_status")
+  @@index([createdAt], map: "idx_category_created_at")
+  @@index([deletedAt], map: "idx_category_deleted_at")
+  @@index([parentId], map: "idx_category_parent_id")
+  @@index([sort_order], map: "idx_category_sort_order")
+  @@map("portal_category")
+}
+
+model PortalArticle {
+  id           Int       @id @default(autoincrement()) @map("id")
+  title        String    @map("title") @db.VarChar(200)
+  slug         String?   @unique @map("slug") @db.VarChar(200)
+  summary      String?   @map("summary") @db.VarChar(500)
+  content      String    @map("content") @db.Text
+  coverImage   String?   @map("cover_image") @db.VarChar(500)
+  status       Int       @default(0) @map("status") @db.TinyInt
+  isPinned     Boolean   @default(false) @map("is_pinned")
+  publishTime  DateTime? @map("publish_time") @db.DateTime(0)
+  attributes   Json?     @map("attributes")
+  tags         Json?     @map("tags")
+  creatorId    Int?      @map("creator_id")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId    Int?      @map("updater_id")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(0)
+  version      Int       @default(1) @map("version")
+
+  creator SysUser? @relation("PortalArticleCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("PortalArticleUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  articleCategories PortalArticleCategory[]
+
+  @@index([status], map: "idx_article_status")
+  @@index([publishTime], map: "idx_article_publish_time")
+  @@index([createdAt], map: "idx_article_created_at")
+  @@index([deletedAt], map: "idx_article_deleted_at")
+  @@map("portal_article")
+}
+
+model PortalArticleCategory {
+  id         Int      @id @default(autoincrement()) @map("id")
+  articleId  Int      @map("article_id")
+  categoryId Int      @map("category_id")
+  createdAt  DateTime @default(now()) @map("created_at") @db.DateTime(0)
+
+  article  PortalArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  category PortalCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, categoryId], map: "uniq_article_category")
+  @@index([articleId], map: "idx_article_category_article_id")
+  @@index([categoryId], map: "idx_article_category_category_id")
+  @@map("portal_article_category")
+}
+
+model PortalPage {
+  id          Int       @id @default(autoincrement()) @map("id")
+  title       String    @map("title") @db.VarChar(200)
+  path        String    @unique @map("path") @db.VarChar(255)
+  content     String    @map("content") @db.Text
+  status      Int       @default(1) @map("status") @db.TinyInt
+  attributes  Json?     @map("attributes")
+  publishTime DateTime? @map("publish_time") @db.DateTime(0)
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
+
+  creator SysUser? @relation("PortalPageCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("PortalPageUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  @@index([status], map: "idx_page_status")
+  @@index([path], map: "idx_page_path")
+  @@index([createdAt], map: "idx_page_created_at")
+  @@index([deletedAt], map: "idx_page_deleted_at")
+  @@map("portal_page")
+}
+

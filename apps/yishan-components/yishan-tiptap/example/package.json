@@ -1,5 +1,5 @@
 {
-  "name": "example",
+  "name": "yishan-tiptap-example",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,9 +15,10 @@
     "isbot": "^5.1.31",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.2",
     "react-router": "^7.9.2",
     "react-tooltip": "^5.30.0",
-    "yishan-tiptap": "file:.."
+    "yishan-tiptap": "workspace:*"
   },
   "devDependencies": {
     "@react-router/dev": "^7.9.2",

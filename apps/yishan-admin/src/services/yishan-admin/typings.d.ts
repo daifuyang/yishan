@@ -1,4 +1,90 @@
 declare namespace API {
+  type articleDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type articleDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: portalArticle;
+    timestamp: string;
+  };
+
+  type articleListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（标题、摘要、内容） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 分类ID过滤 */
+    categoryId?: number;
+    /** 开始时间 */
+    startTime?: string;
+    /** 结束时间 */
+    endTime?: string;
+    /** 排序字段 */
+    sortBy?: "createdAt" | "updatedAt" | "publishTime";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type articleListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: portalArticle[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type categoryDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type categoryDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: portalCategory;
+    timestamp: string;
+  };
+
+  type categoryListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称、描述） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 父级分类ID */
+    parentId?: number;
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type categoryListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: portalCategory[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
   type cleanupTokensReq = {
     /** 定时任务令牌，用于接口鉴权 */
     cron_token: string;
@@ -14,6 +100,30 @@ declare namespace API {
     data?: { deletedCount?: number; revokedCount?: number; message?: string };
   };
 
+  type createArticleReq = {
+    /** 标题 */
+    title: string;
+    /** URL标识 */
+    slug?: string;
+    /** 摘要 */
+    summary?: string;
+    /** 正文内容 */
+    content: string;
+    /** 封面图URL */
+    coverImage?: string;
+    /** 状态（0-草稿，1-已发布） */
+    status?: "0" | "1";
+    /** 是否置顶 */
+    isPinned?: boolean;
+    /** 发布时间 */
+    publishTime?: string;
+    /** 标签 */
+    tags?: string[];
+    attributes?: dynamicAttributes;
+    /** 分类ID列表 */
+    categoryIds?: number[];
+  };
+
   type createDeptReq = {
     /** 部门名称 */
     name: string;
@@ -27,6 +137,20 @@ declare namespace API {
     description?: string;
     /** 负责人ID */
     leaderId?: number;
+  };
+
+  type createPageReq = {
+    /** 页面标题 */
+    title: string;
+    /** 页面路径（唯一） */
+    path: string;
+    /** 页面内容 */
+    content: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 发布时间 */
+    publishTime?: string;
+    attributes?: pageDynamicAttributes;
   };
 
   type createUserReq = {
@@ -100,6 +224,16 @@ declare namespace API {
     timestamp: string;
   };
 
+  type deleteArticleParams = {
+    /** 文章ID */
+    id: number;
+  };
+
+  type deleteCategoryParams = {
+    /** 分类ID */
+    id: number;
+  };
+
   type deleteDeptParams = {
     /** 部门ID */
     id: number;
@@ -116,6 +250,11 @@ declare namespace API {
   type deleteMenuParams = {
     /** 菜单ID */
     id: string;
+  };
+
+  type deletePageParams = {
+    /** 页面ID */
+    id: number;
   };
 
   type deletePostParams = {
@@ -301,6 +440,54 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type dynamicAttributes = true;
+
+  type getArticleDetailParams = {
+    /** 文章ID */
+    id: number;
+  };
+
+  type getArticleListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（标题、摘要、内容） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 分类ID过滤 */
+    categoryId?: number;
+    /** 开始时间 */
+    startTime?: string;
+    /** 结束时间 */
+    endTime?: string;
+    /** 排序字段 */
+    sortBy?: "createdAt" | "updatedAt" | "publishTime";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getCategoryDetailParams = {
+    /** 分类ID */
+    id: number;
+  };
+
+  type getCategoryListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称、描述） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 父级分类ID */
+    parentId?: number;
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
   type getDeptDetailParams = {
     /** 部门ID */
     id: number;
@@ -376,6 +563,24 @@ declare namespace API {
     /** 排序字段 */
     sortBy?: "sort_order" | "createdAt" | "updatedAt";
     /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getPageDetailParams = {
+    /** 页面ID */
+    id: number;
+  };
+
+  type getPageListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（标题、路径） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    sortBy?: "createdAt" | "updatedAt" | "publishTime";
     sortOrder?: "asc" | "desc";
   };
 
@@ -583,11 +788,148 @@ declare namespace API {
     timestamp: string;
   };
 
+  type pageDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type pageDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: portalPage;
+    timestamp: string;
+  };
+
+  type pageDynamicAttributes = true;
+
+  type pageListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（标题、路径） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    sortBy?: "createdAt" | "updatedAt" | "publishTime";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type pageListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: portalPage[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
   type paginationResponse = {
     page: number;
     pageSize: number;
     total: number;
     totalPages: number;
+  };
+
+  type portalArticle = {
+    /** 文章ID */
+    id: number;
+    /** 标题 */
+    title: string;
+    /** URL标识 */
+    slug?: string;
+    /** 摘要 */
+    summary?: string;
+    /** 正文内容 */
+    content: string;
+    /** 封面图URL */
+    coverImage?: string;
+    /** 状态（0-草稿，1-已发布） */
+    status: "0" | "1";
+    /** 是否置顶 */
+    isPinned?: boolean;
+    /** 发布时间 */
+    publishTime?: string;
+    /** 标签 */
+    tags?: string[];
+    attributes?: dynamicAttributes;
+    /** 所属分类ID列表 */
+    categoryIds?: number[];
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type portalCategory = {
+    /** 分类ID */
+    id: number;
+    /** 分类名称 */
+    name: string;
+    /** URL标识 */
+    slug?: string;
+    /** 父级分类ID */
+    parentId?: number;
+    /** 父级分类名称 */
+    parentName?: string;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 排序序号 */
+    sort_order: number;
+    /** 分类描述 */
+    description?: string;
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type portalPage = {
+    /** 页面ID */
+    id: number;
+    /** 页面标题 */
+    title: string;
+    /** 页面路径（唯一） */
+    path: string;
+    /** 页面内容 */
+    content: string;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 发布时间 */
+    publishTime?: string;
+    attributes?: pageDynamicAttributes;
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
   };
 
   type postDeleteResp = {
@@ -628,6 +970,11 @@ declare namespace API {
     data: sysPost[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+
+  type publishArticleParams = {
+    /** 文章ID */
+    id: number;
   };
 
   type refreshTokenReq = {
@@ -681,6 +1028,21 @@ declare namespace API {
     data: sysRole[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+
+  type saveCategoryReq = {
+    /** 分类名称 */
+    name: string;
+    /** URL标识 */
+    slug?: string;
+    /** 父级分类ID */
+    parentId?: number;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 分类描述 */
+    description?: string;
   };
 
   type saveDictDataReq = {
@@ -975,6 +1337,55 @@ declare namespace API {
     };
   };
 
+  type updateArticleParams = {
+    /** 文章ID */
+    id: number;
+  };
+
+  type updateArticleReq = {
+    /** 标题 */
+    title?: string;
+    /** URL标识 */
+    slug?: string;
+    /** 摘要 */
+    summary?: string;
+    /** 正文内容 */
+    content?: string;
+    /** 封面图URL */
+    coverImage?: string;
+    /** 状态（0-草稿，1-已发布） */
+    status?: "0" | "1";
+    /** 是否置顶 */
+    isPinned?: boolean;
+    /** 发布时间 */
+    publishTime?: string;
+    /** 标签 */
+    tags?: string[];
+    attributes?: dynamicAttributes;
+    /** 分类ID列表 */
+    categoryIds?: number[];
+  };
+
+  type updateCategoryParams = {
+    /** 分类ID */
+    id: number;
+  };
+
+  type updateCategoryReq = {
+    /** 分类名称 */
+    name?: string;
+    /** URL标识 */
+    slug?: string;
+    /** 父级分类ID */
+    parentId?: number;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 分类描述 */
+    description?: string;
+  };
+
   type updateDeptParams = {
     /** 部门ID */
     id: number;
@@ -1052,6 +1463,25 @@ declare namespace API {
     perm?: string;
     /** 是否缓存 */
     keepAlive?: boolean;
+  };
+
+  type updatePageParams = {
+    /** 页面ID */
+    id: number;
+  };
+
+  type updatePageReq = {
+    /** 页面标题 */
+    title?: string;
+    /** 页面路径（唯一） */
+    path?: string;
+    /** 页面内容 */
+    content?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 发布时间 */
+    publishTime?: string;
+    attributes?: pageDynamicAttributes;
   };
 
   type updatePostParams = {

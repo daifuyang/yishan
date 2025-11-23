@@ -16,6 +16,8 @@ export * from './dept.js';
 export * from './post.js';
 export * from './menu.js';
 export * from './dict.js';
+export * from './article.js';
+export * from './page.js';
 
 // 重新导出常用的业务码
 import { SUCCESS_CODE, SystemErrorCode } from './common.js';
@@ -30,6 +32,8 @@ import { DeptErrorCode } from './dept.js';
 import { PostErrorCode } from './post.js';
 import { MenuErrorCode } from './menu.js';
 import { DictErrorCode } from './dict.js';
+import { ArticleErrorCode, CategoryErrorCode } from './article.js';
+import { PageErrorCode } from './page.js';
 
 // 合并所有错误码
 export const ErrorCode = {
@@ -45,6 +49,9 @@ export const ErrorCode = {
   ...PostErrorCode,
   ...MenuErrorCode,
   ...DictErrorCode,
+  ...ArticleErrorCode,
+  ...CategoryErrorCode,
+  ...PageErrorCode,
   // 添加一些常用的别名
   NOT_FOUND: ResourceErrorCode.RESOURCE_NOT_FOUND,
 } as const;
@@ -91,6 +98,8 @@ import {
 import { 
   DictErrorMessages
 } from './dict.js';
+import { ArticleErrorMessages, CategoryErrorMessages } from './article.js';
+import { PageErrorMessages } from './page.js';
 
 // 合并所有错误消息
 const ErrorMessages = {
@@ -106,6 +115,9 @@ const ErrorMessages = {
   ...PostErrorMessages,
   ...MenuErrorMessages,
   ...DictErrorMessages,
+  ...ArticleErrorMessages,
+  ...CategoryErrorMessages,
+  ...PageErrorMessages,
 } as const;
 
 // 合并所有HTTP状态码映射

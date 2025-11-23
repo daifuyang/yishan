@@ -8,6 +8,8 @@ import registerDepartment from "./department.js";
 import registerPost from "./post.js";
 import registerMenu from "./menu.js";
 import registerDict from "./dict.js";
+import registerArticleSchemas from "./article.js";
+import registerPageSchemas from "./page.js";
 
 // Schema插件，定义共享的Schema引用
 export default fp(async (fastify, opts) => {
@@ -20,4 +22,6 @@ export default fp(async (fastify, opts) => {
   registerPost(fastify);
   registerMenu(fastify);
   registerDict(fastify);
+  registerArticleSchemas(fastify);
+  registerPageSchemas(fastify);
 });

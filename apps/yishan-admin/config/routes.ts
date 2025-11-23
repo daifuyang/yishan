@@ -23,6 +23,37 @@ export default [
     ],
   },
   {
+    path: '/portal',
+    name: 'portal',
+    icon: 'read',
+    access: 'canDo',
+    routes: [
+      {
+        path: '/portal',
+        redirect: '/portal/articles',
+        access: 'canDo',
+      },
+      {
+        path: '/portal/articles',
+        name: 'portal.articles',
+        component: './portal/articles',
+        access: 'canDo',
+      },
+      {
+        path: '/portal/categories',
+        name: 'portal.categories',
+        component: './portal/categories',
+        access: 'canDo',
+      },
+      {
+        path: '/portal/pages',
+        name: 'portal.pages',
+        component: './portal/pages',
+        access: 'canDo',
+      },
+    ],
+  },
+  {
     path: '/system',
     name: 'system',
     icon: 'setting',
