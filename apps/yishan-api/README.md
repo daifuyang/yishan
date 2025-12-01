@@ -88,11 +88,12 @@ s config add
 
 3. 模拟线上环境
 ```bash
-docker run --platform linux/amd64 -it --name yishan-api-serverless-dev  -v C:\Workspace\Frontend\yishan\apps\yishan-api\:/code registry.cn-beijing.aliyuncs.com/aliyunfc/runtime-custom.debian10:build-3.1.0 bash  
+docker run --platform linux/amd64 -it --name yishan-api-serverless-dev  -v ./:/code registry.cn-beijing.aliyuncs.com/aliyunfc/runtime-custom.debian10:build-3.1.0 bash  
 ```
 
 4. 执行部署脚本
 ```bash
+./deploy/fc3/pre-deploy.sh
 ./deploy/fc3/deploy.sh
 ```
 
