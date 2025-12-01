@@ -11,10 +11,11 @@ import {
   type ProFormInstance,
   ProForm,
 } from "@ant-design/pro-components";
-import { FormEditor, type FormEditorProps } from "yishan-tiptap";
+import { FormEditor } from "yishan-tiptap";
 import dayjs from "dayjs";
 import { getArticleDetail, createArticle, updateArticle } from "@/services/yishan-admin/portalArticles";
 import { getCategoryList } from "@/services/yishan-admin/portalCategories";
+import { Col } from "antd";
 
 export interface ArticleFormProps {
   title: string;
@@ -82,6 +83,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
       title={title}
       trigger={trigger}
       autoFocusFirstInput
+      width={860}
       grid
       formRef={formRef}
       initialValues={initialValues}
@@ -112,10 +114,8 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
         fieldProps={{ style: { width: "100%" } }}
         transform={(v: any) => {
           if (!v) return { publishTime: undefined };
-          if (typeof v === "string") return { publishTime: v };
-          if (typeof v === "number") return { publishTime: dayjs(v).format("YYYY-MM-DD HH:mm:ss") };
-          if (v && typeof v === "object" && typeof v.format === "function") return { publishTime: v.format("YYYY-MM-DD HH:mm:ss") };
-          return { publishTime: dayjs(v).format("YYYY-MM-DD HH:mm:ss") };
+          const d = dayjs(v);
+          return { publishTime: d.isValid() ? d.toISOString() : undefined };
         }}
       />
 
@@ -143,11 +143,13 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
 
       <ProFormTextArea name="summary" label="摘要" placeholder="请输入摘要" colProps={{ span: 24 }} />
 
-      <ProForm.Item name="content" label="正文" colProps={{ span: 24 }}>
-        <FormEditor />
-      </ProForm.Item>
+      <Col span={24}>
+        <ProForm.Item name="content" label="正文">
+          <FormEditor />
+        </ProForm.Item>
+      </Col>
 
-      <ProFormList
+      {/* <ProFormList
         name="attributesList"
         label="自定义属性"
         creatorButtonProps={{ position: "bottom", creatorButtonText: "新增属性" }}
@@ -158,7 +160,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
             <ProFormText name={[f.name, "value"]} label="值" colProps={{ span: 12 }} />
           </>
         )}
-      </ProFormList>
+      </ProFormList> */}
     </DrawerForm>
   );
 };

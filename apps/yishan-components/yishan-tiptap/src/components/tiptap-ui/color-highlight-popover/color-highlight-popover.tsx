@@ -278,7 +278,7 @@ export function ColorHighlightPopover({
           <Icon className="tiptap-button-icon" />
         </ColorHighlightPopoverButton>
       </PopoverTrigger>
-      <PopoverContent aria-label="背景颜色">
+      <PopoverContent aria-label="文本颜色">
         <ColorHighlightPopoverContent editor={editor} bgColors={bgColors} />
       </PopoverContent>
     </Popover>

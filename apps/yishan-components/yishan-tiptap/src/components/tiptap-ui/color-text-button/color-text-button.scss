@@ -1,10 +1,13 @@
 .tiptap-button-text-color {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
   width: 1.25rem;
   height: 1.25rem;
   margin: 0 -0.175rem;
   border-radius: var(--tt-radius-xl);
-  background-color: var(--text-color);
+  color: var(--text-color);
   transition: transform 0.2s ease;
 
   &::after {
@@ -24,6 +27,11 @@
       filter: brightness(140%);
       mix-blend-mode: lighten;
     }
+  }
+
+  &>.tiptap-button-text-color-icon {
+    width: 1rem;
+    height: 1rem;
   }
 }
 

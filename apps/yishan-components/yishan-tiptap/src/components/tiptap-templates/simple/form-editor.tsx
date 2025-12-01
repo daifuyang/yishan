@@ -13,7 +13,7 @@ import { Highlight } from "@tiptap/extension-highlight";
 import { Subscript } from "@tiptap/extension-subscript";
 import { Superscript } from "@tiptap/extension-superscript";
 import { Selection } from "@tiptap/extensions";
-import { TextStyle } from "@tiptap/extension-text-style";
+import { TextStyle, Color } from "@tiptap/extension-text-style";
 
 // --- UI Primitives ---
 import { Button } from "@/components/tiptap-ui-primitive/button";
@@ -73,8 +73,6 @@ import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils";
 // --- Styles ---
 import "@/components/tiptap-templates/simple/form-editor.scss";
 
-import content from './data/content.json'
-
 const MainToolbarContent = ({
   onHighlighterClick,
   onLinkClick,
@@ -95,7 +93,7 @@ const MainToolbarContent = ({
         <UndoRedoButton action="redo" />
       </ToolbarGroup>
 
-      <ToolbarSeparator />
+      <ToolbarSeparator className="toolbar-separator" />
 
       <ToolbarGroup>
         <HeadingDropdownMenu levels={[1, 2, 3, 4]} portal={isMobile} />
@@ -107,7 +105,7 @@ const MainToolbarContent = ({
         <CodeBlockButton />
       </ToolbarGroup>
 
-      <ToolbarSeparator />
+      <ToolbarSeparator className="toolbar-separator" />
 
       <ToolbarGroup>
         <MarkButton type="bold" />
@@ -123,14 +121,14 @@ const MainToolbarContent = ({
         {!isMobile ? <LinkPopover /> : <LinkButton onClick={onLinkClick} />}
       </ToolbarGroup>
 
-      <ToolbarSeparator />
+      <ToolbarSeparator className="toolbar-separator" />
 
       <ToolbarGroup>
         <MarkButton type="superscript" />
         <MarkButton type="subscript" />
       </ToolbarGroup>
 
-      <ToolbarSeparator />
+      <ToolbarSeparator className="toolbar-separator" />
 
       <ToolbarGroup>
         <TextAlignButton align="left" />
@@ -139,13 +137,13 @@ const MainToolbarContent = ({
         <TextAlignButton align="justify" />
       </ToolbarGroup>
 
-      <ToolbarSeparator />
+      <ToolbarSeparator className="toolbar-separator" />
 
       <ToolbarGroup>
         <ImageUploadButton text="" />
       </ToolbarGroup>
 
-      <ToolbarSeparator />
+      <ToolbarSeparator className="toolbar-separator" />
 
       <ToolbarGroup>
         <Button data-style="ghost" onClick={onFullscreenToggle} aria-label="toggle-fullscreen">
@@ -197,7 +195,8 @@ export interface FormEditorProps {
   onChange?: (value: string) => void
 }
 
-export function FormEditor({ maxHeight = 400 }: FormEditorProps) {
+export function FormEditor(props: FormEditorProps) {
+  const { maxHeight = 400, value, onChange } = props;
   const isMobile = useIsMobile();
   const { height } = useWindowSize();
   const [isFullscreen, setIsFullscreen] = React.useState(false);
@@ -215,7 +214,7 @@ export function FormEditor({ maxHeight = 400 }: FormEditorProps) {
         autocorrect: "off",
         autocapitalize: "off",
         "aria-label": "Main content area, start typing to enter text.",
-        class: "simple-editor",
+        class: "form-editor",
       },
     },
     extensions: [
@@ -237,6 +236,7 @@ export function FormEditor({ maxHeight = 400 }: FormEditorProps) {
       Subscript,
       Selection,
       TextStyle,
+      Color,
       ImageUploadNode.configure({
         accept: "image/*",
         maxSize: MAX_FILE_SIZE,
@@ -245,7 +245,8 @@ export function FormEditor({ maxHeight = 400 }: FormEditorProps) {
         onError: (error) => console.error("Upload failed:", error),
       }),
     ],
-    content,
+    onUpdate: ({ editor }) => { onChange?.(editor.getHTML()); },
+    content: value,
   });
 
   const rect = useCursorVisibility({

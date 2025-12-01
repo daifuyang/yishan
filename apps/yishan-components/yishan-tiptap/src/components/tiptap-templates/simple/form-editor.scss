@@ -16,14 +16,23 @@
   &>.tiptap-toolbar>.form-editor-toolbar {
     width: 100%;
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
+
+    &>.toolbar-separator {
+      margin-left: 4px;
+      margin-right: 4px;
+    }
   }
 
   &>.form-editor-content {
-    min-height: 150px;
     margin: 0;
-    padding: 4px 11px;
+    padding: 8px 12px;
     overflow-y: auto;
+
+    &>.form-editor {
+      min-height: 150px;
+    }
   }
 
   &.fullscreen {

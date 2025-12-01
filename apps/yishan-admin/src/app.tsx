@@ -14,7 +14,6 @@ import { getCurrentUser } from "@/services/yishan-admin/auth";
 import { App as AntdApp } from "antd";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
-import "@ant-design/v5-patch-for-react-19";
 import { getAuthorizedMenuTree } from "@/services/yishan-admin/sysMenus";
 import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
 import React from "react";
