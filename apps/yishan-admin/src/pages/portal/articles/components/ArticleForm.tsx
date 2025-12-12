@@ -7,15 +7,19 @@ import {
   ProFormSwitch,
   ProFormDateTimePicker,
   ProFormSelect,
-  ProFormList,
   type ProFormInstance,
   ProForm,
 } from "@ant-design/pro-components";
 import { FormEditor } from "yishan-tiptap";
 import dayjs from "dayjs";
-import { getArticleDetail, createArticle, updateArticle } from "@/services/yishan-admin/portalArticles";
+import {
+  getArticleDetail,
+  createArticle,
+  updateArticle,
+} from "@/services/yishan-admin/portalArticles";
 import { getCategoryList } from "@/services/yishan-admin/portalCategories";
-import { Col } from "antd";
+import { Col, Divider, Typography } from "antd";
+import TemplateDynamicFields from "../../templates/components/TemplateDynamicFields";
 
 export interface ArticleFormProps {
   title: string;
@@ -24,30 +28,67 @@ export interface ArticleFormProps {
   onFinish?: () => Promise<void>;
 }
 
-const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues = { status: "0", isPinned: false }, onFinish }) => {
+const ArticleForm: React.FC<ArticleFormProps> = ({
+  title,
+  trigger,
+  initialValues = { status: "0", isPinned: false },
+  onFinish,
+}) => {
   const formRef = useRef<ProFormInstance>(null);
+  const [templateFields, setTemplateFields] = React.useState<any[]>([]);
 
   const fetchDetail = async (id: number) => {
     const res = await getArticleDetail({ id });
     if (res.success && res.data) {
       const d: any = res.data;
-      const attributesList = d.attributes ? Object.entries(d.attributes).map(([k, v]) => ({ key: k, value: String(v) })) : [];
+      const attributesList = d.attributes
+        ? Object.entries(d.attributes).map(([k, v]) => ({
+            key: k,
+            value: String(v),
+          }))
+        : [];
       formRef.current?.setFieldsValue({
         ...d,
         publishTime: d.publishTime ? dayjs(d.publishTime) : undefined,
         attributesList,
       });
+      const fields: any[] = Array.isArray(d.templateSchema)
+        ? d.templateSchema
+        : [];
+      setTemplateFields(fields);
+      // 写入动态字段初始值（来源于 attributes）
+      if (fields.length > 0 && d.attributes) {
+        const dynVals: Record<string, any> = {};
+        for (const f of fields) {
+          const n = (f?.name || "").trim();
+          if (
+            n &&
+            d.attributes &&
+            Object.prototype.hasOwnProperty.call(d.attributes, n)
+          ) {
+            dynVals[n] = d.attributes[n];
+          }
+        }
+        if (Object.keys(dynVals).length > 0)
+          formRef.current?.setFieldsValue(dynVals);
+      }
     }
   };
 
   const handleFinish = async (values: any) => {
-    const attrs: Record<string, any> = Array.isArray(values.attributesList)
-      ? (values.attributesList as Array<{ key: string; value: string }>).reduce((acc, cur) => {
-        const k = String(cur.key || "").trim();
-        if (k.length > 0) acc[k] = cur.value;
-        return acc;
-      }, {} as Record<string, any>)
-      : values.attributes;
+    // 基于模板字段收集动态属性
+    let attrs: Record<string, any> = {};
+    if (Array.isArray(templateFields) && templateFields.length > 0) {
+      for (const f of templateFields) {
+        const n = (f?.name || "").trim();
+        if (!n) continue;
+        if (values.hasOwnProperty(n)) {
+          attrs[n] = values[n];
+        }
+      }
+    } else if (values.attributes) {
+      attrs = values.attributes as Record<string, any>;
+    }
 
     const basePayload: any = {
       title: values.title,
@@ -59,6 +100,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
       isPinned: values.isPinned,
       publishTime: values.publishTime,
       tags: values.tags,
+      templateId: values.templateId ?? initialValues?.templateId,
       categoryIds: values.categoryIds,
       attributes: attrs,
     };
@@ -70,7 +112,10 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
       }
       return false;
     }
-    const res = await updateArticle({ id: Number(initialValues.id) }, basePayload as API.updateArticleReq);
+    const res = await updateArticle(
+      { id: Number(initialValues.id) },
+      basePayload as API.updateArticleReq
+    );
     if (res.success) {
       if (onFinish) await onFinish();
       return true;
@@ -95,15 +140,27 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
       }}
       onFinish={handleFinish}
     >
-      <ProFormText name="title" label="标题" placeholder="请输入标题" colProps={{ span: 12 }} />
-      <ProFormText name="slug" label="URL标识" placeholder="请输入URL标识" colProps={{ span: 12 }} />
-      <ProFormText name="coverImage" label="封面图URL" placeholder="请输入封面图地址" colProps={{ span: 12 }} />
+      <ProFormText
+        name="title"
+        label="标题"
+        placeholder="请输入标题"
+        colProps={{ span: 12 }}
+      />
+      <ProFormText
+        name="slug"
+        label="URL标识"
+        placeholder="请输入URL标识"
+        colProps={{ span: 12 }}
+      />
       <ProFormSwitch name="isPinned" label="置顶" colProps={{ span: 12 }} />
 
       <ProFormRadio.Group
         name="status"
         label="状态"
-        options={[{ label: "草稿", value: "0" }, { label: "已发布", value: "1" }]}
+        options={[
+          { label: "草稿", value: "0" },
+          { label: "已发布", value: "1" },
+        ]}
         colProps={{ span: 12 }}
       />
 
@@ -126,8 +183,18 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
         showSearch
         debounceTime={200}
         request={async (params) => {
-          const res = await getCategoryList({ page: 1, pageSize: 100, status: "1", keyword: params.keyWords, sortBy: "sort_order", sortOrder: "asc" });
-          return (res.data || []).map((c: API.portalCategory) => ({ label: c.name, value: c.id }));
+          const res = await getCategoryList({
+            page: 1,
+            pageSize: 100,
+            status: "1",
+            keyword: params.keyWords,
+            sortBy: "sort_order",
+            sortOrder: "asc",
+          });
+          return (res.data || []).map((c: API.portalCategory) => ({
+            label: c.name,
+            value: c.id,
+          }));
         }}
         fieldProps={{ mode: "multiple", maxTagCount: "responsive" }}
         colProps={{ span: 24 }}
@@ -141,7 +208,19 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
         fieldProps={{ mode: "tags", tokenSeparators: [","] }}
       />
 
-      <ProFormTextArea name="summary" label="摘要" placeholder="请输入摘要" colProps={{ span: 24 }} />
+      <ProFormText
+        name="coverImage"
+        label="封面图URL"
+        placeholder="请输入封面图地址"
+        colProps={{ span: 24 }}
+      />
+
+      <ProFormTextArea
+        name="summary"
+        label="摘要"
+        placeholder="请输入摘要"
+        colProps={{ span: 24 }}
+      />
 
       <Col span={24}>
         <ProForm.Item name="content" label="正文">
@@ -149,18 +228,18 @@ const ArticleForm: React.FC<ArticleFormProps> = ({ title, trigger, initialValues
         </ProForm.Item>
       </Col>
 
-      {/* <ProFormList
-        name="attributesList"
-        label="自定义属性"
-        creatorButtonProps={{ position: "bottom", creatorButtonText: "新增属性" }}
-      >
-        {(f) => (
-          <>
-            <ProFormText name={[f.name, "key"]} label="键" colProps={{ span: 12 }} />
-            <ProFormText name={[f.name, "value"]} label="值" colProps={{ span: 12 }} />
-          </>
-        )}
-      </ProFormList> */}
+      <Col span={24}>
+        {/* <Typography.Title level={4}>扩展字段</Typography.Title> */}
+
+        <Divider>
+          扩展字段
+        </Divider>
+      </Col>
+
+      {/* 扩展区：动态模板字段渲染，位于表单底部 */}
+      {Array.isArray(templateFields) && templateFields.length > 0 && (
+        <TemplateDynamicFields fields={templateFields} />
+      )}
     </DrawerForm>
   );
 };

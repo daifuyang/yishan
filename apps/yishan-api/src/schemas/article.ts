@@ -40,6 +40,9 @@ const PortalArticleSchema = Type.Object(
     publishTime: Type.Optional(Type.String({ format: "date-time", description: "发布时间" })),
     tags: Type.Optional(Type.Array(Type.String(), { description: "标签" })),
     attributes: Type.Optional(Type.Ref("dynamicAttributes")),
+    templateId: Type.Optional(Type.Number({ description: "模板ID" })),
+    templateName: Type.Optional(Type.String({ description: "模板名称" })),
+    templateSchema: Type.Optional(Type.Ref("templateSchemaFields")),
     categoryIds: Type.Optional(Type.Array(Type.Number(), { description: "所属分类ID列表" })),
     creatorId: Type.Optional(Type.Number({ description: "创建人Id" })),
     creatorName: Type.Optional(Type.String({ description: "创建人名称" })),
@@ -68,6 +71,7 @@ const CreateArticleReqSchema = Type.Object(
     publishTime: Type.Optional(Type.String({ format: "date-time", description: "发布时间" })),
     tags: Type.Optional(Type.Array(Type.String(), { description: "标签" })),
     attributes: Type.Optional(Type.Ref("dynamicAttributes")),
+    templateId: Type.Optional(Type.Number({ description: "模板ID" })),
     categoryIds: Type.Optional(Type.Array(Type.Number(), { description: "分类ID列表" })),
   },
   { $id: "createArticleReq" }

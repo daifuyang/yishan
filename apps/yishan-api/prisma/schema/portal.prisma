@@ -33,31 +33,34 @@ model PortalCategory {
 }
 
 model PortalArticle {
-  id           Int       @id @default(autoincrement()) @map("id")
-  title        String    @map("title") @db.VarChar(200)
-  slug         String?   @unique @map("slug") @db.VarChar(200)
-  summary      String?   @map("summary") @db.VarChar(500)
-  content      String    @map("content") @db.Text
-  coverImage   String?   @map("cover_image") @db.VarChar(500)
-  status       Int       @default(0) @map("status") @db.TinyInt
-  isPinned     Boolean   @default(false) @map("is_pinned")
-  publishTime  DateTime? @map("publish_time") @db.DateTime(0)
-  attributes   Json?     @map("attributes")
-  tags         Json?     @map("tags")
-  creatorId    Int?      @map("creator_id")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(0)
-  updaterId    Int?      @map("updater_id")
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  deletedAt    DateTime? @map("deleted_at") @db.DateTime(0)
-  version      Int       @default(1) @map("version")
+  id          Int       @id @default(autoincrement()) @map("id")
+  title       String    @map("title") @db.VarChar(200)
+  slug        String?   @unique @map("slug") @db.VarChar(200)
+  summary     String?   @map("summary") @db.VarChar(500)
+  content     String    @map("content") @db.Text
+  coverImage  String?   @map("cover_image") @db.VarChar(500)
+  status      Int       @default(0) @map("status") @db.TinyInt
+  isPinned    Boolean   @default(false) @map("is_pinned")
+  publishTime DateTime? @map("publish_time") @db.DateTime(0)
+  attributes  Json?     @map("attributes")
+  tags        Json?     @map("tags")
+  templateId  Int?      @map("template_id")
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
 
-  creator SysUser? @relation("PortalArticleCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
-  updater SysUser? @relation("PortalArticleUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  creator  SysUser?        @relation("PortalArticleCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater  SysUser?        @relation("PortalArticleUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  template PortalTemplate? @relation("ArticleTemplate", fields: [templateId], references: [id], onUpdate: NoAction, onDelete: SetNull)
 
   articleCategories PortalArticleCategory[]
 
   @@index([status], map: "idx_article_status")
   @@index([publishTime], map: "idx_article_publish_time")
+  @@index([templateId], map: "idx_article_template_id")
   @@index([createdAt], map: "idx_article_created_at")
   @@index([deletedAt], map: "idx_article_deleted_at")
   @@map("portal_article")
@@ -69,7 +72,7 @@ model PortalArticleCategory {
   categoryId Int      @map("category_id")
   createdAt  DateTime @default(now()) @map("created_at") @db.DateTime(0)
 
-  article  PortalArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  article  PortalArticle  @relation(fields: [articleId], references: [id], onDelete: Cascade)
   category PortalCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([articleId, categoryId], map: "uniq_article_category")
@@ -86,6 +89,7 @@ model PortalPage {
   status      Int       @default(1) @map("status") @db.TinyInt
   attributes  Json?     @map("attributes")
   publishTime DateTime? @map("publish_time") @db.DateTime(0)
+  templateId  Int?      @map("template_id")
   creatorId   Int?      @map("creator_id")
   createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
   updaterId   Int?      @map("updater_id")
@@ -93,13 +97,46 @@ model PortalPage {
   deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
   version     Int       @default(1) @map("version")
 
-  creator SysUser? @relation("PortalPageCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
-  updater SysUser? @relation("PortalPageUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  creator  SysUser?        @relation("PortalPageCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater  SysUser?        @relation("PortalPageUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  template PortalTemplate? @relation("PageTemplate", fields: [templateId], references: [id], onUpdate: NoAction, onDelete: SetNull)
 
   @@index([status], map: "idx_page_status")
   @@index([path], map: "idx_page_path")
+  @@index([templateId], map: "idx_page_template_id")
   @@index([createdAt], map: "idx_page_created_at")
   @@index([deletedAt], map: "idx_page_deleted_at")
   @@map("portal_page")
 }
 
+// 模板模型，供文章与页面引用
+model PortalTemplate {
+  id              Int       @id @default(autoincrement()) @map("id")
+  name            String    @map("name") @db.VarChar(100)
+  description     String?   @map("description") @db.VarChar(255)
+  type            Int       @map("type") @db.TinyInt // 1-文章，2-页面
+  schema          Json?     @map("schema") // 可选：用于前端渲染的结构描述
+  config          Json?     @map("config") // 可选：一些配置，如默认值
+  status          Int       @default(1) @map("status") @db.TinyInt
+  isSystemDefault Boolean   @default(false) @map("is_system_default")
+  creatorId       Int?      @map("creator_id")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId       Int?      @map("updater_id")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt       DateTime? @map("deleted_at") @db.DateTime(0)
+  version         Int       @default(1) @map("version")
+
+  creator SysUser? @relation("PortalTemplateCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("PortalTemplateUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  articles PortalArticle[] @relation("ArticleTemplate")
+  pages    PortalPage[]    @relation("PageTemplate")
+
+  @@unique([type, name], map: "uniq_template_type_name")
+  @@index([type], map: "idx_template_type")
+  @@index([status], map: "idx_template_status")
+  @@index([isSystemDefault], map: "idx_template_is_system_default")
+  @@index([createdAt], map: "idx_template_created_at")
+  @@index([deletedAt], map: "idx_template_deleted_at")
+  @@map("portal_template")
+}

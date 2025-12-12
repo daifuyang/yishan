@@ -1,7 +1,10 @@
 import { PortalPageModel } from "../models/portal-page.model.js";
 import { CreatePageReq, PageListQuery, PortalPageResp, UpdatePageReq } from "../schemas/page.js";
+import { AssignTemplateReq } from "../schemas/template.js";
 import { BusinessError } from "../exceptions/business-error.js";
 import { PageErrorCode } from "../constants/business-codes/page.js";
+import { TemplateErrorCode } from "../constants/business-codes/template.js";
+import { PortalTemplateModel } from "../models/portal-template.model.js";
 
 export class PageService {
   static async getPageList(query: PageListQuery) {
@@ -40,5 +43,17 @@ export class PageService {
     const result = await PortalPageModel.deletePage(id);
     if (!result) throw new BusinessError(PageErrorCode.PAGE_NOT_FOUND, "页面不存在");
     return result;
+  }
+
+  static async assignTemplate(id: number, req: AssignTemplateReq, userId: number): Promise<PortalPageResp> {
+    const existed = await PortalPageModel.getPageById(id);
+    if (!existed) throw new BusinessError(PageErrorCode.PAGE_NOT_FOUND, "页面不存在");
+    if (req.templateId !== null && req.templateId !== undefined) {
+      const t = await PortalTemplateModel.getTemplateRawById(req.templateId);
+      if (!t) throw new BusinessError(TemplateErrorCode.TEMPLATE_NOT_FOUND, "模板不存在");
+      if (t.type !== 2) throw new BusinessError(TemplateErrorCode.TEMPLATE_TYPE_MISMATCH, "模板类型不匹配");
+      if (t.deletedAt || t.status !== 1) throw new BusinessError(TemplateErrorCode.TEMPLATE_NOT_FOUND, "模板不可用");
+    }
+    return await PortalPageModel.assignTemplate(id, req.templateId ?? null, userId);
   }
 }

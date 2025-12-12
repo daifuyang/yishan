@@ -1,5 +1,24 @@
 // System & core models
 
+model SysOption {
+  id          Int       @id @default(autoincrement()) @map("id")
+  key         String    @unique @map("key") @db.VarChar(100)
+  value       Int?      @map("value")
+  description String?   @map("description") @db.VarChar(255)
+  status      Int       @default(1) @map("status") @db.TinyInt
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
+
+  @@index([key], map: "idx_option_key")
+  @@index([status], map: "idx_option_status")
+  @@index([deletedAt], map: "idx_option_deleted_at")
+  @@map("sys_option")
+}
+
 model SysUser {
   id            Int       @id @default(autoincrement()) @map("id")
   username      String?   @unique @map("username") @db.VarChar(50)
@@ -27,7 +46,7 @@ model SysUser {
   updater      SysUser   @relation("UserUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   updatedUsers SysUser[] @relation("UserUpdater")
 
-  tokens SysUserToken[]
+  tokens    SysUserToken[]
   userRoles SysUserRole[]
   userDepts SysUserDept[]
 
@@ -52,10 +71,13 @@ model SysUser {
   // Portal reverse relations
   portalCategoriesCreated PortalCategory[] @relation("PortalCategoryCreator")
   portalCategoriesUpdated PortalCategory[] @relation("PortalCategoryUpdater")
-  portalArticlesCreated   PortalArticle[] @relation("PortalArticleCreator")
-  portalArticlesUpdated   PortalArticle[] @relation("PortalArticleUpdater")
-  portalPagesCreated      PortalPage[]    @relation("PortalPageCreator")
-  portalPagesUpdated      PortalPage[]    @relation("PortalPageUpdater")
+  portalArticlesCreated   PortalArticle[]  @relation("PortalArticleCreator")
+  portalArticlesUpdated   PortalArticle[]  @relation("PortalArticleUpdater")
+  portalPagesCreated      PortalPage[]     @relation("PortalPageCreator")
+  portalPagesUpdated      PortalPage[]     @relation("PortalPageUpdater")
+  // PortalTemplate 反向关系（用于模板的创建与更新人）
+  portalTemplatesCreated  PortalTemplate[] @relation("PortalTemplateCreator")
+  portalTemplatesUpdated  PortalTemplate[] @relation("PortalTemplateUpdater")
 
   @@index([status], map: "idx_status")
   @@index([createdAt], map: "idx_created_at")
@@ -315,4 +337,3 @@ model SysDictData {
   @@index([sort_order], map: "idx_dict_data_sort_order")
   @@map("sys_dict_data")
 }
-

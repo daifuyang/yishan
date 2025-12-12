@@ -7,6 +7,7 @@ type PageWithRelations = Prisma.PortalPageGetPayload<{
   include: {
     creator: { select: { username: true } };
     updater: { select: { username: true } };
+    template: { select: { name: true } };
   };
 }> & { creatorName?: string; updaterName?: string };
 
@@ -22,6 +23,8 @@ export class PortalPageModel {
       status: p.status.toString(),
       publishTime: dateUtils.formatISO(p.publishTime) ?? undefined,
       attributes: (p.attributes as any) ?? undefined,
+      templateId: p.templateId ?? undefined,
+      templateName: p.template?.name ?? undefined,
       creatorId: p.creatorId ?? undefined,
       creatorName: p.creator?.username ?? p.creatorName,
       createdAt: dateUtils.formatISO(p.createdAt)!,
@@ -42,7 +45,7 @@ export class PortalPageModel {
       orderBy,
       skip: pageSize === 0 ? undefined : (page - 1) * pageSize,
       take: pageSize === 0 ? undefined : pageSize,
-      include: { creator: { select: { username: true } }, updater: { select: { username: true } } },
+      include: { creator: { select: { username: true } }, updater: { select: { username: true } }, template: { select: { name: true } } },
     });
     return pages.map((p) => this.toResp(p as PageWithRelations));
   }
@@ -56,7 +59,7 @@ export class PortalPageModel {
   }
 
   static async getPageById(id: number): Promise<PortalPageResp | null> {
-    const p = await this.prisma.portalPage.findFirst({ where: { id, deletedAt: null }, include: { creator: { select: { username: true } }, updater: { select: { username: true } } } });
+    const p = await this.prisma.portalPage.findFirst({ where: { id, deletedAt: null }, include: { creator: { select: { username: true } }, updater: { select: { username: true } }, template: { select: { name: true } } } });
     if (!p) return null; return this.toResp(p as PageWithRelations);
   }
 
@@ -71,10 +74,11 @@ export class PortalPageModel {
         status: req.status ? parseInt(req.status, 10) : 1,
         publishTime: req.publishTime ? new Date(req.publishTime) : null,
         attributes: req.attributes ? (req.attributes as any) : undefined,
+        templateId: (req as any).templateId ?? null,
         creatorId: userId,
         updaterId: userId,
       },
-      include: { creator: { select: { username: true } }, updater: { select: { username: true } } },
+      include: { creator: { select: { username: true } }, updater: { select: { username: true } }, template: { select: { name: true } } },
     });
     return this.toResp(p as PageWithRelations);
   }
@@ -87,8 +91,9 @@ export class PortalPageModel {
     if (req.status !== undefined) data.status = parseInt(req.status, 10);
     if (req.publishTime !== undefined) data.publishTime = req.publishTime ? new Date(req.publishTime) : null;
     if (req.attributes !== undefined) data.attributes = req.attributes as any;
+    if ((req as any).templateId !== undefined) data.templateId = (req as any).templateId ?? null;
     if (userId) data.updaterId = userId;
-    const p = await this.prisma.portalPage.update({ where: { id }, data, include: { creator: { select: { username: true } }, updater: { select: { username: true } } } });
+    const p = await this.prisma.portalPage.update({ where: { id }, data, include: { creator: { select: { username: true } }, updater: { select: { username: true } }, template: { select: { name: true } } } });
     return this.toResp(p as PageWithRelations);
   }
 
@@ -97,5 +102,11 @@ export class PortalPageModel {
     if (!exists) return null;
     await this.prisma.portalPage.update({ where: { id }, data: { deletedAt: new Date(), status: 0 } });
     return { id };
+  }
+
+  static async assignTemplate(id: number, templateId: number | null, userId?: number): Promise<PortalPageResp> {
+    await this.prisma.portalPage.update({ where: { id }, data: { templateId: templateId ?? null, updaterId: userId } });
+    const p = await this.prisma.portalPage.findUnique({ where: { id }, include: { creator: { select: { username: true } }, updater: { select: { username: true } }, template: { select: { name: true } } } });
+    return this.toResp(p as PageWithRelations);
   }
 }

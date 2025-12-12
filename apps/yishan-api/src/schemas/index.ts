@@ -10,6 +10,7 @@ import registerMenu from "./menu.js";
 import registerDict from "./dict.js";
 import registerArticleSchemas from "./article.js";
 import registerPageSchemas from "./page.js";
+import registerTemplateSchemas from "./template.js";
 
 // Schema插件，定义共享的Schema引用
 export default fp(async (fastify, opts) => {
@@ -24,4 +25,5 @@ export default fp(async (fastify, opts) => {
   registerDict(fastify);
   registerArticleSchemas(fastify);
   registerPageSchemas(fastify);
+  registerTemplateSchemas(fastify);
 });

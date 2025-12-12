@@ -13,6 +13,8 @@ const PortalPageSchema = Type.Object(
     status: Type.String({ enum: ["0", "1"], description: "状态（0-禁用，1-启用）", example: "1" }),
     publishTime: Type.Optional(Type.String({ format: "date-time", description: "发布时间" })),
     attributes: Type.Optional(Type.Ref("pageDynamicAttributes")),
+    templateId: Type.Optional(Type.Number({ description: "模板ID" })),
+    templateName: Type.Optional(Type.String({ description: "模板名称" })),
     creatorId: Type.Optional(Type.Number({ description: "创建人Id" })),
     creatorName: Type.Optional(Type.String({ description: "创建人名称" })),
     createdAt: Type.String({ format: "date-time", description: "创建时间" }),
@@ -34,6 +36,7 @@ const CreatePageReqSchema = Type.Object(
     status: Type.Optional(Type.String({ enum: ["0", "1"], description: "状态", default: "1" })),
     publishTime: Type.Optional(Type.String({ format: "date-time", description: "发布时间" })),
     attributes: Type.Optional(Type.Ref("pageDynamicAttributes")),
+    templateId: Type.Optional(Type.Number({ description: "模板ID" })),
   },
   { $id: "createPageReq" }
 );

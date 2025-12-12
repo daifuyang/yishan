@@ -1,8 +1,11 @@
 import { PortalArticleModel } from "../models/portal-article.model.js";
 import { PortalCategoryModel } from "../models/portal-category.model.js";
 import { ArticleListQuery, CreateArticleReq, PortalArticleResp, UpdateArticleReq, CategoryListQuery, PortalCategoryResp, SaveCategoryReq, UpdateCategoryReq } from "../schemas/article.js";
+import { AssignTemplateReq } from "../schemas/template.js";
 import { BusinessError } from "../exceptions/business-error.js";
 import { ArticleErrorCode, CategoryErrorCode } from "../constants/business-codes/article.js";
+import { TemplateErrorCode } from "../constants/business-codes/template.js";
+import { PortalTemplateModel } from "../models/portal-template.model.js";
 
 export class ArticleService {
   static async getArticleList(query: ArticleListQuery) {
@@ -46,6 +49,18 @@ export class ArticleService {
     const result = await PortalArticleModel.publishArticle(id, userId);
     if (!result) throw new BusinessError(ArticleErrorCode.ARTICLE_NOT_FOUND, "文章不存在");
     return result;
+  }
+
+  static async assignTemplate(id: number, req: AssignTemplateReq, userId: number): Promise<PortalArticleResp> {
+    const existed = await PortalArticleModel.getArticleById(id);
+    if (!existed) throw new BusinessError(ArticleErrorCode.ARTICLE_NOT_FOUND, "文章不存在");
+    if (req.templateId !== null && req.templateId !== undefined) {
+      const t = await PortalTemplateModel.getTemplateRawById(req.templateId);
+      if (!t) throw new BusinessError(TemplateErrorCode.TEMPLATE_NOT_FOUND, "模板不存在");
+      if (t.type !== 1) throw new BusinessError(TemplateErrorCode.TEMPLATE_TYPE_MISMATCH, "模板类型不匹配");
+      if (t.deletedAt || t.status !== 1) throw new BusinessError(TemplateErrorCode.TEMPLATE_NOT_FOUND, "模板不可用");
+    }
+    return await PortalArticleModel.assignTemplate(id, req.templateId ?? null, userId);
   }
 }
 

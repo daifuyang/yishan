@@ -14,6 +14,8 @@ export default {
   'menu.portal.articles': '文章管理',
   'menu.portal.categories': '分类管理',
   'menu.portal.pages': '页面管理',
+  'menu.portal.article-templates': '文章模板',
+  'menu.portal.page-templates': '页面模板',
   'menu.login': '登录',
   'menu.register': '注册',
   'menu.register-result': '注册结果',

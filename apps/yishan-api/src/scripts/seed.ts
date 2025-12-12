@@ -419,6 +419,75 @@ async function main() {
     await upsertPage('关于我们', '/about', '关于我们页面内容', { layout: 'full' });
     await upsertPage('联系我们', '/contact', '联系方式与地址', { form: true });
 
+    // ================================
+    // 模板：默认详情（文章）与默认页面（页面）
+    // ================================
+    const upsertTemplate = async (
+      name: string,
+      type: 'article' | 'page',
+      description?: string,
+      schema?: Record<string, any>,
+      config?: Record<string, any>,
+    ) => {
+      const existed = await prisma.portalTemplate.findFirst({ where: { name, type: type === 'article' ? 1 : 2, deletedAt: null } });
+      if (existed) {
+        const updateData: any = {
+          description: description ?? existed.description ?? undefined,
+          schema: schema ? (schema as any) : undefined,
+          config: config ? (config as any) : undefined,
+          status: 1,
+          isSystemDefault: true,
+          updaterId: adminUser!.id,
+        };
+        const t = await prisma.portalTemplate.update({
+          where: { id: existed.id },
+          data: updateData,
+        });
+        return t;
+      }
+      const createData: any = {
+        name,
+        type: type === 'article' ? 1 : 2,
+        description: description ?? null,
+        schema: schema ? (schema as any) : undefined,
+        config: config ? (config as any) : undefined,
+        status: 1,
+        isSystemDefault: true,
+        creatorId: adminUser!.id,
+        updaterId: adminUser!.id,
+      };
+      const t = await prisma.portalTemplate.create({ data: createData });
+      return t;
+    };
+
+    await upsertTemplate('默认详情', 'article', '系统默认文章详情模板');
+    await upsertTemplate('默认页面', 'page', '系统默认页面模板');
+
+    // 初始化系统参数：默认模板ID
+    try {
+      const defaultArticle = await prisma.portalTemplate.findFirst({ where: { name: '默认详情', type: 1, deletedAt: null } });
+      const defaultPage = await prisma.portalTemplate.findFirst({ where: { name: '默认页面', type: 2, deletedAt: null } });
+      if (defaultArticle) {
+        const existed = await prisma.sysOption.findFirst({ where: { key: 'defaultArticleTemplateId' } });
+        if (existed) {
+          await prisma.sysOption.update({ where: { id: existed.id }, data: { value: defaultArticle.id, updaterId: adminUser!.id } });
+        } else {
+          await prisma.sysOption.create({ data: { key: 'defaultArticleTemplateId', value: defaultArticle.id, status: 1, creatorId: adminUser!.id, updaterId: adminUser!.id } });
+        }
+      }
+      if (defaultPage) {
+        const existed = await prisma.sysOption.findFirst({ where: { key: 'defaultPageTemplateId' } });
+        if (existed) {
+          await prisma.sysOption.update({ where: { id: existed.id }, data: { value: defaultPage.id, updaterId: adminUser!.id } });
+        } else {
+          await prisma.sysOption.create({ data: { key: 'defaultPageTemplateId', value: defaultPage.id, status: 1, creatorId: adminUser!.id, updaterId: adminUser!.id } });
+        }
+      }
+      console.log('✅ 系统默认模板参数初始化完成');
+    } catch (e) {
+      console.warn('⚠️ 系统默认模板参数初始化失败:', e);
+    }
+
     const upsertArticle = async (
       title: string,
       slug: string,
@@ -471,6 +540,9 @@ async function main() {
     await upsertMenuByPath('文章管理', '/portal/articles', 1, 1, portalRoot.id, undefined, './portal/articles');
     await upsertMenuByPath('页面管理', '/portal/pages', 1, 2, portalRoot.id, undefined, './portal/pages');
     await upsertMenuByPath('分类管理', '/portal/categories', 1, 3, portalRoot.id, undefined, './portal/categories');
+    // 模板管理菜单
+    await upsertMenuByPath('文章模板', '/portal/article-templates', 1, 4, portalRoot.id, undefined, './portal/article-templates');
+    await upsertMenuByPath('页面模板', '/portal/page-templates', 1, 5, portalRoot.id, undefined, './portal/page-templates');
 
     console.log('✅ 门户管理菜单创建完成');
 

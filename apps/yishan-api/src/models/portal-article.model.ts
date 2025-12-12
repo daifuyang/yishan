@@ -2,12 +2,14 @@ import { prismaManager } from "../utils/prisma.js";
 import type { Prisma } from "../generated/prisma/client.js";
 import { ArticleListQuery, CreateArticleReq, PortalArticleResp, UpdateArticleReq } from "../schemas/article.js";
 import { dateUtils } from "../utils/date.js";
+import { SysOptionModel } from "./sys-option.model.js";
 
 type ArticleWithRelations = Prisma.PortalArticleGetPayload<{
   include: {
     creator: { select: { username: true } };
     updater: { select: { username: true } };
     articleCategories: { select: { categoryId: true } };
+    template: { select: { name: true, schema: true } };
   };
 }> & { creatorName?: string; updaterName?: string };
 
@@ -27,6 +29,9 @@ export class PortalArticleModel {
       publishTime: dateUtils.formatISO(a.publishTime) ?? undefined,
       tags: Array.isArray(a.tags as any) ? (a.tags as any) : undefined,
       attributes: (a.attributes as any) ?? undefined,
+      templateId: a.templateId ?? undefined,
+      templateName: a.template?.name ?? undefined,
+      templateSchema: (a.template?.schema as any) ?? undefined,
       categoryIds: a.articleCategories?.map((c) => c.categoryId),
       creatorId: a.creatorId ?? undefined,
       creatorName: a.creator?.username ?? a.creatorName,
@@ -35,6 +40,14 @@ export class PortalArticleModel {
       updaterName: a.updater?.username ?? a.updaterName,
       updatedAt: dateUtils.formatISO(a.updatedAt)!,
     };
+  }
+
+  private static async getDefaultArticleTemplate() {
+    const defaultId = await SysOptionModel.getOptionValue("defaultArticleTemplateId");
+    if (!defaultId) return null;
+    const tpl = await this.prisma.portalTemplate.findFirst({ where: { id: defaultId, deletedAt: null }, select: { id: true, name: true, schema: true } });
+    if (!tpl) return null;
+    return { id: tpl.id, name: tpl.name, schema: (tpl.schema as any) ?? [] };
   }
 
   static async getArticleList(query: ArticleListQuery): Promise<PortalArticleResp[]> {
@@ -75,6 +88,7 @@ export class PortalArticleModel {
         creator: { select: { username: true } },
         updater: { select: { username: true } },
         articleCategories: categoryId ? { where: { categoryId }, select: { categoryId: true } } : { select: { categoryId: true } },
+        template: { select: { name: true, schema: true } },
       },
     });
 
@@ -83,7 +97,16 @@ export class PortalArticleModel {
       ? articles.filter((a) => a.articleCategories.some((c) => c.categoryId === categoryId))
       : articles;
 
-    return filtered.map((a) => this.toResp(a));
+    const defaultTpl = await this.getDefaultArticleTemplate();
+    return filtered.map((a) => {
+      const resp = this.toResp(a as ArticleWithRelations);
+      if (!resp.templateId && defaultTpl) {
+        resp.templateId = defaultTpl.id;
+        resp.templateSchema = defaultTpl.schema;
+        if (!resp.templateName) resp.templateName = defaultTpl.name;
+      }
+      return resp;
+    });
   }
 
   static async getArticleTotal(query: ArticleListQuery): Promise<number> {
@@ -128,10 +151,20 @@ export class PortalArticleModel {
         creator: { select: { username: true } },
         updater: { select: { username: true } },
         articleCategories: { select: { categoryId: true } },
+        template: { select: { name: true, schema: true } },
       },
     });
     if (!article) return null;
-    return this.toResp(article as ArticleWithRelations);
+    const resp = this.toResp(article as ArticleWithRelations);
+    if (!resp.templateId) {
+      const defaultTpl = await this.getDefaultArticleTemplate();
+      if (defaultTpl) {
+        resp.templateId = defaultTpl.id;
+        resp.templateSchema = defaultTpl.schema;
+        if (!resp.templateName) resp.templateName = defaultTpl.name;
+      }
+    }
+    return resp;
   }
 
   static async getArticleBySlug(slug: string) {
@@ -152,6 +185,7 @@ export class PortalArticleModel {
           publishTime: req.publishTime ? new Date(req.publishTime) : null,
           tags: req.tags ? (req.tags as any) : undefined,
           attributes: req.attributes ? (req.attributes as any) : undefined,
+          templateId: req.templateId ?? null,
           creatorId: userId,
           updaterId: userId,
         },
@@ -173,11 +207,23 @@ export class PortalArticleModel {
           creator: { select: { username: true } },
           updater: { select: { username: true } },
           articleCategories: { select: { categoryId: true } },
+          template: { select: { name: true } },
         },
       });
       return final as ArticleWithRelations;
     });
-    return this.toResp(result);
+    {
+      const resp = this.toResp(result);
+      if (!resp.templateId) {
+        const defaultTpl = await this.getDefaultArticleTemplate();
+        if (defaultTpl) {
+          resp.templateId = defaultTpl.id;
+          resp.templateSchema = defaultTpl.schema;
+          if (!resp.templateName) resp.templateName = defaultTpl.name;
+        }
+      }
+      return resp;
+    }
   }
 
   static async updateArticle(id: number, req: UpdateArticleReq, userId?: number): Promise<PortalArticleResp> {
@@ -192,6 +238,7 @@ export class PortalArticleModel {
     if (req.publishTime !== undefined) data.publishTime = req.publishTime ? new Date(req.publishTime) : null;
     if (req.tags !== undefined) data.tags = req.tags as any;
     if (req.attributes !== undefined) data.attributes = req.attributes as any;
+    if (req.templateId !== undefined) data.templateId = req.templateId ?? null;
     if (userId) data.updaterId = userId;
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -217,11 +264,23 @@ export class PortalArticleModel {
           creator: { select: { username: true } },
           updater: { select: { username: true } },
           articleCategories: { select: { categoryId: true } },
-        },
-      });
+        template: { select: { name: true } },
+      },
+    });
       return final as ArticleWithRelations;
     });
-    return this.toResp(result);
+    {
+      const resp = this.toResp(result);
+      if (!resp.templateId) {
+        const defaultTpl = await this.getDefaultArticleTemplate();
+        if (defaultTpl) {
+          resp.templateId = defaultTpl.id;
+          resp.templateSchema = defaultTpl.schema;
+          if (!resp.templateName) resp.templateName = defaultTpl.name;
+        }
+      }
+      return resp;
+    }
   }
 
   static async deleteArticle(id: number): Promise<{ id: number } | null> {
@@ -244,7 +303,30 @@ export class PortalArticleModel {
     });
     const final = await this.prisma.portalArticle.findUnique({
       where: { id },
-      include: { articleCategories: { select: { categoryId: true } }, creator: { select: { username: true } }, updater: { select: { username: true } } },
+      include: { articleCategories: { select: { categoryId: true } }, template: { select: { name: true, schema: true } }, creator: { select: { username: true } }, updater: { select: { username: true } } },
+    });
+    {
+      const resp = this.toResp(final as ArticleWithRelations);
+      if (!resp.templateId) {
+        const defaultTpl = await this.getDefaultArticleTemplate();
+        if (defaultTpl) {
+          resp.templateId = defaultTpl.id;
+          resp.templateSchema = defaultTpl.schema;
+          if (!resp.templateName) resp.templateName = defaultTpl.name;
+        }
+      }
+      return resp;
+    }
+  }
+
+  static async assignTemplate(id: number, templateId: number | null, userId?: number): Promise<PortalArticleResp> {
+    await this.prisma.portalArticle.update({
+      where: { id },
+      data: { templateId: templateId ?? null, updaterId: userId },
+    });
+    const final = await this.prisma.portalArticle.findUnique({
+      where: { id },
+      include: { articleCategories: { select: { categoryId: true } }, template: { select: { name: true } }, creator: { select: { username: true } }, updater: { select: { username: true } } },
     });
     return this.toResp(final as ArticleWithRelations);
   }

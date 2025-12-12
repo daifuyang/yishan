@@ -1,12 +1,13 @@
 import React, { useRef } from "react";
-import { ModalForm, ProFormText, ProFormTextArea, ProFormRadio, ProFormDateTimePicker, ProFormList, type ProFormInstance } from "@ant-design/pro-components";
+import { ModalForm, ProFormText, ProFormTextArea, ProFormRadio, ProFormDateTimePicker, ProFormList, ProFormSelect, type ProFormInstance } from "@ant-design/pro-components";
 import { useModel } from "@umijs/max";
-import { getPageDetail, createPage, updatePage } from "@/services/yishan-admin/portalPages";
+import { getPageDetail, createPage, updatePage, getPageTemplateList, getPageTemplateSchema } from "@/services/yishan-admin/portalPages";
 import dayjs from "dayjs";
+import TemplateDynamicFields from "../../templates/components/TemplateDynamicFields";
 
 export interface PageFormProps {
   title: string;
-  trigger: React.ReactNode;
+  trigger: JSX.Element;
   initialValues?: Partial<API.portalPage>;
   onFinish?: () => Promise<void>;
 }
@@ -16,6 +17,7 @@ const PageForm: React.FC<PageFormProps> = ({ title, trigger, initialValues = { s
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
   const formRef = useRef<ProFormInstance>(null);
+  const [templateFields, setTemplateFields] = React.useState<any[]>([]);
 
   const fetchDetail = async (id: number) => {
     const res = await getPageDetail({ id });
@@ -27,17 +29,38 @@ const PageForm: React.FC<PageFormProps> = ({ title, trigger, initialValues = { s
         publishTime: d.publishTime ? dayjs(d.publishTime) : undefined,
         attributesList,
       });
+      let fields: any[] = Array.isArray(d.templateSchema) ? d.templateSchema : [];
+      if ((!fields || fields.length === 0) && d.templateId) {
+        const schemaRes = await getPageTemplateSchema({ id: d.templateId });
+        fields = Array.isArray(schemaRes?.data) ? schemaRes.data : [];
+      }
+      setTemplateFields(fields);
+      if (fields.length > 0 && d.attributes) {
+        const dynVals: Record<string, any> = {};
+        for (const f of fields) {
+          const n = (f?.name || '').trim();
+          if (n && d.attributes && Object.prototype.hasOwnProperty.call(d.attributes, n)) {
+            dynVals[n] = d.attributes[n];
+          }
+        }
+        if (Object.keys(dynVals).length > 0) formRef.current?.setFieldsValue(dynVals);
+      }
     }
   };
 
   const handleFinish = async (values: any) => {
-    const attrs: Record<string, any> = Array.isArray(values.attributesList)
-      ? (values.attributesList as Array<{ key: string; value: string }>).reduce((acc, cur) => {
-          const k = String(cur.key || "").trim();
-          if (k.length > 0) acc[k] = cur.value;
-          return acc;
-        }, {} as Record<string, any>)
-      : values.attributes;
+    let attrs: Record<string, any> = {};
+    if (Array.isArray(templateFields) && templateFields.length > 0) {
+      for (const f of templateFields) {
+        const n = (f?.name || '').trim();
+        if (!n) continue;
+        if (values.hasOwnProperty(n)) {
+          attrs[n] = values[n];
+        }
+      }
+    } else if (values.attributes) {
+      attrs = values.attributes as Record<string, any>;
+    }
 
     const basePayload: any = {
       title: values.title,
@@ -45,6 +68,7 @@ const PageForm: React.FC<PageFormProps> = ({ title, trigger, initialValues = { s
       content: values.content,
       status: values.status,
       publishTime: values.publishTime,
+      templateId: values.templateId ?? initialValues?.templateId,
       attributes: attrs,
     };
     if (!initialValues?.id) {
@@ -86,6 +110,27 @@ const PageForm: React.FC<PageFormProps> = ({ title, trigger, initialValues = { s
         }}
       />
       <ProFormTextArea name="content" label="页面内容" placeholder="请输入页面内容" colProps={{ span: 24 }} fieldProps={{ autoSize: { minRows: 6 } }} />
+
+      <ProFormSelect
+        name="templateId"
+        label="模板"
+        placeholder="请选择页面模板"
+        showSearch
+        initialValue={2}
+        debounceTime={200}
+        request={async (params: { keyWords?: string }) => {
+          const res = await getPageTemplateList({ page: 1, pageSize: 50, status: "1", keyword: params.keyWords });
+          const options = (res.data || []).map((t: API.portalTemplate) => ({ label: t.name, value: t.id }));
+          return options;
+        }}
+        colProps={{ span: 24 }}
+      />
+
+
+      {/* 扩展区：动态模板字段渲染，位于表单底部 */}
+      {Array.isArray(templateFields) && templateFields.length > 0 && (
+        <TemplateDynamicFields fields={templateFields} title="扩展" />
+      )}
 
       <ProFormList
         name="attributesList"

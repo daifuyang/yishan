@@ -7,7 +7,7 @@ type CategoryTreeNode = Omit<API.portalCategory, "children"> & { children?: Cate
 
 export interface CategoryFormProps {
   title: string;
-  trigger: React.ReactNode;
+  trigger?: JSX.Element;
   initialValues?: Partial<API.portalCategory>;
   onFinish?: () => Promise<void>;
 }
@@ -71,6 +71,8 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ title, trigger, initialValu
     if (res.success) { await onFinish?.(); return true; }
     return false;
   };
+
+  if (!trigger) return null;
 
   return (
     <ModalForm

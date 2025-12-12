@@ -51,6 +51,18 @@ export default [
         component: './portal/pages',
         access: 'canDo',
       },
+      {
+        path: '/portal/article-templates',
+        name: 'portal.article-templates',
+        component: './portal/article-templates',
+        access: 'canDo',
+      },
+      {
+        path: '/portal/page-templates',
+        name: 'portal.page-templates',
+        component: './portal/page-templates',
+        access: 'canDo',
+      },
     ],
   },
   {

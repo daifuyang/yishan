@@ -81,6 +81,37 @@ export const tokenStatsResp = {
   }
 } as const;
 
+// 系统参数键
+export const systemOptionKey = {
+  $id: "systemOptionKey",
+  type: "string",
+  enum: ["defaultArticleTemplateId", "defaultPageTemplateId"],
+  description: "系统参数键"
+} as const;
+
+// 设置系统参数请求
+export const setSystemOptionReq = {
+  $id: "setSystemOptionReq",
+  type: "object",
+  properties: {
+    value: { type: "integer", minimum: 1, description: "参数数值（模板ID）" }
+  },
+  required: ["value"]
+} as const;
+
+// 获取系统参数响应
+export const getSystemOptionResp = {
+  $id: "getSystemOptionResp",
+  type: "object",
+  properties: {
+    success: { type: "boolean" },
+    code: { type: "number" },
+    message: { type: "string" },
+    timestamp: { type: "string" },
+    data: { anyOf: [{ type: "integer" }, { type: "null" }] }
+  }
+} as const;
+
 /**
  * 注册系统管理相关模式
  */
@@ -88,4 +119,7 @@ export default function registerSystem(fastify: any) {
   fastify.addSchema(cleanupTokensReq);
   fastify.addSchema(cleanupTokensResp);
   fastify.addSchema(tokenStatsResp);
+  fastify.addSchema(systemOptionKey);
+  fastify.addSchema(setSystemOptionReq);
+  fastify.addSchema(getSystemOptionResp);
 }

@@ -45,6 +45,21 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type assignArticleTemplateParams = {
+    /** 文章ID */
+    id: number;
+  };
+
+  type assignPageTemplateParams = {
+    /** 页面ID */
+    id: number;
+  };
+
+  type assignTemplateReq = {
+    /** 模板ID（null表示取消设置） */
+    templateId: number | null;
+  };
+
   type categoryDeleteResp = {
     code: number;
     message: string;
@@ -120,6 +135,8 @@ declare namespace API {
     /** 标签 */
     tags?: string[];
     attributes?: dynamicAttributes;
+    /** 模板ID */
+    templateId?: number;
     /** 分类ID列表 */
     categoryIds?: number[];
   };
@@ -151,6 +168,24 @@ declare namespace API {
     /** 发布时间 */
     publishTime?: string;
     attributes?: pageDynamicAttributes;
+    /** 模板ID */
+    templateId?: number;
+  };
+
+  type createTemplateReq = {
+    /** 模板名称 */
+    name: string;
+    /** 模板描述 */
+    description?: string;
+    /** 模板类型 */
+    type: "article" | "page";
+    schema?: templateSchemaFields;
+    /** 模板配置（JSON） */
+    config?: any;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 是否系统默认 */
+    isSystemDefault?: boolean;
   };
 
   type createUserReq = {
@@ -229,6 +264,11 @@ declare namespace API {
     id: number;
   };
 
+  type deleteArticleTemplateParams = {
+    /** 模板ID */
+    id: number;
+  };
+
   type deleteCategoryParams = {
     /** 分类ID */
     id: number;
@@ -254,6 +294,11 @@ declare namespace API {
 
   type deletePageParams = {
     /** 页面ID */
+    id: number;
+  };
+
+  type deletePageTemplateParams = {
+    /** 模板ID */
     id: number;
   };
 
@@ -468,6 +513,26 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
+  type getArticleTemplateListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称） */
+    keyword?: string;
+    /** 模板类型 */
+    type?: "article" | "page";
+    /** 状态 */
+    status?: "0" | "1";
+    sortBy?: "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getArticleTemplateSchemaParams = {
+    /** 模板ID */
+    id: number;
+  };
+
   type getCategoryDetailParams = {
     /** 分类ID */
     id: number;
@@ -584,6 +649,26 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
+  type getPageTemplateListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称） */
+    keyword?: string;
+    /** 模板类型 */
+    type?: "article" | "page";
+    /** 状态 */
+    status?: "0" | "1";
+    sortBy?: "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getPageTemplateSchemaParams = {
+    /** 模板ID */
+    id: number;
+  };
+
   type getPostDetailParams = {
     /** 岗位ID */
     id: string;
@@ -622,6 +707,14 @@ declare namespace API {
     sortBy?: "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
+  };
+
+  type getSystemOptionResp = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    timestamp?: string;
+    data?: number | null;
   };
 
   type getUserDetailParams = {
@@ -857,6 +950,11 @@ declare namespace API {
     /** 标签 */
     tags?: string[];
     attributes?: dynamicAttributes;
+    /** 模板ID */
+    templateId?: number;
+    /** 模板名称 */
+    templateName?: string;
+    templateSchema?: templateSchemaFields;
     /** 所属分类ID列表 */
     categoryIds?: number[];
     /** 创建人Id */
@@ -918,6 +1016,40 @@ declare namespace API {
     /** 发布时间 */
     publishTime?: string;
     attributes?: pageDynamicAttributes;
+    /** 模板ID */
+    templateId?: number;
+    /** 模板名称 */
+    templateName?: string;
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type portalTemplate = {
+    /** 模板ID */
+    id: number;
+    /** 模板名称 */
+    name: string;
+    /** 模板描述 */
+    description?: string;
+    /** 模板类型 */
+    type: "article" | "page";
+    schema?: templateSchemaFields;
+    /** 模板配置（JSON） */
+    config?: any;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 是否系统默认 */
+    isSystemDefault?: boolean;
     /** 创建人Id */
     creatorId?: number;
     /** 创建人名称 */
@@ -1113,6 +1245,11 @@ declare namespace API {
     menuIds?: number[];
   };
 
+  type setSystemOptionReq = {
+    /** 参数数值（模板ID） */
+    value: number;
+  };
+
   type sysDept = {
     /** 部门ID */
     id: number;
@@ -1275,6 +1412,8 @@ declare namespace API {
     menuIds?: number[];
   };
 
+  type systemOptionKey = "defaultArticleTemplateId" | "defaultPageTemplateId";
+
   type sysUser = {
     /** 用户ID */
     id: number;
@@ -1324,6 +1463,78 @@ declare namespace API {
     roleIds?: number[];
   };
 
+  type templateDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type templateDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: portalTemplate;
+    timestamp: string;
+  };
+
+  type templateField = {
+    /** 字段显示名称 */
+    label: string;
+    /** 组件类型，如 input、radio、select 等 */
+    type: string;
+    /** 字段标识名称（可选） */
+    name?: string;
+    /** 是否必填 */
+    required?: boolean;
+    /** 可选项（适用于 radio/select/checkbox 等） */
+    options?: { label: string; value: any }[];
+    /** 组件属性 */
+    props?: Record<string, any>;
+  };
+
+  type templateFieldOption = {
+    /** 选项文本 */
+    label: string;
+    /** 选项值 */
+    value: any;
+  };
+
+  type templateListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称） */
+    keyword?: string;
+    /** 模板类型 */
+    type?: "article" | "page";
+    /** 状态 */
+    status?: "0" | "1";
+    sortBy?: "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type templateListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: portalTemplate[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type templateSchemaFields = Record<string, any>;
+
+  type templateSchemaResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: templateSchemaFields;
+    timestamp: string;
+  };
+
   type tokenStatsResp = {
     success?: boolean;
     code?: number;
@@ -1362,8 +1573,20 @@ declare namespace API {
     /** 标签 */
     tags?: string[];
     attributes?: dynamicAttributes;
+    /** 模板ID */
+    templateId?: number;
     /** 分类ID列表 */
     categoryIds?: number[];
+  };
+
+  type updateArticleTemplateParams = {
+    /** 模板ID */
+    id: number;
+  };
+
+  type updateArticleTemplateSchemaParams = {
+    /** 模板ID */
+    id: number;
   };
 
   type updateCategoryParams = {
@@ -1482,6 +1705,18 @@ declare namespace API {
     /** 发布时间 */
     publishTime?: string;
     attributes?: pageDynamicAttributes;
+    /** 模板ID */
+    templateId?: number;
+  };
+
+  type updatePageTemplateParams = {
+    /** 模板ID */
+    id: number;
+  };
+
+  type updatePageTemplateSchemaParams = {
+    /** 模板ID */
+    id: number;
   };
 
   type updatePostParams = {
@@ -1514,6 +1749,24 @@ declare namespace API {
     status?: "0" | "1";
     /** 菜单ID列表 */
     menuIds?: number[];
+  };
+
+  type updateTemplateReq = {
+    /** 模板名称 */
+    name?: string;
+    /** 模板描述 */
+    description?: string;
+    /** 模板类型 */
+    type?: "article" | "page";
+    schema?: templateSchemaFields;
+    /** 模板配置（JSON） */
+    config?: any;
+    /** 状态 */
+    status?: "0" | "1";
+  };
+
+  type updateTemplateSchemaReq = {
+    schema: templateSchemaFields;
   };
 
   type updateUserParams = {
