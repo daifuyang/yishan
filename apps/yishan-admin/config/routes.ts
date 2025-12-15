@@ -112,6 +112,12 @@ export default [
         component: './system/dict',
         access: 'canDo',
       },
+      {
+        path: '/system/qiniu',
+        name: 'qiniu',
+        component: './system/qiniu',
+        access: 'canDo',
+      },
     ],
   },
   {

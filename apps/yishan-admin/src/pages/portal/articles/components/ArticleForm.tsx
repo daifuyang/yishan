@@ -7,6 +7,7 @@ import {
   ProFormSwitch,
   ProFormDateTimePicker,
   ProFormSelect,
+  ProFormUploadButton,
   type ProFormInstance,
   ProForm,
 } from "@ant-design/pro-components";
@@ -18,7 +19,7 @@ import {
   updateArticle,
 } from "@/services/yishan-admin/portalArticles";
 import { getCategoryList } from "@/services/yishan-admin/portalCategories";
-import { Col, Divider, Typography } from "antd";
+import { Col, Divider } from "antd";
 import TemplateDynamicFields from "../../templates/components/TemplateDynamicFields";
 
 export interface ArticleFormProps {
@@ -133,7 +134,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
       formRef={formRef}
       initialValues={initialValues}
       drawerProps={{ destroyOnClose: true, maskClosable: false }}
-      onOpenChange={(open) => {
+      onOpenChange={(open: Boolean) => {
         if (open) {
           if (initialValues?.id) fetchDetail(initialValues.id);
         }
@@ -182,7 +183,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
         placeholder="请选择分类"
         showSearch
         debounceTime={200}
-        request={async (params) => {
+        request={async (params: { keyWords: string }) => {
           const res = await getCategoryList({
             page: 1,
             pageSize: 100,
@@ -208,10 +209,42 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
         fieldProps={{ mode: "tags", tokenSeparators: [","] }}
       />
 
-      <ProFormText
+      <ProFormUploadButton
         name="coverImage"
-        label="封面图URL"
-        placeholder="请输入封面图地址"
+        label="封面图"
+        max={1}
+        fieldProps={{
+          listType: "picture-card",
+          accept: "image/*",
+          defaultFileList: initialValues?.coverImage
+            ? [
+                {
+                  uid: "cover",
+                  name: "封面图",
+                  url: String(initialValues.coverImage),
+                },
+              ]
+            : [],
+          customRequest: async ({
+            file,
+            onSuccess,
+          }: {
+            file: File;
+            onSuccess?: (response: any, file?: any) => void;
+          }) => {
+            try {
+              const url = URL.createObjectURL(file);
+              onSuccess && onSuccess({ url }, file as any);
+            } catch {
+              // 静默失败，交由用户重试
+            }
+          },
+        }}
+        transform={(fileList: any[]) => {
+          const f = Array.isArray(fileList) ? fileList[0] : undefined;
+          const url = f?.response?.url || f?.url || undefined;
+          return { coverImage: url };
+        }}
         colProps={{ span: 24 }}
       />
 
@@ -228,17 +261,14 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
         </ProForm.Item>
       </Col>
 
-      <Col span={24}>
-        {/* <Typography.Title level={4}>扩展字段</Typography.Title> */}
-
-        <Divider>
-          扩展字段
-        </Divider>
-      </Col>
-
       {/* 扩展区：动态模板字段渲染，位于表单底部 */}
       {Array.isArray(templateFields) && templateFields.length > 0 && (
-        <TemplateDynamicFields fields={templateFields} />
+        <>
+          <Col span={24}>
+            <Divider>扩展字段</Divider>
+          </Col>
+          <TemplateDynamicFields fields={templateFields} />
+        </>
       )}
     </DrawerForm>
   );

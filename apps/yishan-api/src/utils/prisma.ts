@@ -1,4 +1,16 @@
+import 'dotenv/config';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+
+// 基于官方最新文档：通过 driver adapter 连接 MySQL/MariaDB
+const prismaAdapter = new PrismaMariaDb({
+  host: process.env.DATABASE_HOST,
+  user: process.env.DATABASE_USER,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME,
+  port: process.env.DATABASE_PORT ? Number(process.env.DATABASE_PORT) : 3306,
+  connectionLimit: 5,
+});
 
 /**
  * 官方文档的简单示例确实很容易理解，但在生产环境中我们需要考虑更多问题：
@@ -17,7 +29,10 @@ class ExtendedPrismaClient extends PrismaClient {
   private startTime = Date.now();
 
   constructor() {
+    // 按照 Prisma 7 最新规范：使用 engineType="client" + driver adapter
+    // 通过 adapter 直连 MySQL/MariaDB，同时打开必要的日志级别
     super({
+      adapter: prismaAdapter,
       log: [
         { emit: 'stdout', level: 'error' },
         { emit: 'stdout', level: 'warn' },

@@ -45,7 +45,9 @@ export class PortalArticleModel {
   private static async getDefaultArticleTemplate() {
     const defaultId = await SysOptionModel.getOptionValue("defaultArticleTemplateId");
     if (!defaultId) return null;
-    const tpl = await this.prisma.portalTemplate.findFirst({ where: { id: defaultId, deletedAt: null }, select: { id: true, name: true, schema: true } });
+    const idNum = parseInt(String(defaultId), 10);
+    if (Number.isNaN(idNum)) return null;
+    const tpl = await this.prisma.portalTemplate.findFirst({ where: { id: idNum, deletedAt: null }, select: { id: true, name: true, schema: true } });
     if (!tpl) return null;
     return { id: tpl.id, name: tpl.name, schema: (tpl.schema as any) ?? [] };
   }

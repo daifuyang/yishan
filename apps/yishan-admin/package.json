@@ -35,17 +35,16 @@
     "defaults"
   ],
   "dependencies": {
-    "@ant-design/icons": "^5.6.1",
-    "@ant-design/pro-components": "^2.8.9",
-    "@ant-design/v5-patch-for-react-19": "^1.0.3",
-    "antd": "^5.26.4",
+    "@ant-design/icons": "^6.1.0",
+    "@ant-design/pro-components": "3.0.2-0",
+    "antd": "^6.0.0",
     "antd-style": "^3.7.0",
     "classnames": "^2.5.1",
     "dayjs": "^1.11.13",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "swagger-ui-dist": "^5.30.3",
-    "yishan-tiptap": "workspace:*"
+    "yishan-tiptap": "workspace:^"
   },
   "devDependencies": {
     "@ant-design/pro-cli": "^3.3.0",
@@ -60,9 +59,10 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/react-helmet": "^6.1.11",
-    "@umijs/max": "^4.3.24",
+    "@umijs/lint": "^4.6.1",
+    "@umijs/max": "^4.6.2",
     "cross-env": "^10.0.0",
-    "express": "^4.21.1",
+    "express": "^5.2.0",
     "gh-pages": "^6.1.1",
     "husky": "^9.1.7",
     "jest": "^30.0.4",

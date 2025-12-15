@@ -11,9 +11,9 @@ import * as sysMenus from "./sysMenus";
 import * as portalPages from "./portalPages";
 import * as sysPosts from "./sysPosts";
 import * as sysRoles from "./sysRoles";
+import * as system from "./system";
 import * as sysUsers from "./sysUsers";
 import * as auth from "./auth";
-import * as system from "./system";
 export default {
   portalArticles,
   portalCategories,
@@ -24,7 +24,7 @@ export default {
   portalPages,
   sysPosts,
   sysRoles,
+  system,
   sysUsers,
   auth,
-  system,
 };

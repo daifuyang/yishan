@@ -78,3 +78,19 @@ export const CACHE_CONFIG = {
   // 全局默认TTL（秒） 一天
   defaultTTLSeconds: parseInt(process.env.CACHE_TTL_DEFAULT || '86400'),
 };
+
+// 存储与上传配置
+export const STORAGE_CONFIG = {
+  uploadDir: process.env.UPLOAD_DIR || 'public/uploads',
+};
+
+// 七牛云配置
+export const QINIU_CONFIG = {
+  accessKey: process.env.QINIU_AK || '',
+  secretKey: process.env.QINIU_SK || '',
+  bucket: process.env.QINIU_BUCKET || '',
+  /** 过期时间（秒），默认1小时 */
+  expiresIn: parseInt(process.env.QINIU_EXPIRES || '3600'),
+  /** 可选：直传上传域名，如 https://upload.qiniup.com */
+  uploadUrl: process.env.QINIU_UPLOAD_URL || '',
+};

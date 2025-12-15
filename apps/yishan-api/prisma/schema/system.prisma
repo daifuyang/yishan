@@ -3,7 +3,7 @@
 model SysOption {
   id          Int       @id @default(autoincrement()) @map("id")
   key         String    @unique @map("key") @db.VarChar(100)
-  value       Int?      @map("value")
+  value       String?   @map("value") @db.Text
   description String?   @map("description") @db.VarChar(255)
   status      Int       @default(1) @map("status") @db.TinyInt
   creatorId   Int?      @map("creator_id")

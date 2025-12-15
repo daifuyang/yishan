@@ -83,7 +83,7 @@ export default defineConfig({
    * @name layout 插件
    * @doc https://umijs.org/docs/max/layout-menu
    */
-  title: 'Ant Design Pro',
+  title: '移山后台管理系统',
   layout: {
     locale: true,
     ...defaultSettings,
@@ -178,4 +178,4 @@ export default defineConfig({
   esbuildMinifyIIFE: true,
   requestRecord: {},
   exportStatic: {},
-});
+}) as any;

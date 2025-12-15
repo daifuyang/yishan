@@ -85,7 +85,6 @@ export const tokenStatsResp = {
 export const systemOptionKey = {
   $id: "systemOptionKey",
   type: "string",
-  enum: ["defaultArticleTemplateId", "defaultPageTemplateId"],
   description: "系统参数键"
 } as const;
 
@@ -94,7 +93,7 @@ export const setSystemOptionReq = {
   $id: "setSystemOptionReq",
   type: "object",
   properties: {
-    value: { type: "integer", minimum: 1, description: "参数数值（模板ID）" }
+    value: { type: "string", description: "参数字符串" }
   },
   required: ["value"]
 } as const;
@@ -108,7 +107,92 @@ export const getSystemOptionResp = {
     code: { type: "number" },
     message: { type: "string" },
     timestamp: { type: "string" },
-    data: { anyOf: [{ type: "integer" }, { type: "null" }] }
+    data: { anyOf: [{ type: "string" }, { type: "null" }] }
+  }
+} as const;
+
+// 批量设置项
+export const systemOptionItem = {
+  $id: "systemOptionItem",
+  type: "object",
+  properties: {
+    key: { $ref: "systemOptionKey#" },
+    value: { type: "string", description: "参数字符串（可为纯文本或JSON字符串）" }
+  },
+  required: ["key", "value"]
+} as const;
+
+// 批量设置请求
+export const batchSetSystemOptionReq = {
+  $id: "batchSetSystemOptionReq",
+  type: "array",
+  minItems: 1,
+  items: { $ref: "systemOptionItem#" },
+} as const;
+
+// 批量设置响应
+export const batchSetSystemOptionResp = {
+  $id: "batchSetSystemOptionResp",
+  type: "object",
+  properties: {
+    success: { type: "boolean" },
+    code: { type: "number" },
+    message: { type: "string" },
+    timestamp: { type: "string" },
+    data: {
+      type: "object",
+      properties: {
+        updatedCount: { type: "integer" },
+        results: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              key: { $ref: "systemOptionKey#" },
+              value: { type: "string" },
+              success: { type: "boolean" },
+              code: { type: "number" },
+              message: { type: "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+} as const;
+
+// 批量获取请求
+export const batchGetSystemOptionReq = {
+  $id: "batchGetSystemOptionReq",
+  type: "array",
+  minItems: 1,
+  items: { $ref: "systemOptionKey#" },
+} as const;
+
+// 批量获取响应
+export const batchGetSystemOptionResp = {
+  $id: "batchGetSystemOptionResp",
+  type: "object",
+  properties: {
+    success: { type: "boolean" },
+    code: { type: "number" },
+    message: { type: "string" },
+    timestamp: { type: "string" },
+    data: {
+      type: "object",
+      properties: {
+        results: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              key: { $ref: "systemOptionKey#" },
+              value: { anyOf: [{ type: "string" }, { type: "null" }] }
+            }
+          }
+        }
+      }
+    }
   }
 } as const;
 
@@ -122,4 +206,9 @@ export default function registerSystem(fastify: any) {
   fastify.addSchema(systemOptionKey);
   fastify.addSchema(setSystemOptionReq);
   fastify.addSchema(getSystemOptionResp);
+  fastify.addSchema(systemOptionItem);
+  fastify.addSchema(batchSetSystemOptionReq);
+  fastify.addSchema(batchSetSystemOptionResp);
+  fastify.addSchema(batchGetSystemOptionReq);
+  fastify.addSchema(batchGetSystemOptionResp);
 }

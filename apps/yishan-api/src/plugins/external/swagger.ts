@@ -22,7 +22,8 @@ export default fp(async function (fastify) {
         { name: 'sysRoles', description: 'System role management' },
         { name: 'sysDepts', description: 'System department management' },
         { name: 'sysPosts', description: 'System post management' },
-        { name: 'system', description: 'System endpoints' }
+        { name: 'system', description: 'System endpoints' },
+        { name: 'attachments', description: 'System attachments' }
       ],
       components: {
         securitySchemes: {

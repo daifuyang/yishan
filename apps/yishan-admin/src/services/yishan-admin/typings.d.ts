@@ -60,6 +60,40 @@ declare namespace API {
     templateId: number | null;
   };
 
+  type batchGetSystemOptionByQueryParams = {
+    /** 可以传多个 key，如 ?key=a&key=b */
+    key?: systemOptionKey | systemOptionKey[];
+  };
+
+  type batchGetSystemOptionReq = systemOptionKey[];
+
+  type batchGetSystemOptionResp = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    timestamp?: string;
+    data?: { results?: { key?: systemOptionKey; value?: string | null }[] };
+  };
+
+  type batchSetSystemOptionReq = systemOptionItem[];
+
+  type batchSetSystemOptionResp = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    timestamp?: string;
+    data?: {
+      updatedCount?: number;
+      results?: {
+        key?: systemOptionKey;
+        value?: string;
+        success?: boolean;
+        code?: number;
+        message?: string;
+      }[];
+    };
+  };
+
   type categoryDeleteResp = {
     code: number;
     message: string;
@@ -709,12 +743,16 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
+  type getSystemOptionParams = {
+    key: systemOptionKey;
+  };
+
   type getSystemOptionResp = {
     success?: boolean;
     code?: number;
     message?: string;
     timestamp?: string;
-    data?: number | null;
+    data?: string | null;
   };
 
   type getUserDetailParams = {
@@ -1245,9 +1283,13 @@ declare namespace API {
     menuIds?: number[];
   };
 
+  type setSystemOptionParams = {
+    key: systemOptionKey;
+  };
+
   type setSystemOptionReq = {
-    /** 参数数值（模板ID） */
-    value: number;
+    /** 参数字符串 */
+    value: string;
   };
 
   type sysDept = {
@@ -1412,7 +1454,13 @@ declare namespace API {
     menuIds?: number[];
   };
 
-  type systemOptionKey = "defaultArticleTemplateId" | "defaultPageTemplateId";
+  type systemOptionItem = {
+    key: systemOptionKey;
+    /** 参数字符串（可为纯文本或JSON字符串） */
+    value: string;
+  };
+
+  type systemOptionKey = string;
 
   type sysUser = {
     /** 用户ID */
