@@ -4,6 +4,7 @@
 // API 唯一标识：
 import * as portalArticles from "./portalArticles";
 import * as portalCategories from "./portalCategories";
+import * as attachments from "./attachments";
 import * as sysDepts from "./sysDepts";
 import * as sysDictTypes from "./sysDictTypes";
 import * as sysDictData from "./sysDictData";
@@ -17,6 +18,7 @@ import * as auth from "./auth";
 export default {
   portalArticles,
   portalCategories,
+  attachments,
   sysDepts,
   sysDictTypes,
   sysDictData,

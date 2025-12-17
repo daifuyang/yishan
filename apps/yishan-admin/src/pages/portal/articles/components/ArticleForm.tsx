@@ -7,7 +7,6 @@ import {
   ProFormSwitch,
   ProFormDateTimePicker,
   ProFormSelect,
-  ProFormUploadButton,
   type ProFormInstance,
   ProForm,
 } from "@ant-design/pro-components";
@@ -20,6 +19,7 @@ import {
 } from "@/services/yishan-admin/portalArticles";
 import { getCategoryList } from "@/services/yishan-admin/portalCategories";
 import { Col, Divider } from "antd";
+import { QiniuUpload } from "@/components";
 import TemplateDynamicFields from "../../templates/components/TemplateDynamicFields";
 
 export interface ArticleFormProps {
@@ -77,6 +77,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
   };
 
   const handleFinish = async (values: any) => {
+    console.log("values", values);
     // 基于模板字段收集动态属性
     let attrs: Record<string, any> = {};
     if (Array.isArray(templateFields) && templateFields.length > 0) {
@@ -209,44 +210,9 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
         fieldProps={{ mode: "tags", tokenSeparators: [","] }}
       />
 
-      <ProFormUploadButton
-        name="coverImage"
-        label="封面图"
-        max={1}
-        fieldProps={{
-          listType: "picture-card",
-          accept: "image/*",
-          defaultFileList: initialValues?.coverImage
-            ? [
-                {
-                  uid: "cover",
-                  name: "封面图",
-                  url: String(initialValues.coverImage),
-                },
-              ]
-            : [],
-          customRequest: async ({
-            file,
-            onSuccess,
-          }: {
-            file: File;
-            onSuccess?: (response: any, file?: any) => void;
-          }) => {
-            try {
-              const url = URL.createObjectURL(file);
-              onSuccess && onSuccess({ url }, file as any);
-            } catch {
-              // 静默失败，交由用户重试
-            }
-          },
-        }}
-        transform={(fileList: any[]) => {
-          const f = Array.isArray(fileList) ? fileList[0] : undefined;
-          const url = f?.response?.url || f?.url || undefined;
-          return { coverImage: url };
-        }}
-        colProps={{ span: 24 }}
-      />
+      <ProForm.Item name="coverImage" label="封面图" colProps={{ span: 24 }}>
+        <QiniuUpload dir="portal/articles" />
+      </ProForm.Item>
 
       <ProFormTextArea
         name="summary"

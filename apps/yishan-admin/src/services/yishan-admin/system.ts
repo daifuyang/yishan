@@ -77,6 +77,34 @@ export async function batchGetSystemOptionByQuery(
   );
 }
 
+/** 获取七牛云上传临时凭证 根据七牛云官方文档生成上传凭证（uptoken） GET /api/v1/admin/system/qiniu/token */
+export async function getQiniuUploadToken(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getQiniuUploadTokenParams,
+  options?: { [key: string]: any }
+) {
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    data: {
+      token: string;
+      bucket: string;
+      scope: string;
+      deadline: number;
+      expiresIn: number;
+      uploadUrl: string;
+    };
+    timestamp: string;
+  }>("/api/v1/admin/system/qiniu/token", {
+    method: "GET",
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
 /** 清理过期token 定时任务接口，用于清理过期的用户token，需要特殊的定时任务令牌进行鉴权 POST /api/v1/system/cleanup-tokens */
 export async function cleanupTokens(
   body: API.cleanupTokensReq,

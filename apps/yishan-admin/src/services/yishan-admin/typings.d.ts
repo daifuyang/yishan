@@ -723,6 +723,13 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
+  type getQiniuUploadTokenParams = {
+    /** 可选：指定对象键（bucket:key），默认仅 bucket */
+    scopeKey?: string;
+    /** 凭证有效期（秒），默认配置值 */
+    expiresIn?: number;
+  };
+
   type getRoleDetailParams = {
     /** 角色ID */
     id: number;
