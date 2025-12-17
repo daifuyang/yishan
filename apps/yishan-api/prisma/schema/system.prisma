@@ -142,6 +142,8 @@ model SysRole {
   @@index([status], map: "idx_role_status")
   @@index([createdAt], map: "idx_role_created_at")
   @@index([deletedAt], map: "idx_role_deleted_at")
+  @@index([creatorId])
+  @@index([updaterId])
   @@map("sys_role")
 }
 
@@ -208,6 +210,9 @@ model SysDept {
   @@index([deletedAt], map: "idx_dept_deleted_at")
   @@index([parentId], map: "idx_dept_parent_id")
   @@index([sort_order], map: "idx_dept_sort_order")
+  @@index([leaderId])
+  @@index([creatorId])
+  @@index([updaterId])
   @@map("sys_dept")
 }
 
@@ -231,6 +236,8 @@ model SysPost {
   @@index([createdAt], map: "idx_post_created_at")
   @@index([deletedAt], map: "idx_post_deleted_at")
   @@index([sort_order], map: "idx_post_sort_order")
+  @@index([creatorId])
+  @@index([updaterId])
   @@map("sys_post")
 }
 
@@ -269,6 +276,8 @@ model SysMenu {
   @@index([deletedAt], map: "idx_menu_deleted_at")
   @@index([parentId], map: "idx_menu_parent_id")
   @@index([sort_order], map: "idx_menu_sort_order")
+  @@index([updaterId])
+  @@index([creatorId])
   @@map("sys_menu")
 }
 
@@ -311,6 +320,8 @@ model SysDictType {
   @@index([createdAt], map: "idx_dict_type_created_at")
   @@index([deletedAt], map: "idx_dict_type_deleted_at")
   @@index([sort_order], map: "idx_dict_type_sort_order")
+  @@index([creatorId])
+  @@index([updaterId])
   @@map("sys_dict_type")
 }
 
@@ -341,6 +352,8 @@ model SysDictData {
   @@index([createdAt], map: "idx_dict_data_created_at")
   @@index([deletedAt], map: "idx_dict_data_deleted_at")
   @@index([sort_order], map: "idx_dict_data_sort_order")
+  @@index([creatorId])
+  @@index([updaterId])
   @@map("sys_dict_data")
 }
 
@@ -374,6 +387,8 @@ model SysAttachmentFolder {
   @@index([deletedAt], map: "idx_attachment_folder_deleted_at")
   @@index([parentId], map: "idx_attachment_folder_parent_id")
   @@index([sort_order], map: "idx_attachment_folder_sort_order")
+  @@index([creatorId])
+  @@index([updaterId])
   @@map("sys_attachment_folder")
 }
 
@@ -415,5 +430,7 @@ model SysAttachment {
   @@index([status], map: "idx_attachment_status")
   @@index([createdAt], map: "idx_attachment_created_at")
   @@index([deletedAt], map: "idx_attachment_deleted_at")
+  @@index([creatorId])
+  @@index([updaterId])
   @@map("sys_attachment")
 }
