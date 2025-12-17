@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import type { UploadFile, UploadProps } from "antd";
 import { Upload, App, Image } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { getQiniuUploadToken, getSystemOption } from "@/services/yishan-admin/system";
 
 interface QiniuUploadProps {
@@ -131,7 +132,15 @@ const QiniuUpload: React.FC<QiniuUploadProps> = ({ value, onChange, dir = "uploa
 
       const response = { key, url, response: data };
       onSuccess && onSuccess(response, file as any);
-      handleChange({ fileList: [{ uid: "qiniu-current", name: f.name, status: "done", url, response }] });
+      const uploadFile: UploadFile = {
+        uid: "qiniu-current",
+        name: f.name,
+        status: "done",
+        url,
+        response,
+      };
+      setFileList([uploadFile]);
+      onChange?.(url || key);
     } catch (e: any) {
       if (e instanceof Error) {
         message.error(e.message);
@@ -155,7 +164,12 @@ const QiniuUpload: React.FC<QiniuUploadProps> = ({ value, onChange, dir = "uploa
   return (
     <>
       <Upload {...uploadProps} disabled={loadingConfig}>
-        {fileList && fileList.length > 0 ? null : null}
+        {fileList && fileList.length > 0 ? null : (
+          <div style={{ border: 0, background: "none" }}>
+            <PlusOutlined />
+            <div style={{ marginTop: 8 }}>上传</div>
+          </div>
+        )}
       </Upload>
       {previewImage && (
         <Image

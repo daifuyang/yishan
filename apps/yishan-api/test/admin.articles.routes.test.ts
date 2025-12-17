@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import adminArticlesPlugin from "../src/routes/api/v1/admin/articles/index.ts";
 import registerCommonSchemas from "../src/schemas/common.ts";
 import registerArticleSchemas from "../src/schemas/article.ts";
+import registerTemplateSchemas from "../src/schemas/template.ts";
 import errorHandlerPlugin from "../src/plugins/external/error-handler.ts";
 import { ArticleService, CategoryService } from "../src/services/article.service.ts";
 import { ArticleErrorCode, CategoryErrorCode } from "../src/constants/business-codes/article.ts";
@@ -27,6 +28,7 @@ async function buildApp() {
   await app.register(errorHandlerPlugin);
   registerCommonSchemas(app);
   registerArticleSchemas(app);
+  registerTemplateSchemas(app);
   await app.register(adminArticlesPlugin, { prefix: "/api/v1/admin/articles" });
   await app.ready();
   return app;

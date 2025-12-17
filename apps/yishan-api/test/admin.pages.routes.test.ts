@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import adminPagesPlugin from "../src/routes/api/v1/admin/pages/index.ts";
 import registerCommonSchemas from "../src/schemas/common.ts";
 import registerPageSchemas from "../src/schemas/page.ts";
+import registerTemplateSchemas from "../src/schemas/template.ts";
 import errorHandlerPlugin from "../src/plugins/external/error-handler.ts";
 import { PageService } from "../src/services/page.service.ts";
 import { PageErrorCode } from "../src/constants/business-codes/page.ts";
@@ -27,6 +28,7 @@ async function buildApp() {
   await app.register(errorHandlerPlugin);
   registerCommonSchemas(app);
   registerPageSchemas(app);
+  registerTemplateSchemas(app);
   await app.register(adminPagesPlugin, { prefix: "/api/v1/admin/pages" });
   await app.ready();
   return app;

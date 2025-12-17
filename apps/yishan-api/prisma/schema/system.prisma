@@ -79,6 +79,12 @@ model SysUser {
   portalTemplatesCreated  PortalTemplate[] @relation("PortalTemplateCreator")
   portalTemplatesUpdated  PortalTemplate[] @relation("PortalTemplateUpdater")
 
+  attachmentsCreated SysAttachment[] @relation("AttachmentCreator")
+  attachmentsUpdated SysAttachment[] @relation("AttachmentUpdater")
+
+  attachmentFoldersCreated SysAttachmentFolder[] @relation("AttachmentFolderCreator")
+  attachmentFoldersUpdated SysAttachmentFolder[] @relation("AttachmentFolderUpdater")
+
   @@index([status], map: "idx_status")
   @@index([createdAt], map: "idx_created_at")
   @@index([deletedAt], map: "idx_deleted_at")
@@ -336,4 +342,78 @@ model SysDictData {
   @@index([deletedAt], map: "idx_dict_data_deleted_at")
   @@index([sort_order], map: "idx_dict_data_sort_order")
   @@map("sys_dict_data")
+}
+
+model SysAttachmentFolder {
+  id         Int       @id @default(autoincrement()) @map("id")
+  name       String    @map("name") @db.VarChar(100)
+  parentId   Int?      @map("parent_id")
+  kind       Int       @default(0) @map("kind") @db.TinyInt
+  status     Int       @default(1) @map("status") @db.TinyInt
+  sort_order Int       @default(0)
+  remark     String?   @map("remark") @db.VarChar(255)
+  creatorId  Int?      @map("creator_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId  Int?      @map("updater_id")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt  DateTime? @map("deleted_at") @db.DateTime(0)
+  version    Int       @default(1) @map("version")
+
+  parent   SysAttachmentFolder?  @relation("AttachmentFolderParent", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children SysAttachmentFolder[] @relation("AttachmentFolderParent")
+
+  creator SysUser? @relation("AttachmentFolderCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("AttachmentFolderUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  attachments SysAttachment[]
+
+  @@unique([parentId, name], map: "uniq_attachment_folder_parent_name")
+  @@index([kind], map: "idx_attachment_folder_kind")
+  @@index([status], map: "idx_attachment_folder_status")
+  @@index([createdAt], map: "idx_attachment_folder_created_at")
+  @@index([deletedAt], map: "idx_attachment_folder_deleted_at")
+  @@index([parentId], map: "idx_attachment_folder_parent_id")
+  @@index([sort_order], map: "idx_attachment_folder_sort_order")
+  @@map("sys_attachment_folder")
+}
+
+model SysAttachment {
+  id           Int       @id @default(autoincrement()) @map("id")
+  folderId     Int?      @map("folder_id")
+  kind         Int       @default(4) @map("kind") @db.TinyInt
+  name         String?   @map("name") @db.VarChar(255)
+  originalName String    @map("original_name") @db.VarChar(255)
+  filename     String    @map("filename") @db.VarChar(255)
+  ext          String?   @map("ext") @db.VarChar(20)
+  mimeType     String    @map("mime_type") @db.VarChar(100)
+  size         Int       @default(0) @map("size")
+  storage      String    @default("local") @map("storage") @db.VarChar(20)
+  path         String?   @map("path") @db.VarChar(500)
+  url          String?   @map("url") @db.VarChar(500)
+  objectKey    String?   @map("object_key") @db.VarChar(500)
+  hash         String?   @map("hash") @db.VarChar(64)
+  width        Int?      @map("width")
+  height       Int?      @map("height")
+  duration     Int?      @map("duration")
+  metadata     Json?     @map("metadata")
+  status       Int       @default(1) @map("status") @db.TinyInt
+  creatorId    Int?      @map("creator_id")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId    Int?      @map("updater_id")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt    DateTime? @map("deleted_at") @db.DateTime(0)
+  version      Int       @default(1) @map("version")
+
+  folder  SysAttachmentFolder? @relation(fields: [folderId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  creator SysUser?             @relation("AttachmentCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser?             @relation("AttachmentUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  @@index([folderId], map: "idx_attachment_folder_id")
+  @@index([kind], map: "idx_attachment_kind")
+  @@index([mimeType], map: "idx_attachment_mime_type")
+  @@index([storage], map: "idx_attachment_storage")
+  @@index([status], map: "idx_attachment_status")
+  @@index([createdAt], map: "idx_attachment_created_at")
+  @@index([deletedAt], map: "idx_attachment_deleted_at")
+  @@map("sys_attachment")
 }
