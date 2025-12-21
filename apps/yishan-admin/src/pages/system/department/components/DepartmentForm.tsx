@@ -1,11 +1,11 @@
 import React, { useRef } from 'react';
-import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormTreeSelect, type ProFormInstance } from '@ant-design/pro-components';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormTreeSelect } from '@ant-design/pro-components';
 import { getDeptTree, createDept, updateDept, getDeptDetail } from '@/services/yishan-admin/sysDepts';
 import { useModel } from '@umijs/max';
 
 export interface DepartmentFormProps {
   title: string;
-  trigger: React.ReactNode;
+  trigger?: JSX.Element;
   initialValues?: Partial<API.sysDept>;
   onFinish?: () => Promise<void>;
 }
@@ -29,11 +29,13 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
   },
   onFinish,
 }) => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
 
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+
+  if (!trigger) return null;
 
   return (
       <ModalForm

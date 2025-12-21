@@ -120,6 +120,13 @@ export class AttachmentService {
     return await SysAttachmentModel.getAttachmentById(id);
   }
 
+  static async getAttachmentByHash(
+    hash: string,
+    storage?: string
+  ): Promise<SysAttachmentResp | null> {
+    return await SysAttachmentModel.getAttachmentByHash(hash, storage);
+  }
+
   static async updateAttachment(
     id: number,
     req: UpdateAttachmentReq,
@@ -149,6 +156,17 @@ export class AttachmentService {
     return res;
   }
 
+  static async deleteAttachments(
+    ids: number[],
+    currentUserId: number
+  ): Promise<{ ids: number[] }> {
+    const uniqueIds = Array.from(new Set(ids)).filter((id) => Number.isInteger(id) && id > 0);
+    if (uniqueIds.length === 0) {
+      throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "素材ID列表不能为空");
+    }
+    return await SysAttachmentModel.deleteAttachments(uniqueIds, currentUserId);
+  }
+
   static async createLocalAttachment(
     input: {
       folderId?: number | null;
@@ -161,6 +179,7 @@ export class AttachmentService {
       size: number;
       path?: string | null;
       url?: string | null;
+      hash?: string | null;
       metadata?: any | null;
     },
     currentUserId: number
@@ -187,6 +206,7 @@ export class AttachmentService {
         storage: "local",
         path: input.path ?? null,
         url: input.url ?? null,
+        hash: input.hash ?? null,
         metadata: (input.metadata as any) ?? null,
       },
       currentUserId

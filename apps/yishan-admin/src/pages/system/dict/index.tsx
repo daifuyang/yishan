@@ -1,6 +1,6 @@
 import { PlusOutlined, DownOutlined } from '@ant-design/icons';
 import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Popconfirm, Space, Tag, Dropdown, App } from 'antd';
+import { Button, Popconfirm, Space, Dropdown, App } from 'antd';
 import React, { useRef, useState } from 'react';
 import { getDictTypeList, updateDictType, deleteDictType } from '@/services/yishan-admin/sysDictTypes';
 import DictTypeForm from './components/DictTypeForm';

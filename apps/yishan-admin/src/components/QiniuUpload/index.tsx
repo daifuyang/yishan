@@ -102,7 +102,7 @@ const QiniuUpload: React.FC<QiniuUploadProps> = ({ value, onChange, dir = "uploa
       const ext = (f.name.split(".").pop() || "").toLowerCase();
       const key = `${dir.replace(/\/$/, "")}/${Date.now()}_${Math.random()
         .toString(36)
-        .slice(2)}${ext ? "." + ext : ""}`;
+        .slice(2)}${ext ? `.${ext}` : ""}`;
 
       const tokenRes = await getQiniuUploadToken({ scopeKey: key } as any);
       const token = (tokenRes as any)?.data?.token;
@@ -131,7 +131,7 @@ const QiniuUpload: React.FC<QiniuUploadProps> = ({ value, onChange, dir = "uploa
         : undefined;
 
       const response = { key, url, response: data };
-      onSuccess && onSuccess(response, file as any);
+      onSuccess?.(response, file as any);
       const uploadFile: UploadFile = {
         uid: "qiniu-current",
         name: f.name,
@@ -145,7 +145,7 @@ const QiniuUpload: React.FC<QiniuUploadProps> = ({ value, onChange, dir = "uploa
       if (e instanceof Error) {
         message.error(e.message);
       }
-      onError && onError(e);
+      onError?.(e);
     }
   };
 
@@ -178,9 +178,9 @@ const QiniuUpload: React.FC<QiniuUploadProps> = ({ value, onChange, dir = "uploa
             src: previewImage,
             open: previewOpen,
             onOpenChange: (open) => {
-              setPreviewOpen(open)
+              setPreviewOpen(open);
               if (!open) setPreviewImage("");
-            }
+            },
           }}
         />
       )}

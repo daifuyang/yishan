@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { ModalForm, ProFormText, ProFormDigit, ProFormRadio, ProFormTreeSelect, ProFormTextArea, type ProFormInstance } from "@ant-design/pro-components";
+import { ModalForm, ProFormText, ProFormDigit, ProFormRadio, ProFormTreeSelect, ProFormTextArea } from "@ant-design/pro-components";
 import { useModel } from "@umijs/max";
 import { getCategoryList, getCategoryDetail, createCategory, updateCategory } from "@/services/yishan-admin/portalCategories";
 
@@ -16,7 +16,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ title, trigger, initialValu
   const { initialState } = useModel("@@initialState");
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
   const [treeData, setTreeData] = useState<CategoryTreeNode[]>([]);
   const [treeLoading, setTreeLoading] = useState(false);
 

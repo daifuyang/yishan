@@ -1,10 +1,10 @@
 import React, { useMemo, useRef } from 'react';
-import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, type ProFormInstance } from '@ant-design/pro-components';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea } from '@ant-design/pro-components';
 import { getDictTypeDetail, createDictType, updateDictType } from '@/services/yishan-admin/sysDictTypes';
 
 export interface DictTypeFormProps {
   title: string;
-  trigger: React.ReactNode;
+  trigger?: JSX.Element;
   initialValues?: Partial<API.sysDictType>;
   onFinish?: () => Promise<void>;
 }
@@ -15,7 +15,7 @@ const DictTypeForm: React.FC<DictTypeFormProps> = ({
   initialValues,
   onFinish,
 }) => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
   const initialVals = useMemo(() => (
     initialValues
       ? {
@@ -27,6 +27,8 @@ const DictTypeForm: React.FC<DictTypeFormProps> = ({
         }
       : { status: 1 as 0 | 1, sort_order: 0 }
   ), [initialValues]);
+
+  if (!trigger) return null;
 
   return (
     <ModalForm

@@ -1,6 +1,6 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, message, Popconfirm, Space, Tag } from 'antd';
+import { Button, message, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
 import { getDeptTree, updateDept, deleteDept } from '@/services/yishan-admin/sysDepts';
 import DepartmentForm from './components/DepartmentForm';

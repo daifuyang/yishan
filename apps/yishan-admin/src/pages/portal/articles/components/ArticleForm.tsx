@@ -7,7 +7,6 @@ import {
   ProFormSwitch,
   ProFormDateTimePicker,
   ProFormSelect,
-  type ProFormInstance,
   ProForm,
 } from "@ant-design/pro-components";
 import { FormEditor } from "yishan-tiptap";
@@ -35,7 +34,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
   initialValues = { status: "0", isPinned: false },
   onFinish,
 }) => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
   const [templateFields, setTemplateFields] = React.useState<any[]>([]);
 
   const fetchDetail = async (id: number) => {
@@ -65,7 +64,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
           if (
             n &&
             d.attributes &&
-            Object.prototype.hasOwnProperty.call(d.attributes, n)
+            Object.hasOwn(d.attributes, n)
           ) {
             dynVals[n] = d.attributes[n];
           }
@@ -77,14 +76,13 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
   };
 
   const handleFinish = async (values: any) => {
-    console.log("values", values);
     // 基于模板字段收集动态属性
     let attrs: Record<string, any> = {};
     if (Array.isArray(templateFields) && templateFields.length > 0) {
       for (const f of templateFields) {
         const n = (f?.name || "").trim();
         if (!n) continue;
-        if (values.hasOwnProperty(n)) {
+        if (Object.hasOwn(values, n)) {
           attrs[n] = values[n];
         }
       }
@@ -135,7 +133,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
       formRef={formRef}
       initialValues={initialValues}
       drawerProps={{ destroyOnClose: true, maskClosable: false }}
-      onOpenChange={(open: Boolean) => {
+      onOpenChange={(open: boolean) => {
         if (open) {
           if (initialValues?.id) fetchDetail(initialValues.id);
         }

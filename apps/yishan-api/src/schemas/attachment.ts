@@ -171,6 +171,21 @@ const AttachmentDeleteRespSchema = successResponse({
   message: "删除成功",
 });
 
+const AttachmentBatchDeleteReqSchema = Type.Object(
+  {
+    ids: Type.Array(Type.Integer({ minimum: 1 }), { minItems: 1, description: "素材ID列表" }),
+  },
+  { $id: "attachmentBatchDeleteReq" }
+);
+
+const AttachmentBatchDeleteRespSchema = successResponse({
+  data: Type.Object({
+    ids: Type.Array(Type.Number({ description: "已删除的素材ID列表" })),
+  }),
+  $id: "attachmentBatchDeleteResp",
+  message: "删除成功",
+});
+
 const UploadAttachmentItemSchema = Type.Object({
   id: Type.Optional(Type.Number({ description: "素材ID" })),
   filename: Type.String(),
@@ -204,6 +219,8 @@ const registerAttachment = (fastify: FastifyInstance) => {
   fastify.addSchema(AttachmentDetailRespSchema);
   fastify.addSchema(UpdateAttachmentReqSchema);
   fastify.addSchema(AttachmentDeleteRespSchema);
+  fastify.addSchema(AttachmentBatchDeleteReqSchema);
+  fastify.addSchema(AttachmentBatchDeleteRespSchema);
   fastify.addSchema(UploadAttachmentsRespSchema);
 };
 

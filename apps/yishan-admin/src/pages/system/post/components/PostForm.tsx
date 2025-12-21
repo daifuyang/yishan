@@ -1,11 +1,11 @@
 import React, { useRef } from 'react';
-import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, type ProFormInstance } from '@ant-design/pro-components';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 import { getPostDetail, createPost, updatePost } from '@/services/yishan-admin/sysPosts';
 
 export interface PostFormProps {
   title: string;
-  trigger: React.ReactNode;
+  trigger?: JSX.Element;
   initialValues?: Partial<API.sysPost>;
   onFinish?: () => Promise<void>;
 }
@@ -16,7 +16,7 @@ const PostForm: React.FC<PostFormProps> = ({
   initialValues = { status: '1', sort_order: 0 },
   onFinish,
 }) => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
 
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
@@ -28,6 +28,8 @@ const PostForm: React.FC<PostFormProps> = ({
       formRef.current?.setFieldsValue(res.data);
     }
   };
+
+  if (!trigger) return null;
 
   return (
     <ModalForm

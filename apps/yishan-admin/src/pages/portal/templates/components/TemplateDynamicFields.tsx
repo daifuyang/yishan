@@ -8,7 +8,6 @@ import {
   ProFormSwitch,
   ProFormDateTimePicker,
 } from "@ant-design/pro-components";
-import { Divider } from "antd";
 
 export interface TemplateDynamicFieldsProps {
   fields?: any[];
@@ -33,8 +32,8 @@ const TemplateDynamicFields: React.FC<TemplateDynamicFieldsProps> = ({
           typeof props?.span === "number"
             ? props.span
             : type === "textarea"
-            ? 24
-            : 12;
+              ? 24
+              : 12;
         const common = {
           name,
           label,
@@ -131,7 +130,6 @@ const TemplateDynamicFields: React.FC<TemplateDynamicFieldsProps> = ({
                 }}
               />
             );
-          case "input":
           default:
             return (
               <ProFormText

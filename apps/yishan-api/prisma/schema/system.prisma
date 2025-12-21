@@ -423,6 +423,7 @@ model SysAttachment {
   creator SysUser?             @relation("AttachmentCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
   updater SysUser?             @relation("AttachmentUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
 
+  @@unique([hash, storage], map: "uniq_attachment_hash_storage")
   @@index([folderId], map: "idx_attachment_folder_id")
   @@index([kind], map: "idx_attachment_kind")
   @@index([mimeType], map: "idx_attachment_mime_type")

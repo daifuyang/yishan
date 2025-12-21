@@ -49,6 +49,7 @@ export default {
   'menu.system.user': 'User Management',
   'menu.system.role': 'Role Management',
   'menu.system.department': 'Department Management',
+  'menu.system.attachments': 'Media Library',
   'menu.portal': 'Portal',
   'menu.portal.articles': 'Article Management',
   'menu.portal.categories': 'Category Management',

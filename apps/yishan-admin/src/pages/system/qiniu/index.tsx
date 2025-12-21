@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { PageContainer, ProForm, ProFormText, ProFormSelect, ProFormDigit, ProFormRadio, type ProFormInstance } from "@ant-design/pro-components";
+import { PageContainer, ProForm, ProFormText, ProFormSelect, ProFormDigit, ProFormRadio } from "@ant-design/pro-components";
 import { Card, App } from "antd";
 import { useModel } from "@umijs/max";
 import { getSystemOption, setSystemOption } from "@/services/yishan-admin/system";
@@ -45,7 +45,7 @@ const defaultValues: QiniuConfig = {
 };
 
 const QiniuConfigPage: React.FC = () => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
   const [loading, setLoading] = useState(false);
   const [initialValues, setInitialValues] = useState<QiniuConfig>(defaultValues);
   const { initialState } = useModel('@@initialState');

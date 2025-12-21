@@ -19,6 +19,7 @@ import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
 import React from "react";
 
 const isDev = process.env.NODE_ENV === "development";
+const isDevOrTest = isDev || process.env.CI;
 const loginPath = "/user/login";
 
 const IconMap: Record<string, React.ReactNode> = {
@@ -140,9 +141,6 @@ export const layout: RunTimeLayoutConfig = ({
         return menus || [];
       },
     },
-    waterMarkProps: {
-      content: initialState?.currentUser?.username,
-    },
     footerRender: () => <Footer />,
     onPageChange: () => {
       const { location } = history;
@@ -171,7 +169,7 @@ export const layout: RunTimeLayoutConfig = ({
         width: "331px",
       },
     ],
-    links: isDev
+    links: isDevOrTest
       ? [
         <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
           <LinkOutlined />
@@ -189,7 +187,7 @@ export const layout: RunTimeLayoutConfig = ({
       return (
         <AntdApp>
           {children}
-          {isDev && (
+          {isDevOrTest && (
             <SettingDrawer
               disableUrlParams
               enableDarkTheme
@@ -245,8 +243,9 @@ const resolveFirstPath = (routes: Route[] = []): string => {
   while (path && !visited.has(path)) {
     visited.add(path);
     const n = routeMap.get(path);
-    if (n && n.redirect && n.redirect !== path) {
-      path = n.redirect;
+    const redirect = n?.redirect;
+    if (redirect && redirect !== path) {
+      path = redirect;
       continue;
     }
     break;

@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { DrawerForm, ProFormText, ProFormTextArea, ProFormRadio, type ProFormInstance } from "@ant-design/pro-components";
+import { DrawerForm, ProFormText, ProFormTextArea, ProFormRadio } from "@ant-design/pro-components";
 import { useModel } from "@umijs/max";
 import { createArticleTemplate, updateArticleTemplate } from "@/services/yishan-admin/portalArticles";
 import { createPageTemplate, updatePageTemplate } from "@/services/yishan-admin/portalPages";
@@ -13,7 +13,7 @@ export interface TemplateFormProps {
 }
 
 const TemplateForm: React.FC<TemplateFormProps> = ({ title, trigger, type, initialValues = { status: "1", type }, onFinish }) => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
   const { initialState } = useModel("@@initialState");
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [
@@ -59,9 +59,5 @@ const TemplateForm: React.FC<TemplateFormProps> = ({ title, trigger, type, initi
     </DrawerForm>
   );
 };
-
-function safeParse(text: string) {
-  try { return JSON.parse(text); } catch { return undefined; }
-}
 
 export default TemplateForm;

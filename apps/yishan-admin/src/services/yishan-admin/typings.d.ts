@@ -60,6 +60,115 @@ declare namespace API {
     templateId: number | null;
   };
 
+  type attachmentBatchDeleteReq = {
+    /** 素材ID列表 */
+    ids: number[];
+  };
+
+  type attachmentBatchDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { ids: number[] };
+    timestamp: string;
+  };
+
+  type attachmentDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type attachmentDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAttachment;
+    timestamp: string;
+  };
+
+  type attachmentFolderDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type attachmentFolderDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAttachmentFolder;
+    timestamp: string;
+  };
+
+  type attachmentFolderListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称） */
+    keyword?: string;
+    /** 分组类型 */
+    kind?: "all" | "image" | "audio" | "video" | "other";
+    /** 状态 */
+    status?: "0" | "1";
+    /** 父分组ID过滤 */
+    parentId?: number;
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type attachmentFolderListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAttachmentFolder[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type attachmentFolderTreeResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAttachmentFolder[];
+    timestamp: string;
+  };
+
+  type attachmentListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称/原始文件名） */
+    keyword?: string;
+    /** 素材类型 */
+    kind?: "image" | "audio" | "video" | "other";
+    /** 分组ID过滤 */
+    folderId?: number;
+    /** MIME 类型过滤 */
+    mimeType?: string;
+    /** 存储类型过滤 */
+    storage?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    sortBy?: "createdAt" | "size" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type attachmentListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAttachment[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
   type batchGetSystemOptionByQueryParams = {
     /** 可以传多个 key，如 ?key=a&key=b */
     key?: systemOptionKey | systemOptionKey[];
@@ -173,6 +282,21 @@ declare namespace API {
     templateId?: number;
     /** 分类ID列表 */
     categoryIds?: number[];
+  };
+
+  type createAttachmentFolderReq = {
+    /** 分组名称 */
+    name: string;
+    /** 父分组ID */
+    parentId?: number;
+    /** 分组类型 */
+    kind?: "all" | "image" | "audio" | "video" | "other";
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 备注 */
+    remark?: string;
   };
 
   type createDeptReq = {
@@ -300,6 +424,16 @@ declare namespace API {
 
   type deleteArticleTemplateParams = {
     /** 模板ID */
+    id: number;
+  };
+
+  type deleteAttachmentFolderParams = {
+    /** 分组ID */
+    id: number;
+  };
+
+  type deleteAttachmentParams = {
+    /** 素材ID */
     id: number;
   };
 
@@ -565,6 +699,54 @@ declare namespace API {
   type getArticleTemplateSchemaParams = {
     /** 模板ID */
     id: number;
+  };
+
+  type getAttachmentDetailParams = {
+    /** 素材ID */
+    id: number;
+  };
+
+  type getAttachmentFolderDetailParams = {
+    /** 分组ID */
+    id: number;
+  };
+
+  type getAttachmentFolderListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称） */
+    keyword?: string;
+    /** 分组类型 */
+    kind?: "all" | "image" | "audio" | "video" | "other";
+    /** 状态 */
+    status?: "0" | "1";
+    /** 父分组ID过滤 */
+    parentId?: number;
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getAttachmentListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称/原始文件名） */
+    keyword?: string;
+    /** 素材类型 */
+    kind?: "image" | "audio" | "video" | "other";
+    /** 分组ID过滤 */
+    folderId?: number;
+    /** MIME 类型过滤 */
+    mimeType?: string;
+    /** 存储类型过滤 */
+    storage?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    sortBy?: "createdAt" | "size" | "updatedAt";
+    sortOrder?: "asc" | "desc";
   };
 
   type getCategoryDetailParams = {
@@ -1299,6 +1481,91 @@ declare namespace API {
     value: string;
   };
 
+  type sysAttachment = {
+    /** 素材ID */
+    id: number;
+    /** 分组ID */
+    folderId?: number;
+    /** 分组名称 */
+    folderName?: string;
+    /** 素材类型 */
+    kind: "image" | "audio" | "video" | "other";
+    /** 素材名称 */
+    name?: string;
+    /** 原始文件名 */
+    originalName: string;
+    /** 存储文件名 */
+    filename: string;
+    /** 扩展名 */
+    ext?: string;
+    /** MIME 类型 */
+    mimeType: string;
+    /** 文件大小（字节） */
+    size: number;
+    /** 存储类型 */
+    storage: string;
+    /** 本地路径 */
+    path?: string;
+    /** 可访问URL */
+    url?: string;
+    /** 对象存储Key */
+    objectKey?: string;
+    /** 内容哈希 */
+    hash?: string;
+    /** 图片宽度 */
+    width?: number;
+    /** 图片高度 */
+    height?: number;
+    /** 音视频时长（秒） */
+    duration?: number;
+    /** 扩展信息 */
+    metadata?: any;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type sysAttachmentFolder = {
+    /** 分组ID */
+    id: number;
+    /** 分组名称 */
+    name: string;
+    /** 父分组ID */
+    parentId?: number;
+    /** 分组类型 */
+    kind: "all" | "image" | "audio" | "video" | "other";
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 排序序号 */
+    sort_order: number;
+    /** 备注 */
+    remark?: string;
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+    children?: sysAttachmentFolder[];
+  };
+
   type sysDept = {
     /** 部门ID */
     id: number;
@@ -1644,6 +1911,41 @@ declare namespace API {
     id: number;
   };
 
+  type updateAttachmentFolderParams = {
+    /** 分组ID */
+    id: number;
+  };
+
+  type updateAttachmentFolderReq = {
+    /** 分组名称 */
+    name?: string;
+    /** 父分组ID */
+    parentId?: number;
+    /** 分组类型 */
+    kind?: "all" | "image" | "audio" | "video" | "other";
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 备注 */
+    remark?: string;
+  };
+
+  type updateAttachmentParams = {
+    /** 素材ID */
+    id: number;
+  };
+
+  type updateAttachmentReq = {
+    /** 素材名称 */
+    name?: string;
+    folderId?: number | null;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 扩展信息 */
+    metadata?: any;
+  };
+
   type updateCategoryParams = {
     /** 分类ID */
     id: number;
@@ -1853,6 +2155,32 @@ declare namespace API {
     deptIds?: number[];
     /** 角色ID列表 */
     roleIds?: number[];
+  };
+
+  type uploadAttachmentsParams = {
+    /** 分组ID */
+    folderId?: number;
+    /** 素材类型 */
+    kind?: "image" | "audio" | "video" | "other";
+    /** 素材名称（批量上传时忽略） */
+    name?: string;
+  };
+
+  type uploadAttachmentsResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: {
+      id?: number;
+      filename: string;
+      originalName: string;
+      mimeType: string;
+      size: number;
+      path: string;
+      kind?: "image" | "audio" | "video" | "other";
+      url?: string;
+    }[];
+    timestamp: string;
   };
 
   type userDeleteResp = {

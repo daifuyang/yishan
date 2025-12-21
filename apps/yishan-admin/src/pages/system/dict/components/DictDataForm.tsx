@@ -1,10 +1,10 @@
 import React, { useMemo, useRef } from 'react';
-import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormSwitch, type ProFormInstance } from '@ant-design/pro-components';
+import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormSwitch } from '@ant-design/pro-components';
 import { getDictDataDetail, createDictData, updateDictData } from '@/services/yishan-admin/sysDictData';
 
 export interface DictDataFormProps {
   title: string;
-  trigger: React.ReactNode;
+  trigger?: JSX.Element;
   typeId: number;
   initialValues?: Partial<API.sysDictData>;
   onFinish?: () => Promise<void>;
@@ -17,7 +17,7 @@ const DictDataForm: React.FC<DictDataFormProps> = ({
   initialValues,
   onFinish,
 }) => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
   const initialVals = useMemo(() => (
     initialValues
       ? {
@@ -31,6 +31,8 @@ const DictDataForm: React.FC<DictDataFormProps> = ({
         }
       : { status: 1 as 0 | 1, sort_order: 0, isDefault: false }
   ), [initialValues]);
+
+  if (!trigger) return null;
 
   return (
     <ModalForm

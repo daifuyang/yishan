@@ -7,7 +7,6 @@ import {
   ProFormList,
   ProFormDependency,
   ProFormGroup,
-  type ProFormInstance,
 } from "@ant-design/pro-components";
 
 const FIELD_TYPES = [
@@ -35,7 +34,7 @@ const TemplateFieldForm: React.FC<TemplateFieldFormProps> = ({
   initialValues,
   onSubmit,
 }) => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
 
   const handleFinish = async (values: any) => {
     const field = {

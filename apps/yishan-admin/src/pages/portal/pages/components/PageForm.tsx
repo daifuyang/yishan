@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { ModalForm, ProFormText, ProFormTextArea, ProFormRadio, ProFormDateTimePicker, ProFormList, ProFormSelect, type ProFormInstance } from "@ant-design/pro-components";
+import { ModalForm, ProFormText, ProFormTextArea, ProFormRadio, ProFormDateTimePicker, ProFormList, ProFormSelect } from "@ant-design/pro-components";
 import { useModel } from "@umijs/max";
 import { getPageDetail, createPage, updatePage, getPageTemplateList, getPageTemplateSchema } from "@/services/yishan-admin/portalPages";
 import dayjs from "dayjs";
@@ -16,7 +16,7 @@ const PageForm: React.FC<PageFormProps> = ({ title, trigger, initialValues = { s
   const { initialState } = useModel("@@initialState");
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
   const [templateFields, setTemplateFields] = React.useState<any[]>([]);
 
   const fetchDetail = async (id: number) => {
@@ -39,7 +39,7 @@ const PageForm: React.FC<PageFormProps> = ({ title, trigger, initialValues = { s
         const dynVals: Record<string, any> = {};
         for (const f of fields) {
           const n = (f?.name || '').trim();
-          if (n && d.attributes && Object.prototype.hasOwnProperty.call(d.attributes, n)) {
+          if (n && d.attributes && Object.hasOwn(d.attributes, n)) {
             dynVals[n] = d.attributes[n];
           }
         }
@@ -54,7 +54,7 @@ const PageForm: React.FC<PageFormProps> = ({ title, trigger, initialValues = { s
       for (const f of templateFields) {
         const n = (f?.name || '').trim();
         if (!n) continue;
-        if (values.hasOwnProperty(n)) {
+        if (Object.hasOwn(values, n)) {
           attrs[n] = values[n];
         }
       }

@@ -6,7 +6,6 @@ import {
   ProFormDatePicker,
   ProFormSelect,
   ProFormTextArea,
-  type ProFormInstance,
 } from "@ant-design/pro-components";
 import type { Dayjs } from "dayjs";
 import { useModel } from "@umijs/max";
@@ -17,7 +16,7 @@ import { ProFormDeptTreeSelect } from "@/components";
 
 export interface UserFormProps {
   title: string;
-  trigger: React.ReactNode;
+  trigger?: JSX.Element;
   initialValues?: Partial<API.sysUser>;
   onFinish?: () => Promise<void>;
   onInit?: () => Promise<API.sysUser | undefined>;
@@ -38,7 +37,7 @@ const UserForm: React.FC<UserFormProps> = ({
   // 获取用户状态字典
   const userStatusDict = dictDataMap.user_status || [];
 
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
 
   // 获取用户详情
   const fetchUserDetail = async (id: number) => {
@@ -88,6 +87,8 @@ const UserForm: React.FC<UserFormProps> = ({
     }
     return false;
   };
+
+  if (!trigger) return null;
 
   return (
     <ModalForm

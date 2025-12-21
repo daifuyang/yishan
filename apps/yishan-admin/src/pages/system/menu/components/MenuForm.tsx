@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { getMenuTree, getMenuDetail, createMenu, updateMenu } from '@/services/yishan-admin/sysMenus';
-import { ModalForm, ProFormText, ProFormDigit, ProFormRadio, ProFormTreeSelect, ProFormDependency, ProFormSwitch, type ProFormInstance } from '@ant-design/pro-components';
+import { ModalForm, ProFormText, ProFormDigit, ProFormRadio, ProFormTreeSelect, ProFormDependency, ProFormSwitch } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 
 type MenuType = 0 | 1 | 2;
@@ -22,7 +22,7 @@ type MenuFormValues = {
 
 export interface MenuFormProps {
     title: string;
-    trigger: React.ReactNode;
+    trigger?: JSX.Element;
     initialValues?: Partial<API.sysMenu>;
     onFinish?: () => Promise<void>;
 }
@@ -34,7 +34,7 @@ const MenuForm: React.FC<MenuFormProps> = ({
     onFinish,
 }) => {
     const [treeLoading, setTreeLoading] = useState(false);
-    const formRef = useRef<ProFormInstance>(null);
+    const formRef = useRef<any>(undefined);
 
     const { initialState } = useModel('@@initialState');
     const dictDataMap = initialState?.dictDataMap || {};
@@ -92,6 +92,8 @@ const MenuForm: React.FC<MenuFormProps> = ({
             }
             : { name: '', type: 0, parentId: 0, status: '1', sort_order: 0, hideInMenu: false, isExternalLink: false, keepAlive: false }
     ), [initialValues]);
+
+    if (!trigger) return null;
 
     return (
         <ModalForm<MenuFormValues>

@@ -435,6 +435,22 @@ export class SysAttachmentModel {
     return this.mapAttachmentToResp(a);
   }
 
+  static async getAttachmentByHash(
+    hash: string,
+    storage = "local"
+  ): Promise<SysAttachmentResp | null> {
+    const a = await this.prisma.sysAttachment.findFirst({
+      where: { hash, storage, deletedAt: null },
+      include: {
+        folder: { select: { id: true, name: true } },
+        creator: { select: { username: true } },
+        updater: { select: { username: true } },
+      },
+    });
+    if (!a) return null;
+    return this.mapAttachmentToResp(a);
+  }
+
   static async createAttachment(
     input: {
       folderId?: number | null;
@@ -528,5 +544,27 @@ export class SysAttachmentModel {
     });
 
     return { id };
+  }
+
+  static async deleteAttachments(
+    ids: number[],
+    currentUserId: number
+  ): Promise<{ ids: number[] }> {
+    const uniqueIds = Array.from(new Set(ids)).filter((id) => Number.isInteger(id) && id > 0);
+    if (uniqueIds.length === 0) return { ids: [] };
+
+    const existing = await this.prisma.sysAttachment.findMany({
+      where: { id: { in: uniqueIds }, deletedAt: null },
+      select: { id: true },
+    });
+    const existingIds = existing.map((x) => x.id);
+    if (existingIds.length === 0) return { ids: [] };
+
+    await this.prisma.sysAttachment.updateMany({
+      where: { id: { in: existingIds }, deletedAt: null },
+      data: { deletedAt: new Date(), status: 0, updaterId: currentUserId },
+    });
+
+    return { ids: existingIds };
   }
 }

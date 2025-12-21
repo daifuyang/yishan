@@ -61,7 +61,9 @@ describe("Admin Attachments routes", () => {
   it("POST /api/v1/admin/attachments 返回上传结果并包含素材ID", async () => {
     const app = await buildApp();
 
+    vi.spyOn(AttachmentService, "getAttachmentByHash").mockResolvedValue(null as any);
     vi.spyOn(AttachmentService, "createLocalAttachment").mockImplementation(async (input: any) => {
+      expect(input.hash).toBe("bff139fa05ac583f685a523ab3d110a0");
       return {
         id: 10,
         kind: input.kind || "image",
@@ -106,6 +108,77 @@ describe("Admin Attachments routes", () => {
 
     const uploadRoot = join(process.cwd(), "public", "uploads");
     await fs.rm(join(uploadRoot, body.data[0].filename), { force: true });
+
+    await app.close();
+  });
+
+  it("POST /api/v1/admin/attachments 内容重复时复用已有素材", async () => {
+    const app = await buildApp();
+
+    vi.spyOn(AttachmentService, "getAttachmentByHash").mockResolvedValue({
+      id: 99,
+      kind: "image",
+      filename: "exists.png",
+      originalName: "exists.png",
+      mimeType: "image/png",
+      size: 3,
+      path: "/uploads/exists.png",
+      url: "/uploads/exists.png",
+      storage: "local",
+      status: "1",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any);
+    const createSpy = vi.spyOn(AttachmentService, "createLocalAttachment");
+
+    const boundary = "----yishan-boundary";
+    const payload = buildMultipartBody(boundary, [
+      {
+        name: "file",
+        filename: "dup.png",
+        contentType: "image/png",
+        content: "png",
+      },
+    ]);
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/attachments?folderId=1",
+      payload,
+      headers: {
+        Authorization: "Bearer t",
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.data[0]).toMatchObject({ id: 99, filename: "exists.png" });
+    expect(createSpy).not.toHaveBeenCalled();
+
+    await app.close();
+  });
+
+  it("DELETE /api/v1/admin/attachments 支持批量删除", async () => {
+    const app = await buildApp();
+
+    vi.spyOn(AttachmentService, "deleteAttachments").mockResolvedValue({ ids: [1, 2] } as any);
+
+    const res = await app.inject({
+      method: "DELETE",
+      url: "/api/v1/admin/attachments",
+      payload: { ids: [1, 2] },
+      headers: {
+        Authorization: "Bearer t",
+        "content-type": "application/json",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toMatchObject({ ids: [1, 2] });
 
     await app.close();
   });

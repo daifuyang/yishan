@@ -2,9 +2,10 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../utils/response.js";
 import { pipeline } from "stream/promises";
+import { Transform } from "stream";
 import { createWriteStream, promises as fs } from "fs";
 import { extname, join } from "path";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { STORAGE_CONFIG } from "../../../../../config/index.js";
 import {
   AttachmentFolderListQuery,
@@ -16,6 +17,7 @@ import {
 import { AttachmentService } from "../../../../../services/attachment.service.js";
 import { AttachmentMessageKeys, getAttachmentMessage } from "../../../../../constants/messages/attachment.js";
 import { AttachmentErrorCode } from "../../../../../constants/business-codes/attachment.js";
+import { ValidationErrorCode } from "../../../../../constants/business-codes/validation.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 
 const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
@@ -248,6 +250,33 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
   );
 
   fastify.delete(
+    "/",
+    {
+      schema: {
+        summary: "批量删除素材",
+        description: "根据素材ID列表进行软删除",
+        operationId: "batchDeleteAttachments",
+        tags: ["attachments"],
+        security: [{ bearerAuth: [] }],
+        body: { $ref: "attachmentBatchDeleteReq#" },
+        response: { 200: { $ref: "attachmentBatchDeleteResp#" } },
+      },
+    },
+    async (request: FastifyRequest<{ Body: { ids: number[] } }>, reply: FastifyReply) => {
+      const ids = request.body?.ids ?? [];
+      if (!Array.isArray(ids) || ids.length === 0) {
+        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "素材ID列表不能为空");
+      }
+      const result = await AttachmentService.deleteAttachments(ids, request.currentUser.id);
+      const message = getAttachmentMessage(
+        AttachmentMessageKeys.ATTACHMENT_DELETE_SUCCESS,
+        request.headers["accept-language"] as string
+      );
+      return ResponseUtil.success(reply, result, message);
+    }
+  );
+
+  fastify.delete(
     "/:id",
     {
       schema: {
@@ -307,36 +336,83 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
         const filename = `${randomUUID().replace(/-/g, "")}${ext}`;
         const filepath = join(uploadRoot, filename);
 
-        await pipeline(part.file, createWriteStream(filepath));
+        const hash = createHash("md5");
+        const hashTap = new Transform({
+          transform(chunk, _encoding, callback) {
+            hash.update(chunk);
+            callback(null, chunk);
+          },
+        });
+
+        await pipeline(part.file, hashTap, createWriteStream(filepath));
         const stat = await fs.stat(filepath);
+        const contentHash = hash.digest("hex");
+
+        const existing = await AttachmentService.getAttachmentByHash(contentHash, "local");
+        if (existing) {
+          await fs.unlink(filepath).catch(() => undefined);
+          results.push({
+            id: existing.id,
+            filename: existing.filename,
+            originalName: existing.originalName,
+            mimeType: existing.mimeType,
+            size: existing.size,
+            path: existing.path || existing.url || "",
+            kind: existing.kind,
+            url: existing.url || existing.path || undefined,
+          });
+          continue;
+        }
 
         const urlPath = `${urlBase}/${filename}`.replace(/\/+/g, "/");
-        const created = await AttachmentService.createLocalAttachment(
-          {
-            folderId: request.query.folderId ?? null,
-            kind: request.query.kind,
-            name: request.query.name ?? null,
-            originalName,
-            filename,
-            ext,
-            mimeType: part.mimetype,
-            size: stat.size,
-            path: urlPath,
-            url: urlPath,
-          },
-          request.currentUser.id
-        );
+        try {
+          const created = await AttachmentService.createLocalAttachment(
+            {
+              folderId: request.query.folderId ?? null,
+              kind: request.query.kind,
+              name: request.query.name ?? null,
+              originalName,
+              filename,
+              ext,
+              mimeType: part.mimetype,
+              size: stat.size,
+              path: urlPath,
+              url: urlPath,
+              hash: contentHash,
+            },
+            request.currentUser.id
+          );
 
-        results.push({
-          id: created.id,
-          filename: created.filename,
-          originalName: created.originalName,
-          mimeType: created.mimeType,
-          size: created.size,
-          path: created.path || urlPath,
-          kind: created.kind,
-          url: created.url || urlPath,
-        });
+          results.push({
+            id: created.id,
+            filename: created.filename,
+            originalName: created.originalName,
+            mimeType: created.mimeType,
+            size: created.size,
+            path: created.path || urlPath,
+            kind: created.kind,
+            url: created.url || urlPath,
+          });
+        } catch (error: any) {
+          if (error?.code === "P2002") {
+            const racedExisting = await AttachmentService.getAttachmentByHash(contentHash, "local");
+            if (racedExisting) {
+              await fs.unlink(filepath).catch(() => undefined);
+              results.push({
+                id: racedExisting.id,
+                filename: racedExisting.filename,
+                originalName: racedExisting.originalName,
+                mimeType: racedExisting.mimeType,
+                size: racedExisting.size,
+                path: racedExisting.path || racedExisting.url || "",
+                kind: racedExisting.kind,
+                url: racedExisting.url || racedExisting.path || undefined,
+              });
+              continue;
+            }
+          }
+          throw error;
+        }
       }
 
       return ResponseUtil.success(reply, results, "上传成功");

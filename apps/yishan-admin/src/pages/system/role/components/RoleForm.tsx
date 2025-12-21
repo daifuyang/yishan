@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Tree, Checkbox, Space, Spin } from 'antd';
-import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea, type ProFormInstance } from '@ant-design/pro-components';
+import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 import { getMenuTree } from '@/services/yishan-admin/sysMenus';
 import type { DataNode } from 'antd/es/tree';
@@ -8,7 +8,7 @@ import { getRoleDetail, createRole, updateRole } from '@/services/yishan-admin/s
 
 export interface RoleFormProps {
   title: string;
-  trigger: React.ReactNode;
+  trigger?: JSX.Element;
   initialValues?: Partial<API.sysRole>;
   onFinish?: () => Promise<void>;
 }
@@ -31,7 +31,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
 
   const fetchRoleDetail = async (id: number) => {
     const res = await getRoleDetail({ id });
@@ -40,13 +40,6 @@ const RoleForm: React.FC<RoleFormProps> = ({
       setCheckedKeys(res.data?.menuIds || []);
     }
   };
-
-  // 当菜单树数据加载完成后，更新全选状态
-  useEffect(() => {
-    if (checkedKeys.length > 0 && allKeys.length > 0) {
-      setCheckAllChecked(checkedKeys.length === allKeys.length);
-    }
-  }, [checkedKeys]);
 
   const buildTree = (nodes: API.menuTreeNode[] = []): DataNode[] => {
     return nodes.map((n) => ({
@@ -68,6 +61,13 @@ const RoleForm: React.FC<RoleFormProps> = ({
     return keys;
   }, [treeData]);
 
+  // 当菜单树数据加载完成后，更新全选状态
+  useEffect(() => {
+    if (checkedKeys.length > 0 && allKeys.length > 0) {
+      setCheckAllChecked(checkedKeys.length === allKeys.length);
+    }
+  }, [checkedKeys, allKeys]);
+
   const fetchMenuTree = async () => {
     try {
       setMenuTreeLoading(true);
@@ -79,6 +79,8 @@ const RoleForm: React.FC<RoleFormProps> = ({
       setMenuTreeLoading(false);
     }
   };
+
+  if (!trigger) return null;
 
   return (
     <ModalForm

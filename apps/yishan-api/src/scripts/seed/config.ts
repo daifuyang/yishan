@@ -207,6 +207,7 @@ export const systemMenusSeed: MenuSeedNode = {
     { name: '菜单管理', path: '/system/menu', type: 1, sortOrder: 5, component: './system/menu' },
     { name: '字典管理', path: '/system/dict', type: 1, sortOrder: 6, component: './system/dict' },
     { name: '七牛云配置', path: '/system/qiniu', type: 1, sortOrder: 7, component: './system/qiniu' },
+    { name: '媒体库', path: '/system/attachments', type: 1, sortOrder: 8, component: './system/attachments' },
   ],
 };
 

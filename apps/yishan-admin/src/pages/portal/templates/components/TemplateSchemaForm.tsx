@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { DrawerForm, ProTable, type ProFormInstance, type ProColumns } from "@ant-design/pro-components";
+import { DrawerForm, ProTable, type ProColumns } from "@ant-design/pro-components";
 import { App, Button, Popconfirm } from "antd";
 import { getArticleTemplateSchema, updateArticleTemplateSchema } from "@/services/yishan-admin/portalArticles";
 import { getPageTemplateSchema, updatePageTemplateSchema } from "@/services/yishan-admin/portalPages";
@@ -28,7 +28,7 @@ const FIELD_TYPE_TEXT: Record<string, string> = {
 };
 
 const TemplateSchemaForm: React.FC<TemplateSchemaFormProps> = ({ title, trigger, templateId, type, onFinish }) => {
-  const formRef = useRef<ProFormInstance>(null);
+  const formRef = useRef<any>(undefined);
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [fields, setFields] = useState<any[]>([]);
@@ -41,7 +41,7 @@ const TemplateSchemaForm: React.FC<TemplateSchemaFormProps> = ({ title, trigger,
         : await getPageTemplateSchema({ id: templateId });
       const schema: any[] = Array.isArray(res?.data) ? res.data : [];
       setFields(schema);
-    } catch (e) {
+    } catch (_e) {
       message.error("加载模板结构失败");
     } finally {
       setLoading(false);
@@ -73,7 +73,7 @@ const TemplateSchemaForm: React.FC<TemplateSchemaFormProps> = ({ title, trigger,
       submitter={false}
     >
       <ProTable<any>
-        rowKey={(r, i) => String(i)}
+        rowKey={(_r, i) => String(i)}
         search={false}
         options={false}
         pagination={false}

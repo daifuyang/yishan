@@ -14,7 +14,7 @@
     "build:ts": "tsc",
     "watch:ts": "tsc -w",
     "dev": "npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
-    "dev:start": "fastify start --ignore-watch=.ts$ -w -l info -P dist/app.js",
+    "dev:start": "fastify start --ignore-watch='public/**' --ignore-watch=.ts$ -w -l info -P dist/app.js",
     "db:generate": "npx prisma generate",
     "db:init": "npx prisma migrate dev --name init",
     "db:seed": "npm run build:ts && node dist/scripts/seed.js",

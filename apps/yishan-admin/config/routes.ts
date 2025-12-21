@@ -113,6 +113,12 @@ export default [
         access: 'canDo',
       },
       {
+        path: '/system/attachments',
+        name: 'attachments',
+        component: './system/attachments',
+        access: 'canDo',
+      },
+      {
         path: '/system/qiniu',
         name: 'qiniu',
         component: './system/qiniu',
