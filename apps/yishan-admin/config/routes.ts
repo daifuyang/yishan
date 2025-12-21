@@ -113,17 +113,23 @@ export default [
         access: 'canDo',
       },
       {
+        path: '/system/site',
+        name: 'site',
+        component: './system/site',
+        access: 'canDo',
+      },
+      {
         path: '/system/attachments',
         name: 'attachments',
         component: './system/attachments',
         access: 'canDo',
       },
       {
-        path: '/system/qiniu',
-        name: 'qiniu',
-        component: './system/qiniu',
+        path: '/system/storage',
+        name: 'storage',
+        component: './system/storage',
         access: 'canDo',
-      },
+      }
     ],
   },
   {

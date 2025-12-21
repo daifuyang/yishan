@@ -1,5 +1,5 @@
 import { PlusOutlined, DownOutlined } from '@ant-design/icons';
-import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, Popconfirm, Space, Dropdown, App } from 'antd';
 import React, { useRef, useState } from 'react';
 import { getDictTypeList, updateDictType, deleteDictType } from '@/services/yishan-admin/sysDictTypes';
@@ -126,7 +126,7 @@ const DictTypeList: React.FC = () => {
   ];
 
   return (
-    <>
+    <PageContainer>
       <ProTable<API.sysDictType>
         headerTitle="字典类型列表"
         actionRef={actionRef}
@@ -186,7 +186,7 @@ const DictTypeList: React.FC = () => {
         typeKey={dataTypeKey}
         typeName={dataTypeName}
       />
-    </>
+    </PageContainer>
   );
 };
 

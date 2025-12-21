@@ -65,6 +65,11 @@ export type PortalTemplateSeed = {
   config?: Record<string, any>;
 };
 
+export type SysOptionSeed = {
+  key: string;
+  value: string;
+};
+
 export const adminSeed = {
   username: 'admin',
   password: 'admin123',
@@ -206,8 +211,9 @@ export const systemMenusSeed: MenuSeedNode = {
     { name: '岗位管理', path: '/system/post', type: 1, sortOrder: 4, component: './system/post' },
     { name: '菜单管理', path: '/system/menu', type: 1, sortOrder: 5, component: './system/menu' },
     { name: '字典管理', path: '/system/dict', type: 1, sortOrder: 6, component: './system/dict' },
-    { name: '七牛云配置', path: '/system/qiniu', type: 1, sortOrder: 7, component: './system/qiniu' },
-    { name: '媒体库', path: '/system/attachments', type: 1, sortOrder: 8, component: './system/attachments' },
+    { name: '站点配置', path: '/system/site', type: 1, sortOrder: 7, component: './system/site' },
+    { name: '云存储', path: '/system/storage', type: 1, sortOrder: 8, component: './system/storage' },
+    { name: '媒体库', path: '/system/attachments', type: 1, sortOrder: 9, component: './system/attachments' },
   ],
 };
 
@@ -216,7 +222,7 @@ export const portalMenusSeed: MenuSeedNode = {
   path: '/portal',
   type: 0,
   sortOrder: 2,
-  icon: 'global',
+  icon: 'read',
   children: [
     { name: '文章管理', path: '/portal/articles', type: 1, sortOrder: 1, component: './portal/articles' },
     { name: '页面管理', path: '/portal/pages', type: 1, sortOrder: 2, component: './portal/pages' },
@@ -234,3 +240,11 @@ export const portalMenusSeed: MenuSeedNode = {
   ],
 };
 
+export const sysOptionsSeed: SysOptionSeed[] = [
+  { key: 'basicConfig', value: '{}' }, // 站点基本配置
+  { key: 'systemStorage', value: '0' },
+  { key: 'qiniuConfig', value: '{}' },
+  { key: 'aliyunOssConfig', value: '{}' },
+  { key: 'defaultArticleTemplateId', value: '1' },
+  { key: 'defaultPageTemplateId', value: '2' },
+]

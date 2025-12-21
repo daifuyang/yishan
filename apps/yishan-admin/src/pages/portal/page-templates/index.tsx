@@ -1,5 +1,5 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { type ActionType, type ProColumns, ProTable } from "@ant-design/pro-components";
+import { PageContainer, type ActionType, type ProColumns, ProTable } from "@ant-design/pro-components";
 import { Button, Popconfirm, Space, App } from "antd";
 import React, { useRef, useState } from "react";
 import { getPageTemplateList, deletePageTemplate } from "@/services/yishan-admin/portalPages";
@@ -40,30 +40,32 @@ const PageTemplates: React.FC = () => {
   ];
 
   return (
-    <ProTable<API.portalTemplate>
-      headerTitle="页面模板"
-      actionRef={actionRef}
-      rowKey="id"
-      search={{ labelWidth: 120 }}
-      toolBarRender={() => [
-        <TemplateForm key="create" title="新建模板" type="page" trigger={<Button type="primary"><PlusOutlined /> 新建</Button>} onFinish={handleFormSuccess} />,
-      ]}
-      request={async (params) => {
-        const { current, pageSize, keyword, status } = params as any;
-        const result = await getPageTemplateList({ page: current, pageSize, keyword, status });
-        return { data: result.data || [], success: result.success, total: (result as any).pagination?.total || 0 };
-      }}
-      columns={columns}
-      rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-        <Space size={24}>
-          <span>
-            已选 {selectedRowKeys.length} 项
-            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>取消选择</a>
-          </span>
-        </Space>
-      )}
-    />
+    <PageContainer>
+      <ProTable<API.portalTemplate>
+        headerTitle="页面模板"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{ labelWidth: 120 }}
+        toolBarRender={() => [
+          <TemplateForm key="create" title="新建模板" type="page" trigger={<Button type="primary"><PlusOutlined /> 新建</Button>} onFinish={handleFormSuccess} />,
+        ]}
+        request={async (params) => {
+          const { current, pageSize, keyword, status } = params as any;
+          const result = await getPageTemplateList({ page: current, pageSize, keyword, status });
+          return { data: result.data || [], success: result.success, total: (result as any).pagination?.total || 0 };
+        }}
+        columns={columns}
+        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+          <Space size={24}>
+            <span>
+              已选 {selectedRowKeys.length} 项
+              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>取消选择</a>
+            </span>
+          </Space>
+        )}
+      />
+    </PageContainer>
   );
 };
 

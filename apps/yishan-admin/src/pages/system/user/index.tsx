@@ -1,5 +1,5 @@
 import { PlusOutlined } from "@ant-design/icons";
-import { type ActionType, type ProColumns, ProTable } from "@ant-design/pro-components";
+import { PageContainer, type ActionType, type ProColumns, ProTable } from "@ant-design/pro-components";
 import { Button, message, Popconfirm, Space } from "antd";
 import React, { useRef, useState } from "react";
 import { useModel } from "@umijs/max";
@@ -173,81 +173,83 @@ const UserList: React.FC = () => {
   ];
 
   return (
-    <ProTable<API.sysUser>
-      headerTitle="用户列表"
-      actionRef={actionRef}
-      rowKey="id"
-      search={{
-        labelWidth: 120,
-      }}
-      toolBarRender={() => [
-        <UserForm
-          key="create"
-          title="新建用户"
-          trigger={
-            <Button type="primary">
-              <PlusOutlined /> 新建
-            </Button>
-          }
-          onFinish={handleFormSuccess}
-        />,
-      ]}
-      request={async (params) => {
-        const { current, pageSize, ...restParams } = params;
-        const result = await getUserList({
-          page: current,
-          pageSize,
-          ...restParams,
-        });
-        return {
-          data: result.data || [],
-          success: result.success,
-          total: (result as any).pagination?.total || 0,
-        };
-      }}
-      columns={columns}
-      rowSelection={{
-        selectedRowKeys,
-        onChange: setSelectedRowKeys,
-      }}
-      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-        <Space size={24}>
-          <span>
-            已选 {selectedRowKeys.length} 项
-            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-              取消选择
-            </a>
-          </span>
-        </Space>
-      )}
-      tableAlertOptionRender={() => {
-        return (
-          <Space>
-            <Popconfirm
-              title={`确定要删除选中的 ${selectedRowKeys.length} 个用户吗？`}
-              onConfirm={handleBatchRemove}
-              disabled={selectedRowKeys.length === 0}
-            >
+    <PageContainer>
+      <ProTable<API.sysUser>
+        headerTitle="用户列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{
+          labelWidth: 120,
+        }}
+        toolBarRender={() => [
+          <UserForm
+            key="create"
+            title="新建用户"
+            trigger={
+              <Button type="primary">
+                <PlusOutlined /> 新建
+              </Button>
+            }
+            onFinish={handleFormSuccess}
+          />,
+        ]}
+        request={async (params) => {
+          const { current, pageSize, ...restParams } = params;
+          const result = await getUserList({
+            page: current,
+            pageSize,
+            ...restParams,
+          });
+          return {
+            data: result.data || [],
+            success: result.success,
+            total: (result as any).pagination?.total || 0,
+          };
+        }}
+        columns={columns}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+        }}
+        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+          <Space size={24}>
+            <span>
+              已选 {selectedRowKeys.length} 项
+              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+                取消选择
+              </a>
+            </span>
+          </Space>
+        )}
+        tableAlertOptionRender={() => {
+          return (
+            <Space>
+              <Popconfirm
+                title={`确定要删除选中的 ${selectedRowKeys.length} 个用户吗？`}
+                onConfirm={handleBatchRemove}
+                disabled={selectedRowKeys.length === 0}
+              >
+                <Button
+                  className="p-0"
+                  type="link"
+                  danger
+                  disabled={selectedRowKeys.length === 0}
+                >
+                  批量删除
+                </Button>
+              </Popconfirm>
               <Button
                 className="p-0"
                 type="link"
-                danger
-                disabled={selectedRowKeys.length === 0}
+                onClick={() => message.info("暂未实现")}
               >
-                批量删除
+                批量导出
               </Button>
-            </Popconfirm>
-            <Button
-              className="p-0"
-              type="link"
-              onClick={() => message.info("暂未实现")}
-            >
-              批量导出
-            </Button>
-          </Space>
-        );
-      }}
-    />
+            </Space>
+          );
+        }}
+      />
+    </PageContainer>
   );
 };
 

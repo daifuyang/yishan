@@ -1,5 +1,5 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, Popconfirm, Space, App } from 'antd';
 import React, { useRef, useState } from 'react';
 import { getMenuTree, updateMenu, deleteMenu } from '@/services/yishan-admin/sysMenus';
@@ -113,71 +113,73 @@ const MenuList: React.FC = () => {
   ];
 
   return (
-    <ProTable<API.menuTreeNode>
-      headerTitle="菜单列表"
-      actionRef={actionRef}
-      rowKey="id"
-      search={false}
-      pagination={false}
-      expandable={{ expandedRowKeys, onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]) }}
-      toolBarRender={() => [
-        <MenuForm
-          key="create"
-          title="新建菜单"
-          trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
-          onFinish={handleFormSuccess}
-        />,
-      ]}
-      request={async () => {
-        const result = await getMenuTree();
-        const normalize = (nodes: API.menuTreeNode[] | null | undefined): API.menuTreeNode[] => {
-          if (!nodes) return [];
-          return nodes.map((n) => ({
-            ...n,
-            children: n.children ? normalize(n.children) : null,
-          }));
-        };
-        const collectIds = (nodes: API.menuTreeNode[] | null | undefined): number[] => {
-          if (!nodes) return [];
-          const acc: number[] = [];
-          const walk = (list: API.menuTreeNode[]) => {
-            list.forEach((n) => {
-              acc.push(n.id || 0);
-              if (Array.isArray(n.children)) {
-                walk(n.children as API.menuTreeNode[]);
-              }
-            });
+    <PageContainer>
+      <ProTable<API.menuTreeNode>
+        headerTitle="菜单列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={false}
+        pagination={false}
+        expandable={{ expandedRowKeys, onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]) }}
+        toolBarRender={() => [
+          <MenuForm
+            key="create"
+            title="新建菜单"
+            trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
+            onFinish={handleFormSuccess}
+          />,
+        ]}
+        request={async () => {
+          const result = await getMenuTree();
+          const normalize = (nodes: API.menuTreeNode[] | null | undefined): API.menuTreeNode[] => {
+            if (!nodes) return [];
+            return nodes.map((n) => ({
+              ...n,
+              children: n.children ? normalize(n.children) : null,
+            }));
           };
-          walk(nodes);
-          return acc;
-        };
-        const data = normalize(result.data) || [];
-        setExpandedRowKeys(collectIds(data));
-        return {
-          data,
-          success: result.success,
-        };
-      }}
-      columns={columns}
-      rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-        <Space size={24}>
-          <span>
-            已选 {selectedRowKeys.length} 项
-            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-              取消选择
-            </a>
-          </span>
-        </Space>
-      )}
-      tableAlertOptionRender={() => (
-        <Space>
-          <Popconfirm title={`确定要删除选中的 ${selectedRowKeys.length} 个菜单吗？`} onConfirm={handleBatchRemove}>
-            <Button type="link" danger loading={batchDeleteLoading}>批量删除</Button>
-          </Popconfirm>
-        </Space>
-      )}
-    />
+          const collectIds = (nodes: API.menuTreeNode[] | null | undefined): number[] => {
+            if (!nodes) return [];
+            const acc: number[] = [];
+            const walk = (list: API.menuTreeNode[]) => {
+              list.forEach((n) => {
+                acc.push(n.id || 0);
+                if (Array.isArray(n.children)) {
+                  walk(n.children as API.menuTreeNode[]);
+                }
+              });
+            };
+            walk(nodes);
+            return acc;
+          };
+          const data = normalize(result.data) || [];
+          setExpandedRowKeys(collectIds(data));
+          return {
+            data,
+            success: result.success,
+          };
+        }}
+        columns={columns}
+        rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+          <Space size={24}>
+            <span>
+              已选 {selectedRowKeys.length} 项
+              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+                取消选择
+              </a>
+            </span>
+          </Space>
+        )}
+        tableAlertOptionRender={() => (
+          <Space>
+            <Popconfirm title={`确定要删除选中的 ${selectedRowKeys.length} 个菜单吗？`} onConfirm={handleBatchRemove}>
+              <Button type="link" danger loading={batchDeleteLoading}>批量删除</Button>
+            </Popconfirm>
+          </Space>
+        )}
+      />
+    </PageContainer>
   );
 };
 

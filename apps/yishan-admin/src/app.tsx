@@ -1,4 +1,4 @@
-import { LinkOutlined, SettingOutlined } from "@ant-design/icons";
+import { LinkOutlined, ReadOutlined, SettingOutlined } from "@ant-design/icons";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
@@ -24,6 +24,7 @@ const loginPath = "/user/login";
 
 const IconMap: Record<string, React.ReactNode> = {
   setting: <SettingOutlined />,
+  read: <ReadOutlined />,
 };
 
 /**
@@ -46,13 +47,13 @@ export async function getInitialState(): Promise<{
     return undefined;
   };
 
-  const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
+const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
 
     const toItem = (n: API.menuTreeNode): MenuDataItem => {
       const item: MenuDataItem = {
         name: n.name,
         path: n.path,
-        icon: n.icon ? IconMap[String(n.icon).toLowerCase()] : undefined,
+        icon: n.icon ? (IconMap[String(n.icon).toLowerCase()] as any) : undefined,
         hideInMenu: n.hideInMenu,
       };
       if (Array.isArray(n.children) && n.children.length) {
@@ -243,9 +244,8 @@ const resolveFirstPath = (routes: Route[] = []): string => {
   while (path && !visited.has(path)) {
     visited.add(path);
     const n = routeMap.get(path);
-    const redirect = n?.redirect;
-    if (redirect && redirect !== path) {
-      path = redirect;
+    if (n?.redirect && n.redirect !== path) {
+      path = n.redirect;
       continue;
     }
     break;

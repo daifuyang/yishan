@@ -1,5 +1,5 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
 import { getDeptTree, updateDept, deleteDept } from '@/services/yishan-admin/sysDepts';
@@ -133,72 +133,73 @@ const DepartmentList: React.FC = () => {
   ];
 
   return (
-    <ProTable<DeptTreeNode>
-      headerTitle="部门树"
-      actionRef={actionRef}
-      rowKey="id"
-      search={{ labelWidth: 120 }}
-      toolBarRender={() => [
-        <DepartmentForm
-          key="create"
-          title="新建部门"
-          trigger={
-            <Button type="primary">
-              <PlusOutlined /> 新建
-            </Button>
-          }
-          onFinish={handleFormSuccess}
-        />,
-      ]}
-      request={async () => {
-        const result = await getDeptTree();
-        const treeData: DeptTreeNode[] = result.data || [];
-        // 控制展开：接口数据到达后，收集所有父节点并设置为展开
-        setExpandedRowKeys(collectExpandKeys(treeData));
-        return {
-          data: treeData,
-          success: result.success,
-        };
-      }}
-      pagination={false}
-      expandable={{
-        expandedRowKeys,
-        onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]),
-      }}
-      columns={columns}
-      rowSelection={{
-        selectedRowKeys,
-        onChange: (keys: React.Key[], _rows: DeptTreeNode[]) => setSelectedRowKeys(keys),
-      }}
-      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-        <Space size={24}>
-          <span>
-            已选 {selectedRowKeys.length} 项
-            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-              取消选择
-            </a>
-          </span>
-        </Space>
-      )}
-      tableAlertOptionRender={() => {
-        return (
-          <Space>
-            <Popconfirm
-              title={`确定要删除选中的 ${selectedRowKeys.length} 个部门吗？`}
-              onConfirm={handleBatchRemove}
-              disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
-            >
-              <Button className='p-0' type="link" danger disabled={selectedRowKeys.length === 0 || batchDeleteLoading}>
-                {batchDeleteLoading ? '删除中...' : '批量删除'}
+    <PageContainer>
+      <ProTable<DeptTreeNode>
+        headerTitle="部门树"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{ labelWidth: 120 }}
+        toolBarRender={() => [
+          <DepartmentForm
+            key="create"
+            title="新建部门"
+            trigger={
+              <Button type="primary">
+                <PlusOutlined /> 新建
               </Button>
-            </Popconfirm>
-            <Button className='p-0' type="link" onClick={() => message.info('暂未实现')}>
-              批量导出
-            </Button>
+            }
+            onFinish={handleFormSuccess}
+          />,
+        ]}
+        request={async () => {
+          const result = await getDeptTree();
+          const treeData: DeptTreeNode[] = result.data || [];
+          setExpandedRowKeys(collectExpandKeys(treeData));
+          return {
+            data: treeData,
+            success: result.success,
+          };
+        }}
+        pagination={false}
+        expandable={{
+          expandedRowKeys,
+          onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]),
+        }}
+        columns={columns}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: (keys: React.Key[], _rows: DeptTreeNode[]) => setSelectedRowKeys(keys),
+        }}
+        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+          <Space size={24}>
+            <span>
+              已选 {selectedRowKeys.length} 项
+              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+                取消选择
+              </a>
+            </span>
           </Space>
-        );
-      }}
-    />
+        )}
+        tableAlertOptionRender={() => {
+          return (
+            <Space>
+              <Popconfirm
+                title={`确定要删除选中的 ${selectedRowKeys.length} 个部门吗？`}
+                onConfirm={handleBatchRemove}
+                disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
+              >
+                <Button className='p-0' type="link" danger disabled={selectedRowKeys.length === 0 || batchDeleteLoading}>
+                  {batchDeleteLoading ? '删除中...' : '批量删除'}
+                </Button>
+              </Popconfirm>
+              <Button className='p-0' type="link" onClick={() => message.info('暂未实现')}>
+                批量导出
+              </Button>
+            </Space>
+          );
+        }}
+      />
+    </PageContainer>
   );
 };
 

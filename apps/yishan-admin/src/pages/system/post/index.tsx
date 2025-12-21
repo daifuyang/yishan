@@ -1,5 +1,5 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
 import { getPostList, updatePost, deletePost } from '@/services/yishan-admin/sysPosts';
@@ -112,72 +112,72 @@ const PostList: React.FC = () => {
   ];
 
   return (
-    <ProTable<API.sysPost>
-      headerTitle="岗位列表"
-      actionRef={actionRef}
-      rowKey="id"
-      search={{ labelWidth: 120 }}
-      toolBarRender={() => [
-        <PostForm
-          key="create"
-          title="新建岗位"
-          trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
-          onFinish={handleFormSuccess}
-        />,
-      ]}
-      request={async (params) => {
-        const { current, pageSize, keyword, status } = params as any;
-        const result = await getPostList({
-          page: current,
-          pageSize,
-          keyword,
-          status,
-        });
-        return {
-          data: result.data || [],
-          success: result.success,
-          total: (result as any).pagination?.total || 0,
-        };
-      }}
-      columns={[
-        // 扩展查询字段：关键词（匹配名称、描述）
-        {
-          title: '关键词',
-          dataIndex: 'keyword',
-          hideInTable: true,
-        },
-        // 其余展示列
-        ...columns,
-      ]}
-      rowSelection={{
-        selectedRowKeys,
-        onChange: setSelectedRowKeys,
-      }}
-      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-        <Space size={24}>
-          <span>
-            已选 {selectedRowKeys.length} 项
-            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-              取消选择
-            </a>
-          </span>
-        </Space>
-      )}
-      tableAlertOptionRender={() => {
-        return (
-          <Space>
-            <Popconfirm
-              title={`确定要删除选中的 ${selectedRowKeys.length} 个岗位吗？`}
-              onConfirm={handleBatchRemove}
-            >
-              <Button type="link" danger loading={batchDeleteLoading}>
-                批量删除
-              </Button>
-            </Popconfirm>
+    <PageContainer>
+      <ProTable<API.sysPost>
+        headerTitle="岗位列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{ labelWidth: 120 }}
+        toolBarRender={() => [
+          <PostForm
+            key="create"
+            title="新建岗位"
+            trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
+            onFinish={handleFormSuccess}
+          />,
+        ]}
+        request={async (params) => {
+          const { current, pageSize, keyword, status } = params as any;
+          const result = await getPostList({
+            page: current,
+            pageSize,
+            keyword,
+            status,
+          });
+          return {
+            data: result.data || [],
+            success: result.success,
+            total: (result as any).pagination?.total || 0,
+          };
+        }}
+        columns={[
+          {
+            title: '关键词',
+            dataIndex: 'keyword',
+            hideInTable: true,
+          },
+          ...columns,
+        ]}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+        }}
+        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+          <Space size={24}>
+            <span>
+              已选 {selectedRowKeys.length} 项
+              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+                取消选择
+              </a>
+            </span>
           </Space>
-        );
-      }}
-    />
+        )}
+        tableAlertOptionRender={() => {
+          return (
+            <Space>
+              <Popconfirm
+                title={`确定要删除选中的 ${selectedRowKeys.length} 个岗位吗？`}
+                onConfirm={handleBatchRemove}
+              >
+                <Button type="link" danger loading={batchDeleteLoading}>
+                  批量删除
+                </Button>
+              </Popconfirm>
+            </Space>
+          );
+        }}
+      />
+    </PageContainer>
   );
 };
 

@@ -1,5 +1,5 @@
 import { PlusOutlined, DownOutlined } from '@ant-design/icons';
-import { type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
 import React, { useRef, useState } from 'react';
 import { useModel } from '@umijs/max';
@@ -166,76 +166,78 @@ const RoleList: React.FC = () => {
   ];
 
   return (
-    <ProTable<API.sysRole>
-      headerTitle="角色列表"
-      actionRef={actionRef}
-      rowKey="id"
-      search={{
-        labelWidth: 120,
-      }}
-      toolBarRender={() => [
-        <RoleForm
-          key="create"
-          title="新建角色"
-          trigger={
-            <Button type="primary">
-              <PlusOutlined /> 新建
-            </Button>
-          }
-          onFinish={handleFormSuccess}
-        />,
-      ]}
-      request={async (params) => {
-        const { current, pageSize, ...restParams } = params;
-        const result = await getRoleList({
-          page: current,
-          pageSize,
-          ...restParams,
-        });
-        return {
-          data: result.data || [],
-          success: result.success,
-          total: result.pagination?.total || 0,
-        };
-      }}
-      columns={columns}
-      rowSelection={{
-        selectedRowKeys,
-        onChange: setSelectedRowKeys,
-      }}
-      tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
-        <Space size={24}>
-          <span>
-            已选 {selectedRowKeys.length} 项
-            <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
-              取消选择
-            </a>
-          </span>
-        </Space>
-      )}
-      tableAlertOptionRender={() => {
-        return (
-          <Space size={16}>
-            <Popconfirm
-              placement='bottomRight'
-              title="确定要批量删除选中的角色吗？"
-              description={`将删除 ${selectedRowKeys.length} 个角色，此操作不可恢复`}
-              onConfirm={handleBatchDelete}
-              okText="确定"
-              cancelText="取消"
-              disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
-            >
-              <a style={{
-                color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
-                cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
-              }}>
-                {batchDeleteLoading ? '删除中...' : '批量删除'}
+    <PageContainer>
+      <ProTable<API.sysRole>
+        headerTitle="角色列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{
+          labelWidth: 120,
+        }}
+        toolBarRender={() => [
+          <RoleForm
+            key="create"
+            title="新建角色"
+            trigger={
+              <Button type="primary">
+                <PlusOutlined /> 新建
+              </Button>
+            }
+            onFinish={handleFormSuccess}
+          />,
+        ]}
+        request={async (params) => {
+          const { current, pageSize, ...restParams } = params;
+          const result = await getRoleList({
+            page: current,
+            pageSize,
+            ...restParams,
+          });
+          return {
+            data: result.data || [],
+            success: result.success,
+            total: result.pagination?.total || 0,
+          };
+        }}
+        columns={columns}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+        }}
+        tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
+          <Space size={24}>
+            <span>
+              已选 {selectedRowKeys.length} 项
+              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+                取消选择
               </a>
-            </Popconfirm>
+            </span>
           </Space>
-        );
-      }}
-    />
+        )}
+        tableAlertOptionRender={() => {
+          return (
+            <Space size={16}>
+              <Popconfirm
+                placement='bottomRight'
+                title="确定要批量删除选中的角色吗？"
+                description={`将删除 ${selectedRowKeys.length} 个角色，此操作不可恢复`}
+                onConfirm={handleBatchDelete}
+                okText="确定"
+                cancelText="取消"
+                disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
+              >
+                <a style={{
+                  color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
+                  cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
+                }}>
+                  {batchDeleteLoading ? '删除中...' : '批量删除'}
+                </a>
+              </Popconfirm>
+            </Space>
+          );
+        }}
+      />
+    </PageContainer>
   );
 };
 

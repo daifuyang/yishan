@@ -122,7 +122,7 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
         items: menuItems,
       }}
     >
-      {children}
+      {children as any}
     </HeaderDropdown>
   );
 };

@@ -9,6 +9,7 @@ import {
   portalPagesSeed,
   portalTemplatesSeed,
   postsSeed,
+  sysOptionsSeed,
   systemMenusSeed,
 } from './config.js';
 import { ensureAdminUser } from './modules/system-user.js';
@@ -19,6 +20,7 @@ import { seedMenus } from './modules/system-menu.js';
 import { seedDicts } from './modules/system-dict.js';
 import { seedPortalCategories, seedPortalArticles, seedPortalPages } from './modules/portal-content.js';
 import { seedPortalTemplates } from './modules/portal-template.js';
+import { seedSysOptions } from './modules/system-option.js';
 
 export async function runSeed(prisma: PrismaClient) {
   console.log('开始执行种子数据脚本...');
@@ -31,6 +33,7 @@ export async function runSeed(prisma: PrismaClient) {
   await seedPosts(prisma, adminUser.id, postsSeed);
   await seedMenus(prisma, adminUser.id, [systemMenusSeed, portalMenusSeed]);
   await seedDicts(prisma, adminUser.id, dictsSeed);
+  await seedSysOptions(prisma, adminUser.id, sysOptionsSeed);
 
   const categorySlugToId = await seedPortalCategories(prisma, adminUser.id, portalCategoriesSeed);
   await seedPortalPages(prisma, adminUser.id, portalPagesSeed);
