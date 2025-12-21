@@ -14,6 +14,15 @@ import { AvatarDropdown, AvatarName } from "./RightContent/AvatarDropdown";
  */
 import { ProFormDeptTreeSelect } from "./DeptTreeSelect";
 import QiniuUpload from "./QiniuUpload";
+import {
+  AttachmentSelect,
+  AttachmentSingleSelect,
+  AttachmentMultiSelect,
+  AttachmentImageSelect,
+  AttachmentAudioSelect,
+  AttachmentVideoSelect,
+  AttachmentFileSelect,
+} from "./AttachmentSelect";
 
 export {
   AvatarDropdown,
@@ -23,4 +32,11 @@ export {
   SelectLang,
   ProFormDeptTreeSelect,
   QiniuUpload,
+  AttachmentSelect,
+  AttachmentSingleSelect,
+  AttachmentMultiSelect,
+  AttachmentImageSelect,
+  AttachmentAudioSelect,
+  AttachmentVideoSelect,
+  AttachmentFileSelect,
 };

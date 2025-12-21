@@ -1,6 +1,7 @@
 import { useIntl } from '@umijs/max';
 import { Button, message, notification } from 'antd';
 import defaultSettings from '../config/defaultSettings';
+import 'yishan-tiptap/index.css';
 
 const { pwa } = defaultSettings;
 const isHttps = document.location.protocol === 'https:';

@@ -18,7 +18,7 @@ import {
 } from "@/services/yishan-admin/portalArticles";
 import { getCategoryList } from "@/services/yishan-admin/portalCategories";
 import { Col, Divider } from "antd";
-import { QiniuUpload } from "@/components";
+import { AttachmentImageSelect } from "@/components";
 import TemplateDynamicFields from "../../templates/components/TemplateDynamicFields";
 
 export interface ArticleFormProps {
@@ -209,7 +209,7 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
       />
 
       <ProForm.Item name="coverImage" label="封面图" colProps={{ span: 24 }}>
-        <QiniuUpload dir="portal/articles" />
+        <AttachmentImageSelect />
       </ProForm.Item>
 
       <ProFormTextArea
