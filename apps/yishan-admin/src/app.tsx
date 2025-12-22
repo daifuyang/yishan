@@ -16,6 +16,8 @@ import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
 import { getAuthorizedMenuTree } from "@/services/yishan-admin/sysMenus";
 import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
+import type { CloudStorageConfig } from "@/utils/attachmentUpload";
+import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
 import React from "react";
 
 const isDev = process.env.NODE_ENV === "development";
@@ -38,6 +40,12 @@ export async function getInitialState(): Promise<{
   fetchMenus?: () => Promise<MenuDataItem[] | undefined>;
   dictDataMap?: Record<string, any>;
   fetchDictDataMap?: () => Promise<Record<string, any> | undefined>;
+  cloudStorageConfig?: CloudStorageConfig;
+  fetchCloudStorageConfig?: (options?: { force?: boolean }) => Promise<CloudStorageConfig>;
+  uploadAttachmentFile?: (
+    file: File,
+    params: { folderId?: number; kind?: API.sysAttachment["kind"]; name?: string; dir?: string }
+  ) => Promise<API.uploadAttachmentsResp>;
 }> {
   const fetchUserInfo = async () => {
     const response = await getCurrentUser();
@@ -47,7 +55,7 @@ export async function getInitialState(): Promise<{
     return undefined;
   };
 
-const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
+  const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
 
     const toItem = (n: API.menuTreeNode): MenuDataItem => {
       const item: MenuDataItem = {
@@ -95,13 +103,17 @@ const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => 
   ) {
     const currentUser = await fetchUserInfo();
     const dictDataMap = await fetchDictDataMap();
+    const cloudStorageConfig = await fetchCloudStorageConfig();
 
     return {
       fetchUserInfo,
       fetchMenus,
       fetchDictDataMap,
+      fetchCloudStorageConfig,
+      uploadAttachmentFile,
       currentUser,
       dictDataMap,
+      cloudStorageConfig,
       settings: defaultSettings as Partial<LayoutSettings>,
     };
   }
@@ -109,6 +121,8 @@ const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => 
     fetchUserInfo,
     fetchMenus,
     fetchDictDataMap,
+    fetchCloudStorageConfig,
+    uploadAttachmentFile,
     settings: defaultSettings as Partial<LayoutSettings>,
   };
 }

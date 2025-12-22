@@ -3,7 +3,8 @@ import type { UploadFile, UploadProps } from "antd";
 import { App, Button, Checkbox, Image, Input, List, Modal, Space, Tabs, Tree, Upload } from "antd";
 import type { DataNode } from "antd/es/tree";
 import { FileOutlined, PictureOutlined, UploadOutlined, VideoCameraOutlined, CustomerServiceOutlined } from "@ant-design/icons";
-import { getAttachmentFolderTree, getAttachmentList, uploadAttachments } from "@/services/yishan-admin/attachments";
+import { getAttachmentFolderTree, getAttachmentList } from "@/services/yishan-admin/attachments";
+import { useModel } from "@umijs/max";
 
 type AttachmentKind = API.sysAttachment["kind"];
 type KindTab = AttachmentKind | "all";
@@ -149,6 +150,7 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
   initialSelectedValues,
 }) => {
   const { message } = App.useApp();
+  const { initialState } = useModel("@@initialState");
   const [folderTree, setFolderTree] = useState<API.sysAttachmentFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<number>(initialFolderId || 0);
 
@@ -262,20 +264,23 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
         const { file, onSuccess, onError } = options;
         try {
           const f: File = file as File;
-          const formData = new FormData();
-          formData.append("file", f);
-
           const uploadKind: AttachmentKind = fixedKind
             ? (kind as AttachmentKind)
             : tab !== "all"
               ? (tab as AttachmentKind)
               : getKindFromFile(f);
 
-          const params: API.uploadAttachmentsParams = {
+          const upload = initialState?.uploadAttachmentFile;
+          if (!upload) {
+            onError?.(new Error("上传能力未初始化"));
+            return;
+          }
+          const res = await upload(f, {
             folderId: selectedFolderId > 0 ? selectedFolderId : undefined,
             kind: uploadKind,
-          };
-          const res = await uploadAttachments(params, { data: formData });
+            dir: "attachments",
+          });
+
           if (res.success) {
             message.success(res.message || "上传成功");
             setPage(1);
@@ -285,6 +290,7 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
           }
           onError?.(new Error(res.message || "上传失败"));
         } catch (e: any) {
+          if (e instanceof Error) message.error(e.message);
           onError?.(e);
         }
       },
@@ -496,6 +502,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
   disabled,
 }) => {
   const { message } = App.useApp();
+  const { initialState } = useModel("@@initialState");
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
@@ -544,28 +551,31 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
     const { file, onSuccess, onError } = options;
     try {
       const f: File = file as File;
-      const formData = new FormData();
-      formData.append("file", f);
-
       const uploadKind: AttachmentKind =
         kind && kind !== "all" ? (kind as AttachmentKind) : getKindFromFile(f);
 
-      const res = await uploadAttachments(
-        { folderId, kind: uploadKind },
-        { data: formData }
-      );
+      const upload = initialState?.uploadAttachmentFile;
+      if (!upload) {
+        onError?.(new Error("上传能力未初始化"));
+        return;
+      }
+      const res = await upload(f, {
+        folderId,
+        kind: uploadKind,
+        dir: "attachments",
+      });
 
       if (!res.success) {
         onError?.(new Error(res.message || "上传失败"));
         return;
       }
-      const items = res.data || [];
+      const items = (res.data || []) as API.uploadAttachmentsResp["data"];
       const nextValues = items
-        .map((x) => {
+        .map((x: API.uploadAttachmentsResp["data"][number]) => {
           if (valueType === "id") return x.id || 0;
           return x.url || x.path || "";
         })
-        .filter((x) => (typeof x === "string" ? x.trim().length > 0 : Number(x) > 0));
+        .filter((x: string | number) => (typeof x === "string" ? x.trim().length > 0 : Number(x) > 0));
 
       if (!nextValues.length) {
         message.error("上传成功但未返回可用地址");
@@ -695,4 +705,3 @@ export const AttachmentVideoSelect: React.FC<Omit<AttachmentSelectProps, "kind">
 export const AttachmentFileSelect: React.FC<Omit<AttachmentSelectProps, "kind">> = (props) => {
   return <AttachmentSelect {...props} kind="other" />;
 };
-

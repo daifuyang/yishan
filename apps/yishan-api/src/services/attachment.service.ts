@@ -212,4 +212,58 @@ export class AttachmentService {
       currentUserId
     );
   }
+
+  static async createCloudAttachment(
+    input: {
+      folderId?: number | null;
+      kind?: SysAttachmentResp["kind"];
+      name?: string | null;
+      originalName: string;
+      filename: string;
+      ext?: string | null;
+      mimeType: string;
+      size: number;
+      storage: string;
+      path?: string | null;
+      url?: string | null;
+      objectKey?: string | null;
+      hash?: string | null;
+      metadata?: any | null;
+    },
+    currentUserId: number
+  ): Promise<SysAttachmentResp> {
+    if (input.folderId !== undefined && input.folderId !== null && input.folderId > 0) {
+      const folder = await SysAttachmentModel.getFolderById(input.folderId);
+      if (!folder) {
+        throw new BusinessError(AttachmentErrorCode.FOLDER_NOT_FOUND, "分组不存在");
+      }
+    }
+
+    const kind = input.kind ?? this.guessKindByMimeType(input.mimeType);
+
+    if (input.hash) {
+      const existing = await SysAttachmentModel.getAttachmentByHash(input.hash, input.storage);
+      if (existing) return existing;
+    }
+
+    return await SysAttachmentModel.createAttachment(
+      {
+        folderId: input.folderId ?? null,
+        kind,
+        name: input.name ?? null,
+        originalName: input.originalName,
+        filename: input.filename,
+        ext: input.ext ?? null,
+        mimeType: input.mimeType,
+        size: input.size,
+        storage: input.storage,
+        path: input.path ?? null,
+        url: input.url ?? null,
+        objectKey: input.objectKey ?? null,
+        hash: input.hash ?? null,
+        metadata: (input.metadata as any) ?? null,
+      },
+      currentUserId
+    );
+  }
 }

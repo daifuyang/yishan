@@ -112,6 +112,21 @@ export async function deleteAttachment(
   );
 }
 
+/** 创建云端素材 云存储直传后创建素材记录 POST /api/v1/admin/attachments/cloud */
+export async function createCloudAttachment(
+  body: API.createCloudAttachmentReq,
+  options?: { [key: string]: any }
+) {
+  return request<API.uploadAttachmentsResp>("/api/v1/admin/attachments/cloud", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** 获取分组列表 分页获取素材分组列表，支持关键词、类型、状态与父级过滤 GET /api/v1/admin/attachments/folders */
 export async function getAttachmentFolderList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)

@@ -171,7 +171,9 @@ declare namespace API {
 
   type batchGetSystemOptionByQueryParams = {
     /** 通过重复 key 传数组，如 ?key=a&key=b */
-    key: systemOptionKey[];
+    key?: systemOptionKey[];
+    /** 通过数组语法传参：?key[]=a&key[]=b */
+    "key[]"?: systemOptionKey[];
   };
 
   type batchGetSystemOptionReq = systemOptionKey[];
@@ -297,6 +299,28 @@ declare namespace API {
     sort_order?: number;
     /** 备注 */
     remark?: string;
+  };
+
+  type createCloudAttachmentReq = {
+    /** 存储类型 */
+    storage: "qiniu" | "aliyunOss";
+    /** 对象存储Key */
+    objectKey: string;
+    /** 可访问URL */
+    url?: string;
+    folderId?: number | null;
+    /** 素材类型 */
+    kind?: "image" | "audio" | "video" | "other";
+    name?: string | null;
+    /** 原始文件名 */
+    originalName: string;
+    /** MIME 类型 */
+    mimeType: string;
+    /** 文件大小（字节） */
+    size: number;
+    hash?: string | null;
+    /** 扩展信息 */
+    metadata?: any;
   };
 
   type createDeptReq = {

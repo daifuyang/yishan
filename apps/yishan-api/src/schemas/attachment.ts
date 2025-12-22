@@ -165,6 +165,25 @@ const UpdateAttachmentReqSchema = Type.Object(
 
 export type UpdateAttachmentReq = Static<typeof UpdateAttachmentReqSchema>;
 
+const CreateCloudAttachmentReqSchema = Type.Object(
+  {
+    storage: Type.String({ enum: ["qiniu", "aliyunOss"], description: "存储类型" }),
+    objectKey: Type.String({ description: "对象存储Key", minLength: 1, maxLength: 500 }),
+    url: Type.Optional(Type.String({ description: "可访问URL", maxLength: 500 })),
+    folderId: Type.Optional(Type.Union([Type.Integer({ description: "分组ID", minimum: 1 }), Type.Null()])),
+    kind: Type.Optional(AttachmentKindSchema),
+    name: Type.Optional(Type.Union([Type.String({ description: "素材名称", maxLength: 255 }), Type.Null()])),
+    originalName: Type.String({ description: "原始文件名", minLength: 1, maxLength: 255 }),
+    mimeType: Type.String({ description: "MIME 类型", minLength: 1, maxLength: 100 }),
+    size: Type.Integer({ description: "文件大小（字节）", minimum: 0 }),
+    hash: Type.Optional(Type.Union([Type.String({ description: "内容哈希", maxLength: 64 }), Type.Null()])),
+    metadata: Type.Optional(Type.Any({ description: "扩展信息" })),
+  },
+  { $id: "createCloudAttachmentReq" }
+);
+
+export type CreateCloudAttachmentReq = Static<typeof CreateCloudAttachmentReqSchema>;
+
 const AttachmentDeleteRespSchema = successResponse({
   data: Type.Object({ id: Type.Number({ description: "素材ID" }) }),
   $id: "attachmentDeleteResp",
@@ -218,6 +237,7 @@ const registerAttachment = (fastify: FastifyInstance) => {
   fastify.addSchema(AttachmentListRespSchema);
   fastify.addSchema(AttachmentDetailRespSchema);
   fastify.addSchema(UpdateAttachmentReqSchema);
+  fastify.addSchema(CreateCloudAttachmentReqSchema);
   fastify.addSchema(AttachmentDeleteRespSchema);
   fastify.addSchema(AttachmentBatchDeleteReqSchema);
   fastify.addSchema(AttachmentBatchDeleteRespSchema);

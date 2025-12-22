@@ -5,11 +5,11 @@
 
 // Token存储的键名
 export const TOKEN_KEYS = {
-  ACCESS_TOKEN: 'accessToken',
-  REFRESH_TOKEN: 'refreshToken',
-  ACCESS_TOKEN_EXPIRY: 'accessTokenExpiry',
-  REFRESH_TOKEN_EXPIRY: 'refreshTokenExpiry',
-  TOKEN_TYPE: 'tokenType',
+  ACCESS_TOKEN: "accessToken",
+  REFRESH_TOKEN: "refreshToken",
+  ACCESS_TOKEN_EXPIRY: "accessTokenExpiry",
+  REFRESH_TOKEN_EXPIRY: "refreshTokenExpiry",
+  TOKEN_TYPE: "tokenType",
 } as const;
 
 /**
@@ -27,15 +27,21 @@ export const saveTokens = (data: {
     refreshToken,
     accessTokenExpiresIn = 900, // 默认15分钟
     refreshTokenExpiresIn = 604800, // 默认7天
-    tokenType = 'Bearer',
+    tokenType = "Bearer",
   } = data;
 
   const now = Math.floor(Date.now() / 1000);
-  
+
   localStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN, accessToken);
   localStorage.setItem(TOKEN_KEYS.REFRESH_TOKEN, refreshToken);
-  localStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN_EXPIRY, String(now + accessTokenExpiresIn));
-  localStorage.setItem(TOKEN_KEYS.REFRESH_TOKEN_EXPIRY, String(now + refreshTokenExpiresIn));
+  localStorage.setItem(
+    TOKEN_KEYS.ACCESS_TOKEN_EXPIRY,
+    String(now + accessTokenExpiresIn)
+  );
+  localStorage.setItem(
+    TOKEN_KEYS.REFRESH_TOKEN_EXPIRY,
+    String(now + refreshTokenExpiresIn)
+  );
   localStorage.setItem(TOKEN_KEYS.TOKEN_TYPE, tokenType);
 };
 
@@ -57,7 +63,7 @@ export const getRefreshToken = (): string | null => {
  * 获取token类型
  */
 export const getTokenType = (): string => {
-  return localStorage.getItem(TOKEN_KEYS.TOKEN_TYPE) || 'Bearer';
+  return localStorage.getItem(TOKEN_KEYS.TOKEN_TYPE) || "Bearer";
 };
 
 /**
@@ -66,7 +72,7 @@ export const getTokenType = (): string => {
 export const isAccessTokenExpired = (): boolean => {
   const expiry = localStorage.getItem(TOKEN_KEYS.ACCESS_TOKEN_EXPIRY);
   if (!expiry) return true;
-  
+
   const now = Math.floor(Date.now() / 1000);
   return now >= parseInt(expiry, 10);
 };
@@ -77,7 +83,7 @@ export const isAccessTokenExpired = (): boolean => {
 export const isRefreshTokenExpired = (): boolean => {
   const expiry = localStorage.getItem(TOKEN_KEYS.REFRESH_TOKEN_EXPIRY);
   if (!expiry) return true;
-  
+
   const now = Math.floor(Date.now() / 1000);
   return now >= parseInt(expiry, 10);
 };
@@ -86,7 +92,7 @@ export const isRefreshTokenExpired = (): boolean => {
  * 清除所有token
  */
 export const clearTokens = (): void => {
-  Object.values(TOKEN_KEYS).forEach(key => {
+  Object.values(TOKEN_KEYS).forEach((key) => {
     localStorage.removeItem(key);
   });
 };
@@ -97,7 +103,7 @@ export const clearTokens = (): void => {
 export const getAuthorizationHeader = (): string | null => {
   const token = getAccessToken();
   const tokenType = getTokenType();
-  
+
   if (!token) return null;
   return `${tokenType} ${token}`;
 };
@@ -116,6 +122,6 @@ export const getAuthHeaders = (): Record<string, string> => {
 export const isLoggedIn = (): boolean => {
   const accessToken = getAccessToken();
   const refreshToken = getRefreshToken();
-  
+
   return !!(accessToken && refreshToken && !isRefreshTokenExpired());
 };

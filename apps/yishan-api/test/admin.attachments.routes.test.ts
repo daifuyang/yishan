@@ -112,6 +112,55 @@ describe("Admin Attachments routes", () => {
     await app.close();
   });
 
+  it("POST /api/v1/admin/attachments/cloud 返回创建结果并包含素材ID", async () => {
+    const app = await buildApp();
+
+    vi.spyOn(AttachmentService, "createCloudAttachment").mockImplementation(async (input: any) => {
+      expect(input.storage).toBe("qiniu");
+      expect(input.objectKey).toBe("attachments/a.png");
+      expect(input.url).toBe("https://cdn.example.com/attachments/a.png");
+      return {
+        id: 11,
+        kind: input.kind || "image",
+        filename: input.filename,
+        originalName: input.originalName,
+        mimeType: input.mimeType,
+        size: input.size,
+        path: input.path,
+        url: input.url,
+        status: "1",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any;
+    });
+
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/admin/attachments/cloud",
+      payload: {
+        storage: "qiniu",
+        objectKey: "attachments/a.png",
+        url: "https://cdn.example.com/attachments/a.png",
+        originalName: "a.png",
+        mimeType: "image/png",
+        size: 3,
+        hash: "etag",
+      },
+      headers: {
+        Authorization: "Bearer t",
+        "content-type": "application/json",
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.success).toBe(true);
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.data[0]).toMatchObject({ id: 11, originalName: "a.png" });
+
+    await app.close();
+  });
+
   it("POST /api/v1/admin/attachments 内容重复时复用已有素材", async () => {
     const app = await buildApp();
 

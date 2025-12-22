@@ -11,6 +11,7 @@ import {
   AttachmentFolderListQuery,
   AttachmentListQuery,
   CreateAttachmentFolderReq,
+  CreateCloudAttachmentReq,
   UpdateAttachmentFolderReq,
   UpdateAttachmentReq,
 } from "../../../../../schemas/attachment.js";
@@ -296,6 +297,71 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
         request.headers["accept-language"] as string
       );
       return ResponseUtil.success(reply, result, message);
+    }
+  );
+
+  fastify.post(
+    "/cloud",
+    {
+      schema: {
+        summary: "创建云端素材",
+        description: "云存储直传后创建素材记录",
+        operationId: "createCloudAttachment",
+        tags: ["attachments"],
+        security: [{ bearerAuth: [] }],
+        body: { $ref: "createCloudAttachmentReq#" },
+        response: { 200: { $ref: "uploadAttachmentsResp#" } },
+      },
+    },
+    async (request: FastifyRequest<{ Body: CreateCloudAttachmentReq }>, reply: FastifyReply) => {
+      const body = request.body;
+      const objectKey = String(body.objectKey || "").trim();
+      const originalName = String(body.originalName || "").trim();
+      if (!objectKey) {
+        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "objectKey 不能为空");
+      }
+      if (!originalName) {
+        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "originalName 不能为空");
+      }
+
+      const ext = extname(originalName) || "";
+      const baseName = objectKey.split("/").pop() || objectKey;
+      const filename = baseName.length > 255 ? baseName.slice(-255) : baseName;
+
+      const created = await AttachmentService.createCloudAttachment(
+        {
+          folderId: body.folderId ?? null,
+          kind: body.kind,
+          name: body.name ?? null,
+          originalName,
+          filename,
+          ext,
+          mimeType: body.mimeType,
+          size: body.size,
+          storage: body.storage,
+          path: body.url || objectKey,
+          url: body.url ?? null,
+          objectKey,
+          hash: body.hash ?? null,
+          metadata: (body.metadata as any) ?? null,
+        },
+        request.currentUser.id
+      );
+
+      const results = [
+        {
+          id: created.id,
+          filename: created.filename,
+          originalName: created.originalName,
+          mimeType: created.mimeType,
+          size: created.size,
+          path: created.path || created.url || objectKey,
+          kind: created.kind,
+          url: created.url || created.path || undefined,
+        },
+      ];
+
+      return ResponseUtil.success(reply, results, "上传成功");
     }
   );
 

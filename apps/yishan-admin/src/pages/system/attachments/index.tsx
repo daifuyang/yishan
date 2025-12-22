@@ -12,13 +12,13 @@ import { Upload, Button, Card, Popconfirm, App, Image, Tag, Tooltip, Tree, Input
 import type { DataNode } from 'antd/es/tree';
 import type { UploadProps } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useModel } from '@umijs/max';
 import {
   batchDeleteAttachments,
   deleteAttachment,
   deleteAttachmentFolder,
   getAttachmentFolderTree,
   getAttachmentList,
-  uploadAttachments,
 } from '@/services/yishan-admin/attachments';
 import AttachmentFolderForm from './components/AttachmentFolderForm';
 import AttachmentForm from './components/AttachmentForm';
@@ -115,6 +115,7 @@ const getKindFromFile = (file: File): API.sysAttachment['kind'] => {
 
 const AttachmentsPage: React.FC = () => {
   const { message } = App.useApp();
+  const { initialState } = useModel('@@initialState');
 
   const [folderTree, setFolderTree] = useState<API.sysAttachmentFolder[]>([]);
   const [loadingFolders, setLoadingFolders] = useState(false);
@@ -172,14 +173,18 @@ const AttachmentsPage: React.FC = () => {
         const { file, onSuccess, onError } = options;
         try {
           const f: File = file as File;
-          const formData = new FormData();
-          formData.append('file', f);
 
-          const params: API.uploadAttachmentsParams = {
+          const upload = initialState?.uploadAttachmentFile;
+          if (!upload) {
+            onError?.(new Error('上传能力未初始化'));
+            return;
+          }
+
+          const res = await upload(f, {
             folderId: selectedFolderId > 0 ? selectedFolderId : undefined,
             kind: getKindFromFile(f),
-          };
-          const res = await uploadAttachments(params, { data: formData });
+            dir: 'attachments',
+          });
           if (res.success) {
             message.success(res.message || '上传成功');
             setAttachmentsPage(1);
@@ -189,11 +194,12 @@ const AttachmentsPage: React.FC = () => {
           }
           onError?.(new Error(res.message || '上传失败'));
         } catch (e: any) {
+          if (e instanceof Error) message.error(e.message);
           onError?.(e);
         }
       },
     }),
-    [attachmentsPageSize, kindTab, message, selectedFolderId]
+    [attachmentsPageSize, initialState?.uploadAttachmentFile, kindTab, message, selectedFolderId]
   );
 
   const handleFolderActionSuccess = async () => {
@@ -652,4 +658,3 @@ const AttachmentsPage: React.FC = () => {
 };
 
 export default AttachmentsPage;
-
