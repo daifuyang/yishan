@@ -33,7 +33,7 @@ export const fetchCloudStorageConfig = async (options?: { force?: boolean }): Pr
     const provider: StorageProvider = mode === "1" ? "qiniu" : mode === "2" ? "aliyunOss" : "disabled";
 
     const qiniuText = map.qiniuConfig;
-    let qiniu: CloudStorageConfig["qiniu"] = undefined;
+    let qiniu: CloudStorageConfig["qiniu"];
     if (typeof qiniuText === "string" && qiniuText.trim()) {
       try {
         const obj = JSON.parse(qiniuText);
@@ -47,6 +47,10 @@ export const fetchCloudStorageConfig = async (options?: { force?: boolean }): Pr
     cloudStorageConfigCache = { value: cfg, expiresAt: now + 30_000 };
     return cfg;
   } catch {
+    if (cloudStorageConfigCache) {
+      cloudStorageConfigCache = { value: cloudStorageConfigCache.value, expiresAt: now + 5_000 };
+      return cloudStorageConfigCache.value;
+    }
     const cfg: CloudStorageConfig = { provider: "disabled" };
     cloudStorageConfigCache = { value: cfg, expiresAt: now + 5_000 };
     return cfg;
@@ -59,7 +63,7 @@ const uploadToQiniu = async (
   options?: {
     dir?: string;
   }
-): Promise<{ objectKey: string; url?: string; hash?: string }> => {
+): Promise<{ objectKey: string; hash?: string }> => {
   const dir = String(options?.dir || "attachments").replace(/\/+$/, "");
   const ext = (file.name.split(".").pop() || "").toLowerCase();
   const objectKey = `${dir}/${Date.now()}_${Math.random().toString(36).slice(2)}${ext ? `.${ext}` : ""}`;
@@ -83,10 +87,7 @@ const uploadToQiniu = async (
   const data = await resp.json().catch(() => ({} as any));
 
   const finalKey = String((data as any)?.key || objectKey);
-  const domain = String(cfg.qiniu?.domain || "").trim();
-  const url = domain ? `${domain.replace(/\/$/, "")}/${finalKey}` : undefined;
-
-  return { objectKey: finalKey, url, hash: (data as any)?.hash };
+  return { objectKey: finalKey, hash: (data as any)?.hash };
 };
 
 export const uploadAttachmentFile = async (
@@ -98,13 +99,12 @@ export const uploadAttachmentFile = async (
     dir?: string;
   }
 ): Promise<API.uploadAttachmentsResp> => {
-  const cfg = await fetchCloudStorageConfig({ force: true });
+  const cfg = await fetchCloudStorageConfig();
   if (cfg.provider === "qiniu") {
     const uploaded = await uploadToQiniu(file, cfg, { dir: params.dir || "attachments" });
     return await createCloudAttachment({
       storage: "qiniu",
       objectKey: uploaded.objectKey,
-      url: uploaded.url,
       folderId: params.folderId,
       kind: params.kind,
       name: params.name,
@@ -125,5 +125,56 @@ export const uploadAttachmentFile = async (
     },
     { data: formData }
   );
+};
+
+const isAbsoluteUrl = (value: string) => /^(https?:)?\/\//i.test(value) || value.startsWith("data:");
+
+const joinUrl = (base: string, path: string) => {
+  const b = base.replace(/\/+$/, "");
+  const p = path.replace(/^\/+/, "");
+  return `${b}/${p}`;
+};
+
+export const resolveAttachmentPublicUrl = (
+  input: Pick<API.sysAttachment, "url" | "path" | "objectKey" | "storage"> | string | undefined | null,
+  cfg?: CloudStorageConfig
+) => {
+  const raw =
+    typeof input === "string"
+      ? input
+      : input
+        ? String(input.url || input.objectKey || input.path || "")
+        : "";
+  const value = String(raw || "").trim();
+  if (!value) return "";
+  if (isAbsoluteUrl(value)) return value;
+
+  const storage = typeof input === "string" ? undefined : (input?.storage ? String(input.storage) : undefined);
+  if (storage === "qiniu" || cfg?.provider === "qiniu") {
+    let domain = String(cfg?.qiniu?.domain || "").trim();
+    if (!domain) return value;
+    if (!isAbsoluteUrl(domain)) domain = `https://${domain.replace(/^\/+/, "")}`;
+    return joinUrl(domain, value);
+  }
+
+  return value;
+};
+
+export const normalizeAttachmentStoredValue = (value: string, cfg?: CloudStorageConfig) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  const domainText = String(cfg?.qiniu?.domain || "").trim();
+  if (!domainText) return raw;
+
+  const domainAbs = isAbsoluteUrl(domainText) ? domainText.replace(/\/+$/, "") : `https://${domainText.replace(/^\/+/, "").replace(/\/+$/, "")}`;
+  const domainNoProto = domainAbs.replace(/^https?:\/\//i, "");
+
+  const urlAbs = isAbsoluteUrl(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
+  const urlNoProto = urlAbs.replace(/^https?:\/\//i, "");
+
+  if (!urlNoProto.toLowerCase().startsWith(`${domainNoProto.toLowerCase()}/`)) return raw;
+  const rest = urlNoProto.slice(domainNoProto.length);
+  return rest.replace(/^\/+/, "");
 };
 

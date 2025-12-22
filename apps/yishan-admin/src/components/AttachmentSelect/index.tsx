@@ -1,10 +1,20 @@
-import React, { useEffect, useMemo, useState } from "react";
-import type { UploadFile, UploadProps } from "antd";
-import { App, Button, Checkbox, Image, Input, List, Modal, Space, Tabs, Tree, Upload } from "antd";
-import type { DataNode } from "antd/es/tree";
-import { FileOutlined, PictureOutlined, UploadOutlined, VideoCameraOutlined, CustomerServiceOutlined } from "@ant-design/icons";
+import {
+  CheckOutlined,
+  CustomerServiceOutlined,
+  EyeOutlined,
+  FileOutlined,
+  PictureOutlined,
+  SearchOutlined,
+  UploadOutlined,
+  VideoCameraOutlined,
+} from "@ant-design/icons";
 import { getAttachmentFolderTree, getAttachmentList } from "@/services/yishan-admin/attachments";
+import { normalizeAttachmentStoredValue, resolveAttachmentPublicUrl } from "@/utils/attachmentUpload";
 import { useModel } from "@umijs/max";
+import { App, Button, Empty, Image, Input, List, Modal, Pagination, Segmented, Space, Spin, Tooltip, Tree, Upload, theme } from "antd";
+import type { DataNode } from "antd/es/tree";
+import type { UploadFile, UploadProps } from "antd";
+import React, { useEffect, useMemo, useState } from "react";
 
 type AttachmentKind = API.sysAttachment["kind"];
 type KindTab = AttachmentKind | "all";
@@ -89,17 +99,17 @@ const mapTreeTitle = (nodes: API.sysAttachmentFolder[] = [], keyword: string): D
 
 const resolveAttachmentValue = (a: API.sysAttachment, valueType: ValueType) => {
   if (valueType === "id") return a.id;
-  return a.url || a.path || "";
+  return a.objectKey || a.path || a.url || "";
 };
 
-const getAttachmentCover = (record: API.sysAttachment) => {
-  const src = record.url || record.path;
+const getAttachmentCover = (record: API.sysAttachment, publicUrl: string) => {
+  const src = publicUrl;
   if (record.kind === "image" && src) {
     return (
       <Image
         src={src}
-        preview={{ src }}
-        style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }}
+        preview={false}
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
       />
     );
   }
@@ -114,7 +124,7 @@ const getAttachmentCover = (record: API.sysAttachment) => {
   return (
     <div
       style={{
-        height: 120,
+        height: "100%",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -150,6 +160,7 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
   initialSelectedValues,
 }) => {
   const { message } = App.useApp();
+  const { token } = theme.useToken();
   const { initialState } = useModel("@@initialState");
   const [folderTree, setFolderTree] = useState<API.sysAttachmentFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<number>(initialFolderId || 0);
@@ -168,6 +179,8 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const [autoExpandParent, setAutoExpandParent] = useState(true);
   const [reloadSeq, setReloadSeq] = useState(0);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -302,7 +315,8 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
     <Modal
       title="选择素材"
       open={open}
-      width={980}
+      centered
+      styles={{ body: { height: "76vh", padding: 0, overflow: "hidden" } }}
       destroyOnClose
       onCancel={onCancel}
       onOk={() => {
@@ -315,178 +329,313 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
         onSelect(picked);
       }}
       okButtonProps={{ disabled: !multiple }}
-      okText="确定"
+      okText={`确定 ${selectedKeys.length ? `(${selectedKeys.length})` : ""}`}
       cancelText="取消"
+      width={1000}
+      style={{ maxWidth: "95vw", top: 20 }}
     >
-      <div style={{ display: "flex", gap: 12 }}>
-        <div style={{ width: 240 }}>
-          <Input
-            allowClear
-            placeholder="搜索分组"
-            value={folderSearchValue}
-            onChange={(e) => setFolderSearchValue(e.target.value)}
-            style={{ marginBottom: 8 }}
-          />
-          <Tree
-            blockNode
-            showLine
-            selectedKeys={[selectedFolderId]}
-            expandedKeys={expandedKeys}
-            autoExpandParent={autoExpandParent}
-            treeData={treeData}
-            onExpand={(keys) => {
-              setExpandedKeys(keys);
-              setAutoExpandParent(false);
-            }}
-            onSelect={(keys) => {
-              const id = Number(keys?.[0] || 0);
-              setSelectedFolderId(Number.isFinite(id) ? id : 0);
-              setPage(1);
-            }}
-          />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Space style={{ width: "100%", justifyContent: "space-between" }} align="start">
-            <Input.Search
-              allowClear
-              placeholder="搜索素材名称/原始文件名"
-              style={{ width: 360 }}
-              value={keyword}
-              onChange={(e) => {
-                setKeyword(e.target.value);
+      <div style={{ display: "flex", height: "100%", background: token.colorBgLayout }}>
+        {/* Left Sidebar */}
+        <div
+          style={{
+            width: 260,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            borderRight: `1px solid ${token.colorBorderSecondary}`,
+            background: token.colorBgContainer,
+          }}
+        >
+          <div style={{ padding: "16px 16px 8px" }}>
+            <Input
+              prefix={<SearchOutlined style={{ color: token.colorTextPlaceholder }} />}
+              placeholder="搜索分组"
+              value={folderSearchValue}
+              onChange={(e) => setFolderSearchValue(e.target.value)}
+              variant="filled"
+            />
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 16px" }}>
+            <Tree
+              blockNode
+              showLine={{ showLeafIcon: false }}
+              selectedKeys={[selectedFolderId]}
+              expandedKeys={expandedKeys}
+              autoExpandParent={autoExpandParent}
+              treeData={treeData}
+              onExpand={(keys) => {
+                setExpandedKeys(keys);
+                setAutoExpandParent(false);
+              }}
+              onSelect={(keys) => {
+                const id = Number(keys?.[0] || 0);
+                setSelectedFolderId(Number.isFinite(id) ? id : 0);
                 setPage(1);
               }}
-              onSearch={() => setPage(1)}
+              style={{ background: "transparent" }}
             />
-            <Upload {...uploadProps}>
-              <Button type="primary">
-                <UploadOutlined /> 上传
-              </Button>
-            </Upload>
-            <div>
-              <Button
-                type="link"
-                onClick={() => {
-                  setSelectedKeys([]);
-                  setSelectedMap({});
-                }}
-                disabled={!selectedKeys.length}
-              >
-                清空选择
-              </Button>
-              <span style={{ color: "rgba(0,0,0,0.45)" }}>
-                已选 {selectedKeys.length}
-              </span>
-            </div>
-          </Space>
+          </div>
+        </div>
 
-          <div style={{ marginTop: 12 }}>
-            {fixedKind ? null : (
-              <Tabs
-                activeKey={tab}
-                onChange={(k) => {
-                  setTab(k as KindTab);
+        {/* Right Content */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, background: token.colorBgContainer }}>
+          {/* Header */}
+          <div
+            style={{
+              padding: "16px 24px",
+              borderBottom: `1px solid ${token.colorBorderSecondary}`,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 16,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1 }}>
+              {!fixedKind && (
+                <Segmented
+                  value={tab}
+                  onChange={(v) => {
+                    setTab(v as KindTab);
+                    setPage(1);
+                  }}
+                  options={[
+                    { label: "全部", value: "all", icon: <FileOutlined /> },
+                    { label: "图片", value: "image", icon: <PictureOutlined /> },
+                    { label: "音频", value: "audio", icon: <CustomerServiceOutlined /> },
+                    { label: "视频", value: "video", icon: <VideoCameraOutlined /> },
+                  ]}
+                />
+              )}
+              <Input.Search
+                placeholder="搜索素材"
+                allowClear
+                onSearch={() => setPage(1)}
+                value={keyword}
+                onChange={(e) => {
+                  setKeyword(e.target.value);
                   setPage(1);
                 }}
-                items={[
-                  { key: "all", label: "全部" },
-                  { key: "image", label: "图片" },
-                  { key: "audio", label: "音频" },
-                  { key: "video", label: "视频" },
-                  { key: "other", label: "其他" },
-                ]}
+                style={{ width: 240 }}
               />
-            )}
-            <List
-              loading={loading}
-              grid={{ gutter: 12, column: 4 }}
-              dataSource={data}
-              pagination={{
-                current: page,
-                pageSize,
-                total,
-                showSizeChanger: true,
-                onChange: (p, ps) => {
-                  setPage(p);
-                  setPageSize(ps);
-                },
-              }}
-              renderItem={(item) => {
-                const v = resolveAttachmentValue(item, valueType);
-                const k = String(v);
-                const checked = selectedKeys.includes(k);
-                return (
-                  <List.Item>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (multiple) {
-                          setSelectedKeys((prev) => {
-                            if (prev.includes(k)) return prev.filter((x) => x !== k);
-                            return [...prev, k];
-                          });
-                          setSelectedMap((prev) => {
-                            const next = { ...prev };
-                            if (checked) delete next[k];
-                            else next[k] = item;
-                            return next;
-                          });
-                          return;
-                        }
-                        onSelect([item]);
-                      }}
-                      style={{
-                        display: "block",
-                        width: "100%",
-                        padding: 0,
-                        textAlign: "left",
-                        background: "transparent",
-                        border: checked ? "1px solid #1677ff" : "1px solid rgba(0,0,0,0.08)",
-                        borderRadius: 8,
-                        overflow: "hidden",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <div style={{ position: "relative" }}>
-                        {multiple && (
-                          <div style={{ position: "absolute", top: 8, left: 8, zIndex: 1 }}>
-                            <Checkbox
-                              checked={checked}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                const next = e.target.checked;
-                                setSelectedKeys((prev) => {
-                                  if (next) return prev.includes(k) ? prev : [...prev, k];
-                                  return prev.filter((x) => x !== k);
-                                });
-                                setSelectedMap((prev) => {
-                                  const mapNext = { ...prev };
-                                  if (next) mapNext[k] = item;
-                                  else delete mapNext[k];
-                                  return mapNext;
-                                });
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              {selectedKeys.length > 0 && (
+                <Button
+                  type="link"
+                  danger
+                  onClick={() => {
+                    setSelectedKeys([]);
+                    setSelectedMap({});
+                  }}
+                >
+                  清空已选
+                </Button>
+              )}
+              <Upload {...uploadProps}>
+                <Button type="primary" icon={<UploadOutlined />}>
+                  上传素材
+                </Button>
+              </Upload>
+            </div>
+          </div>
+
+          {/* List Content */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", position: "relative" }}>
+            {loading ? (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                <Spin size="large" />
+              </div>
+            ) : data.length === 0 ? (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无素材" />
+              </div>
+            ) : (
+              <List
+                grid={{ gutter: 16, xs: 2, sm: 3, md: 4, lg: 5, xl: 6, xxl: 6 }}
+                dataSource={data}
+                renderItem={(item) => {
+                  const v = resolveAttachmentValue(item, valueType);
+                  const k = String(v);
+                  const checked = selectedKeys.includes(k);
+                  const publicUrl = resolveAttachmentPublicUrl(item, initialState?.cloudStorageConfig);
+                  return (
+                    <List.Item style={{ marginBottom: 16 }}>
+                      <div
+                        className="attachment-card"
+                        onClick={() => {
+                          if (multiple) {
+                            setSelectedKeys((prev) => {
+                              if (prev.includes(k)) return prev.filter((x) => x !== k);
+                              return [...prev, k];
+                            });
+                            setSelectedMap((prev) => {
+                              const next = { ...prev };
+                              if (checked) delete next[k];
+                              else next[k] = item;
+                              return next;
+                            });
+                            return;
+                          }
+                          onSelect([item]);
+                        }}
+                        style={{
+                          position: "relative",
+                          border: `1px solid ${checked ? token.colorPrimary : token.colorBorderSecondary}`,
+                          borderRadius: token.borderRadiusLG,
+                          overflow: "hidden",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          background: checked ? token.colorPrimaryBg : token.colorBgContainer,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.boxShadow = token.boxShadowSecondary;
+                          e.currentTarget.style.borderColor = checked ? token.colorPrimary : token.colorPrimaryHover;
+                          const previewBtn = e.currentTarget.querySelector(".preview-btn") as HTMLElement;
+                          if (previewBtn) previewBtn.style.opacity = "1";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.boxShadow = "none";
+                          e.currentTarget.style.borderColor = checked ? token.colorPrimary : token.colorBorderSecondary;
+                          const previewBtn = e.currentTarget.querySelector(".preview-btn") as HTMLElement;
+                          if (previewBtn) previewBtn.style.opacity = "0";
+                        }}
+                      >
+                        {/* Selection Indicator */}
+                        {checked && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              right: 0,
+                              zIndex: 10,
+                              width: 0,
+                              height: 0,
+                              borderStyle: "solid",
+                              borderWidth: "0 28px 28px 0",
+                              borderColor: `transparent ${token.colorPrimary} transparent transparent`,
+                            }}
+                          >
+                            <CheckOutlined
+                              style={{
+                                position: "absolute",
+                                top: 4,
+                                right: -26,
+                                color: "#fff",
+                                fontSize: 12,
                               }}
                             />
                           </div>
                         )}
-                        {getAttachmentCover(item)}
-                      </div>
-                      <div style={{ padding: 10 }}>
-                        <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {item.name || item.originalName}
+
+                        <div style={{ position: "relative", height: 140, background: token.colorFillQuaternary }}>
+                          {getAttachmentCover(item, publicUrl)}
+                          
+                          {/* Hover Preview Button */}
+                          {item.kind === "image" && publicUrl && (
+                            <div
+                              className="preview-btn"
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: "rgba(0,0,0,0.3)",
+                                opacity: 0,
+                                transition: "opacity 0.2s",
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Tooltip title="预览大图">
+                                <Button
+                                  type="text"
+                                  icon={<EyeOutlined style={{ fontSize: 18, color: "#fff" }} />}
+                                  onClick={() => {
+                                    setPreviewImage(publicUrl);
+                                    setPreviewOpen(true);
+                                  }}
+                                  style={{ color: "#fff" }}
+                                />
+                              </Tooltip>
+                            </div>
+                          )}
                         </div>
-                        <div style={{ color: "rgba(0,0,0,0.45)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {item.originalName}
+
+                        <div style={{ padding: "8px 12px" }}>
+                          <div
+                            style={{
+                              fontWeight: 500,
+                              color: token.colorText,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              fontSize: 13,
+                            }}
+                            title={item.name || item.originalName}
+                          >
+                            {item.name || item.originalName}
+                          </div>
+                          <div
+                            style={{
+                              color: token.colorTextSecondary,
+                              fontSize: 12,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              marginTop: 2,
+                            }}
+                            title={item.originalName}
+                          >
+                            {item.originalName}
+                          </div>
                         </div>
                       </div>
-                    </button>
-                  </List.Item>
-                );
+                    </List.Item>
+                  );
+                }}
+              />
+            )}
+          </div>
+
+          {/* Footer Pagination */}
+          <div
+            style={{
+              padding: "12px 24px",
+              borderTop: `1px solid ${token.colorBorderSecondary}`,
+              display: "flex",
+              justifyContent: "flex-end",
+              background: token.colorBgContainer,
+            }}
+          >
+            <Pagination
+              current={page}
+              pageSize={pageSize}
+              total={total}
+              showSizeChanger
+              onChange={(p: number, ps: number) => {
+                setPage(p);
+                setPageSize(ps);
               }}
+              size="small"
+              showTotal={(t: number) => `共 ${t} 项`}
             />
           </div>
         </div>
       </div>
+
+      {previewImage && (
+        <Image
+          style={{ display: "none" }}
+          preview={{
+            visible: previewOpen,
+            src: previewImage,
+            onVisibleChange: (vis) => {
+              setPreviewOpen(vis);
+              if (!vis) setPreviewImage("");
+            },
+          }}
+        />
+      )}
     </Modal>
   );
 };
@@ -509,14 +658,23 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
   const [libraryOpen, setLibraryOpen] = useState(false);
 
   const currentValues = useMemo(() => toArray(value), [value]);
+  const modalSelectedValues = useMemo(() => {
+    if (valueType !== "url") return currentValues;
+    const cfg = initialState?.cloudStorageConfig;
+    return currentValues
+      .filter((v) => typeof v === "string" && v.trim().length > 0)
+      .map((v) => normalizeAttachmentStoredValue(String(v), cfg));
+  }, [currentValues, initialState?.cloudStorageConfig, valueType]);
 
   useEffect(() => {
     if (valueType === "url") {
+      const cfg = initialState?.cloudStorageConfig;
       const list = currentValues
         .filter((v) => typeof v === "string" && v.trim().length > 0)
         .map((v, idx) => {
-          const url = String(v);
-          const name = url.split("/").pop() || "file";
+          const stored = String(v);
+          const url = resolveAttachmentPublicUrl(stored, cfg);
+          const name = stored.split("/").pop() || "file";
           return { uid: `attachment-${idx}`, name, status: "done", url } as UploadFile;
         });
       setFileList(list);
@@ -527,7 +685,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
       return { uid: `attachment-${idx}`, name, status: "done" } as UploadFile;
     });
     setFileList(list);
-  }, [currentValues, valueType]);
+  }, [currentValues, initialState?.cloudStorageConfig, valueType]);
 
   const emitValues = (next: Array<string | number>) => {
     if (multiple) {
@@ -541,7 +699,8 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
   const listType: UploadProps["listType"] = kind === "image" ? "picture-card" : "text";
 
   const handlePreview = async (file: UploadFile) => {
-    const src = file.url || (file.preview as string) || "";
+    const raw = String(file.url || (file.preview as string) || "");
+    const src = resolveAttachmentPublicUrl(raw, initialState?.cloudStorageConfig);
     if (!src) return;
     setPreviewImage(src);
     setPreviewOpen(true);
@@ -573,7 +732,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
       const nextValues = items
         .map((x: API.uploadAttachmentsResp["data"][number]) => {
           if (valueType === "id") return x.id || 0;
-          return x.url || x.path || "";
+          return x.path || x.url || "";
         })
         .filter((x: string | number) => (typeof x === "string" ? x.trim().length > 0 : Number(x) > 0));
 
@@ -664,7 +823,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
         multiple={multiple}
         valueType={valueType}
         initialFolderId={folderId}
-        initialSelectedValues={currentValues as Array<string | number>}
+        initialSelectedValues={(modalSelectedValues as Array<string | number>) || []}
         onSelect={(items) => {
           const next = items
             .map((a) => resolveAttachmentValue(a, valueType))

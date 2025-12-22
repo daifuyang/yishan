@@ -22,6 +22,7 @@ import {
 } from '@/services/yishan-admin/attachments';
 import AttachmentFolderForm from './components/AttachmentFolderForm';
 import AttachmentForm from './components/AttachmentForm';
+import { resolveAttachmentPublicUrl } from '@/utils/attachmentUpload';
 
 const attachmentKindMeta: Record<API.sysAttachment['kind'], { color: string; text: string }> = {
   image: { color: 'blue', text: '图片' },
@@ -420,7 +421,7 @@ const AttachmentsPage: React.FC = () => {
 
   const openMediaPreview = (record: API.sysAttachment) => {
     if (record.kind !== 'audio' && record.kind !== 'video') return;
-    const src = record.url || record.path;
+    const src = resolveAttachmentPublicUrl(record, initialState?.cloudStorageConfig);
     if (!src) {
       message.warning('暂无可预览地址');
       return;
@@ -432,7 +433,7 @@ const AttachmentsPage: React.FC = () => {
   };
 
   const getAttachmentCover = (record: API.sysAttachment) => {
-    const src = record.url || record.path;
+    const src = resolveAttachmentPublicUrl(record, initialState?.cloudStorageConfig);
     if (record.kind === 'image' && src) {
       return (
         <Image
