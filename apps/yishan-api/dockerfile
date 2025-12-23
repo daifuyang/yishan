@@ -1,0 +1,46 @@
+# 使用 Debian 12 作为基础镜像
+FROM debian:12-slim
+
+# 设置元数据和时区
+LABEL maintainer="debian_custom_node22.14.0"
+LABEL node.version="22.14.0"
+ENV TZ=Asia/Shanghai
+
+# 1. 修复CA证书问题：必须先用官方HTTP源安装基础工具
+RUN echo "deb http://deb.debian.org/debian bookworm main" > /etc/apt/sources.list && \
+    echo "deb http://security.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        wget \
+        gnupg \
+        tzdata \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. 配置清华大学镜像源 (HTTPS，现在证书已就绪)
+RUN echo 'Types: deb\n\
+URIs: https://mirrors.tuna.tsinghua.edu.cn/debian/\n\
+Suites: bookworm bookworm-updates bookworm-backports\n\
+Components: main contrib non-free non-free-firmware\n\
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg\n\
+\n\
+Types: deb\n\
+URIs: https://mirrors.tuna.tsinghua.edu.cn/debian-security/\n\
+Suites: bookworm-security\n\
+Components: main contrib non-free non-free-firmware\n\
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg' > /etc/apt/sources.list.d/debian.sources
+
+# 3. 安装 Node.js 22.14.0
+RUN apt-get update && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs=22.14.0-1nodesource1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 4. 验证安装并设置工作目录
+RUN node --version && npm --version
+WORKDIR /code
+
+# 5. 设置默认命令
+CMD ["node"]

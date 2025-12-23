@@ -17,18 +17,17 @@ resources:
     props:
       region: ${vars.region}
       description: Fastify Yishan API
-      runtime: custom.debian10
+      runtime: custom.debian12
       timeout: 60
       cpu: 2
       memorySize: 4096
       diskSize: 512
       instanceConcurrency: 100
       layers:
-        - acs:fc:${vars.region}:official:layers/Nodejs20/versions/1
-        - acs:fc:${vars.region}:1650595695532785:layers/yishan-layer-code/versions/7
+        - acs:fc:${vars.region}:official:layers/Nodejs22/versions/1
       environmentVariables:
         PATH: >-
-          /opt/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin
+          opt/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin
         NODE_PATH: >-
           /opt/nodejs/node_modules
       customRuntimeConfig:
