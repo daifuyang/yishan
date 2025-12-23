@@ -14,7 +14,7 @@ import { useModel } from "@umijs/max";
 import { App, Button, Empty, Image, Input, List, Modal, Pagination, Segmented, Space, Spin, Tooltip, Tree, Upload, theme } from "antd";
 import type { DataNode } from "antd/es/tree";
 import type { UploadFile, UploadProps } from "antd";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 type AttachmentKind = API.sysAttachment["kind"];
 type KindTab = AttachmentKind | "all";
@@ -109,7 +109,6 @@ const getAttachmentCover = (record: API.sysAttachment, publicUrl: string) => {
       <Image
         src={src}
         preview={false}
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
       />
     );
   }
@@ -181,6 +180,17 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
   const [reloadSeq, setReloadSeq] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState("");
+  const gridContainerRef = useRef<HTMLDivElement | null>(null);
+  const [gridContainerWidth, setGridContainerWidth] = useState(0);
+  const gridColumns = useMemo(() => {
+    const w = gridContainerWidth || 0;
+    if (w < 576) return 4;
+    if (w < 768) return 5;
+    if (w < 992) return 6;
+    if (w < 1200) return 6;
+    if (w < 1600) return 8;
+    return 8;
+  }, [gridContainerWidth]);
 
   useEffect(() => {
     if (!open) return;
@@ -264,6 +274,27 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
     setReloadSeq(0);
   }, [open, initialFolderId, initialSelectedValues, kind]);
 
+  const update = () => {
+    const el = gridContainerRef.current;
+    if (!el) return;
+    const width = el.clientWidth || el.getBoundingClientRect().width || 0;
+    setGridContainerWidth(width);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const RO = (window as any).ResizeObserver as typeof ResizeObserver | undefined;
+    if (RO) {
+      const el = gridContainerRef.current;
+      if (!el) return;
+      const ro = new RO(() => update());
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [open]);
+
   const treeData = useMemo(() => {
     const rootTitle = highlightText("全部素材", folderSearchValue.trim());
     return [{ key: 0, title: rootTitle, children: mapTreeTitle(folderTree, folderSearchValue.trim()) }];
@@ -316,11 +347,11 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
       title="选择素材"
       open={open}
       centered
+      forceRender
       styles={{ body: { height: "76vh", padding: 0, overflow: "hidden" } }}
-      destroyOnClose
+      destroyOnHidden
       onCancel={onCancel}
       onOk={() => {
-        if (!multiple) return;
         const picked = selectedKeys.map((k) => selectedMap[k]).filter(Boolean) as API.sysAttachment[];
         if (picked.length === 0) {
           message.warning("请先选择素材");
@@ -328,10 +359,9 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
         }
         onSelect(picked);
       }}
-      okButtonProps={{ disabled: !multiple }}
       okText={`确定 ${selectedKeys.length ? `(${selectedKeys.length})` : ""}`}
       cancelText="取消"
-      width={1000}
+      width='80%'
       style={{ maxWidth: "95vw", top: 20 }}
     >
       <div style={{ display: "flex", height: "100%", background: token.colorBgLayout }}>
@@ -440,7 +470,7 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
           </div>
 
           {/* List Content */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", position: "relative" }}>
+          <div ref={gridContainerRef} style={{ flex: 1, overflowY: "auto", padding: "16px 24px", position: "relative" }}>
             {loading ? (
               <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
                 <Spin size="large" />
@@ -451,7 +481,7 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
               </div>
             ) : (
               <List
-                grid={{ gutter: 16, xs: 2, sm: 3, md: 4, lg: 5, xl: 6, xxl: 6 }}
+                grid={{ gutter: 16, column: gridColumns }}
                 dataSource={data}
                 renderItem={(item) => {
                   const v = resolveAttachmentValue(item, valueType);
@@ -463,20 +493,16 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
                       <div
                         className="attachment-card"
                         onClick={() => {
-                          if (multiple) {
-                            setSelectedKeys((prev) => {
-                              if (prev.includes(k)) return prev.filter((x) => x !== k);
-                              return [...prev, k];
-                            });
-                            setSelectedMap((prev) => {
-                              const next = { ...prev };
-                              if (checked) delete next[k];
-                              else next[k] = item;
-                              return next;
-                            });
-                            return;
-                          }
-                          onSelect([item]);
+                          setSelectedKeys((prev) => {
+                            if (prev.includes(k)) return prev.filter((x) => x !== k);
+                            return [...prev, k];
+                          });
+                          setSelectedMap((prev) => {
+                            const next = { ...prev };
+                            if (checked) delete next[k];
+                            else next[k] = item;
+                            return next;
+                          });
                         }}
                         style={{
                           position: "relative",
@@ -527,10 +553,8 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
                           </div>
                         )}
 
-                        <div style={{ position: "relative", height: 140, background: token.colorFillQuaternary }}>
+                        <div style={{ position: "relative", aspectRatio: "1 / 1", background: token.colorFillQuaternary }}>
                           {getAttachmentCover(item, publicUrl)}
-                          
-                          {/* Hover Preview Button */}
                           {item.kind === "image" && publicUrl && (
                             <div
                               className="preview-btn"
@@ -600,8 +624,6 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
           {/* Footer Pagination */}
           <div
             style={{
-              padding: "12px 24px",
-              borderTop: `1px solid ${token.colorBorderSecondary}`,
               display: "flex",
               justifyContent: "flex-end",
               background: token.colorBgContainer,
@@ -611,12 +633,10 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
               current={page}
               pageSize={pageSize}
               total={total}
-              showSizeChanger
               onChange={(p: number, ps: number) => {
                 setPage(p);
                 setPageSize(ps);
               }}
-              size="small"
               showTotal={(t: number) => `共 ${t} 项`}
             />
           </div>
