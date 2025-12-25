@@ -38,7 +38,24 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Prepare .env
+        working-directory: apps/yishan-api
+        env:
+          DATABASE_URL: ${{ secrets.YISHAN_API_DATABASE_URL }}
+          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+        run: |
+          ENV_FILE="$(pwd)/.env"
+          : > "$ENV_FILE"
+          printf '%s\n' "DATABASE_URL=${DATABASE_URL}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_USER=${DATABASE_USER}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_PASSWORD=${DATABASE_PASSWORD}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
 
       - name: Prisma Generate
         run: pnpm --filter yishan-api db:generate

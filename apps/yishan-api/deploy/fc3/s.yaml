@@ -24,12 +24,14 @@ resources:
       diskSize: 512
       instanceConcurrency: 100
       layers:
-        - acs:fc:${vars.region}:official:layers/Nodejs22/versions/1
+        - acs:fc:${vars.region}:1650595695532785:layers/yishanLayer/versions/1
       environmentVariables:
         PATH: >-
-          /opt/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin
+          /var/fc/lang/nodejs22/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin:/opt/bin:/code:/code/bin
         NODE_PATH: >-
           /opt/nodejs/node_modules
+        LD_LIBRARY_PATH: >-
+          /code:/code/lib:/usr/lib:/opt/lib:/usr/local/lib
       customRuntimeConfig:
         command:
           - node
