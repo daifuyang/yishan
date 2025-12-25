@@ -1,0 +1,86 @@
+name: yishan-api-cd-fc
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/yishan-api/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: yishan-api-cd-fc
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+     # 关键：在这里指定环境，才能访问该环境下的Secrets
+    environment: YISHAN_API
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Prepare .env
+        working-directory: apps/yishan-api
+        env:
+          DATABASE_URL: ${{ secrets.YISHAN_API_DATABASE_URL }}
+          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+        run: |
+          ENV_FILE="$(pwd)/.env"
+          : > "$ENV_FILE"
+          printf '%s\n' "DATABASE_URL=${DATABASE_URL}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_USER=${DATABASE_USER}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_PASSWORD=${DATABASE_PASSWORD}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
+
+      - name: Install Serverless Devs
+        run: npm i -g @serverless-devs/s
+
+      - name: Configure Serverless Devs Access
+        env:
+          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+          ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
+        run: |
+          s config add \
+            --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
+            --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
+            --AccountID "$ALIBABA_CLOUD_ACCOUNT_ID" \
+            -a default \
+            -f
+
+      - name: Build Package (pre-deploy in FC runtime image)
+        working-directory: apps/yishan-api
+        run: |
+          docker pull return1996/runtime-custom.debian12:node22.14.0
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD:/code" \
+            -w /code \
+            return1996/runtime-custom.debian12:node22.14.0 \
+            bash -c "bash ./deploy/fc3/pre-deploy.sh"
+
+      - name: Deploy
+        working-directory: apps/yishan-api
+        run: bash ./deploy/fc3/deploy.sh

@@ -27,7 +27,7 @@ resources:
         - acs:fc:${vars.region}:official:layers/Nodejs22/versions/1
       environmentVariables:
         PATH: >-
-          opt/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin
+          /opt/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin
         NODE_PATH: >-
           /opt/nodejs/node_modules
       customRuntimeConfig:

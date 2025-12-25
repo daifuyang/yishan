@@ -1,0 +1,50 @@
+name: yishan-api-ci
+
+on:
+  push:
+    paths:
+      - "apps/yishan-api/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+  pull_request:
+    paths:
+      - "apps/yishan-api/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # 关键：在这里指定环境，才能访问该环境下的Secrets
+    environment: YISHAN_API
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prisma Generate
+        run: pnpm --filter yishan-api db:generate
+
+      - name: TypeScript Build
+        run: pnpm --filter yishan-api build:ts
+
+      - name: Test
+        run: pnpm --filter yishan-api test

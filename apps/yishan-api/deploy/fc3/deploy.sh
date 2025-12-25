@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail   # 遇到错误/未定义变量/管道错误立即退出
+set -euo pipefail
 echo "1. 拷贝 s.yaml 到当前目录"
 cp ./deploy/fc3/s.yaml ./s.yaml
 echo "2. 部署函数"

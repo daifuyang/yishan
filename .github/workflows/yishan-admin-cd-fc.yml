@@ -1,0 +1,58 @@
+name: yishan-admin-cd-fc
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/yishan-admin/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: yishan-admin-cd-fc
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: YISHAN_API
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install Serverless Devs
+        run: npm i -g @serverless-devs/s
+
+      - name: Configure Serverless Devs Access
+        env:
+          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+          ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
+        run: |
+          s config add \
+            --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
+            --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
+            --AccountID "$ALIBABA_CLOUD_ACCOUNT_ID" \
+            -a default \
+            -f
+
+      - name: Deploy
+        working-directory: apps/yishan-admin
+        run: bash ./deploy/fc3/deploy.sh
