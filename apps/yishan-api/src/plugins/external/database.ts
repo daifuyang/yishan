@@ -1,6 +1,8 @@
 import fp from 'fastify-plugin'
 import { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import { prismaManager } from '../../utils/prisma.js'
+import { BusinessError } from '../../exceptions/business-error.js'
+import { SystemErrorCode } from '../../constants/business-codes/common.js'
 
 /**
  * 数据库连接插件选项接口
@@ -12,6 +14,8 @@ interface DatabasePluginOptions extends FastifyPluginOptions {
   retryAttempts?: number
   /** 重试间隔（毫秒） */
   retryDelay?: number
+  /** 连接超时（毫秒），超时则直接抛出数据库错误 */
+  connectionTimeout?: number
 }
 
 /**
@@ -29,25 +33,31 @@ async function databasePlugin(
 ) {
   const {
     autoConnect = true,
-    retryAttempts = 3,
-    retryDelay = 2000
+    connectionTimeout = 5000
   } = options
 
-  // 连接重试函数
-  const connectWithRetry = async (): Promise<void> => {
-    let attempts = 0
-    while (attempts < retryAttempts) {
-      try {
-        await prismaManager.connect()
-        return
-      } catch (error) {
-        attempts++
-        if (attempts >= retryAttempts) {
-          throw error
-        }
-        fastify.log.warn(`Database connection attempt ${attempts} failed, retrying in ${retryDelay}ms...`)
-        await new Promise(resolve => setTimeout(resolve, retryDelay))
-      }
+  // 快速失败的连接函数：在超时时间内尝试一次连接，失败直接抛数据库错误
+  const connectOrFailFast = async (): Promise<void> => {
+    try {
+      const prisma = prismaManager.getClient()
+
+      await Promise.race([
+        prisma.$connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('CONNECTION_TIMEOUT')), connectionTimeout))
+      ])
+
+      // 连接后进行一次轻量健康检查，确保连接可用
+      await prisma.$queryRaw`SELECT 1`
+      fastify.log.info('Database connected and healthy')
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error)
+      const isTimeout = errMsg === 'CONNECTION_TIMEOUT'
+      const details = isTimeout ? `连接超时（>${connectionTimeout}ms）` : errMsg
+      throw new BusinessError(
+        SystemErrorCode.DATABASE_ERROR,
+        isTimeout ? '数据库连接超时，请检查网络与数据库服务状态' : '数据库连接失败，请检查数据库配置或服务状态',
+        details
+      )
     }
   }
 
@@ -85,7 +95,7 @@ async function databasePlugin(
   fastify.decorate('dbReconnect', async () => {
     try {
       await prismaManager.disconnect()
-      await connectWithRetry()
+      await connectOrFailFast()
       return { success: true, message: 'Database reconnected successfully' }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -99,14 +109,12 @@ async function databasePlugin(
     fastify.addHook('onReady', async () => {
       try {
         fastify.log.info('Initializing database connection...')
-        await connectWithRetry()
+        await connectOrFailFast()
       } catch (error) {
-        // 根据环境决定是否抛出错误
-        if (process.env.NODE_ENV === 'production') {
-          throw error // 生产环境必须有数据库连接
-        } else {
-          fastify.log.warn('Development mode: Application will continue without database connection')
-        }
+        const errMessage = error instanceof Error ? error.message : 'Unknown database error'
+        fastify.log.error(`Database initialization failed: ${errMessage}`)
+        // 无论环境，直接抛出数据库错误，避免启动阶段出现插件超时
+        throw error
       }
     })
   }

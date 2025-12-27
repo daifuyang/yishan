@@ -13,6 +13,7 @@ import * as portalPages from "./portalPages";
 import * as sysPosts from "./sysPosts";
 import * as sysRoles from "./sysRoles";
 import * as system from "./system";
+import * as storage from "./storage";
 import * as sysUsers from "./sysUsers";
 import * as auth from "./auth";
 export default {
@@ -27,6 +28,7 @@ export default {
   sysPosts,
   sysRoles,
   system,
+  storage,
   sysUsers,
   auth,
 };

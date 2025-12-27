@@ -153,7 +153,7 @@ const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
   onCancel,
   onSelect,
   kind,
-  multiple,
+  multiple: _multiple,
   valueType,
   initialFolderId,
   initialSelectedValues,

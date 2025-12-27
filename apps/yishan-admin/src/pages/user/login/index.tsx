@@ -203,13 +203,22 @@ const Login: React.FC = () => {
     }
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "上午好";
+    if (hour < 18) return "下午好";
+    return "晚上好";
+  };
+
+  const greeting = getGreeting();
+
   return (
     <div className={styles.root}>
       <div className={styles.brand}></div>
       <div className={styles.loginWrap}>
         <div className={styles.loginCard}>
           <h1 className={styles.loginTitle}>欢迎登录系统</h1>
-          <p className={styles.loginSubTitle}> 下午好!</p>
+          <p className={styles.loginSubTitle}> {greeting}!</p>
           <Form
             onFinish={async (values: any) => {
               const { username, password, remember } = values || {};

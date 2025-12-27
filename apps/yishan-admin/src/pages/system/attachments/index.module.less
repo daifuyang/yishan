@@ -1,0 +1,20 @@
+.folderItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.folderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.folderItem:hover .folderActions {
+  opacity: 1;
+  pointer-events: auto;
+}

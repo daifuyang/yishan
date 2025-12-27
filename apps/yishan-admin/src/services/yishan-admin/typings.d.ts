@@ -1,4 +1,15 @@
 declare namespace API {
+  type aliyunOssConfigSchema = {
+    provider?: "aliyunOss";
+    accessKeyId?: string;
+    accessKeySecret?: string;
+    bucket?: string;
+    region?: string;
+    endpoint?: string;
+    domain?: string;
+    useHttps?: boolean;
+  };
+
   type articleDeleteResp = {
     code: number;
     message: string;
@@ -170,10 +181,8 @@ declare namespace API {
   };
 
   type batchGetSystemOptionByQueryParams = {
-    /** 通过重复 key 传数组，如 ?key=a&key=b */
-    key?: systemOptionKey[];
-    /** 通过数组语法传参：?key[]=a&key[]=b */
-    "key[]"?: systemOptionKey[];
+    /** 可以传多个 key，如 ?key=a&key=b */
+    key?: systemOptionKey | systemOptionKey[];
   };
 
   type batchGetSystemOptionReq = systemOptionKey[];
@@ -956,6 +965,14 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
+  type getStorageConfigResp = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    timestamp?: string;
+    data?: storageConfigSchema;
+  };
+
   type getSystemOptionParams = {
     key: systemOptionKey;
   };
@@ -1360,6 +1377,22 @@ declare namespace API {
     id: number;
   };
 
+  type qiniuConfigSchema = {
+    provider?: "qiniu";
+    accessKey?: string;
+    secretKey?: string;
+    bucket?: string;
+    region?: qiniuRegion;
+    domain?: string;
+    useHttps?: boolean;
+    useCdnDomains?: boolean;
+    tokenExpires?: number;
+    callbackUrl?: string;
+    uploadHost?: string;
+  };
+
+  type qiniuRegion = "z0" | "z1" | "z2" | "na0" | "as0";
+
   type refreshTokenReq = {
     /** 刷新令牌 */
     refreshToken: string;
@@ -1504,6 +1537,48 @@ declare namespace API {
     /** 参数字符串 */
     value: string;
   };
+
+  type storageConfigExportPayload = {
+    format: string;
+    version: number;
+    exportedAt: string;
+    provider: storageProvider;
+    qiniu?: qiniuConfigSchema;
+    aliyunOss?: aliyunOssConfigSchema;
+  };
+
+  type storageConfigExportResp = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    timestamp?: string;
+    data?: storageConfigExportPayload;
+  };
+
+  type storageConfigImportReq = {
+    provider: storageProvider;
+    qiniu?: qiniuConfigSchema;
+    aliyunOss?: aliyunOssConfigSchema;
+    format?: string;
+    version?: number;
+    exportedAt?: string;
+  };
+
+  type storageConfigImportResp = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    timestamp?: string;
+    data?: { provider: storageProvider };
+  };
+
+  type storageConfigSchema = {
+    provider: storageProvider;
+    qiniu: qiniuConfigSchema;
+    aliyunOss: aliyunOssConfigSchema;
+  };
+
+  type storageProvider = "disabled" | "qiniu" | "aliyunOss";
 
   type sysAttachment = {
     /** 素材ID */
@@ -2205,6 +2280,20 @@ declare namespace API {
       url?: string;
     }[];
     timestamp: string;
+  };
+
+  type upsertStorageConfigReq = {
+    provider: storageProvider;
+    qiniu?: qiniuConfigSchema;
+    aliyunOss?: aliyunOssConfigSchema;
+  };
+
+  type upsertStorageConfigResp = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    timestamp?: string;
+    data?: storageConfigSchema;
   };
 
   type userDeleteResp = {

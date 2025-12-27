@@ -23,7 +23,8 @@ export default fp(async function (fastify) {
         { name: 'sysDepts', description: 'System department management' },
         { name: 'sysPosts', description: 'System post management' },
         { name: 'system', description: 'System endpoints' },
-        { name: 'attachments', description: 'System attachments' }
+        { name: 'attachments', description: 'System attachments' },
+        { name: 'storage', description: 'Storage endpoints' },
       ],
       components: {
         securitySchemes: {

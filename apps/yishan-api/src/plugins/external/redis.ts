@@ -39,8 +39,8 @@ export default fp(async (fastify, opts) => {
   // 添加通用配置
   redisConfig = {
     ...redisConfig,
-    connectTimeout: isTestEnv ? 5000 : 10000, // 测试环境缩短超时时间
-    lazyConnect: isTestEnv ? true : false, // 测试环境使用延迟连接
+    connectTimeout: 5000,
+    lazyConnect: true,
     retryDelayOnFailover: 100,
     maxRetriesPerRequest: isTestEnv ? 2 : 3, // 测试环境减少重试次数
     keepAlive: isTestEnv ? 0 : 30000, // 测试环境禁用keepalive
@@ -59,26 +59,26 @@ export default fp(async (fastify, opts) => {
   try {
     await fastify.register(fastifyRedis, redisConfig)
     
-    // 测试Redis连接
-    if (fastify.redis) {
-      await fastify.redis.ping()
-      // 只在生产环境记录连接成功日志
-      if (process.env.NODE_ENV === 'production') {
+    // 在 onReady 阶段强制建立连接，保证顺序在数据库之后
+    fastify.addHook('onReady', async () => {
+      try {
+        if (process.env.DEBUG_MODE === '1') {
+          const { host, port, db } = redisConfig
+          fastify.log.info({ host, port, db }, 'redis connect config')
+        }
+        await fastify.redis.ping()
         fastify.log.info('Redis连接成功')
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        fastify.log.error(`Redis连接失败: ${msg}`)
+        throw e
       }
-    }
+    })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     
-    if (isTestEnv) {
-      // 测试环境Redis连接失败时的处理
-      fastify.log.warn(`测试环境Redis连接失败: ${errorMessage}`)
-      // 不抛出错误，允许测试继续进行
-      return
-    } else {
-      fastify.log.error(`Redis连接失败: ${errorMessage}`)
-      throw new Error(`Redis连接失败: ${errorMessage}`)
-    }
+    fastify.log.error(`Redis插件注册失败: ${errorMessage}`)
+    throw new Error(`Redis插件注册失败: ${errorMessage}`)
   }
 
   // 不需要手动添加onClose钩子，@fastify/redis插件会自动处理连接关闭

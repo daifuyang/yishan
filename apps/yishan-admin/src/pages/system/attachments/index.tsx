@@ -8,7 +8,7 @@ import {
   VideoCameraOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { Upload, Button, Card, Popconfirm, App, Image, Tag, Tooltip, Tree, Input, List, Tabs, Modal, Checkbox, Space } from 'antd';
+import { Upload, Button, Card, Popconfirm, App, Image, Tag, Tooltip, Tree, Input, Tabs, Modal, Checkbox, Space, Pagination, Spin, Empty } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import type { UploadProps } from 'antd';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -23,6 +23,7 @@ import {
 import AttachmentFolderForm from './components/AttachmentFolderForm';
 import AttachmentForm from './components/AttachmentForm';
 import { resolveAttachmentPublicUrl } from '@/utils/attachmentUpload';
+import styles from './index.module.less';
 
 const attachmentKindMeta: Record<API.sysAttachment['kind'], { color: string; text: string }> = {
   image: { color: 'blue', text: '图片' },
@@ -121,7 +122,6 @@ const AttachmentsPage: React.FC = () => {
   const [folderTree, setFolderTree] = useState<API.sysAttachmentFolder[]>([]);
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number>(0);
-  const [hoveredFolderId, setHoveredFolderId] = useState<number | null>(null);
   const [folderSearchValue, setFolderSearchValue] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const [autoExpandParent, setAutoExpandParent] = useState(true);
@@ -297,23 +297,12 @@ const AttachmentsPage: React.FC = () => {
     const build = (nodes: API.sysAttachmentFolder[] = [], level = 1): DataNode[] => {
       return nodes.map((n) => {
         const canCreateChild = level < 3;
-        const showActions = hoveredFolderId === n.id;
         const title = (
-          <div
-            key={n.id}
-            onMouseEnter={() => setHoveredFolderId(n.id)}
-            onMouseLeave={() => setHoveredFolderId((prev) => (prev === n.id ? null : prev))}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
-          >
+          <div key={n.id} className={styles.folderItem}>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {highlightText(n.name, folderSearchValue)}
             </span>
-            <span
-              data-tree-action="1"
-              onMouseDownCapture={stopTreeActionEvent}
-              onClickCapture={stopTreeActionEvent}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, opacity: showActions ? 1 : 0 }}
-            >
+            <span data-tree-action="1" className={styles.folderActions} onClick={stopTreeActionEvent}>
               <AttachmentFolderForm
                 title="新建子分组"
                 trigger={
@@ -354,26 +343,15 @@ const AttachmentsPage: React.FC = () => {
       });
     };
 
-    const rootShowActions = hoveredFolderId === 0;
     return [
       {
         key: 0,
         title: (
-          <div
-            key={0}
-            onMouseEnter={() => setHoveredFolderId(0)}
-            onMouseLeave={() => setHoveredFolderId((prev) => (prev === 0 ? null : prev))}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
-          >
+          <div key={0} className={styles.folderItem}>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {highlightText('全部素材', folderSearchValue)}
             </span>
-            <span
-              data-tree-action="1"
-              onMouseDownCapture={stopTreeActionEvent}
-              onClickCapture={stopTreeActionEvent}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, opacity: rootShowActions ? 1 : 0 }}
-            >
+            <span data-tree-action="1" className={styles.folderActions} onClick={stopTreeActionEvent}>
               <AttachmentFolderForm
                 title="新建分组"
                 trigger={
@@ -392,7 +370,6 @@ const AttachmentsPage: React.FC = () => {
     folderSearchValue,
     folderTree,
     handleFolderActionSuccess,
-    hoveredFolderId,
     message,
     refreshFolders,
     selectedFolderId,
@@ -468,11 +445,11 @@ const AttachmentsPage: React.FC = () => {
       </div>
     );
   };
-  
+
   return (
     <PageContainer>
-      <div style={{ display: 'flex', gap: 12 }}>
-        <Card title="分组" style={{ width: 280, flex: '0 0 280px' }} loading={loadingFolders}>
+      <div className={styles.attachmentsPage} style={{ display: 'flex', gap: 12 }}>
+        <Card className={styles.attachmentsTree} title="分组" style={{ width: 280, flex: '0 0 280px' }} loading={loadingFolders}>
           <Input.Search
             placeholder="搜索分组"
             allowClear
@@ -554,80 +531,100 @@ const AttachmentsPage: React.FC = () => {
             />
 
             <div ref={gridContainerRef}>
-              <List
-                loading={attachmentsLoading}
-                grid={{ gutter: 12, column: gridColumns }}
-                dataSource={attachments}
-                pagination={{
-                  current: attachmentsPage,
-                  pageSize: attachmentsPageSize,
-                  total: attachmentsTotal,
-                  showSizeChanger: true,
-                  onChange: (page, pageSize) => {
+              <div style={{ minHeight: 400 }}>
+                {attachmentsLoading ? (
+                  <div style={{ minHeight: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Spin />
+                  </div>
+                ) : attachments.length ? (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+                      gap: 12,
+                    }}
+                  >
+                    {attachments.map((item) => {
+                      const kind = attachmentKindMeta[item.kind] || attachmentKindMeta.other;
+                      const checked = selectedAttachmentIds.includes(item.id);
+                      return (
+                        <div key={item.id} style={{ width: '100%' }}>
+                          <div style={{ position: 'relative', width: '100%' }}>
+                            <Checkbox
+                              checked={checked}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const next = e.target.checked;
+                                setSelectedAttachmentIds((prev) => {
+                                  if (next) return prev.includes(item.id) ? prev : [...prev, item.id];
+                                  return prev.filter((x) => x !== item.id);
+                                });
+                              }}
+                              style={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                zIndex: 2,
+                                background: 'rgba(255,255,255,0.9)',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                              }}
+                            />
+                            <Card
+                              size="small"
+                              style={{ height: '100%' }}
+                              cover={getAttachmentCover(item)}
+                              actions={[
+                                <AttachmentForm
+                                  key="edit"
+                                  title="编辑素材"
+                                  trigger={<Button type="text" icon={<EditOutlined />} />}
+                                  initialValues={item}
+                                  onFinish={async () => {
+                                    fetchAttachments(attachmentsPage, attachmentsPageSize, kindTab);
+                                  }}
+                                />,
+                                <Popconfirm
+                                  key="delete"
+                                  title="确定要删除该素材吗？"
+                                  onConfirm={() => handleDeleteAttachment(item.id)}
+                                >
+                                  <Button type="text" danger icon={<DeleteOutlined />} />
+                                </Popconfirm>,
+                              ]}
+                            >
+                              <Tooltip title={item.filename || '-'}>
+                                <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {item.name || item.originalName || item.filename || '-'}
+                                </div>
+                              </Tooltip>
+                              <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <Tag color={kind.color}>{kind.text}</Tag>
+                                <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{formatBytes(item.size)}</span>
+                              </div>
+                            </Card>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Empty style={{ padding: '48px 0' }} />
+                )}
+              </div>
+
+              <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                <Pagination
+                  current={attachmentsPage}
+                  pageSize={attachmentsPageSize}
+                  total={attachmentsTotal}
+                  showSizeChanger
+                  onChange={(page, pageSize) => {
                     setAttachmentsPage(page);
                     setAttachmentsPageSize(pageSize);
-                  },
-                }}
-                renderItem={(item) => {
-                  const kind = attachmentKindMeta[item.kind] || attachmentKindMeta.other;
-                  const checked = selectedAttachmentIds.includes(item.id);
-                  return (
-                    <List.Item>
-                      <div style={{ position: 'relative', width: '100%' }}>
-                        <Checkbox
-                          checked={checked}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => {
-                            const next = e.target.checked;
-                            setSelectedAttachmentIds((prev) => {
-                              if (next) return prev.includes(item.id) ? prev : [...prev, item.id];
-                              return prev.filter((x) => x !== item.id);
-                            });
-                          }}
-                          style={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            zIndex: 2,
-                            background: 'rgba(255,255,255,0.9)',
-                            padding: '2px 6px',
-                            borderRadius: 4,
-                          }}
-                        />
-                        <Card
-                          size="small"
-                          style={{ height: '100%' }}
-                          cover={getAttachmentCover(item)}
-                          actions={[
-                            <AttachmentForm
-                              key="edit"
-                              title="编辑素材"
-                              trigger={<Button type="text" icon={<EditOutlined />} />}
-                              initialValues={item}
-                              onFinish={async () => {
-                                fetchAttachments(attachmentsPage, attachmentsPageSize, kindTab);
-                              }}
-                            />,
-                            <Popconfirm key="delete" title="确定要删除该素材吗？" onConfirm={() => handleDeleteAttachment(item.id)}>
-                              <Button type="text" danger icon={<DeleteOutlined />} />
-                            </Popconfirm>,
-                          ]}
-                        >
-                          <Tooltip title={item.filename || '-'}>
-                            <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {item.name || item.originalName || item.filename || '-'}
-                            </div>
-                          </Tooltip>
-                          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                            <Tag color={kind.color}>{kind.text}</Tag>
-                            <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>{formatBytes(item.size)}</span>
-                          </div>
-                        </Card>
-                      </div>
-                    </List.Item>
-                  );
-                }}
-              />
+                  }}
+                />
+              </div>
             </div>
           </div>
         </Card>
@@ -636,7 +633,7 @@ const AttachmentsPage: React.FC = () => {
         open={mediaPreviewOpen}
         title={mediaPreviewTitle}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         onCancel={() => {
           setMediaPreviewOpen(false);
           setMediaPreviewKind(null);

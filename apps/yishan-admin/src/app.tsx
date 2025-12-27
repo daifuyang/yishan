@@ -37,7 +37,6 @@ export async function getInitialState(): Promise<{
   currentUser?: API.currentUser;
   loading?: boolean;
   fetchUserInfo?: () => Promise<API.currentUser | undefined>;
-  fetchMenus?: () => Promise<MenuDataItem[] | undefined>;
   dictDataMap?: Record<string, any>;
   fetchDictDataMap?: () => Promise<Record<string, any> | undefined>;
   cloudStorageConfig?: CloudStorageConfig;
@@ -53,33 +52,6 @@ export async function getInitialState(): Promise<{
       return response.data;
     }
     return undefined;
-  };
-
-  const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
-
-    const toItem = (n: API.menuTreeNode): MenuDataItem => {
-      const item: MenuDataItem = {
-        name: n.name,
-        path: n.path,
-        icon: n.icon ? (IconMap[String(n.icon).toLowerCase()] as any) : undefined,
-        hideInMenu: n.hideInMenu,
-      };
-      if (Array.isArray(n.children) && n.children.length) {
-        item.children = transformToMenuData(n.children);
-      }
-      return item;
-    };
-    return nodes.filter((n) => n.type !== 2).map(toItem);
-  };
-
-  const fetchMenus = async () => {
-    try {
-      const res = await getAuthorizedMenuTree();
-      const data = res?.data || [];
-      return transformToMenuData(data);
-    } catch {
-      return undefined;
-    }
   };
 
   const fetchDictDataMap = async () => {
@@ -107,7 +79,6 @@ export async function getInitialState(): Promise<{
 
     return {
       fetchUserInfo,
-      fetchMenus,
       fetchDictDataMap,
       fetchCloudStorageConfig,
       uploadAttachmentFile,
@@ -119,13 +90,31 @@ export async function getInitialState(): Promise<{
   }
   return {
     fetchUserInfo,
-    fetchMenus,
     fetchDictDataMap,
     fetchCloudStorageConfig,
     uploadAttachmentFile,
     settings: defaultSettings as Partial<LayoutSettings>,
   };
 }
+
+let extraRoutes: API.menuTreeList = [];
+
+const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
+
+  const toItem = (n: API.menuTreeNode): MenuDataItem => {
+    const item: MenuDataItem = {
+      name: n.name,
+      path: n.path,
+      icon: n.icon ? (IconMap[String(n.icon).toLowerCase()] as any) : undefined,
+      hideInMenu: n.hideInMenu,
+    };
+    if (Array.isArray(n.children) && n.children.length) {
+      item.children = transformToMenuData(n.children);
+    }
+    return item;
+  };
+  return nodes.filter((n) => n.type !== 2).map(toItem);
+};
 
 // ProLayout 支持的api https://procomponents.ant.design/components/layout
 export const layout: RunTimeLayoutConfig = ({
@@ -152,8 +141,7 @@ export const layout: RunTimeLayoutConfig = ({
       // 从服务器加载菜单
       request: async (params) => {
         if (!params?.userId) return [];
-        const menus = await initialState?.fetchMenus?.();
-        return menus || [];
+        return transformToMenuData(extraRoutes || []);
       },
     },
     footerRender: () => <Footer />,
@@ -231,48 +219,46 @@ export const request: RequestConfig = {
   ...errorConfig,
 };
 
-type Route = {
-  id: string;
-  path: string;
-  type?: 0 | 1 | 2;
-  name?: string;
-  component?: string;
-  children?: Route[];
-  redirect?: string;
-  element?: React.ReactNode;
-};
-
-const resolveFirstPath = (routes: Route[] = []): string => {
-  if (!Array.isArray(routes) || routes.length === 0) return "/";
-  const routeMap = new Map<string, Route>();
-  const build = (list: Route[] = []) => {
-    list.forEach((r) => {
-      if (r?.path) routeMap.set(r.path, r);
-      if (Array.isArray(r.children)) build(r.children);
-    });
-  };
-  build(routes);
-
-  let path = routes[0].redirect || routes[0].path || "/";
-  const visited = new Set<string>();
-  while (path && !visited.has(path)) {
-    visited.add(path);
-    const n = routeMap.get(path);
-    if (n?.redirect && n.redirect !== path) {
-      path = n.redirect;
+const resolveFirstPath = (nodes: any[] = []): string => {
+  if (!Array.isArray(nodes) || nodes.length === 0) return "/";
+  const isValid = (n: any) => n && n.status !== "0" && !n.isExternalLink && n.type !== 2 && !n.hideInMenu;
+  const getChildren = (n: any) => (Array.isArray(n?.children) ? n.children : []);
+  const pickFirst = (list: any[] = []) => (list || []).find(isValid) ?? (list || [])[0];
+  let current = pickFirst(nodes);
+  while (current) {
+    const children = (getChildren(current) || []).filter(isValid);
+    if (children.length > 0) {
+      current = children[0];
       continue;
     }
     break;
   }
-  return path || "/";
+  return typeof current?.path === "string" && current.path ? current.path : "/";
 };
 
 export function patchClientRoutes({ routes }: { routes: any[] }) {
-   const rootRoute = routes.find((r: any) => r.path === '/');
-  if (rootRoute && rootRoute.children.length > 0) {
+
+  const rootRoute = routes.find((r: any) => r.path === '/');
+  if (rootRoute) {
+    if (!rootRoute.children) {
+      rootRoute.children = [];
+    }
     const firstPath = resolveFirstPath(rootRoute.children || []);
     rootRoute.children.unshift({
       id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath
     });
+  }
+}
+
+export function render(oldRender: any) {
+  const currentPath = window.location.pathname;
+  if (currentPath !== '/user/login') {
+    getAuthorizedMenuTree().then((res) => {
+      const menus = res.data || [];
+      extraRoutes = menus;
+      oldRender();
+    });
+  } else {
+    oldRender();
   }
 }
