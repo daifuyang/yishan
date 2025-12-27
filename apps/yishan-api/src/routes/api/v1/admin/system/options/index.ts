@@ -43,31 +43,30 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
     {
       schema: {
         summary: "批量获取系统参数（QueryString）",
-        description: "通过 query 参数 ?key=a&key=b 批量获取系统参数值",
+        description: "通过 query 参数 ?key[]=a&key[]=b 批量获取系统参数值",
         operationId: "batchGetSystemOptionByQuery",
         tags: ["system"],
         security: [{ bearerAuth: [] }],
         querystring: {
           type: "object",
           properties: {
-            key: {
-              oneOf: [
-                { $ref: "systemOptionKey#" },
-                { type: "array", items: { $ref: "systemOptionKey#" } },
-              ],
-              description: "可以传多个 key，如 ?key=a&key=b",
+            "key[]": {
+              type: "array",
+              items: { $ref: "systemOptionKey#" },
+              minItems: 1,
+              description: "通过数组语法传参：?key[]=a&key[]=b",
             },
           },
+          required: ["key[]"],
         },
         response: { 200: { $ref: "batchGetSystemOptionResp#" } },
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const qs: any = request.query;
-      const raw = qs?.key;
-      const keys = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+      const qs = request.query as any;
+      const keys = (qs?.["key[]"] || []) as string[];
       const map = await SystemOptionService.getOptions(keys as any);
-      const results = keys.map((k: any) => ({
+      const results = keys.map((k: string) => ({
         key: k,
         value: (map as any)[k] ?? null,
       }));
