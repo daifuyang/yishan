@@ -9,10 +9,10 @@ title: 简介
 
 本网站为项目文档中心，涵盖快速开始、前端说明、后端说明、系统模块、部署运维与常见问题。
 
-• 前端代码：`c:\Workspace\Frontend\yishan\apps\yishan-admin`
+• 前端代码：`apps/yishan-admin`
 
-• 后端代码：`c:\Workspace\Frontend\yishan\apps\yishan-api`
+• 后端代码：`apps/yishan-api`
 
-• 文档站点：`c:\Workspace\Frontend\yishan\apps\yishan-docs`
+• 文档站点：`apps/yishan-docs`
 
 建议从“快速开始”开始配置并运行项目，然后根据需要阅读前后端章节。

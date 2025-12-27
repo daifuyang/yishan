@@ -72,6 +72,7 @@ const sidebars: SidebarsConfig = {
         'modules/departments',
         'modules/posts',
         'modules/system',
+        'template-logic',
       ],
     },
     {
@@ -79,6 +80,7 @@ const sidebars: SidebarsConfig = {
       label: '部署运维',
       items: ['deploy/dev', 'deploy/prod'],
     },
+    'faq',
   ],
 };
 

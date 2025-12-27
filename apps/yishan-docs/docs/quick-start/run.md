@@ -28,7 +28,7 @@ pnpm --filter yishan-admin dev
 
 ```bash
 pnpm i
-pnpm --filter yishan-docs start
+pnpm --filter yishan-docs start -- --port 4000
 ```
 
-- 默认端口：`3000`（若本地冲突，请调整）
+- 推荐端口：`4000`（避免与后端默认 `3000` 冲突）

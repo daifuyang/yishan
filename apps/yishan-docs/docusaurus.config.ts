@@ -15,15 +15,15 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://docs.yishan.example.com',
+  url: 'https://docs.zerocmf.com',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'yishan',
-  projectName: 'yishan-docs',
+  organizationName: 'zerocmf',
+  projectName: 'yishan',
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -42,26 +42,9 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/zerocmf/yishan/tree/main/apps/yishan-docs/',
         },
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-          // Useful options to enforce blogging best practices
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
-        },
+        blog: false,
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -80,7 +63,7 @@ const config: Config = {
       },
       items: [
         { type: 'docSidebar', sidebarId: 'tutorialSidebar', position: 'left', label: '文档' },
-        { href: 'https://github.com', label: 'GitHub', position: 'right' },
+        { href: 'https://github.com/zerocmf/yishan', label: 'GitHub', position: 'right' },
       ],
     },
     footer: {
@@ -95,7 +78,7 @@ const config: Config = {
             },
           ],
         },
-        { title: '更多', items: [{ label: 'GitHub', href: 'https://github.com' }] },
+        { title: '更多', items: [{ label: 'GitHub', href: 'https://github.com/zerocmf/yishan' }] },
       ],
       copyright: `Copyright © ${new Date().getFullYear()} 移山项目组. Built with Docusaurus.`,
     },

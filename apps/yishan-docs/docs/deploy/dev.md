@@ -6,9 +6,9 @@ title: 本地开发
 
 ## 一次性启动步骤
 
-1. 启动后端：`apps/yishan-api` → `npm run dev`
-2. 启动前端：`apps/yishan-admin` → `npm run dev`
-3. 启动文档：`apps/yishan-docs` → `npm run start`
+1. 启动后端：`pnpm --filter yishan-api dev`
+2. 启动前端：`pnpm --filter yishan-admin dev`
+3. 启动文档：`pnpm --filter yishan-docs start -- --port 4000`
 
 ## 联调说明
 

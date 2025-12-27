@@ -1,41 +1,29 @@
-# Website
+# yishan-docs
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+移山项目文档站点，基于 Docusaurus 3（React 19）。
 
-## Installation
+## 安装依赖
 
-```bash
-yarn
-```
-
-## Local Development
+在仓库根目录执行：
 
 ```bash
-yarn start
+pnpm install
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
-
-## Build
+## 本地开发
 
 ```bash
-yarn build
+pnpm --filter yishan-docs start -- --port 4000
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-## Deployment
-
-Using SSH:
+## 构建
 
 ```bash
-USE_SSH=true yarn deploy
+pnpm --filter yishan-docs build
 ```
 
-Not using SSH:
+## 本地预览构建产物
 
 ```bash
-GIT_USER=<Your GitHub username> yarn deploy
+pnpm --filter yishan-docs serve
 ```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.

@@ -7,7 +7,7 @@ title: 环境准备
 为保证前后端顺利运行，请准备以下环境：
 
 - Node.js ≥ 20（前端 `yishan-admin` 要求）
-- 包管理器：`npm`（默认）
+- 包管理器：`pnpm`
 - MySQL 8.x（用于后端数据库）
 - Redis（可选，用于缓存）
 
@@ -48,5 +48,5 @@ pnpm --filter yishan-docs i
 
 1. 启动开发：
    ```bash
-   pnpm --filter yishan-docs start
+   pnpm --filter yishan-docs start -- --port 4000
    ```

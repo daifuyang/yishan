@@ -18,8 +18,9 @@ title: 技术栈与命令
 
 ## 常用命令
 
-- 开发：`npm run dev`
-- 构建并启动：`npm run start`
-- 数据库迁移：`npm run db:init`
-- 数据库初始化：`npm run db:seed`
-- 重置数据库：`npm run db:reset`
+- 开发：`pnpm --filter yishan-api dev`
+- 构建并启动：`pnpm --filter yishan-api start`
+- 生成 Prisma 客户端：`pnpm --filter yishan-api db:generate`
+- 数据库迁移：`pnpm --filter yishan-api db:init`
+- 初始化数据：`pnpm --filter yishan-api db:seed`
+- 重置数据库：`pnpm --filter yishan-api db:reset`

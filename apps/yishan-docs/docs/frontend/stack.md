@@ -15,8 +15,8 @@ title: 技术栈与命令
 
 ## 常用命令
 
-- 开发：`npm run dev`
-- 构建：`npm run build`
-- 预览：`npm run preview`
-- 单测：`npm test`
-- Lint：`npm run biome:lint`、`npm run tsc`
+- 开发：`pnpm --filter yishan-admin dev`
+- 构建：`pnpm --filter yishan-admin build`
+- 预览：`pnpm --filter yishan-admin preview`
+- 单测：`pnpm --filter yishan-admin test`
+- Lint：`pnpm --filter yishan-admin lint`
