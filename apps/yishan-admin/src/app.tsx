@@ -243,11 +243,23 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
     if (!rootRoute.children) {
       rootRoute.children = [];
     }
-    const firstPath = resolveFirstPath(rootRoute.children || []);
+
+    // 如果rootRoute.children包含/, 则删除
+    if (rootRoute.children.find((r: any) => r.path === '/')) {
+      rootRoute.children = rootRoute.children.filter((r: any) => r.path !== '/');
+    }
+
+    const firstPath = resolveFirstPath(extraRoutes || []);
     rootRoute.children.unshift({
       id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath
     });
+
+
+
   }
+
+  console.log('rootRoute', rootRoute);
+
 }
 
 export function render(oldRender: any) {

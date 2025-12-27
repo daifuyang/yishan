@@ -1,3 +1,5 @@
+import path from "path";
+
 /**
  * @name umi 的路由配置
  * @description 只支持 path,component,routes,redirect,wrappers,name,icon 的配置
@@ -110,6 +112,10 @@ export default [
     name: 'portal.page-templates',
     component: './portal/page-templates',
     access: 'canDo',
+  },
+  {
+    path: '/',
+    redirect: '/system/user',
   },
   {
     path: '*',
