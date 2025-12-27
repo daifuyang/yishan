@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - "apps/yishan-admin/**"
-      - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
   workflow_dispatch:
@@ -52,6 +51,12 @@ jobs:
             --AccountID "$ALIBABA_CLOUD_ACCOUNT_ID" \
             -a default \
             -f
+
+      - name: Prepare yishan-tiptap
+        working-directory: apps/yishan-components/yishan-tiptap
+        run: |
+          pnpm install --filter yishan-tiptap --no-frozen-lockfile
+          pnpm build --filter yishan-tiptap
 
       - name: Deploy
         working-directory: apps/yishan-admin

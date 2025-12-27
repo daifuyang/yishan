@@ -46,6 +46,7 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
           DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+          REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
         run: |
           ENV_FILE="$(pwd)/.env"
           : > "$ENV_FILE"
@@ -54,6 +55,7 @@ jobs:
           printf '%s\n' "DATABASE_PASSWORD=${DATABASE_PASSWORD}" >> "$ENV_FILE"
           printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
           printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
+          printf '%s\n' "REDIS_URL=${REDIS_URL}" >> "$ENV_FILE"
 
       - name: Install Serverless Devs
         run: npm i -g @serverless-devs/s

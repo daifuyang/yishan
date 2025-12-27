@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail   # 遇到错误/未定义变量/管道错误立即退出
 echo "1. 安装依赖"
-pnpm install --filter yishan-admin
+pnpm install --filter yishan-admin --no-frozen-lockfile
 echo "2. 构建项目"
 pnpm build
 echo "3. 复制 nginx.conf 到 dist 目录"

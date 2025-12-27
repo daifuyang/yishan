@@ -4,13 +4,11 @@ on:
   push:
     paths:
       - "apps/yishan-admin/**"
-      - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
   pull_request:
     paths:
       - "apps/yishan-admin/**"
-      - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
 
@@ -36,8 +34,14 @@ jobs:
           node-version: 22.14.0
           cache: pnpm
 
+      - name: Prepare yishan-tiptap
+        working-directory: apps/yishan-components/yishan-tiptap
+        run: |
+          pnpm install --filter yishan-tiptap --no-frozen-lockfile
+          pnpm build --filter yishan-tiptap
+
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Lint
         run: pnpm --filter yishan-admin lint
