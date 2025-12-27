@@ -19,6 +19,8 @@ export type QiniuConfig = {
   uploadHost?: string;
 };
 
+export type QiniuConfigPublic = Omit<QiniuConfig, "secretKey">;
+
 export type AliyunOssConfig = {
   provider?: "aliyunOss";
   accessKeyId: string;
@@ -36,6 +38,10 @@ export type StorageConfig = {
   aliyunOss: AliyunOssConfig;
 };
 
+export type StorageConfigPublic = Omit<StorageConfig, "qiniu"> & {
+  qiniu: QiniuConfigPublic;
+};
+
 export type StorageConfigExportPayload = {
   format: "yishan.storage.config";
   version: 1;
@@ -43,6 +49,10 @@ export type StorageConfigExportPayload = {
   provider: StorageProvider;
   qiniu: QiniuConfig;
   aliyunOss: AliyunOssConfig;
+};
+
+export type StorageConfigExportPayloadPublic = Omit<StorageConfigExportPayload, "qiniu"> & {
+  qiniu: QiniuConfigPublic;
 };
 
 const SYSTEM_OPTION_KEYS = {
@@ -125,8 +135,13 @@ const modeFromProvider = (provider: StorageProvider): "0" | "1" | "2" => {
   return "0";
 };
 
+const toPublicQiniu = (cfg: QiniuConfig): QiniuConfigPublic => {
+  const { secretKey: _secretKey, ...rest } = cfg;
+  return rest;
+};
+
 export class StorageConfigService {
-  static async getConfig(): Promise<StorageConfig> {
+  private static async getInternalConfig(): Promise<StorageConfig> {
     const map = await SystemOptionService.getOptions([
       SYSTEM_OPTION_KEYS.SYSTEM_STORAGE,
       SYSTEM_OPTION_KEYS.QINIU,
@@ -140,6 +155,11 @@ export class StorageConfigService {
     return { provider, qiniu, aliyunOss };
   }
 
+  static async getConfig(): Promise<StorageConfigPublic> {
+    const cfg = await this.getInternalConfig();
+    return { ...cfg, qiniu: toPublicQiniu(cfg.qiniu) };
+  }
+
   static async upsertConfig(
     payload: {
       provider: StorageProvider;
@@ -147,19 +167,19 @@ export class StorageConfigService {
       aliyunOss?: Partial<AliyunOssConfig>;
     },
     userId: number
-  ): Promise<StorageConfig> {
+  ): Promise<StorageConfigPublic> {
     await this.importConfig(payload, userId);
     return await this.getConfig();
   }
 
-  static async exportConfig(): Promise<StorageConfigExportPayload> {
-    const cfg = await this.getConfig();
+  static async exportConfig(): Promise<StorageConfigExportPayloadPublic> {
+    const cfg = await this.getInternalConfig();
     return {
       format: "yishan.storage.config",
       version: 1,
       exportedAt: new Date().toISOString(),
       provider: cfg.provider,
-      qiniu: cfg.qiniu,
+      qiniu: toPublicQiniu(cfg.qiniu),
       aliyunOss: cfg.aliyunOss,
     };
   }
@@ -174,12 +194,7 @@ export class StorageConfigService {
   ): Promise<{ provider: StorageProvider }> {
     const provider = validateProvider(payload.provider);
 
-    if (provider === "qiniu") {
-      validateQiniuConfig(payload.qiniu || {});
-    }
-    if (provider === "aliyunOss") {
-      validateAliyunOssConfig(payload.aliyunOss || {});
-    }
+    const current = await this.getInternalConfig();
 
     const items: Array<{ key: string; value: string }> = [];
     if (provider === "disabled") {
@@ -191,18 +206,38 @@ export class StorageConfigService {
     }
 
     if (provider === "qiniu") {
-      const qiniu = { ...DEFAULT_QINIU, ...(payload.qiniu || {}), provider: "qiniu" as const };
+      const prev = { ...DEFAULT_QINIU, ...(current.qiniu || {}), provider: "qiniu" as const };
+      const patch = payload.qiniu || {};
+      const next: QiniuConfig = { ...prev, ...patch, provider: "qiniu" as const };
+      const nextSecret = typeof patch.secretKey === "string" ? patch.secretKey.trim() : "";
+      if (nextSecret) {
+        next.secretKey = nextSecret;
+      } else {
+        next.secretKey = prev.secretKey;
+      }
+
+      validateQiniuConfig(next);
       items.push(
-        { key: SYSTEM_OPTION_KEYS.QINIU, value: JSON.stringify(qiniu) },
+        { key: SYSTEM_OPTION_KEYS.QINIU, value: JSON.stringify(next) },
         { key: SYSTEM_OPTION_KEYS.ALIYUN_OSS, value: "" },
         { key: SYSTEM_OPTION_KEYS.SYSTEM_STORAGE, value: modeFromProvider(provider) }
       );
     }
 
     if (provider === "aliyunOss") {
-      const aliyunOss = { ...DEFAULT_ALIYUN_OSS, ...(payload.aliyunOss || {}), provider: "aliyunOss" as const };
+      const prev = { ...DEFAULT_ALIYUN_OSS, ...(current.aliyunOss || {}), provider: "aliyunOss" as const };
+      const patch = payload.aliyunOss || {};
+      const next: AliyunOssConfig = { ...prev, ...patch, provider: "aliyunOss" as const };
+      const nextSecret = typeof patch.accessKeySecret === "string" ? patch.accessKeySecret.trim() : "";
+      if (nextSecret) {
+        next.accessKeySecret = nextSecret;
+      } else {
+        next.accessKeySecret = prev.accessKeySecret;
+      }
+
+      validateAliyunOssConfig(next);
       items.push(
-        { key: SYSTEM_OPTION_KEYS.ALIYUN_OSS, value: JSON.stringify(aliyunOss) },
+        { key: SYSTEM_OPTION_KEYS.ALIYUN_OSS, value: JSON.stringify(next) },
         { key: SYSTEM_OPTION_KEYS.QINIU, value: "" },
         { key: SYSTEM_OPTION_KEYS.SYSTEM_STORAGE, value: modeFromProvider(provider) }
       );

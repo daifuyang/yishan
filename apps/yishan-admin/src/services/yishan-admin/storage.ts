@@ -31,7 +31,7 @@ export async function upsertStorageConfig(
   );
 }
 
-/** 导出云存储配置 导出当前云存储配置（包含密钥等敏感信息，请妥善保管） GET /api/v1/admin/system/storage/export */
+/** 导出云存储配置 导出当前云存储配置（不包含 SecretKey 等敏感信息） GET /api/v1/admin/system/storage/export */
 export async function exportStorageConfig(options?: { [key: string]: any }) {
   return request<API.storageConfigExportResp>(
     "/api/v1/admin/system/storage/export",

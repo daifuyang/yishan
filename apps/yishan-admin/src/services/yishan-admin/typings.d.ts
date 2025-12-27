@@ -181,8 +181,8 @@ declare namespace API {
   };
 
   type batchGetSystemOptionByQueryParams = {
-    /** 可以传多个 key，如 ?key=a&key=b */
-    key?: systemOptionKey | systemOptionKey[];
+    /** 通过数组语法传参：?key[]=a&key[]=b */
+    "key[]": systemOptionKey[];
   };
 
   type batchGetSystemOptionReq = systemOptionKey[];

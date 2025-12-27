@@ -26,7 +26,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const value = await SystemOptionService.getOption(
+      const value = await SystemOptionService.getOptionPublic(
         (request.params as any).key
       );
       const message = getSystemMessage(
@@ -65,7 +65,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const qs = request.query as any;
       const keys = (qs?.["key[]"] || []) as string[];
-      const map = await SystemOptionService.getOptions(keys as any);
+      const map = await SystemOptionService.getOptionsPublic(keys as any);
       const results = keys.map((k: string) => ({
         key: k,
         value: (map as any)[k] ?? null,

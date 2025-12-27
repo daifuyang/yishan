@@ -62,7 +62,7 @@ const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> =>
     {
       schema: {
         summary: "导出云存储配置",
-        description: "导出当前云存储配置（包含密钥等敏感信息，请妥善保管）",
+        description: "导出当前云存储配置（不包含 SecretKey 等敏感信息）",
         operationId: "exportStorageConfig",
         tags: ["storage"],
         security: [{ bearerAuth: [] }],

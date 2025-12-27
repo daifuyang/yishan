@@ -283,7 +283,6 @@ const CloudConfigPage: React.FC = () => {
                         name={["qiniu", "secretKey"]}
                         label="SecretKey"
                         placeholder="请输入 SecretKey"
-                        rules={[{ required: true, message: "请输入 SecretKey" }]}
                         colProps={{ span: 12 }}
                         fieldProps={{ autoComplete: "off" }}
                       />
