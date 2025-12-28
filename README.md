@@ -2,6 +2,12 @@
 
 一个基于 React/Ant Design Pro 前端、Fastify 后端与 Docusaurus 文档的 monorepo 项目，为 zerocmf.com 打造的通用管理解决方案。
 
+## 相关链接
+
+- 演示站点：https://admin.zerocmf.com
+  账号密码：admin/admin123
+- GitHub 仓库：https://github.com/zerocmf/yishan
+
 ## 项目结构
 
 ```
@@ -150,9 +156,3 @@ dist/                     # 构建产物（cjs、esm、d.ts、css）
 ## 许可证
 
 MIT License
-
-## 相关链接
-
-- 官方站点：https://zerocmf.com
-- 文档站点：https://docs.zerocmf.com
-- GitHub 仓库：https://github.com/zerocmf/yishan
