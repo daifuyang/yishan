@@ -58,7 +58,7 @@ const SiteConfigPage: React.FC = () => {
     const fetchConfig = async () => {
       try {
         setLoading(true);
-        const res = await batchGetSystemOptionByQuery({ key: [BASIC_CONFIG_KEY] });
+        const res = await batchGetSystemOptionByQuery({ "key[]": [BASIC_CONFIG_KEY] });
         const value = res.data?.results?.find((i) => i.key === BASIC_CONFIG_KEY)?.value ?? null;
         const nextValues = parseJson<BasicConfig>(value, defaultBasicConfig);
         setInitialValues(nextValues);

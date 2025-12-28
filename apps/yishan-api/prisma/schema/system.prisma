@@ -125,6 +125,7 @@ model SysRole {
   name            String    @unique @map("name") @db.VarChar(50)
   description     String?   @map("description") @db.VarChar(255)
   status          Int       @default(1) @map("status") @db.TinyInt
+  dataScope       Int       @default(1) @map("data_scope") @db.TinyInt
   isSystemDefault Boolean   @default(false) @map("is_system_default")
   creatorId       Int?      @map("creator_id")
   createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(0)

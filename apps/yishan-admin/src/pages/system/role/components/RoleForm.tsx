@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Tree, Checkbox, Space, Spin } from 'antd';
-import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea } from '@ant-design/pro-components';
+import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea, ProFormSelect } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 import { getMenuTree } from '@/services/yishan-admin/sysMenus';
 import type { DataNode } from 'antd/es/tree';
@@ -16,7 +16,7 @@ export interface RoleFormProps {
 const RoleForm: React.FC<RoleFormProps> = ({
   title,
   trigger,
-  initialValues = { status: '1' },
+  initialValues = { status: '1', dataScope: '1' },
   onFinish,
 }) => {
   const [menuTreeLoading, setMenuTreeLoading] = useState(false);
@@ -30,6 +30,13 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+  const dataScopeOptions = [
+    { label: '全部数据', value: '1' },
+    { label: '本部门数据', value: '2' },
+    { label: '本部门及子部门数据', value: '3' },
+    { label: '仅本人数据', value: '4' },
+    { label: '自定义数据', value: '5' },
+  ];
 
   const formRef = useRef<any>(undefined);
 
@@ -97,6 +104,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
           name: values.name,
           description: values.description,
           status: values.status,
+          dataScope: values.dataScope,
           menuIds: checkedKeys as number[],
         };
         if (!initialValues?.id) {
@@ -140,6 +148,14 @@ const RoleForm: React.FC<RoleFormProps> = ({
         label="角色状态"
         options={defaultStatusDict}
         colProps={{ span: 24 }}
+      />
+
+      <ProFormSelect
+        name="dataScope"
+        label="数据权限"
+        colProps={{ span: 24 }}
+        options={dataScopeOptions}
+        rules={[{ required: true, message: '请选择数据权限' }]}
       />
 
       <ProFormTextArea

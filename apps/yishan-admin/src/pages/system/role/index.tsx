@@ -11,11 +11,31 @@ const IsSystem = {
   NO: 0,
 };
 
+const dataScopeOptions = [
+  { label: '全部数据', value: '1' },
+  { label: '本部门数据', value: '2' },
+  { label: '本部门及子部门数据', value: '3' },
+  { label: '仅本人数据', value: '4' },
+  { label: '自定义数据', value: '5' },
+] as const;
+
 const SystemRoleTag: React.FC<{ isSystem?: number }> = ({ isSystem }) => {
   if (isSystem === IsSystem.YES) {
     return <Tag color="blue">系统角色</Tag>;
   }
   return <Tag color="green">自定义角色</Tag>;
+};
+
+const DataScopeTag: React.FC<{ dataScope?: API.sysRole['dataScope'] }> = ({ dataScope }) => {
+  const label = dataScopeOptions.find((o) => o.value === dataScope)?.label || '-';
+  const colorMap: Record<string, string> = {
+    '1': 'blue',
+    '2': 'green',
+    '3': 'cyan',
+    '4': 'orange',
+    '5': 'magenta',
+  };
+  return <Tag color={colorMap[dataScope ?? ''] || 'default'}>{label}</Tag>;
 };
 
 const RoleList: React.FC = () => {
@@ -98,6 +118,12 @@ const RoleList: React.FC = () => {
       title: '系统角色',
       dataIndex: 'isSystemDefault',
       render: (_, record) => <SystemRoleTag isSystem={record.isSystemDefault ? IsSystem.YES : IsSystem.NO} />,
+    },
+    {
+      title: '数据权限',
+      dataIndex: 'dataScope',
+      search: false,
+      render: (_, record) => <DataScopeTag dataScope={record.dataScope} />,
     },
     {
       title: '状态',

@@ -28,6 +28,7 @@ export class SysRoleModel {
       name: role.name,
       description: role.description ?? undefined,
       status: role.status.toString(),
+      dataScope: role.dataScope.toString(),
       isSystemDefault: role.isSystemDefault ?? false,
       creatorId: role.creatorId ?? undefined,
       creatorName: role.creator?.username ?? role.creatorName,
@@ -152,12 +153,14 @@ export class SysRoleModel {
     const result = await this.prisma.$transaction(async (prisma) => {
       // 将字符串类型的status转换为数字类型
       const statusNum = req.status ? parseInt(req.status, 10) : 1;
+      const dataScopeNum = req.dataScope ? parseInt(req.dataScope, 10) : 1;
       
       const role = await prisma.sysRole.create({
         data: {
           name: req.name,
           description: req.description,
           status: statusNum,
+          dataScope: dataScopeNum,
           isSystemDefault: false,
           creatorId: 1,
           updaterId: 1,
@@ -199,6 +202,9 @@ export class SysRoleModel {
       if (req.status !== undefined) {
         // 将字符串类型的status转换为数字类型
         updateData.status = parseInt(req.status, 10);
+      }
+      if (req.dataScope !== undefined) {
+        updateData.dataScope = parseInt(req.dataScope, 10);
       }
 
       const role = await prisma.sysRole.update({

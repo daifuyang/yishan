@@ -19,6 +19,12 @@ const SysRoleSchema = Type.Object(
       description: "状态（0-禁用，1-启用）",
       example: "1",
     }),
+    dataScope: Type.String({
+      enum: ["1", "2", "3", "4", "5"],
+      description:
+        "数据权限范围（1-全部数据，2-本部门数据，3-本部门及子部门数据，4-仅本人数据，5-自定义数据）",
+      example: "1",
+    }),
     isSystemDefault: Type.Optional(
       Type.Boolean({ description: "是否系统默认角色", default: false })
     ),
@@ -48,6 +54,14 @@ const SaveRoleReqSchema = Type.Object(
     ),
     status: Type.Optional(
       Type.String({ enum: ["0", "1"], description: "状态（0-禁用，1-启用）", default: "1" })
+    ),
+    dataScope: Type.Optional(
+      Type.String({
+        enum: ["1", "2", "3", "4", "5"],
+        description:
+          "数据权限范围（1-全部数据，2-本部门数据，3-本部门及子部门数据，4-仅本人数据，5-自定义数据）",
+        default: "1",
+      })
     ),
     menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),
   },
