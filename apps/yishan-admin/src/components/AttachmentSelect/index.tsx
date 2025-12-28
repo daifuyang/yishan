@@ -137,7 +137,7 @@ const getAttachmentCover = (record: API.sysAttachment, publicUrl: string) => {
   );
 };
 
-type LibraryModalProps = {
+export type AttachmentLibraryModalProps = {
   open: boolean;
   onCancel: () => void;
   onSelect: (items: API.sysAttachment[]) => void;
@@ -148,7 +148,7 @@ type LibraryModalProps = {
   initialSelectedValues: Array<string | number>;
 };
 
-const AttachmentLibraryModal: React.FC<LibraryModalProps> = ({
+export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
   open,
   onCancel,
   onSelect,

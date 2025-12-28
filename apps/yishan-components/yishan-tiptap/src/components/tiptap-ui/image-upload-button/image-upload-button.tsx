@@ -55,6 +55,7 @@ export const ImageUploadButton = React.forwardRef<
       text,
       hideWhenUnavailable = false,
       onInserted,
+      onPick,
       showShortcut = false,
       onClick,
       children,
@@ -75,6 +76,7 @@ export const ImageUploadButton = React.forwardRef<
       editor,
       hideWhenUnavailable,
       onInserted,
+      onPick,
     })
 
     const handleClick = React.useCallback(

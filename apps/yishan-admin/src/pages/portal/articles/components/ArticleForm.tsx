@@ -9,7 +9,7 @@ import {
   ProFormSelect,
   ProForm,
 } from "@ant-design/pro-components";
-import { FormEditor } from "yishan-tiptap";
+import { FormEditor, type ImageInsertItem, type ImageUploadAdapter } from "yishan-tiptap";
 import dayjs from "dayjs";
 import {
   getArticleDetail,
@@ -20,6 +20,9 @@ import { getCategoryList } from "@/services/yishan-admin/portalCategories";
 import { Col, Divider } from "antd";
 import { AttachmentImageSelect } from "@/components";
 import TemplateDynamicFields from "../../templates/components/TemplateDynamicFields";
+import { useModel } from "@umijs/max";
+import { resolveAttachmentPublicUrl } from "@/utils/attachmentUpload";
+import { AttachmentLibraryModal } from "@/components/AttachmentSelect";
 
 export interface ArticleFormProps {
   title: string;
@@ -36,6 +39,64 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
 }) => {
   const formRef = useRef<any>(undefined);
   const [templateFields, setTemplateFields] = React.useState<any[]>([]);
+  const { initialState } = useModel("@@initialState");
+  const [imageLibraryOpen, setImageLibraryOpen] = React.useState(false);
+  const [imageLibraryMultiple, setImageLibraryMultiple] = React.useState(true);
+  const pickResolveRef = React.useRef<
+    ((items: ImageInsertItem[]) => void) | undefined
+  >(undefined);
+  const pickRejectRef = React.useRef<((reason?: any) => void) | undefined>(
+    undefined
+  );
+
+  const imageUploadAdapter: ImageUploadAdapter = React.useMemo(
+    () => ({
+      upload: async (
+        file: File,
+        onProgress?: (event: { progress: number }) => void,
+        abortSignal?: AbortSignal
+      ) => {
+        if (abortSignal?.aborted) {
+          throw new Error("Upload cancelled");
+        }
+        const upload = initialState?.uploadAttachmentFile;
+        if (!upload) {
+          throw new Error("上传能力未初始化");
+        }
+        const res = await upload(file, { kind: "image", dir: "attachments" });
+        if (!res.success) {
+          throw new Error(res.message || "上传失败");
+        }
+        const item = (res.data || [])[0] as
+          | API.uploadAttachmentsResp["data"][number]
+          | undefined;
+        const stored = String(item?.path || item?.url || "");
+        const url = resolveAttachmentPublicUrl(
+          stored,
+          initialState?.cloudStorageConfig
+        );
+        if (!url) {
+          throw new Error("上传成功但未返回可用地址");
+        }
+        onProgress?.({ progress: 100 });
+        return url;
+      },
+      pick: async (options) => {
+        if (pickRejectRef.current) {
+          pickRejectRef.current(new Error("replaced"));
+        }
+
+        setImageLibraryMultiple(options?.multiple ?? true);
+        setImageLibraryOpen(true);
+
+        return await new Promise<ImageInsertItem[]>((resolve, reject) => {
+          pickResolveRef.current = resolve;
+          pickRejectRef.current = reject;
+        });
+      },
+    }),
+    [initialState]
+  );
 
   const fetchDetail = async (id: number) => {
     const res = await getArticleDetail({ id });
@@ -221,9 +282,39 @@ const ArticleForm: React.FC<ArticleFormProps> = ({
 
       <Col span={24}>
         <ProForm.Item name="content" label="正文">
-          <FormEditor />
+          <FormEditor imageUploadAdapter={imageUploadAdapter} />
         </ProForm.Item>
       </Col>
+
+      <AttachmentLibraryModal
+        open={imageLibraryOpen}
+        onCancel={() => {
+          setImageLibraryOpen(false);
+          pickRejectRef.current?.(new Error("cancelled"));
+          pickRejectRef.current = undefined;
+          pickResolveRef.current = undefined;
+        }}
+        kind="image"
+        multiple={imageLibraryMultiple}
+        valueType="url"
+        initialSelectedValues={[]}
+        onSelect={(items) => {
+          const cfg = initialState?.cloudStorageConfig;
+          const picked: ImageInsertItem[] = items
+            .map((a) => {
+              const src = resolveAttachmentPublicUrl(a, cfg);
+              if (!src) return null;
+              const title = String(a.name || "").trim() || undefined;
+              return { src, title, alt: title };
+            })
+            .filter(Boolean) as ImageInsertItem[];
+
+          setImageLibraryOpen(false);
+          pickResolveRef.current?.(picked);
+          pickRejectRef.current = undefined;
+          pickResolveRef.current = undefined;
+        }}
+      />
 
       {/* 扩展区：动态模板字段渲染，位于表单底部 */}
       {Array.isArray(templateFields) && templateFields.length > 0 && (

@@ -79,12 +79,14 @@ const MainToolbarContent = ({
   isMobile,
   isFullscreen,
   onFullscreenToggle,
+  onPickImage,
 }: {
   onHighlighterClick: () => void;
   onLinkClick: () => void;
   isMobile: boolean;
   isFullscreen: boolean;
   onFullscreenToggle: () => void;
+  onPickImage?: () => Promise<ImageInsertItem[]>;
 }) => {
   return (
     <div className="form-editor-toolbar">
@@ -140,7 +142,7 @@ const MainToolbarContent = ({
       <ToolbarSeparator className="toolbar-separator" />
 
       <ToolbarGroup>
-        <ImageUploadButton text="" />
+        <ImageUploadButton text="" onPick={onPickImage} />
       </ToolbarGroup>
 
       <ToolbarSeparator className="toolbar-separator" />
@@ -193,10 +195,28 @@ export interface FormEditorProps {
   value?: string | object
   maxHeight?: number
   onChange?: (value: string) => void
+  imageUploadAdapter?: ImageUploadAdapter
+}
+
+export type ImageInsertItem = {
+  src: string
+  alt?: string
+  title?: string
+}
+
+export type UploadFunction = (
+  file: File,
+  onProgress?: (event: { progress: number }) => void,
+  abortSignal?: AbortSignal
+) => Promise<string>
+
+export type ImageUploadAdapter = {
+  upload?: UploadFunction
+  pick?: (options?: { multiple?: boolean; limit?: number }) => Promise<ImageInsertItem[]>
 }
 
 export function FormEditor(props: FormEditorProps) {
-  const { maxHeight = 400, value, onChange } = props;
+  const { maxHeight = 400, value, onChange, imageUploadAdapter } = props;
   const isMobile = useIsMobile();
   const { height } = useWindowSize();
   const [isFullscreen, setIsFullscreen] = React.useState(false);
@@ -204,6 +224,7 @@ export function FormEditor(props: FormEditorProps) {
     "main" | "highlighter" | "link"
   >("main");
   const toolbarRef = React.useRef<HTMLDivElement>(null);
+  const imageUploadLimit = 3
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -240,8 +261,8 @@ export function FormEditor(props: FormEditorProps) {
       ImageUploadNode.configure({
         accept: "image/*",
         maxSize: MAX_FILE_SIZE,
-        limit: 3,
-        upload: handleImageUpload,
+        limit: imageUploadLimit,
+        upload: imageUploadAdapter?.upload ?? handleImageUpload,
         onError: (error) => console.error("Upload failed:", error),
       }),
     ],
@@ -280,6 +301,11 @@ export function FormEditor(props: FormEditorProps) {
               isMobile={isMobile}
               isFullscreen={isFullscreen}
               onFullscreenToggle={() => setIsFullscreen((v) => !v)}
+              onPickImage={
+                imageUploadAdapter?.pick
+                  ? () => imageUploadAdapter.pick?.({ multiple: true, limit: imageUploadLimit }) ?? Promise.resolve([])
+                  : undefined
+              }
             />
           ) : (
             <MobileToolbarContent

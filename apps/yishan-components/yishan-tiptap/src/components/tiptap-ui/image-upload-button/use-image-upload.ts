@@ -19,6 +19,14 @@ import { ImagePlusIcon } from "@/components/tiptap-icons/image-plus-icon"
 
 export const IMAGE_UPLOAD_SHORTCUT_KEY = "mod+shift+i"
 
+export type PickedImage =
+  | string
+  | {
+      src: string
+      alt?: string
+      title?: string
+    }
+
 /**
  * Configuration for the image upload functionality
  */
@@ -36,6 +44,7 @@ export interface UseImageUploadConfig {
    * Callback function called after a successful image insertion.
    */
   onInserted?: () => void
+  onPick?: () => Promise<PickedImage[] | PickedImage>
 }
 
 /**
@@ -140,6 +149,7 @@ export function useImageUpload(config?: UseImageUploadConfig) {
     editor: providedEditor,
     hideWhenUnavailable = false,
     onInserted,
+    onPick,
   } = config || {}
 
   const { editor } = useTiptapEditor(providedEditor)
@@ -167,12 +177,45 @@ export function useImageUpload(config?: UseImageUploadConfig) {
   const handleImage = React.useCallback(() => {
     if (!editor) return false
 
+    if (onPick) {
+      void (async () => {
+        try {
+          const picked = await onPick()
+          const list = (Array.isArray(picked) ? picked : [picked])
+            .map((item) => (typeof item === "string" ? { src: item } : item))
+            .filter((item) => item.src && item.src.trim().length > 0)
+
+          if (!list.length) return
+
+          editor
+            .chain()
+            .focus()
+            .insertContent(
+              list.map((item) => ({
+                type: "image",
+                attrs: {
+                  src: item.src,
+                  alt: item.alt,
+                  title: item.title,
+                },
+              }))
+            )
+            .run()
+
+          onInserted?.()
+        } catch {
+          return
+        }
+      })()
+      return true
+    }
+
     const success = insertImage(editor)
     if (success) {
       onInserted?.()
     }
     return success
-  }, [editor, onInserted])
+  }, [editor, onInserted, onPick])
 
   useHotkeys(
     IMAGE_UPLOAD_SHORTCUT_KEY,
