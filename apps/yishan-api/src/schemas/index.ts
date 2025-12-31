@@ -12,6 +12,7 @@ import registerArticleSchemas from "./article.js";
 import registerPageSchemas from "./page.js";
 import registerTemplateSchemas from "./template.js";
 import registerAttachment from "./attachment.js";
+import registerLoginLog from "./login-log.js";
 
 // Schema插件，定义共享的Schema引用
 export default fp(async (fastify, opts) => {
@@ -28,4 +29,5 @@ export default fp(async (fastify, opts) => {
   registerPageSchemas(fastify);
   registerTemplateSchemas(fastify);
   registerAttachment(fastify);
+  registerLoginLog(fastify);
 });

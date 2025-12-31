@@ -31,7 +31,12 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       // 使用AuthService进行登录验证
-      const result = await AuthService.login(request.body, fastify, request.ip);
+      const result = await AuthService.login(
+        request.body,
+        fastify,
+        request.ip,
+        request.headers["user-agent"] as string | undefined
+      );
       const message = getAuthMessage(AuthMessageKeys.LOGIN_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, result, message);
     }

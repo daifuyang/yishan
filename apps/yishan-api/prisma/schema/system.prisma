@@ -85,6 +85,8 @@ model SysUser {
   attachmentFoldersCreated SysAttachmentFolder[] @relation("AttachmentFolderCreator")
   attachmentFoldersUpdated SysAttachmentFolder[] @relation("AttachmentFolderUpdater")
 
+  loginLogs SysLoginLog[] @relation("UserLoginLogs")
+
   @@index([status], map: "idx_status")
   @@index([createdAt], map: "idx_created_at")
   @@index([deletedAt], map: "idx_deleted_at")
@@ -118,6 +120,31 @@ model SysUserToken {
   @@index([refreshTokenExpiresAt], map: "idx_refresh_token_expires")
   @@index([userId, isRevoked], map: "idx_user_revoked")
   @@map("sys_user_token")
+}
+
+model SysLoginLog {
+  id        Int       @id @default(autoincrement()) @map("id")
+  userId    Int?      @map("user_id")
+  username  String    @map("username") @db.VarChar(100)
+  realName  String?   @map("real_name") @db.VarChar(50)
+  status    Int       @default(1) @map("status") @db.TinyInt
+  message   String?   @map("message") @db.VarChar(255)
+  ipAddress String?   @map("ip_address") @db.VarChar(45)
+  userAgent String?   @map("user_agent") @db.VarChar(500)
+  createdAt DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt DateTime? @map("deleted_at") @db.DateTime(0)
+
+  user SysUser? @relation("UserLoginLogs", fields: [userId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  @@index([userId], map: "idx_login_log_user_id")
+  @@index([username], map: "idx_login_log_username")
+  @@index([status], map: "idx_login_log_status")
+  @@index([createdAt], map: "idx_login_log_created_at")
+  @@index([ipAddress], map: "idx_login_log_ip_address")
+  @@index([deletedAt], map: "idx_login_log_deleted_at")
+  @@index([status, createdAt], map: "idx_login_log_status_created_at")
+  @@map("sys_login_log")
 }
 
 model SysRole {

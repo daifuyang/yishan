@@ -12,6 +12,7 @@ import * as sysMenus from "./sysMenus";
 import * as portalPages from "./portalPages";
 import * as sysPosts from "./sysPosts";
 import * as sysRoles from "./sysRoles";
+import * as sysLoginLogs from "./sysLoginLogs";
 import * as system from "./system";
 import * as storage from "./storage";
 import * as sysUsers from "./sysUsers";
@@ -27,6 +28,7 @@ export default {
   portalPages,
   sysPosts,
   sysRoles,
+  sysLoginLogs,
   system,
   storage,
   sysUsers,

@@ -856,6 +856,30 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
+  type getLoginLogDetailParams = {
+    /** 日志ID */
+    id: number;
+  };
+
+  type getLoginLogListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（账号、姓名、IP、提示信息） */
+    keyword?: string;
+    /** 状态（0-失败，1-成功） */
+    status?: "0" | "1";
+    /** 开始时间 */
+    startTime?: string;
+    /** 结束时间 */
+    endTime?: string;
+    /** 排序字段 */
+    sortBy?: "createdAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
   type getMenuDetailParams = {
     /** 菜单ID */
     id: string;
@@ -1732,6 +1756,65 @@ declare namespace API {
     updaterId?: number;
     updaterName?: string;
     updatedAt: string;
+  };
+
+  type sysLoginLog = {
+    /** 日志ID */
+    id: number;
+    /** 用户ID */
+    userId?: number;
+    /** 登录账号 */
+    username: string;
+    /** 用户姓名 */
+    realName?: string;
+    /** 状态（0-失败，1-成功） */
+    status: "0" | "1";
+    /** 提示信息 */
+    message?: string;
+    /** IP地址 */
+    ipAddress?: string;
+    /** User-Agent */
+    userAgent?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type sysLoginLogDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysLoginLog;
+    timestamp: string;
+  };
+
+  type sysLoginLogListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（账号、姓名、IP、提示信息） */
+    keyword?: string;
+    /** 状态（0-失败，1-成功） */
+    status?: "0" | "1";
+    /** 开始时间 */
+    startTime?: string;
+    /** 结束时间 */
+    endTime?: string;
+    /** 排序字段 */
+    sortBy?: "createdAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type sysLoginLogListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysLoginLog[];
+    timestamp: string;
+    pagination: paginationResponse;
   };
 
   type sysMenu = {

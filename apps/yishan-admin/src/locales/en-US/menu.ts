@@ -50,6 +50,7 @@ export default {
   'menu.system.role': 'Role Management',
   'menu.system.department': 'Department Management',
   'menu.system.attachments': 'Media Library',
+  'menu.system.login-log': 'Login Logs',
   'menu.portal': 'Portal',
   'menu.portal.articles': 'Article Management',
   'menu.portal.categories': 'Category Management',

@@ -12,6 +12,7 @@ import { prisma } from "../utils/prisma.js";
 import { comparePassword } from "../utils/password.js";
 import { JWT_CONFIG } from "../config/index.js";
 import { dateUtils } from "../utils/date.js";
+import { LoginLogService } from "./login-log.service.js";
 
 export class AuthService {
   /**
@@ -21,94 +22,114 @@ export class AuthService {
    * @param ip 用户登录 IP 地址
    * @returns 登录响应数据
    */
-  static async login(loginReq: LoginReq, fastify: any, ip?: string): Promise<LoginData> {
+  static async login(loginReq: LoginReq, fastify: any, ip?: string, userAgent?: string): Promise<LoginData> {
     const { username, password, rememberMe } = loginReq;
+    let user: any | null = null;
 
-    // 根据用户名或邮箱查找用户
-    const user = await SysUserModel.getRawUserByUsernameOrEmail(username);
+    try {
+      user = await SysUserModel.getRawUserByUsernameOrEmail(username);
 
-    if (!user) {
-      throw new BusinessError(AuthErrorCode.LOGIN_FAILED, "用户名或密码错误");
-    }
-
-    // 检查用户状态
-    if (user.status === 0) {
-      throw new BusinessError(UserErrorCode.USER_DISABLED, "账号已被禁用");
-    }
-
-    if (user.status === 2) {
-      throw new BusinessError(AuthErrorCode.ACCOUNT_LOCKED, "账号已被锁定");
-    }
-
-    // 验证密码 - 使用 scrypt 算法进行安全验证
-    const isPasswordValid = await comparePassword(password, user.passwordHash);
-    if (!isPasswordValid) {
-      throw new BusinessError(AuthErrorCode.LOGIN_FAILED, "用户名或密码错误");
-    }
-
-    // 从配置中心获取过期时间（秒）
-    const accessTokenExpiresIn = rememberMe
-      ? JWT_CONFIG.accessToken.rememberMeExpiresIn
-      : JWT_CONFIG.accessToken.defaultExpiresIn;
-
-    const refreshTokenExpiresIn = rememberMe
-      ? JWT_CONFIG.refreshToken.rememberMeExpiresIn
-      : JWT_CONFIG.refreshToken.defaultExpiresIn;
-
-    const token = fastify.jwt.sign(
-      {
-        id: user.id,
-        type: 'access_token'
-      },
-      { expiresIn: accessTokenExpiresIn }
-    );
-
-    // 生成刷新token（用于后续刷新访问token）
-    const refreshToken = fastify.jwt.sign(
-      {
-        id: user.id,
-        type: 'refresh_token'
-      },
-      { expiresIn: refreshTokenExpiresIn }
-    );
-
-    // 更新用户登录信息
-    await prisma.sysUser.update({
-      where: { id: user.id },
-      data: {
-        lastLoginTime: dateUtils.now(),
-        lastLoginIp: ip || "127.0.0.1",
-        loginCount: user.loginCount + 1,
-        updatedAt: dateUtils.now()
+      if (!user) {
+        throw new BusinessError(AuthErrorCode.LOGIN_FAILED, "用户名或密码错误");
       }
-    });
 
-    // 计算过期时间戳（秒级，10位）
-    const currentTime = dateUtils.nowUnix();
-    const expiresAt = currentTime + accessTokenExpiresIn;
-    const refreshTokenExpiresAt = currentTime + refreshTokenExpiresIn;
+      if (user.status === 0) {
+        throw new BusinessError(UserErrorCode.USER_DISABLED, "账号已被禁用");
+      }
 
-    // 将令牌存储到数据库
-    await SysUserTokenModel.create({
-      userId: user.id,
-      accessToken: token,
-      refreshToken: refreshToken,
-      // 秒级时间戳转回毫秒用于存库
-      accessTokenExpiresAt: dateUtils.toDate(expiresAt * 1000)!,
-      refreshTokenExpiresAt: dateUtils.toDate(refreshTokenExpiresAt * 1000)!,
-      ipAddress: ip,
-      userAgent: fastify?.req?.headers?.['user-agent']
-    });
+      if (user.status === 2) {
+        throw new BusinessError(AuthErrorCode.ACCOUNT_LOCKED, "账号已被锁定");
+      }
 
-    // 返回登录响应数据 - 包含时间戳便于客户端判断
-    return {
-      token,
-      refreshToken,
-      expiresIn: accessTokenExpiresIn,
-      refreshTokenExpiresIn: refreshTokenExpiresIn,
-      expiresAt,
-      refreshTokenExpiresAt
-    };
+      const isPasswordValid = await comparePassword(password, user.passwordHash);
+      if (!isPasswordValid) {
+        throw new BusinessError(AuthErrorCode.LOGIN_FAILED, "用户名或密码错误");
+      }
+
+      const accessTokenExpiresIn = rememberMe
+        ? JWT_CONFIG.accessToken.rememberMeExpiresIn
+        : JWT_CONFIG.accessToken.defaultExpiresIn;
+
+      const refreshTokenExpiresIn = rememberMe
+        ? JWT_CONFIG.refreshToken.rememberMeExpiresIn
+        : JWT_CONFIG.refreshToken.defaultExpiresIn;
+
+      const token = fastify.jwt.sign(
+        {
+          id: user.id,
+          type: 'access_token'
+        },
+        { expiresIn: accessTokenExpiresIn }
+      );
+
+      const refreshToken = fastify.jwt.sign(
+        {
+          id: user.id,
+          type: 'refresh_token'
+        },
+        { expiresIn: refreshTokenExpiresIn }
+      );
+
+      await prisma.sysUser.update({
+        where: { id: user.id },
+        data: {
+          lastLoginTime: dateUtils.now(),
+          lastLoginIp: ip || "127.0.0.1",
+          loginCount: user.loginCount + 1,
+          updatedAt: dateUtils.now()
+        }
+      });
+
+      const currentTime = dateUtils.nowUnix();
+      const expiresAt = currentTime + accessTokenExpiresIn;
+      const refreshTokenExpiresAt = currentTime + refreshTokenExpiresIn;
+
+      await SysUserTokenModel.create({
+        userId: user.id,
+        accessToken: token,
+        refreshToken: refreshToken,
+        accessTokenExpiresAt: dateUtils.toDate(expiresAt * 1000)!,
+        refreshTokenExpiresAt: dateUtils.toDate(refreshTokenExpiresAt * 1000)!,
+        ipAddress: ip,
+        userAgent,
+      });
+
+      try {
+        await LoginLogService.writeLoginLog({
+          userId: user.id,
+          username,
+          realName: user.realName ?? null,
+          status: 1,
+          message: "登录成功",
+          ipAddress: ip ?? null,
+          userAgent: userAgent ?? null,
+        });
+      } catch { }
+
+      return {
+        token,
+        refreshToken,
+        expiresIn: accessTokenExpiresIn,
+        refreshTokenExpiresIn: refreshTokenExpiresIn,
+        expiresAt,
+        refreshTokenExpiresAt
+      };
+    } catch (error) {
+      try {
+        const message = error instanceof BusinessError ? error.message : "登录失败";
+        await LoginLogService.writeLoginLog({
+          userId: user?.id ?? null,
+          username,
+          realName: user?.realName ?? null,
+          status: 0,
+          message,
+          ipAddress: ip ?? null,
+          userAgent: userAgent ?? null,
+        });
+      } catch { }
+
+      throw error;
+    }
   }
 
   /**

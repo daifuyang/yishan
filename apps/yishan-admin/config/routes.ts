@@ -77,6 +77,12 @@ export default [
     access: 'canDo',
   },
   {
+    path: '/system/login-log',
+    name: 'login-log',
+    component: './system/login-log',
+    access: 'canDo',
+  },
+  {
     path: '/portal',
     redirect: '/portal/articles',
     access: 'canDo',

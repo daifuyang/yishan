@@ -214,6 +214,7 @@ export const systemMenusSeed: MenuSeedNode = {
     { name: '站点配置', path: '/system/site', type: 1, sortOrder: 7, component: './system/site' },
     { name: '云存储', path: '/system/storage', type: 1, sortOrder: 8, component: './system/storage' },
     { name: '媒体库', path: '/system/attachments', type: 1, sortOrder: 9, component: './system/attachments' },
+    { name: '登录日志', path: '/system/login-log', type: 1, sortOrder: 10, component: './system/login-log' },
   ],
 };
 

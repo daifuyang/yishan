@@ -12,6 +12,7 @@ export default {
   'menu.system.menu': '菜单管理',
   'menu.system.site': '站点配置',
   'menu.system.attachments': '媒体库',
+  'menu.system.login-log': '登录日志',
   'menu.portal': '门户管理',
   'menu.portal.articles': '文章管理',
   'menu.portal.categories': '分类管理',
