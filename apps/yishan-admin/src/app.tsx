@@ -22,7 +22,6 @@ import React from "react";
 import { TOKEN_KEYS } from "./utils/token";
 
 const isDev = process.env.NODE_ENV === "development";
-const isDevOrTest = isDev || process.env.CI;
 const loginPath = "/user/login";
 
 const IconMap: Record<string, React.ReactNode> = {
@@ -173,7 +172,7 @@ export const layout: RunTimeLayoutConfig = ({
         width: "331px",
       },
     ],
-    links: isDevOrTest
+    links: isDev
       ? [
         <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
           <LinkOutlined />
@@ -191,7 +190,7 @@ export const layout: RunTimeLayoutConfig = ({
       return (
         <AntdApp>
           {children}
-          {isDevOrTest && (
+          {isDev && (
             <SettingDrawer
               disableUrlParams
               enableDarkTheme

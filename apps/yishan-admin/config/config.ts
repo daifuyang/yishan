@@ -170,8 +170,5 @@ export default defineConfig({
   },
   mako: {},
   requestRecord: {},
-  exportStatic: {},
-  define: {
-    'process.env.CI': process.env.CI,
-  },
+  exportStatic: {}
 }) as any;
