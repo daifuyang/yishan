@@ -94,17 +94,15 @@ export class AuthService {
         userAgent,
       });
 
-      try {
-        await LoginLogService.writeLoginLog({
-          userId: user.id,
-          username,
-          realName: user.realName ?? null,
-          status: 1,
-          message: "登录成功",
-          ipAddress: ip ?? null,
-          userAgent: userAgent ?? null,
-        });
-      } catch { }
+      await LoginLogService.writeLoginLog({
+        userId: user.id,
+        username,
+        realName: user.realName ?? null,
+        status: 1,
+        message: "登录成功",
+        ipAddress: ip ?? null,
+        userAgent: userAgent ?? null,
+      });
 
       return {
         token,
@@ -115,18 +113,16 @@ export class AuthService {
         refreshTokenExpiresAt
       };
     } catch (error) {
-      try {
-        const message = error instanceof BusinessError ? error.message : "登录失败";
-        await LoginLogService.writeLoginLog({
-          userId: user?.id ?? null,
-          username,
-          realName: user?.realName ?? null,
-          status: 0,
-          message,
-          ipAddress: ip ?? null,
-          userAgent: userAgent ?? null,
-        });
-      } catch { }
+      const message = error instanceof BusinessError ? error.message : "登录失败";
+      await LoginLogService.writeLoginLog({
+        userId: user?.id ?? null,
+        username,
+        realName: user?.realName ?? null,
+        status: 0,
+        message,
+        ipAddress: ip ?? null,
+        userAgent: userAgent ?? null,
+      });
 
       throw error;
     }

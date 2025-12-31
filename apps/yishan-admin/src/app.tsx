@@ -19,6 +19,7 @@ import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
 import type { CloudStorageConfig } from "@/utils/attachmentUpload";
 import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
 import React from "react";
+import { TOKEN_KEYS } from "./utils/token";
 
 const isDev = process.env.NODE_ENV === "development";
 const isDevOrTest = isDev || process.env.CI;
@@ -255,11 +256,20 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
 
 export function render(oldRender: any) {
   const currentPath = window.location.pathname;
+  const accessToken = localStorage.getItem(TOKEN_KEYS.ACCESS_TOKEN);
+  // 没登陆或当前路径是登录页，直接渲染
+  if (!accessToken || currentPath === '/user/login') {
+    oldRender();
+    return;
+  }
+
   if (currentPath !== '/user/login') {
     getAuthorizedMenuTree().then((res) => {
       const menus = res.data || [];
       extraRoutes = menus;
       oldRender();
+    }).catch(() => {
+      window.location.href = '/user/login';
     });
   } else {
     oldRender();

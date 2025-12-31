@@ -119,7 +119,7 @@ export default [
   },
   {
     path: '/',
-    redirect: '/system/user',
+    component: './index',
   },
   {
     path: '*',
