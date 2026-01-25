@@ -20,6 +20,7 @@ import type { CloudStorageConfig } from "@/utils/attachmentUpload";
 import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
 import React from "react";
 import { TOKEN_KEYS } from "./utils/token";
+import queryString from "query-string";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
@@ -216,6 +217,9 @@ export const layout: RunTimeLayoutConfig = ({
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const request: RequestConfig = {
+  paramsSerializer(params) {
+    return queryString.stringify(params);
+  },
   ...errorConfig,
 };
 

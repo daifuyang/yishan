@@ -1,0 +1,48 @@
+.treeItem {
+    :global {
+        .ant-tree-node-content-wrapper {
+            display: flex;
+            flex: 1;
+            min-width: 0;
+        }
+    }
+
+    .treeItemNodeTitleWrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .treeItemNodeTitle {
+        width: 0;
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .treeItemNodeTitleActions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .treeItemNodeTitleActionIcon {
+        color: #999;
+        font-size: 12px;
+        visibility: hidden;
+    }
+
+    .treeItemNodeTitleWrap:hover {
+        .treeItemNodeTitleActionIcon {
+            visibility: visible;
+        }
+    }
+}
+
+.treeItemTitle {
+    width: 0;
+    flex: 1;
+}

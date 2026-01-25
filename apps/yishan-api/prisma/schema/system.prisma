@@ -79,6 +79,18 @@ model SysUser {
   portalTemplatesCreated  PortalTemplate[] @relation("PortalTemplateCreator")
   portalTemplatesUpdated  PortalTemplate[] @relation("PortalTemplateUpdater")
 
+  appsCreated SysApp[] @relation("AppCreator")
+  appsUpdated SysApp[] @relation("AppUpdater")
+
+  appResourcesCreated SysAppResource[] @relation("AppResourceCreator")
+  appResourcesUpdated SysAppResource[] @relation("AppResourceUpdater")
+  appMenusCreated     SysAppMenu[]     @relation("AppMenuCreator")
+  appMenusUpdated     SysAppMenu[]     @relation("AppMenuUpdater")
+  formFieldsCreated   SysFormField[]   @relation("FormFieldCreator")
+  formFieldsUpdated   SysFormField[]   @relation("FormFieldUpdater")
+  formDatasCreated    SysFormData[]    @relation("FormDataCreator")
+  formDatasUpdated    SysFormData[]    @relation("FormDataUpdater")
+
   attachmentsCreated SysAttachment[] @relation("AttachmentCreator")
   attachmentsUpdated SysAttachment[] @relation("AttachmentUpdater")
 

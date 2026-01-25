@@ -1,0 +1,173 @@
+model SysApp {
+  id          Int       @id @default(autoincrement()) @map("id")
+  name        String    @unique @map("name") @db.VarChar(100)
+  icon        String?   @map("icon") @db.VarChar(100)
+  iconColor   String?   @map("icon_color") @db.VarChar(50)
+  status      Int       @default(1) @map("status") @db.TinyInt
+  sort_order  Int       @default(0)
+  description String?   @map("description") @db.VarChar(255)
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
+
+  creator SysUser? @relation("AppCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("AppUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  menus     SysAppMenu[]
+  resources SysAppResource[]
+
+  @@index([status], map: "idx_app_status")
+  @@index([createdAt], map: "idx_app_created_at")
+  @@index([deletedAt], map: "idx_app_deleted_at")
+  @@index([sort_order], map: "idx_app_sort_order")
+  @@index([creatorId])
+  @@index([updaterId])
+  @@map("sys_app")
+}
+
+model SysAppResource {
+  id          Int       @id @default(autoincrement()) @map("id")
+  appId       Int       @map("app_id")
+  parentId    Int?      @map("parent_id")
+  type        String    @map("type") @db.VarChar(50)
+  name        String    @map("name") @db.VarChar(100)
+  description String?   @map("description") @db.VarChar(255)
+  status      Int       @default(1) @map("status") @db.TinyInt
+  sort_order  Int       @default(0)
+  config      Json?     @map("config")
+  creatorId   Int?      @map("creator_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId   Int?      @map("updater_id")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt   DateTime? @map("deleted_at") @db.DateTime(0)
+  version     Int       @default(1) @map("version")
+
+  app SysApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  parent   SysAppResource?  @relation("AppResourceParent", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children SysAppResource[] @relation("AppResourceParent")
+
+  creator SysUser? @relation("AppResourceCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("AppResourceUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  formFields SysFormField[]
+  formDatas  SysFormData[]
+  menus      SysAppMenu[]
+
+  @@index([appId], map: "idx_app_resource_app_id")
+  @@index([parentId], map: "idx_app_resource_parent_id")
+  @@index([type], map: "idx_app_resource_type")
+  @@index([status], map: "idx_app_resource_status")
+  @@index([deletedAt], map: "idx_app_resource_deleted_at")
+  @@index([sort_order], map: "idx_app_resource_sort_order")
+  @@index([creatorId])
+  @@index([updaterId])
+  @@map("sys_app_resource")
+}
+
+model SysFormField {
+  id         Int       @id @default(autoincrement()) @map("id")
+  resourceId Int       @map("resource_id")
+  key        String    @map("key") @db.VarChar(100)
+  label      String?   @map("label") @db.VarChar(100)
+  type       String    @map("type") @db.VarChar(50)
+  required   Boolean   @default(false) @map("required")
+  status     Int       @default(1) @map("status") @db.TinyInt
+  sort_order Int       @default(0)
+  config     Json?     @map("config")
+  creatorId  Int?      @map("creator_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId  Int?      @map("updater_id")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt  DateTime? @map("deleted_at") @db.DateTime(0)
+  version    Int       @default(1) @map("version")
+
+  resource SysAppResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  creator SysUser? @relation("FormFieldCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("FormFieldUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  @@unique([resourceId, key], map: "uniq_form_field_resource_key")
+  @@index([resourceId], map: "idx_form_field_resource_id")
+  @@index([status], map: "idx_form_field_status")
+  @@index([deletedAt], map: "idx_form_field_deleted_at")
+  @@index([sort_order], map: "idx_form_field_sort_order")
+  @@index([creatorId])
+  @@index([updaterId])
+  @@map("sys_form_field")
+}
+
+model SysFormData {
+  id         Int       @id @default(autoincrement()) @map("id")
+  resourceId Int       @map("resource_id")
+  data       Json      @map("data")
+  status     Int       @default(1) @map("status") @db.TinyInt
+  creatorId  Int?      @map("creator_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId  Int?      @map("updater_id")
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt  DateTime? @map("deleted_at") @db.DateTime(0)
+  version    Int       @default(1) @map("version")
+
+  resource SysAppResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  creator SysUser? @relation("FormDataCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("FormDataUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  @@index([resourceId], map: "idx_form_data_resource_id")
+  @@index([status], map: "idx_form_data_status")
+  @@index([createdAt], map: "idx_form_data_created_at")
+  @@index([deletedAt], map: "idx_form_data_deleted_at")
+  @@index([creatorId])
+  @@index([updaterId])
+  @@map("sys_form_data")
+}
+
+model SysAppMenu {
+  id             Int       @id @default(autoincrement()) @map("id")
+  appId          Int       @map("app_id")
+  name           String    @map("name") @db.VarChar(100)
+  path           String?   @map("path") @db.VarChar(255)
+  icon           String?   @map("icon") @db.VarChar(100)
+  component      String?   @map("component") @db.VarChar(255)
+  type           Int       @default(1) @map("type") @db.TinyInt
+  parentId       Int?      @map("parent_id")
+  status         Int       @default(1) @map("status") @db.TinyInt
+  sort_order     Int       @default(0)
+  hideInMenu     Boolean   @default(false) @map("hide_in_menu")
+  isExternalLink Boolean   @default(false) @map("is_external_link")
+  perm           String?   @map("perm") @db.VarChar(100)
+  keepAlive      Boolean   @default(false) @map("keep_alive")
+  resourceId     Int?      @map("resource_id")
+  creatorId      Int?      @map("creator_id")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updaterId      Int?      @map("updater_id")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  deletedAt      DateTime? @map("deleted_at") @db.DateTime(0)
+  version        Int       @default(1) @map("version")
+
+  app SysApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  resource SysAppResource? @relation(fields: [resourceId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  parent   SysAppMenu?  @relation("AppMenuParent", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children SysAppMenu[] @relation("AppMenuParent")
+
+  creator SysUser? @relation("AppMenuCreator", fields: [creatorId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+  updater SysUser? @relation("AppMenuUpdater", fields: [updaterId], references: [id], onUpdate: NoAction, onDelete: SetNull)
+
+  @@unique([appId, parentId, name], map: "uniq_app_menu_app_parent_name")
+  @@index([appId], map: "idx_app_menu_app_id")
+  @@index([resourceId], map: "idx_app_menu_resource_id")
+  @@index([status], map: "idx_app_menu_status")
+  @@index([createdAt], map: "idx_app_menu_created_at")
+  @@index([deletedAt], map: "idx_app_menu_deleted_at")
+  @@index([parentId], map: "idx_app_menu_parent_id")
+  @@index([sort_order], map: "idx_app_menu_sort_order")
+  @@index([updaterId])
+  @@index([creatorId])
+  @@map("sys_app_menu")
+}

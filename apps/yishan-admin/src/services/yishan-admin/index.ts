@@ -2,6 +2,10 @@
 /* eslint-disable */
 // API 更新时间：
 // API 唯一标识：
+import * as sysApps from "./sysApps";
+import * as sysAppResources from "./sysAppResources";
+import * as sysAppMenus from "./sysAppMenus";
+import * as sysForms from "./sysForms";
 import * as portalArticles from "./portalArticles";
 import * as portalCategories from "./portalCategories";
 import * as attachments from "./attachments";
@@ -18,6 +22,10 @@ import * as storage from "./storage";
 import * as sysUsers from "./sysUsers";
 import * as auth from "./auth";
 export default {
+  sysApps,
+  sysAppResources,
+  sysAppMenus,
+  sysForms,
   portalArticles,
   portalCategories,
   attachments,

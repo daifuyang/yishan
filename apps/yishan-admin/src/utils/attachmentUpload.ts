@@ -21,8 +21,8 @@ export const fetchCloudStorageConfig = async (options?: { force?: boolean }): Pr
 
   try {
     const res = await batchGetSystemOptionByQuery({
-      key: ["systemStorage", "qiniuConfig", "aliyunOssConfig"] as any,
-    } as any);
+      "key[]": ["systemStorage", "qiniuConfig", "aliyunOssConfig"],
+    });
     const results = res.data?.results || [];
     const map = results.reduce<Record<string, string | null>>((acc, item) => {
       if (item?.key) acc[String(item.key)] = item.value ?? null;

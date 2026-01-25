@@ -215,6 +215,11 @@ export const systemMenusSeed: MenuSeedNode = {
     { name: '云存储', path: '/system/storage', type: 1, sortOrder: 8, component: './system/storage' },
     { name: '媒体库', path: '/system/attachments', type: 1, sortOrder: 9, component: './system/attachments' },
     { name: '登录日志', path: '/system/login-log', type: 1, sortOrder: 10, component: './system/login-log' },
+    {
+      name: '应用管理', path: '/system/apps', type: 1, sortOrder: 11, component: './system/apps', children: [
+        { name: '应用详情', path: '/system/apps/:id', type: 2, sortOrder: 12, component: './system/apps/detail' },
+      ]
+    },
   ],
 };
 

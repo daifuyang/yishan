@@ -20,6 +20,10 @@ export * from './article.js';
 export * from './page.js';
 export * from './template.js';
 export * from './attachment.js';
+export * from './app.js';
+export * from './app-resource.js';
+export * from './app-menu.js';
+export * from './form.js';
 
 // 重新导出常用的业务码
 import { SUCCESS_CODE, SystemErrorCode } from './common.js';
@@ -38,6 +42,10 @@ import { ArticleErrorCode, CategoryErrorCode } from './article.js';
 import { PageErrorCode } from './page.js';
 import { TemplateErrorCode } from './template.js';
 import { AttachmentErrorCode } from './attachment.js';
+import { AppErrorCode } from './app.js';
+import { AppResourceErrorCode } from './app-resource.js';
+import { AppMenuErrorCode } from './app-menu.js';
+import { FormErrorCode } from './form.js';
 
 // 合并所有错误码
 export const ErrorCode = {
@@ -58,6 +66,10 @@ export const ErrorCode = {
   ...PageErrorCode,
   ...TemplateErrorCode,
   ...AttachmentErrorCode,
+  ...AppErrorCode,
+  ...AppResourceErrorCode,
+  ...AppMenuErrorCode,
+  ...FormErrorCode,
   // 添加一些常用的别名
   NOT_FOUND: ResourceErrorCode.RESOURCE_NOT_FOUND,
 } as const;
@@ -108,6 +120,10 @@ import { ArticleErrorMessages, CategoryErrorMessages } from './article.js';
 import { PageErrorMessages } from './page.js';
 import { TemplateErrorMessages } from './template.js';
 import { AttachmentErrorMessages } from './attachment.js';
+import { AppErrorMessages } from './app.js';
+import { AppResourceErrorMessages } from './app-resource.js';
+import { AppMenuErrorMessages } from './app-menu.js';
+import { FormErrorMessages } from './form.js';
 
 // 合并所有错误消息
 const ErrorMessages = {
@@ -128,6 +144,10 @@ const ErrorMessages = {
   ...PageErrorMessages,
   ...TemplateErrorMessages,
   ...AttachmentErrorMessages,
+  ...AppErrorMessages,
+  ...AppResourceErrorMessages,
+  ...AppMenuErrorMessages,
+  ...FormErrorMessages,
 } as const;
 
 // 合并所有HTTP状态码映射

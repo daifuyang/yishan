@@ -83,6 +83,19 @@ export default [
     access: 'canDo',
   },
   {
+    path: '/system/apps',
+    name: 'apps',
+    component: './system/apps',
+    access: 'canDo',
+  },
+  {
+    path: '/system/apps/:id',
+    name: 'apps.detail',
+    component: './system/apps/detail',
+    layout: false,
+    access: 'canDo',
+  },
+  {
     path: '/portal',
     redirect: '/portal/articles',
     access: 'canDo',

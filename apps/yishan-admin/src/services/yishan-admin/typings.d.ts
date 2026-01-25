@@ -10,6 +10,220 @@ declare namespace API {
     useHttps?: boolean;
   };
 
+  type appDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type appDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysApp;
+    timestamp: string;
+  };
+
+  type appListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    status?: "0" | "1";
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type appListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysApp[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type appMenuDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type appMenuDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAppMenu;
+    timestamp: string;
+  };
+
+  type appMenuListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称、路径、组件、权限） */
+    keyword?: string;
+    /** 菜单状态 */
+    status?: "0" | "1";
+    /** 菜单类型 */
+    type?: 0 | 1 | 2;
+    /** 父级菜单ID过滤 */
+    parentId?: number;
+    /** 排序字段 */
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type appMenuListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAppMenu[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type appMenuTreeList = appMenuTreeNode[];
+
+  type appMenuTreeNode = {
+    /** 菜单ID */
+    id: number;
+    /** 应用ID */
+    appId: number;
+    /** 菜单名称 */
+    name: string;
+    /** 类型（0:目录,1:菜单,2:按钮） */
+    type: 0 | 1 | 2;
+    /** 路由路径/URL */
+    path?: string;
+    /** 图标名 */
+    icon?: string;
+    /** 前端组件路径 */
+    component?: string;
+    /** 父级菜单ID */
+    parentId?: number;
+    /** 父级菜单名称 */
+    parentName?: string;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 排序序号 */
+    sort_order: number;
+    /** 是否在菜单中隐藏 */
+    hideInMenu: boolean;
+    /** 是否外链 */
+    isExternalLink: boolean;
+    /** 权限标识 */
+    perm?: string;
+    /** 是否缓存页面 */
+    keepAlive: boolean;
+    /** 关联资源ID */
+    resourceId?: number;
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+    children: appMenuTreeNode[] | null;
+  };
+
+  type appMenuTreeResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: appMenuTreeList;
+    timestamp: string;
+  };
+
+  type appResourceTreeList = appResourceTreeNode[];
+
+  type appResourceTreeNode = sysAppResource & {
+    children?: appResourceTreeNode[] | null;
+  };
+
+  type appResourceTreeResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: appResourceTreeList;
+    timestamp: string;
+  };
+
+  type appResourceDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type appResourceDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAppResource;
+    timestamp: string;
+  };
+
+  type appResourceListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称、描述） */
+    keyword?: string;
+    /** 资源类型 */
+    type?:
+      | "FORM"
+      | "PROCESS_FORM"
+      | "REPORT"
+      | "PORTAL_BROADCAST"
+      | "DASHBOARD"
+      | "CUSTOM_PAGE"
+      | "EXTERNAL_LINK"
+      | "FOLDER";
+    /** 父级资源ID过滤 */
+    parentId?: number;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序字段 */
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type appResourceListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysAppResource[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type appResourceType =
+    | "FORM"
+    | "PROCESS_FORM"
+    | "REPORT"
+    | "PORTAL_BROADCAST"
+    | "DASHBOARD"
+    | "CUSTOM_PAGE"
+    | "EXTERNAL_LINK"
+    | "FOLDER";
+
   type articleDeleteResp = {
     code: number;
     message: string;
@@ -269,6 +483,39 @@ declare namespace API {
     data?: { deletedCount?: number; revokedCount?: number; message?: string };
   };
 
+  type createAppMenuParams = {
+    appId: number;
+  };
+
+  type createAppResourceParams = {
+    appId: number;
+  };
+
+  type createAppResourceReq = {
+    /** 资源类型 */
+    type:
+      | "FORM"
+      | "PROCESS_FORM"
+      | "REPORT"
+      | "PORTAL_BROADCAST"
+      | "DASHBOARD"
+      | "CUSTOM_PAGE"
+      | "EXTERNAL_LINK"
+      | "FOLDER";
+    /** 父级资源ID（分组） */
+    parentId?: number;
+    /** 资源名称 */
+    name: string;
+    /** 资源描述 */
+    description?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 资源配置 */
+    config?: any;
+  };
+
   type createArticleReq = {
     /** 标题 */
     title: string;
@@ -345,6 +592,57 @@ declare namespace API {
     description?: string;
     /** 负责人ID */
     leaderId?: number;
+  };
+
+  type createFormFieldParams = {
+    appId: number;
+    formId: number;
+  };
+
+  type createFormFieldReq = {
+    /** 字段Key */
+    key: string;
+    /** 字段名称 */
+    label?: string;
+    /** 字段类型 */
+    type: string;
+    /** 是否必填 */
+    required?: boolean;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 字段配置 */
+    config?: any;
+  };
+
+  type createFormParams = {
+    appId: number;
+  };
+
+  type createFormRecordParams = {
+    appId: number;
+    formId: number;
+  };
+
+  type createFormRecordReq = {
+    /** 表单数据 */
+    data: Record<string, any>;
+    /** 状态 */
+    status?: "0" | "1";
+  };
+
+  type createFormReq = {
+    /** 表单名称 */
+    name: string;
+    /** 表单描述 */
+    description?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 表单配置 */
+    config?: any;
   };
 
   type createPageReq = {
@@ -450,6 +748,20 @@ declare namespace API {
     timestamp: string;
   };
 
+  type deleteAppMenuParams = {
+    appId: number;
+    id: number;
+  };
+
+  type deleteAppParams = {
+    id: number;
+  };
+
+  type deleteAppResourceParams = {
+    appId: number;
+    id: number;
+  };
+
   type deleteArticleParams = {
     /** 文章ID */
     id: number;
@@ -486,6 +798,23 @@ declare namespace API {
 
   type deleteDictTypeParams = {
     id: number;
+  };
+
+  type deleteFormFieldParams = {
+    appId: number;
+    formId: number;
+    fieldId: number;
+  };
+
+  type deleteFormParams = {
+    appId: number;
+    formId: number;
+  };
+
+  type deleteFormRecordParams = {
+    appId: number;
+    formId: number;
+    recordId: number;
   };
 
   type deleteMenuParams = {
@@ -688,6 +1017,201 @@ declare namespace API {
 
   type dynamicAttributes = true;
 
+  type formDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type formDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysForm;
+    timestamp: string;
+  };
+
+  type formFieldDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type formFieldDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysFormField;
+    timestamp: string;
+  };
+
+  type formFieldListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（key/label） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序字段 */
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type formFieldListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysFormField[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type formListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称、描述） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序字段 */
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type formListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysForm[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type formRecordDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type formRecordDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysFormRecord;
+    timestamp: string;
+  };
+
+  type formRecordListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序字段 */
+    sortBy?: "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type formRecordListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: sysFormRecord[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type getAppDetailParams = {
+    id: number;
+  };
+
+  type getAppListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    status?: "0" | "1";
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getAppMenuDetailParams = {
+    appId: number;
+    id: number;
+  };
+
+  type getAppMenuListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称、路径、组件、权限） */
+    keyword?: string;
+    /** 菜单状态 */
+    status?: "0" | "1";
+    /** 菜单类型 */
+    type?: 0 | 1 | 2;
+    /** 父级菜单ID过滤 */
+    parentId?: number;
+    /** 排序字段 */
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+    appId: number;
+  };
+
+  type getAppMenuTreeParams = {
+    appId: number;
+  };
+
+  type getAppResourceDetailParams = {
+    appId: number;
+    id: number;
+  };
+
+  type getAppResourceListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称、描述） */
+    keyword?: string;
+    /** 资源类型 */
+    type?:
+      | "FORM"
+      | "PROCESS_FORM"
+      | "REPORT"
+      | "PORTAL_BROADCAST"
+      | "DASHBOARD"
+      | "CUSTOM_PAGE"
+      | "EXTERNAL_LINK"
+      | "FOLDER";
+    /** 父级资源ID过滤 */
+    parentId?: number;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序字段 */
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+    appId: number;
+  };
+
   type getArticleDetailParams = {
     /** 文章ID */
     id: number;
@@ -854,6 +1378,71 @@ declare namespace API {
     status?: 0 | 1;
     sortBy?: "sort_order" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
+  };
+
+  type getFormDetailParams = {
+    appId: number;
+    formId: number;
+  };
+
+  type getFormFieldDetailParams = {
+    appId: number;
+    formId: number;
+    fieldId: number;
+  };
+
+  type getFormFieldListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（key/label） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序字段 */
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+    appId: number;
+    formId: number;
+  };
+
+  type getFormListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 搜索关键词（名称、描述） */
+    keyword?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序字段 */
+    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+    appId: number;
+  };
+
+  type getFormRecordDetailParams = {
+    appId: number;
+    formId: number;
+    recordId: number;
+  };
+
+  type getFormRecordListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序字段 */
+    sortBy?: "createdAt" | "updatedAt";
+    /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+    appId: number;
+    formId: number;
   };
 
   type getLoginLogDetailParams = {
@@ -1470,6 +2059,44 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type saveAppMenuReq = {
+    /** 菜单名称 */
+    name: string;
+    /** 菜单类型 */
+    type?: 0 | 1 | 2;
+    /** 父级菜单ID */
+    parentId?: number;
+    /** 路由路径/URL */
+    path?: string;
+    /** 图标名 */
+    icon?: string;
+    /** 组件路径 */
+    component?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 隐藏菜单 */
+    hideInMenu?: boolean;
+    /** 是否外链 */
+    isExternalLink?: boolean;
+    /** 权限标识 */
+    perm?: string;
+    /** 是否缓存 */
+    keepAlive?: boolean;
+    /** 关联资源ID */
+    resourceId?: number;
+  };
+
+  type saveAppReq = {
+    name: string;
+    icon?: string;
+    iconColor?: string;
+    status?: "0" | "1";
+    sort_order?: number;
+    description?: string;
+  };
+
   type saveCategoryReq = {
     /** 分类名称 */
     name: string;
@@ -1605,6 +2232,110 @@ declare namespace API {
   };
 
   type storageProvider = "disabled" | "qiniu" | "aliyunOss";
+
+  type sysApp = {
+    id: number;
+    name: string;
+    icon?: string;
+    iconColor?: string;
+    status: "0" | "1";
+    sort_order: number;
+    description?: string;
+    creatorId?: number;
+    creatorName?: string;
+    createdAt: string;
+    updaterId?: number;
+    updaterName?: string;
+    updatedAt: string;
+  };
+
+  type sysAppMenu = {
+    /** 菜单ID */
+    id: number;
+    /** 应用ID */
+    appId: number;
+    /** 菜单名称 */
+    name: string;
+    /** 类型（0:目录,1:菜单,2:按钮） */
+    type: 0 | 1 | 2;
+    /** 路由路径/URL */
+    path?: string;
+    /** 图标名 */
+    icon?: string;
+    /** 前端组件路径 */
+    component?: string;
+    /** 父级菜单ID */
+    parentId?: number;
+    /** 父级菜单名称 */
+    parentName?: string;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 排序序号 */
+    sort_order: number;
+    /** 是否在菜单中隐藏 */
+    hideInMenu: boolean;
+    /** 是否外链 */
+    isExternalLink: boolean;
+    /** 权限标识 */
+    perm?: string;
+    /** 是否缓存页面 */
+    keepAlive: boolean;
+    /** 关联资源ID */
+    resourceId?: number;
+    /** 创建人Id */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人Id */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type sysAppResource = {
+    /** 资源ID */
+    id: number;
+    /** 应用ID */
+    appId: number;
+    /** 父级资源ID（分组） */
+    parentId?: number;
+    /** 资源类型 */
+    type:
+      | "FORM"
+      | "PROCESS_FORM"
+      | "REPORT"
+      | "PORTAL_BROADCAST"
+      | "DASHBOARD"
+      | "CUSTOM_PAGE"
+      | "EXTERNAL_LINK"
+      | "FOLDER";
+    /** 资源名称 */
+    name: string;
+    /** 资源描述 */
+    description?: string;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 排序序号 */
+    sort_order: number;
+    /** 资源配置 */
+    config?: any;
+    /** 创建人ID */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人ID */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
 
   type sysAttachment = {
     /** 素材ID */
@@ -1755,6 +2486,91 @@ declare namespace API {
     createdAt: string;
     updaterId?: number;
     updaterName?: string;
+    updatedAt: string;
+  };
+
+  type sysForm = {
+    /** 表单ID（资源ID） */
+    id: number;
+    /** 应用ID */
+    appId: number;
+    /** 表单名称 */
+    name: string;
+    /** 表单描述 */
+    description?: string;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 排序序号 */
+    sort_order: number;
+    /** 表单配置 */
+    config?: any;
+    /** 创建人ID */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人ID */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type sysFormField = {
+    /** 字段ID */
+    id: number;
+    /** 资源ID */
+    resourceId: number;
+    /** 字段Key */
+    key: string;
+    /** 字段名称 */
+    label?: string;
+    /** 字段类型 */
+    type: string;
+    /** 是否必填 */
+    required: boolean;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 排序序号 */
+    sort_order: number;
+    /** 字段配置 */
+    config?: any;
+    /** 创建人ID */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人ID */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+  };
+
+  type sysFormRecord = {
+    /** 数据ID */
+    id: number;
+    /** 资源ID */
+    resourceId: number;
+    /** 表单数据 */
+    data: Record<string, any>;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 创建人ID */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人ID */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
     updatedAt: string;
   };
 
@@ -2056,6 +2872,83 @@ declare namespace API {
     };
   };
 
+  type updateAppMenuParams = {
+    appId: number;
+    id: number;
+  };
+
+  type updateAppMenuReq = {
+    /** 菜单名称 */
+    name?: string;
+    /** 菜单类型 */
+    type?: 0 | 1 | 2;
+    /** 父级菜单ID */
+    parentId?: number;
+    /** 路由路径/URL */
+    path?: string;
+    /** 图标名 */
+    icon?: string;
+    /** 组件路径 */
+    component?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 隐藏菜单 */
+    hideInMenu?: boolean;
+    /** 是否外链 */
+    isExternalLink?: boolean;
+    /** 权限标识 */
+    perm?: string;
+    /** 是否缓存 */
+    keepAlive?: boolean;
+    /** 关联资源ID */
+    resourceId?: number;
+  };
+
+  type updateAppParams = {
+    id: number;
+  };
+
+  type updateAppReq = {
+    name?: string;
+    icon?: string;
+    iconColor?: string;
+    status?: "0" | "1";
+    sort_order?: number;
+    description?: string;
+  };
+
+  type updateAppResourceParams = {
+    appId: number;
+    id: number;
+  };
+
+  type updateAppResourceReq = {
+    /** 资源类型 */
+    type?:
+      | "FORM"
+      | "PROCESS_FORM"
+      | "REPORT"
+      | "PORTAL_BROADCAST"
+      | "DASHBOARD"
+      | "CUSTOM_PAGE"
+      | "EXTERNAL_LINK"
+      | "FOLDER";
+    /** 父级资源ID（分组） */
+    parentId?: number;
+    /** 资源名称 */
+    name?: string;
+    /** 资源描述 */
+    description?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 资源配置 */
+    config?: any;
+  };
+
   type updateArticleParams = {
     /** 文章ID */
     id: number;
@@ -2197,6 +3090,60 @@ declare namespace API {
     status?: 0 | 1;
     sort_order?: number;
     remark?: string;
+  };
+
+  type updateFormFieldParams = {
+    appId: number;
+    formId: number;
+    fieldId: number;
+  };
+
+  type updateFormFieldReq = {
+    /** 字段Key */
+    key?: string;
+    /** 字段名称 */
+    label?: string;
+    /** 字段类型 */
+    type?: string;
+    /** 是否必填 */
+    required?: boolean;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 字段配置 */
+    config?: any;
+  };
+
+  type updateFormParams = {
+    appId: number;
+    formId: number;
+  };
+
+  type updateFormRecordParams = {
+    appId: number;
+    formId: number;
+    recordId: number;
+  };
+
+  type updateFormRecordReq = {
+    /** 表单数据 */
+    data?: Record<string, any>;
+    /** 状态 */
+    status?: "0" | "1";
+  };
+
+  type updateFormReq = {
+    /** 表单名称 */
+    name?: string;
+    /** 表单描述 */
+    description?: string;
+    /** 状态 */
+    status?: "0" | "1";
+    /** 排序序号 */
+    sort_order?: number;
+    /** 表单配置 */
+    config?: any;
   };
 
   type updateMenuParams = {
