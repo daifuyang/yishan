@@ -18,12 +18,23 @@ import { getAuthorizedMenuTree } from "@/services/yishan-admin/sysMenus";
 import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
 import type { CloudStorageConfig } from "@/utils/attachmentUpload";
 import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
+import avatarFallback from "@public/icons/avatar.png";
 import React from "react";
 import { TOKEN_KEYS } from "./utils/token";
 import queryString from "query-string";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
+const ADMIN_BASE = (process.env.PUBLIC_PATH || "/admin/").replace(/\/+$/, "");
+
+const getRelativePath = (pathname: string) => {
+  if (pathname.startsWith(ADMIN_BASE)) {
+    return pathname.slice(ADMIN_BASE.length) || "/";
+  }
+  return pathname;
+};
+
+const isLoginRoute = (pathname: string) => getRelativePath(pathname) === loginPath;
 
 const IconMap: Record<string, React.ReactNode> = {
   setting: <SettingOutlined />,
@@ -69,11 +80,8 @@ export async function getInitialState(): Promise<{
 
   // 如果不是登录页面，执行
   const { location } = history;
-  if (
-    ![loginPath, "/user/register"].includes(
-      location.pathname
-    )
-  ) {
+  const currentPath = getRelativePath(location.pathname);
+  if (![loginPath, "/user/register"].includes(currentPath)) {
     const currentUser = await fetchUserInfo();
     const dictDataMap = await fetchDictDataMap();
     const cloudStorageConfig = await fetchCloudStorageConfig();
@@ -105,8 +113,8 @@ const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => 
   const toItem = (n: API.menuTreeNode): MenuDataItem => {
     const item: MenuDataItem = {
       name: n.name,
-      path: n.path,
-      icon: n.icon ? (IconMap[String(n.icon).toLowerCase()] as any) : undefined,
+      path: n.path || '/',
+      icon: n.icon ? (IconMap[String(n.icon).toLowerCase()] as React.ReactNode) : undefined,
       hideInMenu: n.hideInMenu,
     };
     if (Array.isArray(n.children) && n.children.length) {
@@ -128,7 +136,7 @@ export const layout: RunTimeLayoutConfig = ({
       <SelectLang key="SelectLang" />,
     ],
     avatarProps: {
-      src: initialState?.currentUser?.avatar || "/icons/avatar.png",
+      src: initialState?.currentUser?.avatar || avatarFallback,
       title: <AvatarName />,
       render: (_, avatarChildren) => {
         return <AvatarDropdown>{avatarChildren}</AvatarDropdown>;
@@ -148,8 +156,8 @@ export const layout: RunTimeLayoutConfig = ({
     footerRender: () => <Footer />,
     onPageChange: () => {
       const { location } = history;
-      // 如果没有登录，重定向到 login
-      if (!initialState?.currentUser && location.pathname !== loginPath) {
+      const currentPath = getRelativePath(location.pathname);
+      if (!initialState?.currentUser && currentPath !== loginPath) {
         history.push(loginPath);
       }
     },
@@ -224,7 +232,7 @@ export const request: RequestConfig = {
 };
 
 const resolveFirstPath = (nodes: any[] = []): string => {
-  if (!Array.isArray(nodes) || nodes.length === 0) return "/";
+  if (!Array.isArray(nodes) || nodes.length === 0) return '/';
   const isValid = (n: any) => n && n.status !== "0" && !n.isExternalLink && n.type !== 2 && !n.hideInMenu;
   const getChildren = (n: any) => (Array.isArray(n?.children) ? n.children : []);
   const pickFirst = (list: any[] = []) => (list || []).find(isValid) ?? (list || [])[0];
@@ -237,7 +245,8 @@ const resolveFirstPath = (nodes: any[] = []): string => {
     }
     break;
   }
-  return typeof current?.path === "string" && current.path ? current.path : "/";
+  const originalPath = typeof current?.path === "string" && current.path ? current.path : '/';
+  return originalPath;
 };
 
 export function patchClientRoutes({ routes }: { routes: any[] }) {
@@ -257,22 +266,22 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
   }
 }
 
-export function render(oldRender: any) {
+export function render(oldRender: () => void) {
   const currentPath = window.location.pathname;
   const accessToken = localStorage.getItem(TOKEN_KEYS.ACCESS_TOKEN);
-  // 没登陆或当前路径是登录页，直接渲染
-  if (!accessToken || currentPath === '/user/login') {
+  const loginUrl = `${ADMIN_BASE}/user/login`;
+  if (!accessToken || isLoginRoute(currentPath)) {
     oldRender();
     return;
   }
 
-  if (currentPath !== '/user/login') {
+  if (!isLoginRoute(currentPath)) {
     getAuthorizedMenuTree().then((res) => {
       const menus = res.data || [];
       extraRoutes = menus;
       oldRender();
     }).catch(() => {
-      window.location.href = '/user/login';
+      window.location.href = loginUrl;
     });
   } else {
     oldRender();

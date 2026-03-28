@@ -138,6 +138,26 @@ config/
 
 修改 `config/defaultSettings.ts` 中的主题配置，或通过 `config/config.ts` 中的 `antd` 配置进行主题定制。
 
+### 路由 base 与登录重定向注意事项
+
+项目在 `config/config.ts` 中配置了 `base/publicPath`（默认 `/admin/`），路由跳转与 `redirect` 处理需要遵循以下规则：
+
+1. **不要手动重复拼接 base**
+   - 使用 `history.push('/user/login')`，不要写 `history.push('/admin/user/login')`
+   - 否则在有 base 的情况下会出现 `/admin/admin/user/login`
+
+2. **登录页判断要先去掉 base**
+   - 实际路径通常是 `/admin/user/login`
+   - 业务判断应基于去掉 base 之后的路径（如 `/user/login`）
+
+3. **redirect 必须做安全归一化**
+   - 如果 `redirect` 指向登录页本身（`/user/login`），应回退到 `/`
+   - 避免在登录页刷新后出现 `redirect` 套 `redirect` 的递归嵌套
+
+4. **拼接 redirect 时优先使用当前相对路由语义**
+   - 保证登录成功后回跳到原始业务页面
+   - 同时避免把完整登录页 URL 再次编码写回 `redirect`
+
 ## 部署
 
 项目支持多种部署方式，具体配置请参考 `deploy/` 目录下的部署脚本。

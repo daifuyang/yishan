@@ -9,10 +9,25 @@ export default fp(async (fastify) => {
     ? `/${uploadDirNormalized.slice('public/'.length)}`
     : `/${uploadDirNormalized}`
   const prefix = `${urlBase.replace(/\/+$/g, '')}/`
+  const adminDistPath = join(process.cwd(), 'public', 'admin')
 
   await fastify.register(fastifyStatic, {
     root: join(process.cwd(), uploadDirNormalized),
-    prefix
+    prefix,
+    decorateReply: false
+  })
+
+  await fastify.register(async (adminScope) => {
+    await adminScope.register(fastifyStatic, {
+      root: adminDistPath,
+      prefix: '/',
+      index: false
+    })
+    adminScope.setNotFoundHandler(async (_request, reply) => {
+      return reply.sendFile('index.html')
+    })
+  }, {
+    prefix: '/admin'
   })
 }, {
   name: 'static'

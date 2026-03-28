@@ -63,9 +63,7 @@ test/types/index.js
 
 # compiled app
 dist
+public
 
 prisma/migrations
 src/generated
- 
-# uploads
-public/uploads

@@ -6,18 +6,20 @@ import React, { useState } from "react";
 import { flushSync } from "react-dom";
 import { login as userLogin, getCurrentUser } from "@/services/yishan-admin/auth";
 import { saveTokens } from "@/utils/token";
+import loginBgImage from "@public/images/login-bg.png";
+import loginBrandImage from "@public/images/login-brand.png";
 
 const useStyles = createStyles(({ css }) => {
   return {
     root: {
       display: "flex",
-      backgroundImage: "url('/images/login-bg.png')",
+      backgroundImage: `url('${loginBgImage}')`,
       backgroundSize: "cover",
       width: "100%",
       height: "100vh",
     },
     brand: {
-      backgroundImage: "url('/images/login-brand.png')",
+      backgroundImage: `url('${loginBrandImage}')`,
       backgroundSize: "100% 100%",
       width: "56.67%",
       height: "100%",
@@ -108,6 +110,8 @@ const LoginMessage: React.FC<{
 };
 
 const Login: React.FC = () => {
+  const adminBase = (process.env.PUBLIC_PATH || "/admin/").replace(/\/+$/, "");
+  const appHome = adminBase ? `${adminBase}/` : "/";
   const [loginError, setLoginError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const { setInitialState } = useModel("@@initialState");
@@ -154,6 +158,23 @@ const Login: React.FC = () => {
     }
   };
 
+  const resolveRedirectAfterLogin = () => {
+    const redirect = new URL(window.location.href).searchParams.get("redirect");
+    if (!redirect) return appHome;
+    try {
+      const target = new URL(redirect, window.location.origin);
+      const normalizedPath = adminBase && target.pathname.startsWith(adminBase)
+        ? target.pathname.slice(adminBase.length) || "/"
+        : target.pathname;
+      if (normalizedPath === "/user/login") {
+        return appHome;
+      }
+      return `${target.pathname}${target.search}${target.hash}` || appHome;
+    } catch {
+      return appHome;
+    }
+  };
+
   const handleSubmit = async (values: API.loginReq) => {
     setLoading(true);
     setLoginError("");
@@ -182,8 +203,7 @@ const Login: React.FC = () => {
         }
 
         await fetchUserInfo();
-        const urlParams = new URL(window.location.href).searchParams;
-        window.location.href = urlParams.get("redirect") || "/";
+        window.location.href = resolveRedirectAfterLogin();
         return;
       }
 

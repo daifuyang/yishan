@@ -1,7 +1,7 @@
 // https://umijs.org/config/
 
-import { join } from 'node:path';
 import { defineConfig } from '@umijs/max';
+import path from 'node:path';
 import defaultSettings from './defaultSettings';
 import proxy from './proxy';
 
@@ -14,9 +14,16 @@ const { UMI_ENV = 'dev' } = process.env;
  * @description 部署时的路径，如果部署在非根目录下，需要配置这个变量
  * @doc https://umijs.org/docs/api/config#publicpath
  */
-const PUBLIC_PATH: string = '/';
+const PUBLIC_PATH: string =  '/';
 
 export default defineConfig({
+  /**
+   * @name 路由前缀
+   * @description 配置 react-router 的 base 路径
+   * @doc https://umijs.org/docs/api/config#base
+   */
+  base: PUBLIC_PATH,
+
   /**
    * @name 开启 hash 模式
    * @description 让 build 之后的产物包含 hash 后缀。通常用于增量发布和避免浏览器加载缓存。
@@ -25,6 +32,13 @@ export default defineConfig({
   hash: true,
 
   publicPath: PUBLIC_PATH,
+  alias: {
+    '@public': path.resolve(__dirname, '../public'),
+  },
+
+  history: {
+    type: 'browser',
+  },
 
   /**
    * @name 兼容性设置
@@ -141,7 +155,7 @@ export default defineConfig({
    */
   headScripts: [
     // 解决首次加载时白屏的问题
-    { src: join(PUBLIC_PATH, 'scripts/loading.js'), async: true },
+    { src: `${PUBLIC_PATH}scripts/loading.js`, async: true },
   ],
   //================ pro 插件配置 =================
   presets: ['umi-presets-pro'],
