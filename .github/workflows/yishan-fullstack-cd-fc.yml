@@ -22,19 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: YISHAN_API
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.14.0
+      - uses: actions/checkout@v5
 
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22.14.0
           cache: pnpm
@@ -102,12 +100,7 @@ jobs:
             echo "Invalid ALIBABA_CLOUD_ACCOUNT_ID format: must be 16-32 digits"
             exit 1
           fi
-          s config add \
-            --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
-            --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
-            --AccountID "$ACCOUNT_ID_CLEAN" \
-            -a default \
-            -f
+          s config add --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" --AccountID "$ACCOUNT_ID_CLEAN" -a default -f
 
       - name: Build Package (pre-deploy in FC runtime image)
         working-directory: apps/yishan-api
