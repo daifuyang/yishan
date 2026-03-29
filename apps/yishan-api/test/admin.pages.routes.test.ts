@@ -1,12 +1,12 @@
 import Fastify from "fastify";
-import adminPagesPlugin from "../src/routes/api/v1/admin/pages/index.ts";
-import registerCommonSchemas from "../src/schemas/common.ts";
-import registerPageSchemas from "../src/schemas/page.ts";
-import registerTemplateSchemas from "../src/schemas/template.ts";
+import adminPagesPlugin from "../src/plugins/modules/portal/routes/v1/admin/pages/index.ts";
+import registerCommonSchemas from "../src/plugins/modules/portal/schemas/common.ts";
+import registerPageSchemas from "../src/plugins/modules/portal/schemas/page.ts";
+import registerTemplateSchemas from "../src/plugins/modules/portal/schemas/template.ts";
 import errorHandlerPlugin from "../src/plugins/external/error-handler.ts";
-import { PageService } from "../src/services/page.service.ts";
-import { PageErrorCode } from "../src/constants/business-codes/page.ts";
-import { BusinessError } from "../src/exceptions/business-error.js";
+import { PageService } from "../src/plugins/modules/portal/services/page.service.ts";
+import { PageErrorCode } from "../src/plugins/modules/portal/constants/business-codes/page.ts";
+import { BusinessError } from "../src/plugins/modules/portal/exceptions/business-error.ts";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 async function buildApp() {

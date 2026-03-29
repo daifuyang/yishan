@@ -10,7 +10,7 @@
 - **认证**: JWT (Fastify JWT)
 - **缓存**: Redis
 - **文档**: Swagger/OpenAPI
-- **测试**: Node.js 内置测试框架
+- **测试**: Vitest
 - **包管理**: pnpm
 
 ## 项目结构
@@ -25,12 +25,14 @@
 │   ├── utils/            # 工具类 (响应工具、数据库连接等)
 │   ├── plugins/          # Fastify 插件配置
 │   │   ├── external/     # 外部插件 (数据库、认证、Swagger等)
-│   │   └── app/          # 应用插件
+│   │   ├── app/          # 应用插件
+│   │   └── modules/      # 业务模块插件 (AutoLoad)
 │   ├── controllers/      # 控制器层 (可选，复杂业务场景)
 │   └── generated/        # 自动生成的代码 (Prisma Client)
 ├── prisma/               # Prisma 配置和迁移文件
 ├── docs/                 # 项目文档
-└── test/                 # 测试文件
+├── test/                 # 应用级测试文件
+└── ...
 ```
 
 ## 快速开始
@@ -102,6 +104,43 @@ docker run --rm --platform linux/amd64 -it --name yishan-api-serverless-dev  -v 
 s deploy -y
 ```
 
+### FC 函数部署（单服务）
+
+当前配置使用一个 FC 服务 `yishan-example`，同时部署 API 和 `public/admin` 静态前端，部署文件为 `deploy/fc3/s.yaml`。
+
+1. 配置阿里云账号（建议两个别名）：
+```bash
+# 企业账号（FC 部署）
+s config add --AccessKeyID <FC_ACCESS_KEY_ID> --AccessKeySecret <FC_ACCESS_KEY_SECRET> --AccountID <ACCOUNT_ID> --alias enterprise
+
+# 个人账号（DNS 验证签发证书）
+s config add --AccessKeyID <DNS_ACCESS_KEY_ID> --AccessKeySecret <DNS_ACCESS_KEY_SECRET> --AccountID <ACCOUNT_ID> --alias dns
+```
+
+2. 使用 DNS 验证签发证书（示例域名：`example.zerocmf.com`）：
+```bash
+export Ali_Key=<DNS_ACCESS_KEY_ID>
+export Ali_Secret=<DNS_ACCESS_KEY_SECRET>
+~/.acme.sh/acme.sh --issue --dns dns_ali -d example.zerocmf.com --keylength 2048
+~/.acme.sh/acme.sh --install-cert -d example.zerocmf.com \
+  --fullchain-file /mnt/c/Workspace/Frontend/yishan/apps/yishan-api/deploy/fc3/certs/fullchain.cer \
+  --key-file /mnt/c/Workspace/Frontend/yishan/apps/yishan-api/deploy/fc3/certs/private.key
+```
+
+3. 构建并打包运行文件（包含前端）：
+```bash
+./deploy/fc3/pre-deploy.sh
+```
+
+4. 部署并验证：
+```bash
+s deploy -y
+s info
+curl -I https://example.zerocmf.com/admin/user/login/index.html
+```
+
+安全要求：不要提交 `AccessKey`、证书私钥与 `.env`，并保持 `deploy/fc3/certs` 在 `.gitignore` 中。
+
 ## 可用脚本
 
 ```bash
@@ -159,6 +198,7 @@ pnpm run db:reset     # 重置数据库
 详细的开发规范请参考项目文档：
 - [API 规范文档](./docs/API规范文档.md)
 - [业务码使用规范](./docs/业务码使用规范.md)
+- [模块化开发规范](./docs/模块化开发规范.md)
 
 ### 主要规范要点
 
@@ -167,6 +207,18 @@ pnpm run db:reset     # 重置数据库
 3. **模型层**: 数据库操作，使用 Prisma ORM
 4. **响应格式**: 统一使用 `ResponseUtil` 工具类
 5. **错误处理**: 使用业务错误码，统一异常处理
+
+### 模块化约定（AutoLoad）
+
+- 模块目录：`src/plugins/modules/<module>/...`（建议包含 `routes/services/models/schemas/constants/test`）
+- 路由注册：基于目录自动注册，不手工集中挂载
+- 路由路径：推荐 `src/plugins/modules/<module>/routes/api/v1/...`
+- 模块内聚：`services/models/schemas/constants/exceptions/utils` 尽量在模块内完整实现，避免仅转发根目录导出
+- 鉴权建议：在 `routes/api/v1/admin/autohooks.ts` 统一注册 `fastify.authenticate`
+- 测试放置：模块就近放 `src/plugins/modules/<module>/test/*.test.ts`
+- 测试指南：参考 `docs/模块化开发规范.md` 的“测试用例指南”
+- 微服务演进：模块目录边界可直接作为后续服务拆分边界
+- 插件扩展：模块支持独立插件目录，统一承载缓存、限流、审计、第三方集成等横切能力
 
 ## 部署
 

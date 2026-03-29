@@ -1,5 +1,5 @@
 import { SysOptionModel } from "../models/sys-option.model.js";
-import { PortalTemplateModel } from "../models/portal-template.model.js";
+import { PortalTemplateModel } from "../plugins/modules/portal/models/portal-template.model.js";
 import { BusinessError } from "../exceptions/business-error.js";
 import { TemplateErrorCode } from "../constants/business-codes/template.js";
 

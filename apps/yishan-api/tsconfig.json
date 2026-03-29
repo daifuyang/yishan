@@ -6,6 +6,12 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "target": "ES2020",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@generated/*": ["src/generated/*"],
+      "@modules/*": ["src/plugins/modules/*"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

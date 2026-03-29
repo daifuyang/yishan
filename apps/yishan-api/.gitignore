@@ -67,3 +67,4 @@ public
 
 prisma/migrations
 src/generated
+deploy/fc3/certs

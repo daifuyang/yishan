@@ -111,14 +111,15 @@ export async function deleteAppResource(
 /** 获取应用资源树 获取指定应用的资源树 GET /api/v1/admin/apps/${param0}/resources/tree */
 export async function getAppResourceTree(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: { appId: number },
+  params: API.getAppResourceTreeParams,
   options?: { [key: string]: any }
 ) {
-  const { appId: param0 } = params;
+  const { appId: param0, ...queryParams } = params;
   return request<API.appResourceTreeResp>(
     `/api/v1/admin/apps/${param0}/resources/tree`,
     {
       method: "GET",
+      params: { ...queryParams },
       ...(options || {}),
     }
   );

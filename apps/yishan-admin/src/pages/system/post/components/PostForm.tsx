@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { getPostDetail, createPost, updatePost } from '@/services/yishan-admin/sysPosts';
+import { getPostDetail, createPost, updatePost } from '@/services/yishan-admin/portalPosts';
 
 export interface PostFormProps {
   title: string;

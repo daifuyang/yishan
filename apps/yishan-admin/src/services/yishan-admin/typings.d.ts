@@ -148,20 +148,6 @@ declare namespace API {
     timestamp: string;
   };
 
-  type appResourceTreeList = appResourceTreeNode[];
-
-  type appResourceTreeNode = sysAppResource & {
-    children?: appResourceTreeNode[] | null;
-  };
-
-  type appResourceTreeResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: appResourceTreeList;
-    timestamp: string;
-  };
-
   type appResourceDeleteResp = {
     code: number;
     message: string;
@@ -212,6 +198,58 @@ declare namespace API {
     data: sysAppResource[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+
+  type appResourceTreeList = appResourceTreeNode[];
+
+  type appResourceTreeNode = {
+    /** 资源ID */
+    id: number;
+    /** 应用ID */
+    appId: number;
+    /** 父级资源ID（分组） */
+    parentId?: number;
+    /** 资源类型 */
+    type:
+      | "FORM"
+      | "PROCESS_FORM"
+      | "REPORT"
+      | "PORTAL_BROADCAST"
+      | "DASHBOARD"
+      | "CUSTOM_PAGE"
+      | "EXTERNAL_LINK"
+      | "FOLDER";
+    /** 资源名称 */
+    name: string;
+    /** 资源描述 */
+    description?: string;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 排序序号 */
+    sort_order: number;
+    /** 资源配置 */
+    config?: any;
+    /** 创建人ID */
+    creatorId?: number;
+    /** 创建人名称 */
+    creatorName?: string;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人ID */
+    updaterId?: number;
+    /** 更新人名称 */
+    updaterName?: string;
+    /** 更新时间 */
+    updatedAt: string;
+    children: appResourceTreeNode[] | null;
+  };
+
+  type appResourceTreeResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: appResourceTreeList;
+    timestamp: string;
   };
 
   type appResourceType =
@@ -1209,6 +1247,10 @@ declare namespace API {
     sortBy?: "sort_order" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
+    appId: number;
+  };
+
+  type getAppResourceTreeParams = {
     appId: number;
   };
 

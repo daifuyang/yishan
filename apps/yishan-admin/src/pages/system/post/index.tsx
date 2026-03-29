@@ -2,7 +2,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
-import { getPostList, updatePost, deletePost } from '@/services/yishan-admin/sysPosts';
+import { getPostList, updatePost, deletePost } from '@/services/yishan-admin/portalPosts';
 import PostForm from './components/PostForm';
 import { useModel } from '@umijs/max';
 

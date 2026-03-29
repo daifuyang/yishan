@@ -9,8 +9,7 @@ import {
   SysUserResp,
   UpdateUserReq,
 } from "../schemas/user.js";
-import { SysUser } from "../generated/prisma/client.js";
-import type { Prisma } from "../generated/prisma/client.js";
+import type { SysUser, Prisma } from "../generated/prisma/client";
 import { hashPassword } from "../utils/password.js";
 import { dateUtils } from "../utils/date.js";
 

@@ -1,12 +1,12 @@
 import Fastify from "fastify";
-import adminArticlesPlugin from "../src/routes/api/v1/admin/articles/index.ts";
-import registerCommonSchemas from "../src/schemas/common.ts";
-import registerArticleSchemas from "../src/schemas/article.ts";
-import registerTemplateSchemas from "../src/schemas/template.ts";
+import adminArticlesPlugin from "../src/plugins/modules/portal/routes/v1/admin/articles/index.ts";
+import registerCommonSchemas from "../src/plugins/modules/portal/schemas/common.ts";
+import registerArticleSchemas from "../src/plugins/modules/portal/schemas/article.ts";
+import registerTemplateSchemas from "../src/plugins/modules/portal/schemas/template.ts";
 import errorHandlerPlugin from "../src/plugins/external/error-handler.ts";
-import { ArticleService, CategoryService } from "../src/services/article.service.ts";
-import { ArticleErrorCode, CategoryErrorCode } from "../src/constants/business-codes/article.ts";
-import { BusinessError } from "../src/exceptions/business-error.js";
+import { ArticleService, CategoryService } from "../src/plugins/modules/portal/services/article.service.ts";
+import { ArticleErrorCode, CategoryErrorCode } from "../src/plugins/modules/portal/constants/business-codes/article.ts";
+import { BusinessError } from "../src/plugins/modules/portal/exceptions/business-error.ts";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 async function buildApp() {

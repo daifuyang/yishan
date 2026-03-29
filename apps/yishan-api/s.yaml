@@ -1,0 +1,63 @@
+edition: 3.0.0
+name: yishan-example
+access: "enterprise"
+vars:
+  region: "cn-shanghai"
+  functionName: "yishan-example"
+  customDomain: "example.zerocmf.com"
+  certName: "example-zerocmf-com-20260328"
+
+resources:
+  yishan_example:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: ${vars.functionName}
+      description: "Yishan Example - Fastify API + Admin Static"
+      runtime: custom.debian12
+      timeout: 60
+      cpu: 1
+      memorySize: 2048
+      diskSize: 512
+      instanceConcurrency: 100
+      layers:
+        - acs:fc:${vars.region}:1650595695532785:layers/yishanLayer/versions/1
+      environmentVariables:
+        PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin:/code:/code/bin
+        NODE_PATH: /opt/nodejs/node_modules
+        LD_LIBRARY_PATH: /code:/code/lib:/usr/lib:/opt/lib:/usr/local/lib
+      customRuntimeConfig:
+        command:
+          - node
+          - --env-file=.env
+          - ./server.js
+        port: 3000
+      code: ./dist
+      triggers:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
+            methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+              - HEAD
+            authType: anonymous
+
+  example_domain:
+    component: fc3-domain
+    props:
+      region: ${vars.region}
+      domainName: ${vars.customDomain}
+      protocol: HTTPS
+      certConfig:
+        certName: ${vars.certName}
+        certificate: ${file(./deploy/fc3/certs/fullchain.cer)}
+        privateKey: ${file(./deploy/fc3/certs/private.key)}
+      routeConfig:
+        routes:
+          - path: /*
+            functionName: ${vars.functionName}

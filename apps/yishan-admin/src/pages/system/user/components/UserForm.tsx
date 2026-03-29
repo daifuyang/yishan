@@ -10,7 +10,7 @@ import {
 import type { Dayjs } from "dayjs";
 import { useModel } from "@umijs/max";
 import { getRoleList } from "@/services/yishan-admin/sysRoles";
-import { getPostList } from "@/services/yishan-admin/sysPosts";
+import { getPostList } from "@/services/yishan-admin/portalPosts";
 import { getUserDetail, createUser, updateUser } from "@/services/yishan-admin/sysUsers";
 import { ProFormDeptTreeSelect } from "@/components";
 

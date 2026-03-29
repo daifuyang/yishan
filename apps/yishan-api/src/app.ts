@@ -1,3 +1,4 @@
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path';
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
@@ -15,8 +16,6 @@ const app: FastifyPluginAsync<AppOptions> = async (
 ): Promise<void> => {
   // Place here your custom code!
 
-  
-
   // Do not touch the following lines
 
   // This loads all external plugins defined in plugins/external
@@ -33,6 +32,41 @@ const app: FastifyPluginAsync<AppOptions> = async (
     dir: join(__dirname, 'plugins/app'),
     options: { ...opts }
   })
+
+  const modulesDir = join(__dirname, 'plugins/modules')
+  if (existsSync(modulesDir)) {
+    const moduleNames = readdirSync(modulesDir).filter((name) => statSync(join(modulesDir, name)).isDirectory())
+
+    for (const moduleName of moduleNames) {
+      const moduleRoot = join(modulesDir, moduleName)
+      const moduleExternalPlugins = join(moduleRoot, 'plugins/external')
+      const moduleAppPlugins = join(moduleRoot, 'plugins/app')
+      const moduleRoutes = join(moduleRoot, 'routes')
+
+      if (existsSync(moduleExternalPlugins)) {
+        await fastify.register(AutoLoad, {
+          dir: moduleExternalPlugins,
+          options: { ...opts }
+        })
+      }
+
+      if (existsSync(moduleAppPlugins)) {
+        fastify.register(AutoLoad, {
+          dir: moduleAppPlugins,
+          options: { ...opts }
+        })
+      }
+
+      if (existsSync(moduleRoutes)) {
+        fastify.register(AutoLoad, {
+          dir: moduleRoutes,
+          autoHooks: true,
+          cascadeHooks: true,
+          options: { ...opts, prefix: `api/modules/${moduleName}` }
+        })
+      }
+    }
+  }
 
   // This loads all plugins defined in routes
   // define your routes in one of these

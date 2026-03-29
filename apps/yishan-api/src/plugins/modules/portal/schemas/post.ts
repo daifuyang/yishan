@@ -1,0 +1,123 @@
+import { Static, Type } from "@sinclair/typebox";
+import { PaginationQuerySchema, successResponse } from "./common.js";
+import { FastifyInstance } from "fastify";
+
+const SysPostSchema = Type.Object(
+  {
+    id: Type.Number({ description: "岗位ID", example: 1 }),
+    name: Type.String({ description: "岗位名称", example: "Java工程师" }),
+    status: Type.String({
+      enum: ["0", "1"],
+      description: "状态（0-禁用，1-启用）",
+      example: "1",
+    }),
+    sort_order: Type.Number({ description: "排序序号", example: 10 }),
+    description: Type.Optional(
+      Type.String({ description: "岗位描述", example: "从事Java服务端开发" })
+    ),
+    creatorId: Type.Optional(Type.Number({ description: "创建人Id", example: 1 })),
+    creatorName: Type.Optional(
+      Type.String({ description: "创建人名称", example: "admin" })
+    ),
+    createdAt: Type.String({ format: "date-time", description: "创建时间" }),
+    updaterId: Type.Optional(Type.Number({ description: "更新人Id", example: 1 })),
+    updaterName: Type.Optional(
+      Type.String({ description: "更新人名称", example: "admin" })
+    ),
+    updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
+  },
+  { $id: "sysPost" }
+);
+
+export type SysPostResp = Static<typeof SysPostSchema>;
+
+const SavePostReqSchema = Type.Object(
+  {
+    name: Type.String({ description: "岗位名称", minLength: 1, maxLength: 100 }),
+    status: Type.Optional(
+      Type.String({ enum: ["0", "1"], description: "状态", default: "1" })
+    ),
+    sort_order: Type.Optional(
+      Type.Number({ description: "排序序号", default: 0 })
+    ),
+    description: Type.Optional(
+      Type.String({ description: "岗位描述", maxLength: 255 })
+    ),
+  },
+  { $id: "savePostReq" }
+);
+
+const UpdatePostReqSchema = Type.Object(
+  {
+    name: Type.Optional(
+      Type.String({ description: "岗位名称", minLength: 1, maxLength: 100 })
+    ),
+    status: Type.Optional(
+      Type.String({ enum: ["0", "1"], description: "状态" })
+    ),
+    sort_order: Type.Optional(
+      Type.Number({ description: "排序序号" })
+    ),
+    description: Type.Optional(
+      Type.String({ description: "岗位描述", maxLength: 255 })
+    ),
+  },
+  { $id: "updatePostReq", minProperties: 1 }
+);
+
+export type SavePostReq = Static<typeof SavePostReqSchema>;
+export type UpdatePostReq = Static<typeof UpdatePostReqSchema>;
+
+const PostListQuerySchema = Type.Object(
+  {
+    ...PaginationQuerySchema.properties,
+    keyword: Type.Optional(
+      Type.String({ description: "搜索关键词（名称、描述）" })
+    ),
+    status: Type.Optional(
+      Type.String({ enum: ["0", "1"], description: "岗位状态" })
+    ),
+    sortBy: Type.Optional(
+      Type.String({
+        enum: ["sort_order", "createdAt", "updatedAt"],
+        default: "sort_order",
+        description: "排序字段",
+      })
+    ),
+    sortOrder: Type.Optional(
+      Type.String({ enum: ["asc", "desc"], default: "asc", description: "排序方向" })
+    ),
+  },
+  { $id: "postListQuery" }
+);
+
+export type PostListQuery = Static<typeof PostListQuerySchema>;
+
+const PostListRespSchema = successResponse({
+  data: Type.Array(Type.Ref("sysPost")),
+  $id: "postListResp",
+  includePagination: true,
+});
+
+const PostDetailRespSchema = successResponse({
+  data: Type.Ref("sysPost"),
+  $id: "postDetailResp",
+});
+
+const PostDeleteRespSchema = successResponse({
+  data: Type.Object({ id: Type.Number({ description: "岗位ID" }) }),
+  $id: "postDeleteResp",
+  message: "删除成功",
+});
+
+const registerPost = (fastify: FastifyInstance) => {
+  fastify.addSchema(SysPostSchema);
+  fastify.addSchema(PostListQuerySchema);
+  fastify.addSchema(PostListRespSchema);
+  fastify.addSchema(SavePostReqSchema);
+  fastify.addSchema(UpdatePostReqSchema);
+  fastify.addSchema(PostDetailRespSchema);
+  fastify.addSchema(PostDeleteRespSchema);
+};
+
+export default registerPost;

@@ -4,34 +4,31 @@
 # ------------------------------------
 
 edition: 3.0.0
-name: fastify-yishan-api
-access: "default"
+name: yishan-example
+access: "enterprise"
 vars:
   region: "cn-shanghai"
-  functionName: "fastify-yishan-api"
+  functionName: "yishan-example"
+  customDomain: "example.zerocmf.com"
+  certName: "example-zerocmf-com-20260328"
 resources:
-  start_fastify:
+  yishan_example:
     component: fc3
-    actions:
-      pre-deploy:
     props:
       region: ${vars.region}
-      description: Fastify Yishan API
+      description: "Yishan Example - Fastify API + Admin Static"
       runtime: custom.debian12
       timeout: 60
-      cpu: 2
-      memorySize: 4096
+      cpu: 1
+      memorySize: 2048
       diskSize: 512
       instanceConcurrency: 100
       layers:
         - acs:fc:${vars.region}:1650595695532785:layers/yishanLayer/versions/1
       environmentVariables:
-        PATH: >-
-          /var/fc/lang/nodejs22/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin:/opt/bin:/code:/code/bin
-        NODE_PATH: >-
-          /opt/nodejs/node_modules
-        LD_LIBRARY_PATH: >-
-          /code:/code/lib:/usr/lib:/opt/lib:/usr/local/lib
+        PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin:/code:/code/bin
+        NODE_PATH: /opt/nodejs/node_modules
+        LD_LIBRARY_PATH: /code:/code/lib:/usr/lib:/opt/lib:/usr/local/lib
       customRuntimeConfig:
         command:
           - node
@@ -49,4 +46,22 @@ resources:
               - POST
               - PUT
               - DELETE
+              - PATCH
+              - OPTIONS
+              - HEAD
             authType: anonymous
+
+  example_domain:
+    component: fc3-domain
+    props:
+      region: ${vars.region}
+      domainName: ${vars.customDomain}
+      protocol: HTTPS
+      certConfig:
+        certName: ${vars.certName}
+        certificate: ${file(./deploy/fc3/certs/fullchain.cer)}
+        privateKey: ${file(./deploy/fc3/certs/private.key)}
+      routeConfig:
+        routes:
+          - path: /*
+            functionName: ${vars.functionName}

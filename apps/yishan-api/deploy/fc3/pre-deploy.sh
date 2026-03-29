@@ -15,4 +15,6 @@ npm run build:ts
 echo "4. 拷贝运行时文件到 dist"
 cp .env dist/
 cp package.json dist/
+mkdir -p dist/public
+cp -R public/admin dist/public/
 echo "✅ 构建完成"

@@ -26,9 +26,11 @@ export default fp(async (fastify: FastifyInstance) => {
       return
     }
 
-    // 处理业务异常
-    if (error instanceof BusinessError) {
-      return ResponseUtil.error(reply, error.code, error.message, error.details)
+    const anyError = error as any
+    const hasBusinessCode = typeof anyError?.code === 'number'
+
+    if (error instanceof BusinessError || hasBusinessCode) {
+      return ResponseUtil.error(reply, anyError.code, anyError.message, anyError.details)
     }
 
     // 处理 Fastify 内置错误
