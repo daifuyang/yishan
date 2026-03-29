@@ -76,26 +76,6 @@ jobs:
           printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
           printf '%s\n' "REDIS_URL=${REDIS_URL}" >> "$ENV_FILE"
 
-      - name: Prepare TLS cert files
-        working-directory: apps/yishan-api
-        env:
-          TLS_FULLCHAIN_CER: ${{ secrets.TLS_FULLCHAIN_CER }}
-          TLS_PRIVATE_KEY: ${{ secrets.TLS_PRIVATE_KEY }}
-        run: |
-          if [ -z "${TLS_FULLCHAIN_CER:-}" ]; then
-            echo "Missing secret: TLS_FULLCHAIN_CER"
-            exit 1
-          fi
-          if [ -z "${TLS_PRIVATE_KEY:-}" ]; then
-            echo "Missing secret: TLS_PRIVATE_KEY"
-            exit 1
-          fi
-          CERT_DIR="$(pwd)/deploy/fc3/certs"
-          mkdir -p "$CERT_DIR"
-          printf '%s' "$TLS_FULLCHAIN_CER" > "$CERT_DIR/fullchain.cer"
-          printf '%s' "$TLS_PRIVATE_KEY" > "$CERT_DIR/private.key"
-          chmod 600 "$CERT_DIR/fullchain.cer" "$CERT_DIR/private.key"
-
       - name: Install Serverless Devs
         run: npm i -g @serverless-devs/s
 
@@ -119,14 +99,14 @@ jobs:
               --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
               --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
               --AccountID "$ACCOUNT_ID_CLEAN" \
-              -a default \
+              -a enterprise \
               -f
           else
             echo "ALIBABA_CLOUD_ACCOUNT_ID missing or invalid, try non-AccountID mode"
             s config add \
               --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
               --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
-              -a default \
+              -a enterprise \
               -f
           fi
 
