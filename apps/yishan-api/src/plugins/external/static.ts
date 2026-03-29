@@ -23,6 +23,9 @@ export default fp(async (fastify) => {
       prefix: '/',
       index: false
     })
+    adminScope.get('/', async (_request, reply) => {
+      return reply.sendFile('index.html')
+    })
     adminScope.setNotFoundHandler(async (_request, reply) => {
       return reply.sendFile('index.html')
     })
