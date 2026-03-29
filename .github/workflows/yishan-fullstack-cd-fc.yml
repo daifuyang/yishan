@@ -113,21 +113,22 @@ jobs:
             echo "Missing secret: ALIBABA_CLOUD_ACCESS_KEY_SECRET"
             exit 1
           fi
-          if [ -z "${ALIBABA_CLOUD_ACCOUNT_ID:-}" ]; then
-            echo "Missing secret: ALIBABA_CLOUD_ACCOUNT_ID"
-            exit 1
+          ACCOUNT_ID_CLEAN="$(echo "${ALIBABA_CLOUD_ACCOUNT_ID:-}" | tr -d '[:space:]')"
+          if [ -n "${ACCOUNT_ID_CLEAN}" ] && echo "${ACCOUNT_ID_CLEAN}" | grep -Eq '^[0-9]{16,32}$'; then
+            s config add \
+              --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
+              --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
+              --AccountID "$ACCOUNT_ID_CLEAN" \
+              -a default \
+              -f
+          else
+            echo "ALIBABA_CLOUD_ACCOUNT_ID missing or invalid, try non-AccountID mode"
+            s config add \
+              --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
+              --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
+              -a default \
+              -f
           fi
-          ACCOUNT_ID_CLEAN="$(echo "${ALIBABA_CLOUD_ACCOUNT_ID}" | tr -d '[:space:]')"
-          if ! echo "${ACCOUNT_ID_CLEAN}" | grep -Eq '^[0-9]{16,32}$'; then
-            echo "Invalid ALIBABA_CLOUD_ACCOUNT_ID format: must be 16-32 digits"
-            exit 1
-          fi
-          s config add \
-            --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
-            --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
-            --AccountID "$ACCOUNT_ID_CLEAN" \
-            -a default \
-            -f
 
       - name: Build Package (pre-deploy in FC runtime image)
         working-directory: apps/yishan-api
