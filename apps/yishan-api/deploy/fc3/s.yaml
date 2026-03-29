@@ -9,8 +9,6 @@ access: "enterprise"
 vars:
   region: "cn-shanghai"
   functionName: "yishan-example"
-  customDomain: "example.zerocmf.com"
-  certName: "example-zerocmf-com-20260328"
 resources:
   yishan_example:
     component: fc3
@@ -50,18 +48,3 @@ resources:
               - OPTIONS
               - HEAD
             authType: anonymous
-
-  example_domain:
-    component: fc3-domain
-    props:
-      region: ${vars.region}
-      domainName: ${vars.customDomain}
-      protocol: HTTPS
-      certConfig:
-        certName: ${vars.certName}
-        certificate: ${file(./deploy/fc3/certs/fullchain.cer)}
-        privateKey: ${file(./deploy/fc3/certs/private.key)}
-      routeConfig:
-        routes:
-          - path: /*
-            functionName: ${vars.functionName}
