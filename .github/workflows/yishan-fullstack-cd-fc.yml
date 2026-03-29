@@ -85,10 +85,27 @@ jobs:
           ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
           ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
         run: |
+          if [ -z "${ALIBABA_CLOUD_ACCESS_KEY_ID:-}" ]; then
+            echo "Missing secret: ALIBABA_CLOUD_ACCESS_KEY_ID"
+            exit 1
+          fi
+          if [ -z "${ALIBABA_CLOUD_ACCESS_KEY_SECRET:-}" ]; then
+            echo "Missing secret: ALIBABA_CLOUD_ACCESS_KEY_SECRET"
+            exit 1
+          fi
+          if [ -z "${ALIBABA_CLOUD_ACCOUNT_ID:-}" ]; then
+            echo "Missing secret: ALIBABA_CLOUD_ACCOUNT_ID"
+            exit 1
+          fi
+          ACCOUNT_ID_CLEAN="$(echo "${ALIBABA_CLOUD_ACCOUNT_ID}" | tr -d '[:space:]')"
+          if ! echo "${ACCOUNT_ID_CLEAN}" | grep -Eq '^[0-9]{16,32}$'; then
+            echo "Invalid ALIBABA_CLOUD_ACCOUNT_ID format: must be 16-32 digits"
+            exit 1
+          fi
           s config add \
             --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
             --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
-            --AccountID "$ALIBABA_CLOUD_ACCOUNT_ID" \
+            --AccountID "$ACCOUNT_ID_CLEAN" \
             -a default \
             -f
 

@@ -57,10 +57,6 @@ GitHub Actions 工作流目录：
   - `yishan-admin-cd-fc.yml`
   - `yishan-api-ci.yml`
   - `yishan-api-cd-fc.yml`
-- CI 独立备份目录：`c:\Workspace\Frontend\yishan\.github\workflows_backup\split-ci-mode-20260329`
-- CI 备份文件：
-  - `yishan-admin-ci.yml`
-  - `yishan-api-ci.yml`
 
 常用排查顺序：
 
@@ -68,6 +64,16 @@ GitHub Actions 工作流目录：
 2. 检查仓库 Secrets（数据库、Redis、阿里云 AK/SK 等）是否已配置
 3. 按失败步骤在本地复现（如 `pnpm --filter yishan-admin lint`、`pnpm --filter yishan-api test`）
 4. 修复后重新 push 或手动触发 `workflow_dispatch`
+
+当 CD 在 `Configure Serverless Devs Access` 失败并出现 `Interaction in cicd environment` 时，通常是 `ALIBABA_CLOUD_ACCOUNT_ID` 缺失或格式不正确（空值、包含空格、非数字）。
+
+建议在 GitHub Environment `YISHAN_API` 中确认以下 Secrets：
+
+- `ALIBABA_CLOUD_ACCESS_KEY_ID`
+- `ALIBABA_CLOUD_ACCESS_KEY_SECRET`
+- `ALIBABA_CLOUD_ACCOUNT_ID`（应为 16-32 位数字）
+
+安全建议：避免使用主账号根用户 AccessKey，优先使用 RAM 子账号并按最小权限授权。
 
 ### 使用 act 本地测试合并 CI
 
