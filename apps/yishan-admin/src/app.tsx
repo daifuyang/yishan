@@ -19,7 +19,6 @@ import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
 import type { CloudStorageConfig } from "@/utils/attachmentUpload";
 import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
 import avatarFallback from "@public/icons/avatar.png";
-import React from "react";
 import { TOKEN_KEYS } from "./utils/token";
 import queryString from "query-string";
 
@@ -36,7 +35,7 @@ const getRelativePath = (pathname: string) => {
 
 const isLoginRoute = (pathname: string) => getRelativePath(pathname) === loginPath;
 
-const IconMap: Record<string, React.ReactNode> = {
+const IconMap: Record<string, JSX.Element> = {
   setting: <SettingOutlined />,
   read: <ReadOutlined />,
 };
@@ -114,7 +113,7 @@ const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => 
     const item: MenuDataItem = {
       name: n.name,
       path: n.path || '/',
-      icon: n.icon ? (IconMap[String(n.icon).toLowerCase()] as React.ReactNode) : undefined,
+      icon: n.icon ? IconMap[String(n.icon).toLowerCase()] : undefined,
       hideInMenu: n.hideInMenu,
     };
     if (Array.isArray(n.children) && n.children.length) {

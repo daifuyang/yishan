@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   AppstoreOutlined,
   DashboardOutlined,
@@ -57,7 +56,7 @@ export const PRESET_COLORS = [
   '#000000', // Black
 ];
 
-export const ICON_MAP: Record<string, React.ReactNode> = {
+export const ICON_MAP: Record<string, JSX.Element> = {
   AppstoreOutlined: <AppstoreOutlined />,
   DashboardOutlined: <DashboardOutlined />,
   BarChartOutlined: <BarChartOutlined />,
