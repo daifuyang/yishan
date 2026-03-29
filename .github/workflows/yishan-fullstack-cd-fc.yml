@@ -49,6 +49,8 @@ jobs:
           pnpm build --filter yishan-tiptap
 
       - name: Build yishan-admin
+        env:
+          PUBLIC_PATH: /admin/
         run: pnpm --filter yishan-admin build
 
       - name: Sync admin dist to api public

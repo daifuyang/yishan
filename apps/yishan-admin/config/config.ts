@@ -14,7 +14,8 @@ const { UMI_ENV = 'dev' } = process.env;
  * @description 部署时的路径，如果部署在非根目录下，需要配置这个变量
  * @doc https://umijs.org/docs/api/config#publicpath
  */
-const PUBLIC_PATH: string =  '/';
+const rawPublicPath = process.env.PUBLIC_PATH || '/';
+const PUBLIC_PATH = `/${rawPublicPath.replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
 
 export default defineConfig({
   /**

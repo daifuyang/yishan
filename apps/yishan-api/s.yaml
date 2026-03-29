@@ -21,7 +21,7 @@ resources:
       diskSize: 512
       instanceConcurrency: 100
       layers:
-        - acs:fc:${vars.region}:1650595695532785:layers/yishanLayer/versions/1
+        - acs:fc:${vars.region}:1650595695532785:layers/yishanLayer/versions/2
       environmentVariables:
         PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin:/code:/code/bin
         NODE_PATH: /opt/nodejs/node_modules
