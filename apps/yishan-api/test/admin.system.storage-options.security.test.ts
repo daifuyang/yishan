@@ -1,11 +1,11 @@
 import Fastify from 'fastify'
-import adminSystemOptionsPlugin from '../src/routes/api/v1/admin/system/options/index.ts'
-import adminSystemStoragePlugin from '../src/routes/api/v1/admin/system/storage/index.ts'
-import registerSystemSchemas from '../src/schemas/system.ts'
-import errorHandlerPlugin from '../src/plugins/external/error-handler.ts'
+import adminSystemOptionsPlugin from '../src/core/routes/api/v1/admin/system/options/index.ts'
+import adminSystemStoragePlugin from '../src/core/routes/api/v1/admin/system/storage/index.ts'
+import registerSystemSchemas from '../src/core/schemas/system.ts'
+import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { SystemOptionService } from '../src/services/system-option.service.ts'
-import { StorageConfigService } from '../src/services/storage-config.service.ts'
+import { SystemOptionService } from '../src/core/services/system-option.service.ts'
+import { StorageConfigService } from '../src/core/services/storage-config.service.ts'
 
 async function buildAppWithOptions() {
   const app = Fastify({ logger: false })
@@ -128,4 +128,3 @@ describe('Admin system secret redaction', () => {
     expect(stored.secretKey).toBe('new')
   })
 })
-

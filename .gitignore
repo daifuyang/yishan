@@ -1,6 +1,34 @@
-node_modules
-dist
-demo/
-.vscode
+node_modules/
+dist/
+build/
+coverage/
+.cache/
+
+# Local environment
 .env
-.pnpm-store
+.env.*
+!.env.example
+
+# Package manager
+.pnpm-store/
+
+# IDE and OS artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary and backup files
+*.tmp
+*.temp
+*.bak
+demo/

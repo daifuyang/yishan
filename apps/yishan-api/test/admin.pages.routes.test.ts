@@ -3,7 +3,7 @@ import adminPagesPlugin from "../src/plugins/modules/portal/routes/v1/admin/page
 import registerCommonSchemas from "../src/plugins/modules/portal/schemas/common.ts";
 import registerPageSchemas from "../src/plugins/modules/portal/schemas/page.ts";
 import registerTemplateSchemas from "../src/plugins/modules/portal/schemas/template.ts";
-import errorHandlerPlugin from "../src/plugins/external/error-handler.ts";
+import errorHandlerPlugin from "../src/core/plugins/external/error-handler.ts";
 import { PageService } from "../src/plugins/modules/portal/services/page.service.ts";
 import { PageErrorCode } from "../src/plugins/modules/portal/constants/business-codes/page.ts";
 import { BusinessError } from "../src/plugins/modules/portal/exceptions/business-error.ts";

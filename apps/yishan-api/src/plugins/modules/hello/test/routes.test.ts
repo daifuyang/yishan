@@ -1,8 +1,8 @@
 import Fastify from 'fastify'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import helloPublicRoutes from '../routes/v1/public/index.js'
-import helloAdminRoutes from '../routes/v1/admin/index.js'
-import helloAdminMeRoutes from '../routes/v1/admin/me/index.js'
+import helloPublicRoutes from '../routes/v1/public/index'
+import helloAdminRoutes from '../routes/v1/admin/index'
+import helloAdminMeRoutes from '../routes/v1/admin/me/index'
 
 async function buildApp () {
   const app = Fastify({ logger: false })

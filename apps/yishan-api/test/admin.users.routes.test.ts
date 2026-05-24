@@ -1,15 +1,15 @@
 import Fastify from "fastify";
-import adminUsersPlugin from "../src/routes/api/v1/admin/users/index.ts";
-import registerUserSchemas from "../src/schemas/user.ts";
-import registerCommonSchemas from "../src/schemas/common.ts";
-import errorHandlerPlugin from "../src/plugins/external/error-handler.ts";
-import { UserService } from "../src/services/user.service.ts";
+import adminUsersPlugin from "../src/core/routes/api/v1/admin/users/index.ts";
+import registerUserSchemas from "../src/core/schemas/user.ts";
+import registerCommonSchemas from "../src/core/schemas/common.ts";
+import errorHandlerPlugin from "../src/core/plugins/external/error-handler.ts";
+import { UserService } from "../src/core/services/user.service.ts";
 import { ValidationErrorCode } from "../src/constants/business-codes/validation.ts";
 import { UserErrorCode } from "../src/constants/business-codes/user.ts";
 import { BusinessError } from "../src/exceptions/business-error.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { prismaManager } from "../src/utils/prisma.js";
-import { SysUserModel } from "../src/models/sys-user.model.ts";
+import { SysUserModel } from "../src/core/models/sys-user.model.ts";
 
 async function buildApp() {
   const app = Fastify({ logger: false });

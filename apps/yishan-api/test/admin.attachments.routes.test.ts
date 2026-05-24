@@ -1,12 +1,12 @@
 import Fastify from "fastify";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import multipartPlugin from "../src/plugins/external/multipart.ts";
-import staticPlugin from "../src/plugins/external/static.ts";
-import errorHandlerPlugin from "../src/plugins/external/error-handler.ts";
-import adminAttachmentsPlugin from "../src/routes/api/v1/admin/attachments/index.ts";
-import registerCommonSchemas from "../src/schemas/common.ts";
-import registerAttachmentSchemas from "../src/schemas/attachment.ts";
-import { AttachmentService } from "../src/services/attachment.service.ts";
+import multipartPlugin from "../src/core/plugins/external/multipart.ts";
+import staticPlugin from "../src/core/plugins/external/static.ts";
+import errorHandlerPlugin from "../src/core/plugins/external/error-handler.ts";
+import adminAttachmentsPlugin from "../src/core/routes/api/v1/admin/attachments/index.ts";
+import registerCommonSchemas from "../src/core/schemas/common.ts";
+import registerAttachmentSchemas from "../src/core/schemas/attachment.ts";
+import { AttachmentService } from "../src/core/services/attachment.service.ts";
 import { join } from "node:path";
 import { promises as fs } from "node:fs";
 

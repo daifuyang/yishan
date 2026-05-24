@@ -3,7 +3,7 @@ import adminArticlesPlugin from "../src/plugins/modules/portal/routes/v1/admin/a
 import registerCommonSchemas from "../src/plugins/modules/portal/schemas/common.ts";
 import registerArticleSchemas from "../src/plugins/modules/portal/schemas/article.ts";
 import registerTemplateSchemas from "../src/plugins/modules/portal/schemas/template.ts";
-import errorHandlerPlugin from "../src/plugins/external/error-handler.ts";
+import errorHandlerPlugin from "../src/core/plugins/external/error-handler.ts";
 import { ArticleService, CategoryService } from "../src/plugins/modules/portal/services/article.service.ts";
 import { ArticleErrorCode, CategoryErrorCode } from "../src/plugins/modules/portal/constants/business-codes/article.ts";
 import { BusinessError } from "../src/plugins/modules/portal/exceptions/business-error.ts";
@@ -159,4 +159,3 @@ describe("Admin Articles routes", () => {
     await app.close();
   });
 });
-

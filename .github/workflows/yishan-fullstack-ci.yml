@@ -3,6 +3,7 @@ name: yishan-fullstack-ci
 on:
   push:
     paths:
+      - ".github/workflows/**"
       - "apps/yishan-admin/**"
       - "apps/yishan-api/**"
       - "apps/yishan-components/yishan-tiptap/**"
@@ -11,6 +12,7 @@ on:
       - "pnpm-workspace.yaml"
   pull_request:
     paths:
+      - ".github/workflows/**"
       - "apps/yishan-admin/**"
       - "apps/yishan-api/**"
       - "apps/yishan-components/yishan-tiptap/**"
@@ -41,13 +43,19 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --force
+
+      - name: Architecture Guard
+        run: pnpm arch:check
 
       - name: Prepare yishan-tiptap
         working-directory: apps/yishan-components/yishan-tiptap
         run: |
           pnpm install --filter yishan-tiptap --no-frozen-lockfile
           pnpm build --filter yishan-tiptap
+
+      - name: Admin Setup
+        run: pnpm --filter yishan-admin max setup
 
       - name: Admin Lint
         run: pnpm --filter yishan-admin lint
