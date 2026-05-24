@@ -220,29 +220,7 @@ export const systemMenusSeed: MenuSeedNode = {
         { name: '应用详情', path: '/system/apps/:id', type: 2, sortOrder: 12, component: './system/apps/detail' },
       ]
     },
-  ],
-};
-
-export const portalMenusSeed: MenuSeedNode = {
-  name: '门户管理',
-  path: '/portal',
-  type: 0,
-  sortOrder: 2,
-  icon: 'read',
-  children: [
-    { name: '文章管理', path: '/portal/articles', type: 1, sortOrder: 1, component: './portal/articles' },
-    { name: '页面管理', path: '/portal/pages', type: 1, sortOrder: 2, component: './portal/pages' },
-    { name: '分类管理', path: '/portal/categories', type: 1, sortOrder: 3, component: './portal/categories' },
-    {
-      name: '模板设置',
-      path: '/portal/templates',
-      type: 0,
-      sortOrder: 4,
-      children: [
-        { name: '文章模板', path: '/portal/article-templates', type: 1, sortOrder: 1, component: './portal/article-templates' },
-        { name: '页面模板', path: '/portal/page-templates', type: 1, sortOrder: 2, component: './portal/page-templates' },
-      ],
-    },
+    { name: '插件管理', path: '/system/plugins', type: 1, sortOrder: 13, component: './system/plugins' },
   ],
 };
 

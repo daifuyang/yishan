@@ -1,3 +1,5 @@
+import pluginRoutes from './generated/plugin-routes';
+
 /**
  * @name umi 的路由配置
  * @description 只支持 path,component,routes,redirect,wrappers,name,icon 的配置
@@ -11,6 +13,8 @@
  * @doc https://umijs.org/docs/guides/routes
  */
 export default [
+  // Menu single source of truth: backend sys_menu / plugin manifests.
+  // Frontend routes here are only for component mounting and access guards.
   {
     path: '/user',
     layout: false,
@@ -24,116 +28,49 @@ export default [
   },
   {
     path: '/system/user',
-    name: 'user',
     component: './system/user',
     access: 'canDo',
   },
   {
     path: '/system/role',
-    name: 'role',
     component: './system/role',
     access: 'canDo',
   },
   {
     path: '/system/menu',
-    name: 'menu',
     component: './system/menu',
     access: 'canDo',
   },
   {
     path: '/system/department',
-    name: 'department',
     component: './system/department',
     access: 'canDo',
   },
   {
     path: '/system/post',
-    name: 'post',
     component: './system/post',
     access: 'canDo',
   },
   {
     path: '/system/dict',
-    name: 'dict',
     component: './system/dict',
     access: 'canDo',
   },
   {
     path: '/system/site',
-    name: 'site',
     component: './system/site',
     access: 'canDo',
   },
   {
-    path: '/system/attachments',
-    name: 'attachments',
-    component: './system/attachments',
-    access: 'canDo',
-  },
-  {
-    path: '/system/storage',
-    name: 'storage',
-    component: './system/storage',
-    access: 'canDo',
-  },
-  {
-    path: '/system/login-log',
-    name: 'login-log',
-    component: './system/login-log',
-    access: 'canDo',
-  },
-  {
-    path: '/system/apps',
-    name: 'apps',
-    component: './system/apps',
-    access: 'canDo',
-  },
-  {
-    path: '/system/apps/:id',
-    name: 'apps.detail',
-    component: './system/apps/detail',
-    layout: false,
-    access: 'canDo',
-  },
-  {
-    path: '/portal',
-    redirect: '/portal/articles',
-    access: 'canDo',
-  },
-  {
-    path: '/portal/articles',
-    name: 'portal.articles',
-    component: './portal/articles',
-    access: 'canDo',
-  },
-  {
-    path: '/portal/categories',
-    name: 'portal.categories',
-    component: './portal/categories',
-    access: 'canDo',
-  },
-  {
-    path: '/portal/pages',
-    name: 'portal.pages',
-    component: './portal/pages',
-    access: 'canDo',
-  },
-  {
-    path: '/portal/article-templates',
-    name: 'portal.article-templates',
-    component: './portal/article-templates',
-    access: 'canDo',
-  },
-  {
-    path: '/portal/page-templates',
-    name: 'portal.page-templates',
-    component: './portal/page-templates',
+    path: '/system/plugins',
+    component: './system/plugins',
     access: 'canDo',
   },
   {
     path: '/',
     component: './index',
   },
+  ...pluginRoutes,
   {
     path: '*',
     layout: false,

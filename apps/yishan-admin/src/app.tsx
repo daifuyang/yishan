@@ -1,4 +1,4 @@
-import { LinkOutlined, ReadOutlined, SettingOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, LinkOutlined, ReadOutlined, SettingOutlined, SmileOutlined } from "@ant-design/icons";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
@@ -21,23 +21,27 @@ import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmen
 import avatarFallback from "@public/icons/avatar.png";
 import { TOKEN_KEYS } from "./utils/token";
 import queryString from "query-string";
+import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPath";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
-const ADMIN_BASE = (process.env.PUBLIC_PATH || "/admin/").replace(/\/+$/, "");
+const ADMIN_BASE = getBasePrefixFromPublicPath(process.env.PUBLIC_PATH);
 
 const getRelativePath = (pathname: string) => {
-  if (pathname.startsWith(ADMIN_BASE)) {
-    return pathname.slice(ADMIN_BASE.length) || "/";
-  }
-  return pathname;
+  return stripBasePrefix(pathname, ADMIN_BASE);
 };
 
 const isLoginRoute = (pathname: string) => getRelativePath(pathname) === loginPath;
 
 const IconMap: Record<string, JSX.Element> = {
+  appstore: <AppstoreOutlined />,
+  appstoreoutlined: <AppstoreOutlined />,
   setting: <SettingOutlined />,
+  settingoutlined: <SettingOutlined />,
+  smile: <SmileOutlined />,
+  smileoutlined: <SmileOutlined />,
   read: <ReadOutlined />,
+  readoutlined: <ReadOutlined />,
 };
 
 /**

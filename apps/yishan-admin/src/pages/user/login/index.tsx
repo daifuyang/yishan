@@ -8,6 +8,7 @@ import { login as userLogin, getCurrentUser } from "@/services/yishan-admin/auth
 import { saveTokens } from "@/utils/token";
 import loginBgImage from "@public/images/login-bg.png";
 import loginBrandImage from "@public/images/login-brand.png";
+import { getBasePrefixFromPublicPath } from "../../../../shared/publicPath";
 
 const useStyles = createStyles(({ css }) => {
   return {
@@ -110,7 +111,7 @@ const LoginMessage: React.FC<{
 };
 
 const Login: React.FC = () => {
-  const adminBase = (process.env.PUBLIC_PATH || "/admin/").replace(/\/+$/, "");
+  const adminBase = getBasePrefixFromPublicPath(process.env.PUBLIC_PATH);
   const appHome = adminBase ? `${adminBase}/` : "/";
   const [loginError, setLoginError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);

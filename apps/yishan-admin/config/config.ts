@@ -4,6 +4,7 @@ import { defineConfig } from '@umijs/max';
 import path from 'node:path';
 import defaultSettings from './defaultSettings';
 import proxy from './proxy';
+import { normalizePublicPath } from '../shared/publicPath';
 
 import routes from './routes';
 
@@ -15,7 +16,7 @@ const { UMI_ENV = 'dev' } = process.env;
  * @doc https://umijs.org/docs/api/config#publicpath
  */
 const rawPublicPath = process.env.PUBLIC_PATH || '/';
-const PUBLIC_PATH = `/${rawPublicPath.replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
+const PUBLIC_PATH = normalizePublicPath(rawPublicPath);
 
 export default defineConfig({
   /**

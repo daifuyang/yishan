@@ -9,45 +9,45 @@
 - **构建工具**: UmiJS 4.x + Max 插件
 - **样式方案**: Less + Ant Design Style
 - **代码规范**: Biome
-- **包管理**: npm
+- **包管理**: pnpm（monorepo workspace）
 
 ## 环境要求
 
 - Node.js >= 20.0.0
-- npm >= 8.0.0
+- pnpm >= 8.0.0
 
 ## 快速开始
 
 ### 安装依赖
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 开发环境启动
 
 ```bash
 # 启动开发服务器（包含 mock 数据）
-npm start
+pnpm --filter yishan-admin start
 
 # 启动开发服务器（不包含 mock 数据）
-npm run start:no-mock
+pnpm --filter yishan-admin start:no-mock
 
 # 测试环境启动
-npm run start:test
+pnpm --filter yishan-admin start:test
 
 # 预发布环境启动
-npm run start:pre
+pnpm --filter yishan-admin start:pre
 ```
 
 ### 构建项目
 
 ```bash
 # 生产环境构建
-npm run build
+pnpm --filter yishan-admin build
 
 # 构建并预览
-npm run preview
+pnpm --filter yishan-admin preview
 ```
 
 ## 开发脚本

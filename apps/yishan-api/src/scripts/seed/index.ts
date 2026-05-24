@@ -5,7 +5,6 @@ import {
   dictsSeed,
   portalArticlesSeed,
   portalCategoriesSeed,
-  portalMenusSeed,
   portalPagesSeed,
   portalTemplatesSeed,
   postsSeed,
@@ -31,7 +30,7 @@ export async function runSeed(prisma: PrismaClient) {
 
   await seedDepartments(prisma, adminUser.id, deptTreeSeed);
   await seedPosts(prisma, adminUser.id, postsSeed);
-  await seedMenus(prisma, adminUser.id, [systemMenusSeed, portalMenusSeed]);
+  await seedMenus(prisma, adminUser.id, [systemMenusSeed]);
   await seedDicts(prisma, adminUser.id, dictsSeed);
   await seedSysOptions(prisma, adminUser.id, sysOptionsSeed);
 
