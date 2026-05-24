@@ -5,7 +5,7 @@
 ## 相关链接
 
 - 演示站点：https://admin.zerocmf.com
-  账号密码：admin/admin123
+  测试账号请联系维护者按需申请，避免公开固定凭证
 - GitHub 仓库：https://github.com/zerocmf/yishan
 
 ## 项目结构
@@ -83,7 +83,7 @@ pnpm --filter yishan-tiptap dev          # 开发模式（watch）
 ### 后端（yishan-api）
 - 框架：Fastify 5
 - 类型与校验：TypeBox（JSON Schema）
-- ORM：Prisma 6
+- ORM：Prisma 7
 - 认证：JWT
 - 缓存：Redis（可选）
 - 文档：Swagger + Swagger UI
@@ -134,6 +134,60 @@ dist/                     # 构建产物（cjs、esm、d.ts、css）
 ```
 
 ## 开发状态
+
+## 业务功能实现现状（当前代码）
+
+以下内容基于当前仓库已有页面与接口代码整理。
+
+### 已实现（前后端均有代码）
+- 认证与会话：登录、JWT 鉴权、登录日志
+- 用户与权限：用户管理、角色管理、菜单管理、部门管理
+- 系统配置：系统选项（Site 配置页）、字典管理（字典类型/字典数据）
+- 文件与存储：附件管理、本地存储配置、七牛云存储配置
+- 应用管理：应用列表与详情管理（含资源配置）
+
+### 已实现（前端页面已落地）
+- 内容管理：文章、分类、页面、文章模板、页面模板
+- 组织岗位：岗位管理（Post）
+
+### 工程与平台能力
+- OpenAPI/Swagger 文档入口
+- CI 校验链路（admin/api/tiptap）
+- FC3 部署链路（API + Admin 静态资源）
+
+### 主要代码位置
+- 后端路由：`apps/yishan-api/src/routes/api/v1/admin`
+- 认证路由：`apps/yishan-api/src/routes/api/v1/auth`
+- 后台页面：`apps/yishan-admin/src/pages/system`、`apps/yishan-admin/src/pages/portal`
+
+### 菜单命名与功能对照（深度检查）
+
+以下对照基于当前“动态菜单（后端 seed）+ 前端页面 + 后端接口”综合判断。
+
+| 菜单路径 | 菜单名称 | 前端页面 | 后端接口 | 状态 |
+| --- | --- | --- | --- | --- |
+| `/system/user` | 用户管理 | `system/user` | `api/v1/admin/users` | 已实现 |
+| `/system/role` | 角色管理 | `system/role` | `api/v1/admin/roles` | 已实现 |
+| `/system/department` | 部门管理 | `system/department` | `api/v1/admin/departments` | 已实现 |
+| `/system/post` | 岗位管理 | `system/post` | `modules/portal/v1/admin/posts` | 已实现（命名域待统一） |
+| `/system/menu` | 菜单管理 | `system/menu` | `api/v1/admin/menus` | 已实现 |
+| `/system/dict` | 字典管理 | `system/dict` | `api/v1/admin/dicts` | 已实现 |
+| `/system/site` | 站点配置 | `system/site` | `api/v1/admin/system/options` | 已实现 |
+| `/system/storage` | 云存储 | `system/storage` | `api/v1/admin/system/storage` + `api/v1/admin/system/qiniu` | 已实现 |
+| `/system/attachments` | 媒体库 | `system/attachments` | `api/v1/admin/attachments` | 已实现 |
+| `/system/login-log` | 登录日志 | `system/login-log` | `api/v1/admin/system/login-logs` | 已实现 |
+| `/system/apps` | 应用管理 | `system/apps` | `api/v1/admin/apps` | 已实现 |
+| `/portal/articles` | 文章管理 | `portal/articles` | `modules/portal/v1/admin/articles` | 已实现 |
+| `/portal/pages` | 页面管理 | `portal/pages` | `modules/portal/v1/admin/pages` | 已实现 |
+| `/portal/categories` | 分类管理 | `portal/categories` | `modules/portal/v1/admin/articles`（分类子接口） | 已实现 |
+| `/portal/article-templates` | 文章模板 | `portal/article-templates` | `modules/portal/v1/admin/articles`（模板接口） | 已实现 |
+| `/portal/page-templates` | 页面模板 | `portal/page-templates` | `modules/portal/v1/admin/pages`（模板接口） | 已实现 |
+
+命名规范上目前还有这些可优化点（不影响功能使用，但影响可维护性）：
+
+1. **领域边界不一致**：`/system/post` 页面实际调用 `portalPosts` 服务（`/api/modules/portal/.../posts`），建议统一为 system 域或组织域命名。
+2. **菜单分组与路由配置不完全一致**：后端 seed 有 `/portal/templates` 分组节点，但前端静态 `routes.ts` 未定义该中间路径；当前依赖动态菜单可展示子项，建议补齐分组路由或将其设为纯分组不可点击节点。
+3. **历史 i18n 菜单键残留**：`src/locales/zh-CN/menu.ts` 中仍有大量模板示例键（dashboard/form/list 等），与当前业务菜单不一致，建议精简避免误导。
 
 ### 已完成
 - monorepo 初始化与 pnpm 工作空间配置
