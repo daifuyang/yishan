@@ -1,4 +1,4 @@
-import { SysUserResp } from '../../../../schemas/user.js'
+import { SysUserResp } from '../../../../core/schemas/user.js'
 
 export class HelloService {
   static getHealth () {

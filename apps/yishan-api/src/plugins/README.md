@@ -1,5 +1,12 @@
 # Plugins Folder
 
+This folder now keeps module plugins only (`plugins/modules/**`).
+
+Core shared plugins were moved to:
+
+* `src/core/plugins/external`
+* `src/core/plugins/app`
+
 Plugins define behavior that is common to all the routes in your
 application. Authentication, caching, templates, and all the other cross
 cutting concerns should be handled by plugins placed in this folder.

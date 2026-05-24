@@ -295,6 +295,9 @@ model SysMenu {
   isExternalLink Boolean   @default(false) @map("is_external_link")
   perm           String?   @map("perm") @db.VarChar(100)
   keepAlive      Boolean   @default(false) @map("keep_alive")
+  source         String    @default("custom") @map("source") @db.VarChar(20)
+  pluginName     String?   @map("plugin_name") @db.VarChar(100)
+  pluginMenuKey  String?   @map("plugin_menu_key") @db.VarChar(255)
   creatorId      Int?      @map("creator_id")
   createdAt      DateTime  @default(now()) @map("created_at") @db.DateTime(0)
   updaterId      Int?      @map("updater_id")
@@ -311,6 +314,7 @@ model SysMenu {
   roleMenus SysRoleMenu[]
 
   @@unique([parentId, name], map: "uniq_menu_parent_name")
+  @@unique([pluginMenuKey], map: "uniq_plugin_menu_key")
   @@index([status], map: "idx_menu_status")
   @@index([createdAt], map: "idx_menu_created_at")
   @@index([deletedAt], map: "idx_menu_deleted_at")
@@ -318,6 +322,8 @@ model SysMenu {
   @@index([sort_order], map: "idx_menu_sort_order")
   @@index([updaterId])
   @@index([creatorId])
+  @@index([pluginName], map: "idx_menu_plugin_name")
+  @@index([source], map: "idx_menu_source")
   @@map("sys_menu")
 }
 
@@ -474,4 +480,100 @@ model SysAttachment {
   @@index([creatorId])
   @@index([updaterId])
   @@map("sys_attachment")
+}
+
+model SysPlugin {
+  id                Int       @id @default(autoincrement()) @map("id")
+  pluginId          String?   @unique @map("plugin_id") @db.VarChar(100)
+  org               String?   @map("org") @db.VarChar(50)
+  slug              String?   @map("slug") @db.VarChar(50)
+  source            String?   @map("source") @db.VarChar(30)
+  name              String?   @map("name") @db.VarChar(100)
+  currentVersion    String    @map("current_version") @db.VarChar(50)
+  coreCompatibility String?   @map("core_compatibility") @db.VarChar(50)
+  compatRange       String?   @map("compat_range") @db.VarChar(100)
+  routeBase         String?   @map("route_base") @db.VarChar(255)
+  lifecycleState    String    @default("discovered") @map("lifecycle_state") @db.VarChar(30)
+  enabled           Boolean   @default(false) @map("enabled")
+  installedAt       DateTime? @map("installed_at") @db.DateTime(0)
+  lastSyncedAt      DateTime? @map("last_synced_at") @db.DateTime(0)
+  lastError         String?   @map("last_error") @db.VarChar(500)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+
+  versions        SysPluginVersion[]
+  installs        SysPluginInstall[]
+  configSnapshots SysPluginConfigSnapshot[]
+
+  @@index([enabled], map: "idx_sys_plugin_enabled")
+  @@index([lifecycleState], map: "idx_sys_plugin_lifecycle_state")
+  @@index([updatedAt], map: "idx_sys_plugin_updated_at")
+  @@index([pluginId], map: "idx_sys_plugin_plugin_id")
+  @@map("sys_plugin")
+}
+
+model SysPluginVersion {
+  id          Int      @id @default(autoincrement()) @map("id")
+  pluginId    Int      @map("plugin_id")
+  version     String   @map("version") @db.VarChar(50)
+  manifest    Json?    @map("manifest")
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(0)
+
+  plugin SysPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@unique([pluginId, version], map: "uniq_sys_plugin_version")
+  @@index([pluginId], map: "idx_sys_plugin_version_plugin_id")
+  @@map("sys_plugin_version")
+}
+
+model SysPluginInstall {
+  id             Int       @id @default(autoincrement()) @map("id")
+  pluginId       Int       @unique @map("plugin_id")
+  lifecycleState String    @map("lifecycle_state") @db.VarChar(30)
+  enabled        Boolean   @default(false) @map("enabled")
+  installedAt    DateTime? @map("installed_at") @db.DateTime(0)
+  uninstalledAt  DateTime? @map("uninstalled_at") @db.DateTime(0)
+  lastError      String?   @map("last_error") @db.VarChar(500)
+  syncStrategy   String?   @default("safe") @map("sync_strategy") @db.VarChar(20)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+
+  plugin     SysPlugin        @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  syncLogs   SysPluginSyncLog[]
+
+  @@index([pluginId], map: "idx_sys_plugin_install_plugin_id")
+  @@index([enabled], map: "idx_sys_plugin_install_enabled")
+  @@map("sys_plugin_install")
+}
+
+model SysPluginConfigSnapshot {
+  id        Int      @id @default(autoincrement()) @map("id")
+  pluginId  Int      @map("plugin_id")
+  version   String   @map("version") @db.VarChar(50)
+  config    Json?    @map("config")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(0)
+
+  plugin SysPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@index([pluginId], map: "idx_sys_plugin_config_snapshot_plugin_id")
+  @@map("sys_plugin_config_snapshot")
+}
+
+model SysPluginSyncLog {
+  id              Int       @id @default(autoincrement()) @map("id")
+  pluginInstallId Int       @map("plugin_install_id")
+  strategy        String    @default("safe") @map("strategy") @db.VarChar(20)
+  status          String    @default("success") @map("status") @db.VarChar(20)
+  created         Int       @default(0) @map("created")
+  updated         Int       @default(0) @map("updated")
+  skipped         Int       @default(0) @map("skipped")
+  conflicted      Int       @default(0) @map("conflicted")
+  conflictDetails Json?     @map("conflict_details")
+  errorMessage    String?   @map("error_message") @db.VarChar(500)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+
+  pluginInstall SysPluginInstall @relation(fields: [pluginInstallId], references: [id], onDelete: Cascade)
+
+  @@index([pluginInstallId], map: "idx_sys_plugin_sync_log_plugin_install_id")
+  @@index([createdAt], map: "idx_sys_plugin_sync_log_created_at")
+  @@map("sys_plugin_sync_log")
 }

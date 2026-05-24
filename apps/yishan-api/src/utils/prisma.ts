@@ -1,6 +1,15 @@
 import 'dotenv/config';
-import { PrismaClient } from '@generated/prisma/client';
+import { PrismaClient } from '../generated/prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+
+if (!process.env.DATABASE_URL && process.env.DATABASE_HOST) {
+  const u = process.env.DATABASE_USER!;
+  const p = process.env.DATABASE_PASSWORD!;
+  const h = process.env.DATABASE_HOST!;
+  const port = process.env.DATABASE_PORT ?? '3306';
+  const db = process.env.DATABASE_NAME!;
+  process.env.DATABASE_URL = `mysql://${u}:${p}@${h}:${port}/${db}`;
+}
 
 // 基于官方最新文档：通过 driver adapter 连接 MySQL/MariaDB
 const prismaAdapter = new PrismaMariaDb({

@@ -253,7 +253,7 @@ docker run -p 3000:3000 --env-file .env yishan-api
 
 ## 许可证
 
-ISC License
+MIT License
 
 ## 技术支持
 
