@@ -5,9 +5,13 @@ on:
     branches:
       - main
     paths:
-      - "apps/yishan-admin/**"
-      - "apps/yishan-api/**"
-      - "apps/yishan-components/yishan-tiptap/**"
+      - "apps/**"
+      - "!apps/**/deploy/**"
+      - "!apps/**/docs/**"
+      - "!apps/**/*.md"
+      - "!apps/**/README.md"
+      - "!apps/**/s.yaml"
+      - "!apps/**/s.yml"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"

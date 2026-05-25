@@ -18,6 +18,7 @@ jobs:
       DOMAIN: ${{ vars.YISHAN_FC_DOMAIN || 'demo.zerocmf.com' }}
       CERT_MIN_AGE_DAYS: '30'
       ACME_MODE: ${{ vars.ACME_MODE || 'staging' }}
+      FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -73,6 +74,49 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
+
+      - name: Check domain resolves to FC endpoint
+        if: steps.cert_age.outputs.rotate == 'true'
+        env:
+          ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          export EXPECTED_PUBLIC="${ALIBABA_CLOUD_ACCOUNT_ID}.${FC_REGION}.fc.aliyuncs.com"
+          export EXPECTED_INTERNAL="${ALIBABA_CLOUD_ACCOUNT_ID}.${FC_REGION}-internal.fc.aliyuncs.com"
+          node -e "
+            const dns = require('node:dns').promises;
+            const domain = process.env.DOMAIN;
+            const expectedPublic = process.env.EXPECTED_PUBLIC;
+            const expectedInternal = process.env.EXPECTED_INTERNAL;
+            (async () => {
+              let cnames = [];
+              try {
+                cnames = await dns.resolveCname(domain);
+              } catch (_) {
+                // ignore and report below
+              }
+              const normalized = cnames.map((x) => x.replace(/\.$/, '').toLowerCase());
+              const ok = normalized.includes(expectedPublic.toLowerCase()) || normalized.includes(expectedInternal.toLowerCase());
+              if (!ok) {
+                let aRecords = [];
+                try {
+                  aRecords = await dns.resolve4(domain);
+                } catch (_) {
+                  // ignore and report below
+                }
+                console.error('Domain CNAME check failed.');
+                console.error('Domain: ' + domain);
+                console.error('Current CNAME: ' + (cnames.length ? cnames.join(', ') : '(none)'));
+                console.error('Current A: ' + (aRecords.length ? aRecords.join(', ') : '(none)'));
+                console.error('Expected CNAME: ' + expectedPublic + ' or ' + expectedInternal);
+                console.error('Please update DNS before retrying.');
+                process.exit(1);
+              }
+              console.log('Domain CNAME check passed: ' + domain + ' -> ' + cnames.join(', '));
+            })().catch((err) => {
+              console.error(err);
+              process.exit(1);
+            });"
 
       - uses: actions/setup-node@v4
         if: steps.cert_age.outputs.rotate == 'true'
