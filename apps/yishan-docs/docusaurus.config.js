@@ -1,0 +1,80 @@
+import { themes as prismThemes } from 'prism-react-renderer';
+// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+const config = {
+    title: '移山后台管理系统',
+    tagline: '前后端分离，开箱即用',
+    favicon: 'img/favicon.ico',
+    // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
+    future: {
+        v4: true, // Improve compatibility with the upcoming Docusaurus v4
+    },
+    // Set the production url of your site here
+    url: 'https://docs.zerocmf.com',
+    // Set the /<baseUrl>/ pathname under which your site is served
+    // For GitHub pages deployment, it is often '/<projectName>/'
+    baseUrl: '/',
+    // GitHub pages deployment config.
+    // If you aren't using GitHub pages, you don't need these.
+    organizationName: 'zerocmf',
+    projectName: 'yishan',
+    onBrokenLinks: 'throw',
+    onBrokenMarkdownLinks: 'warn',
+    // Even if you don't use internationalization, you can use this field to set
+    // useful metadata like html lang. For example, if your site is Chinese, you
+    // may want to replace "en" with "zh-Hans".
+    i18n: {
+        defaultLocale: 'zh-CN',
+        locales: ['zh-CN'],
+    },
+    presets: [
+        [
+            'classic',
+            {
+                docs: {
+                    sidebarPath: './sidebars.ts',
+                    editUrl: 'https://github.com/zerocmf/yishan/tree/main/apps/yishan-docs/',
+                },
+                blog: false,
+                theme: {
+                    customCss: './src/css/custom.css',
+                },
+            },
+        ],
+    ],
+    themeConfig: {
+        // Replace with your project's social card
+        image: 'img/docusaurus-social-card.jpg',
+        navbar: {
+            title: '移山文档',
+            logo: {
+                alt: '移山 Logo',
+                src: 'img/logo.svg',
+            },
+            items: [
+                { type: 'docSidebar', sidebarId: 'tutorialSidebar', position: 'left', label: '文档' },
+                { href: 'https://github.com/zerocmf/yishan', label: 'GitHub', position: 'right' },
+            ],
+        },
+        footer: {
+            style: 'dark',
+            links: [
+                {
+                    title: 'Docs',
+                    items: [
+                        {
+                            label: '文档',
+                            to: '/docs/intro',
+                        },
+                    ],
+                },
+                { title: '更多', items: [{ label: 'GitHub', href: 'https://github.com/zerocmf/yishan' }] },
+            ],
+            copyright: `Copyright © ${new Date().getFullYear()} 移山项目组. Built with Docusaurus.`,
+        },
+        prism: {
+            theme: prismThemes.github,
+            darkTheme: prismThemes.dracula,
+        },
+    },
+};
+export default config;
