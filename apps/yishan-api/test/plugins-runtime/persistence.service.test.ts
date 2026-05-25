@@ -10,11 +10,11 @@ describe('PluginPersistenceService', () => {
     const warn = vi.fn()
     const service = new PluginPersistenceService(repository as never, { warn })
 
-    await service.syncManifest({ pluginId: '@yishan/portal', name: 'portal', version: '1.0.0' })
-    await service.updateRuntimeState('@yishan/portal', 'portal', 'enabled', true)
+    await service.syncManifest({ pluginId: 'yishan/portal', name: 'portal', version: '1.0.0' })
+    await service.updateRuntimeState('yishan/portal', 'portal', 'enabled', true)
 
     expect(service.isDegraded()).toBe(true)
-    expect(service.getMemoryRecord('@yishan/portal')?.enabled).toBe(true)
+    expect(service.getMemoryRecord('yishan/portal')?.enabled).toBe(true)
     expect(warn).toHaveBeenCalled()
   })
 })

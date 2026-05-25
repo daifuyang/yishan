@@ -290,11 +290,16 @@ export class SysMenuModel {
     } else {
       for (const id of assignedIds) {
         let cur = byId.get(id);
+        const visited = new Set<number>();
         while (cur) {
+          if (visited.has(cur.id)) {
+            break;
+          }
+          visited.add(cur.id);
           allow.add(cur.id);
           const pid = cur.parentId ?? null;
           if (pid === null) break;
-          cur = byId.get(pid!);
+          cur = byId.get(pid);
         }
       }
     }
@@ -354,7 +359,12 @@ export class SysMenuModel {
     } else {
       for (const id of assignedIds) {
         let cur = byId.get(id);
+        const visited = new Set<number>();
         while (cur) {
+          if (visited.has(cur.id)) {
+            break;
+          }
+          visited.add(cur.id);
           allow.add(cur.id);
           if (cur.parentId === null) break;
           cur = byId.get(cur.parentId);

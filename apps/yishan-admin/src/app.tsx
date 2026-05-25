@@ -283,8 +283,13 @@ export function render(oldRender: () => void) {
       const menus = res.data || [];
       extraRoutes = menus;
       oldRender();
-    }).catch(() => {
-      window.location.href = loginUrl;
+    }).catch((error: any) => {
+      if (error?.response?.status === 401) {
+        window.location.href = loginUrl;
+        return;
+      }
+      extraRoutes = [];
+      oldRender();
     });
   } else {
     oldRender();

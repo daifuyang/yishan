@@ -3,7 +3,7 @@ import { validateManifest } from '../../src/plugins-runtime/manifest'
 
 describe('validateManifest', () => {
   it('accepts minimal valid manifest', () => {
-    const result = validateManifest({ pluginId: '@yishan/hello', name: 'hello', version: '1.0.0' })
+    const result = validateManifest({ pluginId: 'yishan/hello', name: 'hello', version: '1.0.0' })
     expect(result.valid).toBe(true)
     expect(result.errors).toEqual([])
   })

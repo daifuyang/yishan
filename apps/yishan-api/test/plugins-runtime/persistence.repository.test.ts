@@ -18,7 +18,7 @@ describe('PluginPersistenceRepository', () => {
     const repository = new PluginPersistenceRepository(client as never)
 
     await repository.upsertManifest({
-      pluginId: '@yishan/portal',
+      pluginId: 'yishan/portal',
       name: 'portal',
       version: '1.0.0',
       coreCompatibility: '^1.0.0',
@@ -42,7 +42,7 @@ describe('PluginPersistenceRepository', () => {
     }
 
     const repository = new PluginPersistenceRepository(client as never)
-    await repository.updateRuntimeState('@yishan/hello', 'hello', 'enabled', true)
+    await repository.updateRuntimeState('yishan/hello', 'hello', 'enabled', true)
 
     expect(sysPluginFindFirst).toHaveBeenCalled()
     expect(sysPluginUpdate).toHaveBeenCalledTimes(1)

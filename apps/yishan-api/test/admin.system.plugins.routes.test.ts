@@ -13,11 +13,11 @@ async function buildApp() {
   })
 
   const runtime = createPluginRuntime()
-  runtime.register({ pluginId: '@test/demo-plugin', name: 'demo-plugin', version: '1.0.0', coreCompatibility: '^1.0.0' })
+  runtime.register({ pluginId: 'test/demo-plugin', name: 'demo-plugin', version: '1.0.0', coreCompatibility: '^1.0.0' })
   runtime.lifecycle.load('demo-plugin')
   runtime.lifecycle.enable('demo-plugin')
-  await runtime.persistence.syncManifest({ pluginId: '@test/demo-plugin', name: 'demo-plugin', version: '1.0.0', coreCompatibility: '^1.0.0' })
-  await runtime.persistence.updateRuntimeState('@test/demo-plugin', 'demo-plugin', 'enabled', true)
+  await runtime.persistence.syncManifest({ pluginId: 'test/demo-plugin', name: 'demo-plugin', version: '1.0.0', coreCompatibility: '^1.0.0' })
+  await runtime.persistence.updateRuntimeState('test/demo-plugin', 'demo-plugin', 'enabled', true)
   runtime.hooks.on('plugin:test', async () => undefined)
   await runtime.hooks.emit({ name: 'plugin:test', payload: { ok: true } })
 
