@@ -4,7 +4,7 @@ access: "enterprise"
 vars:
   region: "cn-shanghai"
   functionName: "yishan-example"
-  customDomain: "example.zerocmf.com"
+  customDomain: "demo.zerocmf.com"
   certName: "example-zerocmf-com-20260328"
 
 resources:

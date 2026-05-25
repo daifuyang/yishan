@@ -1,0 +1,205 @@
+name: yishan-cert-rotate-fc
+
+on:
+  schedule:
+    - cron: '15 19 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: yishan-cert-rotate-fc
+  cancel-in-progress: false
+
+jobs:
+  rotate-cert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: YISHAN_API
+    env:
+      DOMAIN: ${{ vars.YISHAN_FC_DOMAIN || 'demo.zerocmf.com' }}
+      CERT_MIN_AGE_DAYS: '30'
+      ACME_MODE: ${{ vars.ACME_MODE || 'staging' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+
+      - name: Check current cert age
+        id: cert_age
+        run: |
+          set -euo pipefail
+          cert_start_line="$(openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout -startdate)"
+          cert_end_line="$(openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout -enddate)"
+          start_raw="${cert_start_line#notBefore=}"
+          end_raw="${cert_end_line#notAfter=}"
+          start_ts="$(date -u -d "$start_raw" +%s)"
+          end_ts="$(date -u -d "$end_raw" +%s)"
+          now_ts="$(date -u +%s)"
+          cert_age_days="$(( (now_ts - start_ts) / 86400 ))"
+          cert_left_days="$(( (end_ts - now_ts) / 86400 ))"
+
+          echo "Current cert start: $start_raw"
+          echo "Current cert end: $end_raw"
+          echo "Current cert age days: $cert_age_days"
+          echo "Current cert left days: $cert_left_days"
+
+          rotate=false
+          if [ "$cert_age_days" -ge "$CERT_MIN_AGE_DAYS" ]; then
+            rotate=true
+          fi
+
+          echo "rotate=$rotate" >> "$GITHUB_OUTPUT"
+          echo "cert_age_days=$cert_age_days" >> "$GITHUB_OUTPUT"
+          echo "cert_left_days=$cert_left_days" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Certificate Check"
+            echo "- Domain: $DOMAIN"
+            echo "- ACME mode: $ACME_MODE"
+            echo "- notBefore: $start_raw"
+            echo "- notAfter: $end_raw"
+            echo "- Age days: $cert_age_days"
+            echo "- Remaining days: $cert_left_days"
+            echo "- Rotate now: $rotate"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Skip rotation when cert age < 30 days
+        if: steps.cert_age.outputs.rotate != 'true'
+        run: |
+          echo "Certificate has not reached ${CERT_MIN_AGE_DAYS} days in use. Skip rotation."
+
+      - name: Enable pnpm
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v4
+        if: steps.cert_age.outputs.rotate == 'true'
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Prepare yishan-tiptap
+        if: steps.cert_age.outputs.rotate == 'true'
+        working-directory: apps/yishan-components/yishan-tiptap
+        run: |
+          pnpm install --filter yishan-tiptap --no-frozen-lockfile
+          pnpm build --filter yishan-tiptap
+
+      - name: Build yishan-admin
+        if: steps.cert_age.outputs.rotate == 'true'
+        env:
+          PUBLIC_PATH: /admin/
+        run: pnpm --filter yishan-admin build
+
+      - name: Sync admin dist to api public
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: |
+          rm -rf apps/yishan-api/public/admin
+          mkdir -p apps/yishan-api/public/admin
+          cp -R apps/yishan-admin/dist/. apps/yishan-api/public/admin/
+
+      - name: Prepare .env
+        if: steps.cert_age.outputs.rotate == 'true'
+        working-directory: apps/yishan-api
+        env:
+          DATABASE_URL: ${{ secrets.YISHAN_API_DATABASE_URL }}
+          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+          REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
+        run: |
+          ENV_FILE="$(pwd)/.env"
+          : > "$ENV_FILE"
+          printf '%s\n' "DATABASE_URL=${DATABASE_URL}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_USER=${DATABASE_USER}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_PASSWORD=${DATABASE_PASSWORD}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
+          printf '%s\n' "REDIS_URL=${REDIS_URL}" >> "$ENV_FILE"
+
+      - name: Install Serverless Devs
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: npm i -g @serverless-devs/s
+
+      - name: Configure Serverless Devs Access
+        if: steps.cert_age.outputs.rotate == 'true'
+        env:
+          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+          ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID_CLEAN="$(echo "${ALIBABA_CLOUD_ACCOUNT_ID:-}" | tr -d '[:space:]')"
+          if [ -n "${ACCOUNT_ID_CLEAN}" ] && echo "${ACCOUNT_ID_CLEAN}" | grep -Eq '^[0-9]{16,32}$'; then
+            s config add \
+              --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
+              --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
+              --AccountID "$ACCOUNT_ID_CLEAN" \
+              -a enterprise \
+              -f
+          else
+            s config add \
+              --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
+              --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
+              -a enterprise \
+              -f
+          fi
+
+      - name: Install acme.sh
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: curl -fsSL https://get.acme.sh | sh
+
+      - name: Issue and install cert by DNS
+        if: steps.cert_age.outputs.rotate == 'true'
+        working-directory: apps/yishan-api
+        env:
+          Ali_Key: ${{ secrets.ALI_DNS_ACCESS_KEY_ID }}
+          Ali_Secret: ${{ secrets.ALI_DNS_ACCESS_KEY_SECRET }}
+        run: |
+          set -euo pipefail
+          mkdir -p deploy/fc3/certs
+          acme_args=(--issue --dns dns_ali -d "$DOMAIN" --keylength 2048)
+          if [ "$ACME_MODE" = "staging" ]; then
+            acme_args+=(--staging)
+          fi
+          ~/.acme.sh/acme.sh "${acme_args[@]}"
+          ~/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
+            --fullchain-file "$(pwd)/deploy/fc3/certs/fullchain.cer" \
+            --key-file "$(pwd)/deploy/fc3/certs/private.key"
+
+      - name: Build Package (pre-deploy in FC runtime image)
+        if: steps.cert_age.outputs.rotate == 'true'
+        working-directory: apps/yishan-api
+        run: |
+          docker pull return1996/runtime-custom.debian12:node22.14.0
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD:/code" \
+            -w /code \
+            return1996/runtime-custom.debian12:node22.14.0 \
+            bash -c "bash ./deploy/fc3/pre-deploy.sh"
+
+      - name: Deploy with renewed cert
+        if: steps.cert_age.outputs.rotate == 'true'
+        working-directory: apps/yishan-api
+        run: bash ./deploy/fc3/deploy.sh
+
+      - name: Verify cert after deploy
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: |
+          set -euo pipefail
+          cert_start_line="$(openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout -startdate)"
+          cert_end_line="$(openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout -enddate)"
+          echo "Post-deploy cert start: ${cert_start_line#notBefore=}"
+          echo "Post-deploy cert end: ${cert_end_line#notAfter=}"
+          {
+            echo "### Certificate After Deploy"
+            echo "- notBefore: ${cert_start_line#notBefore=}"
+            echo "- notAfter: ${cert_end_line#notAfter=}"
+          } >> "$GITHUB_STEP_SUMMARY"
