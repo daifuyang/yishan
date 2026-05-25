@@ -1,0 +1,27 @@
+# ------------------------------------
+#   FC3 domain + cert only
+# ------------------------------------
+
+edition: 3.0.0
+name: yishan-example-domain
+access: "enterprise"
+vars:
+  region: "cn-shanghai"
+  functionName: "yishan-example"
+  customDomain: "demo.zerocmf.com"
+  certName: "example-zerocmf-com"
+resources:
+  example_domain:
+    component: fc3-domain
+    props:
+      region: ${vars.region}
+      domainName: ${vars.customDomain}
+      protocol: HTTPS
+      certConfig:
+        certName: ${vars.certName}
+        certificate: ${file(./deploy/fc3/certs/fullchain.cer)}
+        privateKey: ${file(./deploy/fc3/certs/private.key)}
+      routeConfig:
+        routes:
+          - path: /*
+            functionName: ${vars.functionName}

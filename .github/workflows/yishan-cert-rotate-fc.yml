@@ -69,12 +69,6 @@ jobs:
         run: |
           echo "Certificate has not reached ${CERT_MIN_AGE_DAYS} days in use. Skip rotation."
 
-      - name: Enable pnpm
-        if: steps.cert_age.outputs.rotate == 'true'
-        run: |
-          corepack enable
-          corepack prepare pnpm@8.15.9 --activate
-
       - name: Check domain resolves to FC endpoint
         if: steps.cert_age.outputs.rotate == 'true'
         env:
@@ -133,56 +127,6 @@ jobs:
               process.exit(1);
             });"
 
-      - uses: actions/setup-node@v4
-        if: steps.cert_age.outputs.rotate == 'true'
-        with:
-          node-version: 22.14.0
-          cache: pnpm
-
-      - name: Install
-        if: steps.cert_age.outputs.rotate == 'true'
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Prepare yishan-tiptap
-        if: steps.cert_age.outputs.rotate == 'true'
-        working-directory: apps/yishan-components/yishan-tiptap
-        run: |
-          pnpm install --filter yishan-tiptap --no-frozen-lockfile
-          pnpm build --filter yishan-tiptap
-
-      - name: Build yishan-admin
-        if: steps.cert_age.outputs.rotate == 'true'
-        env:
-          PUBLIC_PATH: /admin/
-        run: pnpm --filter yishan-admin build
-
-      - name: Sync admin dist to api public
-        if: steps.cert_age.outputs.rotate == 'true'
-        run: |
-          rm -rf apps/yishan-api/public/admin
-          mkdir -p apps/yishan-api/public/admin
-          cp -R apps/yishan-admin/dist/. apps/yishan-api/public/admin/
-
-      - name: Prepare .env
-        if: steps.cert_age.outputs.rotate == 'true'
-        working-directory: apps/yishan-api
-        env:
-          DATABASE_URL: ${{ secrets.YISHAN_API_DATABASE_URL }}
-          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
-          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
-          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
-          REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
-        run: |
-          ENV_FILE="$(pwd)/.env"
-          : > "$ENV_FILE"
-          printf '%s\n' "DATABASE_URL=${DATABASE_URL}" >> "$ENV_FILE"
-          printf '%s\n' "DATABASE_USER=${DATABASE_USER}" >> "$ENV_FILE"
-          printf '%s\n' "DATABASE_PASSWORD=${DATABASE_PASSWORD}" >> "$ENV_FILE"
-          printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
-          printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
-          printf '%s\n' "REDIS_URL=${REDIS_URL}" >> "$ENV_FILE"
-
       - name: Install Serverless Devs
         if: steps.cert_age.outputs.rotate == 'true'
         run: npm i -g @serverless-devs/s
@@ -233,21 +177,10 @@ jobs:
             --fullchain-file "$(pwd)/deploy/fc3/certs/fullchain.cer" \
             --key-file "$(pwd)/deploy/fc3/certs/private.key"
 
-      - name: Build Package (pre-deploy in FC runtime image)
+      - name: Deploy domain with renewed cert
         if: steps.cert_age.outputs.rotate == 'true'
         working-directory: apps/yishan-api
-        run: |
-          docker pull return1996/runtime-custom.debian12:node22.14.0
-          docker run --rm --platform linux/amd64 \
-            -v "$PWD:/code" \
-            -w /code \
-            return1996/runtime-custom.debian12:node22.14.0 \
-            bash -c "bash ./deploy/fc3/pre-deploy.sh"
-
-      - name: Deploy with renewed cert
-        if: steps.cert_age.outputs.rotate == 'true'
-        working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/deploy.sh
+        run: bash ./deploy/fc3/deploy-domain-cert.sh
 
       - name: Verify cert after deploy
         if: steps.cert_age.outputs.rotate == 'true'

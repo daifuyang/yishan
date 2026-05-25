@@ -126,6 +126,6 @@ jobs:
             return1996/runtime-custom.debian12:node22.14.0 \
             bash -c "bash ./deploy/fc3/pre-deploy.sh"
 
-      - name: Deploy
+      - name: Deploy function
         working-directory: apps/yishan-api
         run: bash ./deploy/fc3/deploy.sh
