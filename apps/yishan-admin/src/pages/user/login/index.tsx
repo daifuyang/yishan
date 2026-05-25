@@ -1,5 +1,5 @@
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { useIntl, useModel, FormattedMessage } from "@umijs/max";
+import { history, useIntl, useModel, FormattedMessage } from "@umijs/max";
 import { Alert, App, Button, Checkbox, Form, Input } from "antd";
 import { createStyles } from "antd-style";
 import React, { useState } from "react";
@@ -8,7 +8,6 @@ import { login as userLogin, getCurrentUser } from "@/services/yishan-admin/auth
 import { saveTokens } from "@/utils/token";
 import loginBgImage from "@public/images/login-bg.png";
 import loginBrandImage from "@public/images/login-brand.png";
-import { getBasePrefixFromPublicPath } from "../../../../shared/publicPath";
 
 const useStyles = createStyles(({ css }) => {
   return {
@@ -111,8 +110,6 @@ const LoginMessage: React.FC<{
 };
 
 const Login: React.FC = () => {
-  const adminBase = getBasePrefixFromPublicPath(process.env.PUBLIC_PATH);
-  const appHome = adminBase ? `${adminBase}/` : "/";
   const [loginError, setLoginError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const { setInitialState } = useModel("@@initialState");
@@ -161,18 +158,20 @@ const Login: React.FC = () => {
 
   const resolveRedirectAfterLogin = () => {
     const redirect = new URL(window.location.href).searchParams.get("redirect");
-    if (!redirect) return appHome;
+    if (!redirect) return '/';
     try {
       const target = new URL(redirect, window.location.origin);
-      const normalizedPath = adminBase && target.pathname.startsWith(adminBase)
-        ? target.pathname.slice(adminBase.length) || "/"
-        : target.pathname;
-      if (normalizedPath === "/user/login") {
-        return appHome;
+      let normalizedPath = target.pathname;
+      const basePrefix = __APP_BASE__ === '/' ? '' : __APP_BASE__.replace(/\/+$/, '');
+      if (basePrefix && normalizedPath.startsWith(basePrefix)) {
+        normalizedPath = normalizedPath.slice(basePrefix.length) || '/';
       }
-      return `${target.pathname}${target.search}${target.hash}` || appHome;
+      if (normalizedPath === "/user/login" || normalizedPath === "/") {
+        return '/';
+      }
+      return `${normalizedPath}${target.search}${target.hash}`;
     } catch {
-      return appHome;
+      return '/';
     }
   };
 
@@ -204,7 +203,7 @@ const Login: React.FC = () => {
         }
 
         await fetchUserInfo();
-        window.location.href = resolveRedirectAfterLogin();
+        history.push(resolveRedirectAfterLogin());
         return;
       }
 

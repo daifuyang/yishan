@@ -25,7 +25,7 @@ import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPa
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
-const ADMIN_BASE = getBasePrefixFromPublicPath(process.env.PUBLIC_PATH);
+const ADMIN_BASE = getBasePrefixFromPublicPath(__APP_BASE__);
 
 const getRelativePath = (pathname: string) => {
   return stripBasePrefix(pathname, ADMIN_BASE);

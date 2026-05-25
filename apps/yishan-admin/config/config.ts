@@ -4,7 +4,7 @@ import { defineConfig } from '@umijs/max';
 import path from 'node:path';
 import defaultSettings from './defaultSettings';
 import proxy from './proxy';
-import { normalizePublicPath } from '../shared/publicPath';
+import { isValidPublicPath, normalizePublicPath } from '../shared/publicPath';
 
 import routes from './routes';
 
@@ -15,10 +15,21 @@ const { UMI_ENV = 'dev' } = process.env;
  * @description 部署时的路径，如果部署在非根目录下，需要配置这个变量
  * @doc https://umijs.org/docs/api/config#publicpath
  */
-const rawPublicPath = process.env.PUBLIC_PATH || '/';
-const PUBLIC_PATH = normalizePublicPath(rawPublicPath);
+const rawPublicPath = process.env.PUBLIC_PATH;
+const publicPathInput = rawPublicPath?.trim();
+
+if (publicPathInput !== undefined && !isValidPublicPath(publicPathInput)) {
+  throw new Error(
+    `Invalid PUBLIC_PATH: "${rawPublicPath}". Expected "/" or a slash-wrapped path like "/admin/".`,
+  );
+}
+
+const PUBLIC_PATH = normalizePublicPath(publicPathInput || '/');
 
 export default defineConfig({
+  define: {
+    __APP_BASE__: PUBLIC_PATH,
+  },
   /**
    * @name 路由前缀
    * @description 配置 react-router 的 base 路径

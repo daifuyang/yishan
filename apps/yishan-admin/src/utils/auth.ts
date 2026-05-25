@@ -8,7 +8,7 @@ import { message } from 'antd';
 import { clearTokens, isLoggedIn } from './token';
 import { logout as apiLogout } from '@/services/yishan-admin/auth';
 
-const ADMIN_BASE = (process.env.PUBLIC_PATH || '/admin/').replace(/\/+$/, '');
+const ADMIN_BASE = __APP_BASE__.replace(/\/+$/, '');
 const LOGIN_PATH = '/user/login';
 
 const normalizePath = (pathname: string) => {

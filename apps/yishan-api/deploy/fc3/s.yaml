@@ -63,5 +63,11 @@ resources:
         privateKey: ${file(./deploy/fc3/certs/private.key)}
       routeConfig:
         routes:
+          - path: /
+            functionName: ${vars.functionName}
+            rewriteConfig:
+              equalRules:
+                - match: /
+                  replacement: /admin/
           - path: /*
             functionName: ${vars.functionName}
