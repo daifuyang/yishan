@@ -83,11 +83,16 @@ jobs:
           set -euo pipefail
           export EXPECTED_PUBLIC="${ALIBABA_CLOUD_ACCOUNT_ID}.${FC_REGION}.fc.aliyuncs.com"
           export EXPECTED_INTERNAL="${ALIBABA_CLOUD_ACCOUNT_ID}.${FC_REGION}-internal.fc.aliyuncs.com"
+          export EXPECTED_PUBLIC_SUFFIX=".${FC_REGION}.fc.aliyuncs.com"
+          export EXPECTED_INTERNAL_SUFFIX=".${FC_REGION}-internal.fc.aliyuncs.com"
           node -e "
             const dns = require('node:dns').promises;
             const domain = process.env.DOMAIN;
             const expectedPublic = process.env.EXPECTED_PUBLIC;
             const expectedInternal = process.env.EXPECTED_INTERNAL;
+            const expectedPublicSuffix = process.env.EXPECTED_PUBLIC_SUFFIX;
+            const expectedInternalSuffix = process.env.EXPECTED_INTERNAL_SUFFIX;
+            const accountId = (process.env.ALIBABA_CLOUD_ACCOUNT_ID || '').trim();
             (async () => {
               let cnames = [];
               try {
@@ -96,7 +101,12 @@ jobs:
                 // ignore and report below
               }
               const normalized = cnames.map((x) => x.replace(/\.$/, '').toLowerCase());
-              const ok = normalized.includes(expectedPublic.toLowerCase()) || normalized.includes(expectedInternal.toLowerCase());
+              let ok = false;
+              if (accountId) {
+                ok = normalized.includes(expectedPublic.toLowerCase()) || normalized.includes(expectedInternal.toLowerCase());
+              } else {
+                ok = normalized.some((c) => c.endsWith(expectedPublicSuffix.toLowerCase()) || c.endsWith(expectedInternalSuffix.toLowerCase()));
+              }
               if (!ok) {
                 let aRecords = [];
                 try {
@@ -108,7 +118,12 @@ jobs:
                 console.error('Domain: ' + domain);
                 console.error('Current CNAME: ' + (cnames.length ? cnames.join(', ') : '(none)'));
                 console.error('Current A: ' + (aRecords.length ? aRecords.join(', ') : '(none)'));
-                console.error('Expected CNAME: ' + expectedPublic + ' or ' + expectedInternal);
+                if (accountId) {
+                  console.error('Expected CNAME: ' + expectedPublic + ' or ' + expectedInternal);
+                } else {
+                  console.error('Expected CNAME suffix: *' + expectedPublicSuffix + ' or *' + expectedInternalSuffix);
+                  console.error('Tip: set ALIBABA_CLOUD_ACCOUNT_ID secret to enforce strict full match.');
+                }
                 console.error('Please update DNS before retrying.');
                 process.exit(1);
               }
