@@ -3,11 +3,11 @@
 # ------------------------------------
 
 edition: 3.0.0
-name: yishan-example-domain
+name: yishan-demo-domain
 access: "enterprise"
 vars:
   region: "cn-shanghai"
-  functionName: "yishan-example"
+  functionName: "yishan-demo"
   customDomain: "demo.zerocmf.com"
   certName: "example-zerocmf-com"
 resources:

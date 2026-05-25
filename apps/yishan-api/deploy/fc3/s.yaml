@@ -4,15 +4,15 @@
 # ------------------------------------
 
 edition: 3.0.0
-name: yishan-example
+name: yishan-demo
 access: "enterprise"
 vars:
   region: "cn-shanghai"
-  functionName: "yishan-example"
+  functionName: "yishan-demo"
   customDomain: "demo.zerocmf.com"
   certName: "example-zerocmf-com"
 resources:
-  yishan_example:
+  yishan_demo:
     component: fc3
     props:
       region: ${vars.region}

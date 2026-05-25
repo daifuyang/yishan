@@ -106,7 +106,7 @@ s deploy -y
 
 ### FC 函数部署（单服务）
 
-当前配置使用一个 FC 服务 `yishan-example`，同时部署 API 和 `public/admin` 静态前端，部署文件为 `deploy/fc3/s.yaml`。
+当前配置使用一个 FC 服务 `yishan-demo`，同时部署 API 和 `public/admin` 静态前端，部署文件为 `deploy/fc3/s.yaml`。
 
 1. 配置阿里云账号（建议两个别名）：
 ```bash
