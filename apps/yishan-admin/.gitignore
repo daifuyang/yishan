@@ -43,3 +43,11 @@ build
 
 # generated plugin routes
 config/generated
+
+# tsc build artifacts in src (prevent compiled .js/.d.ts from being committed)
+src/**/*.js
+src/**/*.d.ts
+config/**/*.js
+config/**/*.d.ts
+mock/**/*.js
+mock/**/*.d.ts

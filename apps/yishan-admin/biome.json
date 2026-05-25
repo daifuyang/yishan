@@ -9,6 +9,8 @@
       "!**/.umi-test",
       "!**/.umi-test-production",
       "!**/src/services",
+      "!**/src/**/*.js",
+      "!**/src/**/*.d.ts",
       "!**/mock",
       "!**/dist",
       "!**/server",

@@ -18,7 +18,6 @@ import * as sysDictData from "./sysDictData";
 import * as sysMenus from "./sysMenus";
 import * as sysRoles from "./sysRoles";
 import * as sysLoginLogs from "./sysLoginLogs";
-import * as sysPlugins from "./sysPlugins";
 import * as system from "./system";
 import * as storage from "./storage";
 import * as sysUsers from "./sysUsers";
@@ -40,7 +39,6 @@ export default {
   sysMenus,
   sysRoles,
   sysLoginLogs,
-  sysPlugins,
   system,
   storage,
   sysUsers,

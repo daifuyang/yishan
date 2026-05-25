@@ -77,6 +77,96 @@ export async function batchGetSystemOptionByQuery(
   );
 }
 
+/** 获取插件列表 GET /api/v1/admin/system/plugins/ */
+export async function getV1AdminSystemPlugins(options?: {
+  [key: string]: any;
+}) {
+  return request<any>("/api/v1/admin/system/plugins/", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
+/** 获取插件详情 GET /api/v1/admin/system/plugins/${param0} */
+export async function getV1AdminSystemPluginsName(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getV1AdminSystemPluginsNameParams,
+  options?: { [key: string]: any }
+) {
+  const { name: param0, ...queryParams } = params;
+  return request<any>(`/api/v1/admin/system/plugins/${param0}`, {
+    method: "GET",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
+}
+
+/** 停用插件 POST /api/v1/admin/system/plugins/${param0}/disable */
+export async function postV1AdminSystemPluginsNameDisable(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.postV1AdminSystemPluginsNameDisableParams,
+  options?: { [key: string]: any }
+) {
+  const { name: param0, ...queryParams } = params;
+  return request<any>(`/api/v1/admin/system/plugins/${param0}/disable`, {
+    method: "POST",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
+}
+
+/** 启用插件（可选 syncStrategy: strict | safe） POST /api/v1/admin/system/plugins/${param0}/enable */
+export async function postV1AdminSystemPluginsNameEnable(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.postV1AdminSystemPluginsNameEnableParams,
+  options?: { [key: string]: any }
+) {
+  const { name: param0, ...queryParams } = params;
+  return request<any>(`/api/v1/admin/system/plugins/${param0}/enable`, {
+    method: "POST",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
+}
+
+/** 手动同步插件菜单（插件需已启用） POST /api/v1/admin/system/plugins/${param0}/sync */
+export async function postV1AdminSystemPluginsNameSync(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.postV1AdminSystemPluginsNameSyncParams,
+  options?: { [key: string]: any }
+) {
+  const { name: param0, ...queryParams } = params;
+  return request<any>(`/api/v1/admin/system/plugins/${param0}/sync`, {
+    method: "POST",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
+}
+
+/** 获取插件菜单同步历史 GET /api/v1/admin/system/plugins/${param0}/sync-logs */
+export async function getV1AdminSystemPluginsNameSyncLogs(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getV1AdminSystemPluginsNameSyncLogsParams,
+  options?: { [key: string]: any }
+) {
+  const { name: param0, ...queryParams } = params;
+  return request<any>(`/api/v1/admin/system/plugins/${param0}/sync-logs`, {
+    method: "GET",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
+}
+
+/** 获取插件 Hook 执行报告 GET /api/v1/admin/system/plugins/hooks/reports */
+export async function getV1AdminSystemPluginsHooksReports(options?: {
+  [key: string]: any;
+}) {
+  return request<any>("/api/v1/admin/system/plugins/hooks/reports", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
 /** 获取七牛云上传临时凭证 根据七牛云官方文档生成上传凭证（uptoken） GET /api/v1/admin/system/qiniu/token */
 export async function getQiniuUploadToken(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)

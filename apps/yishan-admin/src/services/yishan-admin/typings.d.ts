@@ -1664,6 +1664,14 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
+  type getV1AdminSystemPluginsNameParams = {
+    name: string;
+  };
+
+  type getV1AdminSystemPluginsNameSyncLogsParams = {
+    name: string;
+  };
+
   type loginData = {
     /** 访问令牌 */
     token: string;
@@ -2025,6 +2033,18 @@ declare namespace API {
     data: sysPost[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+
+  type postV1AdminSystemPluginsNameDisableParams = {
+    name: string;
+  };
+
+  type postV1AdminSystemPluginsNameEnableParams = {
+    name: string;
+  };
+
+  type postV1AdminSystemPluginsNameSyncParams = {
+    name: string;
   };
 
   type publishArticleParams = {
