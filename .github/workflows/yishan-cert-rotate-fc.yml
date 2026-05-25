@@ -18,6 +18,7 @@ jobs:
       DOMAIN: ${{ vars.YISHAN_FC_DOMAIN || 'demo.zerocmf.com' }}
       CERT_MIN_AGE_DAYS: '30'
       ACME_MODE: ${{ vars.ACME_MODE || 'staging' }}
+      ACME_CA: ${{ vars.ACME_CA || 'letsencrypt' }}
       FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
     steps:
       - uses: actions/checkout@v4
@@ -183,10 +184,16 @@ jobs:
         env:
           Ali_Key: ${{ secrets.ALI_DNS_ACCESS_KEY_ID }}
           Ali_Secret: ${{ secrets.ALI_DNS_ACCESS_KEY_SECRET }}
+          ACME_ACCOUNT_EMAIL: ${{ secrets.ACME_ACCOUNT_EMAIL }}
         run: |
           set -euo pipefail
           mkdir -p deploy/fc3/certs
+          ~/.acme.sh/acme.sh --set-default-ca --server "$ACME_CA"
+          if [ -n "${ACME_ACCOUNT_EMAIL:-}" ]; then
+            ~/.acme.sh/acme.sh --register-account -m "$ACME_ACCOUNT_EMAIL" --server "$ACME_CA" || true
+          fi
           acme_args=(--issue --dns dns_ali -d "$DOMAIN" --keylength 2048)
+          acme_args+=(--server "$ACME_CA")
           if [ "$ACME_MODE" = "staging" ]; then
             acme_args+=(--staging)
           fi
