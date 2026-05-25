@@ -30,8 +30,10 @@ jobs:
         id: cert_age
         run: |
           set -euo pipefail
+          cert_issuer_line="$(openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout -issuer)"
           cert_start_line="$(openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout -startdate)"
           cert_end_line="$(openssl s_client -servername "$DOMAIN" -connect "$DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout -enddate)"
+          cert_issuer="${cert_issuer_line#issuer=}"
           start_raw="${cert_start_line#notBefore=}"
           end_raw="${cert_end_line#notAfter=}"
           start_ts="$(date -u -d "$start_raw" +%s)"
@@ -39,35 +41,51 @@ jobs:
           now_ts="$(date -u +%s)"
           cert_age_days="$(( (now_ts - start_ts) / 86400 ))"
           cert_left_days="$(( (end_ts - now_ts) / 86400 ))"
+          cert_is_staging=false
+          if echo "$cert_issuer" | grep -qi 'staging'; then
+            cert_is_staging=true
+          fi
 
+          echo "Current cert issuer: $cert_issuer"
           echo "Current cert start: $start_raw"
           echo "Current cert end: $end_raw"
           echo "Current cert age days: $cert_age_days"
           echo "Current cert left days: $cert_left_days"
 
           rotate=false
-          if [ "$cert_age_days" -ge "$CERT_MIN_AGE_DAYS" ]; then
+          rotate_reason="age-not-reached"
+          if [ "${ACME_MODE}" = "production" ] && [ "$cert_is_staging" = true ]; then
             rotate=true
+            rotate_reason="staging-cert-found-in-production-mode"
+          elif [ "$cert_age_days" -ge "$CERT_MIN_AGE_DAYS" ]; then
+            rotate=true
+            rotate_reason="age-threshold-reached"
           fi
 
           echo "rotate=$rotate" >> "$GITHUB_OUTPUT"
+          echo "rotate_reason=$rotate_reason" >> "$GITHUB_OUTPUT"
           echo "cert_age_days=$cert_age_days" >> "$GITHUB_OUTPUT"
           echo "cert_left_days=$cert_left_days" >> "$GITHUB_OUTPUT"
+          echo "cert_issuer=$cert_issuer" >> "$GITHUB_OUTPUT"
+          echo "cert_is_staging=$cert_is_staging" >> "$GITHUB_OUTPUT"
           {
             echo "### Certificate Check"
             echo "- Domain: $DOMAIN"
             echo "- ACME mode: $ACME_MODE"
+            echo "- Issuer: $cert_issuer"
+            echo "- Is staging cert: $cert_is_staging"
             echo "- notBefore: $start_raw"
             echo "- notAfter: $end_raw"
             echo "- Age days: $cert_age_days"
             echo "- Remaining days: $cert_left_days"
             echo "- Rotate now: $rotate"
+            echo "- Rotate reason: $rotate_reason"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Skip rotation when cert age < 30 days
+      - name: Skip rotation when conditions not met
         if: steps.cert_age.outputs.rotate != 'true'
         run: |
-          echo "Certificate has not reached ${CERT_MIN_AGE_DAYS} days in use. Skip rotation."
+          echo "Skip rotation: ${{ steps.cert_age.outputs.rotate_reason }}"
 
       - name: Check domain resolves to FC endpoint
         if: steps.cert_age.outputs.rotate == 'true'

@@ -7,6 +7,11 @@ on:
     paths:
       - "apps/**"
       - "!apps/**/deploy/**"
+      - "apps/yishan-api/deploy/fc3/s.yaml"
+      - "apps/yishan-api/deploy/fc3/s-function.yaml"
+      - "apps/yishan-api/deploy/fc3/s-domain-cert.yaml"
+      - "apps/yishan-api/deploy/fc3/deploy.sh"
+      - "apps/yishan-api/deploy/fc3/deploy-domain-cert.sh"
       - "!apps/**/docs/**"
       - "!apps/**/*.md"
       - "!apps/**/README.md"
