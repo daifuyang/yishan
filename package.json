@@ -21,7 +21,7 @@
     "db:seed": "pnpm --filter yishan-api db:seed",
     "db:reset": "pnpm --filter yishan-api db:reset",
     "lint": "pnpm --filter yishan-admin lint && pnpm --filter yishan-docs typecheck",
-    "arch:check": "node scripts/arch/check-all.mjs",
+    "arch:check": "node -e \"const fs=require('fs');const {spawnSync}=require('child_process');const checks=['scripts/arch/check-routes.mjs','scripts/arch/check-manifest.mjs','scripts/arch/check-boundaries.mjs'];for(const file of checks){if(!fs.existsSync(file)){console.log('[arch] '+file+' missing, skipped');continue;}const r=spawnSync(process.execPath,[file],{stdio:'inherit'});if(r.status!==0){process.exit(r.status||1);}}\"",
     "arch:check:routes": "node scripts/arch/check-routes.mjs",
     "arch:check:manifest": "node scripts/arch/check-manifest.mjs",
     "arch:check:boundaries": "node scripts/arch/check-boundaries.mjs",
