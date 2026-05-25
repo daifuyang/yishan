@@ -43,19 +43,18 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm install --no-frozen-lockfile --force
+        run: pnpm install --no-frozen-lockfile --force --prod=false
 
       - name: Architecture Guard
         run: pnpm arch:check
 
       - name: Prepare yishan-tiptap
-        working-directory: apps/yishan-components/yishan-tiptap
         run: |
-          pnpm install --filter yishan-tiptap --no-frozen-lockfile
-          pnpm build --filter yishan-tiptap
+          pnpm install --filter yishan-tiptap --no-frozen-lockfile --prod=false
+          pnpm --filter yishan-tiptap build
 
       - name: Admin Setup
-        run: pnpm --filter yishan-admin max setup
+        run: pnpm --filter yishan-admin exec max setup
 
       - name: Admin Lint
         run: pnpm --filter yishan-admin lint
