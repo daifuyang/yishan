@@ -1,5 +1,6 @@
 import fp from 'fastify-plugin'
 import { FastifyInstance, FastifyPluginOptions } from 'fastify'
+import net from 'node:net'
 import { prismaManager } from '../../../utils/prisma.js'
 import { BusinessError } from '../../../exceptions/business-error.js'
 import { SystemErrorCode } from '../../../constants/business-codes/common.js'
@@ -16,6 +17,42 @@ interface DatabasePluginOptions extends FastifyPluginOptions {
   retryDelay?: number
   /** 连接超时（毫秒），超时则直接抛出数据库错误 */
   connectionTimeout?: number
+}
+
+interface TcpProbeResult {
+  ok: boolean
+  ms: number
+  code?: string
+  message?: string
+}
+
+async function probeTcp(host: string, port: number, timeoutMs: number): Promise<TcpProbeResult> {
+  const startedAt = Date.now()
+
+  return await new Promise((resolve) => {
+    const socket = net.createConnection({ host, port })
+    let finished = false
+
+    const finish = (result: TcpProbeResult) => {
+      if (finished) {
+        return
+      }
+      finished = true
+      socket.destroy()
+      resolve(result)
+    }
+
+    socket.setTimeout(timeoutMs)
+    socket.on('connect', () => {
+      finish({ ok: true, ms: Date.now() - startedAt })
+    })
+    socket.on('timeout', () => {
+      finish({ ok: false, ms: Date.now() - startedAt, code: 'TCP_TIMEOUT', message: 'socket timeout' })
+    })
+    socket.on('error', (error: NodeJS.ErrnoException) => {
+      finish({ ok: false, ms: Date.now() - startedAt, code: error.code, message: error.message })
+    })
+  })
 }
 
 /**
@@ -40,6 +77,28 @@ async function databasePlugin(
   const connectOrFailFast = async (): Promise<void> => {
     try {
       const prisma = prismaManager.getClient()
+      const host = process.env.DATABASE_HOST ?? ''
+      const port = Number(process.env.DATABASE_PORT ?? '3306')
+      const user = process.env.DATABASE_USER ?? ''
+      const database = process.env.DATABASE_NAME ?? ''
+
+      fastify.log.info(
+        {
+          databaseProbe: {
+            host,
+            port,
+            user,
+            database,
+            hasPassword: Boolean(process.env.DATABASE_PASSWORD),
+            hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+            connectionTimeout
+          }
+        },
+        'Database startup config snapshot (masked)'
+      )
+
+      const tcpProbe = await probeTcp(host, port, Math.min(connectionTimeout, 5000))
+      fastify.log.info({ databaseProbe: tcpProbe }, 'Database TCP probe result')
 
       await Promise.race([
         prisma.$connect(),
