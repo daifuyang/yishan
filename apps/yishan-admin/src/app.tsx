@@ -110,6 +110,13 @@ export async function getInitialState(): Promise<{
 }
 
 let extraRoutes: API.menuTreeList = [];
+const clickableRoutePaths = new Set<string>();
+
+const normalizeRoutePath = (path?: string) => {
+  if (!path) return '';
+  if (path === '/') return '/';
+  return path.endsWith('/') ? path.slice(0, -1) : path;
+};
 
 const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
 
@@ -163,6 +170,16 @@ export const layout: RunTimeLayoutConfig = ({
       if (!initialState?.currentUser && currentPath !== loginPath) {
         history.push(loginPath);
       }
+    },
+    itemRender: (route, _, routes) => {
+      const label = route.title || route.breadcrumbName;
+      if (!label) return null;
+
+      const normalizedPath = normalizeRoutePath(route.path);
+      const isLast = routes.indexOf(route) === routes.length - 1;
+      const canLink = !isLast && normalizedPath.startsWith('/') && clickableRoutePaths.has(normalizedPath);
+
+      return canLink ? <Link to={normalizedPath}>{label}</Link> : <span>{label}</span>;
     },
     bgLayoutImgList: [
       {
@@ -253,6 +270,30 @@ const resolveFirstPath = (nodes: any[] = []): string => {
 };
 
 export function patchClientRoutes({ routes }: { routes: any[] }) {
+  clickableRoutePaths.clear();
+
+  const walkRoutes = (items: any[] = []) => {
+    items.forEach((route) => {
+      const normalizedPath = normalizeRoutePath(route?.path);
+      const hasRenderableElement = Boolean(route?.element || route?.Component);
+      if (
+        normalizedPath?.startsWith('/') &&
+        normalizedPath !== '*' &&
+        !normalizedPath.includes(':') &&
+        !normalizedPath.includes('*') &&
+        hasRenderableElement
+      ) {
+        clickableRoutePaths.add(normalizedPath);
+      }
+
+      if (Array.isArray(route?.children) && route.children.length > 0) {
+        walkRoutes(route.children);
+      }
+    });
+  };
+
+  walkRoutes(routes);
+
   const rootRoute = routes.find((r: any) => r.path === '/');
   if (rootRoute) {
     if (!rootRoute.children) {
