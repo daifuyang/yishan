@@ -114,9 +114,7 @@ jobs:
             --log-level info \
             --thread-count 4
           if [ -n "${QINIU_CDN_DOMAIN:-}" ]; then
-            cat > /tmp/qshell_refresh_urls.txt <<EOF
-https://${QINIU_CDN_DOMAIN}/admin/index.html
-          EOF
+            printf '%s\n' "https://${QINIU_CDN_DOMAIN}/admin/index.html" > /tmp/qshell_refresh_urls.txt
             qshell cdnrefresh -i /tmp/qshell_refresh_urls.txt
           fi
 
