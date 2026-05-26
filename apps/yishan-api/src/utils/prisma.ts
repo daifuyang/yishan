@@ -18,6 +18,7 @@ const prismaAdapter = new PrismaMariaDb({
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
   port: process.env.DATABASE_PORT ? Number(process.env.DATABASE_PORT) : 3306,
+  allowPublicKeyRetrieval: process.env.DB_ALLOW_PUBLIC_KEY_RETRIEVAL !== 'false',
   connectionLimit: 5,
 });
 
