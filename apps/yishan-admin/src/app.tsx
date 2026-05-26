@@ -176,8 +176,9 @@ export const layout: RunTimeLayoutConfig = ({
       if (!label) return null;
 
       const normalizedPath = normalizeRoutePath(route.path);
-      const isLast = routes.indexOf(route) === routes.length - 1;
-      const canLink = !isLast && normalizedPath.startsWith('/') && clickableRoutePaths.has(normalizedPath);
+      const index = routes.indexOf(route);
+      const isMiddle = index > 0 && index < routes.length - 1;
+      const canLink = isMiddle && normalizedPath.startsWith('/') && clickableRoutePaths.has(normalizedPath);
 
       return canLink ? <Link to={normalizedPath}>{label}</Link> : <span>{label}</span>;
     },
