@@ -38,6 +38,7 @@ function getLoggerOptions () {
 
 const app = Fastify({
   logger: getLoggerOptions(),
+  pluginTimeout: Number(process.env.FASTIFY_PLUGIN_TIMEOUT) || 60000,
   ajv: {
     customOptions: {
       coerceTypes: 'array', // change type of data to match type keyword
