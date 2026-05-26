@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin'
 import { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import net from 'node:net'
+import path from 'node:path'
 import { prismaManager } from '../../../utils/prisma.js'
 import { BusinessError } from '../../../exceptions/business-error.js'
 import { SystemErrorCode } from '../../../constants/business-codes/common.js'
@@ -55,6 +56,56 @@ async function probeTcp(host: string, port: number, timeoutMs: number): Promise<
   })
 }
 
+interface DriverProbeResult {
+  ok: boolean
+  ms: number
+  code?: string
+  message?: string
+}
+
+function loadMariadbModule(): any {
+  try {
+    // npm flatten case
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('mariadb')
+  } catch {
+    const adapterPkg = require.resolve('@prisma/adapter-mariadb/package.json')
+    const adapterDir = path.dirname(adapterPkg)
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require(path.join(adapterDir, 'node_modules/mariadb'))
+  }
+}
+
+async function probeMariadbDriver(host: string, port: number, user: string, password: string, database: string, timeoutMs: number): Promise<DriverProbeResult> {
+  const startedAt = Date.now()
+  let conn: any
+  try {
+    const mariadb = loadMariadbModule()
+    conn = await mariadb.createConnection({
+      host,
+      port,
+      user,
+      password,
+      database,
+      connectTimeout: timeoutMs
+    })
+    await conn.query('SELECT 1 AS ok')
+    return { ok: true, ms: Date.now() - startedAt }
+  } catch (error) {
+    const err = error as { code?: string; message?: string }
+    return {
+      ok: false,
+      ms: Date.now() - startedAt,
+      code: err?.code,
+      message: err?.message
+    }
+  } finally {
+    if (conn) {
+      await conn.end().catch(() => undefined)
+    }
+  }
+}
+
 /**
  * 数据库连接插件
  * 
@@ -100,6 +151,16 @@ async function databasePlugin(
 
       const tcpProbe = await probeTcp(host, port, Math.min(connectionTimeout, 5000))
       fastify.log.info({ databaseProbe: tcpProbe }, 'Database TCP probe result')
+
+      const driverProbe = await probeMariadbDriver(
+        host,
+        port,
+        user,
+        process.env.DATABASE_PASSWORD ?? '',
+        database,
+        Math.max(connectionTimeout, 10000)
+      )
+      fastify.log.info({ databaseProbe: driverProbe }, 'MariaDB driver probe result')
 
       const connectStartedAt = Date.now()
       fastify.log.info('Prisma connect phase started')
