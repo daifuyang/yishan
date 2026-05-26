@@ -191,4 +191,11 @@ https://${QINIU_CDN_DOMAIN}/admin/index.html
 
       - name: Deploy function
         working-directory: apps/yishan-api
+        env:
+          DATABASE_URL: ${{ secrets.YISHAN_API_DATABASE_URL }}
+          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+          REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
         run: bash ./deploy/fc3/deploy.sh

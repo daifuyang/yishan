@@ -16,7 +16,9 @@ echo "4. 准备运行时依赖"
 npm prune --omit=dev
 
 echo "5. 拷贝运行时文件到 dist"
-cp .env dist/
+if [ -f .env ]; then
+  cp .env dist/
+fi
 cp package.json dist/
 cp -R node_modules dist/
 mkdir -p dist/public
