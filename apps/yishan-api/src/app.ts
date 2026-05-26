@@ -30,10 +30,23 @@ const app: FastifyPluginAsync<AppOptions> = async (
       pluginRuntime.lifecycle.load(item.manifest.name)
       pluginRuntime.lifecycle.enable(item.manifest.name)
       try {
+        const menuSyncStartedAt = Date.now()
+        fastify.log.info({ plugin: item.manifest.name }, 'plugin menu sync start')
         const menuSync = new PluginMenuSyncService()
         await menuSync.syncPluginMenus(item.manifest, 1)
+        fastify.log.info(
+          { plugin: item.manifest.name, ms: Date.now() - menuSyncStartedAt },
+          'plugin menu sync done'
+        )
       } catch (menuSyncError) {
-        fastify.log.warn({ plugin: item.manifest.name, error: menuSyncError instanceof Error ? menuSyncError.message : String(menuSyncError) }, 'plugin menu sync skipped')
+        fastify.log.warn(
+          {
+            plugin: item.manifest.name,
+            error: menuSyncError instanceof Error ? menuSyncError.message : String(menuSyncError),
+            errorName: menuSyncError instanceof Error ? menuSyncError.name : 'UnknownError'
+          },
+          'plugin menu sync skipped'
+        )
       }
       fastify.log.info({ plugin: item.manifest.name, module: item.moduleName }, 'plugin manifest registered')
     } catch (error) {

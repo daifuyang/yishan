@@ -75,6 +75,7 @@ async function databasePlugin(
 
   // 快速失败的连接函数：在超时时间内尝试一次连接，失败直接抛数据库错误
   const connectOrFailFast = async (): Promise<void> => {
+    const startedAt = Date.now()
     try {
       const prisma = prismaManager.getClient()
       const host = process.env.DATABASE_HOST ?? ''
@@ -100,18 +101,57 @@ async function databasePlugin(
       const tcpProbe = await probeTcp(host, port, Math.min(connectionTimeout, 5000))
       fastify.log.info({ databaseProbe: tcpProbe }, 'Database TCP probe result')
 
+      const connectStartedAt = Date.now()
+      fastify.log.info('Prisma connect phase started')
+
       await Promise.race([
         prisma.$connect(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('CONNECTION_TIMEOUT')), connectionTimeout))
       ])
 
+      fastify.log.info(
+        {
+          databaseProbe: {
+            phase: 'connect',
+            ms: Date.now() - connectStartedAt
+          }
+        },
+        'Prisma connect phase finished'
+      )
+
       // 连接后进行一次轻量健康检查，确保连接可用
+      const healthStartedAt = Date.now()
+      fastify.log.info('Prisma health query phase started')
       await prisma.$queryRaw`SELECT 1`
-      fastify.log.info('Database connected and healthy')
+      fastify.log.info(
+        {
+          databaseProbe: {
+            phase: 'health_query',
+            ms: Date.now() - healthStartedAt,
+            totalMs: Date.now() - startedAt
+          }
+        },
+        'Database connected and healthy'
+      )
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
       const isTimeout = errMsg === 'CONNECTION_TIMEOUT'
       const details = isTimeout ? `连接超时（>${connectionTimeout}ms）` : errMsg
+      const errorCode = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code?: unknown }).code ?? '') : ''
+      const errorName = error instanceof Error ? error.name : 'UnknownError'
+      fastify.log.error(
+        {
+          databaseProbe: {
+            phase: 'connect_or_health_query',
+            totalMs: Date.now() - startedAt,
+            isTimeout,
+            errorName,
+            errorCode,
+            details
+          }
+        },
+        'Database startup failed'
+      )
       throw new BusinessError(
         SystemErrorCode.DATABASE_ERROR,
         isTimeout ? '数据库连接超时，请检查网络与数据库服务状态' : '数据库连接失败，请检查数据库配置或服务状态',
