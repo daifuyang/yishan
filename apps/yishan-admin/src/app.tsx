@@ -263,9 +263,11 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
       rootRoute.children = rootRoute.children.filter((r: any) => r.path !== '/');
     }
     const firstPath = resolveFirstPath(extraRoutes || []);
-    rootRoute.children.unshift({
-      id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath
-    });
+    if (firstPath !== '/') {
+      rootRoute.children.unshift({
+        id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath
+      });
+    }
   }
 }
 

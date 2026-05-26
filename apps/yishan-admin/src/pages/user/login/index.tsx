@@ -1,5 +1,5 @@
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { history, useIntl, useModel, FormattedMessage } from "@umijs/max";
+import { useIntl, useModel, FormattedMessage } from "@umijs/max";
 import { Alert, App, Button, Checkbox, Form, Input } from "antd";
 import { createStyles } from "antd-style";
 import React, { useState } from "react";
@@ -175,6 +175,11 @@ const Login: React.FC = () => {
     }
   };
 
+  const hardRedirectAfterLogin = (targetPath: string) => {
+    const basePrefix = __APP_BASE__ === '/' ? '' : __APP_BASE__.replace(/\/+$/, '');
+    window.location.href = `${basePrefix}${targetPath}`;
+  };
+
   const handleSubmit = async (values: API.loginReq) => {
     setLoading(true);
     setLoginError("");
@@ -203,7 +208,7 @@ const Login: React.FC = () => {
         }
 
         await fetchUserInfo();
-        history.push(resolveRedirectAfterLogin());
+        hardRedirectAfterLogin(resolveRedirectAfterLogin());
         return;
       }
 
