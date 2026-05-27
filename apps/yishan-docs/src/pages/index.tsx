@@ -1,6 +1,5 @@
 
 import clsx from 'clsx';
-import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
@@ -18,23 +17,23 @@ function HomepageHeader() {
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
-          <Link
+          <a
             className="button button--secondary button--lg"
-            to="/docs/quick-start/run">
+            href="/docs/quick-start/run">
             快速开始
-          </Link>
-          <Link
+          </a>
+          <a
             className="button button--outline button--lg"
             style={{marginLeft: 12}}
-            to="/docs/frontend/overview">
+            href="/docs/frontend/overview">
             前端文档
-          </Link>
-          <Link
+          </a>
+          <a
             className="button button--outline button--lg"
             style={{marginLeft: 12}}
-            to="/docs/api/overview">
+            href="/docs/api/overview">
             后端文档
-          </Link>
+          </a>
         </div>
       </div>
     </header>

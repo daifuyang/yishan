@@ -5,7 +5,7 @@
 ## 技术栈
 
 - **框架**: React 19 + TypeScript
-- **UI 组件库**: Ant Design 5.x
+- **UI 组件库**: Ant Design 6.x
 - **构建工具**: UmiJS 4.x + Max 插件
 - **样式方案**: Less + Ant Design Style
 - **代码规范**: Biome
@@ -43,6 +43,9 @@ pnpm --filter yishan-admin start:pre
 ### 构建项目
 
 ```bash
+# 先构建 workspace 组件库依赖
+pnpm --filter yishan-tiptap build
+
 # 生产环境构建
 pnpm --filter yishan-admin build
 
@@ -130,7 +133,7 @@ config/
 
 ### 添加 API 接口
 
-1. 在 `src/services` 目录下创建服务文件
+1. 在 `src/services/yishan-admin` 目录下创建或生成服务文件
 2. 使用 `@umijs/max` 提供的 request 方法
 3. 配置 OpenAPI 文档自动生成类型
 

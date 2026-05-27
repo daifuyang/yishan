@@ -59,11 +59,11 @@
 
 ```ts
 import Fastify from 'fastify'
-import errorHandlerPlugin from '../src/plugins/external/error-handler.ts'
-import routePlugin from '../src/routes/api/v1/xxx/index.ts'
-import registerCommonSchemas from '../src/schemas/common.ts'
-import registerModuleSchemas from '../src/schemas/xxx.ts'
-import { SomeService } from '../src/services/xxx.service.ts'
+import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
+import routePlugin from '../src/core/routes/api/v1/admin/xxx/index.ts'
+import registerCommonSchemas from '../src/core/schemas/common.ts'
+import registerModuleSchemas from '../src/core/schemas/xxx.ts'
+import { SomeService } from '../src/core/services/xxx.service.ts'
 import { describe, it, expect, vi } from 'vitest'
 
 async function buildApp() {

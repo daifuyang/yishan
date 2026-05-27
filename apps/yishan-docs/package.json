@@ -5,7 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start --port 4000",
-    "build": "docusaurus build",
+    "build": "CI=true BROWSERSLIST_IGNORE_OLD_DATA=1 NODE_OPTIONS=\"--require ./scripts/silence-build-warnings.cjs\" docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",

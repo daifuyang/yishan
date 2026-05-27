@@ -9,6 +9,9 @@ export interface PluginMenuItem {
 export interface PluginManifest {
   pluginId: string
   name: string
+  menuRootName?: string
+  menuRootIcon?: string
+  menuRootSort?: number
   version: string
   coreCompatibility?: string
   compatRange?: string

@@ -6,7 +6,7 @@ title: 缓存规范
 
 系统可选接入 Redis 作为缓存层：
 
-- 插件：`src/plugins/external/redis.ts`，支持 `REDIS_URL` 或主机/端口配置
+- 插件：`src/core/plugins/external/redis.ts`，支持 `REDIS_URL` 或主机/端口配置
 - TTL：在 `src/config/index.ts` 的 `CACHE_CONFIG` 中集中控制（如用户详情）
 - 缓存键约定：统一字符串前缀，如 `user:detail:${id}`
 

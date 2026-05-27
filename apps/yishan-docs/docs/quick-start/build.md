@@ -6,6 +6,12 @@ title: 构建与发布
 
 ## 构建前端（Admin）
 
+Admin 依赖 workspace 内的 `yishan-tiptap`，建议先构建组件库：
+
+```bash
+pnpm --filter yishan-tiptap build
+```
+
 ```bash
 pnpm --filter yishan-admin build
 ```
@@ -34,9 +40,7 @@ pnpm --filter yishan-api start # 自动构建 TypeScript 并启动 Fastify
 
 ## CI/CD 快速入门
 
-GitHub Actions 工作流目录：
-
-`c:\Workspace\Frontend\yishan\.github\workflows`
+GitHub Actions 工作流目录：`.github/workflows`
 
 当前生效模式（CI/CD 全合并）：
 
@@ -49,9 +53,11 @@ GitHub Actions 工作流目录：
 2. 构建 `yishan-admin`，将 `dist/` 同步到 `apps/yishan-api/public/admin`
 3. 构建 `yishan-api` 产物并执行 FC 部署（`apps/yishan-api/deploy/fc3`）
 
+当前线上模式为 API 与 Admin 静态资源一体化部署：Admin 产物会复制到 API 的 `public/admin/`，再随 API 部署到 FC3。
+
 旧模式备份（前后端分离 CI/CD）：
 
-- 备份目录：`c:\Workspace\Frontend\yishan\.github\workflows_backup\split-mode-20260329`
+- 备份目录：`.github/workflows_backup/split-mode-20260329`
 - 备份文件：
   - `yishan-admin-ci.yml`
   - `yishan-admin-cd-fc.yml`

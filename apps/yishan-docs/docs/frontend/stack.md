@@ -7,7 +7,7 @@ title: 技术栈与命令
 ## 依赖概览
 
 - `@umijs/max`（Umi Max v4）
-- `antd`、`@ant-design/pro-components`
+- `antd` v6、`@ant-design/pro-components`
 - `react` 19、`typescript` 5
 - 代码质量：`@biomejs/biome`
 

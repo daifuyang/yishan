@@ -45,7 +45,7 @@
 
 - 目标：为插件状态、版本和配置建立可追踪持久化模型（Prisma）。
 - 改动范围：
-  - 修改 `apps/yishan-api/prisma/schema.prisma`，新增 Plugin 相关模型（例如 `Plugin`, `PluginVersion`, `PluginInstall`, `PluginConfigSnapshot`）。
+  - 修改 `apps/yishan-api/prisma/schema/*.prisma`，新增 Plugin 相关模型（例如 `Plugin`, `PluginVersion`, `PluginInstall`, `PluginConfigSnapshot`）。
   - 新增迁移脚本与数据访问层。
   - API 内新增插件管理 service（只做内部调用，不急于对外开放完整接口）。
 - 验证标准：
@@ -74,7 +74,7 @@
 - 目标：提供可操作的插件管理界面（安装、启停、版本切换、配置编辑、回滚）。
 - 改动范围：
   - `apps/yishan-admin/src/` 新增插件管理页面与 service。
-  - `apps/yishan-api/src/routes` 新增/扩展插件管理路由（鉴权复用现有 JWT 机制）。
+  - `apps/yishan-api/src/core/routes` 新增/扩展插件管理路由（鉴权复用现有 JWT 机制）。
   - 增加配置 JSON schema 驱动表单（可复用 `@json-render/*`）。
 - 验证标准：
   - `pnpm --filter yishan-admin lint` 与 `pnpm --filter yishan-admin test` 通过。

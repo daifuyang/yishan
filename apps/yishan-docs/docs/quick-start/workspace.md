@@ -21,8 +21,9 @@ pnpm --filter yishan-api dev
 pnpm --filter yishan-docs start
 
 # 构建
+pnpm --filter yishan-tiptap build
 pnpm --filter yishan-admin build
-pnpm --filter yishan-api start       # 启动时自动构建
+pnpm --filter yishan-api build:ts
 pnpm --filter yishan-docs build
 
 # 仅安装某个子项目依赖
@@ -39,4 +40,4 @@ pnpm -r build       # 递归执行 build
 pnpm -r test        # 递归执行 test
 ```
 
-建议始终在项目根目录运行安装与批量脚本，确保跨项目依赖一致。子项目特定操作使用 `--filter` 精准命中目标。
+建议始终在项目根目录运行安装与批量脚本，确保跨项目依赖一致。子项目特定操作使用 `--filter` 精准命中目标。构建 admin 前先构建 `yishan-tiptap`，避免 workspace 依赖产物缺失。

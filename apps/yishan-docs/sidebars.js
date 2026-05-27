@@ -25,6 +25,16 @@ const sidebars = {
         },
         {
             type: 'category',
+            label: '架构与规范',
+            collapsed: false,
+            items: [
+                'architecture/overview',
+                'architecture/plugin-runtime',
+                'architecture/doc-governance',
+            ],
+        },
+        {
+            type: 'category',
             label: '前端（yishan-admin）',
             items: [
                 'frontend/overview',
@@ -69,6 +79,7 @@ const sidebars = {
                 'modules/departments',
                 'modules/posts',
                 'modules/system',
+                'modules/plugin-module-template',
                 'template-logic',
             ],
         },

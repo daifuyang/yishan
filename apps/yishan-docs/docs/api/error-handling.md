@@ -4,7 +4,7 @@ title: 错误处理规范
 
 # 错误处理规范
 
-全局错误处理由 `src/plugins/external/error-handler.ts` 实现：
+全局错误处理由 `src/core/plugins/external/error-handler.ts` 实现：
 
 - 捕获所有异常并统一输出 `{ success, code, message, data, timestamp }`
 - `BusinessError` 按业务码直接返回

@@ -4,7 +4,7 @@ title: 路由设计
 
 # 路由设计
 
-路由按照 `api/v1` 版本划分，`admin` 下为系统管理模块。
+核心路由按照 `api/v1` 版本划分，`admin` 下为系统管理模块。插件模块使用 `/api/modules/<module>/v1/*` 前缀。
 
 ## 认证模块
 
@@ -12,7 +12,15 @@ title: 路由设计
 
 ## 系统管理模块
 
-`/api/v1/admin/users`、`roles`、`menus`、`departments`、`posts` 等。
+`/api/v1/admin/users`、`roles`、`menus`、`departments`、`dicts`、`attachments`、`apps` 等。
+
+## 插件模块
+
+门户插件示例：
+
+- `GET /api/modules/portal/v1/admin/articles` 文章列表
+- `GET /api/modules/portal/v1/admin/pages` 页面列表
+- `GET /api/modules/portal/v1/admin/posts` 岗位列表
 
 以用户模块为例：
 

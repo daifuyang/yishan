@@ -9,18 +9,18 @@ title: 前端概览
 ## 技术栈
 
 - 框架：Umi Max（`@umijs/max`）
-- UI：Ant Design v5、Pro Components
+- UI：Ant Design v6、Pro Components
 - 语言：TypeScript
 - 测试：Jest
 
 ## 关键目录
 
-- `config/routes.ts` 路由与菜单映射
-- `src/pages/system/*` 用户、角色、菜单、部门、岗位页面
+- `config/routes.ts` 页面挂载与访问控制（菜单以后端授权菜单树为准）
+- `src/pages/system/*` 用户、角色、菜单、部门、岗位、应用、存储等页面
 - `src/services/yishan-admin/*` 请求封装与 OpenAPI 接口
 - `src/utils/token.ts`、`src/utils/auth.ts` 认证与本地状态
 - `src/requestErrorConfig.ts` 请求/响应拦截与错误处理
 
 ## 权限模型
 
-前端以“路径权限”为核心，后端在 `/api/v1/auth/me` 返回 `accessPath`，前端在 `src/access.ts` 进行匹配控制。
+前端以“路径权限”为核心，后端在 `/api/v1/auth/me` 返回 `accessPath`，前端在 `src/access.ts` 进行匹配控制。插件页面由 `src/plugins/modules/*.manifest.ts` 生成到 `config/generated/plugin-routes.ts`。

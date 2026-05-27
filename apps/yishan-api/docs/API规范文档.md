@@ -30,7 +30,7 @@ apps/yishan-api/
 
 ### 1.1 路由文件结构
 
-路由文件应按照业务模块组织，采用 RESTful 风格命名。文件路径：`src/routes/api/v1/{模块}/{子模块}/index.ts`
+路由文件应按照业务模块组织，采用 RESTful 风格命名。核心路由文件路径：`src/core/routes/api/v1/{模块}/{子模块}/index.ts`；插件路由位于 `src/plugins/modules/<module>/routes`。
 
 ```typescript
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
@@ -575,7 +575,7 @@ model SysUser {
 ### 9.3 Prisma 客户端使用规范
 
 ```typescript
-// src/models/User.ts
+// src/core/models/sys-user.model.ts
 import { PrismaClient, Prisma } from "../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
@@ -818,7 +818,7 @@ server.register(AutoLoad, {
 ### 8.3 Schema 插件配置
 
 ```typescript
-// src/plugins/external/schemas.ts
+// src/core/plugins/external/schemas.ts
 import { FastifyInstance } from "fastify";
 import fp from "fastify-plugin";
 
@@ -835,7 +835,7 @@ export default fp<SchemasPluginOptions>(
 ### 8.4 Schema 注册实现
 
 ```typescript
-// src/schemas/index.ts
+// src/core/schemas/index.ts
 import fp from "fastify-plugin";
 import { registerCommon } from "./common.js";
 import { registerUser } from "./user.js";
@@ -1354,10 +1354,10 @@ test/
 
 ```typescript
 // test/unit/services/user.service.test.ts
-import { UserService } from '../../../src/services/user.service';
-import { UserModel } from '../../../src/models/user.model';
+import { UserService } from '../../../src/core/services/user.service';
+import { UserModel } from '../../../src/core/models/sys-user.model';
 
-jest.mock('../../../src/models/user.model');
+jest.mock('../../../src/core/models/sys-user.model');
 
 describe('UserService', () => {
   beforeEach(() => {
@@ -1501,7 +1501,7 @@ CMD ["npm", "start"]
 ### 15.3 健康检查
 
 ```typescript
-// src/routes/health.ts
+// src/core/routes/health.ts
 import { FastifyPluginAsync } from 'fastify';
 
 const health: FastifyPluginAsync = async (fastify, opts): Promise<void> => {

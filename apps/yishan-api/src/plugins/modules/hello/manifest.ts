@@ -1,6 +1,8 @@
 export default {
   pluginId: 'yishan/hello',
   name: 'hello',
+  menuRootName: 'Hello 示例',
+  menuRootSort: 21,
   version: '1.0.0',
   coreCompatibility: '^1.0.0',
   channels: ['admin', 'public'],

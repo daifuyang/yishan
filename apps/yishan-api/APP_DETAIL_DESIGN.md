@@ -455,12 +455,12 @@ M3 为尽快落地，建议先用 JSON 存储一行数据：
 建议按现有模块组织方式增加目录（示意）：
 
 - `prisma/schema/system.prisma`：新增模型
-- `src/models/sys-app-resource.model.ts`：资源模型（Prisma 封装）
-- `src/models/sys-form.model.ts`、`sys-form-field.model.ts`、`sys-form-record.model.ts`
-- `src/schemas/form.ts`：TypeBox schemas（表单/字段/数据）
-- `src/services/form.service.ts`：表单领域逻辑（事务、校验）
-- `src/routes/api/v1/admin/apps/resources/index.ts`：资源路由（可选）
-- `src/routes/api/v1/admin/apps/forms/index.ts`：表单路由
+- `src/core/models/sys-app-resource.model.ts`：资源模型（Prisma 封装）
+- `src/core/models/sys-form.model.ts`、`sys-form-field.model.ts`、`sys-form-record.model.ts`
+- `src/core/schemas/form.ts`：TypeBox schemas（表单/字段/数据）
+- `src/core/services/form.service.ts`：表单领域逻辑（事务、校验）
+- `src/core/routes/api/v1/admin/apps/resources/index.ts`：资源路由（可选）
+- `src/core/routes/api/v1/admin/apps/forms/index.ts`：表单路由
 
 事务边界建议：
 

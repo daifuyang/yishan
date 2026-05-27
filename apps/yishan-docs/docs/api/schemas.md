@@ -6,7 +6,7 @@ title: 校验 Schema
 
 后端使用 TypeBox 定义请求与响应的 Schema，并在路由中引用 `$ref` 进行复用：
 
-- 位置：`src/schemas/*`
+- 位置：`src/core/schemas/*`
 - 示例：用户列表查询 `user.ts` 导出 `userListQuery` 与 `userListResp`
 
 在路由中：

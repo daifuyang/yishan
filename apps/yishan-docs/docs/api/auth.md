@@ -8,7 +8,7 @@ title: 认证与授权
 
 ## JWT 插件
 
-`src/plugins/external/jwt-auth.ts` 注册 JWT，并提供 `fastify.authenticate` 作为路由前置校验：
+`src/core/plugins/external/jwt-auth.ts` 注册 JWT，并提供 `fastify.authenticate` 作为路由前置校验：
 
 - 校验 `Authorization: Bearer <token>` 头格式与签名
 - 仅允许 `access_token` 类型访问接口

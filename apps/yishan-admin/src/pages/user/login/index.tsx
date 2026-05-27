@@ -15,80 +15,136 @@ const useStyles = createStyles(({ css }) => {
       display: "flex",
       backgroundImage: `url('${loginBgImage}')`,
       backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
       width: "100%",
-      height: "100vh",
+      minHeight: "100dvh",
+      padding: "24px",
+      overflow: "auto",
+      "@media (max-width: 992px)": {
+        padding: "20px",
+      },
+      "@media (max-width: 768px)": {
+        padding: "16px",
+        alignItems: "center",
+        justifyContent: "center",
+      },
     },
     brand: {
       backgroundImage: `url('${loginBrandImage}')`,
       backgroundSize: "100% 100%",
       width: "56.67%",
       height: "100%",
+      minHeight: "640px",
+      "@media (max-width: 1200px)": {
+        width: "50%",
+      },
+      "@media (max-width: 992px)": {
+        display: "none",
+      },
     },
     loginWrap: {
       flex: 1,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      minHeight: "640px",
+      "@media (max-width: 992px)": {
+        minHeight: "auto",
+      },
     },
     loginCard: {
-      width: "481px",
+      width: "min(481px, 100%)",
       backgroundColor: "#fff",
       padding: "56px 48px 88px 48px",
       borderRadius: "20px",
       boxShadow:
         " 0px 0px 0px  rgba(0, 0, 0, 0.1), 0px 17px 36px  rgba(23, 57, 222, 0.25)",
+      "@media (max-width: 768px)": {
+        padding: "28px 20px 32px",
+        borderRadius: "16px",
+      },
     },
     loginTitle: {
       fontFamily: "Noto Sans SC",
       textAlign: "center",
-      fontSize: "36px",
+      fontSize: "clamp(28px, 4.5vw, 36px)",
       fontWeight: 700,
       color: "#000",
+      margin: 0,
     },
     loginSubTitle: {
       fontFamily: "Noto Sans SC",
       textAlign: "center",
       marginTop: "12px",
-      fontSize: "14px",
+      fontSize: "clamp(14px, 3.5vw, 16px)",
       fontWeight: 400,
       color: "#000",
       margin: 0,
     },
     loginForm: {
       marginTop: "40px",
+      "@media (max-width: 768px)": {
+        marginTop: "28px",
+      },
     },
     loginFormItem: css`
       background-color: rgba(231, 241, 253, 0.4);
+      min-height: 56px;
       &.ant-input-affix-wrapper > input.ant-input {
         &::placeholder {
-          font-size: 20px;
+          font-size: 18px;
           color: rgba(4, 19, 74, 0.4);
           font-family: 'Noto Sans SC';
           font-weight: 400;
         }
         padding: 6px 8px;
-        font-size: 20px;
+        font-size: 18px;
         color: rgba(4, 19, 74, 0.4);
         font-family: 'Noto Sans SC';
         font-weight: 400;
+      }
+      @media (max-width: 768px) {
+        min-height: 48px;
+        &.ant-input-affix-wrapper > input.ant-input {
+          &::placeholder {
+            font-size: 16px;
+          }
+          font-size: 16px;
+        }
       }
     `,
     loginItemIcon: {
       fontSize: "24px",
       color: "rgba(28, 53, 145, 0.6)",
+      "@media (max-width: 768px)": {
+        fontSize: "20px",
+      },
     },
     loginFormChexkBox: css`
       & .ant-checkbox + span {
         color: rgba(4, 19, 74, 0.4);
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 400;
       }
       margin-bottom: 86px;
+      @media (max-width: 768px) {
+        margin-bottom: 28px;
+        & .ant-checkbox + span {
+          font-size: 15px;
+        }
+      }
     `,
     loginFormBtn: css`
       &.ant-btn {
         padding: 24px 15px;
         font-size: 20px;
+      }
+      @media (max-width: 768px) {
+        &.ant-btn {
+          padding: 18px 15px;
+          font-size: 17px;
+        }
       }
     `,
   };

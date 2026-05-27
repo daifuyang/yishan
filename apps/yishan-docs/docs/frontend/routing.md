@@ -4,24 +4,18 @@ title: 路由与菜单
 
 # 路由与菜单
 
-路由在 `config/routes.ts` 统一维护，并与菜单项关联。示例：
+路由在 `config/routes.ts` 维护页面挂载与访问控制，菜单不再写死在前端，而是以后端授权菜单树与插件 manifest 同步结果为准。示例：
 
 ```ts title="config/routes.ts 部分"
-// /system 下包含用户、角色、菜单、部门、岗位
+// 核心系统页面直接挂载，菜单由后端返回
 {
-  path: '/system',
-  name: 'system',
-  icon: 'setting',
+  path: '/system/user',
+  component: './system/user',
   access: 'canDo',
-  routes: [
-    { path: '/system/user', name: 'user', component: './system/user', access: 'canDo' },
-    { path: '/system/role', name: 'role', component: './system/role', access: 'canDo' },
-    { path: '/system/menu', name: 'menu', component: './system/menu', access: 'canDo' },
-    { path: '/system/department', name: 'department', component: './system/department', access: 'canDo' },
-    { path: '/system/post', name: 'post', component: './system/post', access: 'canDo' },
-  ],
 }
 ```
+
+插件页面由 `src/plugins/modules/*.manifest.ts` 生成到 `config/generated/plugin-routes.ts`，例如 `/plugins/yishan/portal/articles`。
 
 ## 权限控制
 

@@ -74,7 +74,7 @@ pnpm --filter yishan-tiptap dev          # 开发模式（watch）
 ### 前端（yishan-admin）
 - 框架：React 19 + TypeScript
 - 构建：UmiJS 4（@umijs/max）
-- UI：Ant Design 5
+- UI：Ant Design 6
 - 样式：Less + antd-style
 - 代码规范：Biome
 - 测试：Jest（含覆盖率）、Playwright（部分模块）
@@ -112,10 +112,13 @@ src/                      # 业务代码（pages、components、services、local
 ```
 src/app.ts                # Fastify 应用入口
 src/server.ts             # 启动脚本
-src/routes/               # API 路由（admin/users、roles、menus、posts、departments 等）
-src/schemas/              # TypeBox 模式定义
-src/services/             # 业务服务层
-prisma/schema/            # Prisma 数据模型
+src/core/routes/          # 核心 API 路由（auth、users、roles、menus、departments 等）
+src/core/schemas/         # TypeBox 模式定义
+src/core/services/        # 核心业务服务层
+src/core/models/          # Prisma 访问封装
+src/plugins-runtime/      # 插件运行时（发现、生命周期、持久化）
+src/plugins/modules/      # 插件模块（portal、hello 等）
+prisma/schema/            # Prisma 多文件数据模型
 ```
 
 ### apps/yishan-docs
@@ -126,7 +129,7 @@ src/                      # 自定义页面与组件
 docusaurus.config.ts      # 配置文件
 ```
 
-### apps/yishan-components/yishan-tiptap
+### apps/yishan-components/yishan-tiptap（构建 admin 前需先构建）
 ```
 src/                      # 组件源码
 rollup.config.js          # 构建配置
@@ -156,8 +159,9 @@ dist/                     # 构建产物（cjs、esm、d.ts、css）
 - FC3 部署链路（API + Admin 静态资源）
 
 ### 主要代码位置
-- 后端路由：`apps/yishan-api/src/routes/api/v1/admin`
-- 认证路由：`apps/yishan-api/src/routes/api/v1/auth`
+- 后端核心路由：`apps/yishan-api/src/core/routes/api/v1/admin`
+- 认证路由：`apps/yishan-api/src/core/routes/api/v1/auth`
+- 插件路由：`apps/yishan-api/src/plugins/modules/*/routes`
 - 后台页面：`apps/yishan-admin/src/pages/system`、`apps/yishan-admin/src/pages/portal`
 
 ### 菜单命名与功能对照（深度检查）
@@ -169,7 +173,7 @@ dist/                     # 构建产物（cjs、esm、d.ts、css）
 | `/system/user` | 用户管理 | `system/user` | `api/v1/admin/users` | 已实现 |
 | `/system/role` | 角色管理 | `system/role` | `api/v1/admin/roles` | 已实现 |
 | `/system/department` | 部门管理 | `system/department` | `api/v1/admin/departments` | 已实现 |
-| `/system/post` | 岗位管理 | `system/post` | `modules/portal/v1/admin/posts` | 已实现（命名域待统一） |
+| `/system/post` | 岗位管理 | `system/post` | `api/modules/portal/v1/admin/posts` | 已实现（命名域待统一） |
 | `/system/menu` | 菜单管理 | `system/menu` | `api/v1/admin/menus` | 已实现 |
 | `/system/dict` | 字典管理 | `system/dict` | `api/v1/admin/dicts` | 已实现 |
 | `/system/site` | 站点配置 | `system/site` | `api/v1/admin/system/options` | 已实现 |
@@ -177,16 +181,16 @@ dist/                     # 构建产物（cjs、esm、d.ts、css）
 | `/system/attachments` | 媒体库 | `system/attachments` | `api/v1/admin/attachments` | 已实现 |
 | `/system/login-log` | 登录日志 | `system/login-log` | `api/v1/admin/system/login-logs` | 已实现 |
 | `/system/apps` | 应用管理 | `system/apps` | `api/v1/admin/apps` | 已实现 |
-| `/portal/articles` | 文章管理 | `portal/articles` | `modules/portal/v1/admin/articles` | 已实现 |
-| `/portal/pages` | 页面管理 | `portal/pages` | `modules/portal/v1/admin/pages` | 已实现 |
-| `/portal/categories` | 分类管理 | `portal/categories` | `modules/portal/v1/admin/articles`（分类子接口） | 已实现 |
-| `/portal/article-templates` | 文章模板 | `portal/article-templates` | `modules/portal/v1/admin/articles`（模板接口） | 已实现 |
-| `/portal/page-templates` | 页面模板 | `portal/page-templates` | `modules/portal/v1/admin/pages`（模板接口） | 已实现 |
+| `/plugins/yishan/portal/articles` | 文章管理 | `portal/articles` | `api/modules/portal/v1/admin/articles` | 已实现 |
+| `/plugins/yishan/portal/pages` | 页面管理 | `portal/pages` | `api/modules/portal/v1/admin/pages` | 已实现 |
+| `/plugins/yishan/portal/categories` | 分类管理 | `portal/categories` | `api/modules/portal/v1/admin/articles`（分类子接口） | 已实现 |
+| `/plugins/yishan/portal/article-templates` | 文章模板 | `portal/article-templates` | `api/modules/portal/v1/admin/articles`（模板接口） | 已实现 |
+| `/plugins/yishan/portal/page-templates` | 页面模板 | `portal/page-templates` | `api/modules/portal/v1/admin/pages`（模板接口） | 已实现 |
 
 命名规范上目前还有这些可优化点（不影响功能使用，但影响可维护性）：
 
 1. **领域边界不一致**：`/system/post` 页面实际调用 `portalPosts` 服务（`/api/modules/portal/.../posts`），建议统一为 system 域或组织域命名。
-2. **菜单分组与路由配置不完全一致**：后端 seed 有 `/portal/templates` 分组节点，但前端静态 `routes.ts` 未定义该中间路径；当前依赖动态菜单可展示子项，建议补齐分组路由或将其设为纯分组不可点击节点。
+2. **菜单与页面挂载来源不同**：菜单以后端 `sys_menu` 与插件 manifest 同步结果为准，前端 `routes.ts` 只负责页面挂载和访问控制，新增插件时需同步检查前后端 manifest。
 3. **历史 i18n 菜单键残留**：`src/locales/zh-CN/menu.ts` 中仍有大量模板示例键（dashboard/form/list 等），与当前业务菜单不一致，建议精简避免误导。
 
 ### 已完成

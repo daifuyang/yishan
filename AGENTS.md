@@ -44,7 +44,7 @@ Compiled to `dist/app.js` (commonjs). `dist/server.js` is the start script. Not 
 Admin uses Biome only (no ESLint/Prettier). Biome config: single quotes, reactClassic jsxRuntime.
 
 ## Prisma / DB
-- Schema: `apps/yishan-api/prisma/schema.prisma`
+- Schema: `apps/yishan-api/prisma/schema/*.prisma`
 - `db:seed` requires compiled output (`node dist/scripts/seed.js`)
 - API `.env` is NOT in git; use `.env.example` as reference
 

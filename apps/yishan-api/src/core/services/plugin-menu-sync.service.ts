@@ -1,8 +1,6 @@
 import { prismaManager } from '../../utils/prisma.js'
 import { PluginManifest, PluginMenuItem } from '../../plugins-runtime/types.js'
 
-const SUPER_ADMIN_ROLE_ID = 1
-
 export type SyncStrategy = 'strict' | 'safe'
 
 export interface ConflictDetail {
@@ -49,8 +47,11 @@ export class PluginMenuSyncService {
     if (!match) return null
     
     const [, org, pluginName] = match
-    
+
     const pluginParentPath = `/plugins/${org}/${pluginName}`
+    const rootName = manifest.menuRootName?.trim() || `${org}/${pluginName}`
+    const rootIcon = manifest.menuRootIcon ?? manifest.icon ?? null
+    const rootSort = Number.isFinite(manifest.menuRootSort) ? Number(manifest.menuRootSort) : 10
     
     let parentMenu = await this.prisma.sysMenu.findFirst({
       where: { path: pluginParentPath, type: 0, deletedAt: null }
@@ -59,25 +60,29 @@ export class PluginMenuSyncService {
     if (!parentMenu) {
       const created = await this.prisma.sysMenu.create({
         data: {
-          name: `${org}/${pluginName}`,
+          name: rootName,
           path: pluginParentPath,
           type: 0,
           status: 1,
-          sort_order: 10,
+          sort_order: rootSort,
           source: 'plugin',
           pluginName: manifest.name,
           pluginMenuKey: `${manifest.pluginId}:${pluginParentPath}`,
-          icon: manifest.icon ?? null,
+          icon: rootIcon,
           creatorId: 1,
         },
       })
       parentMenu = created
-      
-      await this.bindSuperAdmin(created.id)
-    } else if (manifest.icon) {
+    } else {
       await this.prisma.sysMenu.update({
         where: { id: parentMenu.id },
-        data: { icon: manifest.icon },
+        data: {
+          name: rootName,
+          icon: rootIcon,
+          sort_order: rootSort,
+          source: 'plugin',
+          pluginName: manifest.name,
+        },
       })
     }
     
@@ -148,12 +153,6 @@ export class PluginMenuSyncService {
         parentId,
       },
     })
-
-    try {
-      await this.bindSuperAdmin(created.id)
-    } catch {
-      // non-fatal: super-admin binding failure should not block plugin enable
-    }
 
     return { id: created.id, isNew: true }
   }
@@ -316,23 +315,4 @@ export class PluginMenuSyncService {
     return result.count
   }
 
-  private async bindSuperAdmin(menuId: number): Promise<void> {
-    const existing = await this.prisma.sysRoleMenu.findUnique({
-      where: {
-        roleId_menuId: {
-          roleId: SUPER_ADMIN_ROLE_ID,
-          menuId,
-        },
-      },
-    })
-
-    if (!existing) {
-      await this.prisma.sysRoleMenu.create({
-        data: {
-          roleId: SUPER_ADMIN_ROLE_ID,
-          menuId,
-        },
-      })
-    }
-  }
 }

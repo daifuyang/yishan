@@ -17,19 +17,14 @@
 
 ```
 ├── src/
-│   ├── routes/           # 路由层 (API 端点定义)
-│   ├── services/         # 服务层 (业务逻辑处理)
-│   ├── models/           # 模型层 (数据访问层)
-│   ├── schemas/          # TypeBox Schema 定义 (请求/响应验证)
+│   ├── core/             # 核心插件、路由、服务、模型、Schema
+│   ├── plugins-runtime/  # 插件运行时
+│   ├── plugins/modules/  # 业务插件模块
 │   ├── constants/        # 常量定义 (错误码、业务码)
 │   ├── utils/            # 工具类 (响应工具、数据库连接等)
-│   ├── plugins/          # Fastify 插件配置
-│   │   ├── external/     # 外部插件 (数据库、认证、Swagger等)
-│   │   ├── app/          # 应用插件
-│   │   └── modules/      # 业务模块插件 (AutoLoad)
-│   ├── controllers/      # 控制器层 (可选，复杂业务场景)
 │   └── generated/        # 自动生成的代码 (Prisma Client)
-├── prisma/               # Prisma 配置和迁移文件
+├── prisma/schema/        # Prisma 多文件 schema
+├── prisma/migrations/    # Prisma 迁移文件
 ├── docs/                 # 项目文档
 ├── test/                 # 应用级测试文件
 └── ...
@@ -39,7 +34,7 @@
 
 ### 环境要求
 
-- Node.js 18.x 或更高版本
+- Node.js 20.x 或更高版本（CI/FC3 使用 Node 22.14.0）
 - MySQL 8.0+
 - Redis 6.0+
 
@@ -163,7 +158,25 @@ pnpm run watch:ts
 pnpm run db:init      # 初始化数据库
 pnpm run db:seed      # 填充测试数据
 pnpm run db:reset     # 重置数据库
+
+# CLI（已构建后）
+pnpm run cli -- --help
+pnpm run cli -- auth login -u admin -p admin123 --base-url http://127.0.0.1:3000
+pnpm run cli -- resources
+pnpm run cli -- api users list --page 1 --page-size 10
+pnpm run cli -- api users create --help-input
+pnpm run cli -- api users create --template
+pnpm run cli -- api users create --template-full
+pnpm run cli -- api attachments create --file ./test.png --kind image --name test-image
 ```
+
+### CLI 快速说明
+
+- CLI 命令入口：`src/cli/index.ts`，构建后执行 `dist/cli/index.js`
+- 会话存储：`~/.yishan-cli/session.json`
+- 通用调用：`api <resource> <action>`，资源可通过 `resources` 查看
+- 资源生成：`pnpm run cli -- gen from-openapi --base-url http://127.0.0.1:3000`
+- 详细用法：见 `docs/CLI使用说明.md`
 
 ## 核心功能
 
@@ -191,7 +204,8 @@ pnpm run db:reset     # 重置数据库
 ## API 文档
 
 启动服务后，访问 Swagger UI：
-- 开发环境: http://localhost:3000/documentation
+- 开发环境: http://localhost:3000/api/docs
+- OpenAPI JSON: http://localhost:3000/api/docs/json
 
 ## 开发规范
 

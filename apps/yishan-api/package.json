@@ -18,7 +18,12 @@
     "db:generate": "npx prisma generate",
     "db:init": "npx prisma migrate dev --name init",
     "db:seed": "npm run build:ts && node dist/scripts/seed.js",
-    "db:reset": "npx prisma migrate reset && npm run db:init && npm run db:seed"
+    "db:reset": "npx prisma migrate reset && npm run db:init && npm run db:seed",
+    "cli": "node dist/cli/index.js",
+    "cli:dev": "ts-node src/cli/index.ts"
+  },
+  "bin": {
+    "yishan-api-cli": "dist/cli/index.js"
   },
   "keywords": [],
   "author": "",

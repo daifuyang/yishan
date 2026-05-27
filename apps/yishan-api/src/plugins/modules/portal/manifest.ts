@@ -1,6 +1,8 @@
 export default {
   pluginId: 'yishan/portal',
   name: 'portal',
+  menuRootName: '门户管理',
+  menuRootSort: 20,
   version: '1.0.0',
   coreCompatibility: '^1.0.0',
   channels: ['admin'],

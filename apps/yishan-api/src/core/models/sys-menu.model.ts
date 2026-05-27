@@ -23,6 +23,7 @@ type MenuWithRelations = Prisma.SysMenuGetPayload<{
 
 export class SysMenuModel {
   private static prisma = prismaManager.getClient();
+  private static readonly SUPER_ADMIN_ROLE_ID = 1;
 
   private static mapToResp(menu: MenuWithRelations): SysMenuResp {
     return {
@@ -263,13 +264,12 @@ export class SysMenuModel {
 
   static async getAuthorizedMenuTreeByRoleIds(roleIds: number[]): Promise<MenuTreeNode[]> {
     if (!roleIds || roleIds.length === 0) return [] as any;
+    const hasSuperAdminRole = roleIds.includes(this.SUPER_ADMIN_ROLE_ID);
     const links = await this.prisma.sysRoleMenu.findMany({
       where: { roleId: { in: roleIds }, deletedAt: null },
       select: { menuId: true },
     });
     const assignedIds = Array.from(new Set(links.map((l) => l.menuId)));
-
-    const superAdminOnly = roleIds.length === 1 && roleIds[0] === 1;
 
     const menus = await this.prisma.sysMenu.findMany({
       where: { deletedAt: null },
@@ -285,7 +285,7 @@ export class SysMenuModel {
     for (const m of menus) byId.set(m.id, m);
 
     const allow = new Set<number>();
-    if (assignedIds.length === 0 && superAdminOnly) {
+    if (hasSuperAdminRole) {
       for (const m of menus) allow.add(m.id);
     } else {
       for (const id of assignedIds) {
@@ -331,13 +331,12 @@ export class SysMenuModel {
 
   static async getAuthorizedMenuPathsByRoleIds(roleIds: number[]): Promise<string[]> {
     if (!roleIds || roleIds.length === 0) return [] as any;
+    const hasSuperAdminRole = roleIds.includes(this.SUPER_ADMIN_ROLE_ID);
     const links = await this.prisma.sysRoleMenu.findMany({
       where: { roleId: { in: roleIds }, deletedAt: null },
       select: { menuId: true },
     });
     const assignedIds = Array.from(new Set(links.map((l) => l.menuId)));
-
-    const superAdminOnly = roleIds.length === 1 && roleIds[0] === 1;
 
     const menus = await this.prisma.sysMenu.findMany({
       where: { deletedAt: null, status: 1 },
@@ -354,7 +353,7 @@ export class SysMenuModel {
     for (const m of menus) byId.set(m.id, { id: m.id, parentId: m.parentId ?? null, path: m.path ?? null, isExternalLink: !!m.isExternalLink });
 
     const allow = new Set<number>();
-    if (assignedIds.length === 0 && superAdminOnly) {
+    if (hasSuperAdminRole) {
       for (const m of menus) allow.add(m.id);
     } else {
       for (const id of assignedIds) {
