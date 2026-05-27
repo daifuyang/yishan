@@ -136,6 +136,8 @@ const UserList: React.FC = () => {
       title: "操作",
       dataIndex: "option",
       valueType: "option",
+      fixed: "right",
+      width: 120,
       render: (_, record) => [
         <UserForm
           key="edit"
@@ -211,6 +213,7 @@ const UserList: React.FC = () => {
           selectedRowKeys,
           onChange: setSelectedRowKeys,
         }}
+        scroll={{ x: 1600 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

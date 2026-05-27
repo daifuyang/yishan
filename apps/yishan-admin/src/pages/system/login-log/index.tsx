@@ -12,12 +12,13 @@ const LoginLogList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
 
   const columns: ProColumns<API.sysLoginLog>[] = [
-    { title: "ID", dataIndex: "id", search: false },
-    { title: "账号", dataIndex: "username" },
-    { title: "姓名", dataIndex: "realName", search: false },
+    { title: "ID", dataIndex: "id", search: false, width: 80 },
+    { title: "账号", dataIndex: "username", width: 140 },
+    { title: "姓名", dataIndex: "realName", search: false, width: 140 },
     {
       title: "状态",
       dataIndex: "status",
+      width: 100,
       valueEnum: statusEnum as any,
       render: (_, record) => (
         <Tag color={record.status === "1" ? "green" : "red"}>
@@ -25,10 +26,10 @@ const LoginLogList: React.FC = () => {
         </Tag>
       ),
     },
-    { title: "提示信息", dataIndex: "message", search: false, ellipsis: true },
-    { title: "IP", dataIndex: "ipAddress", search: false },
-    { title: "User-Agent", dataIndex: "userAgent", search: false, ellipsis: true },
-    { title: "创建时间", dataIndex: "createdAt", search: false, valueType: "dateTime" },
+    { title: "提示信息", dataIndex: "message", search: false, ellipsis: true, width: 220 },
+    { title: "IP", dataIndex: "ipAddress", search: false, width: 150 },
+    { title: "User-Agent", dataIndex: "userAgent", search: false, ellipsis: true, width: 260 },
+    { title: "创建时间", dataIndex: "createdAt", search: false, valueType: "dateTime", width: 180 },
   ];
 
   return (
@@ -52,10 +53,10 @@ const LoginLogList: React.FC = () => {
           };
         }}
         columns={columns}
+        scroll={{ x: 1300 }}
       />
     </PageContainer>
   );
 };
 
 export default LoginLogList;
-

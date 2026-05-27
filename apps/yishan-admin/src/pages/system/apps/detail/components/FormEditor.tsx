@@ -130,6 +130,7 @@ const FormEditor: React.FC<FormEditorProps> = ({ appId, formId }) => {
             };
           }}
           columns={columns}
+          scroll={{ x: 1200 }}
           rowSelection={{}}
           tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
             <Space size={24}>

@@ -88,16 +88,17 @@ const DepartmentList: React.FC = () => {
   };
 
   const columns: ProColumns<DeptTreeNode>[] = [
-    { title: 'ID', dataIndex: 'id', search: false },
-    { title: '部门名称', dataIndex: 'name' },
-    { title: '上级部门', dataIndex: 'parentName', search: false },
-    { title: '负责人', dataIndex: 'leaderName', search: false },
-    { title: '排序', dataIndex: 'sort_order', search: false },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
-    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime' },
+    { title: 'ID', dataIndex: 'id', search: false, width: 80 },
+    { title: '部门名称', dataIndex: 'name', width: 160 },
+    { title: '上级部门', dataIndex: 'parentName', search: false, width: 160 },
+    { title: '负责人', dataIndex: 'leaderName', search: false, width: 120 },
+    { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
+    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
+    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime', width: 180 },
     {
       title: '状态',
       dataIndex: 'status',
+      width: 100,
       valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
         acc[item.value] = {
           text: item.label,
@@ -110,6 +111,8 @@ const DepartmentList: React.FC = () => {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
+      fixed: 'right',
+      width: 160,
       render: (_, record) => [
         <DepartmentForm
           key="edit"
@@ -170,6 +173,7 @@ const DepartmentList: React.FC = () => {
           selectedRowKeys,
           onChange: (keys: React.Key[], _rows: DeptTreeNode[]) => setSelectedRowKeys(keys),
         }}
+        scroll={{ x: 1400 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

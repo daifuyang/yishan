@@ -64,20 +64,22 @@ const DictTypeList: React.FC = () => {
 
 
   const columns: ProColumns<API.sysDictType>[] = [
-    { title: '字典编号', dataIndex: 'id', search: false },
-    { title: '字典名称', dataIndex: 'name' },
+    { title: '字典编号', dataIndex: 'id', search: false, width: 90 },
+    { title: '字典名称', dataIndex: 'name', width: 160 },
     {
       title: '字典类型',
       dataIndex: 'type',
+      width: 180,
       render: (_, record) => (
         <a onClick={() => openDataManager(record)}>{record.type}</a>
       ),
     },
-    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
+    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true, width: 240 },
+    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
     {
       title: '状态',
       dataIndex: 'status',
+      width: 100,
       valueEnum: {
         [Status.ENABLED]: { text: '正常', status: 'Success' },
         [Status.DISABLED]: { text: '停用', status: 'Error' },
@@ -87,6 +89,8 @@ const DictTypeList: React.FC = () => {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
+      fixed: 'right',
+      width: 160,
       render: (_, record) => {
         const moreItems = [
           {
@@ -151,6 +155,7 @@ const DictTypeList: React.FC = () => {
         }}
         columns={columns}
         rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+        scroll={{ x: 1300 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

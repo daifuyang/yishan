@@ -57,11 +57,12 @@ const AppList: React.FC = () => {
 
   const columns: ProColumns<API.sysApp>[] = [
     { title: 'ID', dataIndex: 'id', search: false, width: 80 },
-    { title: '应用名称', dataIndex: 'name' },
+    { title: '应用名称', dataIndex: 'name', width: 180 },
     {
       title: '图标',
       dataIndex: 'icon',
       search: false,
+      width: 180,
       render: (_, record) => {
         const IconComponent = record.icon && ICON_MAP[record.icon] ? ICON_MAP[record.icon] : null;
         return (
@@ -79,7 +80,7 @@ const AppList: React.FC = () => {
       }
     },
     { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
-    { title: '应用描述', dataIndex: 'description', search: false, ellipsis: true },
+    { title: '应用描述', dataIndex: 'description', search: false, ellipsis: true, width: 220 },
     { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 160 },
     { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime', width: 160 },
     {
@@ -98,6 +99,7 @@ const AppList: React.FC = () => {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
+      fixed: 'right',
       width: 180,
       render: (_, record) => [
         <a key="view" onClick={() => history.push(`/system/apps/${record.id}`)}>
@@ -255,6 +257,7 @@ const AppList: React.FC = () => {
           selectedRowKeys,
           onChange: setSelectedRowKeys,
         }}
+        scroll={{ x: 1400 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

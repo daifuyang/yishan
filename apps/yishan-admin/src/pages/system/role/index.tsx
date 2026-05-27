@@ -103,31 +103,37 @@ const RoleList: React.FC = () => {
       title: 'ID',
       dataIndex: 'id',
       search: false,
+      width: 80,
     },
     {
       title: '角色名称',
       dataIndex: 'name',
+      width: 140,
     },
     {
       title: '角色描述',
       dataIndex: 'description',
       search: false,
       ellipsis: true,
+      width: 220,
     },
     {
       title: '系统角色',
       dataIndex: 'isSystemDefault',
+      width: 120,
       render: (_, record) => <SystemRoleTag isSystem={record.isSystemDefault ? IsSystem.YES : IsSystem.NO} />,
     },
     {
       title: '数据权限',
       dataIndex: 'dataScope',
       search: false,
+      width: 170,
       render: (_, record) => <DataScopeTag dataScope={record.dataScope} />,
     },
     {
       title: '状态',
       dataIndex: 'status',
+      width: 100,
       valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
         acc[item.value] = {
           text: item.label,
@@ -141,17 +147,21 @@ const RoleList: React.FC = () => {
       dataIndex: 'createdAt',
       search: false,
       valueType: 'dateTime',
+      width: 180,
     },
     {
       title: '更新时间',
       dataIndex: 'updatedAt',
       search: false,
       valueType: 'dateTime',
+      width: 180,
     },
     {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
+      fixed: 'right',
+      width: 160,
       render: (_, record) => {
         const moreItems = [
           {
@@ -230,6 +240,7 @@ const RoleList: React.FC = () => {
           selectedRowKeys,
           onChange: setSelectedRowKeys,
         }}
+        scroll={{ x: 1400 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

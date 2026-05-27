@@ -120,13 +120,14 @@ const PluginList: React.FC = () => {
   };
 
   const columns: ProColumns<SysPlugin>[] = [
-    { title: '插件ID', dataIndex: 'pluginId', search: false },
-    { title: '插件名', dataIndex: 'name' },
-    { title: '版本', dataIndex: 'version', search: false },
+    { title: '插件ID', dataIndex: 'pluginId', search: false, width: 180 },
+    { title: '插件名', dataIndex: 'name', width: 180 },
+    { title: '版本', dataIndex: 'version', search: false, width: 120 },
     {
       title: '状态',
       dataIndex: 'state',
       search: false,
+      width: 120,
       render: (_, record) => (
         <Tag color={record.state === 'error' ? 'red' : record.enabled ? 'green' : 'default'}>
           {record.state || (record.enabled ? 'enabled' : 'disabled')}
@@ -137,12 +138,14 @@ const PluginList: React.FC = () => {
       title: '启用',
       dataIndex: 'enabled',
       search: false,
+      width: 100,
       render: (_, record) => <Tag color={record.enabled ? 'success' : 'default'}>{record.enabled ? '是' : '否'}</Tag>,
     },
     {
       title: '同步状态',
       dataIndex: 'syncStatus',
       search: false,
+      width: 180,
       render: (_, record) => {
         if (!record.syncStatus) return <Tag>未同步</Tag>;
         return (
@@ -157,12 +160,14 @@ const PluginList: React.FC = () => {
         );
       },
     },
-    { title: '兼容版本', dataIndex: 'coreCompatibility', search: false },
-    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime' },
+    { title: '兼容版本', dataIndex: 'coreCompatibility', search: false, width: 140 },
+    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime', width: 180 },
     {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
+      fixed: 'right',
+      width: 180,
       render: (_, record) => [
         <a key="sync-logs" onClick={() => handleOpenSyncLogs(record)}>
           同步记录
@@ -184,24 +189,25 @@ const PluginList: React.FC = () => {
   ];
 
   const syncLogColumns: ProColumns<SysPluginSyncLog>[] = [
-    { title: '策略', dataIndex: 'strategy', search: false },
+    { title: '策略', dataIndex: 'strategy', search: false, width: 100 },
     {
       title: '状态',
       dataIndex: 'status',
       search: false,
+      width: 100,
       render: (val) => {
         const strVal = String(val ?? '');
         return <Tag color={SYNC_STATUS_COLOR[strVal] || 'default'}>{SYNC_STATUS_TEXT[strVal] || strVal}</Tag>;
       },
     },
-    { title: '新增', dataIndex: 'created', search: false },
-    { title: '更新', dataIndex: 'updated', search: false },
-    { title: '跳过', dataIndex: 'skipped', search: false },
-    { title: '冲突', dataIndex: 'conflicted', search: false, render: (val) => {
+    { title: '新增', dataIndex: 'created', search: false, width: 90 },
+    { title: '更新', dataIndex: 'updated', search: false, width: 90 },
+    { title: '跳过', dataIndex: 'skipped', search: false, width: 90 },
+    { title: '冲突', dataIndex: 'conflicted', search: false, width: 90, render: (val) => {
       const numVal = Number(val);
       return numVal > 0 ? <span style={{ color: 'orange' }}>{numVal}</span> : numVal;
     }},
-    { title: '时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
+    { title: '时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
   ];
 
   return (
@@ -225,6 +231,7 @@ const PluginList: React.FC = () => {
             Hooks Reports
           </Button>,
         ]}
+        scroll={{ x: 1400 }}
       />
 
       <Modal
@@ -307,12 +314,13 @@ const PluginList: React.FC = () => {
           pagination={{ pageSize: 10 }}
           dataSource={hookReports}
           columns={[
-            { title: '插件', dataIndex: 'pluginName' },
-            { title: 'Hook', dataIndex: 'hookName' },
-            { title: '状态', dataIndex: 'status' },
-            { title: '信息', dataIndex: 'message', ellipsis: true },
-            { title: '时间', dataIndex: 'createdAt', valueType: 'dateTime' },
+            { title: '插件', dataIndex: 'pluginName', width: 140 },
+            { title: 'Hook', dataIndex: 'hookName', width: 160 },
+            { title: '状态', dataIndex: 'status', width: 100 },
+            { title: '信息', dataIndex: 'message', ellipsis: true, width: 300 },
+            { title: '时间', dataIndex: 'createdAt', valueType: 'dateTime', width: 180 },
           ]}
+          scroll={{ x: 1100 }}
           toolBarRender={() => [
             <Space key="drawer-actions">
               <Button onClick={handleOpenReports}>刷新</Button>
@@ -360,6 +368,7 @@ const PluginList: React.FC = () => {
           pagination={{ pageSize: 10 }}
           dataSource={syncLogs}
           columns={syncLogColumns}
+          scroll={{ x: 900 }}
           toolBarRender={() => [
             <Space key="sync-actions">
               <Button onClick={() => currentPlugin && handleOpenSyncLogs(currentPlugin)}>刷新</Button>

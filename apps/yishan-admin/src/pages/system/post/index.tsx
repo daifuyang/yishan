@@ -68,15 +68,16 @@ const PostList: React.FC = () => {
 
 
   const columns: ProColumns<API.sysPost>[] = [
-    { title: 'ID', dataIndex: 'id', search: false },
-    { title: '岗位名称', dataIndex: 'name' },
-    { title: '排序', dataIndex: 'sort_order', search: false },
-    { title: '岗位描述', dataIndex: 'description', search: false, ellipsis: true },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
-    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime' },
+    { title: 'ID', dataIndex: 'id', search: false, width: 80 },
+    { title: '岗位名称', dataIndex: 'name', width: 160 },
+    { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
+    { title: '岗位描述', dataIndex: 'description', search: false, ellipsis: true, width: 220 },
+    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
+    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime', width: 180 },
     {
       title: '状态',
       dataIndex: 'status',
+      width: 100,
       valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
         acc[item.value] = {
           text: item.label,
@@ -89,6 +90,8 @@ const PostList: React.FC = () => {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
+      fixed: 'right',
+      width: 160,
       render: (_, record) => [
         <PostForm
           key="edit"
@@ -152,6 +155,7 @@ const PostList: React.FC = () => {
           selectedRowKeys,
           onChange: setSelectedRowKeys,
         }}
+        scroll={{ x: 1300 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

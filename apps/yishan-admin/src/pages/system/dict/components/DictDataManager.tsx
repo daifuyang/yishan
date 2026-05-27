@@ -57,11 +57,11 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
   };
 
   const columns: ProColumns<API.sysDictData>[] = [
-    { title: '字典编号', dataIndex: 'id', search: false },
-    { title: '字典标签', dataIndex: 'label' },
-    { title: '字典键值', dataIndex: 'value' },
-    { title: '字典排序', dataIndex: 'sort_order', search: false },
-    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true },
+    { title: '字典编号', dataIndex: 'id', search: false, width: 90 },
+    { title: '字典标签', dataIndex: 'label', width: 160 },
+    { title: '字典键值', dataIndex: 'value', width: 160 },
+    { title: '字典排序', dataIndex: 'sort_order', search: false, width: 100 },
+    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true, width: 220 },
     {
       title: '默认状态',
       dataIndex: 'isDefault',
@@ -70,11 +70,13 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
         false: { text: '否' },
       },
       search: false,
+      width: 100,
     },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime' },
+    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
     {
       title: '状态',
       dataIndex: 'status',
+      width: 100,
       valueEnum: {
         [Status.ENABLED]: { text: '正常', status: 'Success' },
         [Status.DISABLED]: { text: '停用', status: 'Error' },
@@ -84,6 +86,7 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
+      fixed: 'right',
       width: 180,
       render: (_, record) => [
         <DictDataForm
@@ -141,6 +144,7 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({ open, onClose, typeId
         }}
         columns={columns}
         rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+        scroll={{ x: 1400 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>
