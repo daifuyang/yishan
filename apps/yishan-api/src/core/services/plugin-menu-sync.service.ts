@@ -93,7 +93,8 @@ export class PluginMenuSyncService {
     manifest: PluginManifest,
     menuItem: PluginMenuItem,
     creatorId: number,
-    parentId: number | null
+    parentId: number | null,
+    sortOrder: number
   ): Promise<{ id: number; isNew: boolean; skipped?: boolean; conflict?: ConflictDetail }> {
     const pluginId = manifest.pluginId
     const pluginMenuKey = this.buildPluginMenuKey(pluginId, menuItem.path)
@@ -110,7 +111,7 @@ export class PluginMenuSyncService {
           path: menuItem.path,
           type: 1,
           status: 1,
-          sort_order: 0,
+          sort_order: sortOrder,
           source: 'plugin',
           pluginName: manifest.name,
           pluginMenuKey,
@@ -143,7 +144,7 @@ export class PluginMenuSyncService {
         path: menuItem.path,
         type: 1,
         status: 1,
-        sort_order: 0,
+        sort_order: sortOrder,
         source: 'plugin',
         pluginName: manifest.name,
         pluginMenuKey,
@@ -170,9 +171,9 @@ export class PluginMenuSyncService {
 
     const parentId = await this.resolveParentMenuId(manifest)
 
-    for (const menuItem of manifest.menus) {
+    for (const [index, menuItem] of manifest.menus.entries()) {
       try {
-        const upsertResult = await this.upsertPluginMenu(manifest, menuItem, creatorId, parentId)
+        const upsertResult = await this.upsertPluginMenu(manifest, menuItem, creatorId, parentId, index + 1)
 
         if (upsertResult.skipped && upsertResult.conflict) {
           result.conflictDetails.push(upsertResult.conflict)

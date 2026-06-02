@@ -1,30 +1,25 @@
 import { request } from '@umijs/max';
 
-export type SysPluginMenu = {
+export type SyncStrategy = 'strict' | 'safe';
+
+export interface SysPluginMenu {
   name: string;
   path: string;
   perm?: string;
-};
+}
 
-export type ConflictDetail = {
-  path: string;
-  name: string;
-  existingPluginName: string;
-  reason: string;
-};
-
-export type PluginSyncStatus = {
+export interface SysPluginSyncStatus {
   strategy: string;
   status: string;
   created: number;
   updated: number;
   skipped: number;
   conflicted: number;
-  conflictDetails: ConflictDetail[];
+  conflictDetails: Array<{ path?: string; existingPluginName?: string; reason?: string }>;
   lastSyncAt: string | null;
-};
+}
 
-export type SysPlugin = {
+export interface SysPlugin {
   pluginId?: string;
   name: string;
   version?: string;
@@ -34,115 +29,84 @@ export type SysPlugin = {
   lastError?: string;
   updatedAt?: string;
   menus?: SysPluginMenu[];
-  syncStatus?: PluginSyncStatus | null;
-};
+  syncStatus?: SysPluginSyncStatus | null;
+}
 
-export type SysPluginHookReport = {
-  id?: string;
-  pluginName?: string;
-  hookName?: string;
-  status?: string;
-  message?: string;
+export interface SysPluginHookReport {
+  id?: string | number;
+  hookName: string;
+  pluginName: string;
+  phase: 'before' | 'after';
+  status: 'success' | 'failed';
+  startedAt?: string;
   createdAt?: string;
-};
+  durationMs?: number;
+  message?: string;
+  error?: string;
+}
 
-export type SysPluginSyncLog = {
-  id: number;
+export interface SysPluginSyncLog {
   strategy: string;
   status: string;
   created: number;
   updated: number;
   skipped: number;
   conflicted: number;
-  conflictDetails: ConflictDetail[];
-  errorMessage: string | null;
   createdAt: string;
-};
-
-export async function listPlugins(options?: { [key: string]: any }) {
-  return request<{ success: boolean; message?: string; data?: SysPlugin[] }>(
-    '/api/v1/admin/system/plugins',
-    {
-      method: 'GET',
-      ...(options || {}),
-    }
-  );
+  conflictDetails?: Array<{ path?: string; existingPluginName?: string; reason?: string }>;
+  errors?: string[];
 }
 
-export async function getPlugin(name: string, options?: { [key: string]: any }) {
-  return request<{ success: boolean; message?: string; data?: SysPlugin }>(
-    `/api/v1/admin/system/plugins/${name}`,
-    {
-      method: 'GET',
-      ...(options || {}),
-    }
-  );
+interface ApiResp<T> {
+  code: number;
+  message: string;
+  success: boolean;
+  data: T;
+  timestamp: string;
 }
 
-export async function enablePlugin(
-  name: string,
-  strategy?: 'strict' | 'safe',
-  options?: { [key: string]: any }
-) {
-  return request<{ success: boolean; message?: string; data?: SysPlugin }>(
-    `/api/v1/admin/system/plugins/${name}/enable`,
-    {
-      method: 'POST',
-      params: strategy ? { strategy } : undefined,
-      ...(options || {}),
-    }
-  );
+export async function listPlugins(options?: { [key: string]: unknown }) {
+  return request<ApiResp<SysPlugin[]>>('/api/v1/admin/system/plugins/', {
+    method: 'GET',
+    ...(options || {}),
+  });
 }
 
-export async function disablePlugin(name: string, options?: { [key: string]: any }) {
-  return request<{ success: boolean; message?: string; data?: SysPlugin }>(
-    `/api/v1/admin/system/plugins/${name}/disable`,
-    {
-      method: 'POST',
-      ...(options || {}),
-    }
-  );
+export async function enablePlugin(name: string, strategy: SyncStrategy = 'safe', options?: { [key: string]: unknown }) {
+  return request<ApiResp<SysPlugin>>(`/api/v1/admin/system/plugins/${name}/enable`, {
+    method: 'POST',
+    params: { strategy },
+    ...(options || {}),
+  });
 }
 
-export async function syncPlugin(
-  name: string,
-  strategy?: 'strict' | 'safe',
-  options?: { [key: string]: any }
-) {
-  return request<{ success: boolean; message?: string; data?: SysPlugin }>(
-    `/api/v1/admin/system/plugins/${name}/sync`,
-    {
-      method: 'POST',
-      params: strategy ? { strategy } : undefined,
-      ...(options || {}),
-    }
-  );
+export async function syncPlugin(name: string, strategy: SyncStrategy = 'safe', options?: { [key: string]: unknown }) {
+  return request<ApiResp<SysPlugin>>(`/api/v1/admin/system/plugins/${name}/sync`, {
+    method: 'POST',
+    params: { strategy },
+    ...(options || {}),
+  });
 }
 
-export async function getSyncLogs(name: string, limit = 10, options?: { [key: string]: any }) {
-  return request<{ success: boolean; message?: string; data?: SysPluginSyncLog[] }>(
-    `/api/v1/admin/system/plugins/${name}/sync-logs`,
-    {
-      method: 'GET',
-      params: { limit },
-      ...(options || {}),
-    }
-  );
+export async function disablePlugin(name: string, options?: { [key: string]: unknown }) {
+  return request<ApiResp<SysPlugin>>(`/api/v1/admin/system/plugins/${name}/disable`, {
+    method: 'POST',
+    ...(options || {}),
+  });
 }
 
-export async function getPluginHookReports(
-  params: { limit?: number } = { limit: 50 },
-  options?: { [key: string]: any }
-) {
-  return request<{ success: boolean; message?: string; data?: SysPluginHookReport[] }>(
-    '/api/v1/admin/system/plugins/hooks/reports',
-    {
-      method: 'GET',
-      params: {
-        limit: 50,
-        ...params,
-      },
-      ...(options || {}),
-    }
-  );
+export async function getPluginHookReports(params?: { limit?: number }, options?: { [key: string]: unknown }) {
+  return request<ApiResp<SysPluginHookReport[]>>('/api/v1/admin/system/plugins/hooks/reports', {
+    method: 'GET',
+    params,
+    ...(options || {}),
+  });
+}
+
+export async function getSyncLogs(name: string, limit = 10, options?: { [key: string]: unknown }) {
+  return request<ApiResp<SysPluginSyncLog[]>>(`/api/v1/admin/system/plugins/${name}/sync-logs`, {
+    method: 'GET',
+    params: { limit },
+    ...(options || {}),
+  });
 }

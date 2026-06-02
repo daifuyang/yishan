@@ -860,6 +860,26 @@ declare namespace API {
     id: string;
   };
 
+  type deleteModulesShopV1AdminAttributesIdParams = {
+    id: number;
+  };
+
+  type deleteModulesShopV1AdminAttributesValuesValueIdParams = {
+    valueId: number;
+  };
+
+  type deleteModulesShopV1AdminCategoriesIdParams = {
+    id: number;
+  };
+
+  type deleteModulesShopV1AdminSkusIdParams = {
+    id: number;
+  };
+
+  type deleteOrderParams = {
+    id: number;
+  };
+
   type deletePageParams = {
     /** 页面ID */
     id: number;
@@ -875,6 +895,10 @@ declare namespace API {
     id: string;
   };
 
+  type deleteProductParams = {
+    id: number;
+  };
+
   type deleteRoleParams = {
     /** 角色ID */
     id: number;
@@ -883,6 +907,15 @@ declare namespace API {
   type deleteUserParams = {
     /** 用户ID */
     id: number;
+  };
+
+  type deliverOrderParams = {
+    id: number;
+  };
+
+  type deliverOrderReq = {
+    expressCompany: string;
+    expressNo: string;
   };
 
   type deptDeleteResp = {
@@ -1535,6 +1568,64 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
+  type getModulesShopV1AdminAttributesIdParams = {
+    id: number;
+  };
+
+  type getModulesShopV1AdminAttributesParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    type?: number;
+    status?: string;
+  };
+
+  type getModulesShopV1AdminCategoriesIdParams = {
+    id: number;
+  };
+
+  type getModulesShopV1AdminCategoriesParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    parentId?: number;
+    status?: string;
+    sortBy?: "sortOrder" | "createdAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getModulesShopV1AdminSkusIdParams = {
+    id: number;
+  };
+
+  type getModulesShopV1AdminSkusParams = {
+    page?: number;
+    pageSize?: number;
+    productId?: number;
+    keyword?: string;
+    status?: string;
+  };
+
+  type getOrderDetailParams = {
+    /** 订单ID */
+    id: number;
+  };
+
+  type getOrderListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    userId?: number;
+    orderStatus?: string;
+    payStatus?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
   type getPageDetailParams = {
     /** 页面ID */
     id: number;
@@ -1590,6 +1681,26 @@ declare namespace API {
     /** 排序字段 */
     sortBy?: "sort_order" | "createdAt" | "updatedAt";
     /** 排序方向 */
+    sortOrder?: "asc" | "desc";
+  };
+
+  type getProductDetailParams = {
+    /** 商品ID */
+    id: number;
+  };
+
+  type getProductListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    categoryId?: number;
+    status?: string;
+    isHot?: boolean;
+    isNew?: boolean;
+    isRecycle?: boolean;
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt" | "price" | "clickCount";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1810,6 +1921,10 @@ declare namespace API {
     success: boolean;
     data: menuTreeList;
     timestamp: string;
+  };
+
+  type moveProductToRecycleParams = {
+    id: number;
   };
 
   type pageDeleteResp = {
@@ -2035,6 +2150,10 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type postModulesShopV1AdminAttributesIdValuesParams = {
+    id: number;
+  };
+
   type postV1AdminSystemPluginsNameDisableParams = {
     name: string;
   };
@@ -2049,6 +2168,22 @@ declare namespace API {
 
   type publishArticleParams = {
     /** 文章ID */
+    id: number;
+  };
+
+  type putModulesShopV1AdminAttributesIdParams = {
+    id: number;
+  };
+
+  type putModulesShopV1AdminAttributesValuesValueIdParams = {
+    valueId: number;
+  };
+
+  type putModulesShopV1AdminCategoriesIdParams = {
+    id: number;
+  };
+
+  type putModulesShopV1AdminSkusIdParams = {
     id: number;
   };
 
@@ -2079,6 +2214,10 @@ declare namespace API {
     success: boolean;
     data: loginData;
     timestamp: string;
+  };
+
+  type restoreProductFromRecycleParams = {
+    id: number;
   };
 
   type roleDeleteResp = {
@@ -2251,6 +2390,552 @@ declare namespace API {
   type setSystemOptionReq = {
     /** 参数字符串 */
     value: string;
+  };
+
+  type shopAddress = {
+    id: number;
+    userId: number;
+    userName: string | null;
+    receiver: string;
+    phone: string;
+    province: string;
+    city: string;
+    district: string;
+    address: string;
+    fullAddress: string;
+    isDefault: boolean;
+    status: string;
+    statusName: string;
+    creatorId: number;
+    createdAt: string;
+    updaterId: number;
+    updatedAt: string;
+  };
+
+  type shopAddToCartReq = {
+    productId: number;
+    skuId?: number;
+    quantity: number;
+  };
+
+  type shopAttribute = {
+    id: number;
+    name: string;
+    type: number;
+    typeName: string;
+    sortOrder: number;
+    status: string;
+    statusName: string;
+    creatorId: number;
+    creatorName: string | null;
+    createdAt: string;
+    updaterId: number;
+    updaterName: string | null;
+    updatedAt: string;
+    values: {
+      id: number;
+      attributeId: number;
+      value: string;
+      image: string | null;
+      sortOrder: number;
+      status: string;
+      creatorId: number;
+      createdAt: string;
+    }[];
+  };
+
+  type shopAttributeListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    type?: number;
+    status?: string;
+  };
+
+  type shopAttributeValue = {
+    id: number;
+    attributeId: number;
+    value: string;
+    image: string | null;
+    sortOrder: number;
+    status: string;
+    creatorId: number;
+    createdAt: string;
+  };
+
+  type shopCart = {
+    id: number;
+    userId: number;
+    productId: number;
+    productName: string;
+    productCoverImage: string | null;
+    skuId: number | null;
+    skuName: string | null;
+    skuCoverImage: string | null;
+    price: string;
+    stock: number;
+    quantity: number;
+    subtotal: string;
+    attributes: {
+      attributeId: number;
+      attributeName: string;
+      valueId: number;
+      valueName: string;
+      image: string | null;
+    }[];
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+
+  type shopCategory = {
+    /** 分类ID */
+    id: number;
+    /** 分类名称 */
+    name: string;
+    /** 父级ID */
+    parentId: number | null;
+    /** 父级名称 */
+    parentName: string | null;
+    /** 封面图 */
+    coverImage: string | null;
+    /** 图标 */
+    icon: string | null;
+    /** 描述 */
+    description: string | null;
+    /** 排序 */
+    sortOrder: number;
+    /** 状态 */
+    status: string;
+    /** 状态名称 */
+    statusName: string;
+    /** 创建人ID */
+    creatorId: number;
+    /** 创建人 */
+    creatorName: string | null;
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新人ID */
+    updaterId: number;
+    /** 更新人 */
+    updaterName: string | null;
+    /** 更新时间 */
+    updatedAt: string;
+    children?: shopCategory[];
+  };
+
+  type shopCategoryListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    /** 关键词 */
+    keyword?: string;
+    /** 父级ID */
+    parentId?: number;
+    /** 状态 */
+    status?: string;
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type shopCreateAddressReq = {
+    receiver: string;
+    phone: string;
+    province: string;
+    city: string;
+    district: string;
+    address: string;
+    isDefault?: boolean;
+  };
+
+  type shopCreateAttributeReq = {
+    name: string;
+    type?: number;
+    sortOrder?: number;
+    status?: number;
+    values?: { value: string; image?: string; sortOrder?: number }[];
+  };
+
+  type shopCreateAttributeValueReq = {
+    value: string;
+    image?: string;
+    sortOrder?: number;
+  };
+
+  type shopCreateCategoryReq = {
+    /** 分类名称 */
+    name: string;
+    parentId?: number | null;
+    coverImage?: string;
+    icon?: string;
+    description?: string;
+    sortOrder?: number;
+    status?: number;
+  };
+
+  type shopCreateProductReq = {
+    categoryId: number;
+    name: string;
+    subtitle?: string;
+    coverImage?: string;
+    images?: string[];
+    description?: string;
+    price: number;
+    costPrice?: number;
+    stock?: number;
+    unit?: string;
+    weight?: number;
+    status?: number;
+    isHot?: boolean;
+    isNew?: boolean;
+    sortOrder?: number;
+    skus?: {
+      skuCode: string;
+      skuName: string;
+      price: number;
+      costPrice?: number;
+      stock?: number;
+      weight?: number;
+      coverImage?: string;
+      attributes?: { attributeId: number; valueId: number }[];
+    }[];
+  };
+
+  type shopCreateSkuReq = {
+    productId: number;
+    skuCode: string;
+    skuName: string;
+    price: number;
+    costPrice?: number;
+    stock?: number;
+    weight?: number;
+    coverImage?: string;
+    status?: number;
+    attributes?: { attributeId: number; valueId: number }[];
+  };
+
+  type shopIdResp = {
+    /** ID */
+    id: number;
+  };
+
+  type shopOrder = {
+    id: number;
+    orderNo: string;
+    userId: number;
+    userName: string;
+    userPhone: string;
+    addressId: number;
+    address: {
+      receiver: string;
+      phone: string;
+      province: string;
+      city: string;
+      district: string;
+      address: string;
+      isDefault: boolean;
+    };
+    totalAmount: string;
+    freightAmount: string;
+    discountAmount: string;
+    payAmount: string;
+    payStatus: string;
+    payStatusName: string;
+    payTime: string | null;
+    payMethod: string | null;
+    payTransactionId: string | null;
+    orderStatus: string;
+    orderStatusName: string;
+    expressCompany: string | null;
+    expressNo: string | null;
+    deliverTime: string | null;
+    receiveTime: string | null;
+    cancelReason: string | null;
+    remark: string | null;
+    status: string;
+    creatorId: number;
+    creatorName: string | null;
+    createdAt: string;
+    updaterId: number;
+    updaterName: string | null;
+    updatedAt: string;
+    items: {
+      id: number;
+      orderId: number;
+      productId: number;
+      productName: string;
+      skuId: number | null;
+      skuName: string | null;
+      coverImage: string | null;
+      price: string;
+      quantity: number;
+      subtotal: string;
+      attributes: { attributeName: string; valueName: string }[];
+    }[];
+  };
+
+  type shopOrderAddress = {
+    receiver: string;
+    phone: string;
+    province: string;
+    city: string;
+    district: string;
+    address: string;
+    isDefault: boolean;
+  };
+
+  type shopOrderDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: shopOrder;
+    timestamp: string;
+  };
+
+  type shopOrderItem = {
+    id: number;
+    orderId: number;
+    productId: number;
+    productName: string;
+    skuId: number | null;
+    skuName: string | null;
+    coverImage: string | null;
+    price: string;
+    quantity: number;
+    subtotal: string;
+    attributes: { attributeName: string; valueName: string }[];
+  };
+
+  type shopOrderListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    userId?: number;
+    orderStatus?: string;
+    payStatus?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: "createdAt" | "updatedAt";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type shopOrderListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: shopOrder[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type shopProduct = {
+    id: number;
+    categoryId: number;
+    categoryName: string | null;
+    name: string;
+    subtitle: string | null;
+    coverImage: string | null;
+    images?: string[];
+    description: string | null;
+    price: string;
+    costPrice: string | null;
+    stock: number;
+    unit: string;
+    weight: string | null;
+    status: string;
+    statusName: string;
+    isHot: boolean;
+    isNew: boolean;
+    isRecycle: boolean;
+    clickCount: number;
+    sortOrder: number;
+    creatorId: number;
+    creatorName: string | null;
+    createdAt: string;
+    updaterId: number;
+    updaterName: string | null;
+    updatedAt: string;
+    skus: {
+      id: number;
+      productId: number;
+      productName: string | null;
+      skuCode: string;
+      skuName: string;
+      price: string;
+      costPrice: string | null;
+      stock: number;
+      weight: string | null;
+      coverImage: string | null;
+      status: string;
+      statusName: string;
+      attributes: {
+        attributeId: number;
+        attributeName: string;
+        valueId: number;
+        valueName: string;
+        image: string | null;
+      }[];
+      creatorId: number;
+      creatorName: string | null;
+      createdAt: string;
+      updaterId: number;
+      updaterName: string | null;
+      updatedAt: string;
+    }[];
+  };
+
+  type shopProductDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: shopProduct;
+    timestamp: string;
+  };
+
+  type shopProductListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    keyword?: string;
+    categoryId?: number;
+    status?: string;
+    isHot?: boolean;
+    isNew?: boolean;
+    isRecycle?: boolean;
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt" | "price" | "clickCount";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type shopProductListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: shopProduct[];
+    timestamp: string;
+    pagination: paginationResponse;
+  };
+
+  type shopSku = {
+    id: number;
+    productId: number;
+    productName: string | null;
+    skuCode: string;
+    skuName: string;
+    price: string;
+    costPrice: string | null;
+    stock: number;
+    weight: string | null;
+    coverImage: string | null;
+    status: string;
+    statusName: string;
+    attributes: {
+      attributeId: number;
+      attributeName: string;
+      valueId: number;
+      valueName: string;
+      image: string | null;
+    }[];
+    creatorId: number;
+    creatorName: string | null;
+    createdAt: string;
+    updaterId: number;
+    updaterName: string | null;
+    updatedAt: string;
+  };
+
+  type shopSkuAttribute = {
+    attributeId: number;
+    attributeName: string;
+    valueId: number;
+    valueName: string;
+    image: string | null;
+  };
+
+  type shopSkuListQuery = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    productId?: number;
+    keyword?: string;
+    status?: string;
+  };
+
+  type shopUpdateAddressReq = {
+    receiver?: string;
+    phone?: string;
+    province?: string;
+    city?: string;
+    district?: string;
+    address?: string;
+    isDefault?: boolean;
+  };
+
+  type shopUpdateCartReq = {
+    quantity: number;
+  };
+
+  type shopUpdateCategoryReq = {
+    /** 分类名称 */
+    name?: string;
+    parentId?: number | null;
+    coverImage?: string;
+    icon?: string;
+    description?: string;
+    sortOrder?: number;
+    status?: number;
+  };
+
+  type shopUpdateOrderStatusReq = {
+    orderStatus?: "1" | "2" | "3" | "4" | "5" | "6";
+    cancelReason?: string;
+  };
+
+  type shopUpdateProductReq = {
+    categoryId?: number;
+    name?: string;
+    subtitle?: string;
+    coverImage?: string;
+    images?: string[];
+    description?: string;
+    price?: number;
+    costPrice?: number;
+    stock?: number;
+    unit?: string;
+    weight?: number;
+    status?: number;
+    isHot?: boolean;
+    isNew?: boolean;
+    sortOrder?: number;
+    skus?: {
+      skuCode: string;
+      skuName: string;
+      price: number;
+      costPrice?: number;
+      stock?: number;
+      weight?: number;
+      coverImage?: string;
+      attributes?: { attributeId: number; valueId: number }[];
+    }[];
+  };
+
+  type shopUpdateSkuReq = {
+    productId?: number;
+    skuCode?: string;
+    skuName?: string;
+    price?: number;
+    costPrice?: number;
+    stock?: number;
+    weight?: number;
+    coverImage?: string;
+    status?: number;
+    attributes?: { attributeId: number; valueId: number }[];
   };
 
   type storageConfigExportPayload = {
@@ -3240,6 +3925,10 @@ declare namespace API {
     keepAlive?: boolean;
   };
 
+  type updateOrderStatusParams = {
+    id: number;
+  };
+
   type updatePageParams = {
     /** 页面ID */
     id: number;
@@ -3285,6 +3974,11 @@ declare namespace API {
     sort_order?: number;
     /** 岗位描述 */
     description?: string;
+  };
+
+  type updateProductParams = {
+    /** 商品ID */
+    id: number;
   };
 
   type updateRoleParams = {

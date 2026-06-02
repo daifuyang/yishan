@@ -7,6 +7,11 @@ import * as portalArticles from "./portalArticles";
 import * as portalCategories from "./portalCategories";
 import * as portalPages from "./portalPages";
 import * as portalPosts from "./portalPosts";
+import * as shopAttributes from "./shopAttributes";
+import * as shopCategories from "./shopCategories";
+import * as shopOrders from "./shopOrders";
+import * as shopProducts from "./shopProducts";
+import * as shopSkus from "./shopSkus";
 import * as sysApps from "./sysApps";
 import * as sysAppResources from "./sysAppResources";
 import * as sysAppMenus from "./sysAppMenus";
@@ -28,6 +33,11 @@ export default {
   portalCategories,
   portalPages,
   portalPosts,
+  shopAttributes,
+  shopCategories,
+  shopOrders,
+  shopProducts,
+  shopSkus,
   sysApps,
   sysAppResources,
   sysAppMenus,

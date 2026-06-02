@@ -1,0 +1,6 @@
+model SysUser {
+  id            Int           @id
+  shopAddresses ShopAddress[]
+  shopCarts     ShopCart[]
+  shopOrders    ShopOrder[]
+}

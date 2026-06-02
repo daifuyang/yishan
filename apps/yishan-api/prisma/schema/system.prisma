@@ -97,7 +97,10 @@ model SysUser {
   attachmentFoldersCreated SysAttachmentFolder[] @relation("AttachmentFolderCreator")
   attachmentFoldersUpdated SysAttachmentFolder[] @relation("AttachmentFolderUpdater")
 
-  loginLogs SysLoginLog[] @relation("UserLoginLogs")
+  loginLogs     SysLoginLog[] @relation("UserLoginLogs")
+  shopAddresses ShopAddress[]
+  shopCarts     ShopCart[]
+  shopOrders    ShopOrder[]
 
   @@index([status], map: "idx_status")
   @@index([createdAt], map: "idx_created_at")
@@ -513,11 +516,11 @@ model SysPlugin {
 }
 
 model SysPluginVersion {
-  id          Int      @id @default(autoincrement()) @map("id")
-  pluginId    Int      @map("plugin_id")
-  version     String   @map("version") @db.VarChar(50)
-  manifest    Json?    @map("manifest")
-  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(0)
+  id        Int      @id @default(autoincrement()) @map("id")
+  pluginId  Int      @map("plugin_id")
+  version   String   @map("version") @db.VarChar(50)
+  manifest  Json?    @map("manifest")
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(0)
 
   plugin SysPlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
 
@@ -537,8 +540,8 @@ model SysPluginInstall {
   syncStrategy   String?   @default("safe") @map("sync_strategy") @db.VarChar(20)
   updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
 
-  plugin     SysPlugin        @relation(fields: [pluginId], references: [id], onDelete: Cascade)
-  syncLogs   SysPluginSyncLog[]
+  plugin   SysPlugin          @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  syncLogs SysPluginSyncLog[]
 
   @@index([pluginId], map: "idx_sys_plugin_install_plugin_id")
   @@index([enabled], map: "idx_sys_plugin_install_enabled")
@@ -559,17 +562,17 @@ model SysPluginConfigSnapshot {
 }
 
 model SysPluginSyncLog {
-  id              Int       @id @default(autoincrement()) @map("id")
-  pluginInstallId Int       @map("plugin_install_id")
-  strategy        String    @default("safe") @map("strategy") @db.VarChar(20)
-  status          String    @default("success") @map("status") @db.VarChar(20)
-  created         Int       @default(0) @map("created")
-  updated         Int       @default(0) @map("updated")
-  skipped         Int       @default(0) @map("skipped")
-  conflicted      Int       @default(0) @map("conflicted")
-  conflictDetails Json?     @map("conflict_details")
-  errorMessage    String?   @map("error_message") @db.VarChar(500)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  id              Int      @id @default(autoincrement()) @map("id")
+  pluginInstallId Int      @map("plugin_install_id")
+  strategy        String   @default("safe") @map("strategy") @db.VarChar(20)
+  status          String   @default("success") @map("status") @db.VarChar(20)
+  created         Int      @default(0) @map("created")
+  updated         Int      @default(0) @map("updated")
+  skipped         Int      @default(0) @map("skipped")
+  conflicted      Int      @default(0) @map("conflicted")
+  conflictDetails Json?    @map("conflict_details")
+  errorMessage    String?  @map("error_message") @db.VarChar(500)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(0)
 
   pluginInstall SysPluginInstall @relation(fields: [pluginInstallId], references: [id], onDelete: Cascade)
 

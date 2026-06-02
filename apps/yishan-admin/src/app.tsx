@@ -1,4 +1,4 @@
-import { AppstoreOutlined, LinkOutlined, ReadOutlined, SettingOutlined, SmileOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, FileTextOutlined, FolderOutlined, InboxOutlined, LinkOutlined, ReadOutlined, SettingOutlined, ShoppingOutlined, SmileOutlined } from "@ant-design/icons";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
@@ -42,6 +42,10 @@ const IconMap: Record<string, JSX.Element> = {
   smileoutlined: <SmileOutlined />,
   read: <ReadOutlined />,
   readoutlined: <ReadOutlined />,
+  shopping: <ShoppingOutlined />,
+  folder: <FolderOutlined />,
+  inbox: <InboxOutlined />,
+  'file-text': <FileTextOutlined />,
 };
 
 /**

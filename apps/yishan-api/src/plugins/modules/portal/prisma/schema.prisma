@@ -1,5 +1,3 @@
-// AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source: src/plugins/modules/portal/prisma/schema.prisma
 // Portal models: categories, articles, pages
 
 model PortalCategory {
@@ -31,9 +29,9 @@ model PortalCategory {
   @@index([deletedAt], map: "idx_category_deleted_at")
   @@index([parentId], map: "idx_category_parent_id")
   @@index([sort_order], map: "idx_category_sort_order")
+  @@map("portal_category")
   @@index([creatorId])
   @@index([updaterId])
-  @@map("portal_category")
 }
 
 model PortalArticle {
@@ -67,9 +65,9 @@ model PortalArticle {
   @@index([templateId], map: "idx_article_template_id")
   @@index([createdAt], map: "idx_article_created_at")
   @@index([deletedAt], map: "idx_article_deleted_at")
+  @@map("portal_article")
   @@index([creatorId])
   @@index([updaterId])
-  @@map("portal_article")
 }
 
 model PortalArticleCategory {
@@ -112,9 +110,9 @@ model PortalPage {
   @@index([templateId], map: "idx_page_template_id")
   @@index([createdAt], map: "idx_page_created_at")
   @@index([deletedAt], map: "idx_page_deleted_at")
+  @@map("portal_page")
   @@index([creatorId])
   @@index([updaterId])
-  @@map("portal_page")
 }
 
 // 模板模型，供文章与页面引用
@@ -146,7 +144,7 @@ model PortalTemplate {
   @@index([isSystemDefault], map: "idx_template_is_system_default")
   @@index([createdAt], map: "idx_template_created_at")
   @@index([deletedAt], map: "idx_template_deleted_at")
+  @@map("portal_template")
   @@index([creatorId])
   @@index([updaterId])
-  @@map("portal_template")
 }

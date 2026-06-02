@@ -17,6 +17,7 @@ import registerAppSchemas from "./app.js";
 import registerAppResourceSchemas from "./app-resource.js";
 import registerAppMenuSchemas from "./app-menu.js";
 import registerFormSchemas from "./form.js";
+import registerShopSchemas from "../../plugins/modules/shop/schemas/shop.js";
 
 // Schema插件，定义共享的Schema引用
 export default fp(async (fastify, opts) => {
@@ -38,4 +39,5 @@ export default fp(async (fastify, opts) => {
   registerAppResourceSchemas(fastify);
   registerAppMenuSchemas(fastify);
   registerFormSchemas(fastify);
+  registerShopSchemas(fastify);
 });
