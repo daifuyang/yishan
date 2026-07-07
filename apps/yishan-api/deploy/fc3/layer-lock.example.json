@@ -1,0 +1,10 @@
+{
+  "runtime": "custom.debian12-node22",
+  "layerName": "yishan-api-runtime-layer",
+  "dependencies": {
+    "fastify": "^5.0.0"
+  },
+  "fingerprint": "sha256:replace-with-current-fingerprint",
+  "arn": "acs:fc:cn-shanghai:<account-id>:layers/yishan-api-runtime-layer/versions/<version>",
+  "updatedAt": "2026-07-07T00:00:00.000Z"
+}

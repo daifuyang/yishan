@@ -33,3 +33,4 @@ yarn-error.log*
 *.bak
 demo/
 .playwright-cli/
+apps/yishan-app/.swc/

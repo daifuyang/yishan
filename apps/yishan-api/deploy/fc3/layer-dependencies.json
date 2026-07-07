@@ -1,0 +1,28 @@
+{
+  "name": "yishan-api-runtime-layer",
+  "description": "Stable runtime dependencies installed into /opt/nodejs/node_modules for FC3.",
+  "runtime": "custom.debian12-node22",
+  "dependencies": [
+    "@fastify/autoload",
+    "@fastify/cors",
+    "@fastify/jwt",
+    "@fastify/multipart",
+    "@fastify/redis",
+    "@fastify/sensible",
+    "@fastify/static",
+    "@fastify/swagger",
+    "@fastify/swagger-ui",
+    "@fastify/type-provider-typebox",
+    "@prisma/client",
+    "@sinclair/typebox",
+    "close-with-grace",
+    "dayjs",
+    "dotenv",
+    "fastify",
+    "fastify-plugin",
+    "qiniu"
+  ],
+  "localDependencies": [
+    "@prisma/adapter-mariadb"
+  ]
+}

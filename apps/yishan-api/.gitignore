@@ -68,3 +68,6 @@ dist
 prisma/migrations
 src/generated
 deploy/fc3/certs
+deploy/fc3/.build
+deploy/fc3/runtime-layer.zip
+deploy/fc3/layer-lock.json
