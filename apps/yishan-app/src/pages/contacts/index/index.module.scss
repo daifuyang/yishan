@@ -1,0 +1,21 @@
+.contacts__list {
+  background: var(--color-bg-surface, #fff);
+}
+
+.contacts__state {
+  padding: 60px 0;
+  display: flex;
+  justify-content: center;
+  background: var(--color-bg-surface, #fff);
+}
+
+.contacts__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contacts__name {
+  font-size: 15px;
+  color: var(--color-text-primary, #1d2129);
+}

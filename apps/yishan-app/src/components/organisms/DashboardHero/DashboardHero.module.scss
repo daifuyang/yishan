@@ -1,0 +1,52 @@
+.hero {
+  background: linear-gradient(135deg, var(--color-primary-gradient-from, #1677FF) 0%, var(--color-primary-gradient-to, #0958D9) 100%);
+  padding: 20px 16px 24px;
+  border-radius: 0 0 16px 16px;
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  &__icon {
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  &__title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  &__slogan {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  &__welcome {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+  }
+
+  &__greeting {
+    font-size: 24px;
+    color: #fff;
+    font-weight: 400;
+  }
+
+  &__name {
+    font-size: 28px;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  &__date {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 4px;
+  }
+}

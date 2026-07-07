@@ -1,0 +1,61 @@
+.tabbar {
+  position: fixed;
+  bottom: var(--tab-bar-floating-bottom, 8px);
+  left: 12px;
+  right: 12px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: calc(var(--tab-bar-floating-height, 56px) + var(--safe-area-bottom));
+  padding-bottom: var(--safe-area-bottom);
+  background-color: var(--tab-bar-bg, #FFFFFF);
+  box-shadow: var(--shadow-tabbar, 0 -2px 8px rgba(0, 0, 0, 0.04));
+  z-index: var(--z-fixed, 200);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+  height: var(--tab-bar-height, 56px);
+  transition: background-color var(--transition-normal, 200ms linear),
+              opacity var(--transition-fast, 120ms linear);
+  -webkit-tap-highlight-color: transparent;
+  border-radius: var(--radius-full, 9999px);
+}
+
+.tab:active {
+  opacity: var(--opacity-pressed, 0.6);
+}
+
+.tabActive {
+  .tabIcon {
+    background-color: var(--color-primary-bg, rgba(22, 119, 255, 0.08));
+    border-radius: var(--radius-full, 9999px);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.tabIcon {
+  transition: background-color var(--transition-normal, 200ms linear);
+}
+
+.tabText {
+  font-size: var(--tab-bar-font-size, 11px);
+  line-height: 1.2;
+  transition: color var(--transition-normal, 200ms linear),
+              font-weight var(--transition-normal, 200ms linear);
+}
+
+.tabActiveText {
+  color: var(--color-primary, #1677FF);
+  font-weight: var(--font-weight-semibold, 600);
+}

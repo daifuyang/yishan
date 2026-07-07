@@ -1,0 +1,46 @@
+@font-face {
+    font-family: "icons";
+    src: url("./icons.woff2?58c89da8089bb7b2e79e1a3bcc2ec8b9") format("woff2");
+}
+
+i[class^="icon--"]:before, i[class*=" icon--"]:before {
+    font-family: icons !important;
+    font-style: normal;
+    font-weight: normal !important;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.icon--user:before {
+    content: "\f101";
+}
+.icon--settings:before {
+    content: "\f102";
+}
+.icon--search:before {
+    content: "\f103";
+}
+.icon--home:before {
+    content: "\f104";
+}
+.icon--close:before {
+    content: "\f105";
+}
+.icon--chevronRight:before {
+    content: "\f106";
+}
+.icon--check:before {
+    content: "\f107";
+}
+.icon--bell:before {
+    content: "\f108";
+}
+.icon--arrowRight:before {
+    content: "\f109";
+}
+.icon--apps:before {
+    content: "\f10a";
+}

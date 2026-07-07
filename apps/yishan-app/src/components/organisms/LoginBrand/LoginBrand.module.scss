@@ -1,0 +1,24 @@
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 0 32px;
+
+  &__icon {
+    font-size: 56px;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  &__title {
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--color-text-primary, #1D2129);
+    margin-bottom: 8px;
+  }
+
+  &__slogan {
+    font-size: 14px;
+    color: var(--color-text-tertiary, #86909C);
+  }
+}

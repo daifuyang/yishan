@@ -1,0 +1,37 @@
+.mSearchBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--search-bar-height);
+  padding: 0 var(--space-3);
+  background-color: var(--search-bar-bg);
+  border-radius: var(--search-bar-radius);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-13);
+  width: 100%;
+  transition: opacity var(--transition-fast);
+}
+
+.mSearchBar--square {
+  border-radius: var(--radius-sm);
+}
+
+.mSearchBar:active {
+  opacity: var(--opacity-pressed);
+}
+
+.mSearchBar__icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-tertiary);
+}
+
+.mSearchBar__placeholder {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-13);
+}

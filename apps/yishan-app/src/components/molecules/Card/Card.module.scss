@@ -1,0 +1,26 @@
+.mCard {
+  background-color: var(--color-bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  transition: opacity var(--transition-fast);
+}
+
+.mCard--bordered {
+  border: 1px solid var(--color-border-light);
+}
+
+.mCard--shadow {
+  box-shadow: var(--shadow-sm);
+}
+
+.mCard--compact {
+  padding: var(--space-3);
+}
+
+.mCard--padded {
+  padding: var(--space-5) var(--space-4);
+}
+
+.mCard:active {
+  opacity: var(--opacity-pressed);
+}

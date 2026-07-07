@@ -1,0 +1,17 @@
+{
+  "miniprogramRoot": "dist/",
+  "projectname": "yishan-app",
+  "appid": "wx7a01ad6bcd572f1c",
+  "setting": {
+    "urlCheck": false,
+    "es6": false,
+    "enhance": false,
+    "compileHotReLoad": false,
+    "postcss": false,
+    "minified": true,
+    "newFeature": true,
+    "coverView": true,
+    "useCompilerModule": false
+  },
+  "compileType": "miniprogram"
+}

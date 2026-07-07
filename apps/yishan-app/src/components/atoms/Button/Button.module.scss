@@ -1,0 +1,88 @@
+.aButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  text-align: center;
+  white-space: nowrap;
+  transition: opacity var(--transition-fast);
+}
+
+.aButton:active { opacity: var(--opacity-pressed); }
+
+.aButton--primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-inverse);
+  border-color: var(--color-primary);
+}
+
+.aButton--secondary {
+  background-color: var(--color-primary-bg);
+  color: var(--color-primary);
+  border-color: var(--color-primary-border);
+}
+
+.aButton--ghost {
+  background-color: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+}
+
+.aButton--text {
+  background-color: transparent;
+  color: var(--color-primary);
+  border-color: transparent;
+  padding: 0 var(--space-2);
+}
+
+.aButton--danger {
+  background-color: var(--color-danger);
+  color: var(--color-text-inverse);
+  border-color: var(--color-danger);
+}
+
+.aButton--sm {
+  height: var(--button-height-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-12);
+}
+
+.aButton--md {
+  height: var(--button-height-md);
+}
+
+.aButton--lg {
+  height: var(--button-height-lg);
+  padding: 0 var(--space-5);
+  font-size: var(--font-size-16);
+  border-radius: var(--radius-md);
+}
+
+.aButton--block { width: 100%; }
+
+.aButton--disabled {
+  opacity: var(--opacity-disabled);
+  pointer-events: none;
+}
+
+.aButton__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: aButton-spin 0.8s linear infinite;
+  margin-right: var(--space-1);
+}
+
+@keyframes aButton-spin {
+  to { transform: rotate(360deg); }
+}

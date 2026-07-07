@@ -1,0 +1,70 @@
+.mGridItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+  background-color: transparent;
+  transition: opacity var(--transition-fast);
+  position: relative;
+}
+
+.mGridItem:active { opacity: var(--opacity-pressed); }
+
+.mGridItem__iconWrap {
+  width: var(--tab-bar-active-size);
+  height: var(--tab-bar-active-size);
+  border-radius: var(--radius-md);
+  background-color: var(--color-primary-bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.mGridItem__iconWrap--primary { background-color: var(--color-primary-bg); }
+.mGridItem__iconWrap--gray    { background-color: var(--color-bg-disabled); }
+.mGridItem__iconWrap--success { background-color: var(--color-success-bg); }
+.mGridItem__iconWrap--warning { background-color: var(--color-warning-bg); }
+.mGridItem__iconWrap--danger  { background-color: var(--color-danger-bg); }
+
+.mGridItem__icon {
+  font-size: 20px;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.mGridItem__icon--primary { color: var(--color-primary); }
+.mGridItem__icon--gray    { color: var(--color-text-secondary); }
+.mGridItem__icon--success { color: var(--color-success); }
+.mGridItem__icon--warning { color: var(--color-warning); }
+.mGridItem__icon--danger  { color: var(--color-danger); }
+
+.mGridItem__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background-color: var(--color-danger);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-10);
+  line-height: 16px;
+  text-align: center;
+  font-weight: var(--font-weight-medium);
+  border: 2px solid var(--color-bg-surface);
+}
+
+.mGridItem__label {
+  font-size: var(--font-size-12);
+  color: var(--color-text-primary);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

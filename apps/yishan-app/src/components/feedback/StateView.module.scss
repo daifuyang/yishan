@@ -1,0 +1,37 @@
+.state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.state__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-10) 0;
+}
+
+.state__errorIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+}
+
+.state__hint {
+  font-size: var(--font-size-12);
+  color: var(--color-text-tertiary);
+}
+
+.state__action {
+  margin-top: var(--space-2);
+}

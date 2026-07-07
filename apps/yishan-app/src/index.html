@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>yishan-app</title>
+  <script>
+    !((n)=> {
+      function f(){
+        var e=n.document.documentElement,
+            w=e.getBoundingClientRect().width;
+        var x=20*w/375;
+        e.style.fontSize = x>=40?"40px":x<=20?"20px":`${x}px`
+      }
+      n.addEventListener("resize",f);
+      f()
+    })(window);
+  </script>
+  <script>
+    /* IconFont 兜底加载 — 修复 Taro H5 打包后 @font-face base64 未注册到 document.fonts 的问题 */
+    (()=> {
+      try {
+        var l = document.createElement('link');
+        l.rel = 'preload';
+        l.as = 'font';
+        l.type = 'font/woff2';
+        l.crossOrigin = 'anonymous';
+        l.href = '/styles/fonts-subset/icons.woff2';
+        document.head.appendChild(l);
+      } catch(e) {}
+    })();
+  </script>
+  <style>
+    /* IconFont 显式 @font-face 用 base64 内嵌（不依赖外部 woff2 资源） */
+    @font-face {
+      font-family: "icons";
+      src: url("data:font/woff2;base64,d09GMgABAAAAAAMQAAsAAAAABwgAAALDAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHFQGYACDDAqCRII7ATYCJAMQCwoABCAFg3IHPBsyBsgekiRNKHA4B4ACDvOg4HmaK9+fmeSykyMgSaSIFHHbXAnYA1sCIStMr0Ki7e63n6aEz3NUJTt0gAPyH3L3CdKBm5BAxlbIqQk7o0c0vPuyJjyDkQyIGjgnb/uBDpyup1Xio+hUTRmeYgeNLJCDF9DtQH4QMK9mfME+nIMAllrmJLt69jdQ3TLLHtRIY9cKZKGyZVUqkNctGAxuD8EdOuln4hoO8InvgPLo49eIpg8oHI29w+Bf6PDzn/ilpRIgQ3q3jGMzBTiABioBDMhkt31YCmmSpLDGNMU0Nwj86nCYXwnUyKH/eAoN4mIHRwLQiEPDr3gsEV+wwDcg5K8xxgNCQAA4yBYy5UYKjQlZN1HFcoeJY08uPDv+/OLT0Yev3198+zLtzYWJie+LSWPj8HzbP3L8rt/07m3wL96VjPoTReCiSsdu2blwR2TUZd/NhPfFzmGXvnnnn9Q/Oe/tHPXbQTAqNwTBX8YRd6/b2CR7ZQ7uyzY1xs8euXRxme5mZDgy0ys2VSxl/+1WMxvswX8TC4DEig/Af4e41a9Mv7cf0zFN/zxfKgE4dE/HImR4eCyAhwINH0IExWL/DeIt0A7SC0MAQ1tjdxRgsUCYbY7ldwmz4AwOBkUETsboRIgEMOI4GLNPMoyrC3lILRV0JvskcCmFmBCCZUFIFdFsk2oshwAjPiN1SOZF6mJ5JLWMO432KRZ3dd734iuSR0eJBGa1uqMoNn0PB9W1yiNW5FGkMOmo7sd4jxzyLoFih+/iMvCYHMfHYIdvkcZdYxcH417NUtNPu1rggknj88SuEOnIoYhEXKK/QwZaQamPDOjS7wJWnNetrGBEX1T1BIndk4YwJiBC6H0u3HIaOtDqcPgaFzS3shAN62JMsAbG9JxiYijX3VhwfyPy701hH2NEiRYjDmb3TorSK4FL6dmNIAYAAA==") format("woff2");
+      font-display: swap;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+</body>
+</html>

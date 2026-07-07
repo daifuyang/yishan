@@ -1,0 +1,43 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**/*",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.taro",
+      "!biome.json",
+      "!src/index.html"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "complexity": {
+        "noImportantStyles": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      }
+    }
+  },
+  "vcs": {
+    "enabled": false,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "javascript": {
+    "jsxRuntime": "reactClassic"
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "css": {
+    "formatter": {
+      "enabled": true
+    }
+  }
+}

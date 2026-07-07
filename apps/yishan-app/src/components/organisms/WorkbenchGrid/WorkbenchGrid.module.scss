@@ -1,0 +1,37 @@
+.oWorkbench {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+}
+
+.oWorkbench__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.oWorkbench__group--bordered {
+  background-color: var(--color-bg-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.oWorkbench__grid {
+  display: grid;
+}
+
+.oWorkbench__grid--cols-3 { grid-template-columns: repeat(3, 1fr); }
+.oWorkbench__grid--cols-4 { grid-template-columns: repeat(4, 1fr); }
+.oWorkbench__grid--cols-5 { grid-template-columns: repeat(5, 1fr); }
+
+.oWorkbench__grid--bg-surface { background-color: var(--color-bg-surface); }
+.oWorkbench__grid--rounded    { border-radius: var(--radius-lg); }
+
+.oWorkbench__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-13);
+}

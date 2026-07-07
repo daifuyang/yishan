@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2017", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "experimentalDecorators": true,
+    "useDefineForClassFields": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/components/*": ["src/components/*"],
+      "@/constants/*": ["src/constants/*"],
+      "@/utils/*": ["src/utils/*"],
+      "@/styles/*": ["src/styles/*"],
+      "@/assets/*": ["src/assets/*"]
+    },
+    "types": ["@tarojs/taro", "node", "webpack-env"]
+  },
+  "include": [
+    "src/**/*",
+    "types/**/*",
+    "config/**/*"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

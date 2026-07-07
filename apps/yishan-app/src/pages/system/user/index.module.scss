@@ -1,0 +1,41 @@
+.userList {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-3);
+}
+
+.userList__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.userList__name {
+  font-size: var(--font-size-15);
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.userList__sub {
+  font-size: var(--font-size-12);
+  color: var(--color-text-tertiary);
+  line-height: 1.2;
+}
+
+.userList__value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.userList__loadingMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) 0;
+}

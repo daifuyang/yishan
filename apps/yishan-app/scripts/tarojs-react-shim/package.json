@@ -1,0 +1,7 @@
+{
+  "name": "@tarojs/react",
+  "version": "4.2.0",
+  "description": "Local shim: re-export react-dom so Taro 4 framework-react plugin alias resolves.",
+  "main": "index.js",
+  "types": "index.d.ts"
+}

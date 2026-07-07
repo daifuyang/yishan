@@ -1,0 +1,20 @@
+.mBottomActionBar__wrap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-fixed);
+  padding-bottom: var(--safe-area-bottom);
+  background-color: var(--color-bg-surface);
+}
+
+.mBottomActionBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.mBottomActionBar--bordered {
+  border-top: 1px solid var(--color-border-light);
+}

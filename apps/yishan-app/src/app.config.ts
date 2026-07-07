@@ -1,0 +1,28 @@
+export default defineAppConfig({
+  pages: [
+    'pages/index/index',
+    'pages/apps/index',
+    'pages/mine/index',
+    'pages/login/index',
+    'pages/profile/edit/index',
+    'pages/profile/password/index',
+    'pages/profile/login-log/index',
+    'pages/contacts/index/index',
+    'pages/contacts/dept/index',
+    'pages/system/login-log/index',
+    'pages/system/dept/index',
+    'pages/system/dept/detail/index',
+    'pages/system/user/index',
+    'pages/system/user/detail/index',
+    'pages/system/user/edit/index',
+    'pages/system/dict/index',
+    'pages/system/dict/items/index',
+  ],
+  window: {
+    backgroundTextStyle: 'dark',
+    navigationBarBackgroundColor: '#FFFFFF',
+    navigationBarTitleText: '移山',
+    navigationBarTextStyle: 'black',
+    backgroundColor: '#F7F8FA',
+  },
+})

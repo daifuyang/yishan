@@ -1,0 +1,25 @@
+.dept__list {
+  background: var(--color-bg-surface, #fff);
+}
+
+.dept__state {
+  padding: 60px 0;
+  display: flex;
+  justify-content: center;
+  background: var(--color-bg-surface, #fff);
+}
+
+.dept__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dept__name {
+  font-size: 15px;
+  color: var(--color-text-primary, #1d2129);
+}
+
+.dept__initial {
+  display: none;
+}

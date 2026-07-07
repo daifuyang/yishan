@@ -1,0 +1,23 @@
+.apps {
+  background-color: var(--color-bg-base);
+  padding-top: var(--space-3);
+}
+
+.apps__header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.apps__icon {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--color-primary, #1677ff);
+}
+
+.apps__state {
+  padding: 60px 0;
+  display: flex;
+  justify-content: center;
+}
