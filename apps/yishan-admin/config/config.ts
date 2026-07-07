@@ -145,6 +145,7 @@ export default defineConfig({
     configProvider: {
       theme: {
         token: {
+          colorPrimary: '#1677FF',
           fontFamily: 'AlibabaSans, sans-serif',
         },
       },

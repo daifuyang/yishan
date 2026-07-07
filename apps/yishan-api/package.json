@@ -31,6 +31,7 @@
   "license": "MIT",
   "dependencies": {
     "@fastify/autoload": "^6.0.0",
+    "@fastify/cors": "^11.2.0",
     "@fastify/jwt": "^10.0.0",
     "@fastify/multipart": "^9.3.0",
     "@fastify/redis": "^7.0.2",
@@ -57,8 +58,8 @@
     "fastify-tsconfig": "^3.0.0",
     "prisma": "^7.6.0",
     "ts-node": "^10.4.0",
-    "typescript": "~5.8.2",
     "tsc-alias": "^1.8.16",
+    "typescript": "~5.8.2",
     "vitest": "^4.0.7"
   }
 }
