@@ -2,6 +2,7 @@ declare const __APP_BASE__: string;
 
 declare module 'mockjs';
 
+declare module '*.css';
 declare module '*.less' {
   const classes: { readonly [key: string]: string };
   export default classes;

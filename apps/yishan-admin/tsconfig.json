@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
-    "baseUrl": "./",
     "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -13,10 +11,12 @@
     "declaration": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "types": ["jest", "node"],
     "paths": {
       "@/*": ["./src/*"],
       "@@/*": ["./src/.umi/*"],
-      "@@test/*": ["./src/.umi-test/*"]
+      "@@test/*": ["./src/.umi-test/*"],
+      "@root/*": ["./*"]
     }
   },
   "include": ["./**/*.d.ts", "./**/*.ts", "./**/*.tsx"]
