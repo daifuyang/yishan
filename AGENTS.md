@@ -3,6 +3,7 @@
 ## Stack
 - **Admin** (yishan-admin): Umi 4 + Ant Design Pro, React 19, Biome lint, Jest test
 - **API** (yishan-api): Fastify 5, Prisma 7, TypeBox, JWT, `type: commonjs`
+- **App** (yishan-app): Taro 4 + React 18, Biome lint, TypeScript, WeChat 微信小程序 + H5
 - **Docs** (yishan-docs): Docusaurus 3
 - **Components** (yishan-tiptap): TipTap 3, Rollup, workspace dependency of admin
 
@@ -11,7 +12,10 @@
 ```bash
 pnpm --filter yishan-admin dev        # Admin dev (MOCK=none by default)
 pnpm --filter yishan-api dev          # API dev (build:ts + watch)
+pnpm --filter yishan-app dev:weapp    # 微信小程序 dev (watch)
+pnpm --filter yishan-app dev:h5       # H5 dev (watch)
 pnpm --filter yishan-admin lint       # biome:lint + tsc --noEmit
+pnpm --filter yishan-app lint         # biome:lint + tsc --noEmit
 pnpm --filter yishan-admin test        # Jest
 pnpm --filter yishan-api test          # Vitest
 pnpm --filter yishan-tiptap build      # Must build before admin dev/build
@@ -20,6 +24,8 @@ pnpm --filter yishan-tiptap build      # Must build before admin dev/build
 ## Build Order (critical for workspace dependency)
 yishan-tiptap → yishan-admin → (for deploy) copy admin/dist → yishan-api
 
+`yishan-app` 与 `yishan-tiptap` 无强依赖，可与 admin 并行构建。
+
 Admin `dist/` is copied to `yishan-api/public/admin/` before FC3 deployment. Do not assume admin is independently served.
 
 ## CI Order
@@ -27,9 +33,11 @@ Admin `dist/` is copied to `yishan-api/public/admin/` before FC3 deployment. Do 
 2. `pnpm --filter yishan-tiptap build`
 3. `pnpm --filter yishan-admin lint`
 4. `pnpm --filter yishan-admin build`
-5. `pnpm --filter yishan-api db:generate`
-6. `pnpm --filter yishan-api build:ts`
-7. `pnpm --filter yishan-api test`
+5. `pnpm --filter yishan-app lint`
+6. `pnpm --filter yishan-app build:weapp`
+7. `pnpm --filter yishan-api db:generate`
+8. `pnpm --filter yishan-api build:ts`
+9. `pnpm --filter yishan-api test`
 
 ## FC3 Deployment (yishan-api/deploy/fc3/)
 - Runtime: custom.debian12 with Node 22.14.0
@@ -50,3 +58,8 @@ Admin uses Biome only (no ESLint/Prettier). Biome config: single quotes, reactCl
 
 ## OpenAPI
 Admin: `pnpm --filter yishan-admin openapi` generates types/services from the API spec.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
