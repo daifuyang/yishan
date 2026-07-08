@@ -21,15 +21,15 @@ echo "4. 生成 Layered 函数代码目录"
 rm -rf "$FUNCTION_DIR"
 mkdir -p "$FUNCTION_DIR"
 cp -R dist/. "$FUNCTION_DIR/"
-rm -rf "$FUNCTION_DIR/node_modules" "$FUNCTION_DIR/package.json" "$FUNCTION_DIR/package-lock.json" "$FUNCTION_DIR/public"
-
-if [ -f .env ]; then
-  cp .env "$FUNCTION_DIR/"
-fi
+rm -rf "$FUNCTION_DIR/node_modules" "$FUNCTION_DIR/package.json" "$FUNCTION_DIR/package-lock.json" "$FUNCTION_DIR/public" "$FUNCTION_DIR/.env"
 
 echo "5. 安装函数本地依赖（默认仅 Prisma 相关）"
 node "$FC_DIR/write-function-package.cjs" package.json "$LAYER_CONFIG" "$FUNCTION_DIR/package.json"
-npm install --omit=dev --omit=optional --omit=peer --package-lock=false --prefix "$FUNCTION_DIR"
+if node -e "const p=require('$FUNCTION_DIR/package.json'); process.exit(Object.keys(p.dependencies || {}).length === 0 ? 0 : 1)"; then
+  echo "函数包无本地 npm 依赖，跳过 node_modules 安装"
+else
+  npm install --omit=dev --omit=optional --omit=peer --package-lock=false --prefix "$FUNCTION_DIR"
+fi
 
 echo "6. 拷贝 Admin 静态资源"
 mkdir -p "$FUNCTION_DIR/public"

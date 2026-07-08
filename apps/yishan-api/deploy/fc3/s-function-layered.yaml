@@ -17,17 +17,28 @@ resources:
       memorySize: 2048
       diskSize: 512
       instanceConcurrency: 100
+      vpcConfig:
+        vpcId: vpc-uf65806lcuh5b43szs1db
+        vSwitchIds:
+          - vsw-uf6fcm08qor78wfioz1c2
+        securityGroupId: sg-uf6bl327dijrauls3ism
       layers:
         - ${vars.runtimeLayerArn}
       environmentVariables:
+        NODE_ENV: production
+        LOG_LEVEL: ${env(LOG_LEVEL)}
         PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin:/code:/code/bin
         NODE_PATH: /code/node_modules:/opt/nodejs/node_modules
         LD_LIBRARY_PATH: /code:/code/lib:/usr/lib:/opt/lib:/usr/local/lib
         DATABASE_USER: ${env(DATABASE_USER)}
         DATABASE_PASSWORD: ${env(DATABASE_PASSWORD)}
         DATABASE_NAME: ${env(DATABASE_NAME)}
-        DATABASE_HOST: ${env(DATABASE_HOST)}
-        REDIS_URL: ${env(REDIS_URL)}
+        DATABASE_HOST: 172.23.212.135
+        DATABASE_PORT: ${env(DATABASE_PORT)}
+        REDIS_HOST: 172.23.212.135
+        REDIS_PORT: ${env(REDIS_PORT)}
+        REDIS_PASSWORD: ${env(REDIS_PASSWORD)}
+        REDIS_DB: ${env(REDIS_DB)}
       customRuntimeConfig:
         command:
           - node

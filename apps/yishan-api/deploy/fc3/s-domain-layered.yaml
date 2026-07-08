@@ -1,17 +1,13 @@
-# ------------------------------------
-#   FC3 domain + cert only
-# ------------------------------------
-
 edition: 3.0.0
-name: yishan-demo-domain
+name: yishan-demo-layered-domain
 access: "enterprise"
 vars:
   region: "cn-shanghai"
-  functionName: "yishan-demo"
-  customDomain: "demo.zerocmf.com"
-  certName: "example-zerocmf-com"
+  functionName: ${env(FC_FUNCTION_NAME)}
+  customDomain: ${env(FC_CUSTOM_DOMAIN)}
+  certName: ${env(FC_CERT_NAME)}
 resources:
-  example_domain:
+  yishan_demo_layered_domain:
     component: fc3-domain
     props:
       region: ${vars.region}
@@ -23,11 +19,5 @@ resources:
         privateKey: ${file(./deploy/fc3/certs/private.key)}
       routeConfig:
         routes:
-          - path: /
-            functionName: ${vars.functionName}
-            rewriteConfig:
-              equalRules:
-                - match: /
-                  replacement: /admin/
           - path: /*
             functionName: ${vars.functionName}

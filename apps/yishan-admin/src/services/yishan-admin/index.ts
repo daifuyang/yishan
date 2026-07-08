@@ -12,10 +12,6 @@ import * as shopCategories from "./shopCategories";
 import * as shopOrders from "./shopOrders";
 import * as shopProducts from "./shopProducts";
 import * as shopSkus from "./shopSkus";
-import * as sysApps from "./sysApps";
-import * as sysAppResources from "./sysAppResources";
-import * as sysAppMenus from "./sysAppMenus";
-import * as sysForms from "./sysForms";
 import * as attachments from "./attachments";
 import * as sysDepts from "./sysDepts";
 import * as sysDictTypes from "./sysDictTypes";
@@ -38,10 +34,6 @@ export default {
   shopOrders,
   shopProducts,
   shopSkus,
-  sysApps,
-  sysAppResources,
-  sysAppMenus,
-  sysForms,
   attachments,
   sysDepts,
   sysDictTypes,

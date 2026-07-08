@@ -13,6 +13,7 @@
     "@fastify/swagger",
     "@fastify/swagger-ui",
     "@fastify/type-provider-typebox",
+    "@prisma/adapter-mariadb",
     "@prisma/client",
     "@sinclair/typebox",
     "close-with-grace",
@@ -22,7 +23,5 @@
     "fastify-plugin",
     "qiniu"
   ],
-  "localDependencies": [
-    "@prisma/adapter-mariadb"
-  ]
+  "localDependencies": []
 }

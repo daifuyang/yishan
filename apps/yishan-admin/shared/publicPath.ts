@@ -13,6 +13,12 @@ export const getBasePrefixFromPublicPath = (rawPath?: string): string => {
   return normalized === '/' ? '' : normalized.replace(/\/+$/, '');
 };
 
+export const resolvePublicAssetPath = (rawPath: string | undefined, assetPath: string): string => {
+  const normalized = normalizePublicPath(rawPath);
+  const asset = assetPath.replace(/^\/+/, '');
+  return `${normalized}${asset}`;
+};
+
 export const stripBasePrefix = (pathname: string, basePrefix: string): string => {
   if (!basePrefix) return pathname;
   if (pathname.startsWith(basePrefix)) {

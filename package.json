@@ -10,6 +10,7 @@
     "dev:app": "pnpm --filter yishan-app dev:weapp",
     "dev:app:h5": "pnpm --filter yishan-app dev:h5",
     "build:admin": "pnpm --filter yishan-admin build",
+    "build:admin:fc": "PUBLIC_PATH=/admin/ pnpm --filter yishan-admin build && rm -rf apps/yishan-api/public/admin && mkdir -p apps/yishan-api/public/admin && cp -R apps/yishan-admin/dist/. apps/yishan-api/public/admin/",
     "preview:admin": "pnpm --filter yishan-admin preview",
     "build:api": "pnpm --filter yishan-api build:ts",
     "build:app": "pnpm --filter yishan-app build:weapp",

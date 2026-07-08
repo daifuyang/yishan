@@ -18,9 +18,7 @@ const useStyles = createStyles(({ css }) => {
       backgroundPosition: "center",
       backgroundRepeat: "no-repeat",
       width: "100%",
-      minHeight: "100dvh",
-      padding: "24px",
-      overflow: "auto",
+      height: "100vh",
       "@media (max-width: 992px)": {
         padding: "20px",
       },
@@ -32,10 +30,11 @@ const useStyles = createStyles(({ css }) => {
     },
     brand: {
       backgroundImage: `url('${loginBrandImage}')`,
-      backgroundSize: "100% 100%",
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
       width: "56.67%",
       height: "100%",
-      minHeight: "640px",
       "@media (max-width: 1200px)": {
         width: "50%",
       },
@@ -48,10 +47,6 @@ const useStyles = createStyles(({ css }) => {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      minHeight: "640px",
-      "@media (max-width: 992px)": {
-        minHeight: "auto",
-      },
     },
     loginCard: {
       width: "min(481px, 100%)",
@@ -60,6 +55,9 @@ const useStyles = createStyles(({ css }) => {
       borderRadius: "20px",
       boxShadow:
         " 0px 0px 0px  rgba(0, 0, 0, 0.1), 0px 17px 36px  rgba(23, 57, 222, 0.25)",
+      "@media (max-height: 720px)": {
+        padding: "40px 40px 56px",
+      },
       "@media (max-width: 768px)": {
         padding: "28px 20px 32px",
         borderRadius: "16px",
@@ -84,13 +82,15 @@ const useStyles = createStyles(({ css }) => {
     },
     loginForm: {
       marginTop: "40px",
+      "@media (max-height: 720px)": {
+        marginTop: "28px",
+      },
       "@media (max-width: 768px)": {
         marginTop: "28px",
       },
     },
     loginFormItem: css`
       background-color: rgba(231, 241, 253, 0.4);
-      min-height: 56px;
       &.ant-input-affix-wrapper > input.ant-input {
         &::placeholder {
           font-size: 18px;
@@ -104,15 +104,6 @@ const useStyles = createStyles(({ css }) => {
         font-family: 'Noto Sans SC';
         font-weight: 400;
       }
-      @media (max-width: 768px) {
-        min-height: 48px;
-        &.ant-input-affix-wrapper > input.ant-input {
-          &::placeholder {
-            font-size: 16px;
-          }
-          font-size: 16px;
-        }
-      }
     `,
     loginItemIcon: {
       fontSize: "24px",
@@ -121,13 +112,16 @@ const useStyles = createStyles(({ css }) => {
         fontSize: "20px",
       },
     },
-    loginFormChexkBox: css`
+    loginFormCheckBox: css`
       & .ant-checkbox + span {
         color: rgba(4, 19, 74, 0.4);
         font-size: 18px;
         font-weight: 400;
       }
       margin-bottom: 86px;
+      @media (max-height: 720px) {
+        margin-bottom: 40px;
+      }
       @media (max-width: 768px) {
         margin-bottom: 28px;
         & .ant-checkbox + span {
@@ -366,7 +360,7 @@ const Login: React.FC = () => {
               />
             </Form.Item>
             <Form.Item name="remember" valuePropName="checked">
-              <Checkbox className={styles.loginFormChexkBox}>
+              <Checkbox className={styles.loginFormCheckBox}>
                 <FormattedMessage id="pages.login.rememberMe" defaultMessage="自动登录" />
               </Checkbox>
             </Form.Item>

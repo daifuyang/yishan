@@ -13,10 +13,6 @@ import registerPageSchemas from "./page.js";
 import registerTemplateSchemas from "./template.js";
 import registerAttachment from "./attachment.js";
 import registerLoginLog from "./login-log.js";
-import registerAppSchemas from "./app.js";
-import registerAppResourceSchemas from "./app-resource.js";
-import registerAppMenuSchemas from "./app-menu.js";
-import registerFormSchemas from "./form.js";
 import registerShopSchemas from "../../plugins/modules/shop/schemas/shop.js";
 
 // Schema插件，定义共享的Schema引用
@@ -35,9 +31,5 @@ export default fp(async (fastify, opts) => {
   registerTemplateSchemas(fastify);
   registerAttachment(fastify);
   registerLoginLog(fastify);
-  registerAppSchemas(fastify);
-  registerAppResourceSchemas(fastify);
-  registerAppMenuSchemas(fastify);
-  registerFormSchemas(fastify);
   registerShopSchemas(fastify);
 });

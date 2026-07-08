@@ -23,17 +23,6 @@ const systemManifest = {
       component: './system/login-log',
       access: 'canDo',
     },
-    {
-      path: '/system/apps',
-      component: './system/apps',
-      access: 'canDo',
-    },
-    {
-      path: '/system/apps/:id',
-      component: './system/apps/detail',
-      layout: false,
-      access: 'canDo',
-    },
   ],
 };
 

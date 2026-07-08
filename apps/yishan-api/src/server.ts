@@ -20,7 +20,7 @@ import serviceApp from './app.js'
  */
 function getLoggerOptions () {
   // Only if the program is running in an interactive terminal
-  if (process.stdout.isTTY) {
+  if (process.env.PINO_PRETTY === '1' && process.stdout.isTTY) {
     return {
       level: 'info',
       transport: {

@@ -71,70 +71,41 @@ pnpm run db:init
 pnpm run db:seed
 ```
 
-### fc函数部署
+### FC3 Layered 部署
 
-1. 安装 Serverless Framework：
+当前只保留 FC3 layered 部署链路，函数名为 `yishan-demo-layered`，Admin 静态资源通过 API 一体化部署。
+
+1. 配置阿里云账号：
 ```bash
-npm install -g serverless
-```
-
-2. 配置 Serverless Framework：
-```bash
-s config add
-```
-
-3. 模拟线上环境
-```bash
-docker run --platform linux/amd64 -it --name yishan-api-serverless-dev  -v ./:/code registry.cn-beijing.aliyuncs.com/aliyunfc/runtime-custom.debian10:build-3.1.0 bash
-```
-
-4. 执行部署脚本
-```bash
-./deploy/fc3/pre-deploy.sh
-./deploy/fc3/deploy.sh
-```
-
-3. 部署函数：
-```bash
-s deploy -y
-```
-
-### FC 函数部署（单服务）
-
-当前配置使用一个 FC 服务 `yishan-demo`，同时部署 API 和 `public/admin` 静态前端，部署文件为 `deploy/fc3/s.yaml`。
-
-1. 配置阿里云账号（建议两个别名）：
-```bash
-# 企业账号（FC 部署）
 s config add --AccessKeyID <FC_ACCESS_KEY_ID> --AccessKeySecret <FC_ACCESS_KEY_SECRET> --AccountID <ACCOUNT_ID> --alias enterprise
-
-# 个人账号（DNS 验证签发证书）
-s config add --AccessKeyID <DNS_ACCESS_KEY_ID> --AccessKeySecret <DNS_ACCESS_KEY_SECRET> --AccountID <ACCOUNT_ID> --alias dns
 ```
 
-2. 使用 DNS 验证签发证书（示例域名：`example.zerocmf.com`）：
+2. 构建 Admin 二级目录产物并同步到 API：
 ```bash
-export Ali_Key=<DNS_ACCESS_KEY_ID>
-export Ali_Secret=<DNS_ACCESS_KEY_SECRET>
-~/.acme.sh/acme.sh --issue --dns dns_ali -d example.zerocmf.com --keylength 2048
-~/.acme.sh/acme.sh --install-cert -d example.zerocmf.com \
-  --fullchain-file /mnt/c/Workspace/Frontend/yishan/apps/yishan-api/deploy/fc3/certs/fullchain.cer \
-  --key-file /mnt/c/Workspace/Frontend/yishan/apps/yishan-api/deploy/fc3/certs/private.key
+cd /path/to/yishan
+pnpm --filter yishan-tiptap build
+pnpm build:admin:fc
 ```
 
-3. 构建并打包运行文件（包含前端）：
+3. 在 API 目录构建并部署 Layered 函数：
 ```bash
-./deploy/fc3/pre-deploy.sh
+cd apps/yishan-api
+set -a
+. ./.env
+set +a
+./deploy/fc3/pre-deploy-layered.sh
+./deploy/fc3/deploy-layered-function.sh
 ```
 
-4. 部署并验证：
+4. 如需更新自定义域名与证书：
 ```bash
-s deploy -y
-s info
-curl -I https://example.zerocmf.com/admin/user/login/index.html
+export FC_FUNCTION_NAME='yishan-demo-layered'
+export FC_CUSTOM_DOMAIN='example.zerocmf.com'
+export FC_CERT_NAME="example-zerocmf-com-$(date +%Y%m%d)"
+./deploy/fc3/deploy-layered-domain.sh
 ```
 
-安全要求：不要提交 `AccessKey`、证书私钥与 `.env`，并保持 `deploy/fc3/certs` 在 `.gitignore` 中。
+完整说明见 `deploy/fc3/README-layer.md`。安全要求：不要提交 `AccessKey`、证书私钥、`deploy/fc3/certs` 与 `.env`。
 
 ## 可用脚本
 

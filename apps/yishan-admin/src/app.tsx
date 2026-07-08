@@ -21,11 +21,34 @@ import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmen
 import avatarFallback from "@public/icons/avatar.png";
 import { TOKEN_KEYS } from "./utils/token";
 import queryString from "query-string";
-import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPath";
+import { getBasePrefixFromPublicPath, resolvePublicAssetPath, stripBasePrefix } from "../shared/publicPath";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
 const ADMIN_BASE = getBasePrefixFromPublicPath(__APP_BASE__);
+type AppLayoutSettings = Partial<LayoutSettings> & { logo?: string };
+
+const normalizeConfiguredAssetPath = (value?: string) => {
+  if (!value) return value;
+  if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith("data:") || value.startsWith("blob:")) {
+    return value;
+  }
+  if (!value.startsWith("/") || !ADMIN_BASE) {
+    return value;
+  }
+  if (value === ADMIN_BASE || value.startsWith(`${ADMIN_BASE}/`)) {
+    return value;
+  }
+  return resolvePublicAssetPath(__APP_BASE__, value);
+};
+
+const normalizeLayoutSettings = (settings?: AppLayoutSettings): AppLayoutSettings | undefined => {
+  if (!settings) return settings;
+  return {
+    ...settings,
+    logo: typeof settings.logo === "string" ? normalizeConfiguredAssetPath(settings.logo) : settings.logo,
+  };
+};
 
 const getRelativePath = (pathname: string) => {
   return stripBasePrefix(pathname, ADMIN_BASE);
@@ -52,7 +75,7 @@ const IconMap: Record<string, JSX.Element> = {
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
  * */
 export async function getInitialState(): Promise<{
-  settings?: Partial<LayoutSettings>;
+  settings?: AppLayoutSettings;
   currentUser?: API.currentUser;
   loading?: boolean;
   fetchUserInfo?: () => Promise<API.currentUser | undefined>;
@@ -101,7 +124,7 @@ export async function getInitialState(): Promise<{
       currentUser,
       dictDataMap,
       cloudStorageConfig,
-      settings: defaultSettings as Partial<LayoutSettings>,
+      settings: normalizeLayoutSettings(defaultSettings as AppLayoutSettings),
     };
   }
   return {
@@ -109,7 +132,7 @@ export async function getInitialState(): Promise<{
     fetchDictDataMap,
     fetchCloudStorageConfig,
     uploadAttachmentFile,
-    settings: defaultSettings as Partial<LayoutSettings>,
+    settings: normalizeLayoutSettings(defaultSettings as AppLayoutSettings),
   };
 }
 
