@@ -214,6 +214,9 @@ jobs:
           YISHAN_FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
           YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
           YISHAN_FC_ACCESS_ALIAS: enterprise
+          # s cli 返回的 layerVersionArn 中账号 ID 会被脱敏（165**********785），
+          # publish-runtime-layer.sh 用此 var 拼回完整 ARN。Account ID 是公开信息，可放 var。
+          ALIBABA_CLOUD_ACCOUNT_ID: ${{ vars.ALIBABA_CLOUD_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           bash ./deploy/fc3/publish-runtime-layer.sh | tee /tmp/publish_layer.log
