@@ -15,9 +15,22 @@ resources:
       protocol: HTTPS
       certConfig:
         certName: ${vars.certName}
-        certificate: ${file(./deploy/fc3/certs/fullchain.cer)}
-        privateKey: ${file(./deploy/fc3/certs/private.key)}
+        certificate: ${file(./certs/fullchain.cer)}
+        privateKey: ${file(./certs/private.key)}
       routeConfig:
         routes:
+          # 根路径用 rewrite 把 / 重写为 /admin/，再发到主函数
+          # FC routeConfig 不支持 HTTP 3xx redirect，只能 path rewrite
+          # 效果：用户访问 / 时看到 admin UI，浏览器 URL 仍是 /
+          - path: /
+            functionName: ${vars.functionName}
+            methods:
+              - GET
+              - HEAD
+            rewriteConfig:
+              equalRules:
+                - match: /
+                  replacement: /admin/
+          # 其他路径（/admin、/api、/uploads、/favicon.ico 等）保持原样路由到主函数
           - path: /*
             functionName: ${vars.functionName}
