@@ -1,10 +1,28 @@
 {
-  "runtime": "custom.debian12-node22",
+  "runtime": "custom.debian12",
   "layerName": "yishan-api-runtime-layer",
   "dependencies": {
-    "fastify": "^5.0.0"
+    "@fastify/autoload": "6.3.1",
+    "@fastify/cors": "11.2.0",
+    "@fastify/jwt": "10.1.0",
+    "@fastify/multipart": "9.4.0",
+    "@fastify/redis": "7.2.0",
+    "@fastify/sensible": "6.0.4",
+    "@fastify/static": "8.3.0",
+    "@fastify/swagger": "9.7.0",
+    "@fastify/swagger-ui": "5.2.6",
+    "@fastify/type-provider-typebox": "6.1.0",
+    "@prisma/adapter-mariadb": "7.8.0",
+    "@prisma/client": "7.8.0",
+    "@sinclair/typebox": "0.34.49",
+    "close-with-grace": "2.5.0",
+    "dayjs": "1.11.21",
+    "dotenv": "17.4.2",
+    "fastify": "5.8.5",
+    "fastify-plugin": "5.1.0",
+    "qiniu": "7.15.2"
   },
-  "fingerprint": "sha256:replace-with-current-fingerprint",
+  "fingerprint": "sha256:546252996c726c5d3022b315090c6b42b3d51f2bba1b61eaa1b466f6f74e0817",
   "arn": "acs:fc:cn-shanghai:<account-id>:layers/yishan-api-runtime-layer/versions/<version>",
-  "updatedAt": "2026-07-07T00:00:00.000Z"
+  "updatedAt": "2026-07-10T00:00:00.000Z"
 }

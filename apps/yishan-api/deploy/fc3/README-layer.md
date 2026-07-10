@@ -11,6 +11,16 @@
 
 依赖清单在 `layer-dependencies.json` 中维护。Layer 是否需要重新发布由指纹判断：`runtime + layer dependencies + package.json 中对应版本` 共同生成 fingerprint；业务代码、Admin 静态资源、Prisma schema 不影响该指纹。
 
+**`localDependencies` 使用场景**：仅当某个运行时依赖**必须从函数包本地加载**（不进 Layer）时使用。当前清单为空，意味着函数代码包不带 `node_modules`，所有运行时依赖从 Layer 解析。常见例外：
+
+- 某些 Prisma 插件/引擎对加载路径敏感，必须在函数包根目录
+- 需要在函数冷启动时立即可用、不能容忍 Layer 挂载延迟的包
+- 需要在函数代码中动态 require、且版本与 Layer 中的不一致
+
+**Runtime 字段一致性约束**：`layer-dependencies.json` 中的 `runtime` 必须与 `s-function-layered.yaml` 中 `runtime:` 字段保持字面一致；任何改动都会重新生成 fingerprint 并触发 Layer 重新发布。当前统一为 `custom.debian12`。
+
+**`${file(...)}` 路径解析**：Serverless Devs 中 `${file(...)}` 路径相对于 YAML 文件所在目录解析，不是 CWD。`s-domain-layered.yaml` 中 `./deploy/fc3/certs/fullchain.cer` 实际是 `./deploy/fc3/certs/fullchain.cer`（与 yaml 同目录的 `deploy/fc3/certs/`），所以 `deploy-layered-domain.sh` 调用 `s deploy -t <yaml>` 时必须确保 yaml 文件所在的目录就是预期的——脚本当前假设 yaml 与 cert 同目录。
+
 ## 本地构建验证
 
 ```bash
@@ -42,7 +52,31 @@ node deploy/fc3/layer-state.cjs fingerprint package.json deploy/fc3/layer-depend
 
 ## 部署 Layered 函数
 
-只有当当前指纹与 `deploy/fc3/layer-lock.json` 不一致时，才需要发布新的 FC Layer 版本。把 `runtime-layer.zip` 或 `deploy/fc3/.build/runtime-layer` 发布为 FC Layer，拿到版本 ARN 后记录：
+CI 流程（`yishan-fullstack-cd-fc.yml`）已经自动处理 Layer 发布：每次部署前会调 `publish-runtime-layer.sh`，
+对比当前指纹与 `layer-lock.json`：
+
+- **一致**：复用 lock 中的 ARN，跳过发布，节省上传时间和 FC Layer 版本额度
+- **不一致或 lock 缺失**：自动调 `s cli fc3 layer publish` 发布新版本并写回 lock
+- lock 通过 `actions/cache@v4` 在 workflow 运行之间持久化（key: `yishan-api-layer-lock-fallback`）
+
+本地手动发布 Layer：
+
+```bash
+cd apps/yishan-api
+
+# 1. 构建（必须先跑，否则 publish-runtime-layer.sh 会拒绝执行）
+bash ./deploy/fc3/build-runtime-layer.sh
+
+# 2. 发布（如有需要，自动发布新版本；指纹一致则直接复用 lock）
+bash ./deploy/fc3/publish-runtime-layer.sh
+
+# 也可以指定 region / layer 名
+YISHAN_FC_REGION=cn-shanghai \
+YISHAN_FC_LAYER_NAME=yishan-api-runtime-layer \
+bash ./deploy/fc3/publish-runtime-layer.sh
+```
+
+只有当手动跳过 publish 脚本、直接发布时，才需要手动记录 ARN：
 
 ```bash
 cd apps/yishan-api
@@ -106,7 +140,9 @@ node deploy/fc3/layer-state.cjs record \
   'acs:fc:cn-shanghai:1650595695532785:layers/yishan-api-runtime-layer-test/versions/1'
 ```
 
-`layer-lock.json` 是本地状态文件，不提交到 git。
+`layer-lock.json` 是本地状态文件，不提交到 git；CI 通过 `actions/cache@v4` 在 workflow 运行之间持久化。
+
+> ⚠️ 上面这个测试 Layer 的 fingerprint（`1d8dbe86...`）是历史值。运行时统一为 `custom.debian12` 后，当前指纹为 `sha256:546252996c726c5d3022b315090c6b42b3d51f2bba1b61eaa1b466f6f74e0817`。要复用旧的测试 ARN，需要把它和 lock 文件一起重新发布一遍。
 
 ## 部署 Layered 域名与证书
 

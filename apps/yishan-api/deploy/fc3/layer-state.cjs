@@ -16,7 +16,7 @@ function resolveLayerState(sourcePackagePath, layerConfigPath) {
   }
 
   const state = {
-    runtime: layerConfig.runtime || 'custom.debian12-node22',
+    runtime: layerConfig.runtime || 'custom.debian12',
     layerName: layerConfig.name || 'runtime-layer',
     dependencies
   }

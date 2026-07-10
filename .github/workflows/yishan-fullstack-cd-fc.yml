@@ -13,6 +13,7 @@ on:
       - "apps/yishan-api/deploy/fc3/deploy-layered-function.sh"
       - "apps/yishan-api/deploy/fc3/deploy-layered-domain.sh"
       - "apps/yishan-api/deploy/fc3/build-runtime-layer.sh"
+      - "apps/yishan-api/deploy/fc3/publish-runtime-layer.sh"
       - "apps/yishan-api/deploy/fc3/layer-dependencies.json"
       - "apps/yishan-api/deploy/fc3/layer-lock.example.json"
       - "apps/yishan-api/deploy/fc3/layer-state.cjs"
@@ -194,6 +195,43 @@ jobs:
               -f
           fi
 
+      - name: Restore layer lock
+        uses: actions/cache@v4
+        with:
+          path: apps/yishan-api/deploy/fc3/layer-lock.json
+          key: yishan-api-layer-lock-fallback
+          restore-keys: |
+            yishan-api-layer-lock-fallback
+
+      - name: Build runtime layer
+        working-directory: apps/yishan-api
+        run: bash ./deploy/fc3/build-runtime-layer.sh
+
+      - name: Publish runtime layer if needed
+        id: publish_layer
+        working-directory: apps/yishan-api
+        env:
+          YISHAN_FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
+          YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
+          YISHAN_FC_ACCESS_ALIAS: enterprise
+        run: |
+          set -euo pipefail
+          bash ./deploy/fc3/publish-runtime-layer.sh | tee /tmp/publish_layer.log
+          # 抓取最后一行 `YISHAN_API_RUNTIME_LAYER_ARN=...`
+          LAYER_ARN="$(grep -E '^YISHAN_API_RUNTIME_LAYER_ARN=' /tmp/publish_layer.log | tail -n1 | cut -d= -f2-)"
+          if [ -z "$LAYER_ARN" ]; then
+            echo "❌ 未能从 publish-runtime-layer.sh 输出中提取 ARN" >&2
+            exit 1
+          fi
+          echo "layer_arn=$LAYER_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Save layer lock
+        if: always() && hashFiles('apps/yishan-api/deploy/fc3/layer-lock.json') != ''
+        uses: actions/cache@v4
+        with:
+          path: apps/yishan-api/deploy/fc3/layer-lock.json
+          key: yishan-api-layer-lock-fallback
+
       - name: Build Layered Package
         working-directory: apps/yishan-api
         run: bash ./deploy/fc3/pre-deploy-layered.sh
@@ -208,6 +246,7 @@ jobs:
           DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
+          YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"

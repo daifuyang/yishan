@@ -1,7 +1,7 @@
 {
   "name": "yishan-api-runtime-layer",
   "description": "Stable runtime dependencies installed into /opt/nodejs/node_modules for FC3.",
-  "runtime": "custom.debian12-node22",
+  "runtime": "custom.debian12",
   "dependencies": [
     "@fastify/autoload",
     "@fastify/cors",
