@@ -75,7 +75,7 @@
 - 改动范围：
   - `apps/yishan-admin/src/` 新增插件管理页面与 service。
   - `apps/yishan-api/src/core/routes` 新增/扩展插件管理路由（鉴权复用现有 JWT 机制）。
-  - 增加配置 JSON schema 驱动表单（可复用 `@json-render/*`）。
+  - 增加配置 JSON schema 驱动表单（方案待定，参考 `apps/yishan-admin/src/pages/portal/templates/components/TemplateDynamicFields.tsx` 已有的动态字段模式逐步抽象）。
 - 验证标准：
   - `pnpm --filter yishan-admin lint` 与 `pnpm --filter yishan-admin test` 通过。
   - UI 可完成插件启停与配置保存，且与 API 状态一致。

@@ -16,12 +16,6 @@ importers:
       '@ant-design/pro-components':
         specifier: ^3.1.12-0
         version: 3.1.12-0(antd@6.4.3)(react-dom@19.2.7)(react@19.2.7)
-      '@json-render/core':
-        specifier: ^0.3.0
-        version: 0.3.0(zod@4.3.6)
-      '@json-render/react':
-        specifier: ^0.2.0
-        version: 0.2.0(react@19.2.7)(zod@4.3.6)
       antd:
         specifier: ^6.4.3
         version: 6.4.3(react-dom@19.2.7)(react@19.2.7)
@@ -7997,33 +7991,6 @@ packages:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
     dev: true
-
-  /@json-render/core@0.2.0(zod@4.3.6):
-    resolution: {integrity: sha512-LBKv4M5skz7JRpTn53g6qF/zj5u/xUhuCp6WtJn/ZTIxGEAogH8sn3Ql/Nk/O0sgbQHtriRmoJuI23/5fGCXPw==}
-    peerDependencies:
-      zod: ^4.0.0
-    dependencies:
-      zod: 4.3.6
-    dev: false
-
-  /@json-render/core@0.3.0(zod@4.3.6):
-    resolution: {integrity: sha512-/Om3SNSNkOOkcx07luCBizN8stDrpQ0haclo8iv+1U40WpTjNsJ5u4vt8GIrKMjr/Cdm+cCoV+PiwGEZ/m1yVQ==}
-    peerDependencies:
-      zod: ^4.0.0
-    dependencies:
-      zod: 4.3.6
-    dev: false
-
-  /@json-render/react@0.2.0(react@19.2.7)(zod@4.3.6):
-    resolution: {integrity: sha512-4tdoMfc3t0Je+DMNsyJguz7aJkqfLhEY8/mvBchL9kweRfJHAZocT7doyqRCGAnCBtIXCKQ8YAbm0sb0Qr9OFw==}
-    peerDependencies:
-      react: ^19.0.0
-    dependencies:
-      '@json-render/core': 0.2.0(zod@4.3.6)
-      react: 19.2.7
-    transitivePeerDependencies:
-      - zod
-    dev: false
 
   /@jsonjoy.com/base64@1.1.2(tslib@2.8.1):
     resolution: {integrity: sha512-q6XAnWQDIMA3+FTiOYajoYqySkO+JSat0ytXGSuRdq9uXE7o92gzuQwQM14xaCRlBLGq3v5miDGC4vkVTn54xA==}
@@ -38447,10 +38414,6 @@ packages:
   /zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
     dev: true
-
-  /zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
-    dev: false
 
   /zscroller@0.4.8:
     resolution: {integrity: sha512-G5NiNLKx2+QhhvZi2yV1jjVXY50otktxkseX2hG2N/eixohOUk0AY8ZpbAxNqS9oJS/NxItCsowupy2tsXxAMw==}
