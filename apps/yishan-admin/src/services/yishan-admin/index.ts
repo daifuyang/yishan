@@ -23,6 +23,7 @@ import * as system from "./system";
 import * as storage from "./storage";
 import * as sysUsers from "./sysUsers";
 import * as auth from "./auth";
+import * as regions from "./regions";
 export default {
   helloModule,
   portalArticles,
@@ -45,4 +46,5 @@ export default {
   storage,
   sysUsers,
   auth,
+  regions,
 };

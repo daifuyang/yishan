@@ -19,6 +19,7 @@
     "db:generate": "npm run db:prisma:sync && npx prisma format && npx prisma generate",
     "db:init": "npm run db:prisma:sync && npx prisma migrate dev --name init",
     "db:seed": "npm run build:ts && node dist/scripts/seed.js",
+    "db:seed:regions": "npm run build:ts && node dist/scripts/import-regions.js",
     "db:reset": "npx prisma migrate reset && npm run db:init && npm run db:seed",
     "cli": "node dist/cli/index.js",
     "cli:dev": "ts-node src/cli/index.ts"

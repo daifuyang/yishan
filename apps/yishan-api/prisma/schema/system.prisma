@@ -19,6 +19,22 @@ model SysOption {
   @@map("sys_option")
 }
 
+model SysRegion {
+  code       Int      @id @map("code")
+  name       String   @map("name") @db.VarChar(50)
+  level      Int      @map("level") @db.TinyInt
+  parentCode Int      @default(0) @map("parent_code")
+  sortOrder  Int      @default(0) @map("sort_order")
+  status     Int      @default(1) @map("status") @db.TinyInt
+  createdAt  DateTime @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+
+  @@index([parentCode], map: "idx_sys_region_parent")
+  @@index([level], map: "idx_sys_region_level")
+  @@index([status], map: "idx_sys_region_status")
+  @@map("sys_region")
+}
+
 model SysUser {
   id            Int       @id @default(autoincrement()) @map("id")
   username      String?   @unique @map("username") @db.VarChar(50)
