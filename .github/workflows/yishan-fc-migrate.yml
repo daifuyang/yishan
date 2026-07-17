@@ -47,12 +47,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.14.0
-          cache: pnpm
 
-      - name: Enable pnpm and install dependencies
+      - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: |
           pnpm install --no-frozen-lockfile
 
       - name: Build migration runner package
