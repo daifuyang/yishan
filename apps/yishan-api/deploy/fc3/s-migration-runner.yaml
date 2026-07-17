@@ -32,6 +32,7 @@ resources:
         DATABASE_HOST: 172.23.212.135
         DATABASE_PORT: ${env(DATABASE_PORT)}
         ALLOW_PRODUCTION_SEED: ${env(ALLOW_PRODUCTION_SEED)}
+        SEED_ADMIN_PASSWORD: ${env(SEED_ADMIN_PASSWORD)}
       functionName: ${vars.functionName}
       # Code paths are resolved relative to this YAML file by Serverless Devs.
       code: ./.build/function-code

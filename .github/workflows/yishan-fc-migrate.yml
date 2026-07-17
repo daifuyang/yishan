@@ -94,6 +94,7 @@ jobs:
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           ALLOW_PRODUCTION_SEED: ${{ inputs.mode == 'reset-and-seed' && 'true' || 'false' }}
+          SEED_ADMIN_PASSWORD: ${{ secrets.YISHAN_API_SEED_ADMIN_PASSWORD }}
           MIGRATION_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
