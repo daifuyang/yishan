@@ -33,4 +33,5 @@ resources:
         DATABASE_HOST: 172.23.212.135
         DATABASE_PORT: ${env(DATABASE_PORT)}
       functionName: ${vars.functionName}
-      code: ./deploy/fc3/.build/function-code
+      # Code paths are resolved relative to this YAML file by Serverless Devs.
+      code: ./.build/function-code
