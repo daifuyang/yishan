@@ -4,6 +4,7 @@
   "runtime": "custom.debian12",
   "dependencies": [
     "@fastify/autoload",
+    "@fastify/cookie",
     "@fastify/cors",
     "@fastify/jwt",
     "@fastify/multipart",

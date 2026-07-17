@@ -1,0 +1,120 @@
+name: yishan-fc-migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run only inspects database state; apply executes pending migrations"
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - apply
+      confirm:
+        description: "For apply, type APPLY exactly. Leave empty for dry-run."
+        required: false
+        type: string
+
+concurrency:
+  group: yishan-fc-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: YISHAN_API
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify all includes main
+        run: node scripts/arch/check-all-sync.mjs
+
+      - name: Require explicit apply confirmation
+        env:
+          MIGRATION_MODE: ${{ inputs.mode }}
+          MIGRATION_CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          if [ "$MIGRATION_MODE" = "apply" ] && [ "$MIGRATION_CONFIRM" != "APPLY" ]; then
+            echo "Refusing apply: enter APPLY in the confirm field." >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Enable pnpm and install dependencies
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+          pnpm install --no-frozen-lockfile
+
+      - name: Build migration runner package
+        working-directory: apps/yishan-api
+        run: bash ./deploy/fc3/prepare-migration-runner.sh
+
+      - name: Install and configure Serverless Devs
+        env:
+          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+          ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npm i -g @serverless-devs/s
+          ACCOUNT_ID_CLEAN="$(echo "${ALIBABA_CLOUD_ACCOUNT_ID:-}" | tr -d '[:space:]')"
+          if [ -n "$ACCOUNT_ID_CLEAN" ] && echo "$ACCOUNT_ID_CLEAN" | grep -Eq '^[0-9]{16,32}$'; then
+            s config add --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" --AccountID "$ACCOUNT_ID_CLEAN" -a enterprise -f
+          else
+            s config add --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" -a enterprise -f
+          fi
+
+      - name: Build and publish runtime layer
+        id: publish_layer
+        working-directory: apps/yishan-api
+        env:
+          YISHAN_FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
+          YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
+          YISHAN_FC_ACCESS_ALIAS: enterprise
+          ALIBABA_CLOUD_ACCOUNT_ID: ${{ vars.ALIBABA_CLOUD_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          bash ./deploy/fc3/build-runtime-layer.sh
+          bash ./deploy/fc3/publish-runtime-layer.sh | tee /tmp/publish_layer.log
+          LAYER_ARN="$(grep -E '^YISHAN_API_RUNTIME_LAYER_ARN=' /tmp/publish_layer.log | tail -n1 | cut -d= -f2-)"
+          test -n "$LAYER_ARN"
+          echo "layer_arn=$LAYER_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy and invoke internal migration runner
+        working-directory: apps/yishan-api
+        env:
+          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
+          YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
+          MIGRATION_MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          export DATABASE_PORT="${DATABASE_PORT:-3306}"
+          s deploy -t deploy/fc3/s-migration-runner.yaml -y
+          s invoke -t deploy/fc3/s-migration-runner.yaml --event "{\"mode\":\"${MIGRATION_MODE}\"}"
+
+      - name: Remove temporary migration runner after success
+        if: success()
+        working-directory: apps/yishan-api
+        env:
+          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
+          YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
+        run: |
+          set -euo pipefail
+          export DATABASE_PORT="${DATABASE_PORT:-3306}"
+          s remove -t deploy/fc3/s-migration-runner.yaml -y

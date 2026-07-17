@@ -1,0 +1,36 @@
+edition: 3.0.0
+name: yishan-migration-runner
+access: "enterprise"
+vars:
+  region: "cn-shanghai"
+  functionName: "yishan-migration-runner"
+  runtimeLayerArn: ${env(YISHAN_API_RUNTIME_LAYER_ARN)}
+resources:
+  yishan_migration_runner:
+    component: fc3
+    props:
+      region: ${vars.region}
+      description: "Temporary internal runner for Yishan database migrations"
+      runtime: nodejs22
+      handler: migration-runner.handler
+      timeout: 600
+      cpu: 1
+      memorySize: 1024
+      diskSize: 512
+      vpcConfig:
+        vpcId: vpc-uf65806lcuh5b43szs1db
+        vSwitchIds:
+          - vsw-uf6fcm08qor78wfioz1c2
+        securityGroupId: sg-uf6bl327dijrauls3ism
+      layers:
+        - ${vars.runtimeLayerArn}
+      environmentVariables:
+        NODE_ENV: production
+        NODE_PATH: /code/node_modules:/opt/nodejs/node_modules
+        DATABASE_USER: ${env(DATABASE_USER)}
+        DATABASE_PASSWORD: ${env(DATABASE_PASSWORD)}
+        DATABASE_NAME: ${env(DATABASE_NAME)}
+        DATABASE_HOST: 172.23.212.135
+        DATABASE_PORT: ${env(DATABASE_PORT)}
+      functionName: ${vars.functionName}
+      code: ./deploy/fc3/.build/function-code
