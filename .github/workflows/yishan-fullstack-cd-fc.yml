@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
 
       - name: Verify all includes main
-        run: pnpm branch:check:all-sync
+        run: node scripts/arch/check-all-sync.mjs
 
       - uses: actions/setup-node@v4
         with:
