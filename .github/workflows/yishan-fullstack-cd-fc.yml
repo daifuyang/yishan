@@ -3,7 +3,7 @@ name: yishan-fullstack-cd-fc
 on:
   push:
     branches:
-      - main
+      - all
     paths:
       - "apps/**"
       - "!apps/**/deploy/**"
