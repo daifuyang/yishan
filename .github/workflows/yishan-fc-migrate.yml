@@ -4,15 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "dry-run only inspects database state; apply executes pending migrations"
+        description: "dry-run inspects; apply runs pending migrations; reset-and-seed rebuilds the database"
         required: true
         default: dry-run
         type: choice
         options:
           - dry-run
           - apply
+          - reset-and-seed
       confirm:
-        description: "For apply, type APPLY exactly. Leave empty for dry-run."
+        description: "For apply type APPLY; for reset-and-seed type RESET_AND_SEED."
         required: false
         type: string
 
@@ -41,6 +42,10 @@ jobs:
           set -euo pipefail
           if [ "$MIGRATION_MODE" = "apply" ] && [ "$MIGRATION_CONFIRM" != "APPLY" ]; then
             echo "Refusing apply: enter APPLY in the confirm field." >&2
+            exit 1
+          fi
+          if [ "$MIGRATION_MODE" = "reset-and-seed" ] && [ "$MIGRATION_CONFIRM" != "RESET_AND_SEED" ]; then
+            echo "Refusing reset-and-seed: enter RESET_AND_SEED in the confirm field." >&2
             exit 1
           fi
 

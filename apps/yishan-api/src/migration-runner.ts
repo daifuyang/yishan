@@ -1,7 +1,8 @@
 import { inspectMigrations, runMigrations } from './scripts/migrate.js'
+import { resetDatabaseAndSeed } from './scripts/reset.js'
 
 interface MigrationRunnerEvent {
-  mode?: 'dry-run' | 'apply'
+  mode?: 'dry-run' | 'apply' | 'reset-and-seed'
 }
 
 /**
@@ -15,6 +16,10 @@ export async function handler(event: MigrationRunnerEvent = {}) {
   }
   if (mode === 'apply') {
     return { mode, migrations: await runMigrations() }
+  }
+  if (mode === 'reset-and-seed') {
+    await resetDatabaseAndSeed()
+    return { mode, status: 'completed' }
   }
   throw new Error(`Unsupported migration runner mode: ${String(mode)}`)
 }

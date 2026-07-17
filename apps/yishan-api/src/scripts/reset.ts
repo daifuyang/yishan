@@ -130,10 +130,11 @@ async function confirmBeforeDrop(): Promise<void> {
   console.warn('')
 }
 
-async function main(): Promise<void> {
-  guardDevEnv()
-  await confirmBeforeDrop()
-
+/**
+ * Rebuild the configured database from the checked-in migration plan and seed
+ * it. The caller is responsible for an explicit production confirmation.
+ */
+export async function resetDatabaseAndSeed(): Promise<void> {
   await dropAndRecreate()
   console.log('[reset] database recreated')
 
@@ -152,7 +153,15 @@ async function main(): Promise<void> {
   console.log('')
 }
 
-main().catch((error) => {
-  console.error('[reset] failed:', error)
-  process.exit(1)
-})
+async function main(): Promise<void> {
+  guardDevEnv()
+  await confirmBeforeDrop()
+  await resetDatabaseAndSeed()
+}
+
+if (require.main === module) {
+  main().catch((error) => {
+    console.error('[reset] failed:', error)
+    process.exit(1)
+  })
+}
