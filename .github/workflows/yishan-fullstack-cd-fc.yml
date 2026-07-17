@@ -7,16 +7,22 @@ on:
     paths:
       - "apps/**"
       - "!apps/**/deploy/**"
-      - "apps/yishan-api/deploy/fc3/s.yaml"
-      - "apps/yishan-api/deploy/fc3/s-function.yaml"
-      - "apps/yishan-api/deploy/fc3/s-domain-cert.yaml"
-      - "apps/yishan-api/deploy/fc3/deploy.sh"
-      - "apps/yishan-api/deploy/fc3/deploy-domain-cert.sh"
+      - "apps/yishan-api/deploy/fc3/s-function-layered.yaml"
+      - "apps/yishan-api/deploy/fc3/s-domain-layered.yaml"
+      - "apps/yishan-api/deploy/fc3/pre-deploy-layered.sh"
+      - "apps/yishan-api/deploy/fc3/deploy-layered-function.sh"
+      - "apps/yishan-api/deploy/fc3/deploy-layered-domain.sh"
+      - "apps/yishan-api/deploy/fc3/build-runtime-layer.sh"
+      - "apps/yishan-api/deploy/fc3/publish-runtime-layer.sh"
+      - "apps/yishan-api/deploy/fc3/layer-dependencies.json"
+      - "apps/yishan-api/deploy/fc3/layer-lock.example.json"
+      - "apps/yishan-api/deploy/fc3/layer-state.cjs"
+      - "apps/yishan-api/deploy/fc3/write-function-package.cjs"
+      - "apps/yishan-api/deploy/fc3/write-layer-package.cjs"
+      - "apps/yishan-api/deploy/fc3/package-version.cjs"
       - "!apps/**/docs/**"
       - "!apps/**/*.md"
       - "!apps/**/README.md"
-      - "!apps/**/s.yaml"
-      - "!apps/**/s.yml"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -62,10 +68,8 @@ jobs:
           pnpm install --filter yishan-tiptap --no-frozen-lockfile
           pnpm build --filter yishan-tiptap
 
-      - name: Build yishan-admin
-        env:
-          PUBLIC_PATH: /admin/
-        run: pnpm --filter yishan-admin build
+      - name: Build yishan-admin for FC
+        run: pnpm build:admin:fc
 
       - name: Install qshell
         env:
@@ -123,28 +127,44 @@ jobs:
             qshell cdnrefresh -i /tmp/qshell_refresh_urls.txt
           fi
 
-      - name: Sync admin dist to api public
-        run: |
-          rm -rf apps/yishan-api/public/admin
-          mkdir -p apps/yishan-api/public/admin
-          cp -R apps/yishan-admin/dist/. apps/yishan-api/public/admin/
-
       - name: Prepare .env
         working-directory: apps/yishan-api
         env:
+          LOG_LEVEL: info
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
           DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
         run: |
+          set -euo pipefail
           ENV_FILE="$(pwd)/.env"
-          : > "$ENV_FILE"
-          printf '%s\n' "DATABASE_USER=${DATABASE_USER}" >> "$ENV_FILE"
-          printf '%s\n' "DATABASE_PASSWORD=${DATABASE_PASSWORD}" >> "$ENV_FILE"
-          printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
-          printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
-          printf '%s\n' "REDIS_URL=${REDIS_URL}" >> "$ENV_FILE"
+          node <<'NODE' > "$ENV_FILE"
+          const redisUrl = process.env.REDIS_URL || '';
+          let redisPort = '6379';
+          let redisPassword = '';
+          let redisDb = '0';
+          if (redisUrl) {
+            const parsed = new URL(redisUrl);
+            redisPort = parsed.port || redisPort;
+            redisPassword = decodeURIComponent(parsed.password || '');
+            redisDb = (parsed.pathname || '/0').replace(/^\//, '') || redisDb;
+          }
+          const lines = [
+            `LOG_LEVEL=${process.env.LOG_LEVEL || 'info'}`,
+            `DATABASE_USER=${process.env.DATABASE_USER || ''}`,
+            `DATABASE_PASSWORD=${process.env.DATABASE_PASSWORD || ''}`,
+            `DATABASE_NAME=${process.env.DATABASE_NAME || ''}`,
+            `DATABASE_HOST=${process.env.DATABASE_HOST || ''}`,
+            `DATABASE_PORT=${process.env.DATABASE_PORT || '3306'}`,
+            `REDIS_URL=${redisUrl}`,
+            `REDIS_PORT=${redisPort}`,
+            `REDIS_PASSWORD=${redisPassword}`,
+            `REDIS_DB=${redisDb}`,
+          ];
+          process.stdout.write(lines.join('\n') + '\n');
+          NODE
 
       - name: Install Serverless Devs
         run: npm i -g @serverless-devs/s
@@ -180,22 +200,85 @@ jobs:
               -f
           fi
 
-      - name: Build Package (pre-deploy in FC runtime image)
-        working-directory: apps/yishan-api
-        run: |
-          docker pull return1996/runtime-custom.debian12:node22.14.0
-          docker run --rm --platform linux/amd64 \
-            -v "$PWD:/code" \
-            -w /code \
-            return1996/runtime-custom.debian12:node22.14.0 \
-            bash -c "bash ./deploy/fc3/pre-deploy.sh"
+      - name: Restore layer lock
+        uses: actions/cache@v4
+        with:
+          path: apps/yishan-api/deploy/fc3/layer-lock.json
+          key: yishan-api-layer-lock-fallback
+          restore-keys: |
+            yishan-api-layer-lock-fallback
 
-      - name: Deploy function
+      - name: Build runtime layer
+        working-directory: apps/yishan-api
+        run: bash ./deploy/fc3/build-runtime-layer.sh
+
+      - name: Publish runtime layer if needed
+        id: publish_layer
         working-directory: apps/yishan-api
         env:
+          YISHAN_FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
+          YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
+          YISHAN_FC_ACCESS_ALIAS: enterprise
+          ALIBABA_CLOUD_ACCOUNT_ID: ${{ vars.ALIBABA_CLOUD_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          bash ./deploy/fc3/publish-runtime-layer.sh | tee /tmp/publish_layer.log
+          LAYER_ARN="$(grep -E '^YISHAN_API_RUNTIME_LAYER_ARN=' /tmp/publish_layer.log | tail -n1 | cut -d= -f2-)"
+          if [ -z "$LAYER_ARN" ]; then
+            echo "Unable to extract runtime layer ARN" >&2
+            exit 1
+          fi
+          echo "layer_arn=$LAYER_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Save layer lock
+        if: always() && hashFiles('apps/yishan-api/deploy/fc3/layer-lock.json') != ''
+        uses: actions/cache@v4
+        with:
+          path: apps/yishan-api/deploy/fc3/layer-lock.json
+          key: yishan-api-layer-lock-fallback
+
+      - name: Build Layered Package
+        working-directory: apps/yishan-api
+        run: bash ./deploy/fc3/pre-deploy-layered.sh
+
+      - name: Deploy layered function
+        working-directory: apps/yishan-api
+        env:
+          LOG_LEVEL: info
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
           DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
-        run: bash ./deploy/fc3/deploy.sh
+          YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
+        run: |
+          set -euo pipefail
+          export DATABASE_PORT="${DATABASE_PORT:-3306}"
+          node <<'NODE' > /tmp/yishan_layered_env.sh
+          const redisUrl = process.env.REDIS_URL || '';
+          let redisPort = '6379';
+          let redisPassword = '';
+          let redisDb = '0';
+          if (redisUrl) {
+            const parsed = new URL(redisUrl);
+            redisPort = parsed.port || redisPort;
+            redisPassword = decodeURIComponent(parsed.password || '');
+            redisDb = (parsed.pathname || '/0').replace(/^\//, '') || redisDb;
+          }
+          const entries = {
+            LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+            DATABASE_USER: process.env.DATABASE_USER || '',
+            DATABASE_PASSWORD: process.env.DATABASE_PASSWORD || '',
+            DATABASE_NAME: process.env.DATABASE_NAME || '',
+            DATABASE_PORT: process.env.DATABASE_PORT || '3306',
+            REDIS_PORT: redisPort,
+            REDIS_PASSWORD: redisPassword,
+            REDIS_DB: redisDb,
+          };
+          for (const [key, value] of Object.entries(entries)) {
+            console.log(`export ${key}=${JSON.stringify(value)}`);
+          }
+          NODE
+          . /tmp/yishan_layered_env.sh
+          bash ./deploy/fc3/deploy-layered-function.sh
