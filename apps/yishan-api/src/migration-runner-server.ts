@@ -4,6 +4,14 @@ import { handler } from './migration-runner.js'
 const port = Number(process.env.FC_SERVER_PORT ?? process.env.PORT ?? '3000')
 
 const server = createServer(async (request, response) => {
+  // FC Custom Runtime probes the configured port with GET before forwarding an
+  // invocation. There is no HTTP trigger, so this endpoint is not public.
+  if (request.method === 'GET') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ status: 'ok' }))
+    return
+  }
+
   if (request.method !== 'POST') {
     response.writeHead(405, { 'content-type': 'application/json' })
     response.end(JSON.stringify({ error: 'Only invocation POST requests are supported' }))
