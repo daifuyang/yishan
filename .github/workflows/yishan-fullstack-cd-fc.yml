@@ -33,6 +33,11 @@ jobs:
     environment: YISHAN_API
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify all includes main
+        run: pnpm branch:check:all-sync
 
       - uses: actions/setup-node@v4
         with:
