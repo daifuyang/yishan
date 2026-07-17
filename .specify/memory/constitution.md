@@ -28,12 +28,20 @@ Documentation must describe the active stack and runnable contracts. Database gu
 
 List-query implementations must keep shared query shape in one place. When paginated and unpaginated branches differ only by `limit/offset`, define the common Drizzle query config or builder once and conditionally apply pagination. Do not duplicate full `findMany()` or `select()` branches just to switch between `pageSize === 0` and paginated mode.
 
+### VII. Release-Time Plugin Composition
+
+Business plugins are compiled and delivered as part of a release artifact; they are not production runtime code uploads. `main` is the plugin-free Core baseline, while `all` is the full official-plugin distribution and the only branch that triggers CD. Plugin code, Admin assets, migrations, permissions, menus, seed data, and tests must be independently identifiable so a release can include or strip a plugin as a unit.
+
+The runtime may enable or disable a plugin that is already present in the deployed artifact, and may synchronize its menus and permission catalog. It must not load arbitrary TypeScript/JavaScript, execute unreviewed migrations, or alter the deployed plugin set in production. Adding, removing, or upgrading plugin code requires a build, verification, deployment, and process restart/rollout.
+
 ## Engineering Constraints
 
 - SQL migrations in `apps/yishan-api/drizzle/` are the DDL source of truth. Generated Drizzle schema files are not edited manually.
 - Consumers use `drizzleDb` from `@/db`; reads use Drizzle query/select APIs and writes use Drizzle insert/update/delete APIs.
 - API list endpoints expose `page`, `pageSize`, `sortBy`, and `sortOrder` only when their schemas, query implementation, and OpenAPI documentation agree. `sortBy` values use public lower-camel-case field names, never database column names.
 - Optional pagination must be applied as a delta on top of a shared base query/config. Reviews should reject duplicated paginated/unpaginated query branches when the only change is `limit/offset`.
+- Core code must not import a concrete business-plugin implementation. A plugin owns its manifest, backend/frontend implementation, migrations, permissions, menus, seed data, and tests; Core owns the plugin runtime and `/system/plugins` control plane.
+- Plugin data removal is an explicit, audited migration operation. Disabling or stripping a plugin from a release must not implicitly delete its persisted business data.
 
 ## Development Workflow
 
@@ -43,9 +51,10 @@ List-query implementations must keep shared query shape in one place. When pagin
 4. Build the API and regenerate admin OpenAPI services when the public contract changes.
 5. Update the relevant Docusaurus module or API document when a convention or endpoint behavior changes.
 6. When introducing or refactoring list queries, prefer a single shared Drizzle query/config plus conditional pagination over duplicated branches.
+7. For a plugin change, update the plugin-owned manifest, migrations, permissions, menus, seed data, Admin assets, and tests together; verify both the intended distribution (`all` or a stripped edition) and the Core boundary.
 
 ## Governance
 
 This constitution supersedes local implementation preferences for API contract, boundary-mapping, and dynamic-query decisions. Amendments must update this document and affected developer documentation in the same change. Reviews must verify that public field names cannot be used as unchecked ORM or SQL identifiers.
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-12
+**Version**: 1.3.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-17
