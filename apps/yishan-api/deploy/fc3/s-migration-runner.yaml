@@ -25,6 +25,7 @@ resources:
         NODE_ENV: production
         PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin:/code:/code/bin
         NODE_PATH: /code/node_modules
+        LD_LIBRARY_PATH: /code:/code/lib:/usr/lib:/opt/lib:/usr/local/lib
         DATABASE_USER: ${env(DATABASE_USER)}
         DATABASE_PASSWORD: ${env(DATABASE_PASSWORD)}
         DATABASE_NAME: ${env(DATABASE_NAME)}
