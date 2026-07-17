@@ -11,7 +11,9 @@ resources:
     props:
       region: ${vars.region}
       description: "Temporary internal runner for Yishan database migrations"
-      runtime: nodejs22
+      # FC3 event runtimes currently support up to Node 20. The production
+      # HTTP function remains on custom.debian12 + Node 22.
+      runtime: nodejs20
       handler: migration-runner.handler
       timeout: 600
       cpu: 1
