@@ -10,9 +10,7 @@ resources:
     props:
       region: ${vars.region}
       description: "Temporary internal runner for Yishan database migrations"
-      # FC3 event runtimes currently support up to Node 20. The production
-      # HTTP function remains on custom.debian12 + Node 22.
-      runtime: nodejs20
+      runtime: custom.debian12
       handler: migration-runner.handler
       timeout: 600
       cpu: 1
@@ -25,6 +23,7 @@ resources:
         securityGroupId: sg-uf6bl327dijrauls3ism
       environmentVariables:
         NODE_ENV: production
+        PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin:/code:/code/bin
         NODE_PATH: /code/node_modules
         DATABASE_USER: ${env(DATABASE_USER)}
         DATABASE_PASSWORD: ${env(DATABASE_PASSWORD)}
@@ -34,3 +33,8 @@ resources:
       functionName: ${vars.functionName}
       # Code paths are resolved relative to this YAML file by Serverless Devs.
       code: ./.build/function-code
+      customRuntimeConfig:
+        command:
+          - node
+          - ./migration-runner-server.js
+        port: 3000
