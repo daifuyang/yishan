@@ -18,5 +18,9 @@ rm -rf "$FUNCTION_DIR"
 mkdir -p "$FUNCTION_DIR"
 cp -R dist/. "$FUNCTION_DIR/"
 rm -rf "$FUNCTION_DIR/node_modules" "$FUNCTION_DIR/package.json" "$FUNCTION_DIR/package-lock.json" "$FUNCTION_DIR/public" "$FUNCTION_DIR/.env"
+cp "$FC_DIR/migration-runner-package.json" "$FUNCTION_DIR/package.json"
+
+echo "4. 安装 Runner 的最小运行时依赖"
+npm install --omit=dev --omit=optional --omit=peer --package-lock=false --prefix "$FUNCTION_DIR"
 
 echo "✅ Migration Runner 函数包构建完成: $FUNCTION_DIR"

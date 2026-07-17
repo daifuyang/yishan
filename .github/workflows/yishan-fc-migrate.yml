@@ -81,22 +81,6 @@ jobs:
             s config add --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" -a enterprise -f
           fi
 
-      - name: Build and publish runtime layer
-        id: publish_layer
-        working-directory: apps/yishan-api
-        env:
-          YISHAN_FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
-          YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
-          YISHAN_FC_ACCESS_ALIAS: enterprise
-          ALIBABA_CLOUD_ACCOUNT_ID: ${{ vars.ALIBABA_CLOUD_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          bash ./deploy/fc3/build-runtime-layer.sh
-          bash ./deploy/fc3/publish-runtime-layer.sh | tee /tmp/publish_layer.log
-          LAYER_ARN="$(grep -E '^YISHAN_API_RUNTIME_LAYER_ARN=' /tmp/publish_layer.log | tail -n1 | cut -d= -f2-)"
-          test -n "$LAYER_ARN"
-          echo "layer_arn=$LAYER_ARN" >> "$GITHUB_OUTPUT"
-
       - name: Deploy and invoke internal migration runner
         working-directory: apps/yishan-api
         env:
@@ -104,7 +88,6 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
-          YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
           MIGRATION_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
@@ -120,7 +103,6 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
-          YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"

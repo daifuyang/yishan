@@ -4,7 +4,6 @@ access: "enterprise"
 vars:
   region: "cn-shanghai"
   functionName: "yishan-migration-runner"
-  runtimeLayerArn: ${env(YISHAN_API_RUNTIME_LAYER_ARN)}
 resources:
   yishan_migration_runner:
     component: fc3
@@ -24,11 +23,9 @@ resources:
         vSwitchIds:
           - vsw-uf6fcm08qor78wfioz1c2
         securityGroupId: sg-uf6bl327dijrauls3ism
-      layers:
-        - ${vars.runtimeLayerArn}
       environmentVariables:
         NODE_ENV: production
-        NODE_PATH: /code/node_modules:/opt/nodejs/node_modules
+        NODE_PATH: /code/node_modules
         DATABASE_USER: ${env(DATABASE_USER)}
         DATABASE_PASSWORD: ${env(DATABASE_PASSWORD)}
         DATABASE_NAME: ${env(DATABASE_NAME)}
