@@ -29,6 +29,7 @@ async function buildApp() {
     pluginId: 'test/demo-plugin',
     name: 'demo-plugin',
     version: '1.0.0',
+    dbNamespace: 'ys_demo',
     coreCompatibility: '^1.0.0',
     permissions: []
   })
@@ -38,6 +39,7 @@ async function buildApp() {
     pluginId: 'test/demo-plugin',
     name: 'demo-plugin',
     version: '1.0.0',
+    dbNamespace: 'ys_demo',
     coreCompatibility: '^1.0.0',
     permissions: []
   })

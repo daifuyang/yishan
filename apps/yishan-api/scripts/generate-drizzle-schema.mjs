@@ -1,11 +1,45 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
 const root = path.resolve(import.meta.dirname, '..')
-const migrations = readdirSync(path.join(root, 'drizzle'))
+const coreMigrations = readdirSync(path.join(root, 'drizzle'))
   .filter((file) => file.endsWith('.sql'))
   .sort()
-  .map((file) => readFileSync(path.join(root, 'drizzle', file), 'utf8'))
+  .map((file) => ({ id: `core/${file}`, path: path.join(root, 'drizzle', file) }))
+const pluginsRoot = path.join(root, 'src/plugins/modules')
+const pluginMigrations = (existsSync(pluginsRoot) ? readdirSync(pluginsRoot, { withFileTypes: true }) : [])
+  .filter((entry) => entry.isDirectory())
+  .flatMap((entry) => {
+    const moduleRoot = path.join(pluginsRoot, entry.name)
+    const migrationsDir = path.join(moduleRoot, 'migrations')
+    if (!existsSync(migrationsDir)) return []
+    const manifest = readFileSync(path.join(moduleRoot, 'manifest.ts'), 'utf8')
+    const namespace = manifest.match(/dbNamespace:\s*['\"]([a-z][a-z0-9_]{2,23})['\"]/)?.[1]
+    if (!namespace) throw new Error(`Plugin manifest must declare dbNamespace: ${path.join(moduleRoot, 'manifest.ts')}`)
+    return readdirSync(migrationsDir, { withFileTypes: true })
+      .filter((file) => file.isFile() && file.name.endsWith('.sql'))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((file) => ({ id: `${entry.name}/${file.name}`, path: path.join(migrationsDir, file.name), namespace }))
+  })
+
+function validatePluginMigration(migration) {
+  if (!migration.namespace) return
+  const sql = readFileSync(migration.path, 'utf8')
+  const objectNames = [...sql.matchAll(/(?:CREATE TABLE|ALTER TABLE|DROP TABLE)\s+`?([a-z0-9_]+)`?/gi)].map((match) => match[1])
+  const indexNames = [...sql.matchAll(/(?:UNIQUE\s+)?INDEX\s+`?([a-z0-9_]+)`?/gi)].map((match) => match[1])
+  const namespace = migration.namespace
+  if (objectNames.some((name) => !name.startsWith(`${namespace}_`))) {
+    throw new Error(`Plugin migration ${migration.id} contains an object outside ${namespace}_*`)
+  }
+  if (indexNames.some((name) => !name.startsWith(namespace) && !name.startsWith(`idx_${namespace}_`) && !name.startsWith(`uniq_${namespace}_`))) {
+    throw new Error(`Plugin migration ${migration.id} contains an index outside ${namespace}`)
+  }
+}
+
+pluginMigrations.forEach(validatePluginMigration)
+const migrations = [...coreMigrations, ...pluginMigrations]
+  .sort((a, b) => a.id.localeCompare(b.id))
+  .map((migration) => readFileSync(migration.path, 'utf8'))
   .join('\n\n')
 
 const camel = (value) => value.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())

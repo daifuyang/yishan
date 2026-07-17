@@ -1,9 +1,8 @@
 import 'dotenv/config'
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import path from 'node:path'
 import { createPool } from 'mysql2/promise'
 import { pool as drizzlePool } from '@/db'
+import { collectMigrationPlan } from './migration-plan.js'
 import { runSeed } from './seed/index.js'
 
 /**
@@ -12,7 +11,7 @@ import { runSeed } from './seed/index.js'
  * 流程：
  *   1) 校验 NODE_ENV（production 直接拒绝）
  *   2) DROP DATABASE → CREATE DATABASE
- *   3) 执行 drizzle/*.sql 全量迁移
+ *   3) 执行 Core + 插件的全量迁移计划
  *   4) 跑种子数据 runSeed
  *
  * 与 db:migrate / db:seed 的差异：先 DROP 整库重建，所有手工数据都会被清空。
@@ -67,12 +66,6 @@ async function dropAndRecreate(): Promise<void> {
 }
 
 async function runMigrations(): Promise<void> {
-  // 与 src/scripts/migrate.ts 同等的迁移逻辑（复制实现，不改 migrate.ts 行为）
-  const migrationsDir = path.resolve(process.cwd(), 'drizzle')
-  if (!existsSync(migrationsDir)) {
-    throw new Error(`Migrations directory not found: ${migrationsDir}`)
-  }
-
   const pool = createPool({ ...serverConfig(), database: dbName() })
   try {
     await pool.query(`
@@ -95,27 +88,25 @@ async function runMigrations(): Promise<void> {
         row.hash,
       ]),
     )
-    const files = readdirSync(migrationsDir)
-      .filter((file) => file.endsWith('.sql'))
-      .sort()
+    const plan = collectMigrationPlan()
 
-    for (const file of files) {
-      const sql = readFileSync(path.join(migrationsDir, file), 'utf8')
+    for (const migration of plan) {
+      const { id, sql } = migration
       const hash = createHash('sha256').update(sql).digest('hex')
-      const previous = applied.get(file)
+      const previous = applied.get(id)
 
       if (previous) {
         if (previous !== hash) {
-          throw new Error(`Migration ${file} was modified after being applied`)
+          throw new Error(`Migration ${id} was modified after being applied`)
         }
         continue
       }
 
-      console.log(`[reset] Applying migration ${file}`)
+      console.log(`[reset] Applying migration ${id}`)
       await pool.query(sql)
       await pool.query(
         'INSERT INTO __drizzle_migrations (name, hash) VALUES (?, ?)',
-        [file, hash],
+        [id, hash],
       )
     }
   } finally {

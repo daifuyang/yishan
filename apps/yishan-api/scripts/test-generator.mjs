@@ -144,7 +144,7 @@ for (const ref of referencedInRelations) {
 }
 
 // 7. Self-references produce both parent: and children: edges
-const selfRefTables = ['sys_dept', 'sys_menu', 'sys_attachment_folder', 'portal_category', 'shop_category', 'sys_app_resource', 'sys_app_menu']
+const selfRefTables = ['sys_dept', 'sys_menu', 'sys_attachment_folder', 'sys_app_resource', 'sys_app_menu']
 for (const t of selfRefTables) {
   const tbl = tableName(t)
   const block = relationsTs.match(new RegExp(`export const ${tbl}Relations[\\s\\S]*?\\}\\)\\)`))

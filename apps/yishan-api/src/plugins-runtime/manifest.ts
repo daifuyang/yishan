@@ -5,6 +5,7 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 const PLUGIN_ID_PATTERN = /^([a-z0-9][a-z0-9-]{1,30})\/([a-z0-9][a-z0-9-]{1,50})$/;
+const DB_NAMESPACE_PATTERN = /^[a-z][a-z0-9_]{2,23}$/
 
 /**
  * 校验单个权限对象。
@@ -70,6 +71,12 @@ export function validateManifest(manifest: unknown): ManifestValidationResult {
 
   if (!isNonEmptyString(value.version)) {
     errors.push('manifest.version must be a non-empty string')
+  }
+
+  if (!isNonEmptyString(value.dbNamespace)) {
+    errors.push('manifest.dbNamespace must be a non-empty string')
+  } else if (!DB_NAMESPACE_PATTERN.test(value.dbNamespace)) {
+    errors.push('manifest.dbNamespace must match /^[a-z][a-z0-9_]{2,23}$/')
   }
 
   if (value.compatRange !== undefined && !isNonEmptyString(value.compatRange)) {

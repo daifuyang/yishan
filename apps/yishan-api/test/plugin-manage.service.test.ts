@@ -19,7 +19,14 @@ function record(enabled: boolean): PersistedPluginRuntimeState {
 
 function buildRuntime(initialEnabled: boolean) {
   const runtime = createPluginRuntime() as PluginRuntime & { persistence: any }
-  runtime.register({ pluginId, name: pluginName, version: '1.0.0', permissions: [], menus: [] })
+  runtime.register({
+    pluginId,
+    name: pluginName,
+    version: '1.0.0',
+    dbNamespace: 'ys_shop',
+    permissions: [],
+    menus: [],
+  })
   runtime.lifecycle.load(pluginName)
   if (initialEnabled) runtime.lifecycle.enable(pluginName)
   else runtime.lifecycle.disable(pluginName)

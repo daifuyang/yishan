@@ -24,6 +24,7 @@ describe('validateManifest', () => {
         pluginId: 'yishan/hello',
         name: 'hello',
         version: '1.0.0',
+        dbNamespace: 'ys_hello',
         permissions: [
           { code: 'hello:read', label: '读取', description: '读取权限', group: 'hello' },
           { code: 'hello:write', label: '写入' },
@@ -38,6 +39,7 @@ describe('validateManifest', () => {
         pluginId: 'yishan/hello',
         name: 'hello',
         version: '1.0.0',
+        dbNamespace: 'ys_hello',
         permissions: [],
       })
       expect(result.valid).toBe(true)
@@ -49,6 +51,7 @@ describe('validateManifest', () => {
         pluginId: 'yishan/hello',
         name: 'hello',
         version: '1.0.0',
+        dbNamespace: 'ys_hello',
         permissions: {},
       })
       expect(result.valid).toBe(false)
@@ -124,6 +127,7 @@ describe('validateManifest', () => {
         pluginId: 'yishan/hello',
         name: 'hello',
         version: '1.0.0',
+        dbNamespace: 'ys_hello',
         permissions: [
           { code: 'hello:read', label: '读取', description: 'Optional description', group: 'custom' },
         ],

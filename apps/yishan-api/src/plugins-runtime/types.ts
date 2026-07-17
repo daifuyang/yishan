@@ -20,6 +20,8 @@ export interface PluginManifest {
   menuRootIcon?: string
   menuRootSort?: number
   version: string
+  /** Immutable namespace for plugin-owned database objects (for example, ys_shop). */
+  dbNamespace: string
   coreCompatibility?: string
   compatRange?: string
   channels?: string[]

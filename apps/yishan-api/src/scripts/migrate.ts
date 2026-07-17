@@ -1,8 +1,7 @@
 import 'dotenv/config'
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import path from 'node:path'
 import { createPool } from 'mysql2/promise'
+import { collectMigrationPlan } from './migration-plan.js'
 
 function databaseUrl() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL
@@ -15,11 +14,6 @@ function databaseUrl() {
 }
 
 async function main() {
-  const migrationsDir = path.resolve(process.cwd(), 'drizzle')
-  if (!existsSync(migrationsDir)) {
-    throw new Error(`Migrations directory not found: ${migrationsDir}`)
-  }
-
   const pool = createPool({
     uri: databaseUrl(),
     multipleStatements: true
@@ -38,23 +32,23 @@ async function main() {
 
   const [appliedRows] = await pool.query('SELECT name, hash FROM __drizzle_migrations')
   const applied = new Map((appliedRows as Array<{ name: string, hash: string }>).map((row) => [row.name, row.hash]))
-  const files = readdirSync(migrationsDir).filter((file) => file.endsWith('.sql')).sort()
+  const plan = collectMigrationPlan()
 
-  for (const file of files) {
-    const sql = readFileSync(path.join(migrationsDir, file), 'utf8')
+  for (const migration of plan) {
+    const { id, sql } = migration
     const hash = createHash('sha256').update(sql).digest('hex')
-    const previous = applied.get(file)
+    const previous = applied.get(id)
 
     if (previous) {
       if (previous !== hash) {
-        throw new Error(`Migration ${file} was modified after being applied`)
+        throw new Error(`Migration ${id} was modified after being applied`)
       }
       continue
     }
 
-    console.log(`Applying migration ${file}`)
+    console.log(`Applying migration ${id}`)
     await pool.query(sql)
-    await pool.query('INSERT INTO __drizzle_migrations (name, hash) VALUES (?, ?)', [file, hash])
+    await pool.query('INSERT INTO __drizzle_migrations (name, hash) VALUES (?, ?)', [id, hash])
   }
 
   await pool.end()

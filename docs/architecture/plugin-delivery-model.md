@@ -38,6 +38,8 @@ unit / integration / E2E tests
 compatibility declaration
 ```
 
+插件 manifest 必须声明不可变的 `dbNamespace`（例如 `ys_portal`）。表名必须以 `<dbNamespace>_` 开头，索引和唯一约束也必须带该命名空间前缀。Core 迁移仅位于 `apps/yishan-api/drizzle/`；插件迁移位于 `apps/yishan-api/src/plugins/modules/<plugin>/migrations/`。迁移记录使用 `core/<file>` 或 `plugin/<plugin>/<file>` 逻辑 ID，避免跨插件同名冲突。
+
 Core 只拥有插件 runtime、稳定的公开契约、`sys_plugin*` 持久化、权限/菜单同步机制，以及 `/system/plugins` 控制面。Core 禁止 import 具体插件实现。
 
 ## 集成与剥离
