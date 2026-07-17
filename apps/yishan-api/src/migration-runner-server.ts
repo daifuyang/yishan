@@ -1,7 +1,9 @@
 import { createServer } from 'node:http'
 import { handler } from './migration-runner.js'
 
-const port = Number(process.env.FC_SERVER_PORT ?? process.env.PORT ?? '3000')
+// Match the production custom runtime contract: customRuntimeConfig declares
+// port 3000 and the process may override it only through PORT.
+const port = Number(process.env.PORT ?? '3000')
 
 const server = createServer(async (request, response) => {
   // FC Custom Runtime probes the configured port with GET before forwarding an
