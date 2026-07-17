@@ -1,6 +1,6 @@
 // Generated from drizzle/*.sql. Do not edit manually.
 import { relations } from 'drizzle-orm'
-import { portalArticle, portalArticleCategory, portalCategory, portalPage, portalTemplate, shopAddress, shopAttribute, shopAttributeValue, shopCart, shopCategory, shopOrder, shopOrderItem, shopProduct, shopSku, shopSkuAttribute, sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
+import { sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
 
 export const sysAppRelations = relations(sysApp, ({ one, many }) => ({
   creator: one(sysUser, { fields: [sysApp.creatorId], references: [sysUser.id], relationName: 'sysApp_creatorId' }),
@@ -84,36 +84,7 @@ export const sysUserRelations = relations(sysUser, ({ one, many }) => ({
   sysAttachmentFolder_updater_id: many(sysAttachmentFolder, { relationName: 'sysAttachmentFolder_updaterId' }),
   sysAttachment_creator_id: many(sysAttachment, { relationName: 'sysAttachment_creatorId' }),
   sysAttachment_updater_id: many(sysAttachment, { relationName: 'sysAttachment_updaterId' }),
-  sysApiToken_user_id: many(sysApiToken, { relationName: 'sysApiToken_userId' }),
-  portalCategory_creator_id: many(portalCategory, { relationName: 'portalCategory_creatorId' }),
-  portalCategory_updater_id: many(portalCategory, { relationName: 'portalCategory_updaterId' }),
-  portalArticle_creator_id: many(portalArticle, { relationName: 'portalArticle_creatorId' }),
-  portalArticle_updater_id: many(portalArticle, { relationName: 'portalArticle_updaterId' }),
-  portalPage_creator_id: many(portalPage, { relationName: 'portalPage_creatorId' }),
-  portalPage_updater_id: many(portalPage, { relationName: 'portalPage_updaterId' }),
-  portalTemplate_creator_id: many(portalTemplate, { relationName: 'portalTemplate_creatorId' }),
-  portalTemplate_updater_id: many(portalTemplate, { relationName: 'portalTemplate_updaterId' }),
-  shopCategory_creator_id: many(shopCategory, { relationName: 'shopCategory_creatorId' }),
-  shopCategory_updater_id: many(shopCategory, { relationName: 'shopCategory_updaterId' }),
-  shopAttribute_creator_id: many(shopAttribute, { relationName: 'shopAttribute_creatorId' }),
-  shopAttribute_updater_id: many(shopAttribute, { relationName: 'shopAttribute_updaterId' }),
-  shopAttributeValue_creator_id: many(shopAttributeValue, { relationName: 'shopAttributeValue_creatorId' }),
-  shopAttributeValue_updater_id: many(shopAttributeValue, { relationName: 'shopAttributeValue_updaterId' }),
-  shopProduct_creator_id: many(shopProduct, { relationName: 'shopProduct_creatorId' }),
-  shopProduct_updater_id: many(shopProduct, { relationName: 'shopProduct_updaterId' }),
-  shopSku_creator_id: many(shopSku, { relationName: 'shopSku_creatorId' }),
-  shopSku_updater_id: many(shopSku, { relationName: 'shopSku_updaterId' }),
-  shopAddress_user_id: many(shopAddress, { relationName: 'shopAddress_userId' }),
-  shopAddress_creator_id: many(shopAddress, { relationName: 'shopAddress_creatorId' }),
-  shopAddress_updater_id: many(shopAddress, { relationName: 'shopAddress_updaterId' }),
-  shopCart_user_id: many(shopCart, { relationName: 'shopCart_userId' }),
-  shopCart_creator_id: many(shopCart, { relationName: 'shopCart_creatorId' }),
-  shopCart_updater_id: many(shopCart, { relationName: 'shopCart_updaterId' }),
-  shopOrder_user_id: many(shopOrder, { relationName: 'shopOrder_userId' }),
-  shopOrder_creator_id: many(shopOrder, { relationName: 'shopOrder_creatorId' }),
-  shopOrder_updater_id: many(shopOrder, { relationName: 'shopOrder_updaterId' }),
-  shopOrderItem_creator_id: many(shopOrderItem, { relationName: 'shopOrderItem_creatorId' }),
-  shopOrderItem_updater_id: many(shopOrderItem, { relationName: 'shopOrderItem_updaterId' })
+  sysApiToken_user_id: many(sysApiToken, { relationName: 'sysApiToken_userId' })
 }))
 
 export const sysUserTokenRelations = relations(sysUserToken, ({ one, many }) => ({
@@ -221,115 +192,5 @@ export const sysPluginSyncLogRelations = relations(sysPluginSyncLog, ({ one, man
 
 export const sysApiTokenRelations = relations(sysApiToken, ({ one, many }) => ({
   userId: one(sysUser, { fields: [sysApiToken.userId], references: [sysUser.id], relationName: 'sysApiToken_userId' })
-}))
-
-export const portalCategoryRelations = relations(portalCategory, ({ one, many }) => ({
-  parent: one(portalCategory, { fields: [portalCategory.parentId], references: [portalCategory.id], relationName: 'portalCategory_parentId' }),
-  creator: one(sysUser, { fields: [portalCategory.creatorId], references: [sysUser.id], relationName: 'portalCategory_creatorId' }),
-  updater: one(sysUser, { fields: [portalCategory.updaterId], references: [sysUser.id], relationName: 'portalCategory_updaterId' }),
-  children: many(portalCategory, { relationName: 'portalCategory_parentId' }),
-  portalArticleCategory_category_id: many(portalArticleCategory, { relationName: 'portalArticleCategory_categoryId' })
-}))
-
-export const portalArticleRelations = relations(portalArticle, ({ one, many }) => ({
-  template: one(portalTemplate, { fields: [portalArticle.templateId], references: [portalTemplate.id], relationName: 'portalArticle_templateId' }),
-  creator: one(sysUser, { fields: [portalArticle.creatorId], references: [sysUser.id], relationName: 'portalArticle_creatorId' }),
-  updater: one(sysUser, { fields: [portalArticle.updaterId], references: [sysUser.id], relationName: 'portalArticle_updaterId' }),
-  portalArticleCategory_article_id: many(portalArticleCategory, { relationName: 'portalArticleCategory_articleId' })
-}))
-
-export const portalArticleCategoryRelations = relations(portalArticleCategory, ({ one, many }) => ({
-  article: one(portalArticle, { fields: [portalArticleCategory.articleId], references: [portalArticle.id], relationName: 'portalArticleCategory_articleId' }),
-  category: one(portalCategory, { fields: [portalArticleCategory.categoryId], references: [portalCategory.id], relationName: 'portalArticleCategory_categoryId' })
-}))
-
-export const portalPageRelations = relations(portalPage, ({ one, many }) => ({
-  template: one(portalTemplate, { fields: [portalPage.templateId], references: [portalTemplate.id], relationName: 'portalPage_templateId' }),
-  creator: one(sysUser, { fields: [portalPage.creatorId], references: [sysUser.id], relationName: 'portalPage_creatorId' }),
-  updater: one(sysUser, { fields: [portalPage.updaterId], references: [sysUser.id], relationName: 'portalPage_updaterId' })
-}))
-
-export const portalTemplateRelations = relations(portalTemplate, ({ one, many }) => ({
-  creator: one(sysUser, { fields: [portalTemplate.creatorId], references: [sysUser.id], relationName: 'portalTemplate_creatorId' }),
-  updater: one(sysUser, { fields: [portalTemplate.updaterId], references: [sysUser.id], relationName: 'portalTemplate_updaterId' }),
-  portalArticle_template_id: many(portalArticle, { relationName: 'portalArticle_templateId' }),
-  portalPage_template_id: many(portalPage, { relationName: 'portalPage_templateId' })
-}))
-
-export const shopCategoryRelations = relations(shopCategory, ({ one, many }) => ({
-  parent: one(shopCategory, { fields: [shopCategory.parentId], references: [shopCategory.id], relationName: 'shopCategory_parentId' }),
-  creator: one(sysUser, { fields: [shopCategory.creatorId], references: [sysUser.id], relationName: 'shopCategory_creatorId' }),
-  updater: one(sysUser, { fields: [shopCategory.updaterId], references: [sysUser.id], relationName: 'shopCategory_updaterId' }),
-  children: many(shopCategory, { relationName: 'shopCategory_parentId' }),
-  shopProduct_category_id: many(shopProduct, { relationName: 'shopProduct_categoryId' })
-}))
-
-export const shopAttributeRelations = relations(shopAttribute, ({ one, many }) => ({
-  creator: one(sysUser, { fields: [shopAttribute.creatorId], references: [sysUser.id], relationName: 'shopAttribute_creatorId' }),
-  updater: one(sysUser, { fields: [shopAttribute.updaterId], references: [sysUser.id], relationName: 'shopAttribute_updaterId' }),
-  shopAttributeValue_attribute_id: many(shopAttributeValue, { relationName: 'shopAttributeValue_attributeId' }),
-  shopSkuAttribute_attribute_id: many(shopSkuAttribute, { relationName: 'shopSkuAttribute_attributeId' })
-}))
-
-export const shopAttributeValueRelations = relations(shopAttributeValue, ({ one, many }) => ({
-  attribute: one(shopAttribute, { fields: [shopAttributeValue.attributeId], references: [shopAttribute.id], relationName: 'shopAttributeValue_attributeId' }),
-  creator: one(sysUser, { fields: [shopAttributeValue.creatorId], references: [sysUser.id], relationName: 'shopAttributeValue_creatorId' }),
-  updater: one(sysUser, { fields: [shopAttributeValue.updaterId], references: [sysUser.id], relationName: 'shopAttributeValue_updaterId' }),
-  shopSkuAttribute_value_id: many(shopSkuAttribute, { relationName: 'shopSkuAttribute_valueId' })
-}))
-
-export const shopProductRelations = relations(shopProduct, ({ one, many }) => ({
-  category: one(shopCategory, { fields: [shopProduct.categoryId], references: [shopCategory.id], relationName: 'shopProduct_categoryId' }),
-  creator: one(sysUser, { fields: [shopProduct.creatorId], references: [sysUser.id], relationName: 'shopProduct_creatorId' }),
-  updater: one(sysUser, { fields: [shopProduct.updaterId], references: [sysUser.id], relationName: 'shopProduct_updaterId' }),
-  shopSku_product_id: many(shopSku, { relationName: 'shopSku_productId' }),
-  shopCart_product_id: many(shopCart, { relationName: 'shopCart_productId' }),
-  shopOrderItem_product_id: many(shopOrderItem, { relationName: 'shopOrderItem_productId' })
-}))
-
-export const shopSkuRelations = relations(shopSku, ({ one, many }) => ({
-  product: one(shopProduct, { fields: [shopSku.productId], references: [shopProduct.id], relationName: 'shopSku_productId' }),
-  creator: one(sysUser, { fields: [shopSku.creatorId], references: [sysUser.id], relationName: 'shopSku_creatorId' }),
-  updater: one(sysUser, { fields: [shopSku.updaterId], references: [sysUser.id], relationName: 'shopSku_updaterId' }),
-  shopSkuAttribute_sku_id: many(shopSkuAttribute, { relationName: 'shopSkuAttribute_skuId' }),
-  shopCart_sku_id: many(shopCart, { relationName: 'shopCart_skuId' }),
-  shopOrderItem_sku_id: many(shopOrderItem, { relationName: 'shopOrderItem_skuId' })
-}))
-
-export const shopSkuAttributeRelations = relations(shopSkuAttribute, ({ one, many }) => ({
-  sku: one(shopSku, { fields: [shopSkuAttribute.skuId], references: [shopSku.id], relationName: 'shopSkuAttribute_skuId' }),
-  attribute: one(shopAttribute, { fields: [shopSkuAttribute.attributeId], references: [shopAttribute.id], relationName: 'shopSkuAttribute_attributeId' }),
-  value: one(shopAttributeValue, { fields: [shopSkuAttribute.valueId], references: [shopAttributeValue.id], relationName: 'shopSkuAttribute_valueId' })
-}))
-
-export const shopAddressRelations = relations(shopAddress, ({ one, many }) => ({
-  user: one(sysUser, { fields: [shopAddress.userId], references: [sysUser.id], relationName: 'shopAddress_userId' }),
-  creator: one(sysUser, { fields: [shopAddress.creatorId], references: [sysUser.id], relationName: 'shopAddress_creatorId' }),
-  updater: one(sysUser, { fields: [shopAddress.updaterId], references: [sysUser.id], relationName: 'shopAddress_updaterId' }),
-  shopOrder_address_id: many(shopOrder, { relationName: 'shopOrder_addressId' })
-}))
-
-export const shopCartRelations = relations(shopCart, ({ one, many }) => ({
-  user: one(sysUser, { fields: [shopCart.userId], references: [sysUser.id], relationName: 'shopCart_userId' }),
-  product: one(shopProduct, { fields: [shopCart.productId], references: [shopProduct.id], relationName: 'shopCart_productId' }),
-  sku: one(shopSku, { fields: [shopCart.skuId], references: [shopSku.id], relationName: 'shopCart_skuId' }),
-  creator: one(sysUser, { fields: [shopCart.creatorId], references: [sysUser.id], relationName: 'shopCart_creatorId' }),
-  updater: one(sysUser, { fields: [shopCart.updaterId], references: [sysUser.id], relationName: 'shopCart_updaterId' })
-}))
-
-export const shopOrderRelations = relations(shopOrder, ({ one, many }) => ({
-  user: one(sysUser, { fields: [shopOrder.userId], references: [sysUser.id], relationName: 'shopOrder_userId' }),
-  address: one(shopAddress, { fields: [shopOrder.addressId], references: [shopAddress.id], relationName: 'shopOrder_addressId' }),
-  creator: one(sysUser, { fields: [shopOrder.creatorId], references: [sysUser.id], relationName: 'shopOrder_creatorId' }),
-  updater: one(sysUser, { fields: [shopOrder.updaterId], references: [sysUser.id], relationName: 'shopOrder_updaterId' }),
-  shopOrderItem_order_id: many(shopOrderItem, { relationName: 'shopOrderItem_orderId' })
-}))
-
-export const shopOrderItemRelations = relations(shopOrderItem, ({ one, many }) => ({
-  order: one(shopOrder, { fields: [shopOrderItem.orderId], references: [shopOrder.id], relationName: 'shopOrderItem_orderId' }),
-  product: one(shopProduct, { fields: [shopOrderItem.productId], references: [shopProduct.id], relationName: 'shopOrderItem_productId' }),
-  sku: one(shopSku, { fields: [shopOrderItem.skuId], references: [shopSku.id], relationName: 'shopOrderItem_skuId' }),
-  creator: one(sysUser, { fields: [shopOrderItem.creatorId], references: [sysUser.id], relationName: 'shopOrderItem_creatorId' }),
-  updater: one(sysUser, { fields: [shopOrderItem.updaterId], references: [sysUser.id], relationName: 'shopOrderItem_updaterId' })
 }))
 

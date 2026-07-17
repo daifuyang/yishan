@@ -1,7 +1,4 @@
 import { OptionRepository } from "../repositories/option.repository.js";
-import { PortalTemplateRepository } from "../../plugins/modules/portal/repositories/template.repository.js";
-import { BusinessError } from "../../exceptions/business-error.js";
-import { TemplateErrorCode } from "../../constants/business-codes/template.js";
 
 export type SystemOptionKey = string;
 
@@ -38,19 +35,6 @@ export class SystemOptionService {
   }
 
   static async setOption(key: SystemOptionKey, value: string, userId: number): Promise<string> {
-    // 针对模板类参数进行严格校验
-    if (key === "defaultArticleTemplateId" || key === "defaultPageTemplateId") {
-      const num = parseInt(String(value), 10);
-      const t = await PortalTemplateRepository.findRawById(num);
-      if (!t) throw new BusinessError(TemplateErrorCode.TEMPLATE_NOT_FOUND, "模板不存在");
-      if (key === "defaultArticleTemplateId" && t.type !== 1) {
-        throw new BusinessError(TemplateErrorCode.TEMPLATE_TYPE_MISMATCH, "模板类型不匹配：需要文章模板");
-      }
-      if (key === "defaultPageTemplateId" && t.type !== 2) {
-        throw new BusinessError(TemplateErrorCode.TEMPLATE_TYPE_MISMATCH, "模板类型不匹配：需要页面模板");
-      }
-    }
-
     if (key === "qiniuConfig") {
       const currentRaw = await OptionRepository.getOptionValue(key);
       const currentObj = safeParseJsonObject(currentRaw) || {};

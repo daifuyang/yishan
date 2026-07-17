@@ -257,12 +257,9 @@ describe("ApiTokenService.createToken — scope normalization", () => {
     expect(arg.scopes).toEqual([]);
   });
 
-  // =========================================================================
-  // 新方案约束测试（2026-07-14）：禁用插件权限、fail closed
-  // =========================================================================
-
-  it("普通用户申请禁用插件权限 → 抛 BusinessError", async () => {
-    // 用户角色拥有 shop:product:list，但该插件已禁用（不在活动目录中）
+  it("普通用户申请未安装插件权限 → 抛 BusinessError", async () => {
+    // 用户角色中可能仍残留 shop:product:list，但核心版没有安装该插件，
+    // 权限目录不应把它当作可授权 scope。
     mockUserWithDisabledPluginPerm();
     await expect(
       ApiTokenService.createToken(1, {
@@ -271,7 +268,7 @@ describe("ApiTokenService.createToken — scope normalization", () => {
       }),
     ).rejects.toMatchObject({
       code: ValidationErrorCode.INVALID_PARAMETER,
-      message: expect.stringContaining("不在您的授权范围内"),
+      message: expect.stringContaining("未知权限码"),
     });
   });
 
