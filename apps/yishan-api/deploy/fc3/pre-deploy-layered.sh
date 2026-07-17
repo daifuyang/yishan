@@ -8,8 +8,13 @@ LAYER_CONFIG="$FC_DIR/layer-dependencies.json"
 
 cd "$ROOT_DIR"
 
-echo "1. 安装完整依赖用于构建"
-npm install
+echo "1. 检查构建依赖"
+if [ ! -d "$ROOT_DIR/node_modules" ]; then
+  echo "未发现 pnpm 依赖，执行安装"
+  pnpm install --no-frozen-lockfile
+else
+  echo "复用已有 pnpm workspace 依赖"
+fi
 
 echo "2. 生成 Drizzle migration 元数据"
 npm run db:generate
