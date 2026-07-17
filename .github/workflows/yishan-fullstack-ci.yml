@@ -27,6 +27,8 @@ jobs:
     environment: YISHAN_API
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -47,6 +49,10 @@ jobs:
 
       - name: Architecture Guard
         run: pnpm arch:check
+
+      - name: All branch includes main
+        if: github.ref == 'refs/heads/all' || github.base_ref == 'all'
+        run: pnpm branch:check:all-sync
 
       - name: Prepare yishan-tiptap
         run: |

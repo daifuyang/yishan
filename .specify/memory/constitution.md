@@ -34,6 +34,8 @@ Business plugins are compiled and delivered as part of a release artifact; they 
 
 The runtime may enable or disable a plugin that is already present in the deployed artifact, and may synchronize its menus and permission catalog. It must not load arbitrary TypeScript/JavaScript, execute unreviewed migrations, or alter the deployed plugin set in production. Adding, removing, or upgrading plugin code requires a build, verification, deployment, and process restart/rollout.
 
+`main` and `all` have a one-way synchronization contract: Core changes land in `main` first, then `main` is merged into `all`; `all` must never be merged back into `main`. Business-plugin changes land only in `all`. `all` must contain the current `main` tip before it can be released. CI verifies both Core and full-plugin distributions independently.
+
 ## Engineering Constraints
 
 - SQL migrations in `apps/yishan-api/drizzle/` are the DDL source of truth. Generated Drizzle schema files are not edited manually.
@@ -42,6 +44,7 @@ The runtime may enable or disable a plugin that is already present in the deploy
 - Optional pagination must be applied as a delta on top of a shared base query/config. Reviews should reject duplicated paginated/unpaginated query branches when the only change is `limit/offset`.
 - Core code must not import a concrete business-plugin implementation. A plugin owns its manifest, backend/frontend implementation, migrations, permissions, menus, seed data, and tests; Core owns the plugin runtime and `/system/plugins` control plane.
 - Plugin data removal is an explicit, audited migration operation. Disabling or stripping a plugin from a release must not implicitly delete its persisted business data.
+- `main` may contain only plugin-platform code (runtime, contracts, migration/build composition, and control plane); it must not contain concrete business-plugin implementations or their generated business schema.
 
 ## Development Workflow
 
@@ -57,4 +60,4 @@ The runtime may enable or disable a plugin that is already present in the deploy
 
 This constitution supersedes local implementation preferences for API contract, boundary-mapping, and dynamic-query decisions. Amendments must update this document and affected developer documentation in the same change. Reviews must verify that public field names cannot be used as unchecked ORM or SQL identifiers.
 
-**Version**: 1.3.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-17
+**Version**: 1.4.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-17
