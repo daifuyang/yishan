@@ -11,7 +11,7 @@ cd "$ROOT_DIR"
 echo "1. 安装完整依赖用于构建"
 npm install
 
-echo "2. 生成 Prisma 客户端"
+echo "2. 生成 Drizzle migration 元数据"
 npm run db:generate
 
 echo "3. 编译 TypeScript"
@@ -23,7 +23,7 @@ mkdir -p "$FUNCTION_DIR"
 cp -R dist/. "$FUNCTION_DIR/"
 rm -rf "$FUNCTION_DIR/node_modules" "$FUNCTION_DIR/package.json" "$FUNCTION_DIR/package-lock.json" "$FUNCTION_DIR/public" "$FUNCTION_DIR/.env"
 
-echo "5. 安装函数本地依赖（默认仅 Prisma 相关）"
+echo "5. 安装函数本地依赖"
 node "$FC_DIR/write-function-package.cjs" package.json "$LAYER_CONFIG" "$FUNCTION_DIR/package.json"
 if node -e "const p=require('$FUNCTION_DIR/package.json'); process.exit(Object.keys(p.dependencies || {}).length === 0 ? 0 : 1)"; then
   echo "函数包无本地 npm 依赖，跳过 node_modules 安装"

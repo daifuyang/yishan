@@ -13,7 +13,7 @@ export * from './business.js';
 export * from './system.js';
 export * from './role.js';
 export * from './dept.js';
-export * from './post.js';
+export * from './position.js';
 export * from './menu.js';
 export * from './dict.js';
 export * from './article.js';
@@ -31,7 +31,7 @@ import { BusinessErrorCode } from './business.js';
 import { SystemManageErrorCode } from './system.js';
 import { RoleErrorCode } from './role.js';
 import { DeptErrorCode } from './dept.js';
-import { PostErrorCode } from './post.js';
+import { PositionErrorCode } from './position.js';
 import { MenuErrorCode } from './menu.js';
 import { DictErrorCode } from './dict.js';
 import { ArticleErrorCode, CategoryErrorCode } from './article.js';
@@ -50,7 +50,7 @@ export const ErrorCode = {
   ...SystemManageErrorCode,
   ...RoleErrorCode,
   ...DeptErrorCode,
-  ...PostErrorCode,
+  ...PositionErrorCode,
   ...MenuErrorCode,
   ...DictErrorCode,
   ...ArticleErrorCode,
@@ -95,9 +95,9 @@ import {
 import { 
   DeptErrorMessages
 } from './dept.js';
-import { 
-  PostErrorMessages
-} from './post.js';
+import {
+  PositionErrorMessages
+} from './position.js';
 import { 
   MenuErrorMessages
 } from './menu.js';
@@ -120,7 +120,7 @@ const ErrorMessages = {
   ...SystemManageErrorMessages,
   ...RoleErrorMessages,
   ...DeptErrorMessages,
-  ...PostErrorMessages,
+  ...PositionErrorMessages,
   ...MenuErrorMessages,
   ...DictErrorMessages,
   ...ArticleErrorMessages,

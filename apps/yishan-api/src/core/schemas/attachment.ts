@@ -39,8 +39,12 @@ const CreateAttachmentFolderReqSchema = Type.Object(
     name: Type.String({ description: "分组名称", minLength: 1, maxLength: 100 }),
     parentId: Type.Optional(Type.Number({ description: "父分组ID" })),
     kind: Type.Optional(AttachmentFolderKindSchema),
-    status: Type.Optional(Type.String({ enum: ["0", "1"], default: "1", description: "状态" })),
-    sort_order: Type.Optional(Type.Number({ description: "排序序号", default: 0 })),
+    // 注意：Type.Optional 字段不允许设置 default。
+    // 否则 UpdateAttachmentFolderReq = Type.Partial(CreateAttachmentFolderReq) 在 Fastify Ajv
+    // （useDefaults:true）校验下会把缺省字段注入默认值，导致 update 时把数据库原值覆盖。
+    // 缺省值由 Service 层（createFolder）显式设置。
+    status: Type.Optional(Type.String({ enum: ["0", "1"], description: "状态" })),
+    sort_order: Type.Optional(Type.Number({ description: "排序序号" })),
     remark: Type.Optional(Type.String({ description: "备注", maxLength: 255 })),
   },
   { $id: "createAttachmentFolderReq" }
@@ -61,7 +65,7 @@ const AttachmentFolderListQuerySchema = Type.Object(
     kind: Type.Optional(AttachmentFolderKindSchema),
     status: Type.Optional(Type.String({ enum: ["0", "1"], description: "状态" })),
     parentId: Type.Optional(Type.Number({ description: "父分组ID过滤" })),
-    sortBy: Type.Optional(Type.String({ enum: ["sort_order", "createdAt", "updatedAt"], default: "sort_order" })),
+    sortBy: Type.Optional(Type.String({ enum: ["sortOrder", "createdAt", "updatedAt"], default: "sortOrder" })),
     sortOrder: Type.Optional(Type.String({ enum: ["asc", "desc"], default: "asc" })),
   },
   { $id: "attachmentFolderListQuery" }

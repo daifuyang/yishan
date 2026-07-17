@@ -118,26 +118,36 @@ const useStyles = createStyles(({ css }) => {
         font-size: 18px;
         font-weight: 400;
       }
-      margin-bottom: 86px;
-      @media (max-height: 720px) {
-        margin-bottom: 40px;
-      }
       @media (max-width: 768px) {
-        margin-bottom: 28px;
         & .ant-checkbox + span {
           font-size: 15px;
         }
       }
     `,
+    rememberItem: css`
+      margin-bottom: 24px;
+      @media (max-height: 720px) {
+        margin-bottom: 16px;
+      }
+      @media (max-width: 768px) {
+        margin-bottom: 16px;
+      }
+    `,
+    submitItem: css`
+      margin-bottom: 0;
+    `,
     loginFormBtn: css`
       &.ant-btn {
-        padding: 24px 15px;
-        font-size: 20px;
+        height: 56px;
+        padding: 0 16px;
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 8px;
       }
       @media (max-width: 768px) {
         &.ant-btn {
-          padding: 18px 15px;
-          font-size: 17px;
+          height: 48px;
+          font-size: 16px;
         }
       }
     `,
@@ -359,12 +369,12 @@ const Login: React.FC = () => {
                 prefix={<LockOutlined className={styles.loginItemIcon} />}
               />
             </Form.Item>
-            <Form.Item name="remember" valuePropName="checked">
+            <Form.Item name="remember" valuePropName="checked" className={styles.rememberItem}>
               <Checkbox className={styles.loginFormCheckBox}>
                 <FormattedMessage id="pages.login.rememberMe" defaultMessage="自动登录" />
               </Checkbox>
             </Form.Item>
-            <Form.Item>
+            <Form.Item className={styles.submitItem}>
               <Button className={styles.loginFormBtn} type="primary" htmlType="submit" block loading={loading}>
                 立即登录
               </Button>

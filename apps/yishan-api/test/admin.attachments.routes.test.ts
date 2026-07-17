@@ -12,6 +12,9 @@ import { promises as fs } from "node:fs";
 
 async function buildApp() {
   const app = Fastify({ logger: false });
+  // 单测不需要真实 RBAC 校验：no-op 占位。
+  app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined);
+  app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined);
 
   app.decorate("authenticate", async (request: any) => {
     const auth = request.headers.authorization;

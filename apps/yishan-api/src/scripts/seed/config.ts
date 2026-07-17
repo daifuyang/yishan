@@ -12,6 +12,12 @@ export type MenuSeedNode = {
   sortOrder: number;
   icon?: string;
   component?: string;
+  hideInMenu?: boolean;
+  /**
+   * 菜单绑定的 permission code（来自 PERMISSION_CODES）。
+   * Section 1 — RBAC：菜单授权职责收敛到 perm 字段，路由层通过 requirePermission 校验。
+   */
+  perm?: string;
   children?: MenuSeedNode[];
 };
 
@@ -70,9 +76,21 @@ export type SysOptionSeed = {
   value: string;
 };
 
+const isProduction = process.env.NODE_ENV === 'production';
+const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? (isProduction ? '' : 'admin123');
+
+export function assertSeedEnvironment() {
+  if (isProduction && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+    throw new Error('生产环境执行 seed 必须显式设置 ALLOW_PRODUCTION_SEED=true');
+  }
+  if (!adminPassword) {
+    throw new Error('必须通过 SEED_ADMIN_PASSWORD 设置管理员初始密码');
+  }
+}
+
 export const adminSeed = {
   username: 'admin',
-  password: 'admin123',
+  password: adminPassword,
   email: 'admin@yishan.com',
   phone: '13800138000',
   realName: '愚公',
@@ -82,8 +100,8 @@ export const adminSeed = {
 };
 
 export const rolesSeed = {
-  superAdmin: { name: '超级管理员', description: '拥有系统最高权限' },
-  admin: { name: '普通管理员', description: '拥有基础管理权限' },
+  superAdmin: { name: '超级管理员', code: 'super_admin', description: '拥有系统最高权限' },
+  admin: { name: '普通管理员', code: 'admin', description: '拥有基础管理权限' },
 };
 
 export const deptTreeSeed: DeptSeedNode = {
@@ -205,17 +223,30 @@ export const systemMenusSeed: MenuSeedNode = {
   sortOrder: 1,
   icon: 'setting',
   children: [
-    { name: '用户管理', path: '/system/user', type: 1, sortOrder: 1, component: './system/user' },
-    { name: '角色管理', path: '/system/role', type: 1, sortOrder: 2, component: './system/role' },
-    { name: '部门管理', path: '/system/department', type: 1, sortOrder: 3, component: './system/department' },
-    { name: '岗位管理', path: '/system/post', type: 1, sortOrder: 4, component: './system/post' },
-    { name: '菜单管理', path: '/system/menu', type: 1, sortOrder: 5, component: './system/menu' },
-    { name: '字典管理', path: '/system/dict', type: 1, sortOrder: 6, component: './system/dict' },
-    { name: '站点配置', path: '/system/site', type: 1, sortOrder: 7, component: './system/site' },
-    { name: '云存储', path: '/system/storage', type: 1, sortOrder: 8, component: './system/storage' },
-    { name: '媒体库', path: '/system/attachments', type: 1, sortOrder: 9, component: './system/attachments' },
-    { name: '登录日志', path: '/system/login-log', type: 1, sortOrder: 10, component: './system/login-log' },
-    { name: '插件管理', path: '/system/plugins', type: 1, sortOrder: 13, component: './system/plugins' },
+    { name: '用户管理', path: '/system/user', type: 1, sortOrder: 1, component: './system/user', perm: 'system:user:list' },
+    { name: '角色管理', path: '/system/role', type: 1, sortOrder: 2, component: './system/role', perm: 'system:role:list' },
+    { name: '部门管理', path: '/system/department', type: 1, sortOrder: 3, component: './system/department', perm: 'system:department:list' },
+    { name: '岗位管理', path: '/system/position', type: 1, sortOrder: 4, component: './system/position', perm: 'system:position:list' },
+    { name: '菜单管理', path: '/system/menu', type: 1, sortOrder: 5, component: './system/menu', perm: 'system:menu:list' },
+    { name: '字典管理', path: '/system/dict', type: 1, sortOrder: 6, component: './system/dict', perm: 'system:dict:list' },
+    { name: '站点配置', path: '/system/site', type: 1, sortOrder: 7, component: './system/site', perm: 'system:option:list' },
+    { name: '云存储', path: '/system/storage', type: 1, sortOrder: 8, component: './system/storage', perm: 'system:storage:list' },
+    { name: '媒体库', path: '/system/attachments', type: 1, sortOrder: 9, component: './system/attachments', perm: 'system:attachment:list' },
+    { name: '登录日志', path: '/system/login-log', type: 1, sortOrder: 10, component: './system/login-log', perm: 'system:login-log:list' },
+    { name: '插件管理', path: '/system/plugins', type: 1, sortOrder: 13, component: './system/plugins', perm: 'system:plugin:list' },
+  ],
+};
+
+export const accountMenusSeed: MenuSeedNode = {
+  name: '我的账户',
+  path: '/account',
+  type: 0,
+  sortOrder: 2,
+  icon: 'user',
+  hideInMenu: true,
+  children: [
+    { name: 'API Token', path: '/account/api-tokens', type: 1, sortOrder: 1, icon: 'key', component: './account/api-tokens', hideInMenu: true, perm: 'system:api-token:manage' },
+    { name: '个人中心', path: '/account/center', type: 1, sortOrder: 2, icon: 'user', component: './account/center', hideInMenu: true },
   ],
 };
 

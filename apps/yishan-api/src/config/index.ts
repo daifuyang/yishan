@@ -32,7 +32,7 @@ export const JWT_CONFIG = {
 
 // 数据库配置
 export const DATABASE_CONFIG = {
-  url: process.env.DATABASE_URL || 'mysql://root:root@localhost:3306/fastify_prisma',
+  url: process.env.DATABASE_URL || 'mysql://root:root@localhost:3306/yishan',
 };
 
 // Redis 配置

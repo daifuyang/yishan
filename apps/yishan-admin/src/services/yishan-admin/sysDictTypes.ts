@@ -16,8 +16,8 @@ export async function getDictTypeList(
       // pageSize has a default value: 10
       pageSize: "10",
 
-      // sortBy has a default value: sort_order
-      sortBy: "sort_order",
+      // sortBy has a default value: sortOrder
+      sortBy: "sortOrder",
       // sortOrder has a default value: asc
       sortOrder: "asc",
       ...params,

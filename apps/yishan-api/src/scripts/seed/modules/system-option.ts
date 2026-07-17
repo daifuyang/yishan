@@ -1,28 +1,25 @@
-import type { PrismaClient } from '../../../generated/prisma/client.js';
+import { sysOption } from '@/db/schema';
+import type { SeedDb } from '../context.js';
 
 export async function upsertSysOption(
-  prisma: PrismaClient,
+  db: SeedDb,
   adminUserId: number,
   key: string,
   value: string,
 ) {
-  const existed = await prisma.sysOption.findFirst({ where: { key } });
-  if (existed) {
-    await prisma.sysOption.update({ where: { id: existed.id }, data: { value, updaterId: adminUserId } });
-  } else {
-    await prisma.sysOption.create({
-      data: { key, value, status: 1, creatorId: adminUserId, updaterId: adminUserId },
-    });
-  }
+  await db
+    .insert(sysOption)
+    .values({ key, value, status: 1, creatorId: adminUserId, updaterId: adminUserId })
+    .onDuplicateKeyUpdate({ set: { value, updaterId: adminUserId } });
 }
 
 export async function seedSysOptions(
-  prisma: PrismaClient,
+  db: SeedDb,
   adminUserId: number,
   options: Array<{ key: string; value: string }>,
 ) {
   for (const item of options) {
-    await upsertSysOption(prisma, adminUserId, item.key, item.value);
+    await upsertSysOption(db, adminUserId, item.key, item.value);
   }
   console.log('系统参数初始化完成');
 }

@@ -9,12 +9,19 @@ import {
 } from "../../../../schemas/auth.js";
 import { AuthService } from "../../../../services/auth.service.js";
 import { MenuService } from "../../../../services/menu.service.js";
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  AUTH_COOKIE_NAMES,
+} from "../../../../auth/auth-helpers.js";
 
 const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // POST /api/v1/auth/login - 用户登录
   fastify.post(
     "/login",
     {
+      // Section 7：登录限流（默认 5/min）
+      preHandler: [fastify.rateLimit("login")],
       schema: {
         summary: "用户登录",
         description: "用户通过用户名/邮箱和密码进行登录认证",
@@ -27,17 +34,25 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Body: LoginReq }>,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
       // 使用AuthService进行登录验证
       const result = await AuthService.login(
-        request.body,
+        request.body as LoginReq,
         fastify,
         request.ip,
         request.headers["user-agent"] as string | undefined
       );
       const message = getAuthMessage(AuthMessageKeys.LOGIN_SUCCESS, request.headers["accept-language"] as string);
+      // 浏览器场景：将令牌以 HttpOnly cookie 形式下发（响应体仍保留 token 字段，兼容非浏览器客户端）
+      setAuthCookies(
+        reply,
+        result.token,
+        result.refreshToken,
+        result.expiresIn,
+        result.refreshTokenExpiresIn
+      );
       return ResponseUtil.success(reply, result, message);
     }
   );
@@ -46,6 +61,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/logout",
     {
+      preHandler: fastify.authenticate,
       schema: {
         summary: "用户登出",
         description: "用户登出，清除认证状态",
@@ -69,15 +85,16 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       request: FastifyRequest,
       reply: FastifyReply
     ) => {
-      // 从请求头获取token
-      const token = request.headers.authorization?.replace('Bearer ', '');
-
-      if (!token) {
+      // 鉴权由 fastify.authenticate 完成；当前用户已绑定到 request.currentUser。
+      // 仅按当前用户 ID 撤销其所有活跃 token，避免伪造 payload 触发他人登出。
+      const currentUser = request.currentUser;
+      if (!currentUser?.id) {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "缺少认证token");
       }
 
-      // 使用AuthService进行登出处理
-      await AuthService.logout(token, fastify);
+      await AuthService.logout(currentUser.id, fastify);
+      // 清除浏览器端认证 cookie
+      clearAuthCookies(reply);
       const message = getAuthMessage(AuthMessageKeys.LOGOUT_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, null, message);
     }
@@ -116,6 +133,8 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/refresh",
     {
+      // Section 7：refresh 限流（默认 30/min）
+      preHandler: [fastify.rateLimit("refresh")],
       schema: {
         summary: "刷新访问令牌",
         description: "使用刷新令牌获取新的访问令牌和刷新令牌",
@@ -128,10 +147,13 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Body: RefreshTokenReq }>,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
-      const { refreshToken } = request.body;
+      // 优先从 HttpOnly cookie 读取 refreshToken，兼容旧客户端时回退到请求体
+      const refreshToken =
+        request.cookies?.[AUTH_COOKIE_NAMES.refreshToken] ??
+        (request.body as RefreshTokenReq | undefined)?.refreshToken;
 
       if (!refreshToken) {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "缺少刷新令牌");
@@ -139,6 +161,14 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
       // 使用AuthService刷新令牌
       const result = await AuthService.refreshToken(refreshToken, fastify);
+      // 刷新后回写新的令牌 cookie
+      setAuthCookies(
+        reply,
+        result.token,
+        result.refreshToken,
+        result.expiresIn,
+        result.refreshTokenExpiresIn
+      );
       const message = getAuthMessage(AuthMessageKeys.REFRESH_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, result, message);
     }

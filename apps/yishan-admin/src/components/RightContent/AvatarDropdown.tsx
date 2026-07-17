@@ -1,6 +1,6 @@
 import {
+  KeyOutlined,
   LogoutOutlined,
-  SettingOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
@@ -42,7 +42,6 @@ const useStyles = createStyles(({ token }) => {
 });
 
 export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
-  menu,
   children,
 }) => {
   /**
@@ -64,7 +63,13 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
       loginOut();
       return;
     }
-    history.push(`/account/${key}`);
+    // Keys are camelCase but Umi routes are kebab-case — map explicitly.
+    const pathByKey: Record<string, string> = {
+      apiTokens: '/account/api-tokens',
+      center: '/account/center',
+    };
+    const target = pathByKey[key];
+    if (target) history.push(target);
   };
 
   const loading = (
@@ -90,23 +95,22 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
   }
 
   const menuItems = [
-    ...(menu
-      ? [
-          {
-            key: 'center',
-            icon: <UserOutlined />,
-            label: '个人中心',
-          },
-          {
-            key: 'settings',
-            icon: <SettingOutlined />,
-            label: '个人设置',
-          },
-          {
-            type: 'divider' as const,
-          },
-        ]
-      : []),
+    {
+      key: 'apiTokens',
+      icon: <KeyOutlined />,
+      label: 'API Token',
+    },
+    {
+      type: 'divider' as const,
+    },
+    {
+      key: 'center',
+      icon: <UserOutlined />,
+      label: '个人中心',
+    },
+    {
+      type: 'divider' as const,
+    },
     {
       key: 'logout',
       icon: <LogoutOutlined />,

@@ -20,6 +20,16 @@ async function buildApp(currentUser?: any, mockRedis?: any) {
       roleIds: [1],
     }
   })
+  // Section 1: 让单测不依赖真实 db 的 requirePermission。
+  // 简单做法：roleIds=[1] 视为 super_admin 旁路；其它视为无权限。
+  app.decorate('requirePermission', (_permCode: string) => async (request: any, _reply: any) => {
+    const roleIds: number[] = request.currentUser?.roleIds ?? []
+    if (roleIds.includes(1)) return
+    const error: any = new Error('Forbidden')
+    error.statusCode = 403
+    error.code = 22002
+    throw error
+  })
 
   if (mockRedis) {
     app.decorate('redis', mockRedis)

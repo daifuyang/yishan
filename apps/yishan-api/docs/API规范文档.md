@@ -1,6 +1,6 @@
 # Yishan API 规范文档
 
-本文档旨在整理和规范 Yishan 项目的 API 开发标准，包括路由层、服务层、模型层的实现方式，以及 Schema、TypeBox 类型和 Prisma 类型的使用规范。
+本文档旨在整理和规范 Yishan 项目的 API 开发标准，包括路由层、服务层、模型层的实现方式，以及 Schema、TypeBox 类型和 Drizzle ORM 的使用规范。
 
 模块化 AutoLoad 目录规范请参考：[模块化开发规范](./模块化开发规范.md)。
 
@@ -19,8 +19,8 @@ apps/yishan-api/
 │   │   ├── external/     # 外部插件 (数据库、认证、Swagger等)
 │   │   └── app/          # 应用插件
 │   ├── controllers/      # 控制器层 (可选，复杂业务场景)
-│   └── generated/        # 自动生成的代码 (Prisma Client)
-├── prisma/               # Prisma 配置和迁移文件
+│   └── db/               # 数据库客户端与 schema 绑定 (Drizzle)
+├── drizzle/              # 手写 DDL 迁移文件 (Drizzle 源真源)
 └── ...
 ```
 
@@ -370,272 +370,323 @@ export class UserService {
 
 ## 4. 模型层规范 (Models)
 
-模型层负责与数据库交互，使用 Prisma ORM 进行数据操作。
+模型层负责与数据库交互，使用 Drizzle ORM 进行数据操作。Drizzle 的客户端入口位于 `@/db`，表/关系对象来自 `@/db/schema`，由 `pnpm db:generate` 从 `drizzle/*.sql` 自动生成。
 
 ### 4.1 模型类结构
 
 ```typescript
 /**
- * 用户数据访问模型
+ * 用户数据访问模型（Drizzle）
  */
 
-import { prismaManager } from "../plugins/external/prisma.js";
-import { SysUser, Prisma } from "../generated/prisma/index.js";
-import { UserQuery } from "../schemas/user.js";
+import { and, desc, eq, isNull, like, or, sql, type SQL } from "drizzle-orm";
+import { drizzleDb } from "@/db";
+import { sysUser, sysUserDept, sysUserRole } from "@/db/schema";
+import { UserListQuery } from "../schemas/user.js";
 
 export class UserModel {
-  private prisma = prismaManager.getPrisma();
-
   // 查询用户列表
-  async findUsers(query: UserQuery) {
-    const where: Prisma.SysUserWhereInput = {};
-    
-    // 构建查询条件
-    if (query.keyword) {
-      where.OR = [
-        { username: { contains: query.keyword } },
-        { email: { contains: query.keyword } }
-      ];
-    }
-    
-    if (query.status !== undefined) {
-      where.status = query.status;
-    }
+  static async findUsers(query: UserListQuery) {
+    const where = buildUserWhere(query);
 
     const [list, total] = await Promise.all([
-      this.prisma.sysUser.findMany({
+      drizzleDb.query.sysUser.findMany({
         where,
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
-        orderBy: { createdAt: "desc" }
+        orderBy: desc(sysUser.createdAt),
+        limit: query.pageSize,
+        offset: (query.page - 1) * query.pageSize,
+        with: {
+          creator: { columns: { username: true } },
+          updater: { columns: { username: true } },
+        },
       }),
-      this.prisma.sysUser.count({ where })
+      drizzleDb
+        .select({ c: sql<number>`count(*)` })
+        .from(sysUser)
+        .where(where)
+        .then(([row]) => Number(row?.c ?? 0)),
     ]);
 
     return { list, total };
   }
 
   // 根据ID查询用户
-  async findById(id: number): Promise<SysUser | null> {
-    return await this.prisma.sysUser.findUnique({
-      where: { id }
-    });
+  static async findById(id: number) {
+    const [user] = await drizzleDb
+      .select()
+      .from(sysUser)
+      .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt)))
+      .limit(1);
+    return user ?? null;
   }
 
   // 根据邮箱查询用户
-  async findByEmail(email: string): Promise<SysUser | null> {
-    return await this.prisma.sysUser.findUnique({
-      where: { email }
-    });
+  static async findByEmail(email: string) {
+    const [user] = await drizzleDb
+      .select()
+      .from(sysUser)
+      .where(and(eq(sysUser.email, email), isNull(sysUser.deletedAt)))
+      .limit(1);
+    return user ?? null;
   }
 
-  // 创建用户
-  async create(data: Prisma.SysUserCreateInput): Promise<SysUser> {
-    return await this.prisma.sysUser.create({ data });
+  // 创建用户（带关联写入，走事务）
+  static async create(data: typeof sysUser.$inferInsert) {
+    return await drizzleDb.transaction(async (tx) => {
+      const [inserted] = await tx.insert(sysUser).values(data).$returningId();
+      if (data.deptIds?.length) {
+        await tx.insert(sysUserDept).values(
+          data.deptIds.map((deptId) => ({ userId: inserted.id, deptId })),
+        );
+      }
+      if (data.roleIds?.length) {
+        await tx.insert(sysUserRole).values(
+          data.roleIds.map((roleId) => ({ userId: inserted.id, roleId })),
+        );
+      }
+      return inserted;
+    });
   }
 
   // 更新用户
-  async update(id: number, data: Prisma.SysUserUpdateInput): Promise<SysUser> {
-    return await this.prisma.sysUser.update({
-      where: { id },
-      data
-    });
+  static async update(id: number, data: Partial<typeof sysUser.$inferInsert>) {
+    await drizzleDb
+      .update(sysUser)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt)));
   }
 
-  // 删除用户
-  async delete(id: number): Promise<SysUser> {
-    return await this.prisma.sysUser.delete({
-      where: { id }
-    });
+  // 软删除用户
+  static async delete(id: number) {
+    await drizzleDb
+      .update(sysUser)
+      .set({ deletedAt: new Date(), status: 0 })
+      .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt)));
   }
 
   // 获取用户总数
-  async getUserTotal(where?: Prisma.SysUserWhereInput): Promise<number> {
-    return await this.prisma.sysUser.count({ where });
+  static async getUserTotal(query: UserListQuery): Promise<number> {
+    const where = buildUserWhere(query);
+    const [row] = await drizzleDb
+      .select({ c: sql<number>`count(*)` })
+      .from(sysUser)
+      .where(where);
+    return Number(row?.c ?? 0);
   }
 
   // 获取用户列表（带分页和过滤）
-  async getUserList(params: {
-    page: number;
-    pageSize: number;
-    keyword?: string;
-    status?: number;
-  }) {
-    const where: Prisma.SysUserWhereInput = {};
-    
-    if (params.keyword) {
-      where.OR = [
-        { username: { contains: params.keyword } },
-        { email: { contains: params.keyword } }
-      ];
-    }
-    
-    if (params.status !== undefined) {
-      where.status = params.status;
-    }
-
-    const [list, total] = await Promise.all([
-      this.prisma.sysUser.findMany({
-        where,
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
-        orderBy: { createdAt: "desc" }
-      }),
-      this.prisma.sysUser.count({ where })
-    ]);
-
-    return { list, total };
+  static async getUserList(params: UserListQuery) {
+    return this.findUsers(params);
   }
 
-  // 根据ID获取用户信息
-  async getUserById(id: number): Promise<SysUser | null> {
-    return await this.prisma.sysUser.findUnique({
-      where: { id }
+  // 根据ID获取用户信息（含关联）
+  static async getUserById(id: number) {
+    return await drizzleDb.query.sysUser.findFirst({
+      where: and(eq(sysUser.id, id), isNull(sysUser.deletedAt)),
+      with: {
+        creator: { columns: { username: true } },
+        updater: { columns: { username: true } },
+        sysUserDept_user_id: { columns: { deptId: true } },
+        sysUserRole_user_id: { columns: { roleId: true } },
+      },
     });
   }
+}
+
+// 将查询参数组装成 Drizzle 的 where 条件（带软删过滤）
+function buildUserWhere(opts: {
+  keyword?: string;
+  status?: number;
+}): SQL | undefined {
+  const conds: SQL[] = [isNull(sysUser.deletedAt)];
+  if (opts.keyword) {
+    const like_ = `%${opts.keyword}%`;
+    conds.push(
+      or(
+        like(sysUser.username, like_),
+        like(sysUser.email, like_),
+      )!,
+    );
+  }
+  if (opts.status !== undefined) {
+    conds.push(eq(sysUser.status, opts.status));
+  }
+  return and(...conds);
 }
 ```
 
 ### 4.2 模型规范要点
 
-1. **Prisma 客户端**：通过 `prismaManager` 获取 Prisma 客户端实例
-2. **数据操作**：使用 Prisma 提供的方法进行数据库操作
-3. **查询构建**：根据业务需求构建查询条件
-4. **数据返回**：直接返回 Prisma 查询结果，类型安全
+1. **Drizzle 客户端**：通过 `drizzleDb`（`@/db`）获取数据库客户端；事务、健康检查走 `dbManager`
+2. **数据操作**：使用 Drizzle 的查询构建器（`select` / `insert` / `update` / `delete`）或关系查询 API（`drizzleDb.query.<table>.findMany/findFirst`）
+3. **查询构建**：用 `and` / `or` / `eq` / `like` / `isNull` 等 helpers 组合 `SQL` 条件；分页用 `limit` + `offset`
+4. **类型推导**：表类型由 `typeof sysUser.$inferSelect` / `$inferInsert` 自动推导，无需手写
+5. **数据返回**：查询结果本身就是行类型；返回 DTO 时由模型层显式映射
 
 ## 9. 数据库规范
 
-### 9.1 Prisma Schema 规范
+### 9.1 Drizzle Schema 规范
 
-```prisma
-// ============= Prisma Schema 配置 =============
-generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
-}
+Drizzle 的"schema"由两个源组成：
 
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
+- **DDL 源真源**：`drizzle/*.sql`，按时间顺序编号（`0000_initial.sql`、`0001_portal.sql`、`0002_shop.sql` ...）。所有表结构、索引、外键都用手写 SQL 维护，是数据库结构的最终依据。
+- **TypeScript 绑定**：`src/db/schema/{tables,relations,index}.ts`，由 `scripts/generate-drizzle-schema.mjs` 根据 `drizzle/*.sql` 生成（命令：`pnpm db:generate`）。**不要手改** `tables.ts` / `relations.ts`——改了也会被覆盖。
 
-// ============= 模型命名规范 =============
-model SysUser {
-  id              Int       @id @default(autoincrement()) @map("id")
-  username        String    @unique @map("username") @db.VarChar(50)
-  email           String    @unique @map("email") @db.VarChar(100)
-  phone           String?   @unique @map("phone") @db.VarChar(20)
-  passwordHash    String    @map("password_hash") @db.VarChar(255)
-  salt            String    @map("salt") @db.VarChar(32)
-  realName        String    @map("real_name") @db.VarChar(50)
-  avatar          String?   @map("avatar") @db.VarChar(500)
-  gender          Int       @default(0) @map("gender") @db.TinyInt
-  birthDate       DateTime? @map("birth_date") @db.Date
-  status          Int       @default(1) @map("status") @db.TinyInt
-  lastLoginTime   DateTime? @map("last_login_time") @db.DateTime(0)
-  lastLoginIp     String?   @map("last_login_ip") @db.VarChar(45)
-  loginCount      Int       @default(0) @map("login_count")
-  creatorId       Int?      @map("creator_id")
-  createdAt       DateTime  @default(now()) @map("created_at") @db.DateTime(0)
-  updaterId       Int?      @map("updater_id")
-  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  deletedAt       DateTime? @map("deleted_at") @db.DateTime(0)
-  version         Int       @default(1) @map("version")
+```sql
+-- drizzle/0000_initial.sql（片段）
+CREATE TABLE `sys_user` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `username` VARCHAR(50) NULL,
+    `email` VARCHAR(100) NULL,
+    `phone` VARCHAR(20) NOT NULL,
+    `password_hash` VARCHAR(255) NOT NULL,
+    `real_name` VARCHAR(50) NULL,
+    `gender` TINYINT NOT NULL DEFAULT 0,
+    `status` TINYINT NOT NULL DEFAULT 1,
+    `creator_id` INTEGER NOT NULL,
+    `created_at` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+    `updater_id` INTEGER NOT NULL,
+    `updated_at` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+    `deleted_at` DATETIME(0) NULL,
+    `version` INTEGER NOT NULL DEFAULT 1,
 
-  // 自引用关系
-  creator         SysUser?  @relation("UserCreator", fields: [creatorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  createdUsers    SysUser[] @relation("UserCreator")
-  updater         SysUser?  @relation("UserUpdater", fields: [updaterId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  updatedUsers    SysUser[] @relation("UserUpdater")
+    UNIQUE INDEX `sys_user_username_key`(`username`),
+    UNIQUE INDEX `sys_user_email_key`(`email`),
+    UNIQUE INDEX `sys_user_phone_key`(`phone`),
+    INDEX `idx_status`(`status`),
+    INDEX `idx_created_at`(`created_at`),
+    INDEX `idx_deleted_at`(`deleted_at`),
+    INDEX `idx_status_created`(`status`, `created_at`),
 
-  // 索引定义
-  @@index([status], map: "idx_status")
-  @@index([createdAt], map: "idx_created_at")
-  @@index([deletedAt], map: "idx_deleted_at")
-  @@index([creatorId], map: "idx_creator_id")
-  @@index([updaterId], map: "idx_updater_id")
-  @@index([status, createdAt], map: "idx_status_created")
-  @@index([realName, status], map: "idx_real_name_status")
-  
-  @@map("sys_user")
-}
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 9.2 Prisma Schema 规范要点
+```typescript
+// src/db/schema/tables.ts（由 generate-drizzle-schema.mjs 生成）
+export const sysUser = mysqlTable(
+  'sys_user',
+  {
+    id: int('id').primaryKey().autoincrement().notNull(),
+    username: varchar('username', { length: 50 }),
+    email: varchar('email', { length: 100 }),
+    phone: varchar('phone', { length: 20 }).notNull(),
+    passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+    realName: varchar('real_name', { length: 50 }),
+    gender: tinyint('gender').notNull().default(0),
+    status: tinyint('status').notNull().default(1),
+    creatorId: int('creator_id').notNull(),
+    createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    updaterId: int('updater_id').notNull(),
+    updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    deletedAt: datetime('deleted_at', { mode: 'date' }),
+    version: int('version').notNull().default(1),
+  },
+  (t) => ({
+    sysUserUsernameKey: uniqueIndex('sys_user_username_key').on(t.username),
+    sysUserEmailKey: uniqueIndex('sys_user_email_key').on(t.email),
+    sysUserPhoneKey: uniqueIndex('sys_user_phone_key').on(t.phone),
+    idxStatus: index('idx_status').on(t.status),
+    idxCreatedAt: index('idx_created_at').on(t.createdAt),
+    idxDeletedAt: index('idx_deleted_at').on(t.deletedAt),
+    idxStatusCreated: index('idx_status_created').on(t.status, t.createdAt),
+  }),
+);
+```
 
-1. **模型命名**: 使用 PascalCase，如 `SysUser`、`SysRole`
-2. **字段命名**: 使用 camelCase，数据库字段使用 snake_case
-3. **映射规范**: 使用 `@map` 将模型字段映射到数据库字段
-4. **索引规范**: 为常用查询字段添加索引
-5. **表名映射**: 使用 `@@map` 将模型映射到数据库表名
-6. **关系定义**: 明确定义模型间关系，包括自引用关系
-7. **字段约束**: 使用 `@unique`、`@default` 等约束
-8. **数据类型**: 明确指定数据库字段类型，如 `@db.VarChar(50)`
+```typescript
+// src/db/schema/relations.ts（生成；自引用/外键关系）
+export const sysUserRelations = relations(sysUser, ({ one, many }) => ({
+  creator: one(sysUser, {
+    fields: [sysUser.creatorId],
+    references: [sysUser.id],
+    relationName: 'sysUser_creatorId',
+  }),
+  updater: one(sysUser, {
+    fields: [sysUser.updaterId],
+    references: [sysUser.id],
+    relationName: 'sysUser_updaterId',
+  }),
+  sysUserDept_user_id: many(sysUserDept, { relationName: 'sysUserDept_userId' }),
+  sysUserRole_user_id: many(sysUserRole, { relationName: 'sysUserRole_userId' }),
+  // ...
+}));
+```
 
-### 9.3 Prisma 客户端使用规范
+### 9.2 Drizzle Schema 规范要点
+
+1. **DDL 优先**：新增/修改表结构必须改 `drizzle/*.sql`，然后跑 `pnpm db:generate` 重新生成 TS 绑定
+2. **表名**：MySQL 表名用 snake_case（`sys_user`），TS 常量用 camelCase（`sysUser`），由 `mysqlTable('sys_user', ...)` 显式映射
+3. **字段命名**：TS 字段用 camelCase（`passwordHash`），列名用 snake_case（`password_hash`），由列构造函数（`varchar('password_hash', ...)`）映射
+4. **索引/唯一约束**：在 `tables.ts` 的第二个参数的索引对象里声明；命名沿用 `idx_xxx` / `xxx_key` 习惯
+5. **关系定义**：外键约束写在 DDL 里；Drizzle 的 `relations()` 只用于 ORM 的关系查询 API（`with` / `findFirst`）
+6. **类型约束**：`.notNull()` / `.default(...)` / `.primaryKey()` 等直接在列上声明
+7. **数据类型**：明确指定数据库字段类型（`varchar(n)`、`tinyint`、`datetime({ mode: 'date' })` 等）
+8. **修改工作流**：改 `drizzle/*.sql` → `pnpm db:generate` → `pnpm db:migrate` → 提交两者的变更
+
+### 9.3 Drizzle 客户端使用规范
 
 ```typescript
 // src/core/models/sys-user.model.ts
-import { PrismaClient, Prisma } from "../generated/prisma/index.js";
+import { and, desc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { drizzleDb } from "@/db";
+import { sysUser } from "@/db/schema";
 
-const prisma = new PrismaClient();
+// 创建用户（带返回 id）
+static async createUser(data: typeof sysUser.$inferInsert) {
+  const [inserted] = await drizzleDb.insert(sysUser).values(data).$returningId();
+  return inserted;
+}
 
-export class UserModel {
-  // 创建用户
-  static async createUser(data: Prisma.SysUserCreateInput) {
-    return await prisma.sysUser.create({ data });
+// 查询用户列表
+static async getUserList(params: { page: number; pageSize: number; keyword?: string }) {
+  const { page, pageSize, keyword } = params;
+  const conds = [isNull(sysUser.deletedAt)];
+  if (keyword) {
+    const like_ = `%${keyword}%`;
+    conds.push(or(like(sysUser.username, like_), like(sysUser.email, like_))!);
   }
+  const where = and(...conds);
 
-  // 查询用户列表
-  static async getUserList(params: {
-    page: number;
-    pageSize: number;
-    keyword?: string;
-  }) {
-    const { page, pageSize, keyword } = params;
-    const where: Prisma.SysUserWhereInput = {};
-    
-    if (keyword) {
-      where.OR = [
-        { username: { contains: keyword } },
-        { email: { contains: keyword } }
-      ];
-    }
+  const [total, list] = await Promise.all([
+    drizzleDb.select({ c: sql<number>`count(*)` }).from(sysUser).where(where)
+      .then(([row]) => Number(row?.c ?? 0)),
+    drizzleDb.query.sysUser.findMany({
+      where,
+      orderBy: desc(sysUser.createdAt),
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    }),
+  ]);
 
-    const [total, list] = await Promise.all([
-      prisma.sysUser.count({ where }),
-      prisma.sysUser.findMany({
-        where,
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { createdAt: "desc" }
-      })
-    ]);
+  return { total, list };
+}
 
-    return { total, list };
-  }
+// 根据ID查询用户（含关联）
+static async getUserById(id: number) {
+  return await drizzleDb.query.sysUser.findFirst({
+    where: and(eq(sysUser.id, id), isNull(sysUser.deletedAt)),
+    with: {
+      creator: { columns: { username: true } },
+      updater: { columns: { username: true } },
+    },
+  });
+}
 
-  // 根据ID查询用户
-  static async getUserById(id: number) {
-    return await prisma.sysUser.findUnique({
-      where: { id }
-    });
-  }
+// 更新用户
+static async updateUser(id: number, data: Partial<typeof sysUser.$inferInsert>) {
+  await drizzleDb
+    .update(sysUser)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt)));
+}
 
-  // 更新用户
-  static async updateUser(id: number, data: Prisma.SysUserUpdateInput) {
-    return await prisma.sysUser.update({
-      where: { id },
-      data
-    });
-  }
-
-  // 删除用户
-  static async deleteUser(id: number) {
-    return await prisma.sysUser.delete({
-      where: { id }
-    });
-  }
+// 软删除用户
+static async deleteUser(id: number) {
+  await drizzleDb
+    .update(sysUser)
+    .set({ deletedAt: new Date(), status: 0 })
+    .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt)));
 }
 ```
 
@@ -766,7 +817,7 @@ export class ResponseUtil {
 ```
 src/plugins/
 ├── external/          # 外部插件配置
-│   ├── prisma.ts      # Prisma 数据库连接插件
+│   ├── database.ts    # 数据库连接健康检查插件
 │   ├── redis.ts       # Redis 缓存插件
 │   └── schemas.ts    # Schema 注册插件
 └── app/               # 应用插件配置
@@ -1018,12 +1069,12 @@ export class BusinessCode {
 ### 17.1 核心规范
 - **路由层规范**: RESTful API 设计，清晰的文件组织结构
 - **服务层规范**: 业务逻辑封装，错误处理机制
-- **模型层规范**: Prisma 数据访问，类型安全
+- **模型层规范**: Drizzle 数据访问，类型安全
 - **Schema 规范**: TypeBox 类型验证，请求响应验证
 
 ### 17.2 技术栈
 - **框架**: Fastify + TypeScript
-- **数据库**: Prisma + MySQL
+- **数据库**: Drizzle ORM + MySQL
 - **验证**: TypeBox + JSON Schema
 - **认证**: JWT + Bearer Token
 - **日志**: Pino + pino-pretty
@@ -1160,21 +1211,27 @@ fastify.post('/', {
 ### 12.3 SQL 注入防护
 
 ```typescript
-// 使用 Prisma ORM 防止 SQL 注入
-const users = await prisma.sysUser.findMany({
-  where: {
-    username: {
-      contains: keyword // Prisma 会自动处理特殊字符
-    }
-  }
-});
+// 使用 Drizzle ORM 防止 SQL 注入
+import { drizzleDb } from "@/db";
+import { sysUser } from "@/db/schema";
+import { like } from "drizzle-orm";
+
+const users = await drizzleDb
+  .select()
+  .from(sysUser)
+  .where(like(sysUser.username, `%${keyword}%`)); // Drizzle 通过参数化查询处理特殊字符
 
 // 不要直接拼接 SQL 字符串
 // ❌ 错误做法
-const users = await prisma.$queryRaw`SELECT * FROM sys_user WHERE username LIKE '%${keyword}%'`;
+const users = await drizzleDb.execute(
+  sql.raw(`SELECT * FROM sys_user WHERE username LIKE '%${keyword}%'`),
+);
 
-// ✅ 正确做法
-const users = await prisma.$queryRaw`SELECT * FROM sys_user WHERE username LIKE ${`%${keyword}%`}`;
+// ✅ 正确做法：用 sql 模板字面量 + 参数占位符
+import { sql } from "drizzle-orm";
+const users = await drizzleDb.execute(
+  sql`SELECT * FROM sys_user WHERE username LIKE ${`%${keyword}%`}`,
+);
 ```
 
 ### 12.4 敏感信息处理
@@ -1202,19 +1259,20 @@ export class UserService {
 // 响应中移除敏感信息
 export class UserModel {
   static async getUserById(id: number) {
-    const user = await prisma.sysUser.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        status: true,
-        createdAt: true,
-        updatedAt: true,
-        // 不包含 password 字段
-      }
-    });
-    return user;
+    // 显式 select 需要的列，不取 password_hash 等敏感字段
+    const [user] = await drizzleDb
+      .select({
+        id: sysUser.id,
+        username: sysUser.username,
+        email: sysUser.email,
+        status: sysUser.status,
+        createdAt: sysUser.createdAt,
+        updatedAt: sysUser.updatedAt,
+      })
+      .from(sysUser)
+      .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt)))
+      .limit(1);
+    return user ?? null;
   }
 }
 ```
@@ -1224,30 +1282,36 @@ export class UserModel {
 ### 13.1 数据库查询优化
 
 ```typescript
-// 使用索引
-const users = await prisma.sysUser.findMany({
-  where: {
-    username: username // username 字段有索引
-  }
-});
+// 使用索引（Drizzle：username 字段已建索引）
+import { drizzleDb } from "@/db";
+import { eq, desc } from "drizzle-orm";
+import { sysUser, sysUserRole } from "@/db/schema";
+
+const users = await drizzleDb
+  .select()
+  .from(sysUser)
+  .where(eq(sysUser.username, username));
 
 // 分页查询
 const [total, list] = await Promise.all([
-  prisma.sysUser.count({ where }),
-  prisma.sysUser.findMany({
+  drizzleDb.select({ c: sql<number>`count(*)` }).from(sysUser).where(where)
+    .then(([row]) => Number(row?.c ?? 0)),
+  drizzleDb.query.sysUser.findMany({
     where,
-    skip: (page - 1) * pageSize,
-    take: pageSize,
-    orderBy: { createdAt: 'desc' }
-  })
+    orderBy: desc(sysUser.createdAt),
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
+  }),
 ]);
 
-// 避免 N+1 查询
-const users = await prisma.sysUser.findMany({
-  include: {
-    role: true, // 一次查询加载关联数据
-    parent: true
-  }
+// 避免 N+1 查询：用关系查询 API 的 `with` 一次拉关联
+const users = await drizzleDb.query.sysUser.findMany({
+  where,
+  with: {
+    sysUserRole_user_id: {
+      with: { role: true },
+    },
+  },
 });
 ```
 
@@ -1321,11 +1385,11 @@ const [users, total, roles] = await Promise.all([
 
 // 批量操作
 const createUsers = async (userDataList: CreateUserData[]) => {
-  // 使用 Prisma 事务
-  return await prisma.$transaction(async (tx) => {
+  // 使用 Drizzle 事务
+  return await drizzleDb.transaction(async (tx) => {
     const createdUsers = [];
     for (const userData of userDataList) {
-      const user = await tx.sysUser.create({ data: userData });
+      const [user] = await tx.insert(sysUser).values(userData).$returningId();
       createdUsers.push(user);
     }
     return createdUsers;
@@ -1507,9 +1571,10 @@ import { FastifyPluginAsync } from 'fastify';
 const health: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get('/health', async (request, reply) => {
     try {
-      // 检查数据库连接
-      await fastify.prisma.$queryRaw`SELECT 1`;
-      
+      // 检查数据库连接（Drizzle）
+      const healthy = await dbManager.healthCheck();
+      if (!healthy) throw new Error("database unhealthy");
+
       // 检查 Redis 连接
       await fastify.redis.ping();
       

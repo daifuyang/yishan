@@ -10,7 +10,10 @@ import { BusinessError } from '../src/exceptions/business-error.js'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 async function buildApp() {
-  const app = Fastify({ logger: false })
+  const app = Fastify({ logger: false });
+    // 单测不需要真实 RBAC 校验：no-op 占位。
+    app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
+    app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
   await app.register(errorHandlerPlugin)
   // 先注册通用Schema（包含paginationResponse），否则响应schema校验会失败
   registerCommonSchemas(app)

@@ -1,214 +1,208 @@
-/**
- * 用户业务逻辑服务
- */
-
-import { SysUserModel } from "../models/sys-user.model.js";
+import type { FastifyInstance } from "fastify";
+import { UserRepository, type CreateUserInput, type UpdateUserInput } from "../repositories/user.repository.js";
+import { UserMapper } from "../mappers/user.mapper.js";
 import { CreateUserReq, UserListQuery, SysUserResp, UpdateUserReq } from "../schemas/user.js";
 import { UserErrorCode } from "../../constants/business-codes/user.js";
 import { BusinessError } from "../../exceptions/business-error.js";
-import { SysUserTokenModel } from "../models/sys-user-token.model.js";
 import { CACHE_CONFIG } from "../../config/index.js";
+import { comparePassword, hashPassword } from "../../utils/password.js";
+import { PermissionService } from "./permission.service.js";
 
 export class UserService {
   private static readonly USER_DETAIL_CACHE_KEY_PREFIX = 'user:detail:';
 
-  /**
-   * 获取用户详情缓存键
-   */
   private static getUserDetailCacheKey(userId: number): string {
     return `${this.USER_DETAIL_CACHE_KEY_PREFIX}${userId}`;
   }
 
-  /**
-   * 获取管理员列表
-   * @param query 查询参数
-   * @returns 管理员列表和总数
-   */
   static async getUserList(query: UserListQuery) {
-    // 获取用户列表
-    const list = await SysUserModel.getUserList(query);
+    const safePage = Math.max(1, query.page || 1);
+    const safePageSize = Math.max(1, Math.min(100, query.pageSize || 10));
 
-    // 获取总数量
-    const total = await SysUserModel.getUserTotal(query);
+    // 转换时间字符串为 Date 对象
+    const repositoryQuery = {
+      ...query,
+      page: safePage,
+      pageSize: safePageSize,
+      startTime: query.startTime ? new Date(query.startTime) : undefined,
+      endTime: query.endTime ? new Date(query.endTime) : undefined,
+    };
+
+    const items = await UserRepository.list(repositoryQuery);
+    const total = await UserRepository.count(repositoryQuery);
+
+    const list = items.map(UserMapper.toListResp);
 
     return {
       list,
       total,
-      page: query.page || 1,
-      pageSize: query.pageSize || 10,
+      page: safePage,
+      pageSize: safePageSize,
     };
   }
 
-  /**
-   * 获取单个用户信息（默认带缓存）
-   * @param id 用户ID
-   * @param fastify Fastify实例（可选，用于缓存）
-   * @returns 用户信息
-   */
-  static async getUserById(id: number, fastify?: any): Promise<SysUserResp | null> {
-    // 如果提供了fastify实例，尝试使用缓存
+  static async getUserById(id: number, fastify?: FastifyInstance): Promise<SysUserResp | null> {
     if (fastify?.redis) {
       try {
         const cacheKey = this.getUserDetailCacheKey(id);
         const cached = await fastify.redis.get(cacheKey);
         if (cached) {
-          return JSON.parse(cached);
+          const cachedUser = JSON.parse(cached);
+          // 规范化 roleIds 和 deptIds，确保是数字数组
+          return {
+            ...cachedUser,
+            roleIds: Array.isArray(cachedUser.roleIds)
+              ? cachedUser.roleIds.map(id => Number(id)).filter(id => !isNaN(id))
+              : [],
+            deptIds: Array.isArray(cachedUser.deptIds)
+              ? cachedUser.deptIds.map(id => Number(id)).filter(id => !isNaN(id))
+              : [],
+          };
         }
       } catch (error) {
-        // 缓存失败不影响主流程，记录日志即可
         fastify.log.warn(`Redis缓存获取失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
-    // 从数据库获取数据
-    const user = await SysUserModel.getUserById(id);
+    const user = await UserRepository.findById(id);
+    if (!user) return null;
 
-    // 如果提供了fastify实例，将结果存入缓存
-    if (fastify?.redis && user) {
+    const resp = UserMapper.toDetailResp(user);
+
+    if (fastify?.redis) {
       try {
         const cacheKey = this.getUserDetailCacheKey(id);
-        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(user));
+        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(resp));
       } catch (error) {
-        // 缓存失败不影响主流程，记录日志即可
-        fastify.log.warn(`Redis缓存设置失败: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-
-    return user;
-  }
-
-  /**
-   * 创建用户（默认带缓存）
-   * @param userReq 用户数据
-   * @param currentUserId 当前用户ID
-   * @param fastify Fastify实例（可选，用于缓存）
-   * @returns 创建的用户信息
-   */
-  static async createUser(userReq: CreateUserReq, currentUserId: number, fastify?: any): Promise<SysUserResp> {
-    // 密码强度验证（创建场景要求提供密码）
-    this.validatePassword(userReq.password);
-
-    // 校验用户名/邮箱/手机号的唯一性
-    await this.ensureUniqueFields(userReq.username, userReq.email, userReq.phone);
-
-    // 创建用户
-    const user = await SysUserModel.createUser(userReq, currentUserId);
-    
-    // 写入缓存
-    if (fastify?.redis && user && typeof user.id === "number") {
-      try {
-        const cacheKey = this.getUserDetailCacheKey(user.id);
-        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(user));
-      } catch (error) {
-        // 缓存失败不影响主流程，记录日志即可
         fastify.log.warn(`创建用户后写入缓存失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-    
-    return user;
+
+    return resp;
   }
 
-  /**
-   * 验证密码强度
-   * @param password 密码
-   */
+  static async createUser(userReq: CreateUserReq, currentUserId: number, fastify?: FastifyInstance): Promise<SysUserResp> {
+    this.validatePassword(userReq.password);
+    await this.ensureUniqueFields(userReq.username, userReq.email, userReq.phone);
+
+    const input = await this.toCreateUserInput(userReq, currentUserId);
+    const createdUser = await UserRepository.createInTransaction(input);
+    const resp = UserMapper.toDetailResp(createdUser);
+
+    if (fastify?.redis) {
+      try {
+        const cacheKey = this.getUserDetailCacheKey(createdUser.id);
+        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(resp));
+      } catch (error) {
+        fastify.log.warn(`创建用户后写入缓存失败: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    // Section 1 — RBAC：用户新建时若分配了角色，全局失效权限缓存以确保立即生效。
+    UserService.invalidatePermissionCache(createdUser.roleIds);
+
+    return resp;
+  }
+
   private static validatePassword(password: string): void {
-    // 密码长度检查
     if (password.length < 6 || password.length > 50) {
       throw new BusinessError(UserErrorCode.PASSWORD_WEAK, "密码长度必须在6-50个字符之间");
     }
-
-    // 密码复杂度检查：至少包含字母和数字
     const hasLetter = /[a-zA-Z]/.test(password);
     const hasNumber = /\d/.test(password);
-    
     if (!hasLetter || !hasNumber) {
       throw new BusinessError(UserErrorCode.PASSWORD_WEAK, "密码必须包含至少一个字母和一个数字");
     }
-
-    // 检查是否包含不安全的字符
     const allowedChars = /^[a-zA-Z\d@$!%*?&]+$/;
     if (!allowedChars.test(password)) {
       throw new BusinessError(UserErrorCode.PASSWORD_WEAK, "密码只能包含字母、数字和特殊字符(@$!%*?&)");
     }
   }
 
-  /**
-   * 更新用户（默认带缓存刷新）
-   * @param id 用户ID
-   * @param userReq 用户数据
-   * @param currentUserId 当前用户ID
-   * @param fastify Fastify实例（可选，用于缓存）
-   * @returns 更新的用户信息
-   */
   static async updateUser(
     id: number,
     userReq: UpdateUserReq,
     currentUserId: number,
-    fastify?: any
+    fastify?: FastifyInstance
   ): Promise<SysUserResp | null> {
-    // 检查用户是否存在
-    const existingUser = await SysUserModel.getUserById(id);
+    const existingUser = await UserRepository.findById(id);
     if (!existingUser) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
     }
 
-    // 统一校验用户名/邮箱/手机号唯一性（排除当前用户ID）
     await this.ensureUniqueFields(userReq.username, userReq.email, userReq.phone, id);
 
-    // 若传入密码，进行强度校验
     if (userReq.password !== undefined) {
       this.validatePassword(userReq.password);
     }
 
-    // 更新用户
-    const user = await SysUserModel.updateUser(id, userReq, currentUserId);
-    
-    // 更新成功后刷新缓存
-    if (user && fastify?.redis) {
+    const input = await this.toUpdateUserInput(userReq, currentUserId);
+    const updatedUser = await UserRepository.updateInTransaction(id, input);
+    const resp = UserMapper.toDetailResp(updatedUser);
+
+    if (fastify?.redis) {
       try {
         const cacheKey = this.getUserDetailCacheKey(id);
-        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(user));
+        await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(resp));
       } catch (error) {
-        // 缓存刷新失败不影响主流程，记录日志即可
         fastify.log.warn(`更新用户后刷新缓存失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-    
-    return user;
+
+    // Section 1 — RBAC：roleIds 变更会影响该用户持有的权限集合，失效涉及的角色 ID 缓存。
+    const roleIdsToInvalidate = Array.from(
+      new Set([...(existingUser.roleIds ?? []), ...(updatedUser.roleIds ?? [])]),
+    );
+    UserService.invalidatePermissionCache(roleIdsToInvalidate);
+
+    return resp;
   }
 
   /**
-   * 删除用户（软删除）并撤销所有令牌（默认带缓存清除）
-   * @param id 用户ID
-   * @param fastify Fastify实例（可选，用于缓存）
+   * Change the password for the given user.
+   * Validates the old password against the stored hash, validates strength of
+   * the new password, then atomically writes the new hash and revokes all
+   * active access/refresh tokens for that user (forces re-login).
    */
-  static async deleteUser(id: number, fastify?: any): Promise<{ id: number; deleted: boolean }> {
-    const existingUser = await SysUserModel.getUserById(id)
+  static async changePassword(
+    userId: number,
+    oldPassword: string,
+    newPassword: string,
+    fastify?: FastifyInstance,
+  ): Promise<void> {
+    const passwordHash = await UserRepository.findPasswordHashById(userId);
+    if (!passwordHash) {
+      throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
+    }
+
+    const ok = await comparePassword(oldPassword, passwordHash);
+    if (!ok) {
+      throw new BusinessError(UserErrorCode.PASSWORD_ERROR, "旧密码错误");
+    }
+
+    // Strength check (also run by toUpdateUserInput via validatePassword,
+    // but we do it here explicitly since changePassword bypasses updateUser).
+    this.validatePassword(newPassword);
+
+    const newPasswordHash = await hashPassword(newPassword);
+
+    await UserRepository.changePasswordInTransaction(userId, newPasswordHash);
+
+    await this.clearUserDetailCache(userId, fastify);
+  }
+
+  static async deleteUser(id: number, fastify?: FastifyInstance): Promise<{ id: number; deleted: boolean }> {
+    const existingUser = await UserRepository.findById(id);
     if (!existingUser) {
-      throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在")
+      throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
     }
 
-    const res = await SysUserModel.deleteUser(id)
-    if (!res) {
-      throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在或已删除")
-    }
+    await UserRepository.deleteUserInTransaction(id);
 
-    await SysUserTokenModel.revokeAllByUserId(id)
-
-    // 清除缓存
     await this.clearUserDetailCache(id, fastify);
-
-    return { id, deleted: true }
+    return { id, deleted: true };
   }
 
-  /**
-   * 统一校验用户名/邮箱/手机号的唯一性
-   * @param username 可选用户名
-   * @param email 可选邮箱
-   * @param phone 可选手机号
-   * @param excludeUserId 更新场景排除的用户ID
-   */
   private static async ensureUniqueFields(
     username?: string,
     email?: string,
@@ -216,41 +210,101 @@ export class UserService {
     excludeUserId?: number
   ): Promise<void> {
     if (username !== undefined) {
-      const userWithSameUsername = await SysUserModel.getRawUserByUsername(username);
-      if (userWithSameUsername && userWithSameUsername.id !== excludeUserId) {
+      const userId = await UserRepository.findIdByUsername(username);
+      if (userId !== null && userId !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "用户名已存在");
       }
     }
 
     if (email !== undefined) {
-      const userWithSameEmail = await SysUserModel.getRawUserByEmail(email);
-      if (userWithSameEmail && userWithSameEmail.id !== excludeUserId) {
+      const userId = await UserRepository.findIdByEmail(email);
+      if (userId !== null && userId !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "邮箱已存在");
       }
     }
 
     if (phone !== undefined) {
-      const userWithSamePhone = await SysUserModel.getRawUserByPhone(phone);
-      if (userWithSamePhone && userWithSamePhone.id !== excludeUserId) {
+      const userId = await UserRepository.findIdByPhone(phone);
+      if (userId !== null && userId !== excludeUserId) {
         throw new BusinessError(UserErrorCode.USER_ALREADY_EXISTS, "手机号已存在");
       }
     }
   }
 
-  /**
-   * 清除用户详情缓存
-   * @param userId 用户ID
-   * @param fastify Fastify实例（可选）
-   */
-  private static async clearUserDetailCache(userId: number, fastify?: any): Promise<void> {
+  private static async toCreateUserInput(
+    request: CreateUserReq,
+    currentUserId: number,
+  ): Promise<CreateUserInput> {
+    return {
+      username: request.username,
+      email: request.email,
+      phone: request.phone,
+      realName: request.realName,
+      nickname: request.nickname,
+      avatar: request.avatar,
+      gender: Number(request.gender ?? "0"),
+      status: Number(request.status ?? "1"),
+      birthDate: this.toNullableDate(request.birthDate),
+      passwordHash: await hashPassword(request.password),
+      creatorId: currentUserId,
+      updaterId: currentUserId,
+      deptIds: request.deptIds,
+      roleIds: request.roleIds,
+    };
+  }
+
+  private static async toUpdateUserInput(
+    request: UpdateUserReq,
+    currentUserId: number,
+  ): Promise<UpdateUserInput> {
+    return {
+      username: request.username,
+      email: request.email,
+      phone: request.phone,
+      realName: request.realName,
+      nickname: request.nickname,
+      avatar: request.avatar,
+      gender: request.gender === undefined ? undefined : Number(request.gender),
+      status: request.status === undefined ? undefined : Number(request.status),
+      birthDate: this.toNullableDate(request.birthDate),
+      passwordHash: request.password === undefined ? undefined : await hashPassword(request.password),
+      updaterId: currentUserId,
+      deptIds: request.deptIds,
+      roleIds: request.roleIds,
+    };
+  }
+
+  private static toNullableDate(value: string | undefined): Date | null | undefined {
+    if (value === undefined) return undefined;
+    return value === "" ? null : new Date(value);
+  }
+
+  private static async clearUserDetailCache(userId: number, fastify?: FastifyInstance): Promise<void> {
     if (fastify?.redis) {
       try {
         const cacheKey = this.getUserDetailCacheKey(userId);
         await fastify.redis.del(cacheKey);
       } catch (error) {
-        // 缓存清除失败不影响主流程，记录日志即可
         fastify.log.warn(`Redis缓存清除失败: ${error instanceof Error ? error.message : String(error)}`);
       }
+    }
+  }
+
+  /**
+   * 用户角色变更后失效 PermissionService 缓存。失败仅记录 warn，不影响主流程。
+   */
+  private static invalidatePermissionCache(roleIds: number[] = []): void {
+    try {
+      if (roleIds.length > 0) {
+        PermissionService.invalidate(roleIds);
+      } else {
+        PermissionService.invalidate();
+      }
+    } catch (err) {
+      console.warn(
+        "[user.service] invalidate permission cache failed:",
+        err instanceof Error ? err.message : String(err),
+      );
     }
   }
 }

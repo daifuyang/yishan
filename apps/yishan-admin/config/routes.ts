@@ -47,8 +47,8 @@ export default [
     access: 'canDo',
   },
   {
-    path: '/system/post',
-    component: './system/post',
+    path: '/system/position',
+    component: './system/position',
     access: 'canDo',
   },
   {
@@ -64,6 +64,18 @@ export default [
   {
     path: '/system/plugins',
     component: './system/plugins',
+    access: 'canDo',
+  },
+  {
+    path: '/account/api-tokens',
+    name: 'account.apiTokens.title',
+    component: './account/api-tokens',
+    access: 'canDo',
+  },
+  {
+    path: '/account/center',
+    name: 'account.center.title',
+    component: './account/center',
     access: 'canDo',
   },
   {

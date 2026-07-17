@@ -15,8 +15,7 @@ jobs:
     timeout-minutes: 90
     environment: YISHAN_API
     env:
-      DOMAIN: ${{ vars.YISHAN_FC_DOMAIN || 'example.zerocmf.com' }}
-      FC_FUNCTION_NAME: ${{ vars.YISHAN_FC_FUNCTION_NAME || 'yishan-demo-layered' }}
+      DOMAIN: ${{ vars.YISHAN_FC_DOMAIN || 'demo.zerocmf.com' }}
       CERT_MIN_AGE_DAYS: '30'
       ACME_MODE: ${{ vars.ACME_MODE || 'staging' }}
       ACME_CA: ${{ vars.ACME_CA || 'letsencrypt' }}
@@ -206,13 +205,7 @@ jobs:
       - name: Deploy domain with renewed cert
         if: steps.cert_age.outputs.rotate == 'true'
         working-directory: apps/yishan-api
-        env:
-          FC_FUNCTION_NAME: ${{ env.FC_FUNCTION_NAME }}
-          FC_CUSTOM_DOMAIN: ${{ env.DOMAIN }}
-          FC_CERT_NAME: ${{ github.run_id }}-${{ github.run_attempt }}
-        run: |
-          export FC_CERT_NAME="$(echo "${DOMAIN}" | tr '.' '-')-${FC_CERT_NAME}"
-          bash ./deploy/fc3/deploy-layered-domain.sh
+        run: bash ./deploy/fc3/deploy-domain-cert.sh
 
       - name: Verify cert after deploy
         if: steps.cert_age.outputs.rotate == 'true'

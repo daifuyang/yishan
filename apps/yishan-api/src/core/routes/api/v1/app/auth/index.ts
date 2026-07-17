@@ -19,6 +19,8 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/login",
     {
+      // Section 7：移动端登录限流
+      preHandler: [fastify.rateLimit("login")],
       schema: {
         summary: "移动端登录",
         description: "移动端通过用户名/邮箱和密码登录",
@@ -29,11 +31,11 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Body: LoginReq }>,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
       const result = await AuthService.login(
-        request.body,
+        request.body as LoginReq,
         fastify,
         request.ip,
         request.headers["user-agent"] as string | undefined
@@ -46,6 +48,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/logout",
     {
+      preHandler: fastify.authenticate,
       schema: {
         summary: "移动端登出",
         description: "撤销当前用户的访问令牌",
@@ -66,11 +69,12 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      const token = request.headers.authorization?.replace("Bearer ", "");
-      if (!token) {
+      // 鉴权由 fastify.authenticate 完成；只按当前用户 ID 撤销其所有活跃 token。
+      const currentUser = request.currentUser;
+      if (!currentUser?.id) {
         throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "缺少认证token");
       }
-      await AuthService.logout(token, fastify);
+      await AuthService.logout(currentUser.id, fastify);
       return ResponseUtil.success(reply, null, "退出成功");
     }
   );
@@ -79,6 +83,8 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/refresh",
     {
+      // Section 7：移动端 refresh 限流
+      preHandler: [fastify.rateLimit("refresh")],
       schema: {
         summary: "移动端刷新令牌",
         description: "使用 refreshToken 换取新的访问令牌",
@@ -89,10 +95,10 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ Body: RefreshTokenReq }>,
+      request: FastifyRequest,
       reply: FastifyReply
     ) => {
-      const { refreshToken } = request.body;
+      const { refreshToken } = request.body as RefreshTokenReq;
       if (!refreshToken) {
         throw new BusinessError(AuthErrorCode.REFRESH_TOKEN_INVALID, "缺少刷新令牌");
       }

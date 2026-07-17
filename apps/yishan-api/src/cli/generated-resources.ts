@@ -199,32 +199,32 @@ export const generatedResources: ResourceSpec[] = [
     }
   },
   {
-    "resource": "portal.posts",
+    "resource": "system.positions",
     "description": "Generated from OpenAPI",
     "endpoints": {
       "list": {
         "method": "GET",
-        "path": "/api/modules/portal/v1/admin/posts/",
+        "path": "/api/v1/admin/positions/",
         "requireId": false
       },
       "create": {
         "method": "POST",
-        "path": "/api/modules/portal/v1/admin/posts/",
+        "path": "/api/v1/admin/positions/",
         "requireId": false
       },
       "detail": {
         "method": "GET",
-        "path": "/api/modules/portal/v1/admin/posts/:id",
+        "path": "/api/v1/admin/positions/:id",
         "requireId": true
       },
       "update": {
         "method": "PUT",
-        "path": "/api/modules/portal/v1/admin/posts/:id",
+        "path": "/api/v1/admin/positions/:id",
         "requireId": true
       },
       "delete": {
         "method": "DELETE",
-        "path": "/api/modules/portal/v1/admin/posts/:id",
+        "path": "/api/v1/admin/positions/:id",
         "requireId": true
       }
     }

@@ -60,7 +60,9 @@ const UserList: React.FC = () => {
     const deletePromises = ids.map((id) => deleteUser({ id }));
     const results = await Promise.allSettled(deletePromises);
 
-    const successCount = results.filter((r) => r.status === "fulfilled").length;
+    const successCount = results.filter(
+      (result) => result.status === "fulfilled" && result.value.success,
+    ).length;
     const failureCount = results.length - successCount;
 
     if (successCount > 0) {
@@ -87,10 +89,17 @@ const UserList: React.FC = () => {
     {
       title: "用户名",
       dataIndex: "username",
+      search: {
+        // API 的列表契约使用 keyword（匹配用户名、姓名、邮箱、昵称）；
+        // 不要把 UI 字段名 username 原样传给接口，否则筛选条件会被忽略。
+        transform: (value) => ({ keyword: value }),
+      },
     },
     {
       title: "姓名",
       dataIndex: "realName",
+      // 当前 API 不支持独立 realName 参数，避免向接口发送无效字段。
+      search: false,
     },
     {
       title: "昵称",

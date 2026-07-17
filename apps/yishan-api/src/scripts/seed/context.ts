@@ -1,7 +1,8 @@
-import type { PrismaClient, SysUser } from '../../generated/prisma/client.js';
 
-export type SeedContext = {
-  prisma: PrismaClient;
-  adminUser: SysUser;
-};
+import { drizzleDb } from '@/db';
 
+/**
+ * The common surface shared by the root Drizzle client and a transaction.
+ * Seed modules receive this explicitly so the full bootstrap is atomic.
+ */
+export type SeedDb = typeof drizzleDb;

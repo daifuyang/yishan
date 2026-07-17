@@ -55,6 +55,15 @@ GitHub Actions 工作流目录：`.github/workflows`
 
 当前线上模式为 API 与 Admin 静态资源一体化部署：Admin 产物会复制到 API 的 `public/admin/`，再随 API 部署到 FC3。
 
+旧模式备份（前后端分离 CI/CD）：
+
+- 备份目录：`.github/workflows_backup/split-mode-20260329`
+- 备份文件：
+  - `yishan-admin-ci.yml`
+  - `yishan-admin-cd-fc.yml`
+  - `yishan-api-ci.yml`
+  - `yishan-api-cd-fc.yml`
+
 常用排查顺序：
 
 1. 进入 GitHub Actions 查看对应 Workflow 的失败步骤

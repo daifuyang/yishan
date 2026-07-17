@@ -42,6 +42,9 @@ const SysRoleSchema = Type.Object(
 export type SysRoleResp = Static<typeof SysRoleSchema>;
 
 // 创建角色请求 Schema
+// 注意：Type.Optional 字段不允许设置 default，否则 UpdateXxxReq = Type.Partial(SaveRoleReq)
+// 在 Fastify Ajv (useDefaults:true) 校验下会把缺省字段注入默认值，导致 update 时把数据库原值覆盖。
+// 缺省值由 Service 层（createRole）显式设置。
 const SaveRoleReqSchema = Type.Object(
   {
     name: Type.String({
@@ -53,14 +56,13 @@ const SaveRoleReqSchema = Type.Object(
       Type.String({ description: "角色描述", maxLength: 255 })
     ),
     status: Type.Optional(
-      Type.String({ enum: ["0", "1"], description: "状态（0-禁用，1-启用）", default: "1" })
+      Type.String({ enum: ["0", "1"], description: "状态（0-禁用，1-启用）" })
     ),
     dataScope: Type.Optional(
       Type.String({
         enum: ["1", "2", "3", "4", "5"],
         description:
           "数据权限范围（1-全部数据，2-本部门数据，3-本部门及子部门数据，4-仅本人数据，5-自定义数据）",
-        default: "1",
       })
     ),
     menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),

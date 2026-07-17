@@ -7,12 +7,14 @@ import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import { MenuListQuery, SaveMenuReq, UpdateMenuReq } from "../../../../../schemas/menu.js";
 import { MenuService } from "../../../../../services/menu.service.js";
 import { getMenuMessage, MenuMessageKeys } from "../../../../../../constants/messages/menu.js";
+import { PERMISSION_CODES } from "../../../../../../constants/permission-codes.js";
 
 const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET /api/v1/admin/menus - 获取菜单列表
   fastify.get(
     "/",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_MENU_LIST)] as any,
       schema: {
         summary: "获取菜单列表",
         description: "分页获取菜单列表，支持关键词、状态、类型与父级过滤",
@@ -44,6 +46,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/tree",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_MENU_LIST)] as any,
       schema: {
         summary: "获取菜单树",
         description: "获取全部树形菜单",
@@ -121,6 +124,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/:id",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_MENU_LIST)] as any,
       schema: {
         summary: "获取菜单详情",
         description: "根据菜单ID获取菜单详情",
@@ -154,6 +158,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_MENU_CREATE)] as any,
       schema: {
         summary: "创建菜单",
         description: "创建一个新的菜单",
@@ -180,6 +185,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.put(
     "/:id",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_MENU_UPDATE)] as any,
       schema: {
         summary: "更新菜单",
         description: "根据菜单ID更新菜单信息",
@@ -211,6 +217,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.delete(
     "/:id",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_MENU_DELETE)] as any,
       schema: {
         summary: "删除菜单",
         description: "根据菜单ID进行软删除，存在子菜单或已绑定角色禁止删除",

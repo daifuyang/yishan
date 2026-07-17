@@ -1,7 +1,29 @@
-import { prismaManager } from '../utils/prisma'
+import { eq, sql } from 'drizzle-orm'
+import { drizzleDb } from '@/db'
+import { sysPlugin, sysPluginInstall, sysPluginVersion } from '@/db/schema'
 import { PluginLifecycleState, PluginManifest, PluginPersistenceRecord } from './types'
 
-type PluginClient = ReturnType<typeof prismaManager.getClient>
+/**
+ * 插件状态快照，用于权限目录缓存版本管理。
+ * 不依赖固定版本号，使用 enabled + updatedAt 指纹实现多实例最终一致。
+ */
+export interface PluginStateSnapshot {
+  pluginId: string;
+  enabled: boolean;
+  updatedAt: string | null;
+}
+
+/**
+ * 插件状态读取器接口，供 PermissionCatalogService 使用。
+ * 从数据库读取持久化的插件启用状态。
+ * @deprecated 已改为使用函数式接口 () => Promise<PluginStateSnapshot[]>
+ */
+export interface PluginStateReader {
+  /** 返回 pluginId -> { enabled, updatedAt } 的快照数组；数据来自数据库。 */
+  listPluginStates(): Promise<PluginStateSnapshot[]>;
+}
+
+type PluginClient = typeof drizzleDb
 
 export interface PersistedPluginRuntimeState {
   pluginId?: string
@@ -27,142 +49,138 @@ function mapManifestToRecord(manifest: PluginManifest): PluginPersistenceRecord 
   }
 }
 
+function runtimeColumns() {
+  return {
+    pluginId: true,
+    name: true,
+    currentVersion: true,
+    coreCompatibility: true,
+    lifecycleState: true,
+    enabled: true,
+    lastError: true,
+    updatedAt: true
+  } as const
+}
+
 export class PluginPersistenceRepository {
-  constructor(private readonly client: PluginClient = prismaManager.getClient()) {}
+  constructor(private readonly client: PluginClient = drizzleDb) {}
 
   async upsertManifest(manifest: PluginManifest): Promise<void> {
     const data = mapManifestToRecord(manifest)
+    const now = new Date()
 
-    let plugin = await this.client.sysPlugin.findFirst({
-      where: { pluginId: data.pluginId }
-    });
+    let plugin = await this.client.query.sysPlugin.findFirst({
+      where: eq(sysPlugin.pluginId, data.pluginId)
+    })
 
     if (!plugin && data.name) {
-      plugin = await this.client.sysPlugin.findFirst({
-        where: { name: data.name }
-      });
+      plugin = await this.client.query.sysPlugin.findFirst({
+        where: eq(sysPlugin.name, data.name)
+      })
     }
 
     if (plugin) {
-      await this.client.sysPlugin.update({
-        where: { id: plugin.id },
-        data: {
+      await this.client.update(sysPlugin)
+        .set({
           pluginId: data.pluginId,
           name: data.name,
           currentVersion: data.version,
           coreCompatibility: data.coreCompatibility,
           compatRange: data.compatRange,
           routeBase: data.routeBase,
-          lastSyncedAt: new Date()
-        }
-      });
+          lastSyncedAt: now
+        })
+        .where(eq(sysPlugin.id, plugin.id))
     } else {
-      plugin = await this.client.sysPlugin.create({
-        data: {
-          pluginId: data.pluginId,
-          name: data.name,
-          currentVersion: data.version,
-          coreCompatibility: data.coreCompatibility,
-          compatRange: data.compatRange,
-          routeBase: data.routeBase,
-          lifecycleState: data.lifecycleState,
-          enabled: data.enabled,
-          installedAt: new Date(),
-          lastSyncedAt: new Date()
-        }
-      });
+      const [created] = await this.client.insert(sysPlugin).values({
+        pluginId: data.pluginId,
+        name: data.name,
+        currentVersion: data.version,
+        coreCompatibility: data.coreCompatibility,
+        compatRange: data.compatRange,
+        routeBase: data.routeBase,
+        lifecycleState: data.lifecycleState,
+        enabled: data.enabled,
+        installedAt: now,
+        lastSyncedAt: now
+      }).$returningId()
+      plugin = { id: created.id } as any
     }
 
-    await this.client.sysPluginVersion.upsert({
-      where: {
-        pluginId_version: {
-          pluginId: plugin.id,
-          version: manifest.version
-        }
-      },
-      create: {
-        pluginId: plugin.id,
-        version: manifest.version,
-        manifest: manifest as unknown as object
-      },
-      update: {
-        manifest: manifest as unknown as object
+    if (!plugin) throw new Error('Failed to resolve plugin persistence row')
+    const pluginId = plugin.id
+
+    await this.client.insert(sysPluginVersion).values({
+      pluginId,
+      version: manifest.version,
+      manifest: manifest as unknown as object
+    }).onDuplicateKeyUpdate({
+      set: {
+        manifest: sql`VALUES(manifest)`
       }
     })
 
-    await this.client.sysPluginInstall.upsert({
-      where: { pluginId: plugin.id },
-      create: {
-        pluginId: plugin.id,
-        lifecycleState: data.lifecycleState,
-        enabled: data.enabled,
-        installedAt: new Date()
-      },
-      update: {
-        lifecycleState: data.lifecycleState,
-        enabled: data.enabled,
+    await this.client.insert(sysPluginInstall).values({
+      pluginId,
+      lifecycleState: data.lifecycleState,
+      enabled: data.enabled,
+      installedAt: now
+    }).onDuplicateKeyUpdate({
+      set: {
+        lifecycleState: sql`VALUES(lifecycle_state)`,
+        enabled: sql`VALUES(enabled)`,
         lastError: null
       }
     })
   }
 
   async updateRuntimeState(pluginId: string, name: string, state: PluginLifecycleState, enabled: boolean, error?: string): Promise<void> {
-    let plugin = await this.client.sysPlugin.findFirst({
-      where: { pluginId },
-      select: { id: true }
-    });
+    let plugin = await this.client.query.sysPlugin.findFirst({
+      where: eq(sysPlugin.pluginId, pluginId),
+      columns: { id: true }
+    })
 
     if (!plugin && name) {
-      plugin = await this.client.sysPlugin.findFirst({
-        where: { name },
-        select: { id: true }
-      });
+      plugin = await this.client.query.sysPlugin.findFirst({
+        where: eq(sysPlugin.name, name),
+        columns: { id: true }
+      })
     }
 
     if (!plugin) {
       return
     }
 
-    await this.client.sysPlugin.update({
-      where: { id: plugin.id },
-      data: {
+    const dbPluginId = plugin.id
+
+    await this.client.update(sysPlugin)
+      .set({
         lifecycleState: state,
         enabled,
         lastError: error,
         lastSyncedAt: new Date()
-      }
-    })
+      })
+      .where(eq(sysPlugin.id, dbPluginId))
 
-    await this.client.sysPluginInstall.upsert({
-      where: { pluginId: plugin.id },
-      create: {
-        pluginId: plugin.id,
-        lifecycleState: state,
-        enabled,
-        installedAt: new Date(),
-        lastError: error
-      },
-      update: {
-        lifecycleState: state,
-        enabled,
-        lastError: error,
+    await this.client.insert(sysPluginInstall).values({
+      pluginId: dbPluginId,
+      lifecycleState: state,
+      enabled,
+      installedAt: new Date(),
+      lastError: error
+    }).onDuplicateKeyUpdate({
+      set: {
+        lifecycleState: sql`VALUES(lifecycle_state)`,
+        enabled: sql`VALUES(enabled)`,
+        lastError: sql`VALUES(last_error)`,
         uninstalledAt: state === 'unloaded' ? new Date() : null
       }
     })
   }
 
   async listRuntimeStates(): Promise<PersistedPluginRuntimeState[]> {
-    const rows = await this.client.sysPlugin.findMany({
-      select: {
-        pluginId: true,
-        name: true,
-        currentVersion: true,
-        coreCompatibility: true,
-        lifecycleState: true,
-        enabled: true,
-        lastError: true,
-        updatedAt: true
-      }
+    const rows = await this.client.query.sysPlugin.findMany({
+      columns: runtimeColumns()
     })
 
     return rows.map((row) => ({
@@ -178,33 +196,15 @@ export class PluginPersistenceRepository {
   }
 
   async getRuntimeState(pluginId: string, name?: string): Promise<PersistedPluginRuntimeState | null> {
-    let row = await this.client.sysPlugin.findFirst({
-      where: { pluginId },
-      select: {
-        pluginId: true,
-        name: true,
-        currentVersion: true,
-        coreCompatibility: true,
-        lifecycleState: true,
-        enabled: true,
-        lastError: true,
-        updatedAt: true
-      }
+    let row = await this.client.query.sysPlugin.findFirst({
+      where: eq(sysPlugin.pluginId, pluginId),
+      columns: runtimeColumns()
     })
 
     if (!row && name) {
-      row = await this.client.sysPlugin.findFirst({
-        where: { name },
-        select: {
-          pluginId: true,
-          name: true,
-          currentVersion: true,
-          coreCompatibility: true,
-          lifecycleState: true,
-          enabled: true,
-          lastError: true,
-          updatedAt: true
-        }
+      row = await this.client.query.sysPlugin.findFirst({
+        where: eq(sysPlugin.name, name),
+        columns: runtimeColumns()
       })
     }
 
@@ -242,6 +242,43 @@ export class PluginPersistenceService {
     return this.memoryState.get(pluginId)
   }
 
+  /**
+   * 实现 PluginStateReader 接口，供 PermissionCatalogService 使用。
+   * 返回插件状态快照数组，使用 enabled + updatedAt 指纹实现多实例最终一致。
+   * 注意：此方法在数据库读取失败时会降级返回内存状态，仅适用于管理页展示，
+   * 不可作为授权目录的 reader。
+   */
+  async listPluginStates(): Promise<PluginStateSnapshot[]> {
+    const states = await this.listRuntimeStates();
+    return states
+      .filter(state => state.pluginId)
+      .map(state => ({
+        pluginId: state.pluginId!,
+        enabled: state.enabled,
+        updatedAt: state.updatedAt ? state.updatedAt.toISOString() : null,
+      }));
+  }
+
+  /**
+   * 授权目录专用：只使用数据库事实状态，读取失败必须抛错。
+   * 禁止内存降级；调用方据此拒绝授权。
+   */
+  async listPluginStatesStrict(): Promise<PluginStateSnapshot[]> {
+    try {
+      const states = await this.repository.listRuntimeStates();
+      return states
+        .filter(state => state.pluginId)
+        .map(state => ({
+          pluginId: state.pluginId!,
+          enabled: state.enabled,
+          updatedAt: state.updatedAt ? state.updatedAt.toISOString() : null,
+        }));
+    } catch (error) {
+      this.markDegraded(error, 'strict plugin state read failed');
+      throw error;
+    }
+  }
+
   async syncManifest(manifest: PluginManifest): Promise<void> {
     const record = mapManifestToRecord(manifest)
     this.memoryState.set(record.pluginId, record)
@@ -253,7 +290,20 @@ export class PluginPersistenceService {
     }
   }
 
-  async updateRuntimeState(pluginId: string, name: string, state: PluginLifecycleState, enabled: boolean, error?: string): Promise<void> {
+  /**
+   * 兼容旧的非严格写入口；**禁止**用于插件启停流程。
+   *
+   * 仅供诊断、批量 reconcile 等非关键场景使用；调用方需要能够容忍数据库失败
+   * 后内存状态与持久化状态不一致的情况。插件启用/禁用必须使用
+   * {@link PluginPersistenceService.updateRuntimeStateStrict}。
+   */
+  async updateRuntimeState(
+    pluginId: string,
+    name: string,
+    state: PluginLifecycleState,
+    enabled: boolean,
+    error?: string,
+  ): Promise<void> {
     const current = this.memoryState.get(pluginId)
     if (current) {
       current.lifecycleState = state
@@ -265,6 +315,35 @@ export class PluginPersistenceService {
       await this.repository.updateRuntimeState(pluginId, name, state, enabled, error)
     } catch (persistError) {
       this.markDegraded(persistError, 'update runtime state failed')
+    }
+  }
+
+  /**
+   * 插件生命周期状态变更专用：直接写数据库，写失败必须抛错。
+   *
+   * 写入数据库成功后才允许更新 `memoryState`，失败时不允许把内存状态伪装为
+   * 已持久化状态。`PluginManageService` 必须先调用本方法，DB 写入成功后再
+   * 执行 runtime/menu 等副作用。
+   */
+  async updateRuntimeStateStrict(
+    pluginId: string,
+    name: string,
+    state: PluginLifecycleState,
+    enabled: boolean,
+    error?: string,
+  ): Promise<void> {
+    try {
+      await this.repository.updateRuntimeState(pluginId, name, state, enabled, error)
+    } catch (cause) {
+      this.markDegraded(cause, 'strict plugin runtime state write failed')
+      throw cause
+    }
+    // DB 持久化成功后，再安全地同步内存视图（用于管理页显示与降级 fallback）。
+    const current = this.memoryState.get(pluginId)
+    if (current) {
+      current.lifecycleState = state
+      current.enabled = enabled
+      current.lastError = error
     }
   }
 
@@ -308,6 +387,27 @@ export class PluginPersistenceService {
       lifecycleState: memoryRecord.lifecycleState,
       enabled: memoryRecord.enabled,
       lastError: memoryRecord.lastError
+    }
+  }
+
+  /**
+   * 严格按数据库读取单条运行时状态，失败必须抛错。
+   *
+   * 仅读取持久化事实状态，不调用任何 memory fallback；用于
+   * `PluginManageService` 启停操作前的“原始状态取证”，
+   * 以及需要确权业务依赖真实持久化数据的场景。
+   *
+   * 数据库无对应记录时返回 `null`；数据库读异常时抛错并标记 degraded。
+   */
+  async getRuntimeStateStrict(
+    pluginId: string,
+    name?: string,
+  ): Promise<PersistedPluginRuntimeState | null> {
+    try {
+      return await this.repository.getRuntimeState(pluginId, name)
+    } catch (cause) {
+      this.markDegraded(cause, 'strict plugin state single read failed')
+      throw cause
     }
   }
 

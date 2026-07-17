@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { ResponseUtil } from '../../../../../../../utils/response.js'
 import { PluginManageService } from '../../../../../../services/plugin-manage.service.js'
 import { SyncStrategy } from '../../../../../../services/plugin-menu-sync.service.js'
+import { PERMISSION_CODES } from '../../../../../../../constants/permission-codes.js'
 
 const VALID_STRATEGIES: SyncStrategy[] = ['strict', 'safe']
 
@@ -11,10 +12,11 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/hooks/reports',
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_PLUGIN_AUDIT)] as any,
       schema: {
         summary: '获取插件 Hook 执行报告',
-        tags: ['system']
+        tags: ['system'],
+        operationId: 'getPluginHookReports',
       }
     },
     async (request, reply) => {
@@ -27,10 +29,11 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/',
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_PLUGIN_LIST)] as any,
       schema: {
         summary: '获取插件列表',
-        tags: ['system']
+        tags: ['system'],
+        operationId: 'listPlugins',
       }
     },
     async (_request, reply) => {
@@ -42,10 +45,11 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/:name',
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_PLUGIN_LIST)] as any,
       schema: {
         summary: '获取插件详情',
-        tags: ['system']
+        tags: ['system'],
+        operationId: 'getPluginDetail',
       }
     },
     async (request, reply) => {
@@ -57,10 +61,11 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/:name/sync-logs',
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_PLUGIN_LIST)] as any,
       schema: {
         summary: '获取插件菜单同步历史',
-        tags: ['system']
+        tags: ['system'],
+        operationId: 'getPluginSyncLogs',
       }
     },
     async (request, reply) => {
@@ -74,10 +79,11 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
   fastify.post(
     '/:name/enable',
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_PLUGIN_ENABLE)] as any,
       schema: {
         summary: '启用插件（可选 syncStrategy: strict | safe）',
-        tags: ['system']
+        tags: ['system'],
+        operationId: 'enablePlugin',
       }
     },
     async (request, reply) => {
@@ -92,10 +98,11 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
   fastify.post(
     '/:name/sync',
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_PLUGIN_SYNC)] as any,
       schema: {
         summary: '手动同步插件菜单（插件需已启用）',
-        tags: ['system']
+        tags: ['system'],
+        operationId: 'syncPluginMenu',
       }
     },
     async (request, reply) => {
@@ -110,10 +117,11 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
   fastify.post(
     '/:name/disable',
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_PLUGIN_DISABLE)] as any,
       schema: {
         summary: '停用插件',
-        tags: ['system']
+        tags: ['system'],
+        operationId: 'disablePlugin',
       }
     },
     async (request, reply) => {

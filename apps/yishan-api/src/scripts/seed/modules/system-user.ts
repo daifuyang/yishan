@@ -1,9 +1,11 @@
-import type { PrismaClient, SysUser } from '../../../generated/prisma/client.js';
+import { eq } from 'drizzle-orm';
+import { sysUser } from '@/db/schema';
 import { hashPassword } from '../../../utils/password.js';
 import { adminSeed } from '../config.js';
+import type { SeedDb } from '../context.js';
 
-export async function ensureAdminUser(prisma: PrismaClient): Promise<SysUser> {
-  let adminUser = await prisma.sysUser.findUnique({ where: { username: adminSeed.username } });
+export async function ensureAdminUser(db: SeedDb): Promise<any> {
+  let adminUser = await db.query.sysUser.findFirst({ where: eq(sysUser.username, adminSeed.username) });
   if (adminUser) {
     console.log('管理员用户已存在，跳过创建');
     return adminUser;
@@ -11,24 +13,27 @@ export async function ensureAdminUser(prisma: PrismaClient): Promise<SysUser> {
 
   const hashedPassword = await hashPassword(adminSeed.password);
 
-  adminUser = await prisma.sysUser.create({
-    data: {
-      username: adminSeed.username,
-      email: adminSeed.email,
-      phone: adminSeed.phone,
-      passwordHash: hashedPassword,
-      realName: adminSeed.realName,
-      nickname: adminSeed.nickname,
-      avatar: adminSeed.avatar,
-      gender: adminSeed.gender,
-      status: 1,
-      loginCount: 0,
-      // 保持与原脚本一致：管理员创建自己（约定为 1）
-      creatorId: 1,
-      updaterId: 1,
-      version: 1,
-    },
+  await db.insert(sysUser).values({
+    username: adminSeed.username,
+    email: adminSeed.email,
+    phone: adminSeed.phone,
+    passwordHash: hashedPassword,
+    realName: adminSeed.realName,
+    nickname: adminSeed.nickname,
+    avatar: adminSeed.avatar,
+    gender: adminSeed.gender,
+    status: 1,
+    loginCount: 0,
+    // 保持与原脚本一致：管理员创建自己（约定为 1）
+    creatorId: 1,
+    updaterId: 1,
+    version: 1,
   });
+
+  adminUser = await db.query.sysUser.findFirst({ where: eq(sysUser.username, adminSeed.username) });
+  if (!adminUser) {
+    throw new Error(`管理员用户数据写入后未找到: ${adminSeed.username}`);
+  }
 
   console.log('管理员用户创建成功:', {
     id: adminUser.id,
@@ -37,10 +42,7 @@ export async function ensureAdminUser(prisma: PrismaClient): Promise<SysUser> {
     realName: adminUser.realName,
     nickname: adminUser.nickname,
   });
-  console.log('管理员登录信息:');
-  console.log(`用户名: ${adminSeed.username}`);
-  console.log(`密码: ${adminSeed.password}`);
+  console.log(`管理员账号已创建: ${adminSeed.username}`);
 
   return adminUser;
 }
-

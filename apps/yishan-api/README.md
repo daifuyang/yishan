@@ -1,12 +1,12 @@
 # Yishan API 项目
 
-这是一个基于 Fastify 框架构建的高性能 Node.js API 服务，采用 TypeScript 开发，使用 Prisma ORM 进行数据库操作。
+这是一个基于 Fastify 框架构建的高性能 Node.js API 服务，采用 TypeScript 开发，使用 Drizzle ORM 进行数据库操作。
 
 ## 技术栈
 
 - **框架**: Fastify 5.x
 - **语言**: TypeScript 5.8.x (严格模式)
-- **数据库**: MySQL + Prisma ORM
+- **数据库**: MySQL + Drizzle ORM
 - **认证**: JWT (Fastify JWT)
 - **缓存**: Redis
 - **文档**: Swagger/OpenAPI
@@ -22,9 +22,8 @@
 │   ├── plugins/modules/  # 业务插件模块
 │   ├── constants/        # 常量定义 (错误码、业务码)
 │   ├── utils/            # 工具类 (响应工具、数据库连接等)
-│   └── generated/        # 自动生成的代码 (Prisma Client)
-├── prisma/schema/        # Prisma 多文件 schema
-├── prisma/migrations/    # Prisma 迁移文件
+│   └── db/schema/        # 由 scripts/generate-drizzle-schema.mjs 从 drizzle/*.sql 生成的 Drizzle Table 定义
+├── drizzle/              # drizzle-kit 维护的 SQL 迁移源文件
 ├── docs/                 # 项目文档
 ├── test/                 # 应用级测试文件
 └── ...
@@ -61,7 +60,7 @@ JWT_SECRET="your-secret-key"
 ### 数据库初始化
 
 ```bash
-# 生成 Prisma 客户端
+# 从 drizzle/*.sql 重新生成 Drizzle schema
 pnpm run db:generate
 
 # 运行数据库迁移
@@ -71,41 +70,70 @@ pnpm run db:init
 pnpm run db:seed
 ```
 
-### FC3 Layered 部署
+### fc函数部署
 
-当前只保留 FC3 layered 部署链路，函数名为 `yishan-demo-layered`，Admin 静态资源通过 API 一体化部署。
-
-1. 配置阿里云账号：
+1. 安装 Serverless Framework：
 ```bash
+npm install -g serverless
+```
+
+2. 配置 Serverless Framework：
+```bash
+s config add
+```
+
+3. 模拟线上环境
+```bash
+docker run --platform linux/amd64 -it --name yishan-api-serverless-dev  -v ./:/code registry.cn-beijing.aliyuncs.com/aliyunfc/runtime-custom.debian10:build-3.1.0 bash
+```
+
+4. 执行部署脚本
+```bash
+./deploy/fc3/pre-deploy.sh
+./deploy/fc3/deploy.sh
+```
+
+3. 部署函数：
+```bash
+s deploy -y
+```
+
+### FC 函数部署（单服务）
+
+当前配置使用一个 FC 服务 `yishan-demo`，同时部署 API 和 `public/admin` 静态前端，部署文件为 `deploy/fc3/s.yaml`。
+
+1. 配置阿里云账号（建议两个别名）：
+```bash
+# 企业账号（FC 部署）
 s config add --AccessKeyID <FC_ACCESS_KEY_ID> --AccessKeySecret <FC_ACCESS_KEY_SECRET> --AccountID <ACCOUNT_ID> --alias enterprise
+
+# 个人账号（DNS 验证签发证书）
+s config add --AccessKeyID <DNS_ACCESS_KEY_ID> --AccessKeySecret <DNS_ACCESS_KEY_SECRET> --AccountID <ACCOUNT_ID> --alias dns
 ```
 
-2. 构建 Admin 二级目录产物并同步到 API：
+2. 使用 DNS 验证签发证书（示例域名：`example.zerocmf.com`）：
 ```bash
-cd /path/to/yishan
-pnpm --filter yishan-tiptap build
-pnpm build:admin:fc
+export Ali_Key=<DNS_ACCESS_KEY_ID>
+export Ali_Secret=<DNS_ACCESS_KEY_SECRET>
+~/.acme.sh/acme.sh --issue --dns dns_ali -d example.zerocmf.com --keylength 2048
+~/.acme.sh/acme.sh --install-cert -d example.zerocmf.com \
+  --fullchain-file /mnt/c/Workspace/Frontend/yishan/apps/yishan-api/deploy/fc3/certs/fullchain.cer \
+  --key-file /mnt/c/Workspace/Frontend/yishan/apps/yishan-api/deploy/fc3/certs/private.key
 ```
 
-3. 在 API 目录构建并部署 Layered 函数：
+3. 构建并打包运行文件（包含前端）：
 ```bash
-cd apps/yishan-api
-set -a
-. ./.env
-set +a
-./deploy/fc3/pre-deploy-layered.sh
-./deploy/fc3/deploy-layered-function.sh
+./deploy/fc3/pre-deploy.sh
 ```
 
-4. 如需更新自定义域名与证书：
+4. 部署并验证：
 ```bash
-export FC_FUNCTION_NAME='yishan-demo-layered'
-export FC_CUSTOM_DOMAIN='example.zerocmf.com'
-export FC_CERT_NAME="example-zerocmf-com-$(date +%Y%m%d)"
-./deploy/fc3/deploy-layered-domain.sh
+s deploy -y
+s info
+curl -I https://example.zerocmf.com/admin/user/login/index.html
 ```
 
-完整说明见 `deploy/fc3/README-layer.md`。安全要求：不要提交 `AccessKey`、证书私钥、`deploy/fc3/certs` 与 `.env`。
+安全要求：不要提交 `AccessKey`、证书私钥与 `.env`，并保持 `deploy/fc3/certs` 在 `.gitignore` 中。
 
 ## 可用脚本
 
@@ -167,7 +195,7 @@ pnpm run cli -- api attachments create --file ./test.png --kind image --name tes
 
 ### 数据库特性
 - MySQL 关系型数据库
-- Prisma ORM 类型安全
+- Drizzle ORM + drizzle-kit 类型安全
 - 自动迁移管理
 - 数据索引优化
 - 软删除支持
@@ -189,7 +217,7 @@ pnpm run cli -- api attachments create --file ./test.png --kind image --name tes
 
 1. **路由层**: RESTful 设计，使用 TypeBox Schema 验证
 2. **服务层**: 业务逻辑处理，保持单一职责
-3. **模型层**: 数据库操作，使用 Prisma ORM
+3. **Repository 层**: 数据库操作，使用 Drizzle ORM
 4. **响应格式**: 统一使用 `ResponseUtil` 工具类
 5. **错误处理**: 使用业务错误码，统一异常处理
 
@@ -243,5 +271,5 @@ MIT License
 ## 技术支持
 
 - Fastify 文档: https://fastify.dev/docs/latest/
-- Prisma 文档: https://www.prisma.io/docs/
+- Drizzle 文档: https://orm.drizzle.team/docs/overview
 - TypeScript 文档: https://www.typescriptlang.org/docs/

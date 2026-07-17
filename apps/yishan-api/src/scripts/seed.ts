@@ -1,13 +1,11 @@
 import 'dotenv/config';
 
-import { prismaManager } from '../utils/prisma.js';
+import { pool } from '@/db';
 import { runSeed } from './seed/index.js';
-
-const prisma = prismaManager.getClient();
 
 async function main() {
   try {
-    await runSeed(prisma as any);
+    await runSeed();
   } catch (error) {
     console.error('种子数据创建失败:', error);
     throw error;
@@ -20,6 +18,6 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await pool.end();
     console.log('种子数据脚本执行完成');
   });

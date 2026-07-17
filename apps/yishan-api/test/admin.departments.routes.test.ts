@@ -10,7 +10,10 @@ import { BusinessError } from '../src/exceptions/business-error.js'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 async function buildApp() {
-  const app = Fastify({ logger: false })
+  const app = Fastify({ logger: false });
+    // 单测不需要真实 RBAC 校验：no-op 占位。
+    app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
+    app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
   await app.register(errorHandlerPlugin)
   // 先注册通用Schema（包含paginationResponse），否则响应schema校验会失败
   registerCommonSchemas(app)
@@ -51,7 +54,7 @@ describe('Admin Departments routes', () => {
 
     vi.spyOn(DeptService, 'getDeptList').mockResolvedValue({ list, total: 1, page: 1, pageSize: 10 })
 
-    const res = await app.inject({ method: 'GET', url: '/?page=1&pageSize=10&keyword=tech&status=1&sortBy=sort_order&sortOrder=asc' })
+    const res = await app.inject({ method: 'GET', url: '/?page=1&pageSize=10&keyword=tech&status=1&sortBy=sortOrder&sortOrder=asc' })
 
     expect(res.statusCode).toBe(200)
     const body = res.json()

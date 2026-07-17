@@ -65,7 +65,6 @@ test/types/index.js
 dist
 /public
 
-prisma/migrations
 src/generated
 deploy/fc3/certs
 deploy/fc3/.build

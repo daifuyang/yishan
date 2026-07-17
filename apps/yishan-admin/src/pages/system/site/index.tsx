@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { PageContainer, ProForm, ProFormText, ProFormTextArea } from "@ant-design/pro-components";
+import {
+  FooterToolbar,
+  PageContainer,
+  ProForm,
+  ProFormText,
+  ProFormTextArea,
+} from "@ant-design/pro-components";
 import { App, Card } from "antd";
 import { batchGetSystemOptionByQuery, batchSetSystemOption } from "@/services/yishan-admin/system";
 
@@ -80,6 +86,9 @@ const SiteConfigPage: React.FC = () => {
           grid
           formRef={formRef}
           initialValues={initialValues}
+          submitter={{
+            render: (_, dom) => <FooterToolbar>{dom}</FooterToolbar>,
+          }}
           onFinish={async (values) => {
             const payload: BasicConfig = {
               ...defaultBasicConfig,

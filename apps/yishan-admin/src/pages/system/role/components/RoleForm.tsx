@@ -1,10 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Form, Tree, Checkbox, Space, Spin } from 'antd';
-import { ModalForm, ProFormText, ProFormRadio, ProFormTextArea, ProFormSelect } from '@ant-design/pro-components';
+import { Col, Form, Tree, Checkbox, Space, Spin } from 'antd';
+import {
+  ModalForm,
+  ProFormText,
+  ProFormRadio,
+  ProFormTextArea,
+  ProFormSelect,
+} from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 import { getMenuTree } from '@/services/yishan-admin/sysMenus';
 import type { DataNode } from 'antd/es/tree';
-import { getRoleDetail, createRole, updateRole } from '@/services/yishan-admin/sysRoles';
+import {
+  getRoleDetail,
+  createRole,
+  updateRole,
+} from '@/services/yishan-admin/sysRoles';
 
 export interface RoleFormProps {
   title: string;
@@ -29,7 +39,8 @@ const RoleForm: React.FC<RoleFormProps> = ({
 
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
-  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+  const defaultStatusDict: Array<{ label: string; value: string }> =
+    dictDataMap.default_status || [];
   const dataScopeOptions = [
     { label: '全部数据', value: '1' },
     { label: '本部门数据', value: '2' },
@@ -81,7 +92,9 @@ const RoleForm: React.FC<RoleFormProps> = ({
       const res = await getMenuTree();
       const nodes = buildTree(res.data || []);
       setTreeData(nodes);
-      setExpandedKeys(expandAllChecked ? nodes.map((n) => n.key as React.Key) : []);
+      setExpandedKeys(
+        expandAllChecked ? nodes.map((n) => n.key as React.Key) : [],
+      );
     } finally {
       setMenuTreeLoading(false);
     }
@@ -96,7 +109,17 @@ const RoleForm: React.FC<RoleFormProps> = ({
       title={title}
       trigger={trigger}
       autoFocusFirstInput
-      modalProps={{ destroyOnClose: true, maskClosable: false }}
+      modalProps={{
+        destroyOnClose: true,
+        maskClosable: false,
+        styles: {
+          body: {
+            maxHeight: 'calc(100vh - 300px)',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+          },
+        },
+      }}
       grid
       initialValues={initialValues}
       onFinish={async (values) => {
@@ -115,7 +138,10 @@ const RoleForm: React.FC<RoleFormProps> = ({
           }
           return false;
         }
-        const res = await updateRole({ id: Number(initialValues.id) }, basePayload as API.updateRoleReq);
+        const res = await updateRole(
+          { id: Number(initialValues.id) },
+          basePayload as API.updateRoleReq,
+        );
         if (res.success) {
           await onFinish?.();
           return true;
@@ -166,46 +192,69 @@ const RoleForm: React.FC<RoleFormProps> = ({
         colProps={{ span: 24 }}
       />
 
-      <Form.Item label="菜单权限">
-        <Space style={{ marginBottom: 8 }}>
-          <Checkbox
-            checked={expandAllChecked}
-            onChange={(e) => {
-              const v = e.target.checked;
-              setExpandAllChecked(v);
-              setExpandedKeys(v ? allKeys : []);
+      <Col span={24}>
+        <Form.Item label="菜单权限">
+          <Space style={{ marginBottom: 8 }}>
+            <Checkbox
+              checked={expandAllChecked}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setExpandAllChecked(v);
+                setExpandedKeys(v ? allKeys : []);
+              }}
+            >
+              展开/折叠
+            </Checkbox>
+            <Checkbox
+              checked={checkAllChecked}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setCheckAllChecked(v);
+                setCheckedKeys(v ? allKeys : []);
+              }}
+            >
+              全选/全不选
+            </Checkbox>
+            <Checkbox
+              checked={linkageChecked}
+              onChange={(e) => setLinkageChecked(e.target.checked)}
+            >
+              父子联动
+            </Checkbox>
+          </Space>
+          <div
+            style={{
+              boxSizing: 'border-box',
+              maxHeight: 320,
+              overflowX: 'hidden',
+              overflowY: 'auto',
+              width: '100%',
             }}
-          >展开/折叠</Checkbox>
-          <Checkbox
-            checked={checkAllChecked}
-            onChange={(e) => {
-              const v = e.target.checked;
-              setCheckAllChecked(v);
-              setCheckedKeys(v ? allKeys : []);
-            }}
-          >全选/全不选</Checkbox>
-          <Checkbox
-            checked={linkageChecked}
-            onChange={(e) => setLinkageChecked(e.target.checked)}
-          >父子联动</Checkbox>
-        </Space>
-        <Spin spinning={menuTreeLoading}>
-          <Tree
-            checkable
-            selectable={false}
-            treeData={treeData}
-            checkedKeys={checkedKeys}
-            onCheck={(checked) => {
-              const keys = Array.isArray(checked) ? checked : (checked.checked as React.Key[]);
-              setCheckedKeys(keys);
-              setCheckAllChecked(keys.length === allKeys.length);
-            }}
-            expandedKeys={expandedKeys}
-            onExpand={(keys) => setExpandedKeys(keys as React.Key[])}
-            checkStrictly={!linkageChecked}
-          />
-        </Spin>
-      </Form.Item>
+          >
+            <Spin
+              spinning={menuTreeLoading}
+              style={{ display: 'block', width: '100%' }}
+            >
+              <Tree
+                checkable
+                selectable={false}
+                treeData={treeData}
+                checkedKeys={checkedKeys}
+                onCheck={(checked) => {
+                  const keys = Array.isArray(checked)
+                    ? checked
+                    : (checked.checked as React.Key[]);
+                  setCheckedKeys(keys);
+                  setCheckAllChecked(keys.length === allKeys.length);
+                }}
+                expandedKeys={expandedKeys}
+                onExpand={(keys) => setExpandedKeys(keys as React.Key[])}
+                checkStrictly={!linkageChecked}
+              />
+            </Spin>
+          </div>
+        </Form.Item>
+      </Col>
     </ModalForm>
   );
 };

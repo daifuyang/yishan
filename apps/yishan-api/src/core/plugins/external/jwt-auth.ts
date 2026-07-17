@@ -6,14 +6,21 @@ import { AuthErrorCode } from '../../../constants/business-codes/auth.js'
 import { UserErrorCode } from '../../../constants/business-codes/user.js'
 import { BusinessError } from '../../../exceptions/business-error.js'
 import { JWT_CONFIG } from '../../../config/index.js'
-import { SysUserTokenModel } from '../../models/sys-user-token.model.js'
-import { SysUserModel } from '../../models/sys-user.model.js'
+import { UserTokenRepository } from '../../repositories/user-token.repository.js'
+import { UserService } from '../../services/user.service.js'
+import { ApiTokenRepository } from '../../repositories/api-token.repository.js'
 import { SysUserResp } from '../../schemas/user.js'
 
 export const autoConfig = {
   secret: JWT_CONFIG.secret,
   sign: {
     expiresIn: JWT_CONFIG.expiresIn
+  },
+  // 允许 jwtVerify() 在没有 Authorization header 时回退到 HttpOnly cookie 读取访问令牌。
+  // cookie 内容即已由 JWT 自签名校验，故 signed: false。
+  cookie: {
+    cookieName: 'yishan_at',
+    signed: false
   },
   messages: {
     badRequestErrorMessage: '授权格式应为 Authorization: Bearer <访问令牌>',
@@ -29,24 +36,67 @@ export default fp(async (fastify) => {
 
   // 添加JWT验证装饰器
   fastify.decorate('authenticate', async function(request: FastifyRequest, reply: FastifyReply) {
-    // 检查Authorization头是否存在
+    // 认证令牌来源：优先 Authorization header（Bearer），其次回退到 HttpOnly cookie（yishan_at）
     const authHeader = request.headers.authorization
-    if (!authHeader) {
+    let token: string | undefined
+
+    if (authHeader) {
+      // 检查Bearer格式
+      if (!authHeader.startsWith('Bearer ')) {
+        throw new BusinessError(
+          ValidationErrorCode.PARAMETER_FORMAT_ERROR,
+          '授权信息格式不正确，请使用 Authorization: Bearer <访问令牌>。'
+        )
+      }
+      token = authHeader.substring(7)
+    } else if (request.cookies?.yishan_at) {
+      // 浏览器场景：从 HttpOnly cookie 读取访问令牌
+      token = request.cookies.yishan_at
+    }
+
+    if (!token) {
       throw new BusinessError(
         AuthErrorCode.UNAUTHORIZED,
         '未登录或登录已失效，请在请求头中携带授权信息（Authorization: Bearer <访问令牌>）后重试。'
       )
     }
 
-    // 检查Bearer格式
-    if (!authHeader.startsWith('Bearer ')) {
-      throw new BusinessError(
-        ValidationErrorCode.PARAMETER_FORMAT_ERROR,
-        '授权信息格式不正确，请使用 Authorization: Bearer <访问令牌>。'
-      )
-    }
+    // API Token (GitHub PAT style) 鉴权： opaque token 不能落入 JWT 校验分支
+    if (token.startsWith('yishan_pat_')) {
+      const apiToken = await ApiTokenRepository.findByRawToken(token)
+      if (!apiToken) {
+        throw new BusinessError(
+          AuthErrorCode.API_TOKEN_NOT_FOUND,
+          'API Token 不存在、已过期或已被撤销。'
+        )
+      }
 
-    const token = authHeader.substring(7)
+      const currentUser = await UserService.getUserById(apiToken.userId)
+      if (!currentUser) {
+        throw new BusinessError(
+          AuthErrorCode.API_TOKEN_REVOKED,
+          'API Token 关联用户不存在或已不可用。'
+        )
+      }
+
+      if (currentUser.status === "0" || currentUser.status === "2") {
+        throw new BusinessError(
+          AuthErrorCode.API_TOKEN_REVOKED,
+          'API Token 关联用户已被禁用或锁定。'
+        )
+      }
+
+      request.currentUser = currentUser
+      // Section 2 — PAT 用户必须仅在 tokenScope 范围内有权限：
+      // `requirePermission` 在校验时会与 role-based perms 取交集。
+      ;(request as any).tokenScope = apiToken.scopes ?? []
+      setImmediate(() => {
+        ApiTokenRepository.touch(apiToken.id, request.ip ?? null).catch((err) => {
+          request.log.warn({ err, apiTokenId: apiToken.id }, 'Failed to update API token last-used metadata')
+        })
+      })
+      return
+    }
 
     // 验证JWT签名与有效性
     try {
@@ -82,7 +132,7 @@ export default fp(async (fastify) => {
     }
 
     // 数据库中校验令牌未被撤销且仍有效
-    const record = await SysUserTokenModel.findByAccessToken(token)
+    const record = await UserTokenRepository.findByAccessToken(token)
     if (!record) {
       throw new BusinessError(
         AuthErrorCode.TOKEN_INVALID,
@@ -91,7 +141,7 @@ export default fp(async (fastify) => {
     }
 
     // 鉴权成功将当前用户信息挂载到request对象上
-    const currentUser = await SysUserModel.getUserById(record.userId)
+    const currentUser = await UserService.getUserById(record.userId)
     if (!currentUser) {
       throw new BusinessError(
         AuthErrorCode.TOKEN_INVALID,

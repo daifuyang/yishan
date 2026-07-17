@@ -11,11 +11,6 @@ export const getBasePrefixFromPublicPath = (rawPath) => {
     const normalized = normalizePublicPath(rawPath);
     return normalized === '/' ? '' : normalized.replace(/\/+$/, '');
 };
-export const resolvePublicAssetPath = (rawPath, assetPath) => {
-    const normalized = normalizePublicPath(rawPath);
-    const asset = assetPath.replace(/^\/+/, '');
-    return `${normalized}${asset}`;
-};
 export const stripBasePrefix = (pathname, basePrefix) => {
     if (!basePrefix)
         return pathname;

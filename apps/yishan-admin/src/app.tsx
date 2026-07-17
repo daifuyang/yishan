@@ -19,36 +19,12 @@ import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
 import type { CloudStorageConfig } from "@/utils/attachmentUpload";
 import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
 import avatarFallback from "@public/icons/avatar.png";
-import { TOKEN_KEYS } from "./utils/token";
 import queryString from "query-string";
-import { getBasePrefixFromPublicPath, resolvePublicAssetPath, stripBasePrefix } from "../shared/publicPath";
+import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPath";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
 const ADMIN_BASE = getBasePrefixFromPublicPath(__APP_BASE__);
-type AppLayoutSettings = Partial<LayoutSettings> & { logo?: string };
-
-const normalizeConfiguredAssetPath = (value?: string) => {
-  if (!value) return value;
-  if (/^(?:[a-z]+:)?\/\//i.test(value) || value.startsWith("data:") || value.startsWith("blob:")) {
-    return value;
-  }
-  if (!value.startsWith("/") || !ADMIN_BASE) {
-    return value;
-  }
-  if (value === ADMIN_BASE || value.startsWith(`${ADMIN_BASE}/`)) {
-    return value;
-  }
-  return resolvePublicAssetPath(__APP_BASE__, value);
-};
-
-const normalizeLayoutSettings = (settings?: AppLayoutSettings): AppLayoutSettings | undefined => {
-  if (!settings) return settings;
-  return {
-    ...settings,
-    logo: typeof settings.logo === "string" ? normalizeConfiguredAssetPath(settings.logo) : settings.logo,
-  };
-};
 
 const getRelativePath = (pathname: string) => {
   return stripBasePrefix(pathname, ADMIN_BASE);
@@ -56,26 +32,30 @@ const getRelativePath = (pathname: string) => {
 
 const isLoginRoute = (pathname: string) => getRelativePath(pathname) === loginPath;
 
-const IconMap: Record<string, JSX.Element> = {
-  appstore: <AppstoreOutlined />,
-  appstoreoutlined: <AppstoreOutlined />,
-  setting: <SettingOutlined />,
-  settingoutlined: <SettingOutlined />,
-  smile: <SmileOutlined />,
-  smileoutlined: <SmileOutlined />,
-  read: <ReadOutlined />,
-  readoutlined: <ReadOutlined />,
-  shopping: <ShoppingOutlined />,
-  folder: <FolderOutlined />,
-  inbox: <InboxOutlined />,
-  'file-text': <FileTextOutlined />,
+const IconMap: Record<string, () => JSX.Element> = {
+  appstore: () => <AppstoreOutlined />,
+  appstoreoutlined: () => <AppstoreOutlined />,
+  setting: () => <SettingOutlined />,
+  settingoutlined: () => <SettingOutlined />,
+  smile: () => <SmileOutlined />,
+  smileoutlined: () => <SmileOutlined />,
+  read: () => <ReadOutlined />,
+  readoutlined: () => <ReadOutlined />,
+  shopping: () => <ShoppingOutlined />,
+  folder: () => <FolderOutlined />,
+  inbox: () => <InboxOutlined />,
+  'file-text': () => <FileTextOutlined />,
 };
+function pickIcon(key: string): JSX.Element | undefined {
+  const factory = IconMap[String(key).toLowerCase()];
+  return factory ? factory() : undefined;
+}
 
 /**
  * @see https://umijs.org/docs/api/runtime-config#getinitialstate
  * */
 export async function getInitialState(): Promise<{
-  settings?: AppLayoutSettings;
+  settings?: Partial<LayoutSettings>;
   currentUser?: API.currentUser;
   loading?: boolean;
   fetchUserInfo?: () => Promise<API.currentUser | undefined>;
@@ -113,8 +93,19 @@ export async function getInitialState(): Promise<{
   const currentPath = getRelativePath(location.pathname);
   if (![loginPath, "/user/register"].includes(currentPath)) {
     const currentUser = await fetchUserInfo();
-    const dictDataMap = await fetchDictDataMap();
-    const cloudStorageConfig = await fetchCloudStorageConfig();
+    if (!currentUser) {
+      return {
+        fetchUserInfo,
+        fetchDictDataMap,
+        fetchCloudStorageConfig,
+        uploadAttachmentFile,
+        settings: defaultSettings as Partial<LayoutSettings>,
+      };
+    }
+    const [dictDataMap, cloudStorageConfig] = await Promise.all([
+      fetchDictDataMap(),
+      fetchCloudStorageConfig()
+    ]);
 
     return {
       fetchUserInfo,
@@ -124,7 +115,7 @@ export async function getInitialState(): Promise<{
       currentUser,
       dictDataMap,
       cloudStorageConfig,
-      settings: normalizeLayoutSettings(defaultSettings as AppLayoutSettings),
+      settings: defaultSettings as Partial<LayoutSettings>,
     };
   }
   return {
@@ -132,7 +123,7 @@ export async function getInitialState(): Promise<{
     fetchDictDataMap,
     fetchCloudStorageConfig,
     uploadAttachmentFile,
-    settings: normalizeLayoutSettings(defaultSettings as AppLayoutSettings),
+    settings: defaultSettings as Partial<LayoutSettings>,
   };
 }
 
@@ -151,7 +142,7 @@ const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => 
     const item: MenuDataItem = {
       name: n.name,
       path: n.path || '/',
-      icon: n.icon ? IconMap[String(n.icon).toLowerCase()] : undefined,
+      icon: n.icon ? pickIcon(String(n.icon)) : undefined,
       hideInMenu: n.hideInMenu,
     };
     if (Array.isArray(n.children) && n.children.length) {
@@ -273,6 +264,9 @@ export const layout: RunTimeLayoutConfig = ({
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const request: RequestConfig = {
+  // 允许跨域请求携带 HttpOnly 认证 cookie（同源请求默认即会携带，此项对同源无副作用）。
+  // 跨域场景（admin.* -> api.*）下后端需回显具体 origin 并返回 Access-Control-Allow-Credentials: true。
+  withCredentials: true,
   paramsSerializer(params) {
     return queryString.stringify(params);
   },
@@ -342,27 +336,24 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
 
 export function render(oldRender: () => void) {
   const currentPath = window.location.pathname;
-  const accessToken = localStorage.getItem(TOKEN_KEYS.ACCESS_TOKEN);
   const loginUrl = `${ADMIN_BASE}/user/login`;
-  if (!accessToken || isLoginRoute(currentPath)) {
+  // 认证态由 HttpOnly cookie 承载（JS 不可读），登录页直接渲染；
+  // 其余路由先尝试拉取授权菜单树，未认证时后端返回 401 -> 跳转登录页。
+  if (isLoginRoute(currentPath)) {
     oldRender();
     return;
   }
 
-  if (!isLoginRoute(currentPath)) {
-    getAuthorizedMenuTree().then((res) => {
-      const menus = res.data || [];
-      extraRoutes = menus;
-      oldRender();
-    }).catch((error: any) => {
-      if (error?.response?.status === 401) {
-        window.location.href = loginUrl;
-        return;
-      }
-      extraRoutes = [];
-      oldRender();
-    });
-  } else {
+  getAuthorizedMenuTree().then((res) => {
+    const menus = res.data || [];
+    extraRoutes = menus;
     oldRender();
-  }
+  }).catch((error: any) => {
+    if (error?.response?.status === 401) {
+      window.location.href = loginUrl;
+      return;
+    }
+    extraRoutes = [];
+    oldRender();
+  });
 }

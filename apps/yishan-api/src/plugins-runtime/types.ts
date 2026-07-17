@@ -1,3 +1,10 @@
+export interface PluginPermission {
+  code: string;
+  label: string;
+  description?: string;
+  group?: string;
+}
+
 export interface PluginMenuItem {
   channel: string
   path: string
@@ -18,7 +25,12 @@ export interface PluginManifest {
   channels?: string[]
   routeBase?: string
   icon?: string
-  permissions?: string[]
+  /**
+   * 插件声明的权限列表。
+   * 必须使用结构化对象数组格式，不兼容 string[]。
+   * 每个权限对象必须包含 code（唯一标识）和 label（UI 展示）。
+   */
+  permissions: PluginPermission[]
   menus?: PluginMenuItem[]
 }
 

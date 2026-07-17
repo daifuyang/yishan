@@ -163,13 +163,37 @@ config/
 
 ## 部署
 
-Admin 不再单独部署到 FC3。当前唯一有效的生产部署方式是：
+项目支持多种部署方式，具体配置请参考 `deploy/` 目录下的部署脚本。
 
-1. 在仓库根目录执行 `pnpm build:admin:fc`
-2. 将 `apps/yishan-admin/dist` 同步到 `apps/yishan-api/public/admin`
-3. 由 `apps/yishan-api/deploy/fc3/pre-deploy-layered.sh` 与 `apps/yishan-api/deploy/fc3/deploy-layered-function.sh` 一体化发布
+### 函数计算（FC3）部署
 
-如需 FC3 部署说明，请查看 `apps/yishan-api/deploy/fc3/README-layer.md`。
+项目支持部署到阿里云函数计算（FC3），部署脚本位于 `deploy/fc3/deploy.sh`。
+
+**重要：部署脚本必须在项目根目录执行**
+
+```bash
+# 在项目根目录执行部署脚本
+./deploy/fc3/deploy.sh
+```
+
+部署脚本执行以下步骤：
+
+1. **安装依赖**：使用 pnpm 安装项目依赖
+2. **构建项目**：执行生产环境构建
+3. **配置 Nginx**：复制 Nginx 配置文件到构建目录
+4. **部署配置**：复制 s.yaml 部署配置文件到根目录
+5. **部署到 FC3**：使用 s 命令部署到函数计算
+6. **清理**：删除临时部署配置文件
+
+**前置条件**：
+- 已安装并配置阿里云函数计算 CLI 工具（s 命令）
+- 已配置阿里云访问凭证
+- 确保在项目根目录执行脚本
+
+**注意事项**：
+- 部署脚本会自动处理依赖安装和构建过程
+- 部署完成后会自动清理临时文件
+- 确保有足够的权限执行部署操作
 
 ## 许可证
 

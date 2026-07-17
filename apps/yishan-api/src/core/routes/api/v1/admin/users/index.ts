@@ -10,12 +10,14 @@ import {
 import { UserService } from "../../../../../services/user.service.js";
 import { UserErrorCode } from "../../../../../../constants/business-codes/user.js";
 import { getUserMessage, UserMessageKeys } from "../../../../../../constants/messages/user.js";
+import { PERMISSION_CODES } from "../../../../../../constants/permission-codes.js";
 
 const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET /api/v1/admin/user - 获取管理员用户列表
   fastify.get(
     "/",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_USER_LIST)] as any,
       schema: {
         summary: "获取管理员用户列表",
         description: "分页获取系统用户列表，支持关键词搜索和状态筛选",
@@ -53,6 +55,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/:id",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_USER_LIST)] as any,
       schema: {
         summary: "获取用户详情",
         description: "根据用户ID获取用户详情",
@@ -88,6 +91,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_USER_CREATE)] as any,
       schema: {
         summary: "创建用户",
         description: "创建一个新的系统用户",
@@ -116,6 +120,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.put(
     "/:id",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_USER_UPDATE)] as any,
       schema: {
         summary: "更新用户",
         description: "根据用户ID更新用户信息",
@@ -169,6 +174,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.delete(
     "/:id",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_USER_DELETE)] as any,
       schema: {
         summary: "删除用户",
         description: "根据用户ID进行软删除，并撤销所有令牌",

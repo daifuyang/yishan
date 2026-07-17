@@ -1,7 +1,8 @@
 import 'dotenv/config';
 
 import { readFile } from 'node:fs/promises';
-import { prismaManager } from '../utils/prisma.js';
+import { drizzleDb, pool } from '@/db';
+import { sysRegion } from '@/db/schema';
 
 const DEFAULT_SOURCE_URL =
   'https://raw.githubusercontent.com/modood/Administrative-divisions-of-China/master/dist/pca-code.json';
@@ -66,20 +67,23 @@ async function importRegions() {
   const raw = await loadSource();
   const data = JSON.parse(raw) as PcaNode[];
   const rows = flattenRegions(data);
-  const prisma = prismaManager.getClient();
 
+  // MySQL upsert via ON DUPLICATE KEY UPDATE keyed on the `code` primary key.
+  // `sys_region` uses `code` as PK (not auto-increment), so this is the
+  // idiomatic replacement for `db.sysRegion.upsert({ where: { code } })`.
   for (const row of rows) {
-    await (prisma as any).sysRegion.upsert({
-      where: { code: row.code },
-      update: {
-        name: row.name,
-        level: row.level,
-        parentCode: row.parentCode,
-        sortOrder: row.sortOrder,
-        status: row.status,
-      },
-      create: row,
-    });
+    await drizzleDb
+      .insert(sysRegion)
+      .values(row)
+      .onDuplicateKeyUpdate({
+        set: {
+          name: row.name,
+          level: row.level,
+          parentCode: row.parentCode,
+          sortOrder: row.sortOrder,
+          status: row.status,
+        },
+      });
   }
 
   console.log(`省市区数据导入完成: ${rows.length} 条`);
@@ -91,5 +95,5 @@ importRegions()
     process.exit(1);
   })
   .finally(async () => {
-    await prismaManager.getClient().$disconnect();
+    await pool.end();
   });

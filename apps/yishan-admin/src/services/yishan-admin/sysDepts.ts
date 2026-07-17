@@ -16,8 +16,8 @@ export async function getDeptList(
       // pageSize has a default value: 10
       pageSize: "10",
 
-      // sortBy has a default value: sort_order
-      sortBy: "sort_order",
+      // sortBy has a default value: sortOrder
+      sortBy: "sortOrder",
       // sortOrder has a default value: asc
       sortOrder: "asc",
       ...params,
@@ -88,7 +88,7 @@ export async function deleteDept(
   });
 }
 
-/** 获取部门树 返回部门树形结构（按 sort_order 排序） GET /api/v1/admin/departments/tree */
+/** 获取部门树 返回部门树形结构（按 sortOrder 排序） GET /api/v1/admin/departments/tree */
 export async function getDeptTree(options?: { [key: string]: any }) {
   return request<API.deptTreeResp>("/api/v1/admin/departments/tree", {
     method: "GET",

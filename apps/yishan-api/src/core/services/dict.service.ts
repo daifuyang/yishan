@@ -1,4 +1,6 @@
-import { SysDictModel } from "../models/sys-dict.model.js";
+import type { FastifyInstance } from "fastify";
+import { DictRepository, CreateDictTypeInput, UpdateDictTypeInput, CreateDictDataInput, UpdateDictDataInput } from "../repositories/dict.repository.js";
+import { DictMapper } from "../mappers/dict.mapper.js";
 import { BusinessError } from "../../exceptions/business-error.js";
 import { DictErrorCode } from "../../constants/business-codes/dict.js";
 import {
@@ -18,116 +20,190 @@ export class DictService {
   private static readonly CACHE_TTL = CACHE_CONFIG.defaultTTLSeconds;
 
   static async getDictTypeList(query: DictTypeListQuery) {
-    const list = await SysDictModel.getDictTypeList(query);
-    const total = await SysDictModel.getDictTypeTotal(query);
-    return { list, total, page: query.page || 1, pageSize: query.pageSize || 10 };
+    const list = await DictRepository.listTypes({
+      ...query,
+      status: query.status !== undefined ? (typeof query.status === "string" ? parseInt(query.status, 10) : query.status) : undefined,
+    });
+    const total = await DictRepository.countTypes({
+      keyword: query.keyword,
+      status: query.status !== undefined ? (typeof query.status === "string" ? parseInt(query.status, 10) : query.status) : undefined,
+    });
+    return { 
+      list: list.map(DictMapper.toDictTypeListResp), 
+      total, 
+      page: query.page || 1, 
+      pageSize: query.pageSize || 10 
+    };
   }
 
   static async getDictTypeById(id: number): Promise<SysDictTypeResp | null> {
-    return await SysDictModel.getDictTypeById(id);
+    const dictType = await DictRepository.findTypeById(id);
+    return dictType ? DictMapper.toDictTypeDetailResp(dictType) : null;
   }
 
-  static async createDictType(req: SaveDictTypeReq, fastify?: any): Promise<SysDictTypeResp> {
-    const existing = await SysDictModel.getDictTypeByType(req.type);
+  static async createDictType(req: SaveDictTypeReq, operatorId: number | any = 1, fastify?: FastifyInstance): Promise<SysDictTypeResp> {
+    const resolvedOperatorId = typeof operatorId === "number" ? operatorId : 1;
+    const existing = await DictRepository.findTypeByType(req.type);
     if (existing) {
       throw new BusinessError(DictErrorCode.DICT_TYPE_ALREADY_EXISTS, "字典类型已存在");
     }
-    const result = await SysDictModel.createDictType(req);
-    // 清除缓存（新增字典类型可能影响字典数据映射）
+
+    const input: CreateDictTypeInput = {
+      name: req.name,
+      type: req.type,
+      status: req.status ?? 1,
+      sortOrder: req.sort_order ?? 0,
+      remark: req.remark,
+      creatorId: resolvedOperatorId,
+      updaterId: resolvedOperatorId,
+    };
+
+    const result = await DictRepository.createType(input);
     await this.clearDictDataMapCache(fastify);
-    return result;
+    return DictMapper.toDictTypeDetailResp(result);
   }
 
-  static async updateDictType(id: number, req: UpdateDictTypeReq, fastify?: any): Promise<SysDictTypeResp> {
-    const existing = await SysDictModel.getDictTypeById(id);
+  static async updateDictType(id: number, req: UpdateDictTypeReq, operatorId: number | any = 1, fastify?: FastifyInstance): Promise<SysDictTypeResp> {
+    const resolvedOperatorId = typeof operatorId === "number" ? operatorId : 1;
+    const existing = await DictRepository.findTypeById(id);
     if (!existing) throw new BusinessError(DictErrorCode.DICT_TYPE_NOT_FOUND, "字典类型不存在");
+    
     if (req.type) {
-      const conflict = await SysDictModel.getDictTypeByType(req.type);
+      const conflict = await DictRepository.findTypeByType(req.type);
       if (conflict && conflict.id !== id) {
         throw new BusinessError(DictErrorCode.DICT_TYPE_ALREADY_EXISTS, "字典类型已存在");
       }
     }
-    const result = await SysDictModel.updateDictType(id, req);
-    // 清除缓存（更新字典类型可能影响字典数据映射）
+
+    const input: UpdateDictTypeInput = {
+      updaterId: resolvedOperatorId,
+    };
+    if (req.name !== undefined) input.name = req.name;
+    if (req.type !== undefined) input.type = req.type;
+    if (req.status !== undefined) input.status = req.status;
+    if (req.sort_order !== undefined) input.sortOrder = req.sort_order;
+    if (req.remark !== undefined) input.remark = req.remark;
+
+    const result = await DictRepository.updateType(id, input);
     await this.clearDictDataMapCache(fastify);
-    return result;
+    return DictMapper.toDictTypeDetailResp(result);
   }
 
-  static async deleteDictType(id: number, fastify?: any): Promise<{ id: number } | null> {
-    const res = await SysDictModel.deleteDictType(id);
+  static async deleteDictType(id: number, fastify?: FastifyInstance): Promise<{ id: number } | null> {
+    const res = await DictRepository.softDeleteType(id);
     if (!res) throw new BusinessError(DictErrorCode.DICT_TYPE_DELETE_FORBIDDEN, "该字典类型下存在数据，禁止删除");
-    // 清除缓存（删除字典类型可能影响字典数据映射）
     await this.clearDictDataMapCache(fastify);
     return res;
   }
 
   static async getDictDataList(query: DictDataListQuery) {
-    const list = await SysDictModel.getDictDataList(query);
-    const total = await SysDictModel.getDictDataTotal(query);
-    return { list, total, page: query.page || 1, pageSize: query.pageSize || 10 };
+    let resolvedTypeId: number | undefined = query.typeId;
+    if (query.type && !query.typeId) {
+      const type = await DictRepository.findTypeByType(query.type);
+      resolvedTypeId = type?.id;
+    }
+
+    const list = await DictRepository.listData({
+      ...query,
+      typeId: resolvedTypeId,
+      status: query.status !== undefined ? (typeof query.status === "string" ? parseInt(query.status, 10) : query.status) : undefined,
+    });
+    const total = await DictRepository.countData({
+      typeId: resolvedTypeId,
+      keyword: query.keyword,
+      status: query.status !== undefined ? (typeof query.status === "string" ? parseInt(query.status, 10) : query.status) : undefined,
+    });
+    return { 
+      list: list.map(DictMapper.toDictDataListResp), 
+      total, 
+      page: query.page || 1, 
+      pageSize: query.pageSize || 10 
+    };
   }
 
   static async getDictDataById(id: number): Promise<SysDictDataResp | null> {
-    return await SysDictModel.getDictDataById(id);
+    const dictData = await DictRepository.findDataById(id);
+    return dictData ? DictMapper.toDictDataDetailResp(dictData) : null;
   }
 
-  static async createDictData(req: SaveDictDataReq, fastify?: any): Promise<SysDictDataResp> {
-    const conflict = await SysDictModel.getDictDataByTypeAndValue(req.typeId, req.value);
+  static async createDictData(req: SaveDictDataReq, operatorId: number | any = 1, fastify?: FastifyInstance): Promise<SysDictDataResp> {
+    const resolvedOperatorId = typeof operatorId === "number" ? operatorId : 1;
+    const conflict = await DictRepository.findDataByTypeAndValue(req.typeId, req.value);
     if (conflict) throw new BusinessError(DictErrorCode.DICT_DATA_ALREADY_EXISTS, "字典数据已存在");
-    const result = await SysDictModel.createDictData(req);
-    // 清除缓存
+
+    const input: CreateDictDataInput = {
+      typeId: req.typeId,
+      label: req.label,
+      value: req.value,
+      status: req.status ?? 1,
+      sortOrder: req.sort_order ?? 0,
+      tag: req.tag,
+      remark: req.remark,
+      isDefault: req.isDefault ?? false,
+      creatorId: resolvedOperatorId,
+      updaterId: resolvedOperatorId,
+    };
+
+    const result = await DictRepository.createData(input);
     await this.clearDictDataMapCache(fastify);
-    return result;
+    return DictMapper.toDictDataDetailResp(result);
   }
 
-  static async updateDictData(id: number, req: UpdateDictDataReq, fastify?: any): Promise<SysDictDataResp> {
-    const existing = await SysDictModel.getDictDataById(id);
+  static async updateDictData(id: number, req: UpdateDictDataReq, operatorId: number | any = 1, fastify?: FastifyInstance): Promise<SysDictDataResp> {
+    const resolvedOperatorId = typeof operatorId === "number" ? operatorId : 1;
+    const existing = await DictRepository.findDataById(id);
     if (!existing) throw new BusinessError(DictErrorCode.DICT_DATA_NOT_FOUND, "字典数据不存在");
+    
     if (req.value !== undefined && (req.typeId ?? existing.typeId) !== undefined) {
       const typeForCheck = req.typeId ?? existing.typeId;
-      const conflict = await SysDictModel.getDictDataByTypeAndValue(typeForCheck, req.value);
+      const conflict = await DictRepository.findDataByTypeAndValue(typeForCheck, req.value);
       if (conflict && conflict.id !== id) {
         throw new BusinessError(DictErrorCode.DICT_DATA_ALREADY_EXISTS, "字典数据已存在");
       }
     }
-    const result = await SysDictModel.updateDictData(id, req);
-    // 清除缓存
+
+    const input: UpdateDictDataInput = {
+      updaterId: resolvedOperatorId,
+    };
+    if (req.typeId !== undefined) input.typeId = req.typeId;
+    if (req.label !== undefined) input.label = req.label;
+    if (req.value !== undefined) input.value = req.value;
+    if (req.status !== undefined) input.status = req.status;
+    if (req.sort_order !== undefined) input.sortOrder = req.sort_order;
+    if (req.tag !== undefined) input.tag = req.tag;
+    if (req.remark !== undefined) input.remark = req.remark;
+    if (req.isDefault !== undefined) input.isDefault = req.isDefault;
+
+    const result = await DictRepository.updateData(id, input);
     await this.clearDictDataMapCache(fastify);
-    return result;
+    return DictMapper.toDictDataDetailResp(result);
   }
 
-  static async deleteDictData(id: number, fastify?: any): Promise<{ id: number } | null> {
-    const res = await SysDictModel.deleteDictData(id);
+  static async deleteDictData(id: number, fastify?: FastifyInstance): Promise<{ id: number } | null> {
+    const res = await DictRepository.softDeleteData(id);
     if (!res) throw new BusinessError(DictErrorCode.DICT_DATA_NOT_FOUND, "字典数据不存在");
-    // 清除缓存
     await this.clearDictDataMapCache(fastify);
     return res;
   }
 
-  static async getAllDictDataMap(fastify?: any): Promise<Record<string, { label: string; value: string }[]>> {
-    // 如果提供了fastify实例，尝试使用缓存
+  static async getAllDictDataMap(fastify?: FastifyInstance): Promise<Record<string, { label: string; value: string }[]>> {
     if (fastify?.redis) {
       try {
-        // 从缓存获取
         const cached = await fastify.redis.get(this.CACHE_KEY);
         if (cached) {
           return JSON.parse(cached);
         }
       } catch (error) {
-        // 缓存失败不影响主流程，记录日志即可
         fastify.log.warn(`Redis缓存获取失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
-    // 从数据库获取数据
-    const result = await SysDictModel.getAllDictDataMap();
+    const result = await DictRepository.getAllDictDataMap();
 
-    // 如果提供了fastify实例，将结果存入缓存
     if (fastify?.redis) {
       try {
         await fastify.redis.setex(this.CACHE_KEY, this.CACHE_TTL, JSON.stringify(result));
       } catch (error) {
-        // 缓存失败不影响主流程，记录日志即可
         fastify.log.warn(`Redis缓存设置失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
@@ -135,15 +211,11 @@ export class DictService {
     return result;
   }
 
-  /**
-   * 清除字典数据映射缓存
-   */
-  private static async clearDictDataMapCache(fastify?: any): Promise<void> {
+  private static async clearDictDataMapCache(fastify?: FastifyInstance): Promise<void> {
     if (fastify?.redis) {
       try {
         await fastify.redis.del(this.CACHE_KEY);
       } catch (error) {
-        // 缓存清除失败不影响主流程，记录日志即可
         fastify.log.warn(`Redis缓存清除失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     }

@@ -35,11 +35,12 @@ const resolveSafeRedirectTarget = (target: string | null) => {
  */
 export const logout = async (redirectToLogin = true) => {
   try {
-    if (isLoggedIn()) {
-      const res = await apiLogout();
-      if(res.success) {
-        message.success(res.message || '注销成功');
-      }
+    // 认证 cookie 为 HttpOnly 不可读，无法在前端可靠判断登录态；
+    // 直接调用后端登出（后端从 cookie 读取 token 并撤销记录、清除 cookie）。
+    // skipErrorHandler 避免未登录（无 cookie）时的 4xx 触发全局错误提示。
+    const res = await apiLogout({ skipErrorHandler: true });
+    if (res?.success) {
+      message.success(res.message || '注销成功');
     }
   } catch {
     // 即使后端注销失败，也继续本地清理

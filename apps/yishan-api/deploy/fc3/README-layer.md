@@ -1,25 +1,15 @@
-# FC3 Layered 部署方案
+# FC3 公共 Layer 测试方案
 
-本目录维护当前唯一的 FC3 layered 部署链路。函数代码与运行时依赖分层发布，仓库不再保留其他 FC 部署方案。
+本目录新增一条并行的 layered 部署路径，用于验证公共依赖从函数代码包中拆出后是否可行。原有 `pre-deploy.sh` 与 `s-function.yaml` 不变。
 
 ## 分层边界
 
-- Layer: 稳定运行时依赖，例如 Fastify、`@fastify/*`、TypeBox、dayjs、qiniu、dotenv、`@prisma/client` runtime、`@prisma/adapter-mariadb` 和 MariaDB driver。
-- 函数代码包: 编译后的业务代码、插件模块、Prisma generated 代码、Admin 静态资源。
+- Layer: 稳定运行时依赖，例如 Fastify、`@fastify/*`、TypeBox、dayjs、qiniu、dotenv、`drizzle-orm` 和 `mysql2` MariaDB driver。
+- 函数代码包: 编译后的业务代码、插件模块、drizzle 生成的 src/db/schema、Admin 静态资源。
 - 函数本地依赖: 默认为空；函数包不携带 `node_modules`。
 - 运行时配置: 本地部署时可从 `.env` 加载变量给 `s deploy` 使用；线上函数包不携带 `.env`，运行时配置由 `s-function-layered.yaml` 注入 FC 环境变量。
 
-依赖清单在 `layer-dependencies.json` 中维护。Layer 是否需要重新发布由指纹判断：`runtime + layer dependencies + package.json 中对应版本` 共同生成 fingerprint；业务代码、Admin 静态资源、Prisma schema 不影响该指纹。
-
-**`localDependencies` 使用场景**：仅当某个运行时依赖**必须从函数包本地加载**（不进 Layer）时使用。当前清单为空，意味着函数代码包不带 `node_modules`，所有运行时依赖从 Layer 解析。常见例外：
-
-- 某些 Prisma 插件/引擎对加载路径敏感，必须在函数包根目录
-- 需要在函数冷启动时立即可用、不能容忍 Layer 挂载延迟的包
-- 需要在函数代码中动态 require、且版本与 Layer 中的不一致
-
-**Runtime 字段一致性约束**：`layer-dependencies.json` 中的 `runtime` 必须与 `s-function-layered.yaml` 中 `runtime:` 字段保持字面一致；任何改动都会重新生成 fingerprint 并触发 Layer 重新发布。当前统一为 `custom.debian12`。
-
-**`${file(...)}` 路径解析**：Serverless Devs 中 `${file(...)}` 路径相对于 YAML 文件所在目录解析，不是 CWD。`s-domain-layered.yaml` 中 `./deploy/fc3/certs/fullchain.cer` 实际是 `./deploy/fc3/certs/fullchain.cer`（与 yaml 同目录的 `deploy/fc3/certs/`），所以 `deploy-layered-domain.sh` 调用 `s deploy -t <yaml>` 时必须确保 yaml 文件所在的目录就是预期的——脚本当前假设 yaml 与 cert 同目录。
+依赖清单在 `layer-dependencies.json` 中维护。Layer 是否需要重新发布由指纹判断：`runtime + layer dependencies + package.json 中对应版本` 共同生成 fingerprint；业务代码、Admin 静态资源、`drizzle/` 目录不影响该指纹。
 
 ## 本地构建验证
 
@@ -50,33 +40,9 @@ pnpm build:admin:fc
 node deploy/fc3/layer-state.cjs fingerprint package.json deploy/fc3/layer-dependencies.json
 ```
 
-## 部署 Layered 函数
+## 部署测试函数
 
-CI 流程（`yishan-fullstack-cd-fc.yml`）已经自动处理 Layer 发布：每次部署前会调 `publish-runtime-layer.sh`，
-对比当前指纹与 `layer-lock.json`：
-
-- **一致**：复用 lock 中的 ARN，跳过发布，节省上传时间和 FC Layer 版本额度
-- **不一致或 lock 缺失**：自动调 `s cli fc3 layer publish` 发布新版本并写回 lock
-- lock 通过 `actions/cache@v4` 在 workflow 运行之间持久化（key: `yishan-api-layer-lock-fallback`）
-
-本地手动发布 Layer：
-
-```bash
-cd apps/yishan-api
-
-# 1. 构建（必须先跑，否则 publish-runtime-layer.sh 会拒绝执行）
-bash ./deploy/fc3/build-runtime-layer.sh
-
-# 2. 发布（如有需要，自动发布新版本；指纹一致则直接复用 lock）
-bash ./deploy/fc3/publish-runtime-layer.sh
-
-# 也可以指定 region / layer 名
-YISHAN_FC_REGION=cn-shanghai \
-YISHAN_FC_LAYER_NAME=yishan-api-runtime-layer \
-bash ./deploy/fc3/publish-runtime-layer.sh
-```
-
-只有当手动跳过 publish 脚本、直接发布时，才需要手动记录 ARN：
+只有当当前指纹与 `deploy/fc3/layer-lock.json` 不一致时，才需要发布新的 FC Layer 版本。把 `runtime-layer.zip` 或 `deploy/fc3/.build/runtime-layer` 发布为 FC Layer，拿到版本 ARN 后记录：
 
 ```bash
 cd apps/yishan-api
@@ -93,7 +59,7 @@ node deploy/fc3/layer-state.cjs record \
 ./deploy/fc3/deploy-layered-function.sh
 ```
 
-当前函数名默认是 `yishan-demo-layered`。
+测试函数名默认是 `yishan-demo-layered`，避免覆盖当前 `yishan-demo`。
 
 如果临时要覆盖 lock 中的 ARN，可显式设置：
 
@@ -140,27 +106,9 @@ node deploy/fc3/layer-state.cjs record \
   'acs:fc:cn-shanghai:1650595695532785:layers/yishan-api-runtime-layer-test/versions/1'
 ```
 
-`layer-lock.json` 是本地状态文件，不提交到 git；CI 通过 `actions/cache@v4` 在 workflow 运行之间持久化。
+`layer-lock.json` 是本地状态文件，不提交到 git。
 
-> ⚠️ 上面这个测试 Layer 的 fingerprint（`1d8dbe86...`）是历史值。运行时统一为 `custom.debian12` 后，当前指纹为 `sha256:546252996c726c5d3022b315090c6b42b3d51f2bba1b61eaa1b466f6f74e0817`。要复用旧的测试 ARN，需要把它和 lock 文件一起重新发布一遍。
-
-## 部署 Layered 域名与证书
-
-域名部署脚本：
-
-```bash
-cd apps/yishan-api
-
-export FC_FUNCTION_NAME='yishan-demo-layered'
-export FC_CUSTOM_DOMAIN='example.zerocmf.com'
-export FC_CERT_NAME="example-zerocmf-com-$(date +%Y%m%d)"
-
-./deploy/fc3/deploy-layered-domain.sh
-```
-
-默认模板为 `deploy/fc3/s-domain-layered.yaml`，证书文件从 `deploy/fc3/certs/fullchain.cer` 与 `deploy/fc3/certs/private.key` 读取，适用于本地和 CI 共用。
-
-### 已部署 Layered 函数
+### 已部署测试函数
 
 - Function 名称：`yishan-demo-layered`
 - Runtime：`custom.debian12`
@@ -282,11 +230,11 @@ NODE
 ### 注意事项
 
 1. `pino-pretty` 是开发日志工具，不应该进入 Runtime Layer。`server.ts` 中只有显式设置 `PINO_PRETTY=1` 且当前进程是 TTY 时才启用 pretty logger；FC 线上默认走普通 logger。
-2. `deploy-layered-function.sh` 会生成临时 `.s-layered.yaml` 并在退出时清理，不依赖仓库中的根级部署模板文件。
+2. `deploy-layered-function.sh` 不要覆盖根目录 `apps/yishan-api/s.yaml`。脚本现在会生成临时 `.s-layered.yaml` 并在退出时清理，避免误删生产部署模板。
 3. `s cli fc3 layer publish --code` 可以直接传目录；本机没有 `zip` 时，`build-runtime-layer.sh` 会跳过压缩，但仍可发布 `deploy/fc3/.build/runtime-layer`。
 4. `.env` 不进入 layered 函数包。部署命令可以在本地 `set -a; . ./.env; set +a`，但这只是给 `s deploy` 提供变量；线上运行只看 FC 环境变量。
 5. `NODE_PATH` 必须包含 `/opt/nodejs/node_modules`，函数代码运行时依赖从 Layer 解析。
 6. 如果 FC 上曾经部署过临时环境变量，后续模板不再包含这些变量时，需确认 FC 是否保留旧值；本次最终代码和模板中不依赖 `REDIS_ENABLED`、`DATABASE_AUTO_CONNECT` 这类测试开关。
-7. `example.zerocmf.com` 应通过 `deploy/fc3/s-domain-layered.yaml` 或 `deploy/fc3/deploy-layered-domain.sh` 绑定到 `yishan-demo-layered`。
+7. `example.zerocmf.com` 已通过 `deploy/fc3/s-domain-example-layered.yaml` 绑定到 `yishan-demo-layered`。证书复用 acme 目录中的 `example.zerocmf.com` 证书，不把私钥复制进仓库目录。
 8. Admin 静态资源必须使用 `PUBLIC_PATH=/admin/` 构建。验证方式：`curl https://example.zerocmf.com/admin` 返回的 HTML 中 CSS/JS 应该以 `/admin/` 开头。
 9. Layered 测试函数已接入 ECS 所在 VPC，线上 `DATABASE_HOST` 与 `REDIS_HOST` 固定为 ECS 私网 IP `172.23.212.135`。本地 `.env` 可以继续使用公网地址，避免本地开发环境无法访问私网。

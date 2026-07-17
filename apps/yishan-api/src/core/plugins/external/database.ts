@@ -1,8 +1,9 @@
 import fp from 'fastify-plugin'
 import { FastifyInstance, FastifyPluginOptions } from 'fastify'
 import net from 'node:net'
-import path from 'node:path'
-import { prismaManager } from '../../../utils/prisma.js'
+import { createConnection, type Connection } from 'mysql2/promise'
+import { dbManager } from '@/db/manager'
+import { drizzleDb, pool } from '@/db/client'
 import { BusinessError } from '../../../exceptions/business-error.js'
 import { SystemErrorCode } from '../../../constants/business-codes/common.js'
 
@@ -63,25 +64,11 @@ interface DriverProbeResult {
   message?: string
 }
 
-function loadMariadbModule(): any {
-  try {
-    // npm flatten case
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require('mariadb')
-  } catch {
-    const adapterPkg = require.resolve('@prisma/adapter-mariadb/package.json')
-    const adapterDir = path.dirname(adapterPkg)
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    return require(path.join(adapterDir, 'node_modules/mariadb'))
-  }
-}
-
 async function probeMariadbDriver(host: string, port: number, user: string, password: string, database: string, timeoutMs: number): Promise<DriverProbeResult> {
   const startedAt = Date.now()
-  let conn: any
+  let conn: Connection | undefined
   try {
-    const mariadb = loadMariadbModule()
-    conn = await mariadb.createConnection({
+    conn = await createConnection({
       host,
       port,
       user,
@@ -108,7 +95,7 @@ async function probeMariadbDriver(host: string, port: number, user: string, pass
 
 /**
  * 数据库连接插件
- * 
+ *
  * 功能：
  * 1. 自动管理数据库连接生命周期
  * 2. 提供数据库健康检查接口
@@ -128,7 +115,6 @@ async function databasePlugin(
   const connectOrFailFast = async (): Promise<void> => {
     const startedAt = Date.now()
     try {
-      const prisma = prismaManager.getClient()
       const host = process.env.DATABASE_HOST ?? ''
       const port = Number(process.env.DATABASE_PORT ?? '3306')
       const user = process.env.DATABASE_USER ?? ''
@@ -163,10 +149,13 @@ async function databasePlugin(
       fastify.log.info({ databaseProbe: driverProbe }, 'MariaDB driver probe result')
 
       const connectStartedAt = Date.now()
-      fastify.log.info('Prisma connect phase started')
+      fastify.log.info('Drizzle connect phase started')
 
       await Promise.race([
-        prisma.$connect(),
+        (async () => {
+          const conn = await pool.getConnection()
+          conn.release()
+        })(),
         new Promise((_, reject) => setTimeout(() => reject(new Error('CONNECTION_TIMEOUT')), connectionTimeout))
       ])
 
@@ -177,13 +166,15 @@ async function databasePlugin(
             ms: Date.now() - connectStartedAt
           }
         },
-        'Prisma connect phase finished'
+        'Drizzle connect phase finished'
       )
 
       // 连接后进行一次轻量健康检查，确保连接可用
       const healthStartedAt = Date.now()
-      fastify.log.info('Prisma health query phase started')
-      await prisma.$queryRaw`SELECT 1`
+      fastify.log.info('Drizzle health query phase started')
+      if (!await dbManager.healthCheck()) {
+        throw new Error('DATABASE_HEALTH_CHECK_FAILED')
+      }
       fastify.log.info(
         {
           databaseProbe: {
@@ -221,13 +212,13 @@ async function databasePlugin(
     }
   }
 
-  // 装饰器：添加 Prisma 客户端到 Fastify 实例
-  fastify.decorate('prisma', prismaManager.getClient())
+  // 装饰器：向路由和插件提供统一的 Drizzle 数据库入口
+  fastify.decorate('db', drizzleDb)
 
   // 装饰器：添加数据库健康检查方法
   fastify.decorate('dbHealthCheck', async () => {
     try {
-      const isHealthy = await prismaManager.healthCheck()
+      const isHealthy = await dbManager.healthCheck()
       return {
         status: isHealthy ? 'healthy' : 'unhealthy',
         timestamp: new Date().toISOString()
@@ -243,7 +234,7 @@ async function databasePlugin(
 
   // 装饰器：添加数据库状态查询方法
   fastify.decorate('dbStatus', () => {
-    const status = prismaManager.getConnectionStatus()
+    const status = dbManager.getConnectionStatus()
     return {
       connected: status.connected,
       status: status.connected ? 'connected' : 'disconnected',
@@ -254,7 +245,7 @@ async function databasePlugin(
   // 装饰器：添加数据库重连方法
   fastify.decorate('dbReconnect', async () => {
     try {
-      await prismaManager.disconnect()
+      await dbManager.disconnect()
       await connectOrFailFast()
       return { success: true, message: 'Database reconnected successfully' }
     } catch (error) {
@@ -282,7 +273,7 @@ async function databasePlugin(
   // 应用关闭时断开数据库连接
   fastify.addHook('onClose', async () => {
     try {
-      await prismaManager.disconnect()
+      await dbManager.disconnect()
       fastify.log.info('Database connection closed successfully')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -294,7 +285,7 @@ async function databasePlugin(
 // 声明 Fastify 类型扩展
 declare module 'fastify' {
   interface FastifyInstance {
-    prisma: ReturnType<typeof prismaManager.getClient>
+    db: typeof drizzleDb
     dbHealthCheck(): Promise<{
       status: 'healthy' | 'unhealthy' | 'error'
       timestamp: string

@@ -21,6 +21,8 @@ export const ValidationErrorCode = {
   VALIDATION_ERROR: 21007,
   /** 请求过于频繁 */
   TOO_MANY_REQUESTS: 21008,
+  /** 状态错误（如未初始化） */
+  INVALID_STATE: 21009,
 } as const;
 
 // ============= 错误消息映射 =============

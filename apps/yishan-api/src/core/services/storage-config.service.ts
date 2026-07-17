@@ -97,7 +97,7 @@ const parseJson = <T,>(text: string | null | undefined, fallback: T): T => {
   }
 };
 
-const validateProvider = (provider: any): StorageProvider => {
+const validateProvider = (provider: unknown): StorageProvider => {
   if (provider === "disabled" || provider === "qiniu" || provider === "aliyunOss") return provider;
   throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "provider 参数不合法");
 };

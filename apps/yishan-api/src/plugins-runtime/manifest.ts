@@ -1,10 +1,41 @@
-import { ManifestValidationResult, PluginManifest } from './types'
+import { ManifestValidationResult, PluginManifest, PluginPermission } from './types'
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0
 }
 
 const PLUGIN_ID_PATTERN = /^([a-z0-9][a-z0-9-]{1,30})\/([a-z0-9][a-z0-9-]{1,50})$/;
+
+/**
+ * 校验单个权限对象。
+ * 新方案要求：permissions 必须是对象数组，不兼容 string[]。
+ */
+function validatePermissionObject(perm: unknown, index: number, errors: string[]): boolean {
+  if (!perm || typeof perm !== 'object') {
+    errors.push(`manifest.permissions[${index}] must be an object`);
+    return false;
+  }
+
+  const p = perm as Partial<PluginPermission>;
+
+  if (!isNonEmptyString(p.code)) {
+    errors.push(`manifest.permissions[${index}].code must be a non-empty string`);
+  }
+
+  if (!isNonEmptyString(p.label)) {
+    errors.push(`manifest.permissions[${index}].label must be a non-empty string`);
+  }
+
+  if (p.description !== undefined && typeof p.description !== 'string') {
+    errors.push(`manifest.permissions[${index}].description must be a string`);
+  }
+
+  if (p.group !== undefined && typeof p.group !== 'string') {
+    errors.push(`manifest.permissions[${index}].group must be a string`);
+  }
+
+  return errors.length === 0 || !errors.some(e => e.includes(`permissions[${index}]`));
+}
 
 export function validateManifest(manifest: unknown): ManifestValidationResult {
   const errors: string[] = []
@@ -49,8 +80,32 @@ export function validateManifest(manifest: unknown): ManifestValidationResult {
     errors.push('manifest.channels must be a string array when provided')
   }
 
-  if (value.permissions && (!Array.isArray(value.permissions) || value.permissions.some((item) => !isNonEmptyString(item)))) {
-    errors.push('manifest.permissions must be a string array when provided')
+  // 新方案：permissions 必须是数组，不兼容 string[]、对象、null
+  // 缺失 permissions 字段也必须失败（插件必须显式声明权限）
+  if (value.permissions === undefined) {
+    errors.push('manifest.permissions is required and must be an array of structured permission objects');
+  } else if (!Array.isArray(value.permissions)) {
+    errors.push('manifest.permissions must be an array of structured permission objects');
+  } else {
+    const seenCodes = new Set<string>();
+    for (let i = 0; i < value.permissions.length; i++) {
+      const perm = value.permissions[i];
+      // 拒绝旧格式 string[]
+      if (typeof perm === 'string') {
+        errors.push(`manifest.permissions[${i}] must be an object, not a string. Use { code, label, ... } format.`);
+        continue;
+      }
+      // 校验对象格式
+      validatePermissionObject(perm, i, errors);
+      // 检测同一 manifest 内 code 重复
+      if (perm && typeof perm === 'object' && (perm as PluginPermission).code) {
+        const code = (perm as PluginPermission).code;
+        if (seenCodes.has(code)) {
+          errors.push(`manifest.permissions: duplicate code '${code}' in manifest`);
+        }
+        seenCodes.add(code);
+      }
+    }
   }
 
   if (value.menus) {

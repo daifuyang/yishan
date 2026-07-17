@@ -1,12 +1,12 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
-import { prisma } from "../../../../../../utils/prisma.js";
 import { DeptService } from "../../../../../services/dept.service.js";
+import { UserRepository } from "../../../../../repositories/user.repository.js";
 
 /**
  * 移动端通讯录路由 - /api/v1/app/contacts
- * 复用 DeptService.getDeptTree；部门成员直接用 prisma 拉取
+ * 复用 DeptService.getDeptTree；部门成员通过 EXISTS 子查询拉取（userDepts 关联）。
  */
 const contacts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET /api/v1/app/contacts/depts/tree - 部门树
@@ -37,7 +37,7 @@ const contacts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const tree = await DeptService.getDeptTree();
       return ResponseUtil.success(reply, tree, "获取部门树成功");
-    }
+    },
   );
 
   // GET /api/v1/app/contacts/depts/:id/users - 部门成员
@@ -81,28 +81,11 @@ const contacts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         },
       },
     },
-    async (
-      request: FastifyRequest,
-      reply: FastifyReply
-    ) => {
+    async (request: FastifyRequest, reply: FastifyReply) => {
       const deptId = (request.params as { id: number }).id;
-      const users = await prisma.sysUser.findMany({
-        where: {
-          deletedAt: null,
-          status: 1,
-          userDepts: { some: { deptId, deletedAt: null } },
-        },
-        select: {
-          id: true,
-          username: true,
-          realName: true,
-          phone: true,
-          email: true,
-          avatar: true,
-          gender: true,
-        },
-        orderBy: { id: "asc" },
-      });
+      // EXISTS 子查询：找出至少有一条 sys_user_dept 关联到 deptId 且未删除的用户。
+      // 替代旧垫片里被静默丢弃的 `where.userDepts.some`（属于 Bug 2 修复）。
+      const users = await UserRepository.findActiveUsersByDeptId(deptId);
 
       const data = users.map((u) => ({
         id: u.id,
@@ -116,7 +99,7 @@ const contacts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       }));
 
       return ResponseUtil.success(reply, data, "获取部门成员成功");
-    }
+    },
   );
 };
 

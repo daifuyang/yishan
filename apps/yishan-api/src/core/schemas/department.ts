@@ -31,12 +31,15 @@ const SysDeptSchema = Type.Object(
 export type SysDeptResp = Static<typeof SysDeptSchema>;
 
 // 创建部门请求 Schema
+// 注意：Type.Optional 字段不允许设置 default，否则 UpdateDeptReq = Type.Partial(CreateDeptReq)
+// 在 Fastify Ajv (useDefaults:true) 校验下会把缺省字段注入默认值，导致 update 时把数据库原值覆盖。
+// 缺省值由 Service 层（createDept）显式设置。
 const CreateDeptReqSchema = Type.Object(
   {
     name: Type.String({ description: "部门名称", minLength: 1, maxLength: 100 }),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID" })),
-    status: Type.Optional(Type.String({ enum: ["0", "1"], description: "状态", default: "1" })),
-    sort_order: Type.Optional(Type.Number({ description: "排序序号", default: 0 })),
+    status: Type.Optional(Type.String({ enum: ["0", "1"], description: "状态" })),
+    sort_order: Type.Optional(Type.Number({ description: "排序序号" })),
     description: Type.Optional(Type.String({ description: "部门描述", maxLength: 255 })),
     leaderId: Type.Optional(Type.Number({ description: "负责人ID" })),
   },
@@ -57,7 +60,7 @@ const DeptListQuerySchema = Type.Object(
     status: Type.Optional(Type.String({ enum: ["0", "1"], description: "部门状态" })),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID过滤" })),
     sortBy: Type.Optional(
-      Type.String({ enum: ["sort_order", "createdAt", "updatedAt"], default: "sort_order", description: "排序字段" })
+      Type.String({ enum: ["sortOrder", "createdAt", "updatedAt"], default: "sortOrder", description: "排序字段" })
     ),
     sortOrder: Type.Optional(Type.String({ enum: ["asc", "desc"], default: "asc", description: "排序方向" })),
   },

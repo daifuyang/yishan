@@ -2,15 +2,20 @@ import fp from 'fastify-plugin'
 import { FastifyInstance, FastifyError, FastifyRequest, FastifyReply } from 'fastify'
 import { ResponseUtil } from '../../../utils/response.js'
 import { BusinessError } from '../../../exceptions/business-error.js'
+import { ValidationErrorCode } from '../../../constants/business-codes/validation.js'
+import { AuthErrorCode } from '../../../constants/business-codes/auth.js'
 
 /**
  * 全局异常处理插件
  * 统一处理应用中的所有异常，避免在每个路由中重复异常处理逻辑
+ *
+ * Section 7：日志脱敏 — 不再把 request.body / Authorization 完整写入日志；
+ * 字段级脱敏由 security plugin 提供。
  */
 export default fp(async (fastify: FastifyInstance) => {
   // 设置全局错误处理器
   fastify.setErrorHandler(async (error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
-    // 记录错误日志
+    // 记录错误日志（不输出 raw body / authorization）
     fastify.log.error({
       error: error.message,
       stack: error.stack,
@@ -18,7 +23,7 @@ export default fp(async (fastify: FastifyInstance) => {
       method: request.method,
       params: request.params,
       query: request.query,
-      body: request.body
+      requestId: (request as { requestId?: string }).requestId ?? request.id,
     }, 'Global error handler caught an error')
 
     // 如果响应已经发送，直接返回
@@ -37,41 +42,42 @@ export default fp(async (fastify: FastifyInstance) => {
     if (error.statusCode) {
       const statusCode = error.statusCode
       const message = error.message || "请求错误"
-      
+
       // 根据HTTP状态码映射到对应的业务码
       let businessCode: number
       switch (statusCode) {
         case 400:
         case 422:
-          businessCode = 21001 // ValidationErrorCode.INVALID_PARAMETER
+          businessCode = ValidationErrorCode.INVALID_PARAMETER
           break
         case 401:
-          businessCode = 22001 // AuthErrorCode.UNAUTHORIZED
+          businessCode = AuthErrorCode.UNAUTHORIZED
           break
         case 403:
-          businessCode = 22002 // AuthErrorCode.FORBIDDEN
+          businessCode = AuthErrorCode.FORBIDDEN
           break
         case 404:
           businessCode = 31001 // ResourceErrorCode.NOT_FOUND
           break
         case 429:
-          businessCode = 20004 // SystemErrorCode.TOO_MANY_REQUESTS
+          businessCode = ValidationErrorCode.TOO_MANY_REQUESTS
           break
         default:
           if (statusCode >= 400 && statusCode < 500) {
-            businessCode = 21001 // ValidationErrorCode.INVALID_PARAMETER
+            businessCode = ValidationErrorCode.INVALID_PARAMETER
           } else {
             businessCode = 20001 // SystemErrorCode.SYSTEM_ERROR
           }
       }
-      
+
       return ResponseUtil.error(reply, businessCode, message)
     }
 
     // 处理数据库相关错误
-    if (error.name === 'PrismaClientKnownRequestError' || 
-        error.message.includes('Prisma') || 
-        error.message.includes('database')) {
+    if (error.message.includes('database') ||
+        error.message.includes('mysql') ||
+        error.message.includes('Drizzle') ||
+        String((error as any).code ?? '').startsWith('ER_')) {
       return ResponseUtil.error(reply, 20002, "数据库操作失败") // SystemErrorCode.DATABASE_ERROR
     }
 
@@ -82,7 +88,7 @@ export default fp(async (fastify: FastifyInstance) => {
 
     // 默认服务器内部错误
     return ResponseUtil.error(
-      reply, 
+      reply,
       20001, // SystemErrorCode.SYSTEM_ERROR
       process.env.NODE_ENV === 'production' ? "服务器内部错误" : error.message
     )

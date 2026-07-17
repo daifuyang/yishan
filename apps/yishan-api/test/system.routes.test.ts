@@ -13,6 +13,11 @@ async function buildApp() {
   await app.register(errorHandlerPlugin)
   // 仅注册系统相关的 Schema，满足路由中的 $ref 校验
   registerSystemSchemas(app)
+  // 单测无需真实 RBAC/JWT：no-op 装饰器占位。
+  app.decorate('authenticate', async (_request: any, _reply: any) => undefined)
+  app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
+  app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
+  app.decorate('rateLimit', () => async (_request: any, _reply: any) => undefined)
   // 注册被测路由插件
   await app.register(systemPlugin)
   await app.ready()
@@ -21,7 +26,8 @@ async function buildApp() {
 
 beforeEach(() => {
   vi.restoreAllMocks()
-  process.env.CRON_TOKEN = 'unit-cron-token'
+  // CRON_TOKEN 必须 >= 16 字符（参见 jwt-secret-validator 同款启发式）
+  process.env.CRON_TOKEN = 'unit-cron-token-1234567890'
 })
 
 describe('System routes', () => {
@@ -33,7 +39,7 @@ describe('System routes', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/cleanup-tokens',
-      payload: { cron_token: 'unit-cron-token', days_to_keep: 30 }
+      payload: { cron_token: 'unit-cron-token-1234567890', days_to_keep: 30 }
     })
 
     expect(res.statusCode).toBe(200)

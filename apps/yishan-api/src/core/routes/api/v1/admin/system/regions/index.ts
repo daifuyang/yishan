@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { Type } from '@sinclair/typebox';
 import { ResponseUtil } from '../../../../../../../utils/response.js';
 import { RegionService } from '../../../../../../services/region.service.js';
+import { PERMISSION_CODES } from '../../../../../../../constants/permission-codes.js';
 
 const regionSchema = Type.Object({
   code: Type.Integer(),
@@ -15,6 +16,7 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/',
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_REGION_LIST)] as any,
       schema: {
         summary: '地区列表',
         description: '按父级行政区划代码获取下级地区列表',
@@ -44,6 +46,7 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/tree',
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_REGION_LIST)] as any,
       schema: {
         summary: '地区树',
         description: '获取省市区三级地区树',
@@ -64,6 +67,7 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/path',
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_REGION_LIST)] as any,
       schema: {
         summary: '地区路径',
         description: '按行政区划代码获取省市区路径',
@@ -84,6 +88,7 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/:code',
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_REGION_LIST)] as any,
       schema: {
         summary: '地区详情',
         description: '按行政区划代码获取地区详情',

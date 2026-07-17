@@ -62,12 +62,15 @@ const SysUserSchema = Type.Object(
 export type SysUserResp = Static<typeof SysUserSchema>;
 
 // 创建用户请求 Schema
+// 注意：Type.Optional 字段不允许设置 default。Fastify Ajv 默认开启 useDefaults:true，
+// 若保留 default，UpdateXxxReq = Type.Partial(CreateXxxReq) 会让 Fastify 在请求体缺字段时
+// 自动注入默认值，从而导致 update 接口把数据库中已存在的字段重置为 schema 默认值。
+// 这里统一去掉 default，由 Service 层（createUser 的 toCreateUserInput）负责设置缺省值。
 const CreateUserReqSchema = Type.Object(
   {
     username: Type.Optional(Type.String({
       description: "用户名",
       maxLength: 50,
-      default: ''
     })),
     email: Type.Optional(Type.String({ format: "email", description: "邮箱" })),
     password: Type.String({
@@ -84,14 +87,12 @@ const CreateUserReqSchema = Type.Object(
     realName: Type.Optional(Type.String({
       description: "真实姓名",
       maxLength: 50,
-      default: ''
     })),
     nickname: Type.Optional(Type.String({
       description: "昵称",
       maxLength: 50,
-      default: ''
     })),
-    avatar: Type.Optional(Type.String({ description: "头像URL", default: '' })),
+    avatar: Type.Optional(Type.String({ description: "头像URL" })),
     gender: Type.Optional(
       Type.String({
         enum: ["0", "1", "2"],
@@ -108,7 +109,6 @@ const CreateUserReqSchema = Type.Object(
       Type.String({
         enum: ["0", "1", "2"],
         description: "状态（0-禁用，1-启用，2-锁定）",
-        default: "1",
       })
     ),
     deptIds: Type.Optional(Type.Array(Type.Number(), { description: "部门ID列表" })),

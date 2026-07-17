@@ -13,14 +13,14 @@
     "@fastify/swagger",
     "@fastify/swagger-ui",
     "@fastify/type-provider-typebox",
-    "@prisma/adapter-mariadb",
-    "@prisma/client",
     "@sinclair/typebox",
     "close-with-grace",
     "dayjs",
     "dotenv",
+    "drizzle-orm",
     "fastify",
     "fastify-plugin",
+    "mysql2",
     "qiniu"
   ],
   "localDependencies": []

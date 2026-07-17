@@ -1,5 +1,5 @@
-import { prismaManager } from '../../utils/prisma.js'
-import { PluginManifest, PluginMenuItem } from '../../plugins-runtime/types.js'
+import { PluginMenuRepository, PluginSyncLogRepository } from "../repositories/plugin.repository.js";
+import { PluginManifest, PluginMenuItem } from "../../plugins-runtime/types.js";
 
 export type SyncStrategy = 'strict' | 'safe'
 
@@ -34,59 +34,32 @@ export interface SyncLogRecord {
 }
 
 export class PluginMenuSyncService {
-  private readonly prisma = prismaManager.getClient()
-
   private buildPluginMenuKey(pluginId: string, path: string): string {
     return `${pluginId}:${path}`
   }
 
   async resolveParentMenuId(manifest: PluginManifest): Promise<number | null> {
     if (!manifest.routeBase) return null
-    
+
     const match = manifest.routeBase.match(/^\/api\/modules\/([^/]+)\/([^/]+)/)
     if (!match) return null
-    
+
     const [, org, pluginName] = match
 
     const pluginParentPath = `/plugins/${org}/${pluginName}`
     const rootName = manifest.menuRootName?.trim() || `${org}/${pluginName}`
     const rootIcon = manifest.menuRootIcon ?? manifest.icon ?? null
     const rootSort = Number.isFinite(manifest.menuRootSort) ? Number(manifest.menuRootSort) : 10
-    
-    let parentMenu = await this.prisma.sysMenu.findFirst({
-      where: { path: pluginParentPath, type: 0, deletedAt: null }
+
+    return await PluginMenuRepository.resolveOrCreateParentMenuId({
+      path: pluginParentPath,
+      name: rootName,
+      icon: rootIcon,
+      sortOrder: rootSort,
+      pluginId: manifest.pluginId,
+      pluginName: manifest.name,
+      creatorId: 1,
     })
-    
-    if (!parentMenu) {
-      const created = await this.prisma.sysMenu.create({
-        data: {
-          name: rootName,
-          path: pluginParentPath,
-          type: 0,
-          status: 1,
-          sort_order: rootSort,
-          source: 'plugin',
-          pluginName: manifest.name,
-          pluginMenuKey: `${manifest.pluginId}:${pluginParentPath}`,
-          icon: rootIcon,
-          creatorId: 1,
-        },
-      })
-      parentMenu = created
-    } else {
-      await this.prisma.sysMenu.update({
-        where: { id: parentMenu.id },
-        data: {
-          name: rootName,
-          icon: rootIcon,
-          sort_order: rootSort,
-          source: 'plugin',
-          pluginName: manifest.name,
-        },
-      })
-    }
-    
-    return parentMenu.id
   }
 
   async upsertPluginMenu(
@@ -99,63 +72,19 @@ export class PluginMenuSyncService {
     const pluginId = manifest.pluginId
     const pluginMenuKey = this.buildPluginMenuKey(pluginId, menuItem.path)
 
-    const existingByKey = await this.prisma.sysMenu.findUnique({
-      where: { pluginMenuKey },
+    return await PluginMenuRepository.upsertByPluginMenuKey({
+      menuItemName: menuItem.name,
+      menuItemPath: menuItem.path,
+      menuItemIcon: menuItem.icon ?? null,
+      menuItemPerm: menuItem.perm ?? null,
+      pluginMenuKey,
+      pluginId,
+      pluginName: manifest.name,
+      creatorId,
+      updaterId: creatorId,
+      parentId,
+      sortOrder,
     })
-
-    if (existingByKey) {
-      await this.prisma.sysMenu.update({
-        where: { id: existingByKey.id },
-        data: {
-          name: menuItem.name,
-          path: menuItem.path,
-          type: 1,
-          status: 1,
-          sort_order: sortOrder,
-          source: 'plugin',
-          pluginName: manifest.name,
-          pluginMenuKey,
-          perm: menuItem.perm ?? null,
-          icon: menuItem.icon ?? null,
-          updaterId: creatorId,
-          parentId,
-        },
-      })
-      return { id: existingByKey.id, isNew: false }
-    }
-
-    const existingByPath = await this.prisma.sysMenu.findUnique({
-      where: { path: menuItem.path },
-    })
-
-    if (existingByPath) {
-      const conflict: ConflictDetail = {
-        path: menuItem.path,
-        name: menuItem.name,
-        existingPluginName: existingByPath.pluginName ?? 'core',
-        reason: `路径 ${menuItem.path} 已被 ${existingByPath.pluginName ?? '核心菜单'} 占用`,
-      }
-      return { id: 0, isNew: false, skipped: true, conflict }
-    }
-
-    const created = await this.prisma.sysMenu.create({
-      data: {
-        name: menuItem.name,
-        path: menuItem.path,
-        type: 1,
-        status: 1,
-        sort_order: sortOrder,
-        source: 'plugin',
-        pluginName: manifest.name,
-        pluginMenuKey,
-        perm: menuItem.perm ?? null,
-        icon: menuItem.icon ?? null,
-        creatorId,
-        parentId,
-      },
-    })
-
-    return { id: created.id, isNew: true }
   }
 
   async syncPluginMenus(
@@ -212,28 +141,43 @@ export class PluginMenuSyncService {
     strategy: SyncStrategy,
     result: SyncResult
   ): Promise<number> {
-    const syncLog = await this.prisma.sysPluginSyncLog.create({
-      data: {
-        pluginInstallId,
-        strategy,
-        status: result.status ?? 'success',
-        created: result.created,
-        updated: result.updated,
-        skipped: result.skipped,
-        conflicted: result.conflicted,
-        conflictDetails: result.conflictDetails as any,
-        errorMessage: result.errors.length > 0 ? result.errors.join('; ') : null,
-      },
+    return await PluginSyncLogRepository.create({
+      pluginInstallId,
+      strategy,
+      status: result.status ?? 'success',
+      created: result.created,
+      updated: result.updated,
+      skipped: result.skipped,
+      conflicted: result.conflicted,
+      conflictDetails: result.conflictDetails,
+      errorMessage: result.errors.length > 0 ? result.errors.join('; ') : null,
     })
-    return syncLog.id
   }
 
   async getLatestSyncLog(pluginInstallId: number): Promise<SyncLogRecord | null> {
-    const log = await this.prisma.sysPluginSyncLog.findFirst({
-      where: { pluginInstallId },
-      orderBy: { createdAt: 'desc' },
-    })
+    const log = await PluginSyncLogRepository.findLatestByInstallId(pluginInstallId)
     if (!log) return null
+    return this.toSyncLogRecord(log)
+  }
+
+  async getSyncLogs(pluginInstallId: number, limit = 10): Promise<SyncLogRecord[]> {
+    const logs = await PluginSyncLogRepository.listByInstallId(pluginInstallId, limit)
+    return logs.map((log) => this.toSyncLogRecord(log))
+  }
+
+  async hidePluginMenus(pluginId: string): Promise<number> {
+    return await PluginMenuRepository.setPluginMenusStatus(pluginId, 0)
+  }
+
+  async restorePluginMenus(pluginId: string): Promise<number> {
+    return await PluginMenuRepository.setPluginMenusStatus(pluginId, 1)
+  }
+
+  async softDeletePluginMenus(pluginId: string): Promise<number> {
+    return await PluginMenuRepository.softDeleteByPluginId(pluginId)
+  }
+
+  private toSyncLogRecord(log: { id: number; strategy: string; status: string; created: number; updated: number; skipped: number; conflicted: number; conflictDetails: unknown; errorMessage: string | null; createdAt: Date }): SyncLogRecord {
     return {
       id: log.id,
       strategy: log.strategy,
@@ -242,78 +186,9 @@ export class PluginMenuSyncService {
       updated: log.updated,
       skipped: log.skipped,
       conflicted: log.conflicted,
-      conflictDetails: (log.conflictDetails as any) ?? [],
+      conflictDetails: (log.conflictDetails as ConflictDetail[]) ?? [],
       errorMessage: log.errorMessage ?? null,
       createdAt: log.createdAt,
     }
   }
-
-  async getSyncLogs(pluginInstallId: number, limit = 10): Promise<SyncLogRecord[]> {
-    const logs = await this.prisma.sysPluginSyncLog.findMany({
-      where: { pluginInstallId },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-    })
-    return logs.map(log => ({
-      id: log.id,
-      strategy: log.strategy,
-      status: log.status,
-      created: log.created,
-      updated: log.updated,
-      skipped: log.skipped,
-      conflicted: log.conflicted,
-      conflictDetails: (log.conflictDetails as any) ?? [],
-      errorMessage: log.errorMessage ?? null,
-      createdAt: log.createdAt,
-    }))
-  }
-
-  async hidePluginMenus(pluginId: string): Promise<number> {
-    const result = await this.prisma.sysMenu.updateMany({
-      where: {
-        pluginMenuKey: {
-          startsWith: `${pluginId}:`,
-        },
-        source: 'plugin',
-        deletedAt: null,
-      },
-      data: {
-        status: 0,
-      },
-    })
-    return result.count
-  }
-
-  async restorePluginMenus(pluginId: string): Promise<number> {
-    const result = await this.prisma.sysMenu.updateMany({
-      where: {
-        pluginMenuKey: {
-          startsWith: `${pluginId}:`,
-        },
-        source: 'plugin',
-        deletedAt: null,
-      },
-      data: {
-        status: 1,
-      },
-    })
-    return result.count
-  }
-
-  async softDeletePluginMenus(pluginId: string): Promise<number> {
-    const result = await this.prisma.sysMenu.updateMany({
-      where: {
-        pluginMenuKey: {
-          startsWith: `${pluginId}:`,
-        },
-        source: 'plugin',
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    })
-    return result.count
-  }
-
 }

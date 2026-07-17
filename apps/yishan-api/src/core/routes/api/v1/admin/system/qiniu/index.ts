@@ -6,11 +6,13 @@ import { SystemOptionService } from "../../../../../../services/system-option.se
 import qiniu from "qiniu";
 import { ValidationErrorCode } from "../../../../../../../constants/business-codes/validation.js";
 import { BusinessError } from "../../../../../../../exceptions/business-error.js";
+import { PERMISSION_CODES } from "../../../../../../../constants/permission-codes.js";
 
 const adminQiniu: FastifyPluginAsync = async (fastify): Promise<void> => {
   fastify.get(
     "/token",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_STORAGE_UPLOAD_TOKEN)] as any,
       schema: {
         summary: "获取七牛云上传临时凭证",
         description: "根据七牛云官方文档生成上传凭证（uptoken）",

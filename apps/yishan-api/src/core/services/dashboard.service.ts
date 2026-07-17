@@ -1,13 +1,14 @@
-import { prismaManager } from "../../utils/prisma.js";
+import type { FastifyInstance } from "fastify";
+import { UserRepository } from "../repositories/user.repository.js";
+import { DeptRepository } from "../repositories/dept.repository.js";
+import { LoginLogRepository } from "../repositories/login-log.repository.js";
 import { DashboardStats } from "../schemas/dashboard.js";
 
 const DASHBOARD_STATS_CACHE_KEY = 'dashboard:stats';
 const DASHBOARD_STATS_CACHE_TTL = 30;
 
 export class DashboardService {
-  private static prisma = prismaManager.getClient();
-
-  static async getStats(fastify?: any): Promise<DashboardStats> {
+  static async getStats(fastify?: FastifyInstance): Promise<DashboardStats> {
     if (fastify?.redis) {
       try {
         const cached = await fastify.redis.get(DASHBOARD_STATS_CACHE_KEY);
@@ -23,34 +24,18 @@ export class DashboardService {
     today.setHours(0, 0, 0, 0);
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-    const [userTotal, deptTotal, todayLogin, onlineUsers] = await Promise.all([
-      this.prisma.sysUser.count({
-        where: { deletedAt: null },
-      }),
-      this.prisma.sysDept.count({
-        where: { deletedAt: null },
-      }),
-      this.prisma.sysLoginLog.count({
-        where: {
-          createdAt: { gte: today },
-          deletedAt: null,
-        },
-      }),
-      this.prisma.sysLoginLog.groupBy({
-        by: ['userId'],
-        where: {
-          createdAt: { gte: fiveMinutesAgo },
-          userId: { not: null },
-          deletedAt: null,
-        },
-      }),
+    const [userTotal, deptTotal, todayLogin, online] = await Promise.all([
+      UserRepository.count({}),
+      DeptRepository.count({}),
+      LoginLogRepository.count({ startTime: today }),
+      LoginLogRepository.countDistinctUsersInWindow(fiveMinutesAgo),
     ]);
 
     const stats: DashboardStats = {
       userTotal,
       deptTotal,
       todayLogin,
-      online: onlineUsers.length,
+      online,
     };
 
     if (fastify?.redis) {

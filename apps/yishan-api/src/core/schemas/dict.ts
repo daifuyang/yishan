@@ -22,12 +22,16 @@ const SysDictTypeSchema = Type.Object(
 
 export type SysDictTypeResp = Static<typeof SysDictTypeSchema>;
 
+// 注意：Type.Optional 字段不允许设置 default。
+// 否则 UpdateDictTypeReq = Type.Partial(SaveDictTypeReq) 在 Fastify Ajv（useDefaults:true）
+// 校验下会把缺省字段注入默认值，导致 update 时把数据库原值覆盖。
+// 缺省值由 Service 层（createDictType）显式设置。
 const SaveDictTypeReqSchema = Type.Object(
   {
     name: Type.String({ minLength: 1, maxLength: 100 }),
     type: Type.String({ minLength: 1, maxLength: 100 }),
-    status: Type.Optional(Type.Number({ enum: [0, 1], default: 1 })),
-    sort_order: Type.Optional(Type.Number({ default: 0 })),
+    status: Type.Optional(Type.Number({ enum: [0, 1] })),
+    sort_order: Type.Optional(Type.Number()),
     remark: Type.Optional(Type.String({ maxLength: 255 })),
   },
   { $id: "saveDictTypeReq" }
@@ -46,7 +50,7 @@ const DictTypeListQuerySchema = Type.Object(
     ...PaginationQuerySchema.properties,
     keyword: Type.Optional(Type.String()),
     status: Type.Optional(Type.Integer({ enum: [0, 1] })),
-    sortBy: Type.Optional(Type.String({ enum: ["sort_order", "createdAt", "updatedAt"], default: "sort_order" })),
+    sortBy: Type.Optional(Type.String({ enum: ["sortOrder", "createdAt", "updatedAt"], default: "sortOrder" })),
     sortOrder: Type.Optional(Type.String({ enum: ["asc", "desc"], default: "asc" })),
   },
   { $id: "dictTypeListQuery" }
@@ -78,16 +82,20 @@ const SysDictDataSchema = Type.Object(
 
 export type SysDictDataResp = Static<typeof SysDictDataSchema>;
 
+// 注意：Type.Optional 字段不允许设置 default。
+// 否则 UpdateDictDataReq = Type.Partial(SaveDictDataReq) 在 Fastify Ajv（useDefaults:true）
+// 校验下会把缺省字段注入默认值，导致 update 时把数据库原值覆盖。
+// 缺省值由 Service 层（createDictData）显式设置。
 const SaveDictDataReqSchema = Type.Object(
   {
     typeId: Type.Number(),
     label: Type.String({ minLength: 1, maxLength: 100 }),
     value: Type.String({ minLength: 1, maxLength: 100 }),
-    status: Type.Optional(Type.Number({ enum: [0, 1], default: 1 })),
-    sort_order: Type.Optional(Type.Number({ default: 0 })),
+    status: Type.Optional(Type.Number({ enum: [0, 1] })),
+    sort_order: Type.Optional(Type.Number()),
     tag: Type.Optional(Type.String({ maxLength: 50 })),
     remark: Type.Optional(Type.String({ maxLength: 255 })),
-    isDefault: Type.Optional(Type.Boolean({ default: false })),
+    isDefault: Type.Optional(Type.Boolean()),
   },
   { $id: "saveDictDataReq" }
 );
@@ -107,7 +115,7 @@ const DictDataListQuerySchema = Type.Object(
     type: Type.Optional(Type.String()),
     keyword: Type.Optional(Type.String()),
     status: Type.Optional(Type.Integer({ enum: [0, 1] })),
-    sortBy: Type.Optional(Type.String({ enum: ["sort_order", "createdAt", "updatedAt"], default: "sort_order" })),
+    sortBy: Type.Optional(Type.String({ enum: ["sortOrder", "createdAt", "updatedAt"], default: "sortOrder" })),
     sortOrder: Type.Optional(Type.String({ enum: ["asc", "desc"], default: "asc" })),
   },
   { $id: "dictDataListQuery" }

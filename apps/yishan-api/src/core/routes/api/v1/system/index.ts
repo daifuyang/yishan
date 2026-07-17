@@ -8,14 +8,19 @@ import { ResponseUtil } from "../../../../../utils/response.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { SystemManageErrorCode } from "../../../../../constants/business-codes/system.js";
 import { SystemService } from "../../../../services/system.service.js";
+import { PERMISSION_CODES } from "../../../../../constants/permission-codes.js";
 
 const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   /**
-   * 验证定时任务令牌
+   * 验证定时任务令牌。
+   * Section 2 — 安全：禁止硬编码默认值；未配置 CRON_TOKEN 时一律拒绝。
    */
   const validateCronToken = async (token: string): Promise<boolean> => {
-    // 从环境变量获取预配置的定时任务令牌
-    const cronToken = process.env.CRON_TOKEN || 'default-cron-token-2024';
+    const cronToken = process.env.CRON_TOKEN;
+    if (!cronToken || cronToken.length < 16) {
+      // 故意不暴露具体原因，避免给攻击者任何旁路信息
+      return false;
+    }
     return token === cronToken;
   };
 
@@ -38,16 +43,16 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       },
     },
     async (
-      request: FastifyRequest<{ 
-        Body: { 
-          cron_token: string; 
+      request: FastifyRequest<{
+        Body: {
+          cron_token: string;
           days_to_keep?: number;
-        } 
+        }
       }>,
       reply: FastifyReply
     ) => {
       const { cron_token, days_to_keep = 30 } = request.body;
-      
+
       // 验证定时任务令牌
       const isValidToken = await validateCronToken(cron_token);
       if (!isValidToken) {
@@ -61,7 +66,7 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
       // 执行清理任务
       const result = await SystemService.cleanupExpiredTokens(days_to_keep);
-      
+
       return ResponseUtil.success(reply, result, "过期token清理成功");
     }
   );
@@ -69,15 +74,21 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   /**
    * 获取token统计信息
    * GET /api/v1/system/token-stats
+   * Section 1 — RBAC：原接口完全公开，现要求系统 token 列表权限。
    */
   fastify.get(
     "/token-stats",
     {
+      preHandler: [
+        fastify.authenticate,
+        fastify.requirePermission(PERMISSION_CODES.SYSTEM_TOKEN_LIST),
+      ],
       schema: {
         summary: "获取token统计信息",
         description: "获取系统中token的统计信息，包括总数、活跃数、过期数等",
         operationId: "getTokenStats",
         tags: ["system"],
+        security: [{ bearerAuth: [] }],
         response: {
           200: { $ref: "tokenStatsResp#" },
         },
@@ -89,7 +100,7 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     ) => {
       // 获取token统计信息
       const stats = await SystemService.getTokenStats();
-      
+
       return ResponseUtil.success(reply, stats, "获取token统计信息成功");
     }
   );

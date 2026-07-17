@@ -7,8 +7,10 @@
   "scripts": {
     "analyze": "cross-env ANALYZE=1 max build",
     "build": "max build",
+    "deploy": "npm run build && npm run gh-pages",
     "gen:plugin-routes": "node scripts/generate-plugin-routes.mjs",
     "dev": "npm run start:dev",
+    "gh-pages": "gh-pages -d dist",
     "i18n-remove": "pro i18n-remove --locale=zh-CN --write",
     "postinstall": "npm run gen:plugin-routes",
     "prelint": "max setup",
@@ -38,6 +40,8 @@
   "dependencies": {
     "@ant-design/icons": "^6.2.3",
     "@ant-design/pro-components": "^3.1.12-0",
+    "@json-render/core": "^0.3.0",
+    "@json-render/react": "^0.2.0",
     "antd": "^6.4.3",
     "antd-style": "^4.1.0",
     "classnames": "^2.5.1",
@@ -54,6 +58,7 @@
     "@biomejs/biome": "^2.4.13",
     "@commitlint/cli": "^21.0.0",
     "@commitlint/config-conventional": "^21.0.0",
+    "@playwright/test": "^1.61.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/express": "^5.0.6",
@@ -65,6 +70,7 @@
     "@umijs/lint": "^4.6.51",
     "@umijs/max": "^4.6.51",
     "cross-env": "^10.1.0",
+    "gh-pages": "^6.3.0",
     "express": "^5.2.1",
     "husky": "^9.1.7",
     "jest": "^30.4.1",
@@ -84,10 +90,9 @@
       "docker*",
       "functions*",
       "site",
-      "generateMock"
-    ],
-    "ignoreDependencies": [
-      "netlify*"
+      "generateMock",
+      "netlify*",
+      "serverless"
     ],
     "ignore": [
       ".dockerignore",

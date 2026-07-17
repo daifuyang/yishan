@@ -61,7 +61,7 @@ const dicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         page: 1,
         pageSize: 200,
         type,
-        sortBy: "sort_order",
+        sortBy: "sortOrder",
         sortOrder: "asc",
       } as any);
       const data = list

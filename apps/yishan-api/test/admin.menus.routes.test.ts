@@ -10,7 +10,10 @@ import { BusinessError } from '../src/exceptions/business-error.js'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 async function buildApp() {
-  const app = Fastify({ logger: false })
+  const app = Fastify({ logger: false });
+    // 单测不需要真实 RBAC 校验：no-op 占位。
+    app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
+    app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
   app.decorate('authenticate', async (request: any) => {
     const auth = request.headers.authorization
     if (!auth || !auth.startsWith('Bearer ')) {
@@ -73,7 +76,7 @@ describe('Admin Menus routes', () => {
 
     vi.spyOn(MenuService, 'getMenuList').mockResolvedValue({ list, total: 1, page: 2, pageSize: 5 })
 
-    const res = await app.inject({ method: 'GET', url: '/?page=2&pageSize=5&keyword=sys&status=1&type=0&sortBy=sort_order&sortOrder=asc' })
+    const res = await app.inject({ method: 'GET', url: '/?page=2&pageSize=5&keyword=sys&status=1&type=0&sortBy=sortOrder&sortOrder=asc' })
 
     expect(res.statusCode).toBe(200)
     const body = res.json()

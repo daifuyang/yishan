@@ -1,4 +1,4 @@
-import { prisma } from '../../utils/prisma.js';
+import { RegionRepository, type RegionRow } from "../repositories/region.repository.js";
 
 export type RegionNode = {
   code: number;
@@ -9,7 +9,7 @@ export type RegionNode = {
   children?: RegionNode[];
 };
 
-const toRegionNode = (row: any): RegionNode => ({
+const toRegionNode = (row: RegionRow): RegionNode => ({
   code: row.code,
   name: row.name,
   level: row.level,
@@ -19,42 +19,24 @@ const toRegionNode = (row: any): RegionNode => ({
 
 export class RegionService {
   static async listByParent(parentCode = 0) {
-    const rows = await (prisma as any).sysRegion.findMany({
-      where: { parentCode: Number(parentCode), status: 1 },
-      orderBy: [{ sortOrder: 'asc' }, { code: 'asc' }],
-    });
+    const rows = await RegionRepository.listActiveByParent(parentCode);
     return rows.map(toRegionNode);
   }
 
   static async getRegion(code: number) {
-    const row = await (prisma as any).sysRegion.findUnique({
-      where: { code: Number(code) },
-    });
+    const row = await RegionRepository.findByCode(code);
     return row ? toRegionNode(row) : null;
   }
 
   static async getPath(code: number) {
-    const path: RegionNode[] = [];
-    let currentCode = Number(code);
-
-    while (currentCode) {
-      const row = await (prisma as any).sysRegion.findUnique({
-        where: { code: currentCode },
-      });
-      if (!row) break;
-      path.unshift(toRegionNode(row));
-      currentCode = row.parentCode;
-    }
-
-    return path;
+    const rows = await RegionRepository.getAncestorPath(code);
+    return rows.map(toRegionNode);
   }
 
   static async getTree(maxLevel = 3) {
     const normalizedMaxLevel = Math.min(Math.max(Number(maxLevel) || 3, 1), 3);
-    const rows = await (prisma as any).sysRegion.findMany({
-      where: { status: 1, level: { lte: normalizedMaxLevel } },
-      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { code: 'asc' }],
-    });
+    const rows = await RegionRepository.listActiveByMaxLevel(normalizedMaxLevel);
+
     const nodeMap = new Map<number, RegionNode>();
     const roots: RegionNode[] = [];
 

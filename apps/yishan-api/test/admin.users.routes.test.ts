@@ -8,11 +8,13 @@ import { ValidationErrorCode } from "../src/constants/business-codes/validation.
 import { UserErrorCode } from "../src/constants/business-codes/user.ts";
 import { BusinessError } from "../src/exceptions/business-error.js";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { prismaManager } from "../src/utils/prisma.js";
-import { SysUserModel } from "../src/core/models/sys-user.model.ts";
+import { dbManager } from "../src/db/manager.js";
 
-async function buildApp() {
+async function buildApp(currentUserId = 1) {
   const app = Fastify({ logger: false });
+  // 单测不需要真实 RBAC 校验：no-op 占位。
+  app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined);
+  app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined);
   // 注入轻量鉴权装饰器，模拟公共鉴权插件的行为
   app.decorate("authenticate", async (request: any) => {
     const auth = request.headers.authorization;
@@ -24,7 +26,7 @@ async function buildApp() {
       throw error;
     }
     request.currentUser = {
-      id: 1,
+      id: currentUserId,
       username: "admin",
       email: "admin@example.com",
       realName: "Admin",
@@ -60,36 +62,9 @@ async function buildApp() {
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  
-  // Mock Prisma客户端 - 添加更多需要的字段
-  const mockPrisma = {
-    sysUser: {
-      findMany: vi.fn(),
-      count: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      findUnique: vi.fn(),
-    },
-    sysUserDept: {
-      createMany: vi.fn(),
-      deleteMany: vi.fn(),
-    },
-    sysUserRole: {
-      createMany: vi.fn(),
-      deleteMany: vi.fn(),
-    },
-  };
-  
-  // Mock prismaManager.getClient() 返回模拟的Prisma客户端
-  vi.spyOn(prismaManager, 'getClient').mockReturnValue(mockPrisma as any);
-  
-  // Mock SysUserModel中的静态prisma属性 - 直接修改私有属性
-  (SysUserModel as any).prisma = mockPrisma;
-  
-  // Mock prismaManager的连接状态
-  vi.spyOn(prismaManager, 'getConnectionStatus').mockReturnValue({
+
+  // Mock dbManager的连接状态
+  vi.spyOn(dbManager, 'getConnectionStatus').mockReturnValue({
     connected: true,
     stats: { queryCount: 0, uptime: 0 }
   });
@@ -400,11 +375,11 @@ describe("Admin Users routes", () => {
   });
 
   it("PUT /api/v1/admin/users/:id 尝试禁用当前登录用户应返回业务错误", async () => {
-    const app = await buildApp();
+    const app = await buildApp(2);
 
     const res = await app.inject({
       method: "PUT",
-      url: "/api/v1/admin/users/1",
+      url: "/api/v1/admin/users/2",
       headers: { Authorization: "Bearer access-token" },
       payload: {
         status: 0,
@@ -462,11 +437,11 @@ describe("Admin Users routes", () => {
   });
 
   it("DELETE /api/v1/admin/users/:id 尝试删除当前登录用户应返回业务错误", async () => {
-    const app = await buildApp();
+    const app = await buildApp(2);
 
     const res = await app.inject({
       method: "DELETE",
-      url: "/api/v1/admin/users/1",
+      url: "/api/v1/admin/users/2",
       headers: { Authorization: "Bearer access-token" },
     });
 

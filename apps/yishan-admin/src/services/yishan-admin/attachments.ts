@@ -143,8 +143,8 @@ export async function getAttachmentFolderList(
         // pageSize has a default value: 10
         pageSize: "10",
 
-        // sortBy has a default value: sort_order
-        sortBy: "sort_order",
+        // sortBy has a default value: sortOrder
+        sortBy: "sortOrder",
         // sortOrder has a default value: asc
         sortOrder: "asc",
         ...params,
@@ -228,7 +228,7 @@ export async function deleteAttachmentFolder(
   );
 }
 
-/** 获取分组树 获取素材分组树形结构（按 sort_order 排序） GET /api/v1/admin/attachments/folders/tree */
+/** 获取分组树 获取素材分组树形结构（按 sortOrder 排序） GET /api/v1/admin/attachments/folders/tree */
 export async function getAttachmentFolderTree(options?: {
   [key: string]: any;
 }) {

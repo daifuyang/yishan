@@ -6,7 +6,7 @@ import * as helloModule from "./helloModule";
 import * as portalArticles from "./portalArticles";
 import * as portalCategories from "./portalCategories";
 import * as portalPages from "./portalPages";
-import * as portalPosts from "./portalPosts";
+import * as sysPositions from "./sysPositions";
 import * as shopAttributes from "./shopAttributes";
 import * as shopCategories from "./shopCategories";
 import * as shopOrders from "./shopOrders";
@@ -29,7 +29,7 @@ export default {
   portalArticles,
   portalCategories,
   portalPages,
-  portalPosts,
+  sysPositions,
   shopAttributes,
   shopCategories,
   shopOrders,

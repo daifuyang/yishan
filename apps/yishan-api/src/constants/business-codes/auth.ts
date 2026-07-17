@@ -23,6 +23,12 @@ export const AuthErrorCode = {
   ACCOUNT_LOCKED: 22008,
   /** 需要重新登录 */
   NEED_RELOGIN: 22009,
+  /** API Token不存在 */
+  API_TOKEN_NOT_FOUND: 22010,
+  /** API Token已过期 */
+  API_TOKEN_EXPIRED: 22011,
+  /** API Token已撤销 */
+  API_TOKEN_REVOKED: 22012,
 } as const;
 
 // ============= 错误消息映射 =============
@@ -36,6 +42,9 @@ export const AuthErrorMessages = {
   [AuthErrorCode.LOGIN_FAILED]: '登录失败',
   [AuthErrorCode.ACCOUNT_LOCKED]: '账号被锁定',
   [AuthErrorCode.NEED_RELOGIN]: '需要重新登录',
+  [AuthErrorCode.API_TOKEN_NOT_FOUND]: 'API Token不存在',
+  [AuthErrorCode.API_TOKEN_EXPIRED]: 'API Token已过期',
+  [AuthErrorCode.API_TOKEN_REVOKED]: 'API Token已撤销',
 } as const;
 
 // ============= HTTP状态码映射 =============
@@ -49,6 +58,9 @@ export const AuthHttpStatusMap = {
   [AuthErrorCode.LOGIN_FAILED]: 401,
   [AuthErrorCode.ACCOUNT_LOCKED]: 403,
   [AuthErrorCode.NEED_RELOGIN]: 401,
+  [AuthErrorCode.API_TOKEN_NOT_FOUND]: 401,
+  [AuthErrorCode.API_TOKEN_EXPIRED]: 401,
+  [AuthErrorCode.API_TOKEN_REVOKED]: 401,
 } as const;
 
 // ============= 类型定义 =============

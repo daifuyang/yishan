@@ -62,6 +62,11 @@ jobs:
       - name: Admin Build
         run: pnpm --filter yishan-admin build
 
+      # Admin Test 依赖 Admin Setup 生成的 .umi/ 产物；Max 不在 pretest 钩子上，
+      # 必须显式依赖 setup 步骤，确保 jest 能解析 .umi/plugin-initialState 等。
+      - name: Admin Test
+        run: pnpm --filter yishan-admin test
+
       - name: Prepare API .env
         working-directory: apps/yishan-api
         env:
@@ -79,8 +84,14 @@ jobs:
           printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
           printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
 
-      - name: API Prisma Generate
+      - name: API Schema Generate
         run: pnpm --filter yishan-api db:generate
+
+      # 生成器自检：保证 SQL→Drizzle 生成链路每条规则都满足
+      # （CREATE TABLE 数量、列名覆盖、DECIMAL scale、*Relations 导出等），
+      # 避免 schema 生成回归只在生产构建时才暴露。
+      - name: API Generator Self-test
+        run: pnpm --filter yishan-api db:generate:test
 
       - name: API TypeScript Build
         run: pnpm --filter yishan-api build:ts

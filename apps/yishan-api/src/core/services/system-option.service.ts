@@ -1,5 +1,5 @@
-import { SysOptionModel } from "../models/sys-option.model.js";
-import { PortalTemplateModel } from "../../plugins/modules/portal/models/portal-template.model.js";
+import { OptionRepository } from "../repositories/option.repository.js";
+import { PortalTemplateRepository } from "../../plugins/modules/portal/repositories/template.repository.js";
 import { BusinessError } from "../../exceptions/business-error.js";
 import { TemplateErrorCode } from "../../constants/business-codes/template.js";
 
@@ -28,7 +28,7 @@ const sanitizeQiniuConfigValue = (value: string | null): string | null => {
 
 export class SystemOptionService {
   static async getOption(key: SystemOptionKey): Promise<string | null> {
-    return await SysOptionModel.getOptionValue(key);
+    return await OptionRepository.getOptionValue(key);
   }
 
   static async getOptionPublic(key: SystemOptionKey): Promise<string | null> {
@@ -41,7 +41,7 @@ export class SystemOptionService {
     // 针对模板类参数进行严格校验
     if (key === "defaultArticleTemplateId" || key === "defaultPageTemplateId") {
       const num = parseInt(String(value), 10);
-      const t = await PortalTemplateModel.getTemplateRawById(num);
+      const t = await PortalTemplateRepository.findRawById(num);
       if (!t) throw new BusinessError(TemplateErrorCode.TEMPLATE_NOT_FOUND, "模板不存在");
       if (key === "defaultArticleTemplateId" && t.type !== 1) {
         throw new BusinessError(TemplateErrorCode.TEMPLATE_TYPE_MISMATCH, "模板类型不匹配：需要文章模板");
@@ -52,11 +52,11 @@ export class SystemOptionService {
     }
 
     if (key === "qiniuConfig") {
-      const currentRaw = await SysOptionModel.getOptionValue(key);
+      const currentRaw = await OptionRepository.getOptionValue(key);
       const currentObj = safeParseJsonObject(currentRaw) || {};
       const patchObj = safeParseJsonObject(value);
       if (!patchObj) {
-        const stored = await SysOptionModel.setOptionValue(key, value, userId);
+        const stored = await OptionRepository.setOptionValue(key, value, userId);
         return sanitizeQiniuConfigValue(stored) as any;
       }
 
@@ -66,11 +66,11 @@ export class SystemOptionService {
       else if (typeof currentObj.secretKey === "string" && currentObj.secretKey.trim()) merged.secretKey = currentObj.secretKey;
       else delete merged.secretKey;
 
-      const stored = await SysOptionModel.setOptionValue(key, JSON.stringify(merged), userId);
+      const stored = await OptionRepository.setOptionValue(key, JSON.stringify(merged), userId);
       return sanitizeQiniuConfigValue(stored) as any;
     }
 
-    return await SysOptionModel.setOptionValue(key, value, userId);
+    return await OptionRepository.setOptionValue(key, value, userId);
   }
 
   static async getOptions(keys: SystemOptionKey[]): Promise<Record<SystemOptionKey, string | null>> {

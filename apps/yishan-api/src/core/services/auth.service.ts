@@ -2,13 +2,13 @@
  * 认证授权业务逻辑服务
  */
 
-import { SysUserModel } from "../models/sys-user.model.js";
-import { SysUserTokenModel } from "../models/sys-user-token.model.js";
+import type { FastifyInstance } from "fastify";
+import { UserRepository, type LoginAuthInfo } from "../repositories/user.repository.js";
+import { UserTokenRepository } from "../repositories/user-token.repository.js";
 import { LoginReq, LoginData } from "../schemas/auth.js";
 import { AuthErrorCode } from "../../constants/business-codes/auth.js";
 import { UserErrorCode } from "../../constants/business-codes/user.js";
 import { BusinessError } from "../../exceptions/business-error.js";
-import { prisma } from "../../utils/prisma.js";
 import { comparePassword } from "../../utils/password.js";
 import { JWT_CONFIG } from "../../config/index.js";
 import { dateUtils } from "../../utils/date.js";
@@ -22,12 +22,12 @@ export class AuthService {
    * @param ip 用户登录 IP 地址
    * @returns 登录响应数据
    */
-  static async login(loginReq: LoginReq, fastify: any, ip?: string, userAgent?: string): Promise<LoginData> {
+  static async login(loginReq: LoginReq, fastify: FastifyInstance, ip?: string, userAgent?: string): Promise<LoginData> {
     const { username, password, rememberMe } = loginReq;
-    let user: any | null = null;
+    let user: LoginAuthInfo | null = null;
 
     try {
-      user = await SysUserModel.getRawUserByUsernameOrEmail(username);
+      user = await UserRepository.findAuthIdentityByLogin(username);
 
       if (!user) {
         throw new BusinessError(AuthErrorCode.LOGIN_FAILED, "用户名或密码错误");
@@ -70,21 +70,13 @@ export class AuthService {
         { expiresIn: refreshTokenExpiresIn }
       );
 
-      await prisma.sysUser.update({
-        where: { id: user.id },
-        data: {
-          lastLoginTime: dateUtils.now(),
-          lastLoginIp: ip || "127.0.0.1",
-          loginCount: user.loginCount + 1,
-          updatedAt: dateUtils.now()
-        }
-      });
+      await UserRepository.recordSuccessfulLogin(user.id, ip || "127.0.0.1");
 
       const currentTime = dateUtils.nowUnix();
       const expiresAt = currentTime + accessTokenExpiresIn;
       const refreshTokenExpiresAt = currentTime + refreshTokenExpiresIn;
 
-      await SysUserTokenModel.create({
+      await UserTokenRepository.create({
         userId: user.id,
         accessToken: token,
         refreshToken: refreshToken,
@@ -130,28 +122,22 @@ export class AuthService {
 
   /**
    * 用户登出
-   * @param token JWT token
-   * @param fastify Fastify 实例（用于 JWT 验证）
+   *
+   * 仅按 userId 撤销该用户的所有活跃 token 记录。userId 已由路由层的
+   * `preHandler: fastify.authenticate` 校验过 JWT 签名、确认 token 未撤销、
+   * 用户未被禁用/锁定，因此本方法不再做任何签名/状态校验，避免 jwt.decode()
+   * 不验签导致的伪造 payload 攻击。
+   *
+   * @param userId 当前已鉴权用户的 ID（来自 request.currentUser.id）
+   * @param _fastify Fastify 实例（保留以兼容既有调用方签名；当前实现不依赖）
    */
-  static async logout(token: string, fastify: any): Promise<void> {
-    try {
-      // 解析 token 以获取用户信息
-      const decodedToken = fastify.jwt.decode(token.replace('Bearer ', ''));
-
-      if (decodedToken?.id) {
-        // 查找并撤销该用户的所有活跃令牌
-        const activeTokens = await SysUserTokenModel.findActiveTokensByUserId(decodedToken.id);
-
-        // 撤销所有活跃令牌
-        for (const tokenRecord of activeTokens) {
-          await SysUserTokenModel.revoke(tokenRecord.id);
-        }
-      }
-
-    } catch (error) {
-      // Token 验证失败，但仍然可以认为登出成功
-      // 因为客户端将无法再使用该 token
+  static async logout(userId: number, _fastify: FastifyInstance): Promise<void> {
+    if (!userId || typeof userId !== 'number') {
+      throw new BusinessError(AuthErrorCode.UNAUTHORIZED, '缺少有效的用户身份，无法登出');
     }
+
+    const activeTokens = await UserTokenRepository.findActiveTokensByUserId(userId);
+    await Promise.all(activeTokens.map((tokenRecord) => UserTokenRepository.revoke(tokenRecord.id)));
   }
 
   /**
@@ -160,20 +146,21 @@ export class AuthService {
    * @param fastify Fastify 实例（用于 JWT 验证和签名）
    * @returns 新的访问令牌和刷新令牌
    */
-  static async refreshToken(refreshToken: string, fastify: any): Promise<LoginData> {
+  static async refreshToken(refreshToken: string, fastify: FastifyInstance): Promise<LoginData> {
     try {
       // 验证刷新令牌
       let decodedToken;
       try {
-        decodedToken = fastify.jwt.verify(refreshToken);
-      } catch (jwtErr: any) {
+        decodedToken = fastify.jwt.verify<{ id?: number; type?: string }>(refreshToken);
+      } catch (jwtErr: unknown) {
+        const errCode = (jwtErr as { code?: string })?.code;
         // JWT格式错误或签名验证失败
-        if (jwtErr.code === 'FAST_JWT_MALFORMED' || jwtErr.code === 'FAST_JWT_FORMAT_INVALID') {
+        if (errCode === 'FAST_JWT_MALFORMED' || errCode === 'FAST_JWT_FORMAT_INVALID') {
           throw new BusinessError(AuthErrorCode.REFRESH_TOKEN_INVALID, '刷新令牌格式非法');
         }
 
         // Token过期
-        if (jwtErr.code === 'FAST_JWT_EXPIRED') {
+        if (errCode === 'FAST_JWT_EXPIRED') {
           throw new BusinessError(AuthErrorCode.REFRESH_TOKEN_EXPIRED, '刷新令牌已过期');
         }
 
@@ -193,23 +180,23 @@ export class AuthService {
       }
 
       // 根据用户ID获取最新用户信息
-      const user = await SysUserModel.getUserById(userId);
+      const user = await UserRepository.findById(userId);
 
       if (!user) {
         throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
       }
 
       // 检查用户状态
-      if (user.status === "0") {
+      if (user.status === 0) {
         throw new BusinessError(UserErrorCode.USER_DISABLED, "账号已被禁用");
       }
 
-      if (user.status === "2") {
+      if (user.status === 2) {
         throw new BusinessError(AuthErrorCode.ACCOUNT_LOCKED, "账号已被锁定");
       }
 
       // 查找现有的令牌记录
-      const existingToken = await SysUserTokenModel.findByRefreshToken(refreshToken);
+      const existingToken = await UserTokenRepository.findByRefreshToken(refreshToken);
       if (!existingToken) {
         throw new BusinessError(AuthErrorCode.REFRESH_TOKEN_INVALID, '刷新令牌不存在或已失效');
       }
@@ -241,7 +228,7 @@ export class AuthService {
       const refreshTokenExpiresAt = currentTime + refreshTokenExpiresIn;
 
       // 更新数据库中的令牌记录
-      await SysUserTokenModel.update(existingToken.id, {
+      await UserTokenRepository.update(existingToken.id, {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
         // 秒级时间戳转回毫秒用于存库

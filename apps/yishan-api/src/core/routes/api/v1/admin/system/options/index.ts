@@ -5,12 +5,14 @@ import {
   getSystemMessage,
   SystemMessageKeys,
 } from "../../../../../../../constants/messages/system.js";
+import { PERMISSION_CODES } from "../../../../../../../constants/permission-codes.js";
 
 const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   // 获取系统参数
   fastify.get(
     "/:key",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_OPTION_LIST)] as any,
       schema: {
         summary: "获取系统参数",
         description: "根据键获取系统参数值",
@@ -41,6 +43,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     "/query",
     {
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_OPTION_LIST)] as any,
       schema: {
         summary: "批量获取系统参数（QueryString）",
         description: "通过 query 参数 ?key[]=a&key[]=b 批量获取系统参数值",
@@ -82,7 +85,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   fastify.put(
     "/:key",
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_OPTION_UPDATE)] as any,
       schema: {
         summary: "设置系统参数",
         description: "根据键设置系统参数值",
@@ -116,7 +119,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   fastify.post(
     "/batch",
     {
-      preHandler: fastify.authenticate,
+      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_OPTION_UPDATE)] as any,
       schema: {
         summary: "批量设置系统参数",
         description: "传入JSON数组批量新增或更新系统参数",

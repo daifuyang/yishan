@@ -203,7 +203,7 @@ Content-Type: application/json
 - `src/core/schemas/auth.ts` - 认证相关 Schema 定义
 - `src/core/routes/api/v1/auth/index.ts` - 认证 API 路由
 - `src/core/models/sys-user-token.model.ts` - 用户令牌模型
-- `prisma/schema/*.prisma` - 数据库 Schema 定义
+- `drizzle/*.sql` - 数据库 Schema 真源(由 `pnpm db:generate` 编译为 `src/db/schema/`)
 
 ## 注意事项
 

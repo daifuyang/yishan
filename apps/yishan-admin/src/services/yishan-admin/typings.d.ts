@@ -33,7 +33,7 @@ declare namespace API {
     pageSize?: number;
     keyword?: string;
     status?: "0" | "1";
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -76,7 +76,7 @@ declare namespace API {
     /** 父级菜单ID过滤 */
     parentId?: number;
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -186,7 +186,7 @@ declare namespace API {
     /** 状态 */
     status?: "0" | "1";
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -381,7 +381,7 @@ declare namespace API {
     status?: "0" | "1";
     /** 父分组ID过滤 */
     parentId?: number;
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -493,7 +493,7 @@ declare namespace API {
     status?: "0" | "1";
     /** 父级分类ID */
     parentId?: number;
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -890,7 +890,7 @@ declare namespace API {
     id: number;
   };
 
-  type deletePostParams = {
+  type deletePositionParams = {
     /** 岗位ID */
     id: string;
   };
@@ -946,7 +946,7 @@ declare namespace API {
     /** 上级部门ID过滤 */
     parentId?: number;
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -1029,7 +1029,7 @@ declare namespace API {
     type?: string;
     keyword?: string;
     status?: 0 | 1;
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1073,7 +1073,7 @@ declare namespace API {
     pageSize?: number;
     keyword?: string;
     status?: 0 | 1;
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1130,7 +1130,7 @@ declare namespace API {
     /** 状态 */
     status?: "0" | "1";
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -1154,7 +1154,7 @@ declare namespace API {
     /** 状态 */
     status?: "0" | "1";
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -1217,7 +1217,7 @@ declare namespace API {
     pageSize?: number;
     keyword?: string;
     status?: "0" | "1";
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1240,7 +1240,7 @@ declare namespace API {
     /** 父级菜单ID过滤 */
     parentId?: number;
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
     appId: number;
@@ -1277,7 +1277,7 @@ declare namespace API {
     /** 状态 */
     status?: "0" | "1";
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
     appId: number;
@@ -1356,7 +1356,7 @@ declare namespace API {
     status?: "0" | "1";
     /** 父分组ID过滤 */
     parentId?: number;
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1397,7 +1397,7 @@ declare namespace API {
     status?: "0" | "1";
     /** 父级分类ID */
     parentId?: number;
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1418,7 +1418,7 @@ declare namespace API {
     /** 上级部门ID过滤 */
     parentId?: number;
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -1436,7 +1436,7 @@ declare namespace API {
     type?: string;
     keyword?: string;
     status?: 0 | 1;
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1451,7 +1451,7 @@ declare namespace API {
     pageSize?: number;
     keyword?: string;
     status?: 0 | 1;
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1476,7 +1476,7 @@ declare namespace API {
     /** 状态 */
     status?: "0" | "1";
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
     appId: number;
@@ -1493,7 +1493,7 @@ declare namespace API {
     /** 状态 */
     status?: "0" | "1";
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
     appId: number;
@@ -1563,7 +1563,7 @@ declare namespace API {
     /** 父级菜单ID过滤 */
     parentId?: number;
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -1664,12 +1664,12 @@ declare namespace API {
     id: number;
   };
 
-  type getPostDetailParams = {
+  type getPositionDetailParams = {
     /** 岗位ID */
     id: string;
   };
 
-  type getPostListParams = {
+  type getPositionListParams = {
     /** 页码 */
     page?: number;
     /** 每页数量 */
@@ -1679,7 +1679,7 @@ declare namespace API {
     /** 岗位状态 */
     status?: "0" | "1";
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -1845,7 +1845,7 @@ declare namespace API {
     /** 父级菜单ID过滤 */
     parentId?: number;
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
@@ -2110,7 +2110,7 @@ declare namespace API {
     updatedAt: string;
   };
 
-  type postDeleteResp = {
+  type positionDeleteResp = {
     code: number;
     message: string;
     success: boolean;
@@ -2118,15 +2118,15 @@ declare namespace API {
     timestamp: string;
   };
 
-  type postDetailResp = {
+  type positionDetailResp = {
     code: number;
     message: string;
     success: boolean;
-    data: sysPost;
+    data: sysPosition;
     timestamp: string;
   };
 
-  type postListQuery = {
+  type positionListQuery = {
     /** 页码 */
     page?: number;
     /** 每页数量 */
@@ -2136,16 +2136,16 @@ declare namespace API {
     /** 岗位状态 */
     status?: "0" | "1";
     /** 排序字段 */
-    sortBy?: "sort_order" | "createdAt" | "updatedAt";
+    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
     sortOrder?: "asc" | "desc";
   };
 
-  type postListResp = {
+  type positionListResp = {
     code: number;
     message: string;
     success: boolean;
-    data: sysPost[];
+    data: sysPosition[];
     timestamp: string;
     pagination: paginationResponse;
   };
@@ -2204,8 +2204,8 @@ declare namespace API {
   type qiniuRegion = "z0" | "z1" | "z2" | "na0" | "as0";
 
   type refreshTokenReq = {
-    /** 刷新令牌 */
-    refreshToken: string;
+    /** 刷新令牌（浏览器场景可省略，从 HttpOnly cookie 读取） */
+    refreshToken?: string;
   };
 
   type refreshTokenResp = {
@@ -2359,7 +2359,7 @@ declare namespace API {
     keepAlive?: boolean;
   };
 
-  type savePostReq = {
+  type savePositionReq = {
     /** 岗位名称 */
     name: string;
     /** 状态 */
@@ -3423,7 +3423,7 @@ declare namespace API {
     updatedAt: string;
   };
 
-  type sysPost = {
+  type sysPosition = {
     /** 岗位ID */
     id: number;
     /** 岗位名称 */
@@ -3960,12 +3960,12 @@ declare namespace API {
     id: number;
   };
 
-  type updatePostParams = {
+  type updatePositionParams = {
     /** 岗位ID */
     id: string;
   };
 
-  type updatePostReq = {
+  type updatePositionReq = {
     /** 岗位名称 */
     name?: string;
     /** 状态 */

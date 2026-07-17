@@ -1,14 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-const mockPrisma = {
-  sysUser: { count: vi.fn() },
-  sysDept: { count: vi.fn() },
-  sysLoginLog: { count: vi.fn(), groupBy: vi.fn() },
-};
-
-vi.mock('../src/utils/prisma.js', () => ({
-  prismaManager: { getClient: () => mockPrisma },
-}));
+import { UserRepository } from '../src/core/repositories/user.repository.js';
+import { DeptRepository } from '../src/core/repositories/dept.repository.js';
+import { LoginLogRepository } from '../src/core/repositories/login-log.repository.js';
 
 const { DashboardService } = await import('../src/core/services/dashboard.service.js');
 
@@ -18,14 +11,10 @@ describe('DashboardService', () => {
   });
 
   it('should return dashboard stats', async () => {
-    mockPrisma.sysUser.count.mockResolvedValue(100);
-    mockPrisma.sysDept.count.mockResolvedValue(20);
-    mockPrisma.sysLoginLog.count.mockResolvedValue(50);
-    mockPrisma.sysLoginLog.groupBy.mockResolvedValue([
-      { userId: 1 },
-      { userId: 2 },
-      { userId: 3 },
-    ]);
+    vi.spyOn(UserRepository, 'count').mockResolvedValueOnce(100);
+    vi.spyOn(DeptRepository, 'count').mockResolvedValueOnce(20);
+    vi.spyOn(LoginLogRepository, 'count').mockResolvedValueOnce(50);
+    vi.spyOn(LoginLogRepository, 'countDistinctUsersInWindow').mockResolvedValueOnce(3);
 
     const stats = await DashboardService.getStats();
 
@@ -35,17 +24,17 @@ describe('DashboardService', () => {
     expect(stats.online).toBe(3);
   });
 
-  it('should call all 4 queries in parallel', async () => {
-    mockPrisma.sysUser.count.mockResolvedValue(100);
-    mockPrisma.sysDept.count.mockResolvedValue(20);
-    mockPrisma.sysLoginLog.count.mockResolvedValue(50);
-    mockPrisma.sysLoginLog.groupBy.mockResolvedValue([]);
+  it('should call all 4 repository methods in parallel', async () => {
+    vi.spyOn(UserRepository, 'count').mockResolvedValueOnce(100);
+    vi.spyOn(DeptRepository, 'count').mockResolvedValueOnce(20);
+    vi.spyOn(LoginLogRepository, 'count').mockResolvedValueOnce(50);
+    vi.spyOn(LoginLogRepository, 'countDistinctUsersInWindow').mockResolvedValueOnce(0);
 
     await DashboardService.getStats();
 
-    expect(mockPrisma.sysUser.count).toHaveBeenCalledTimes(1);
-    expect(mockPrisma.sysDept.count).toHaveBeenCalledTimes(1);
-    expect(mockPrisma.sysLoginLog.count).toHaveBeenCalledTimes(1);
-    expect(mockPrisma.sysLoginLog.groupBy).toHaveBeenCalledTimes(1);
+    expect(UserRepository.count).toHaveBeenCalledTimes(1);
+    expect(DeptRepository.count).toHaveBeenCalledTimes(1);
+    expect(LoginLogRepository.count).toHaveBeenCalledTimes(1);
+    expect(LoginLogRepository.countDistinctUsersInWindow).toHaveBeenCalledTimes(1);
   });
 });

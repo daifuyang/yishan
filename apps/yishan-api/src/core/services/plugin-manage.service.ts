@@ -1,9 +1,11 @@
+import { PluginRepository } from '../repositories/plugin.repository.js'
 import { ResourceErrorCode } from '../../constants/business-codes/resource.js'
 import { BusinessError } from '../../exceptions/business-error.js'
 import { HookEmitReport, PluginRuntime } from '../../plugins-runtime/index.js'
 import { RegisteredPlugin } from '../../plugins-runtime/types.js'
 import { PersistedPluginRuntimeState } from '../../plugins-runtime/persistence.js'
 import { PluginMenuSyncService, type SyncStrategy, type ConflictDetail } from './plugin-menu-sync.service.js'
+import { invalidateGlobalCatalog, initGlobalCatalog } from './permission-catalog.service.js'
 
 export interface PluginMenuItemResponse {
   name: string
@@ -35,8 +37,22 @@ export interface PluginManageItem {
   syncStatus?: PluginSyncStatus | null
 }
 
+/**
+ * 插件启停操作需要持久化事实 — 用于补偿、回滚取证。
+ */
+interface PersistedSnapshot {
+  enabled: boolean
+  state: PersistedPluginRuntimeState['lifecycleState']
+}
+
 export class PluginManageService {
-  constructor(private readonly runtime: PluginRuntime) {}
+  constructor(
+    private readonly runtime: PluginRuntime,
+    private readonly logger: { error: (obj: unknown, msg?: string) => void; warn: (obj: unknown, msg?: string) => void } = console as unknown as {
+      error: (obj: unknown, msg?: string) => void
+      warn: (obj: unknown, msg?: string) => void
+    },
+  ) {}
 
   async listPlugins(): Promise<PluginManageItem[]> {
     const dbStates = await this.runtime.persistence.listRuntimeStates()
@@ -68,6 +84,16 @@ export class PluginManageService {
     return this.mergePluginState(name, runtimePlugin, dbState)
   }
 
+  /**
+   * 启用插件 — 固定顺序：
+   *   1. 严格写数据库 (enabled=true)
+   *   2. runtime.lifecycle.enable(name)
+   *   3. 菜单同步
+   *   4. 严格重建 Catalog
+   *
+   * 步骤 2/3/4 任意失败都会基于“原始持久化状态”执行补偿；
+   * 补偿失败仅记录 error 日志并向上抛业务错误，调用方必须感知失败。
+   */
   async enablePlugin(name: string, strategy: SyncStrategy = 'safe'): Promise<PluginManageItem> {
     const runtimePlugin = this.runtime.registry.get(name)
     if (!runtimePlugin) {
@@ -75,10 +101,29 @@ export class PluginManageService {
     }
 
     const pluginId = runtimePlugin.manifest.pluginId
-    this.runtime.lifecycle.enable(name)
-    await this.runtime.persistence.updateRuntimeState(pluginId, name, 'enabled', true)
+    // 必须在任何写入和副作用之前取证。后续 DB 已写为 enabled 时再读取，
+    // 读到的将是新状态，无法用于回滚。
+    const originalSnapshot = await this.readOriginalSnapshot(pluginId, name)
 
-    await this.performMenuSync(runtimePlugin, strategy)
+    // 1) 严格写数据库（持久化为唯一事实）
+    await this.runtime.persistence.updateRuntimeStateStrict(
+      pluginId,
+      name,
+      'enabled',
+      true,
+    )
+
+    try {
+      // 2) 启动 runtime
+      this.runtime.lifecycle.enable(name)
+      // 3) 菜单同步
+      await this.performMenuSync(runtimePlugin, strategy)
+      // 4) 严格重建 Catalog
+      await this.rebuildCatalogStrict()
+    } catch (error) {
+      await this.rollbackEnable(pluginId, name, runtimePlugin, originalSnapshot, error)
+      throw error
+    }
 
     return this.getPlugin(name)
   }
@@ -89,20 +134,31 @@ export class PluginManageService {
       throw new BusinessError(ResourceErrorCode.RESOURCE_NOT_FOUND, `插件不存在: ${name}`)
     }
 
-    const dbState = await this.runtime.persistence.getRuntimeState(name)
-    const isEnabled = dbState?.enabled ?? runtimePlugin.state === 'enabled'
-    if (!isEnabled) {
+    // 菜单同步同样属于状态敏感副作用，必须以数据库事实为准，不能回退内存状态。
+    const dbState = await this.runtime.persistence.getRuntimeStateStrict(
+      runtimePlugin.manifest.pluginId,
+      name,
+    )
+    if (!dbState?.enabled) {
       throw new BusinessError(ResourceErrorCode.RESOURCE_STATUS_ERROR, `插件未启用，无法同步菜单: ${name}`)
     }
 
     await this.performMenuSync(runtimePlugin, strategy)
 
+    // 同步后失效并重新构建权限目录（菜单可能关联权限变化）
+    await this.rebuildCatalogStrict()
+
     return this.getPlugin(name)
   }
 
+  /**
+   * 同步菜单。失败时只抛业务错误，由调用方决定是否补偿。
+   *
+   * 不在此方法修改 lifecycle 或持久化状态：它既被启停事务调用，也被独立
+   * sync 调用；在这里吞写入失败会破坏“DB 成功后才执行副作用”的边界。
+   */
   private async performMenuSync(runtimePlugin: RegisteredPlugin, strategy: SyncStrategy) {
     const pluginId = runtimePlugin.manifest.pluginId
-    const name = runtimePlugin.manifest.name
 
     const menuSync = new PluginMenuSyncService()
     let syncResult: Awaited<ReturnType<typeof menuSync.syncPluginMenus>>
@@ -111,8 +167,6 @@ export class PluginManageService {
       syncResult = await menuSync.syncPluginMenus(runtimePlugin.manifest, 1, strategy)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      this.runtime.lifecycle.transition(name, 'error', `菜单同步异常: ${msg}`)
-      await this.runtime.persistence.updateRuntimeState(pluginId, name, 'error', true, `菜单同步异常: ${msg}`)
       throw new BusinessError(ResourceErrorCode.RESOURCE_STATUS_ERROR, `菜单同步失败: ${msg}`)
     }
 
@@ -122,10 +176,7 @@ export class PluginManageService {
       if (pluginInstall) {
         pluginInstallId = pluginInstall.id
         await menuSync.saveSyncAudit(pluginInstall.id, strategy, syncResult)
-        await this.prisma.sysPluginInstall.update({
-          where: { id: pluginInstall.id },
-          data: { syncStrategy: strategy },
-        })
+        await PluginRepository.updateInstallStrategy(pluginInstall.id, strategy)
       }
     } catch {
       // non-fatal: sync audit should not block plugin enable
@@ -133,13 +184,20 @@ export class PluginManageService {
 
     if (syncResult.status === 'failed' || (strategy === 'strict' && syncResult.conflicted > 0)) {
       const errorMsg = syncResult.errors.join('; ') || `strict 策略下存在 ${syncResult.conflicted} 个冲突`
-      this.runtime.lifecycle.transition(name, 'error', errorMsg)
-      await this.runtime.persistence.updateRuntimeState(pluginId, name, 'error', true, errorMsg)
-      await this.updatePluginInstallError(pluginInstallId, errorMsg)
+      if (pluginInstallId) {
+        await PluginRepository.updateInstallError(pluginInstallId, errorMsg)
+      }
       throw new BusinessError(ResourceErrorCode.RESOURCE_STATUS_ERROR, `菜单同步冲突: ${errorMsg}`)
     }
   }
 
+  /**
+   * 禁用插件 — 固定顺序：
+   *   1. 严格写数据库 (enabled=false)
+   *   2. runtime.lifecycle.disable(name)
+   *   3. 隐藏菜单
+   *   4. 严格重建 Catalog
+   */
   async disablePlugin(name: string): Promise<PluginManageItem> {
     const runtimePlugin = this.runtime.registry.get(name)
     if (!runtimePlugin) {
@@ -147,14 +205,28 @@ export class PluginManageService {
     }
 
     const pluginId = runtimePlugin.manifest.pluginId
-    this.runtime.lifecycle.disable(name)
-    await this.runtime.persistence.updateRuntimeState(pluginId, name, 'disabled', false)
+    // 与 enable 相同：必须在严格写入前取证，失败补偿才有真实旧状态。
+    const originalSnapshot = await this.readOriginalSnapshot(pluginId, name)
+
+    // 1) 严格写数据库
+    await this.runtime.persistence.updateRuntimeStateStrict(
+      pluginId,
+      name,
+      'disabled',
+      false,
+    )
 
     try {
+      // 2) runtime 切到 disabled
+      this.runtime.lifecycle.disable(name)
+      // 3) 隐藏菜单
       const menuSync = new PluginMenuSyncService()
       await menuSync.hidePluginMenus(pluginId)
-    } catch {
-      // non-fatal: menu hide should not block plugin disable
+      // 4) 重建 Catalog
+      await this.rebuildCatalogStrict()
+    } catch (error) {
+      await this.rollbackDisable(pluginId, name, runtimePlugin, originalSnapshot, error)
+      throw error
     }
 
     return this.getPlugin(name)
@@ -165,7 +237,7 @@ export class PluginManageService {
     if (!runtimePlugin) {
       throw new BusinessError(ResourceErrorCode.RESOURCE_NOT_FOUND, `插件不存在: ${name}`)
     }
-    const pluginInstall = await this.getPluginInstallRecord(name)
+    const pluginInstall = await this.getPluginInstallRecord(runtimePlugin.manifest.pluginId, name)
     if (!pluginInstall) {
       return []
     }
@@ -179,35 +251,172 @@ export class PluginManageService {
     return reports.slice(-normalizedLimit).reverse()
   }
 
-  private get prisma() {
-    const { prismaManager } = require('../../utils/prisma.js')
-    return prismaManager.getClient()
+  // -------------------------------------------------------------------------
+  // 补偿路径（私有）
+  // -------------------------------------------------------------------------
+
+  /**
+   * 读取补偿所需的原始持久化状态。**只使用 strict reader**，绝不依赖内存 fallback。
+   * 数据库读取失败时抛业务错误，绝不猜测默认 enabled。
+   */
+  private async readOriginalSnapshot(pluginId: string, name: string): Promise<PersistedSnapshot> {
+    const original = await this.runtime.persistence.getRuntimeStateStrict(pluginId, name)
+    if (!original) {
+      throw new BusinessError(
+        ResourceErrorCode.RESOURCE_NOT_FOUND,
+        `插件 ${name} 缺少持久化记录，无法完成补偿`,
+      )
+    }
+    return {
+      enabled: original.enabled,
+      state: original.lifecycleState,
+    }
+  }
+
+  /**
+   * 启用流程失败后的补偿：基于原始持久化状态恢复。
+   */
+  private async rollbackEnable(
+    pluginId: string,
+    name: string,
+    runtimePlugin: RegisteredPlugin,
+    snapshot: PersistedSnapshot,
+    cause: unknown,
+  ): Promise<void> {
+    try {
+      // 1) runtime 切回原状态
+      if (snapshot.state && runtimePlugin.state !== snapshot.state) {
+        try {
+          this.runtime.lifecycle.transition(name, snapshot.state)
+        } catch (transitionErr) {
+          this.logger.warn(
+            { plugin: name, error: (transitionErr as Error).message },
+            'plugin enable rollback: lifecycle transition refused, continuing',
+          )
+        }
+      }
+      // 2) DB 写回原状态（仍使用 strict write，但容忍失败并记 error 日志）
+      try {
+        await this.runtime.persistence.updateRuntimeStateStrict(
+          pluginId,
+          name,
+          snapshot.state,
+          snapshot.enabled,
+        )
+      } catch (writeErr) {
+        this.logger.error(
+          { plugin: name, error: (writeErr as Error).message },
+          'plugin enable rollback: strict state restore failed',
+        )
+      }
+      // 3) 隐藏/恢复菜单：原状态非 enabled 时隐藏；不强制（失败仅日志）
+      try {
+        const menuSync = new PluginMenuSyncService()
+        if (!snapshot.enabled) {
+          await menuSync.hidePluginMenus(pluginId)
+        } else {
+          await menuSync.restorePluginMenus(pluginId)
+        }
+      } catch (menuErr) {
+        this.logger.warn(
+          { plugin: name, error: (menuErr as Error).message },
+          'plugin enable rollback: menu restore skipped',
+        )
+      }
+      await this.rebuildCatalogAfterRollback(name)
+    } finally {
+      this.logger.error(
+        { plugin: name, error: (cause as Error)?.message ?? String(cause) },
+        'plugin enable failed and rolled back',
+      )
+    }
+  }
+
+  /**
+   * 禁用流程失败后的补偿：恢复操作前取得的原始持久化状态。
+   */
+  private async rollbackDisable(
+    pluginId: string,
+    name: string,
+    runtimePlugin: RegisteredPlugin,
+    snapshot: PersistedSnapshot,
+    cause: unknown,
+  ): Promise<void> {
+    try {
+      // runtime 恢复原状态
+      try {
+        if (runtimePlugin.state !== snapshot.state) {
+          this.runtime.lifecycle.transition(name, snapshot.state)
+        }
+      } catch (transitionErr) {
+        this.logger.warn(
+          { plugin: name, error: (transitionErr as Error).message },
+          'plugin disable rollback: lifecycle transition refused, continuing',
+        )
+      }
+      // DB 写回原状态（strict 失败仅记录 error，原请求仍失败）
+      try {
+        await this.runtime.persistence.updateRuntimeStateStrict(
+          pluginId,
+          name,
+          snapshot.state,
+          snapshot.enabled,
+        )
+      } catch (writeErr) {
+        this.logger.error(
+          { plugin: name, error: (writeErr as Error).message },
+          'plugin disable rollback: strict state restore failed',
+        )
+      }
+      // 菜单恢复原状态（失败仅日志）
+      try {
+        const menuSync = new PluginMenuSyncService()
+        if (snapshot.enabled) {
+          await menuSync.restorePluginMenus(pluginId)
+        } else {
+          await menuSync.hidePluginMenus(pluginId)
+        }
+      } catch (menuErr) {
+        this.logger.warn(
+          { plugin: name, error: (menuErr as Error).message },
+          'plugin disable rollback: menu hide skipped',
+        )
+      }
+      await this.rebuildCatalogAfterRollback(name)
+    } finally {
+      this.logger.error(
+        { plugin: name, error: (cause as Error)?.message ?? String(cause) },
+        'plugin disable failed and rolled back',
+      )
+    }
+  }
+
+  /**
+   * 严格重建 Catalog：先失效再基于 strict reader 重新初始化。
+   * 失败时不得吞错。
+   */
+  private async rebuildCatalogStrict(): Promise<void> {
+    await invalidateGlobalCatalog()
+    await initGlobalCatalog(
+      () => this.runtime.persistence.listPluginStatesStrict(),
+      { listManifests: () => this.runtime.registry.list().map(p => p.manifest) }
+    )
+  }
+
+  /** 补偿后刷新 Catalog；失败只能记录，不能掩盖原始操作失败。 */
+  private async rebuildCatalogAfterRollback(name: string): Promise<void> {
+    try {
+      await this.rebuildCatalogStrict()
+    } catch (catalogErr) {
+      this.logger.error(
+        { plugin: name, error: (catalogErr as Error).message },
+        'plugin rollback: catalog rebuild failed',
+      )
+    }
   }
 
   private async getPluginInstallRecord(pluginId?: string, pluginName?: string) {
-    let plugin = null
-    if (pluginId) {
-      plugin = await this.prisma.sysPlugin.findFirst({
-        where: { pluginId },
-        include: { installs: { include: { syncLogs: { orderBy: { createdAt: 'desc' }, take: 1 } } } },
-      })
-    }
-    if (!plugin && pluginName) {
-      plugin = await this.prisma.sysPlugin.findFirst({
-        where: { name: pluginName },
-        include: { installs: { include: { syncLogs: { orderBy: { createdAt: 'desc' }, take: 1 } } } },
-      })
-    }
-    if (!plugin || plugin.installs.length === 0) return null
-    return plugin.installs[0]
-  }
-
-  private async updatePluginInstallError(installId: number | undefined, error: string) {
-    if (!installId) return
-    await this.prisma.sysPluginInstall.update({
-      where: { id: installId },
-      data: { lastError: error },
-    })
+    return await PluginRepository.findInstallWithLatestLog(pluginId, pluginName)
   }
 
   private async mergePluginState(

@@ -112,12 +112,16 @@ const CurrentUserRespSchema = successResponse({
 export type CurrentUserResp = Static<typeof CurrentUserRespSchema>;
 
 // 刷新令牌请求 Schema
+// refreshToken 设为可选：浏览器场景下从 HttpOnly cookie 读取，body 可为空；
+// 非浏览器客户端仍可通过 body 传入。缺失时由路由处理器返回业务错误码。
 const RefreshTokenReqSchema = Type.Object(
   {
-    refreshToken: Type.String({
-      description: "刷新令牌",
-      minLength: 1
-    })
+    refreshToken: Type.Optional(
+      Type.String({
+        description: "刷新令牌（浏览器场景可省略，从 HttpOnly cookie 读取）",
+        minLength: 1
+      })
+    )
   },
   { $id: "refreshTokenReq" }
 );

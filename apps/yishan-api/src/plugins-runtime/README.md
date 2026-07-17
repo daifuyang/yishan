@@ -9,14 +9,14 @@ Current responsibilities:
 - Keep plugin state in a registry and drive transitions with a lifecycle state machine.
 - Provide a minimal hook bus with priority-based execution.
 - Discover and load module manifests from a configurable modules directory.
-- Persist plugin metadata and runtime state into Prisma models.
+- Persist plugin metadata and runtime state into database models.
 
 Current integration in `src/app.ts` scans/registers manifests, updates runtime state,
 and syncs persistence. Existing route/plugin autoload behavior is unchanged.
 
 Persistence behavior:
 
-- Primary path: write to `sys_plugin*` tables via Prisma.
+- Primary path: write to `sys_plugin*` tables via the Drizzle-backed database client.
 - Fallback path: if persistence fails, runtime degrades to in-memory state and logs warnings.
 
 Planned next steps:

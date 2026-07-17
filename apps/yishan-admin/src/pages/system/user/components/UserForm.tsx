@@ -5,12 +5,10 @@ import {
   ProFormRadio,
   ProFormDatePicker,
   ProFormSelect,
-  ProFormTextArea,
 } from "@ant-design/pro-components";
 import type { Dayjs } from "dayjs";
 import { useModel } from "@umijs/max";
 import { getRoleList } from "@/services/yishan-admin/sysRoles";
-import { getPostList } from "@/services/yishan-admin/portalPosts";
 import { getUserDetail, createUser, updateUser } from "@/services/yishan-admin/sysUsers";
 import { ProFormDeptTreeSelect } from "@/components";
 
@@ -48,7 +46,7 @@ const UserForm: React.FC<UserFormProps> = ({
   };
 
   const handleFinish = async (values: any) => {
-    const basePayload: any = {
+    const basePayload: API.updateUserReq = {
       username: values.username,
       realName: values.realName,
       nickname: values.nickname,
@@ -57,15 +55,14 @@ const UserForm: React.FC<UserFormProps> = ({
       gender: values.gender,
       status: values.status,
       birthDate: values.birthDate,
-      deptId: values.deptId,
-      postIds: values.postIds,
+      deptIds: values.deptIds,
       roleIds: values.roleIds,
-      remark: values.remark,
     };
 
     if (!initialValues?.id) {
       const payload: API.createUserReq = {
         ...basePayload,
+        phone: values.phone,
         password: values.password,
       };
       const res = await createUser(payload);
@@ -119,7 +116,7 @@ const UserForm: React.FC<UserFormProps> = ({
       />
 
       <ProFormDeptTreeSelect
-        name="deptId"
+        name="deptIds"
         label="归属部门"
         placeholder="请选择归属部门"
         allowClear
@@ -184,30 +181,6 @@ const UserForm: React.FC<UserFormProps> = ({
       />
 
       <ProFormSelect
-        name="postIds"
-        label="岗位"
-        placeholder="请选择岗位"
-        showSearch
-        debounceTime={200}
-        request={async (params) => {
-          const res = await getPostList({
-            page: 1,
-            pageSize: 100,
-            status: "1",
-            keyword: params.keyWords,
-            sortBy: "sort_order",
-            sortOrder: "asc",
-          });
-          return (res.data || []).map((p: API.sysPost) => ({
-            label: p.name,
-            value: p.id,
-          }));
-        }}
-        fieldProps={{ mode: "multiple", maxTagCount: "responsive" }}
-        colProps={{ span: 12 }}
-      />
-
-      <ProFormSelect
         name="roleIds"
         label="角色"
         placeholder="请选择角色"
@@ -240,12 +213,6 @@ const UserForm: React.FC<UserFormProps> = ({
         transform={(value: Dayjs | null) => ({ birthDate: value ? value.format("YYYY-MM-DD") : undefined })}
       />
 
-      <ProFormTextArea
-        name="remark"
-        label="备注"
-        placeholder="请输入内容"
-        colProps={{ span: 24 }}
-      />
     </ModalForm>
   );
 };

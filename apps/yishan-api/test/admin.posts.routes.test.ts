@@ -1,21 +1,24 @@
 import Fastify from 'fastify'
-import adminPostsPlugin from '../src/plugins/modules/portal/routes/v1/admin/posts/index.ts'
-import registerPostSchemas from '../src/plugins/modules/portal/schemas/post.ts'
-import registerCommonSchemas from '../src/plugins/modules/portal/schemas/common.ts'
+import adminPositionsPlugin from '../src/core/routes/api/v1/admin/positions/index.ts'
+import registerPositionSchemas from '../src/core/schemas/position.ts'
+import registerCommonSchemas from '../src/core/schemas/common.ts'
 import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
-import { PostService } from '../src/plugins/modules/portal/services/post.service.ts'
-import { ValidationErrorCode } from '../src/plugins/modules/portal/constants/business-codes/validation.ts'
-import { PostErrorCode } from '../src/plugins/modules/portal/constants/business-codes/post.ts'
-import { BusinessError } from '../src/plugins/modules/portal/exceptions/business-error.ts'
+import { PositionService } from '../src/core/services/position.service.ts'
+import { ValidationErrorCode } from '../src/constants/business-codes/validation.ts'
+import { PositionErrorCode } from '../src/constants/business-codes/position.ts'
+import { BusinessError } from '../src/exceptions/business-error.ts'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 async function buildApp() {
-  const app = Fastify({ logger: false })
+  const app = Fastify({ logger: false });
+    // 单测不需要真实 RBAC 校验：no-op 占位。
+    app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
+    app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
   await app.register(errorHandlerPlugin)
   // 先注册通用Schema（包含paginationResponse），否则响应schema校验会失败
   registerCommonSchemas(app)
-  registerPostSchemas(app)
-  await app.register(adminPostsPlugin)
+  registerPositionSchemas(app)
+  await app.register(adminPositionsPlugin)
   await app.ready()
   return app
 }
@@ -24,7 +27,7 @@ beforeEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('Admin Posts routes', () => {
+describe('Admin Positions routes', () => {
   it('GET / 应返回分页的岗位列表', async () => {
     const app = await buildApp()
 
@@ -46,7 +49,7 @@ describe('Admin Posts routes', () => {
       }
     ] as any
 
-    vi.spyOn(PostService, 'getPostList').mockResolvedValue({ list, total: 1, page: 2, pageSize: 5 })
+    vi.spyOn(PositionService, 'getPositionList').mockResolvedValue({ list, total: 1, page: 2, pageSize: 5 })
 
     const res = await app.inject({ method: 'GET', url: '/?page=2&pageSize=5&keyword=dev&status=1&sortBy=createdAt&sortOrder=desc' })
 
@@ -81,7 +84,7 @@ describe('Admin Posts routes', () => {
       updatedAt: now,
     } as any
 
-    vi.spyOn(PostService, 'createPost').mockResolvedValue(created)
+    vi.spyOn(PositionService, 'createPosition').mockResolvedValue(created)
 
     const res = await app.inject({
       method: 'POST',
@@ -100,8 +103,8 @@ describe('Admin Posts routes', () => {
   it('POST / 当岗位已存在返回业务错误码', async () => {
     const app = await buildApp()
 
-    vi.spyOn(PostService, 'createPost').mockRejectedValue(
-      new BusinessError(PostErrorCode.POST_ALREADY_EXISTS, '岗位已存在')
+    vi.spyOn(PositionService, 'createPosition').mockRejectedValue(
+      new BusinessError(PositionErrorCode.POSITION_ALREADY_EXISTS, '岗位已存在')
     )
 
     const res = await app.inject({ method: 'POST', url: '/', payload: { name: '开发工程师', code: 'DEV' } })
@@ -109,7 +112,7 @@ describe('Admin Posts routes', () => {
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.success).toBe(false)
-    expect(body.code).toBe(PostErrorCode.POST_ALREADY_EXISTS)
+    expect(body.code).toBe(PositionErrorCode.POSITION_ALREADY_EXISTS)
 
     await app.close()
   })
@@ -133,7 +136,7 @@ describe('Admin Posts routes', () => {
       updatedAt: now,
     } as any
 
-    vi.spyOn(PostService, 'updatePost').mockResolvedValue(updated)
+    vi.spyOn(PositionService, 'updatePosition').mockResolvedValue(updated)
 
     const res = await app.inject({ method: 'PUT', url: '/5', payload: { name: '资深开发工程师' } })
 
@@ -161,8 +164,8 @@ describe('Admin Posts routes', () => {
   it('PUT /:id 岗位不存在返回业务错误码（HTTP 200）', async () => {
     const app = await buildApp()
 
-    vi.spyOn(PostService, 'updatePost').mockRejectedValue(
-      new BusinessError(PostErrorCode.POST_NOT_FOUND, '岗位不存在')
+    vi.spyOn(PositionService, 'updatePosition').mockRejectedValue(
+      new BusinessError(PositionErrorCode.POSITION_NOT_FOUND, '岗位不存在')
     )
 
     const res = await app.inject({ method: 'PUT', url: '/99', payload: { name: 'x' } })
@@ -170,7 +173,7 @@ describe('Admin Posts routes', () => {
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.success).toBe(false)
-    expect(body.code).toBe(PostErrorCode.POST_NOT_FOUND)
+    expect(body.code).toBe(PositionErrorCode.POSITION_NOT_FOUND)
 
     await app.close()
   })
@@ -178,7 +181,7 @@ describe('Admin Posts routes', () => {
   it('DELETE /:id 删除岗位返回成功', async () => {
     const app = await buildApp()
 
-    vi.spyOn(PostService, 'deletePost').mockResolvedValue({ id: 7 })
+    vi.spyOn(PositionService, 'deletePosition').mockResolvedValue({ id: 7 })
 
     const res = await app.inject({ method: 'DELETE', url: '/7' })
     expect(res.statusCode).toBe(200)
@@ -193,7 +196,7 @@ describe('Admin Posts routes', () => {
     const app = await buildApp()
 
     const now = new Date().toISOString()
-    const postDetail = {
+    const positionDetail = {
       id: 11,
       name: '测试工程师',
       code: 'QA',
@@ -208,7 +211,7 @@ describe('Admin Posts routes', () => {
       updatedAt: now,
     } as any
 
-    vi.spyOn(PostService, 'getPostById').mockResolvedValue(postDetail)
+    vi.spyOn(PositionService, 'getPositionById').mockResolvedValue(positionDetail)
 
     const res = await app.inject({ method: 'GET', url: '/11' })
     expect(res.statusCode).toBe(200)
@@ -234,13 +237,15 @@ describe('Admin Posts routes', () => {
   it('GET /:id 岗位不存在返回业务错误码（HTTP 200）', async () => {
     const app = await buildApp()
 
-    vi.spyOn(PostService, 'getPostById').mockResolvedValue(null as any)
+    vi.spyOn(PositionService, 'getPositionById').mockRejectedValue(
+      new BusinessError(PositionErrorCode.POSITION_NOT_FOUND, '岗位不存在')
+    )
 
     const res = await app.inject({ method: 'GET', url: '/999' })
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.success).toBe(false)
-    expect(body.code).toBe(PostErrorCode.POST_NOT_FOUND)
+    expect(body.code).toBe(PositionErrorCode.POSITION_NOT_FOUND)
 
     await app.close()
   })
@@ -260,15 +265,15 @@ describe('Admin Posts routes', () => {
   it('DELETE /:id 岗位删除被禁止返回业务错误码（HTTP 200）', async () => {
     const app = await buildApp()
 
-    vi.spyOn(PostService, 'deletePost').mockRejectedValue(
-      new BusinessError(PostErrorCode.POST_DELETE_FORBIDDEN, '岗位删除被禁止')
+    vi.spyOn(PositionService, 'deletePosition').mockRejectedValue(
+      new BusinessError(PositionErrorCode.POSITION_DELETE_FORBIDDEN, '岗位删除被禁止')
     )
 
     const res = await app.inject({ method: 'DELETE', url: '/10' })
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.success).toBe(false)
-    expect(body.code).toBe(PostErrorCode.POST_DELETE_FORBIDDEN)
+    expect(body.code).toBe(PositionErrorCode.POSITION_DELETE_FORBIDDEN)
 
     await app.close()
   })

@@ -1,14 +1,47 @@
 import type { RequestOptions } from "@@/plugin-request/request";
 import type { RequestConfig } from "@umijs/max";
+import { request } from "@umijs/max";
 import { message, notification } from "antd";
 import { logout } from "@/utils/auth";
 import {
   getAuthorizationHeader,
-  isRefreshTokenExpired,
   clearTokens,
-  saveTokens,
 } from "@/utils/token";
 import { refreshToken as apiRefreshToken } from "@/services/yishan-admin/auth";
+
+// 401 refresh 单飞锁：多个并发 401 共享同一次 /auth/refresh 调用。
+// 当前为 CSR 模块级单实例，足够覆盖单页签内的并发刷新。
+// refreshToken 现由 HttpOnly cookie（yishan_rt）自动携带，前端无需读取/传入。
+type RefreshResult =
+  | { ok: true; data: any }
+  | { ok: false; error: unknown };
+
+let refreshInFlight: Promise<RefreshResult> | null = null;
+
+async function refreshOnce(): Promise<RefreshResult> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        // 后端从 HttpOnly cookie 读取 refreshToken，body 无需携带；
+        // skipErrorHandler 避免刷新失败时触发全局 401 处理递归。
+        const resp = await apiRefreshToken({}, { skipErrorHandler: true });
+        if (resp?.success === true && resp.data) {
+          return { ok: true as const, data: resp.data };
+        }
+        return { ok: false as const, error: new Error("refresh response not success") };
+      } catch (err) {
+        return { ok: false as const, error: err };
+      } finally {
+        // 等当前 microtask 上所有 await 消费完结果再清空，避免下一波 401
+        // 立刻触发新的 /auth/refresh 请求。
+        queueMicrotask(() => {
+          refreshInFlight = null;
+        });
+      }
+    })();
+  }
+  return refreshInFlight;
+}
 
 // 错误处理方案： 错误类型
 enum ErrorShowType {
@@ -72,52 +105,59 @@ export const errorConfig: RequestConfig = {
 
       // 处理401未授权错误 - 尝试自动刷新token
       if (error.response?.status === 401) {
-        // 跳过刷新token的请求，避免无限循环
-        if (opts?.url?.includes("/auth/refresh")) {
+        // 跳过刷新token的请求，避免无限循环。
+        // 注意：用 URL 路径段匹配而非 includes，避免未来出现路径中含
+        // "/auth/refresh" 子串的端点被误判。
+        const requestPath = (opts?.url ?? "").split("?")[0];
+        if (requestPath === "/api/v1/auth/refresh") {
           await logout();
           return;
         }
 
         try {
-          // 检查refresh token是否有效
-          if (isRefreshTokenExpired()) {
-            await logout();
-            return;
-          }
+          // 尝试刷新 token —— refreshToken 由 HttpOnly cookie 自动携带，
+          // 刷新成功后后端会通过 Set-Cookie 写入新的令牌。
+          const result = await refreshOnce();
 
-          // 尝试刷新token
-          const refreshToken = localStorage.getItem("refreshToken");
-          if (!refreshToken) {
-            await logout();
-            return;
-          }
-
-          const refreshResponse = await apiRefreshToken({ refreshToken });
-
-          if (refreshResponse.success === true && refreshResponse.data) {
-            // 保存新的token（映射 OpenAPI loginData 字段）
-            const {
-              token,
-              refreshToken: newRefreshToken,
-              expiresIn,
-              refreshTokenExpiresIn,
-            } = refreshResponse.data;
-
-            // 兼容后端可能只返回新的 access token 的情况
-            const effectiveRefreshToken = newRefreshToken || refreshToken;
-
-            saveTokens({
-              accessToken: token,
-              refreshToken: effectiveRefreshToken,
-              accessTokenExpiresIn: expiresIn,
-              refreshTokenExpiresIn,
-            });
-
+          if (result.ok) {
             message.success("登录状态已刷新");
 
-            window.location.reload();
+            // 刷新成功 ≠ 登出。新 cookie 已由后端 Set-Cookie 写入，浏览器会
+            // 自动带上。我们重新发起原请求作为副作用——既能让服务端读路径/审计
+            // 拿到最新数据，也能在 /auth/me 这种路径上把最新用户信息同步到
+            // localStorage，让 utils/auth:getCurrentUser() 读到的不是过期值。
+            //
+            // 架构约束：@umijs/max 的 request 插件在 apps/yishan-admin/src/.umi/
+            // plugin-request/request.ts 的 .catch 分支里始终对原 Promise reject，
+            // 因此 errorHandler 的返回值无法回填给原 caller，原 Promise 仍然 401。
+            // 这是 umi-request 老版与新版 request 插件的契约差异，本期不做插件替换，
+            // 接受原 caller 收到 401，但确保会话保留 + 重放副作用 + 不再跳登录页。
+            try {
+              const retryResp = await request(opts.url, {
+                ...opts,
+                skipErrorHandler: true,
+              });
+              if (
+                typeof opts?.url === "string" &&
+                opts.url.includes("/auth/me") &&
+                (retryResp as any)?.success &&
+                (retryResp as any)?.data
+              ) {
+                try {
+                  localStorage.setItem(
+                    "currentUser",
+                    JSON.stringify((retryResp as any).data),
+                  );
+                } catch {
+                  // localStorage 写入失败不影响会话保留
+                }
+              }
+            } catch {
+              // 重放失败不再做兜底登出；用户下一次主动操作会用新 cookie 成功
+            }
           } else {
-            // 刷新失败，清除token并登出
+            console.error("Token刷新失败:", result.error);
+            // 刷新失败，清除本地残留并登出
             clearTokens();
             await logout();
           }

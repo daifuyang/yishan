@@ -8,7 +8,10 @@ import { SystemOptionService } from '../src/core/services/system-option.service.
 import { StorageConfigService } from '../src/core/services/storage-config.service.ts'
 
 async function buildAppWithOptions() {
-  const app = Fastify({ logger: false })
+  const app = Fastify({ logger: false });
+    // 单测不需要真实 RBAC 校验：no-op 占位。
+    app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
+    app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
   await app.register(errorHandlerPlugin)
   registerSystemSchemas(app)
   await app.register(adminSystemOptionsPlugin)
@@ -19,6 +22,9 @@ async function buildAppWithOptions() {
 async function buildAppWithStorage() {
   const app = Fastify({ logger: false })
   await app.register(errorHandlerPlugin)
+  // 单测不需要真实 RBAC 校验：no-op 占位。
+  app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
+  app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
   registerSystemSchemas(app)
   await app.register(adminSystemStoragePlugin)
   await app.ready()

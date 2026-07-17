@@ -1,4 +1,4 @@
-﻿import { defaultConfig } from 'antd/lib/theme/internal';
+import { defaultConfig } from 'antd/lib/theme/internal';
 
 defaultConfig.hashed = false;
 

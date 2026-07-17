@@ -13,3 +13,9 @@ title: 岗位管理
 功能点：
 - 岗位信息维护
 - 与用户/部门的关联
+
+## 列表排序契约
+
+岗位列表支持 `page`、`pageSize`、`keyword`、`status`、`sortBy` 与 `sortOrder`。其中 `sortBy` 只接受 `sortOrder`、`createdAt`、`updatedAt`，默认 `sortOrder`；`sortOrder` 只接受 `asc`、`desc`，默认 `asc`。
+
+`sortOrder` 是 API 的小驼峰字段，模型实现必须通过白名单将其映射为 Drizzle 的 `sysPost.sortOrder` 列引用后再排序；Drizzle 再将其映射至数据库 `sort_order` 列。不能直接按请求字符串读取 Drizzle 表属性。详见[数据库与模型](/docs/api/database#api-字段与-drizzle-字段映射)。
