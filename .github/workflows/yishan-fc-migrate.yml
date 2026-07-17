@@ -114,6 +114,8 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
+          ALLOW_PRODUCTION_SEED: 'false'
+          SEED_ADMIN_PASSWORD: unused
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
