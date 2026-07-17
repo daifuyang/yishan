@@ -35,6 +35,7 @@ resources:
         DATABASE_NAME: ${env(DATABASE_NAME)}
         DATABASE_HOST: 172.23.212.135
         DATABASE_PORT: ${env(DATABASE_PORT)}
+        JWT_SECRET: ${env(JWT_SECRET)}
         REDIS_HOST: 172.23.212.135
         REDIS_PORT: ${env(REDIS_PORT)}
         REDIS_PASSWORD: ${env(REDIS_PASSWORD)}
