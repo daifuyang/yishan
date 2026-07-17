@@ -93,12 +93,17 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
+          ALLOW_PRODUCTION_SEED: ${{ inputs.mode == 'reset-and-seed' && 'true' || 'false' }}
           MIGRATION_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
           s deploy -t deploy/fc3/s-migration-runner.yaml -y
-          s invoke -t deploy/fc3/s-migration-runner.yaml --event "{\"mode\":\"${MIGRATION_MODE}\"}"
+          s invoke -t deploy/fc3/s-migration-runner.yaml --event "{\"mode\":\"${MIGRATION_MODE}\"}" | tee /tmp/migration_invoke.log
+          if grep -q '"error"' /tmp/migration_invoke.log; then
+            echo "Migration runner returned an error" >&2
+            exit 1
+          fi
 
       - name: Remove temporary migration runner after success
         if: success()
