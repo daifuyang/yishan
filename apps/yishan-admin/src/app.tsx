@@ -1,4 +1,4 @@
-import { BookOpen, ContactRound, FileText, Folder, Hospital, Inbox, LayoutDashboard, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
+import { BookOpen, ContactRound, ExternalLink, FileText, Folder, Hospital, Inbox, LayoutDashboard, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
@@ -234,7 +234,7 @@ export const layout: RunTimeLayoutConfig = ({
     links: isDev
       ? [
         <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
-          <LinkOutlined />
+          <ExternalLink size={16} strokeWidth={1.8} />
           <span>OpenAPI 文档</span>
         </Link>,
       ]
