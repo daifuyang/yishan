@@ -74,6 +74,7 @@ export async function getInitialState(): Promise<{
   dictDataMap?: Record<string, any>;
   fetchDictDataMap?: () => Promise<Record<string, any> | undefined>;
   cloudStorageConfig?: CloudStorageConfig;
+  authorizedMenuPaths?: string[];
   fetchCloudStorageConfig?: (options?: { force?: boolean }) => Promise<CloudStorageConfig>;
   uploadAttachmentFile?: (
     file: File,
@@ -127,6 +128,7 @@ export async function getInitialState(): Promise<{
       currentUser,
       dictDataMap,
       cloudStorageConfig,
+      authorizedMenuPaths: collectAuthorizedMenuPaths(extraRoutes),
       settings: defaultSettings as Partial<LayoutSettings>,
     };
   }
@@ -141,6 +143,18 @@ export async function getInitialState(): Promise<{
 
 let extraRoutes: API.menuTreeList = [];
 const clickableRoutePaths = new Set<string>();
+
+const collectAuthorizedMenuPaths = (nodes: API.menuTreeList = []): string[] => {
+  const paths: string[] = [];
+  const visit = (items: API.menuTreeList) => {
+    for (const item of items) {
+      if (item.path) paths.push(normalizeRoutePath(item.path));
+      if (item.children?.length) visit(item.children);
+    }
+  };
+  visit(nodes);
+  return paths;
+};
 
 const normalizeRoutePath = (path?: string) => {
   if (!path) return '';

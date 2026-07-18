@@ -56,12 +56,11 @@ async function bindRoleMenus(
   db: SeedDb,
   roleId: number,
   menuIds: number[],
-  adminUserId: number,
 ) {
   if (menuIds.length === 0) return;
   await db
     .insert(sysRoleMenu)
-    .values(menuIds.map((menuId) => ({ roleId, menuId, creatorId: adminUserId, updaterId: adminUserId })))
+    .values(menuIds.map((menuId) => ({ roleId, menuId })))
     .onDuplicateKeyUpdate({ set: { deletedAt: null } });
 }
 
@@ -70,7 +69,7 @@ async function bindRoleMenus(
  * 任何先前未在 sys_role_menu 中以 deletedAt IS NULL 存在的旧绑定都会被软删除，
  * 然后按当前策略重新写入（幂等）。
  */
-export async function bindRoleMenusByDefault(db: SeedDb, adminUserId: number) {
+export async function bindRoleMenusByDefault(db: SeedDb) {
   const superAdmin = await findRoleByCode(db, ROLE_CODES.SUPER_ADMIN);
   const admin = await findRoleByCode(db, ROLE_CODES.ADMIN);
   // normal_user 是规划中的角色；当前 seed 暂未创建该角色，找不到则跳过。
@@ -94,10 +93,10 @@ export async function bindRoleMenusByDefault(db: SeedDb, adminUserId: number) {
     await clearRoleMenuBindings(db, roleId);
   }
 
-  await bindRoleMenus(db, superAdmin.id, allMenuIds, adminUserId);
-  await bindRoleMenus(db, admin.id, adminMenuIds, adminUserId);
+  await bindRoleMenus(db, superAdmin.id, allMenuIds);
+  await bindRoleMenus(db, admin.id, adminMenuIds);
   if (normalUser) {
-    await bindRoleMenus(db, normalUser.id, accountMenuIds, adminUserId);
+    await bindRoleMenus(db, normalUser.id, accountMenuIds);
   }
 
   console.log('角色-菜单默认绑定完成:', {

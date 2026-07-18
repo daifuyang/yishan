@@ -89,20 +89,20 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
   }
 
   const { currentUser } = initialState;
+  const canManageApiTokens = initialState.authorizedMenuPaths?.includes('/account/api-tokens') ?? false;
 
   if (!currentUser?.username) {
     return loading;
   }
 
-  const menuItems = [
-    {
+  const menuItems: MenuProps['items'] = [
+    ...(canManageApiTokens ? [{
       key: 'apiTokens',
       icon: <KeyOutlined />,
       label: 'API Token',
-    },
-    {
+    }, {
       type: 'divider' as const,
-    },
+    }] : []),
     {
       key: 'center',
       icon: <UserOutlined />,

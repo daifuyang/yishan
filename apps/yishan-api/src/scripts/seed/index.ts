@@ -28,7 +28,7 @@ async function runSeedTransaction(db: SeedDb) {
   await seedPosts(db, adminUser.id, postsSeed);
   await seedMenus(db, adminUser.id, [systemMenusSeed, accountMenusSeed]);
   // Section 1 — RBAC：菜单创建后立刻绑定角色，否则后续 requirePermission 不会放行。
-  await bindRoleMenusByDefault(db, adminUser.id);
+  await bindRoleMenusByDefault(db);
   await seedDicts(db, adminUser.id, dictsSeed);
   await seedSysOptions(db, adminUser.id, sysOptionsSeed);
   await seedCrm(db, adminUser.id);

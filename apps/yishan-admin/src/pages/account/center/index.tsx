@@ -248,10 +248,11 @@ const ProfilePanel: React.FC<{
 const Center: React.FC = () => {
   const intl = useIntl();
   const { styles } = useStyles();
-  const { setInitialState } = useModel('@@initialState');
+  const { initialState, setInitialState } = useModel('@@initialState');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>('profile');
+  const canManageApiTokens = initialState?.authorizedMenuPaths?.includes('/account/api-tokens') ?? false;
 
   useEffect(() => {
     let alive = true;
@@ -277,9 +278,9 @@ const Center: React.FC = () => {
     () => [
       { value: 'profile' as TabKey, label: intl.formatMessage({ id: 'account.center.tab.profile', defaultMessage: '个人资料' }) },
       { value: 'security' as TabKey, label: intl.formatMessage({ id: 'account.center.tab.security', defaultMessage: '安全设置' }) },
-      { value: 'apiToken' as TabKey, label: intl.formatMessage({ id: 'account.center.tab.apiToken', defaultMessage: 'API Token' }) },
+      ...(canManageApiTokens ? [{ value: 'apiToken' as TabKey, label: intl.formatMessage({ id: 'account.center.tab.apiToken', defaultMessage: 'API Token' }) }] : []),
     ],
-    [intl],
+    [canManageApiTokens, intl],
   );
 
   return (
@@ -362,9 +363,9 @@ const Center: React.FC = () => {
                 <ProfilePanel intl={intl} user={user} onSaved={onSaved} />
               ) : tab === 'security' ? (
                 <SecurityPanel intl={intl} />
-              ) : (
+              ) : canManageApiTokens ? (
                 <ApiTokenPanel intl={intl} />
-              )}
+              ) : null}
             </Card>
           </Col>
         </Row>
