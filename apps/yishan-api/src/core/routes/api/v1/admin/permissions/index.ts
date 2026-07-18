@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { ResponseUtil } from '../../../../../../utils/response.js';
-import { PERMISSION_CODES } from '../../../../../../constants/permission-codes.js';
+import { corePermissions } from '../../../../../permissions/core-permissions.js';
 import { getGlobalCatalog } from '../../../../../services/permission-catalog.service.js';
 
 /**
@@ -11,7 +11,7 @@ const permissionsRoute: FastifyPluginAsync = async (fastify): Promise<void> => {
   fastify.get(
     '/catalog',
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_ROLE_GRANT)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ROLE_GRANT)] as any,
       schema: {
         summary: '获取活动功能/API 权限目录',
         operationId: 'getPermissionCatalog',

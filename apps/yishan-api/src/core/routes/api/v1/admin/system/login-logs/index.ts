@@ -4,13 +4,13 @@ import { ResponseUtil } from "../../../../../../../utils/response.js";
 import { LoginLogService } from "../../../../../../services/login-log.service.js";
 import { SysLoginLogListQuery } from "../../../../../../schemas/login-log.js";
 import { getSystemMessage, SystemMessageKeys } from "../../../../../../../constants/messages/system.js";
-import { PERMISSION_CODES } from "../../../../../../../constants/permission-codes.js";
+import { corePermissions } from '../../../../../../permissions/core-permissions.js';
 
 const sysLoginLog: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_LOGIN_LOG_LIST)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_LOGIN_LOG_LIST)] as any,
       schema: {
         summary: "获取登录日志列表",
         description: "分页获取系统登录日志列表，支持关键词搜索与状态筛选",
@@ -37,7 +37,7 @@ const sysLoginLog: FastifyPluginAsync = async (fastify, opts): Promise<void> => 
   fastify.get(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_LOGIN_LOG_LIST)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_LOGIN_LOG_LIST)] as any,
       schema: {
         summary: "获取登录日志详情",
         description: "根据日志ID获取登录日志详情",

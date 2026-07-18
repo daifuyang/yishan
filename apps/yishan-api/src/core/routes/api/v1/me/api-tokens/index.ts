@@ -2,7 +2,7 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
 import { ApiTokenService, getAvailableScopesForUser } from "../../../../../services/api-token.service.js";
-import { PERMISSION_CODES } from "../../../../../../constants/permission-codes.js";
+import { corePermissions } from '../../../../../permissions/core-permissions.js';
 
 /**
  * /api/v1/me/api-tokens
@@ -18,7 +18,7 @@ const apiTokens: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       // Section 7：PAT 创建限流（默认 10/min），并要求先认证。
       preHandler: [
         fastify.authenticate,
-        fastify.requirePermission(PERMISSION_CODES.API_TOKEN_MANAGE),
+        fastify.requirePermission(corePermissions.API_TOKEN_MANAGE),
         fastify.rateLimit("patCreate"),
       ],
       schema: {
@@ -56,7 +56,7 @@ const apiTokens: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/",
     {
-      preHandler: [fastify.authenticate, fastify.requirePermission(PERMISSION_CODES.API_TOKEN_MANAGE)],
+      preHandler: [fastify.authenticate, fastify.requirePermission(corePermissions.API_TOKEN_MANAGE)],
       schema: {
         summary: "我的 API Token 列表",
         operationId: "meListApiTokens",
@@ -76,7 +76,7 @@ const apiTokens: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/:id",
     {
-      preHandler: [fastify.authenticate, fastify.requirePermission(PERMISSION_CODES.API_TOKEN_MANAGE)],
+      preHandler: [fastify.authenticate, fastify.requirePermission(corePermissions.API_TOKEN_MANAGE)],
       schema: {
         summary: "获取单个 API Token",
         operationId: "meGetApiToken",
@@ -98,7 +98,7 @@ const apiTokens: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.delete(
     "/:id",
     {
-      preHandler: [fastify.authenticate, fastify.requirePermission(PERMISSION_CODES.API_TOKEN_MANAGE)],
+      preHandler: [fastify.authenticate, fastify.requirePermission(corePermissions.API_TOKEN_MANAGE)],
       schema: {
         summary: "撤销 API Token",
         operationId: "meRevokeApiToken",
@@ -120,7 +120,7 @@ const apiTokens: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/available-scopes",
     {
-      preHandler: [fastify.authenticate, fastify.requirePermission(PERMISSION_CODES.API_TOKEN_MANAGE)],
+      preHandler: [fastify.authenticate, fastify.requirePermission(corePermissions.API_TOKEN_MANAGE)],
       schema: {
         summary: "获取当前用户可授予的权限范围",
         description: "返回当前用户可授予的权限列表，按 system/shop/portal/special 分组。仅返回用户当前持有的且在系统中已登记的权限码。",

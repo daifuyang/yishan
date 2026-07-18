@@ -8,7 +8,7 @@ import { ResponseUtil } from "../../../../../utils/response.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { SystemManageErrorCode } from "../../../../../constants/business-codes/system.js";
 import { SystemService } from "../../../../services/system.service.js";
-import { PERMISSION_CODES } from "../../../../../constants/permission-codes.js";
+import { corePermissions } from '../../../../permissions/core-permissions.js';
 
 const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   /**
@@ -81,7 +81,7 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     {
       preHandler: [
         fastify.authenticate,
-        fastify.requirePermission(PERMISSION_CODES.SYSTEM_TOKEN_LIST),
+        fastify.requirePermission(corePermissions.SYSTEM_TOKEN_LIST),
       ],
       schema: {
         summary: "获取token统计信息",

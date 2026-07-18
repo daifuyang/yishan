@@ -16,9 +16,7 @@
  * - 数据库读取失败时 fail closed，拒绝授权。
  */
 
-import {
-  PERMISSION_DEFINITIONS,
-} from '../../constants/permission-codes.js';
+import { corePermissionDefinitions } from '../permissions/core-permissions.js';
 import { PluginManifest } from '../../core/plugin-platform/types.js';
 import { BusinessError } from '../../exceptions/business-error.js';
 import { ValidationErrorCode } from '../../constants/business-codes/validation.js';
@@ -181,7 +179,7 @@ export class PermissionCatalogService {
     const codeToSources = new Map<string, { source: 'core' | string; label: string }[]>();
 
     // 1. Core 静态权限
-    for (const def of PERMISSION_DEFINITIONS) {
+    for (const def of corePermissionDefinitions) {
       const item: ActivePermissionItem = {
         code: def.code,
         label: def.label,

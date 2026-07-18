@@ -13,13 +13,13 @@ import {
 } from "../../../../../schemas/dict.js";
 import { DictService } from "../../../../../services/dict.service.js";
 import { getDictMessage, DictMessageKeys } from "../../../../../../constants/messages/dict.js";
-import { PERMISSION_CODES } from "../../../../../../constants/permission-codes.js";
+import { corePermissions } from '../../../../../permissions/core-permissions.js';
 
 const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/types",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_LIST)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_LIST)] as any,
       schema: {
         summary: "获取字典类型列表",
         description: "分页获取字典类型列表",
@@ -41,7 +41,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/types/:id",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_LIST)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_LIST)] as any,
       schema: {
         summary: "获取字典类型详情",
         description: "根据字典类型ID获取详情",
@@ -64,7 +64,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/types",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_CREATE)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_CREATE)] as any,
       schema: {
         summary: "创建字典类型",
         description: "创建字典类型",
@@ -85,7 +85,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.put(
     "/types/:id",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_UPDATE)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_UPDATE)] as any,
       schema: {
         summary: "更新字典类型",
         description: "更新字典类型",
@@ -108,7 +108,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.delete(
     "/types/:id",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_DELETE)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_DELETE)] as any,
       schema: {
         summary: "删除字典类型",
         description: "软删除字典类型",
@@ -130,7 +130,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/data",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_LIST)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_LIST)] as any,
       schema: {
         summary: "获取字典数据列表",
         description: "分页获取字典数据列表",
@@ -152,7 +152,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/data/:id",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_LIST)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_LIST)] as any,
       schema: {
         summary: "获取字典数据详情",
         description: "根据字典数据ID获取详情",
@@ -175,7 +175,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/data",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_CREATE)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_CREATE)] as any,
       schema: {
         summary: "创建字典数据",
         description: "创建字典数据",
@@ -196,7 +196,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.put(
     "/data/:id",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_UPDATE)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_UPDATE)] as any,
       schema: {
         summary: "更新字典数据",
         description: "更新字典数据",
@@ -219,7 +219,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.delete(
     "/data/:id",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_DELETE)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_DELETE)] as any,
       schema: {
         summary: "删除字典数据",
         description: "软删除字典数据",
@@ -241,7 +241,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get(
     "/data/map",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_DICT_LIST)] as any,
+      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DICT_LIST)] as any,
       schema: {
         summary: "获取全部字典数据映射",
         description: "获取所有启用的字典数据，按字典类型分组，返回key:{label:'',value:''}的形式",

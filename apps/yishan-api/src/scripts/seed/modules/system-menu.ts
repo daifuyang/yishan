@@ -1,6 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { sysMenu, sysMenuPermission } from '@/db/schema';
-import { PERMISSION_DEFINITIONS } from '@/constants/permission-codes.js';
+import { corePermissionDefinitions } from '@/core/permissions/core-permissions.js';
 import type { MenuSeedNode } from '../config.js';
 import type { SeedDb } from '../context.js';
 
@@ -85,8 +85,8 @@ async function seedMenuTree(
     adminUserId,
   });
   const codes = [...new Set(node.permissionCodes ?? [])];
-  const knownCodes = new Set([
-    ...PERMISSION_DEFINITIONS.map((permission) => permission.code),
+  const knownCodes = new Set<string>([
+    ...corePermissionDefinitions.map((permission) => permission.code),
   ]);
   const unknownCodes = codes.filter((code) => !knownCodes.has(code));
   if (unknownCodes.length) {
