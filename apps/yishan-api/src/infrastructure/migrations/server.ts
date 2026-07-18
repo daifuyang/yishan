@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { handler } from './migration-runner.js'
+import { handler } from './runner.js'
 
 // Match the production custom runtime contract: customRuntimeConfig declares
 // port 3000 and the process may override it only through PORT.

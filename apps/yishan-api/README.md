@@ -70,6 +70,15 @@ pnpm run db:init
 pnpm run db:seed
 ```
 
+### FC3 生产迁移
+
+生产数据库迁移由临时的内部 FC Runner 执行，主 API 启动时不会自动修改数据库。Runner 的源码位于 `src/infrastructure/migrations/`：
+
+- `runner.ts`：处理 `dry-run`、`apply` 和 `reset-and-seed` 三种迁移事件；
+- `server.ts`：适配 FC Custom Runtime 的健康检查和事件 HTTP 调用。
+
+CI 会构建、部署并调用这个临时函数；迁移成功后会移除函数。相关配置见 `.github/workflows/yishan-fc-migrate.yml` 与 `deploy/fc3/s-migration-runner.yaml`。
+
 ### fc函数部署
 
 1. 安装 Serverless Framework：

@@ -1,5 +1,5 @@
-import { inspectMigrations, runMigrations } from './scripts/migrate.js'
-import { resetDatabaseAndSeed } from './scripts/reset.js'
+import { inspectMigrations, runMigrations } from '../../scripts/migrate.js'
+import { resetDatabaseAndSeed } from '../../scripts/reset.js'
 
 interface MigrationRunnerEvent {
   mode?: 'dry-run' | 'apply' | 'reset-and-seed'
