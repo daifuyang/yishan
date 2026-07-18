@@ -69,9 +69,9 @@ export class CrmRepository {
     const [list, rows] = await Promise.all([pageQuery(drizzleDb.select().from(iximeiCrmCustomer).where(where).orderBy(desc(iximeiCrmCustomer.createdAt)), query), drizzleDb.select({ total: count() }).from(iximeiCrmCustomer).where(where)])
     return { list: await Promise.all(list.map((row) => this.customerDetail(row))), total: Number(rows[0]?.total ?? 0) }
   }
-  static async findCustomer(id: number) {
+  static async findCustomer(id: number, includeDispatches = false) {
     const [row] = await drizzleDb.select().from(iximeiCrmCustomer).where(and(eq(iximeiCrmCustomer.id, id), active(iximeiCrmCustomer))).limit(1)
-    return row ? this.customerDetail(row, true) : null
+    return row ? this.customerDetail(row, includeDispatches) : null
   }
   private static async customerDetail(customer: typeof iximeiCrmCustomer.$inferSelect, includeDispatches = false) {
     const [status, owner] = await Promise.all([
@@ -86,17 +86,18 @@ export class CrmRepository {
   static async nextCustomerNumber(db: AppQueryDb = drizzleDb) { const [row] = await db.select({ id: iximeiCrmCustomer.id }).from(iximeiCrmCustomer).orderBy(desc(iximeiCrmCustomer.id)).limit(1); return `VIP${String((row?.id ?? 0) + 1).padStart(12, '0')}` }
 
   static async dispatchCustomer(customerId: number, hospitalIds: number[], statusId: number, actorId: number, replyContent: string) {
-    return drizzleDb.transaction(async (tx) => {
-      const rows: Array<Awaited<ReturnType<typeof CrmRepository.findDispatch>>> = []
+    const dispatchIds = await drizzleDb.transaction(async (tx) => {
+      const ids: number[] = []
       for (const hospitalId of hospitalIds) {
         const result = await tx.insert(iximeiCrmDispatch).values({ customerId, hospitalId, statusId, finishedAt: new Date(), creatorId: actorId, updaterId: actorId })
         const dispatchId = Number(result[0].insertId)
         await tx.insert(iximeiCrmDispatchReply).values({ dispatchId, userId: actorId, content: replyContent })
-        rows.push(await this.findDispatch(dispatchId))
+        ids.push(dispatchId)
       }
       await tx.update(iximeiCrmCustomer).set({ statusId: 2, updaterId: actorId }).where(eq(iximeiCrmCustomer.id, customerId))
-      return rows
+      return ids
     })
+    return Promise.all(dispatchIds.map((dispatchId) => this.findDispatch(dispatchId)))
   }
 
   static async listMembers(query: { keyword?: string; ownerUserId?: number } & Paging) {
@@ -144,7 +145,25 @@ export class CrmRepository {
       this.findCustomer(dispatch.customerId), this.findHospital(dispatch.hospitalId), drizzleDb.select().from(iximeiCrmDispatchStatus).where(eq(iximeiCrmDispatchStatus.id, dispatch.statusId)).limit(1),
       all ? drizzleDb.select().from(iximeiCrmDispatchReply).where(eq(iximeiCrmDispatchReply.dispatchId, dispatch.id)).orderBy(asc(iximeiCrmDispatchReply.createdAt)) : [], all ? drizzleDb.select().from(iximeiCrmDispatchFollowLog).where(eq(iximeiCrmDispatchFollowLog.dispatchId, dispatch.id)).orderBy(asc(iximeiCrmDispatchFollowLog.createdAt)) : [],
     ])
-    return { ...dispatch, customer, hospital, status: status[0] ?? null, ...(all ? { replies, logs } : {}) }
+    const userIds = [...new Set([...replies, ...logs].map((item) => item.userId))]
+    const [users, hospitalAccounts] = await Promise.all([
+      userIds.length ? drizzleDb.select({ id: sysUser.id, username: sysUser.username, realName: sysUser.realName }).from(sysUser).where(inArray(sysUser.id, userIds)) : [],
+      userIds.length ? drizzleDb.select({ userId: iximeiCrmHospitalAccount.userId }).from(iximeiCrmHospitalAccount).where(and(eq(iximeiCrmHospitalAccount.hospitalId, dispatch.hospitalId), inArray(iximeiCrmHospitalAccount.userId, userIds), active(iximeiCrmHospitalAccount))) : [],
+    ])
+    const usersById = new Map(users.map((user) => [user.id, user] as const))
+    const hospitalUserIds = new Set(hospitalAccounts.map((account) => account.userId))
+    return {
+      ...dispatch,
+      customer,
+      hospital,
+      status: status[0] ?? null,
+      ...(all
+        ? {
+            replies: replies.map((reply) => ({ ...reply, user: usersById.get(reply.userId) ?? null, authorType: hospitalUserIds.has(reply.userId) ? 'hospital' : 'service' })),
+            logs: logs.map((log) => ({ ...log, user: usersById.get(log.userId) ?? null })),
+          }
+        : {}),
+    }
   }
   static async dispatchesForCustomer(customerId: number) { const rows = await drizzleDb.select().from(iximeiCrmDispatch).where(eq(iximeiCrmDispatch.customerId, customerId)).orderBy(desc(iximeiCrmDispatch.createdAt)); return Promise.all(rows.map((row) => this.dispatchDetail(row))) }
   static async updateDispatch(id: number, input: Partial<typeof iximeiCrmDispatch.$inferInsert>) { await drizzleDb.update(iximeiCrmDispatch).set({ ...input, version: sql`${iximeiCrmDispatch.version} + 1` }).where(eq(iximeiCrmDispatch.id, id)); return this.findDispatch(id) }

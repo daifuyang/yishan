@@ -1,4 +1,5 @@
 import { CrmRepository } from '../repositories/crm.repository.js'
+import sanitizeHtml from 'sanitize-html'
 
 export type PageQuery = { page?: number; pageSize?: number; keyword?: string; startTime?: string; endTime?: string }
 
@@ -8,6 +9,32 @@ const isSuperAdmin = (userId: number) => userId === SUPER_ADMIN_ID
 const pageArgs = (query: PageQuery) => ({ page: Math.max(1, Number(query.page ?? 1)), pageSize: Math.max(0, Number(query.pageSize ?? 10)) })
 const asDate = (value: unknown) => { if (!value) return undefined; const date = new Date(String(value)); return Number.isNaN(date.getTime()) ? undefined : date }
 const compact = <T extends Record<string, unknown>>(input: T) => Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined)) as T
+const sanitizeReplyContent = (content: string) => sanitizeHtml(content, {
+  allowedAttributes: {
+    a: ['href', 'target', 'rel'],
+    img: ['alt', 'src', 'title'],
+    mark: ['data-color'],
+    p: ['style'],
+    span: ['style'],
+  },
+  allowedSchemes: ['http', 'https', 'mailto'],
+  allowedStyles: {
+    '*': {
+      'background-color': [/^#[0-9a-f]{3,8}$/i, /^rgb\([\d\s,]+\)$/i],
+      color: [/^#[0-9a-f]{3,8}$/i, /^rgb\([\d\s,]+\)$/i],
+      'text-align': [/^(left|right|center|justify)$/],
+    },
+  },
+  allowedTags: ['a', 'blockquote', 'br', 'code', 'em', 'h1', 'h2', 'h3', 'h4', 'img', 'li', 'mark', 'ol', 'p', 'pre', 's', 'span', 'strong', 'sub', 'sup', 'u', 'ul'],
+})
+const hasReplyContent = (content: string) => /<img\b/i.test(content) || Boolean(sanitizeHtml(content, { allowedAttributes: {}, allowedTags: [] }).replaceAll('&nbsp;', ' ').trim())
+const sanitizeDispatchReplies = (dispatch: any) => ({
+  ...dispatch,
+  replies: dispatch.replies?.map((reply: any) => ({
+    ...reply,
+    content: sanitizeReplyContent(reply.content),
+  })),
+})
 function normalizeContractPhotos(value: unknown) { if (value === undefined) return undefined; if (value === null || value === '') return null; if (typeof value === 'string') { try { return JSON.parse(value) } catch { return [{ url: value, name: '' }] } }; return value }
 function hashPassword(password: string) { return import('node:crypto').then((crypto) => crypto.createHash('sha256').update(password).digest('hex')) }
 
@@ -24,7 +51,7 @@ export class CrmService {
   static async listDispatchStatuses() { await CrmRepository.ensureDefaultStatuses(); return CrmRepository.listDispatchStatuses() }
 
   static async listCustomers(query: PageQuery & { statusId?: number }, currentUserId: number) { const page = pageArgs(query); const result = await CrmRepository.listCustomers({ ...query, ...page, ownerUserId: isSuperAdmin(currentUserId) ? undefined : currentUserId }); return { ...result, ...page } }
-  static async getCustomer(id: number, currentUserId: number) { const customer = await CrmRepository.findCustomer(id); return !customer || (!isSuperAdmin(currentUserId) && customer.ownerUserId !== currentUserId) ? null : customer }
+  static async getCustomer(id: number, currentUserId: number) { const customer = await CrmRepository.findCustomer(id, true); return !customer || (!isSuperAdmin(currentUserId) && customer.ownerUserId !== currentUserId) ? null : customer }
   static async saveCustomer(input: any, currentUserId: number, id?: number) {
     await CrmRepository.ensureDefaultStatuses(); const statusId = input.statusId === undefined ? undefined : Number(input.statusId)
     if (statusId === DUPLICATE_CUSTOMER_STATUS_ID && !input.remark) throw new Error('重单客户必须填写重单理由')
@@ -41,9 +68,9 @@ export class CrmService {
 
   static async getAccessibleHospitalIds(userId: number): Promise<number[] | null> { if (isSuperAdmin(userId)) return null; return (await CrmRepository.accessibleHospitalIds(userId)).map((row) => row.hospitalId) }
   static async listDispatches(query: PageQuery & { statusId?: number }, currentUserId: number) { const page = pageArgs(query); const ids = await this.getAccessibleHospitalIds(currentUserId); if (ids?.length === 0) return { list: [], total: 0, ...page }; const result = await CrmRepository.listDispatches({ ...query, ...page, hospitalIds: ids ?? undefined }); return { ...result, ...page } }
-  static async getDispatch(id: number, currentUserId: number) { const dispatch = await CrmRepository.findDispatch(id); if (!dispatch) return null; const ids = await this.getAccessibleHospitalIds(currentUserId); return ids !== null && !ids.includes(dispatch.hospitalId) ? null : dispatch }
+  static async getDispatch(id: number, currentUserId: number) { const dispatch = await CrmRepository.findDispatch(id); if (!dispatch) return null; const ids = await this.getAccessibleHospitalIds(currentUserId); return ids !== null && !ids.includes(dispatch.hospitalId) ? null : sanitizeDispatchReplies(dispatch) }
   static async updateDispatch(id: number, input: any, currentUserId: number) { if (!await this.getDispatch(id, currentUserId)) throw new Error('派单不存在或无权访问'); return CrmRepository.updateDispatch(id, compact({ hospitalId: input.hospitalId === undefined ? undefined : Number(input.hospitalId), statusId: input.statusId === undefined ? undefined : Number(input.statusId), image: input.image, receiveQq: input.receiveQq, receiveWechat: input.receiveWechat, finishedAt: asDate(input.finishedAt), createdAt: asDate(input.createdAt), updaterId: currentUserId })) }
-  static async addDispatchReply(id: number, input: any, currentUserId: number) { if (!await this.getDispatch(id, currentUserId)) throw new Error('派单不存在或无权访问'); return CrmRepository.replyDispatch(id, compact({ receiveQq: input.receiveQq, receiveWechat: input.receiveWechat, image: input.image, statusId: input.statusId === undefined ? undefined : Number(input.statusId), updaterId: currentUserId }), currentUserId, input.content) }
+  static async addDispatchReply(id: number, input: any, currentUserId: number) { if (!await this.getDispatch(id, currentUserId)) throw new Error('派单不存在或无权访问'); const content = input.content === undefined ? undefined : sanitizeReplyContent(input.content); if (content !== undefined && !hasReplyContent(content)) throw new Error('留言不能为空'); return CrmRepository.replyDispatch(id, compact({ receiveQq: input.receiveQq, receiveWechat: input.receiveWechat, image: input.image, statusId: input.statusId === undefined ? undefined : Number(input.statusId), updaterId: currentUserId }), currentUserId, content) }
   static async addDispatchLog(id: number, content: string, currentUserId: number) { if (!await this.getDispatch(id, currentUserId)) throw new Error('派单不存在或无权访问'); if (!content) throw new Error('跟进内容不能为空'); return CrmRepository.addDispatchLog(id, currentUserId, content) }
   static listRegions(parentId = 0) { return CrmRepository.listRegions(Number(parentId)) }
 

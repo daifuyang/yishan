@@ -1,3 +1,41 @@
+.form-editor-composer-host {
+  min-height: 40px;
+  position: relative;
+
+  & > .form-editor-wrapper.chat-composer {
+    height: auto;
+  }
+
+  & > .form-editor-wrapper.chat-composer-expanded:not(.fullscreen) {
+    animation: form-editor-composer-drawer-in 160ms ease-out;
+    bottom: 0;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    left: 0;
+    position: absolute;
+    right: 0;
+    z-index: 10;
+  }
+}
+
+@keyframes form-editor-composer-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-editor-composer-host > .form-editor-wrapper.chat-composer-expanded:not(.fullscreen) {
+    animation: none;
+  }
+}
+
 .form-editor-wrapper {
   width: 100%;
   height: 100%;
@@ -31,8 +69,77 @@
     overflow-y: auto;
 
     &>.form-editor {
-      min-height: 150px;
+      min-height: var(--form-editor-min-height, 150px);
     }
+  }
+
+  &>.form-editor-footer {
+    border-top: 1px solid var(--ant-color-border);
+    padding: 4px 8px;
+  }
+
+  &.integrated-footer > .form-editor-footer {
+    border-top: 0;
+    padding: 0 8px 6px;
+  }
+
+  &.floating-toolbar {
+    overflow: visible;
+    position: relative;
+
+    & > .tiptap-toolbar {
+      background: var(--ant-color-bg-container);
+      border: 1px solid var(--ant-color-border);
+      border-radius: var(--ant-border-radius);
+      bottom: calc(100% - 8px);
+      box-shadow: var(--ant-box-shadow-secondary);
+      left: 12px;
+      position: absolute;
+      width: auto;
+      z-index: 2;
+
+      & > .form-editor-toolbar {
+        flex-wrap: nowrap;
+        padding: 2px 6px;
+        width: auto;
+      }
+    }
+  }
+
+  &.chat-composer {
+    position: relative;
+
+    &:not(.chat-composer-expanded) > .form-editor-content {
+      box-sizing: border-box;
+      min-height: 38px;
+      padding: 8px 124px 8px 12px;
+
+      & > .form-editor {
+        align-items: stretch;
+        min-height: 22px;
+        white-space: pre-wrap;
+
+        & > p {
+          line-height: 22px;
+          margin: 0 !important;
+          width: 100%;
+        }
+      }
+    }
+
+    &.chat-composer-expanded > .form-editor-content {
+      padding: 8px 112px 8px 12px;
+    }
+  }
+
+  & > .form-editor-composer-actions {
+    align-items: center;
+    display: flex;
+    gap: 2px;
+    bottom: 4px;
+    position: absolute;
+    right: 8px;
+    z-index: 2;
   }
 
   &.fullscreen {
@@ -41,7 +148,7 @@
     right: 0;
     top: 0;
     bottom: 0;
-    z-index: 1000;
+    z-index: 1100;
     border-radius: 0;
     overflow: hidden;
     display: flex;

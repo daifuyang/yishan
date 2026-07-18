@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { EditorContent, EditorContext, useEditor } from "@tiptap/react";
+import { Expand, Maximize2, Minimize2, Shrink } from "lucide-react";
 
 // --- Tiptap Core Extensions ---
 import { StarterKit } from "@tiptap/starter-kit";
@@ -58,8 +59,6 @@ import { UndoRedoButton } from "@/components/tiptap-ui/undo-redo-button";
 import { ArrowLeftIcon } from "@/components/tiptap-icons/arrow-left-icon";
 import { HighlighterIcon } from "@/components/tiptap-icons/highlighter-icon";
 import { LinkIcon } from "@/components/tiptap-icons/link-icon";
-import { MaximizeIcon } from "@/components/tiptap-icons/maximize";
-import { MinimizeIcon } from "@/components/tiptap-icons/minimize";
 
 // --- Hooks ---
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -74,6 +73,20 @@ import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils";
 // --- Styles ---
 import "@/components/tiptap-templates/simple/form-editor.scss";
 
+const SendIcon = React.memo(
+  ({ className }: React.SVGProps<SVGSVGElement>) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="m21 3-7.5 18-3.5-8-7-3L21 3Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="m10.5 13 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  ),
+)
+
+const ExpandIcon = Maximize2 as unknown as React.ComponentType<React.SVGProps<SVGSVGElement>>
+const CollapseIcon = Minimize2 as unknown as React.ComponentType<React.SVGProps<SVGSVGElement>>
+const FullscreenExpandIcon = Expand as unknown as React.ComponentType<React.SVGProps<SVGSVGElement>>
+const FullscreenShrinkIcon = Shrink as unknown as React.ComponentType<React.SVGProps<SVGSVGElement>>
+
 const MainToolbarContent = ({
   onHighlighterClick,
   onLinkClick,
@@ -81,6 +94,10 @@ const MainToolbarContent = ({
   isFullscreen,
   onFullscreenToggle,
   onPickImage,
+  compactToolbar,
+  chatToolbar,
+  showFullscreenToggle,
+  showImageUpload,
 }: {
   onHighlighterClick: () => void;
   onLinkClick: () => void;
@@ -88,8 +105,68 @@ const MainToolbarContent = ({
   isFullscreen: boolean;
   onFullscreenToggle: () => void;
   onPickImage?: () => Promise<ImageInsertItem[]>;
+  chatToolbar: boolean;
+  compactToolbar: boolean;
+  showFullscreenToggle: boolean;
+  showImageUpload: boolean;
 }) => {
   const locale = useTiptapLocale();
+
+  if (compactToolbar) {
+    return (
+      <div className="form-editor-toolbar">
+        <ToolbarGroup>
+          <UndoRedoButton action="undo" />
+          <UndoRedoButton action="redo" />
+        </ToolbarGroup>
+        <ToolbarSeparator className="toolbar-separator" />
+        <ToolbarGroup>
+          <MarkButton type="bold" />
+          <MarkButton type="italic" />
+          <MarkButton type="strike" />
+          <MarkButton type="underline" />
+          <LinkPopover />
+        </ToolbarGroup>
+      </div>
+    );
+  }
+
+  if (chatToolbar) {
+    return (
+      <div className="form-editor-toolbar">
+        <ToolbarGroup>
+          <UndoRedoButton action="undo" />
+          <UndoRedoButton action="redo" />
+        </ToolbarGroup>
+        <ToolbarSeparator className="toolbar-separator" />
+        <ToolbarGroup>
+          <MarkButton type="bold" />
+          <MarkButton type="italic" />
+          <MarkButton type="underline" />
+          <MarkButton type="strike" />
+          <ListDropdownMenu
+            types={["bulletList", "orderedList"]}
+            portal={isMobile}
+          />
+          <LinkPopover />
+        </ToolbarGroup>
+        {showFullscreenToggle ? (
+          <>
+            <ToolbarSeparator className="toolbar-separator" />
+            <ToolbarGroup>
+              <Button data-style="ghost" onClick={onFullscreenToggle} aria-label={locale.toggleFullscreen}>
+                {isFullscreen ? (
+                  <FullscreenShrinkIcon className="tiptap-button-icon" />
+                ) : (
+                  <FullscreenExpandIcon className="tiptap-button-icon" />
+                )}
+              </Button>
+            </ToolbarGroup>
+          </>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="form-editor-toolbar">
@@ -142,23 +219,31 @@ const MainToolbarContent = ({
         <TextAlignButton align="justify" />
       </ToolbarGroup>
 
-      <ToolbarSeparator className="toolbar-separator" />
+      {showImageUpload ? (
+        <>
+          <ToolbarSeparator className="toolbar-separator" />
 
-      <ToolbarGroup>
-        <ImageUploadButton text="" onPick={onPickImage} />
-      </ToolbarGroup>
+          <ToolbarGroup>
+            <ImageUploadButton text="" onPick={onPickImage} />
+          </ToolbarGroup>
+        </>
+      ) : null}
 
-      <ToolbarSeparator className="toolbar-separator" />
+      {showFullscreenToggle ? (
+        <>
+          <ToolbarSeparator className="toolbar-separator" />
 
-      <ToolbarGroup>
-        <Button data-style="ghost" onClick={onFullscreenToggle} aria-label={locale.toggleFullscreen}>
-          {isFullscreen ? (
-            <MinimizeIcon className="tiptap-button-icon" />
-          ) : (
-            <MaximizeIcon className="tiptap-button-icon" />
-          )}
-        </Button>
-      </ToolbarGroup>
+          <ToolbarGroup>
+            <Button data-style="ghost" onClick={onFullscreenToggle} aria-label={locale.toggleFullscreen}>
+              {isFullscreen ? (
+                <FullscreenShrinkIcon className="tiptap-button-icon" />
+              ) : (
+                <FullscreenExpandIcon className="tiptap-button-icon" />
+              )}
+            </Button>
+          </ToolbarGroup>
+        </>
+      ) : null}
 
       {isMobile && <ToolbarSeparator />}
     </div>
@@ -197,8 +282,25 @@ const MobileToolbarContent = ({
 export interface FormEditorProps {
   value?: string | object
   maxHeight?: number
+  minHeight?: number
+  footer?: React.ReactNode | ((controls: { isFullscreen: boolean; toggleFullscreen: () => void }) => React.ReactNode)
+  chatToolbar?: boolean
+  integratedFooter?: boolean
   onChange?: (value: string) => void
   imageUploadAdapter?: ImageUploadAdapter
+  compactToolbar?: boolean
+  showFullscreenToggle?: boolean
+  showToolbar?: boolean
+  toolbarFloating?: boolean
+  showImageUpload?: boolean
+  /**
+   * Chat composer interaction. When provided, the editor starts as a compact
+   * single-line composer and expands into the standard rich-text toolbar.
+   */
+  composer?: {
+    disabled?: boolean
+    onSend: () => void
+  }
   locale?: Partial<TiptapLocale>
 }
 
@@ -220,16 +322,44 @@ export type ImageUploadAdapter = {
 }
 
 const FormEditorContent: React.FC<Omit<FormEditorProps, 'locale'>> = (props) => {
-  const { maxHeight = 400, value, onChange, imageUploadAdapter } = props;
+  const {
+    maxHeight = 400,
+    minHeight = 150,
+    footer,
+    chatToolbar = false,
+    integratedFooter = false,
+    value,
+    onChange,
+    imageUploadAdapter,
+    compactToolbar = false,
+    showImageUpload = true,
+    showFullscreenToggle = true,
+    showToolbar = true,
+    toolbarFloating = false,
+    composer,
+  } = props;
   const locale = useTiptapLocale();
   const isMobile = useIsMobile();
   const { height } = useWindowSize();
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+  const [isComposerExpanded, setIsComposerExpanded] = React.useState(false);
   const [mobileView, setMobileView] = React.useState<
     "main" | "highlighter" | "link"
   >("main");
   const toolbarRef = React.useRef<HTMLDivElement>(null);
+  const onSendRef = React.useRef(composer?.onSend)
   const imageUploadLimit = 3
+  const isComposer = Boolean(composer)
+  const isToolbarVisible = isComposer ? isComposerExpanded : showToolbar
+  const isToolbarFloating = isComposer ? false : toolbarFloating
+  const toggleFullscreen = () => {
+    setIsComposerExpanded(true)
+    setIsFullscreen((current) => !current)
+  }
+
+  React.useEffect(() => {
+    onSendRef.current = composer?.onSend
+  }, [composer?.onSend])
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -241,6 +371,19 @@ const FormEditorContent: React.FC<Omit<FormEditorProps, 'locale'>> = (props) => 
         autocapitalize: "off",
         "aria-label": locale.editorAriaLabel,
         class: "form-editor",
+      },
+      handleKeyDown: (_view, event) => {
+        if (
+          isComposer &&
+          !composer?.disabled &&
+          event.key === "Enter" &&
+          (event.ctrlKey || event.metaKey)
+        ) {
+          event.preventDefault()
+          onSendRef.current?.()
+          return true
+        }
+        return false
       },
     },
     extensions: [
@@ -286,51 +429,122 @@ const FormEditorContent: React.FC<Omit<FormEditorProps, 'locale'>> = (props) => 
     }
   }, [isMobile, mobileView]);
 
+  React.useEffect(() => {
+    editor?.setEditable(!composer?.disabled)
+  }, [composer?.disabled, editor])
+
+  React.useEffect(() => {
+    if (typeof value !== "string" || !editor || value === editor.getHTML()) return
+    editor.commands.setContent(value, { emitUpdate: false })
+  }, [editor, value])
+
+  const collapseComposer = () => {
+    setIsFullscreen(false)
+    setIsComposerExpanded(false)
+  }
+
   return (
-    <div className={`form-editor-wrapper${isFullscreen ? " fullscreen" : ""}`}>
+    <div className={isComposer ? "form-editor-composer-host" : undefined}>
+      <div className={`form-editor-wrapper${isFullscreen ? " fullscreen" : ""}${integratedFooter ? " integrated-footer" : ""}${isToolbarFloating ? " floating-toolbar" : ""}${isComposer ? " chat-composer" : ""}${isComposerExpanded ? " chat-composer-expanded" : ""}`}>
       <EditorContext.Provider value={{ editor }}>
-        <Toolbar
-          ref={toolbarRef}
-          style={{
-            ...(isMobile
-              ? {
-                bottom: `calc(100% - ${height - rect.y}px)`,
-              }
-              : {}),
-          }}
-        >
-          {mobileView === "main" ? (
-            <MainToolbarContent
-              onHighlighterClick={() => setMobileView("highlighter")}
-              onLinkClick={() => setMobileView("link")}
-              isMobile={isMobile}
-              isFullscreen={isFullscreen}
-              onFullscreenToggle={() => setIsFullscreen((v) => !v)}
-              onPickImage={
-                imageUploadAdapter?.pick
-                  ? () => imageUploadAdapter.pick?.({ multiple: true, limit: imageUploadLimit }) ?? Promise.resolve([])
-                  : undefined
-              }
-            />
-          ) : (
-            <MobileToolbarContent
-              type={mobileView === "highlighter" ? "highlighter" : "link"}
-              onBack={() => setMobileView("main")}
-            />
-          )}
-        </Toolbar>
+        {isComposer ? (
+          <div className="form-editor-composer-actions">
+            {showImageUpload ? (
+              <ImageUploadButton
+                text=""
+                disabled={composer?.disabled}
+                onPick={
+                  imageUploadAdapter?.pick
+                    ? () => imageUploadAdapter.pick?.({ multiple: true, limit: imageUploadLimit }) ?? Promise.resolve([])
+                    : undefined
+                }
+              />
+            ) : null}
+            <Button
+              type="button"
+              data-style="ghost"
+              disabled={composer?.disabled}
+              tooltip={isComposerExpanded ? "缩小" : "放大"}
+              aria-label={isComposerExpanded ? "缩小" : "放大"}
+              onClick={isComposerExpanded ? collapseComposer : () => setIsComposerExpanded(true)}
+            >
+              {isComposerExpanded ? (
+                <CollapseIcon className="tiptap-button-icon" />
+              ) : (
+                <ExpandIcon className="tiptap-button-icon" />
+              )}
+            </Button>
+            <Button
+              type="button"
+              data-style="ghost"
+              disabled={composer?.disabled}
+              tooltip="发送（Ctrl/⌘ + Enter）"
+              aria-label="发送"
+              onClick={composer?.onSend}
+            >
+              <SendIcon className="tiptap-button-icon" />
+            </Button>
+          </div>
+        ) : null}
+        {isToolbarVisible ? (
+          <Toolbar
+            ref={toolbarRef}
+            style={{
+              ...(isMobile
+                ? {
+                  bottom: `calc(100% - ${height - rect.y}px)`,
+                }
+                : {}),
+            }}
+          >
+            {mobileView === "main" ? (
+              <MainToolbarContent
+                onHighlighterClick={() => setMobileView("highlighter")}
+                onLinkClick={() => setMobileView("link")}
+                isMobile={isMobile}
+                isFullscreen={isFullscreen}
+                onFullscreenToggle={toggleFullscreen}
+                chatToolbar={isComposer || chatToolbar}
+                compactToolbar={compactToolbar}
+                showFullscreenToggle={showFullscreenToggle}
+                showImageUpload={showImageUpload}
+                onPickImage={
+                  showImageUpload && imageUploadAdapter?.pick
+                    ? () => imageUploadAdapter.pick?.({ multiple: true, limit: imageUploadLimit }) ?? Promise.resolve([])
+                    : undefined
+                }
+              />
+            ) : (
+              <MobileToolbarContent
+                type={mobileView === "highlighter" ? "highlighter" : "link"}
+                onBack={() => setMobileView("main")}
+              />
+            )}
+          </Toolbar>
+        ) : null}
 
         <EditorContent
           editor={editor}
           style={
             isFullscreen
               ? {}
-              : { maxHeight }
+              : ({
+                maxHeight: isComposer ? (isComposerExpanded ? 302 : 106) : maxHeight,
+                '--form-editor-min-height': `${isComposer ? (isComposerExpanded ? 154 : 22) : minHeight}px`,
+              } as React.CSSProperties)
           }
           role="presentation"
           className="form-editor-content"
         />
+        {footer ? (
+          <div className="form-editor-footer">
+            {typeof footer === 'function'
+              ? footer({ isFullscreen, toggleFullscreen })
+              : footer}
+          </div>
+        ) : null}
       </EditorContext.Provider>
+      </div>
     </div>
   );
 }

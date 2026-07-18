@@ -54,10 +54,12 @@
     "fastify-cli": "^7.4.0",
     "fastify-plugin": "^5.0.0",
     "mysql2": "^3.15.3",
-    "qiniu": "^7.14.0"
+    "qiniu": "^7.14.0",
+    "sanitize-html": "^2.17.6"
   },
   "devDependencies": {
     "@types/node": "^22.1.0",
+    "@types/sanitize-html": "^2.16.1",
     "c8": "^10.1.2",
     "concurrently": "^9.0.0",
     "drizzle-kit": "^0.31.7",
