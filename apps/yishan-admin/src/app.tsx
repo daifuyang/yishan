@@ -1,4 +1,4 @@
-import { BookOpen, ContactRound, ExternalLink, FileText, Folder, Hospital, Inbox, LayoutDashboard, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
+import { BookOpen, ClipboardList, ContactRound, ExternalLink, FileText, Folder, Hospital, Inbox, LayoutDashboard, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
@@ -56,6 +56,7 @@ const IconMap: Record<string, LucideIcon> = {
   idcardoutlined: ContactRound,
   send: Send,
   sendoutlined: Send,
+  'clipboard-list': ClipboardList,
 };
 function pickIcon(key: string): JSX.Element | undefined {
   const Icon = IconMap[String(key).toLowerCase()];

@@ -33,6 +33,6 @@ export default {
     { channel: 'admin', path: '/plugins/iximei/crm/hospitals', name: '医院管理', perm: 'crm:hospital:list', icon: 'hospital' },
     { channel: 'admin', path: '/plugins/iximei/crm/customers', name: '客户管理', perm: 'crm:customer:list', icon: 'users-round' },
     { channel: 'admin', path: '/plugins/iximei/crm/members', name: '会员顾客', perm: 'crm:member:list', icon: 'contact-round' },
-    { channel: 'admin', path: '/plugins/iximei/crm/dispatches', name: '派单管理', perm: 'crm:dispatch:list', icon: 'send' },
+    { channel: 'admin', path: '/plugins/iximei/crm/dispatches', name: '派单管理', perm: 'crm:dispatch:list', icon: 'clipboard-list' },
   ],
 } as const;
