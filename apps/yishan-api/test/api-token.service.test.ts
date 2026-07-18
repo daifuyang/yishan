@@ -260,9 +260,8 @@ describe("ApiTokenService.createToken — scope normalization", () => {
     expect(arg.scopes).toEqual([]);
   });
 
-  it("普通用户申请未安装插件权限 → 抛 BusinessError", async () => {
-    // 用户角色中可能仍残留 shop:product:list，但核心版没有安装该插件，
-    // 权限目录不应把它当作可授权 scope。
+  it("普通用户申请未启用插件权限 → 抛 BusinessError", async () => {
+    // 已声明但未启用的插件权限不是未知码；用户不能把它授予 PAT。
     mockUserWithDisabledPluginPerm();
     await expect(
       ApiTokenService.createToken(1, {
@@ -271,7 +270,7 @@ describe("ApiTokenService.createToken — scope normalization", () => {
       }),
     ).rejects.toMatchObject({
       code: ValidationErrorCode.INVALID_PARAMETER,
-      message: expect.stringContaining("未知权限码"),
+      message: expect.stringContaining("不在您的授权范围内"),
     });
   });
 

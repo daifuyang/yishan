@@ -26,16 +26,15 @@
  * Exit codes: 0 = clean, 1 = violations found.
  */
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 
 const ROOT = process.cwd();
 const API_SRC = join(ROOT, "apps", "yishan-api", "src");
-const MANIFESTS = [
-  "plugins/modules/hello/manifest.ts",
-  "plugins/modules/portal/manifest.ts",
-  "plugins/modules/shop/manifest.ts",
-];
+const MODULES_DIR = join(API_SRC, "plugins", "modules");
+const MANIFESTS = readdirSync(MODULES_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => `plugins/modules/${entry.name}/manifest.ts`);
 
 const PLUGIN_ID_RE = /^[\w-]+\/[\w-]+$/;
 const VERSION_RE = /^\d+\.\d+\.\d+/;
