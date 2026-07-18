@@ -4,8 +4,10 @@ import { drizzleDb, type AppQueryDb } from '@/db'
 import {
   iximeiCrmCustomer, iximeiCrmCustomerStatus, iximeiCrmDispatch, iximeiCrmDispatchFollowLog,
   iximeiCrmDispatchReply, iximeiCrmDispatchStatus, iximeiCrmHospital, iximeiCrmHospitalAccount,
-  iximeiCrmMemberBrowse, iximeiCrmMemberCustomer, iximeiCrmMemberRemark, sysRegion, sysUser,
+  iximeiCrmMemberBrowse, iximeiCrmMemberCustomer, iximeiCrmMemberRemark, sysRegion, sysRole,
+  sysUser, sysUserRole,
 } from '@/db/schema'
+import { ROLE_CODES } from '@/constants/permission-codes'
 
 type Paging = { page: number; pageSize: number }
 type DateFilter = { startTime?: string; endTime?: string }
@@ -176,8 +178,13 @@ export class CrmRepository {
   static countOwners(hospitalId: number) { return drizzleDb.select({ total: count() }).from(iximeiCrmHospitalAccount).where(and(eq(iximeiCrmHospitalAccount.hospitalId, hospitalId), eq(iximeiCrmHospitalAccount.role, 'owner'), active(iximeiCrmHospitalAccount))) }
   static findUser(id: number) { return drizzleDb.select().from(sysUser).where(and(eq(sysUser.id, id), active(sysUser))).limit(1) }
   static findOtherUserByUsername(username: string, userId: number) { return drizzleDb.select({ id: sysUser.id }).from(sysUser).where(and(eq(sysUser.username, username), active(sysUser), ne(sysUser.id, userId))).limit(1) }
-  static async createHospitalAccount(hospitalId: number, user: typeof sysUser.$inferInsert, account: typeof iximeiCrmHospitalAccount.$inferInsert) { return drizzleDb.transaction(async (tx) => { const userResult = await tx.insert(sysUser).values(user); const userId = Number(userResult[0].insertId); await tx.insert(iximeiCrmHospitalAccount).values({ ...account, hospitalId, userId }); return { ...(await this.findHospitalAccount(hospitalId, userId))[0], user: { id: userId, username: user.username, realName: user.realName, phone: user.phone, email: user.email, status: String(user.status ?? 1) } } }) }
-  static async assignHospitalAccount(input: typeof iximeiCrmHospitalAccount.$inferInsert) { const result = await drizzleDb.insert(iximeiCrmHospitalAccount).values(input); return (await drizzleDb.select().from(iximeiCrmHospitalAccount).where(eq(iximeiCrmHospitalAccount.id, Number(result[0].insertId))).limit(1))[0] }
+  private static async bindHospitalAccountRole(userId: number, db: AppQueryDb) {
+    const [role] = await db.select({ id: sysRole.id }).from(sysRole).where(and(eq(sysRole.code, ROLE_CODES.HOSPITAL_ACCOUNT), active(sysRole))).limit(1)
+    if (!role) throw new Error('医院账号全局角色未配置')
+    await db.insert(sysUserRole).values({ userId, roleId: role.id }).onDuplicateKeyUpdate({ set: { deletedAt: null } })
+  }
+  static async createHospitalAccount(hospitalId: number, user: typeof sysUser.$inferInsert, account: typeof iximeiCrmHospitalAccount.$inferInsert) { return drizzleDb.transaction(async (tx) => { const userResult = await tx.insert(sysUser).values(user); const userId = Number(userResult[0].insertId); await this.bindHospitalAccountRole(userId, tx); await tx.insert(iximeiCrmHospitalAccount).values({ ...account, hospitalId, userId }); return { ...(await this.findHospitalAccount(hospitalId, userId))[0], user: { id: userId, username: user.username, realName: user.realName, phone: user.phone, email: user.email, status: String(user.status ?? 1) } } }) }
+  static async assignHospitalAccount(input: typeof iximeiCrmHospitalAccount.$inferInsert) { return drizzleDb.transaction(async (tx) => { const result = await tx.insert(iximeiCrmHospitalAccount).values(input); await this.bindHospitalAccountRole(input.userId, tx); return (await drizzleDb.select().from(iximeiCrmHospitalAccount).where(eq(iximeiCrmHospitalAccount.id, Number(result[0].insertId))).limit(1))[0] }) }
   static async updateUser(id: number, input: Partial<typeof sysUser.$inferInsert>) { await drizzleDb.update(sysUser).set(input).where(eq(sysUser.id, id)) }
   static async updateHospitalAccount(id: number, input: Partial<typeof iximeiCrmHospitalAccount.$inferInsert>) { await drizzleDb.update(iximeiCrmHospitalAccount).set(input).where(eq(iximeiCrmHospitalAccount.id, id)); return (await drizzleDb.select().from(iximeiCrmHospitalAccount).where(eq(iximeiCrmHospitalAccount.id, id)).limit(1))[0] }
   static listRegions(parentId: number) { return drizzleDb.select().from(sysRegion).where(eq(sysRegion.parentCode, parentId)).orderBy(asc(sysRegion.code)) }

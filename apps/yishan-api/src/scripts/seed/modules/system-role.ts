@@ -33,13 +33,15 @@ async function ensureRole(
 export async function ensureSystemRoles(db: SeedDb, adminUserId: number) {
   const superAdminRole = await ensureRole(db, rolesSeed.superAdmin, adminUserId);
   const adminRole = await ensureRole(db, rolesSeed.admin, adminUserId);
+  const hospitalAccountRole = await ensureRole(db, rolesSeed.hospitalAccount, adminUserId);
 
   console.log('系统默认角色已准备:', {
     superAdmin: superAdminRole.name,
     normalAdmin: adminRole.name,
+    hospitalAccount: hospitalAccountRole.name,
   });
 
-  return { superAdminRole, adminRole };
+  return { superAdminRole, adminRole, hospitalAccountRole };
 }
 
 export async function bindUserRole(db: SeedDb, userId: number, roleId: number) {

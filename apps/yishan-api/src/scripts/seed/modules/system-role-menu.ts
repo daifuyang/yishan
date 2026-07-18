@@ -72,6 +72,7 @@ async function bindRoleMenus(
 export async function bindRoleMenusByDefault(db: SeedDb) {
   const superAdmin = await findRoleByCode(db, ROLE_CODES.SUPER_ADMIN);
   const admin = await findRoleByCode(db, ROLE_CODES.ADMIN);
+  const hospitalAccount = await findRoleByCode(db, ROLE_CODES.HOSPITAL_ACCOUNT);
   // normal_user 是规划中的角色；当前 seed 暂未创建该角色，找不到则跳过。
   const normalUser = await db.query.sysRole.findFirst({
     where: and(eq(sysRole.code, ROLE_CODES.NORMAL_USER), isNull(sysRole.deletedAt)),
@@ -85,9 +86,15 @@ export async function bindRoleMenusByDefault(db: SeedDb) {
   const adminMenuIds = menus
     .filter((m) => !isAdminExcluded(m.path))
     .map((m) => m.id);
+  const hospitalAccountMenuIds = menus
+    .filter((m) => [
+      '/plugins/iximei/crm/dispatches',
+      '/plugins/iximei/crm/dispatches/reply',
+    ].includes(m.path))
+    .map((m) => m.id);
 
   // soft-reset + 重新插入（按 role 维度幂等）
-  const rolesToReset = [superAdmin.id, admin.id];
+  const rolesToReset = [superAdmin.id, admin.id, hospitalAccount.id];
   if (normalUser) rolesToReset.push(normalUser.id);
   for (const roleId of rolesToReset) {
     await clearRoleMenuBindings(db, roleId);
@@ -95,6 +102,7 @@ export async function bindRoleMenusByDefault(db: SeedDb) {
 
   await bindRoleMenus(db, superAdmin.id, allMenuIds);
   await bindRoleMenus(db, admin.id, adminMenuIds);
+  await bindRoleMenus(db, hospitalAccount.id, hospitalAccountMenuIds);
   if (normalUser) {
     await bindRoleMenus(db, normalUser.id, accountMenuIds);
   }
@@ -102,6 +110,7 @@ export async function bindRoleMenusByDefault(db: SeedDb) {
   console.log('角色-菜单默认绑定完成:', {
     superAdmin: allMenuIds.length,
     admin: adminMenuIds.length,
+    hospitalAccount: hospitalAccountMenuIds.length,
     ...(normalUser ? { normalUser: accountMenuIds.length } : {}),
   });
 }

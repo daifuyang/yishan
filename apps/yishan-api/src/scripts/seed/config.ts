@@ -102,6 +102,7 @@ export const adminSeed = {
 export const rolesSeed = {
   superAdmin: { name: '超级管理员', code: 'super_admin', description: '拥有系统最高权限' },
   admin: { name: '普通管理员', code: 'admin', description: '拥有基础管理权限' },
+  hospitalAccount: { name: '医院账号', code: 'hospital_account', description: '仅可访问所属医院的派单处理能力' },
 };
 
 export const deptTreeSeed: DeptSeedNode = {

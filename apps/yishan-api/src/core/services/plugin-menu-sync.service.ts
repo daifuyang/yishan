@@ -78,6 +78,7 @@ export class PluginMenuSyncService {
       menuItemPath: menuItem.path,
       menuItemIcon: menuItem.icon ?? null,
       menuItemPerm: menuItem.perm ?? null,
+      hideInMenu: menuItem.hideInMenu ?? false,
       pluginMenuKey,
       pluginId,
       pluginName: manifest.name,

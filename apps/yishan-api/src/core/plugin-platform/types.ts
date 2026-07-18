@@ -11,6 +11,7 @@ export interface PluginMenuItem {
   name: string
   perm?: string
   icon?: string
+  hideInMenu?: boolean
 }
 
 export interface PluginManifest {

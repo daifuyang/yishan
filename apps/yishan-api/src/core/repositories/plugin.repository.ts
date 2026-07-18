@@ -143,6 +143,7 @@ export interface PluginMenuUpsertInput {
   menuItemPath: string;
   menuItemIcon?: string | null;
   menuItemPerm?: string | null;
+  hideInMenu?: boolean;
   pluginMenuKey: string;
   pluginId: string;
   pluginName: string;
@@ -237,6 +238,7 @@ export class PluginMenuRepository {
           pluginMenuKey: input.pluginMenuKey,
           perm: input.menuItemPerm ?? null,
           icon: input.menuItemIcon ?? null,
+          hideInMenu: input.hideInMenu ?? false,
           updaterId: input.updaterId,
           parentId: input.parentId,
         })
@@ -275,6 +277,7 @@ export class PluginMenuRepository {
         pluginMenuKey: input.pluginMenuKey,
         perm: input.menuItemPerm ?? null,
         icon: input.menuItemIcon ?? null,
+        hideInMenu: input.hideInMenu ?? false,
         creatorId: input.creatorId,
         parentId: input.parentId,
       })

@@ -34,5 +34,6 @@ export default {
     { channel: 'admin', path: '/plugins/iximei/crm/customers', name: '客户管理', perm: 'crm:customer:list', icon: 'users-round' },
     { channel: 'admin', path: '/plugins/iximei/crm/members', name: '会员顾客', perm: 'crm:member:list', icon: 'contact-round' },
     { channel: 'admin', path: '/plugins/iximei/crm/dispatches', name: '派单管理', perm: 'crm:dispatch:list', icon: 'clipboard-list' },
+    { channel: 'admin', path: '/plugins/iximei/crm/dispatches/reply', name: '派单回复', perm: 'crm:dispatch:reply', hideInMenu: true },
   ],
 } as const;

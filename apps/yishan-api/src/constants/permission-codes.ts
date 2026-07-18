@@ -150,6 +150,7 @@ export const ROLE_CODES = {
   SUPER_ADMIN: "super_admin",
   ADMIN: "admin",
   NORMAL_USER: "normal_user",
+  HOSPITAL_ACCOUNT: "hospital_account",
 } as const;
 
 export type RoleCode = typeof ROLE_CODES[keyof typeof ROLE_CODES];
