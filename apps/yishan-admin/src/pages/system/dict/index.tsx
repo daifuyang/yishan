@@ -92,7 +92,6 @@ const DictTypeList: React.FC = () => {
       dataIndex: 'remark',
       search: false,
       ellipsis: true,
-      width: 240,
     },
     {
       title: '创建时间',
@@ -194,7 +193,7 @@ const DictTypeList: React.FC = () => {
         }}
         columns={columns}
         rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-        scroll={{ x: 1300 }}
+        scroll={{ x: 1130 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

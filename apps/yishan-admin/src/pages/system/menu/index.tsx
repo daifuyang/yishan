@@ -84,7 +84,7 @@ const MenuList: React.FC = () => {
     { title: 'ID', dataIndex: 'id', search: false, width: 80 },
     { title: '菜单名称', dataIndex: 'name', width: 120 },
     { title: '路由地址', dataIndex: 'path', search: false, width: 180 },
-    { title: '组件', dataIndex: 'component', search: false, width: 200 },
+    { title: '组件', dataIndex: 'component', search: false },
     { title: '图标', dataIndex: 'icon', search: false, width: 100 },
     { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
     {
@@ -121,7 +121,7 @@ const MenuList: React.FC = () => {
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
-      width: 180,
+      width: 160,
       render: (_, record) => (
         <Space size={16}>
           <MenuForm
@@ -212,7 +212,7 @@ const MenuList: React.FC = () => {
         }}
         columns={columns}
         rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1380 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>
