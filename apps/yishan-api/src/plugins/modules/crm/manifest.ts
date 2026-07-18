@@ -30,9 +30,9 @@ export default {
     { code: 'crm:region:list', label: '地区-列表', group: 'crm' },
   ],
   menus: [
-    { channel: 'admin', path: '/plugins/iximei/crm/hospitals', name: '医院管理', perm: 'crm:hospital:list', icon: 'bank' },
-    { channel: 'admin', path: '/plugins/iximei/crm/customers', name: '客户管理', perm: 'crm:customer:list', icon: 'user' },
-    { channel: 'admin', path: '/plugins/iximei/crm/members', name: '会员顾客', perm: 'crm:member:list', icon: 'crown' },
+    { channel: 'admin', path: '/plugins/iximei/crm/hospitals', name: '医院管理', perm: 'crm:hospital:list', icon: 'medicine-box' },
+    { channel: 'admin', path: '/plugins/iximei/crm/customers', name: '客户管理', perm: 'crm:customer:list', icon: 'team' },
+    { channel: 'admin', path: '/plugins/iximei/crm/members', name: '会员顾客', perm: 'crm:member:list', icon: 'idcard' },
     { channel: 'admin', path: '/plugins/iximei/crm/dispatches', name: '派单管理', perm: 'crm:dispatch:list', icon: 'send' },
   ],
 } as const;
