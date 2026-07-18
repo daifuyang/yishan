@@ -2,12 +2,6 @@
 /* eslint-disable */
 // API 更新时间：
 // API 唯一标识：
-import * as crmCustomers from "./crmCustomers";
-import * as crmDispatches from "./crmDispatches";
-import * as crmHospitals from "./crmHospitals";
-import * as crmMembers from "./crmMembers";
-import * as crmRegions from "./crmRegions";
-import * as crmWeixin from "./crmWeixin";
 import * as system from "./system";
 import * as attachments from "./attachments";
 import * as sysDepts from "./sysDepts";
@@ -31,12 +25,6 @@ import * as appUsers from "./appUsers";
 import * as auth from "./auth";
 import * as meApiTokens from "./meApiTokens";
 export default {
-  crmCustomers,
-  crmDispatches,
-  crmHospitals,
-  crmMembers,
-  crmRegions,
-  crmWeixin,
   system,
   attachments,
   sysDepts,

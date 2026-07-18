@@ -107,7 +107,6 @@ export const adminSeed = {
 export const rolesSeed = {
   superAdmin: { name: '超级管理员', code: 'super_admin', description: '拥有系统最高权限' },
   admin: { name: '普通管理员', code: 'admin', description: '拥有基础管理权限' },
-  hospitalAccount: { name: '医院账号', code: 'hospital_account', description: '仅可访问所属医院的派单处理能力' },
 };
 
 export const deptTreeSeed: DeptSeedNode = {
@@ -237,14 +236,6 @@ const page = (args: Omit<MenuSeedNode, 'type' | 'children' | 'permissionCodes'> 
   children: args.actions,
 });
 
-const crmPage = (args: Omit<MenuSeedNode, 'type' | 'children' | 'permissionCodes' | 'source' | 'pluginName' | 'pluginMenuKey'> & { actions: MenuSeedNode[] }): MenuSeedNode =>
-  page({
-    ...args,
-    source: 'plugin',
-    pluginName: 'crm',
-    pluginMenuKey: `iximei/crm:${args.path}`,
-  });
-
 export const systemMenusSeed: MenuSeedNode = {
   name: '系统管理',
   path: '/system',
@@ -280,14 +271,6 @@ export const accountMenusSeed: MenuSeedNode = {
     { name: '个人中心', path: '/account/center', type: 1, sortOrder: 2, icon: 'user', component: './account/center', hideInMenu: true },
   ],
 };
-
-/** CRM 插件的管理端页面与按钮树。插件菜单同步与初始化 seed 共享此结构。 */
-export const crmMenusSeed: MenuSeedNode[] = [
-  crmPage({ name: '医院管理', path: '/plugins/iximei/crm/hospitals', sortOrder: 2, icon: 'hospital', actions: [action('查看', 'crm:hospital:list', 1, true), action('新增', 'crm:hospital:create', 2), action('编辑', 'crm:hospital:update', 3), action('删除', 'crm:hospital:delete', 4)] }),
-  crmPage({ name: '客户管理', path: '/plugins/iximei/crm/customers', sortOrder: 3, icon: 'users-round', actions: [action('查看', 'crm:customer:list', 1, true), action('新增', 'crm:customer:create', 2), action('编辑', 'crm:customer:update', 3), action('派单', 'crm:customer:dispatch', 4)] }),
-  crmPage({ name: '会员顾客', path: '/plugins/iximei/crm/members', sortOrder: 4, icon: 'contact-round', actions: [action('查看', 'crm:member:list', 1, true), action('新增', 'crm:member:create', 2), action('编辑', 'crm:member:update', 3), action('备注', 'crm:member:remark', 4)] }),
-  crmPage({ name: '派单管理', path: '/plugins/iximei/crm/dispatches', sortOrder: 5, icon: 'clipboard-list', actions: [action('查看', 'crm:dispatch:list', 1, true), action('编辑', 'crm:dispatch:update', 2), action('回复', 'crm:dispatch:reply', 3), action('跟进', 'crm:dispatch:log', 4)] }),
-];
 
 export const sysOptionsSeed: SysOptionSeed[] = [
   { key: 'basicConfig', value: '{}' }, // 站点基本配置

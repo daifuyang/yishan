@@ -9,7 +9,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { sysRole, sysRolePermission } from '@/db/schema';
 import { PERMISSION_DEFINITIONS, ROLE_CODES } from '@/constants/permission-codes.js';
-import crmManifest from '@/plugins/modules/crm/manifest.js';
 import type { SeedDb } from '../context.js';
 
 async function findRoleByCode(db: SeedDb, code: string) {
@@ -40,29 +39,15 @@ async function replaceRolePermissions(
 }
 
 export async function bindRolePermissionsByDefault(db: SeedDb, adminUserId: number) {
-  const [superAdmin, admin, hospitalAccount] = await Promise.all([
+  const [superAdmin, admin] = await Promise.all([
     findRoleByCode(db, ROLE_CODES.SUPER_ADMIN),
     findRoleByCode(db, ROLE_CODES.ADMIN),
-    findRoleByCode(db, ROLE_CODES.HOSPITAL_ACCOUNT),
   ]);
-  const coreCodes = PERMISSION_DEFINITIONS.map((item) => item.code);
-  const crmCodes = crmManifest.permissions.map((item) => item.code);
-  const allCodes = [...coreCodes, ...crmCodes];
+  const allCodes = PERMISSION_DEFINITIONS.map((item) => item.code);
   const adminCodes = allCodes.filter((code) => !code.startsWith('system:plugin:'));
-  const hospitalAccountCodes = [
-    'crm:dispatch:list',
-    'crm:dispatch:reply',
-    'crm:dispatch:log',
-    'system:dict:list',
-    'system:option:list',
-    'system:attachment:list',
-    'system:attachment:create',
-    'system:storage:upload-token',
-  ];
 
   await Promise.all([
     replaceRolePermissions(db, superAdmin.id, allCodes, adminUserId),
     replaceRolePermissions(db, admin.id, adminCodes, adminUserId),
-    replaceRolePermissions(db, hospitalAccount.id, hospitalAccountCodes, adminUserId),
   ]);
 }
