@@ -59,7 +59,7 @@ const IconMap: Record<string, LucideIcon> = {
 };
 function pickIcon(key: string): JSX.Element | undefined {
   const Icon = IconMap[String(key).toLowerCase()];
-  return Icon ? <Icon className="side-menu-icon" size={16} strokeWidth={1.8} /> : undefined;
+  return Icon ? <Icon size={16} strokeWidth={1.8} /> : undefined;
 }
 
 /**
