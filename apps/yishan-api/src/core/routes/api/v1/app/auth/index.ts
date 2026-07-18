@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { ResponseUtil } from "../../../../../../utils/response.js";
 import { BusinessError } from "../../../../../../exceptions/business-error.js";
@@ -15,10 +16,12 @@ import { MenuService } from "../../../../../services/menu.service.js";
  * 复用 core 的 AuthService，保持与 admin 通道同等的 token 行为
  */
 const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // POST /api/v1/app/auth/login
-  fastify.post(
+  route.post(
     "/login",
     {
+      access: 'public',
       // Section 7：移动端登录限流
       preHandler: [fastify.rateLimit("login")],
       schema: {
@@ -45,10 +48,10 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/app/auth/logout
-  fastify.post(
+  route.post(
     "/logout",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "移动端登出",
         description: "撤销当前用户的访问令牌",
@@ -80,9 +83,10 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/app/auth/refresh
-  fastify.post(
+  route.post(
     "/refresh",
     {
+      access: 'public',
       // Section 7：移动端 refresh 限流
       preHandler: [fastify.rateLimit("refresh")],
       schema: {
@@ -108,10 +112,10 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/app/auth/me
-  fastify.get(
+  route.get(
     "/me",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "获取当前用户信息",
         description: "获取当前登录用户的详细信息及已授权菜单路径",

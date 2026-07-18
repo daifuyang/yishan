@@ -12,6 +12,7 @@ async function buildAppWithOptions() {
     // 单测不需要真实 RBAC 校验：no-op 占位。
     app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
     app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
+    app.decorate('authenticate', async () => undefined)
   await app.register(errorHandlerPlugin)
   registerSystemSchemas(app)
   await app.register(adminSystemOptionsPlugin)
@@ -25,6 +26,7 @@ async function buildAppWithStorage() {
   // 单测不需要真实 RBAC 校验：no-op 占位。
   app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
   app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
+  app.decorate('authenticate', async () => undefined)
   registerSystemSchemas(app)
   await app.register(adminSystemStoragePlugin)
   await app.ready()

@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../route-registrar.js';
 /**
  * 系统管理路由
  * 用于系统维护和定时任务
@@ -8,9 +9,10 @@ import { ResponseUtil } from "../../../../../utils/response.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { SystemManageErrorCode } from "../../../../../constants/business-codes/system.js";
 import { SystemService } from "../../../../services/system.service.js";
-import { corePermissions } from '../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   /**
    * 验证定时任务令牌。
    * Section 2 — 安全：禁止硬编码默认值；未配置 CRON_TOKEN 时一律拒绝。
@@ -28,9 +30,10 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
    * 清理过期token
    * POST /api/v1/system/cleanup-tokens
    */
-  fastify.post(
+  route.post(
     "/cleanup-tokens",
     {
+      access: 'public',
       schema: {
         summary: "清理过期token",
         description: "定时任务接口，用于清理过期的用户token，需要特殊的定时任务令牌进行鉴权",
@@ -76,12 +79,13 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
    * GET /api/v1/system/token-stats
    * Section 1 — RBAC：原接口完全公开，现要求系统 token 列表权限。
    */
-  fastify.get(
+  route.get(
     "/token-stats",
     {
+      access: 'public',
       preHandler: [
         fastify.authenticate,
-        fastify.requirePermission(corePermissions.SYSTEM_TOKEN_LIST),
+        fastify.requirePermission(permissions.TOKEN_LIST),
       ],
       schema: {
         summary: "获取token统计信息",

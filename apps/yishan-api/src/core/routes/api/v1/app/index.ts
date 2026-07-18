@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { ResponseUtil } from "../../../../../utils/response.js";
 import dashboard from "./dashboard/index.js";
@@ -7,11 +8,13 @@ import dashboard from "./dashboard/index.js";
  * 用于 health check / welcome
  */
 const appRoot: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   await fastify.register(dashboard);
 
-  fastify.get(
+  route.get(
     "/",
     {
+      access: 'public',
       schema: {
         summary: "移动端根",
         description: "返回移动端基座的基本信息",

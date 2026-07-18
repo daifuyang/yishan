@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
@@ -7,14 +8,15 @@ import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import { MenuListQuery, SaveMenuReq, UpdateMenuReq } from "../../../../../schemas/menu.js";
 import { MenuService } from "../../../../../services/menu.service.js";
 import { getMenuMessage, MenuMessageKeys } from "../../../../../../constants/messages/menu.js";
-import { corePermissions } from '../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // GET /api/v1/admin/menus - 获取菜单列表
-  fastify.get(
+  route.get(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_MENU_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取菜单列表",
         description: "分页获取菜单列表，支持关键词、状态、类型与父级过滤",
@@ -43,10 +45,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
-  fastify.get(
+  route.get(
     "/tree",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_MENU_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取菜单树",
         description: "获取全部树形菜单",
@@ -68,10 +70,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
-  fastify.get(
+  route.get(
     "/tree/authorized",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "获取已授权菜单树",
         description: "根据当前用户角色并集返回授权菜单树",
@@ -94,10 +96,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
-  fastify.get(
+  route.get(
     "/paths/authorized",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "获取已授权菜单路径",
         description: "根据当前用户角色并集返回允许访问的菜单路径列表",
@@ -121,10 +123,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/admin/menus/{id} - 获取菜单详情
-  fastify.get(
+  route.get(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_MENU_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取菜单详情",
         description: "根据菜单ID获取菜单详情",
@@ -155,10 +157,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/admin/menus - 创建菜单
-  fastify.post(
+  route.post(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_MENU_CREATE)] as any,
+      access: { permission: permissions.CREATE },
       schema: {
         summary: "创建菜单",
         description: "创建一个新的菜单",
@@ -182,10 +184,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // PUT /api/v1/admin/menus/{id} - 更新菜单
-  fastify.put(
+  route.put(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_MENU_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "更新菜单",
         description: "根据菜单ID更新菜单信息",
@@ -214,10 +216,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // DELETE /api/v1/admin/menus/{id} - 删除菜单（软删除）
-  fastify.delete(
+  route.delete(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_MENU_DELETE)] as any,
+      access: { permission: permissions.DELETE },
       schema: {
         summary: "删除菜单",
         description: "根据菜单ID进行软删除，存在子菜单或已绑定角色禁止删除",

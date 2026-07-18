@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
@@ -20,13 +21,14 @@ import { AttachmentMessageKeys, getAttachmentMessage } from "../../../../../../c
 import { AttachmentErrorCode } from "../../../../../../constants/business-codes/attachment.js";
 import { ValidationErrorCode } from "../../../../../../constants/business-codes/validation.js";
 import { BusinessError } from "../../../../../../exceptions/business-error.js";
-import { corePermissions } from '../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
-  fastify.get(
+  const route = createRouteRegistrar(fastify);
+  route.get(
     "/folders",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取分组列表",
         description: "分页获取素材分组列表，支持关键词、类型、状态与父级过滤",
@@ -51,10 +53,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.get(
+  route.get(
     "/folders/tree",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取分组树",
         description: "获取素材分组树形结构（按 sortOrder 排序）",
@@ -74,10 +76,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.get(
+  route.get(
     "/folders/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取分组详情",
         description: "根据分组ID获取分组详情",
@@ -101,10 +103,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.post(
+  route.post(
     "/folders",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_CREATE)] as any,
+      access: { permission: permissions.CREATE },
       schema: {
         summary: "创建分组",
         description: "创建一个新的素材分组",
@@ -125,10 +127,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.put(
+  route.put(
     "/folders/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "更新分组",
         description: "根据分组ID更新分组信息",
@@ -153,10 +155,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.delete(
+  route.delete(
     "/folders/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_DELETE)] as any,
+      access: { permission: permissions.DELETE },
       schema: {
         summary: "删除分组",
         description: "根据分组ID进行软删除，存在子分组或素材禁止删除",
@@ -177,10 +179,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.get(
+  route.get(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取素材列表",
         description: "分页获取素材列表，支持关键词、类型、分组与状态筛选",
@@ -205,10 +207,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.get(
+  route.get(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取素材详情",
         description: "根据素材ID获取素材详情",
@@ -232,10 +234,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.put(
+  route.put(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "更新素材",
         description: "根据素材ID更新素材信息（名称、分组、状态、扩展信息）",
@@ -260,10 +262,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.delete(
+  route.delete(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_DELETE)] as any,
+      access: { permission: permissions.DELETE },
       schema: {
         summary: "批量删除素材",
         description: "根据素材ID列表进行软删除",
@@ -288,10 +290,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.delete(
+  route.delete(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_DELETE)] as any,
+      access: { permission: permissions.DELETE },
       schema: {
         summary: "删除素材",
         description: "根据素材ID进行软删除",
@@ -312,10 +314,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.post(
+  route.post(
     "/cloud",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_CREATE)] as any,
+      access: { permission: permissions.CREATE },
       schema: {
         summary: "创建云端素材",
         description: "云存储直传后创建素材记录",
@@ -378,10 +380,10 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
     }
   );
 
-  fastify.post(
+  route.post(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ATTACHMENT_CREATE)] as any,
+      access: { permission: permissions.CREATE },
       schema: {
         summary: "上传附件",
         description: "支持批量上传的表单文件（multipart/form-data）",

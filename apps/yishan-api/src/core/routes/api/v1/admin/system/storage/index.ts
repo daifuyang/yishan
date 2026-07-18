@@ -1,14 +1,16 @@
+import { createRouteRegistrar } from '../../../../../route-registrar.js';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { ResponseUtil } from "../../../../../../../utils/response.js";
 import { getSystemMessage, SystemMessageKeys } from "../../../../../../../constants/messages/system.js";
 import { StorageConfigService } from "../../../../../../services/storage-config.service.js";
-import { corePermissions } from '../../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> => {
-  fastify.get(
+  const route = createRouteRegistrar(fastify);
+  route.get(
     "/config",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_STORAGE_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取云存储配置",
         description: "获取当前云存储配置（用于后台配置页面展示）",
@@ -28,10 +30,10 @@ const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> =>
     }
   );
 
-  fastify.put(
+  route.put(
     "/config",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_STORAGE_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "新增/更新云存储配置",
         description: "新增或覆盖当前云存储配置（固定写入 systemStorage/qiniuConfig/aliyunOssConfig）",
@@ -60,10 +62,10 @@ const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> =>
     }
   );
 
-  fastify.get(
+  route.get(
     "/export",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_STORAGE_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "导出云存储配置",
         description: "导出当前云存储配置（不包含 SecretKey 等敏感信息）",
@@ -88,10 +90,10 @@ const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> =>
     }
   );
 
-  fastify.post(
+  route.post(
     "/import",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_STORAGE_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "导入云存储配置",
         description: "导入云存储配置（会覆盖当前配置）",

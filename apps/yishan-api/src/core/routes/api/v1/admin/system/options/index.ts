@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../../route-registrar.js';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { ResponseUtil } from "../../../../../../../utils/response.js";
 import { SystemOptionService } from "../../../../../../services/system-option.service.js";
@@ -5,14 +6,15 @@ import {
   getSystemMessage,
   SystemMessageKeys,
 } from "../../../../../../../constants/messages/system.js";
-import { corePermissions } from '../../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
+  const route = createRouteRegistrar(fastify);
   // 获取系统参数
-  fastify.get(
+  route.get(
     "/:key",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_OPTION_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取系统参数",
         description: "根据键获取系统参数值",
@@ -40,10 +42,10 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   );
 
   // 批量获取系统参数（QueryString 多 key）
-  fastify.get(
+  route.get(
     "/query",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_OPTION_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "批量获取系统参数（QueryString）",
         description: "通过 query 参数 ?key[]=a&key[]=b 批量获取系统参数值",
@@ -82,10 +84,10 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   );
 
   // 设置系统参数
-  fastify.put(
+  route.put(
     "/:key",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_OPTION_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "设置系统参数",
         description: "根据键设置系统参数值",
@@ -116,10 +118,10 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   );
 
   // 批量设置系统参数
-  fastify.post(
+  route.post(
     "/batch",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_OPTION_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "批量设置系统参数",
         description: "传入JSON数组批量新增或更新系统参数",

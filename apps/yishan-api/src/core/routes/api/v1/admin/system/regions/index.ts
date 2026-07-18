@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../../route-registrar.js';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { Type } from '@sinclair/typebox';
 import { ResponseUtil } from '../../../../../../../utils/response.js';
@@ -12,9 +13,11 @@ const regionSchema = Type.Object({
 });
 
 const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
-  fastify.get(
+  const route = createRouteRegistrar(fastify);
+  route.get(
     '/',
     {
+      access: 'public',
       schema: {
         summary: '地区列表',
         description: '按父级行政区划代码获取下级地区列表',
@@ -41,9 +44,10 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  fastify.get(
+  route.get(
     '/tree',
     {
+      access: 'public',
       schema: {
         summary: '地区树',
         description: '获取省市区三级地区树',
@@ -61,9 +65,10 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  fastify.get(
+  route.get(
     '/path',
     {
+      access: 'public',
       schema: {
         summary: '地区路径',
         description: '按行政区划代码获取省市区路径',
@@ -81,9 +86,10 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  fastify.get(
+  route.get(
     '/:code',
     {
+      access: 'public',
       schema: {
         summary: '地区详情',
         description: '按行政区划代码获取地区详情',

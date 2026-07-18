@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
@@ -9,11 +10,12 @@ import { UserRepository } from "../../../../../repositories/user.repository.js";
  * 复用 DeptService.getDeptTree；部门成员通过 EXISTS 子查询拉取（userDepts 关联）。
  */
 const contacts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // GET /api/v1/app/contacts/depts/tree - 部门树
-  fastify.get(
+  route.get(
     "/depts/tree",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "获取部门树（移动端）",
         description: "返回全部部门树形结构，供移动端通讯录展示",
@@ -41,10 +43,10 @@ const contacts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/app/contacts/depts/:id/users - 部门成员
-  fastify.get(
+  route.get(
     "/depts/:id/users",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "获取部门成员（移动端）",
         description: "根据部门ID返回该部门下的所有启用用户",

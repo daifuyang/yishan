@@ -16,7 +16,7 @@
  * - 数据库读取失败时 fail closed，拒绝授权。
  */
 
-import { corePermissionDefinitions } from '../permissions/core-permissions.js';
+import { corePermissionDefinitions } from '../permissions/generated/core-permissions.js';
 import { PluginManifest } from '../../core/plugin-platform/types.js';
 import { BusinessError } from '../../exceptions/business-error.js';
 import { ValidationErrorCode } from '../../constants/business-codes/validation.js';

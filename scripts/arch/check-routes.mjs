@@ -4,7 +4,7 @@
  *
  * Scans every file under `apps/yishan-api/src` matching
  *   (core|plugins/modules/<name>)/routes/(api/|v1/)<rest>
- * that contains at least one `fastify.get|post|put|delete|patch(...)` call
+ * that contains at least one `route.get|post|put|delete|patch(...)` call
  * and enforces the following per-route invariants.  Paths are computed by
  * concatenating the file's directory path (relative to `src/`) with the
  * route's first string argument, which matches how `@fastify/autoload`
@@ -14,6 +14,7 @@
  *   R2 — every non-whitelisted route MUST have a non-empty `schema.operationId`
  *   R3 — every non-whitelisted route MUST have a non-empty `schema.tags`
  *   R4 — every route MUST have a `schema:` block on its options object
+ *   R5 — every route MUST explicitly declare an `access` policy
  *
  * Whitelist (these exact full paths escape R1/R2/R3, never R4):
  *   - /api/v1/auth/login
@@ -37,7 +38,8 @@ const ROOT = process.cwd();
 const API_SRC = join(ROOT, "apps", "yishan-api", "src");
 const WHITELIST = new Set(["/api/v1/auth/login", "/api/v1/auth/refresh"]);
 
-const ROUTE_CALL_RE = /fastify\.(get|post|put|delete|patch)\s*\(/g;
+const ROUTE_CALL_RE = /route\.(get|post|put|delete|patch)\s*(?:<[^>]+>)?\s*\(/g;
+const LEGACY_ROUTE_CALL_RE = /fastify\.(get|post|put|delete|patch)\s*\(/;
 const STRING_RE = /^(['"])((?:\\.|(?!\1).)*)\1/;
 const SCHEMA_KEY_RE = /\bschema\s*:/g;
 const STRING_FIELD_RE = (k) => new RegExp(`\\b${k}\\s*:\\s*(['"])((?:\\\\.|(?!\\1).)*)\\1`);
@@ -148,6 +150,10 @@ function checkFile(file, text) {
   const out = [];
   for (const r of findRoutes(text)) {
     const fullPath = fullPathFor(file, r.path);
+    const options = text.slice(r.optStart + 1, r.optEnd - 1);
+    if (!/\baccess\s*:/.test(options)) {
+      out.push({ line: r.line, msg: `[${r.verb.toUpperCase()} ${fullPath}] missing explicit access policy` });
+    }
     const whitelisted = WHITELIST.has(fullPath);
     const schema = findSchemaBlock(text, r.optStart, r.optEnd);
     if (!schema) {
@@ -174,7 +180,10 @@ function main() {
   const violations = [];
   for (const file of files) {
     const text = readFileSync(file, "utf8");
-    if (!/fastify\.(get|post|put|delete|patch)\s*\(/.test(text)) continue;
+    if (LEGACY_ROUTE_CALL_RE.test(text)) {
+      violations.push({ file, line: 1, msg: 'business routes must use createRouteRegistrar, not fastify.get/post/etc.' });
+    }
+    if (!ROUTE_CALL_RE.test(text)) continue;
     for (const v of checkFile(file, text)) violations.push({ file, ...v });
   }
   if (violations.length === 0) {

@@ -14,6 +14,7 @@ async function buildApp() {
     // 单测不需要真实 RBAC 校验：no-op 占位。
     app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
     app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
+    app.decorate('authenticate', async () => undefined)
     // 管理域的真实 autohook 会在路由前设置 currentUser；该路由单测显式模拟它。
     app.addHook('onRequest', async (request) => {
       (request as any).currentUser = { id: 1 }

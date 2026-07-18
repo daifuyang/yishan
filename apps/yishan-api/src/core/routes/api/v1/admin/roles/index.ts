@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
@@ -6,14 +7,15 @@ import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import { RoleListQuery, SaveRoleReq, UpdateRoleReq } from "../../../../../schemas/role.js";
 import { RoleService } from "../../../../../services/role.service.js";
 import { getRoleMessage, RoleMessageKeys } from "../../../../../../constants/messages/role.js";
-import { corePermissions } from '../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // GET /api/v1/admin/roles - 获取角色列表
-  fastify.get(
+  route.get(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ROLE_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取角色列表",
         description: "分页获取系统角色列表，支持关键词搜索和状态筛选",
@@ -45,10 +47,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/admin/roles/{id} - 获取角色详情
-  fastify.get(
+  route.get(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ROLE_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取角色详情",
         description: "根据角色ID获取角色详情",
@@ -80,12 +82,12 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/admin/roles - 创建角色
-  fastify.post(
+  route.post(
     "/",
     {
+      access: { permission: permissions.CREATE },
       preHandler: [
-        fastify.requirePermission(corePermissions.SYSTEM_ROLE_CREATE),
-        fastify.requirePermission(corePermissions.SYSTEM_ROLE_GRANT),
+        fastify.requirePermission(permissions.GRANT),
       ] as any,
       schema: {
         summary: "创建角色",
@@ -112,12 +114,12 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // PUT /api/v1/admin/roles/{id} - 更新角色
-  fastify.put(
+  route.put(
     "/:id",
     {
+      access: { permission: permissions.UPDATE },
       preHandler: [
-        fastify.requirePermission(corePermissions.SYSTEM_ROLE_UPDATE),
-        fastify.requirePermission(corePermissions.SYSTEM_ROLE_GRANT),
+        fastify.requirePermission(permissions.GRANT),
       ] as any,
       schema: {
         summary: "更新角色",
@@ -148,10 +150,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // DELETE /api/v1/admin/roles/{id} - 删除角色（软删除）
-  fastify.delete(
+  route.delete(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ROLE_DELETE)] as any,
+      access: { permission: permissions.DELETE },
       schema: {
         summary: "删除角色",
         description: "根据角色ID进行软删除",

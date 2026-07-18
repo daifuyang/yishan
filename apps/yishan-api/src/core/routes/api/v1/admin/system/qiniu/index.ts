@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../../utils/response.js";
@@ -6,13 +7,14 @@ import { SystemOptionService } from "../../../../../../services/system-option.se
 import qiniu from "qiniu";
 import { ValidationErrorCode } from "../../../../../../../constants/business-codes/validation.js";
 import { BusinessError } from "../../../../../../../exceptions/business-error.js";
-import { corePermissions } from '../../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const adminQiniu: FastifyPluginAsync = async (fastify): Promise<void> => {
-  fastify.get(
+  const route = createRouteRegistrar(fastify);
+  route.get(
     "/token",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_STORAGE_UPLOAD_TOKEN)] as any,
+      access: { permission: permissions.UPLOAD_TOKEN },
       schema: {
         summary: "获取七牛云上传临时凭证",
         description: "根据七牛云官方文档生成上传凭证（uptoken）",

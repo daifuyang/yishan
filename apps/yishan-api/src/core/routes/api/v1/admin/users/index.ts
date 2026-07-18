@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
@@ -10,14 +11,15 @@ import {
 import { UserService } from "../../../../../services/user.service.js";
 import { UserErrorCode } from "../../../../../../constants/business-codes/user.js";
 import { getUserMessage, UserMessageKeys } from "../../../../../../constants/messages/user.js";
-import { corePermissions } from '../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // GET /api/v1/admin/user - 获取管理员用户列表
-  fastify.get(
+  route.get(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_USER_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取管理员用户列表",
         description: "分页获取系统用户列表，支持关键词搜索和状态筛选",
@@ -52,10 +54,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/admin/user/{id} - 获取用户详情
-  fastify.get(
+  route.get(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_USER_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取用户详情",
         description: "根据用户ID获取用户详情",
@@ -88,10 +90,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/admin/user - 创建用户
-  fastify.post(
+  route.post(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_USER_CREATE)] as any,
+      access: { permission: permissions.CREATE },
       schema: {
         summary: "创建用户",
         description: "创建一个新的系统用户",
@@ -117,10 +119,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // PUT /api/v1/admin/user/{id} - 更新用户
-  fastify.put(
+  route.put(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_USER_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "更新用户",
         description: "根据用户ID更新用户信息",
@@ -171,10 +173,10 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // DELETE /api/v1/admin/user/{id} - 删除用户（软删除）
-  fastify.delete(
+  route.delete(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_USER_DELETE)] as any,
+      access: { permission: permissions.DELETE },
       schema: {
         summary: "删除用户",
         description: "根据用户ID进行软删除，并撤销所有令牌",

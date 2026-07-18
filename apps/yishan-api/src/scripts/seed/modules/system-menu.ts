@@ -1,6 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { sysMenu, sysMenuPermission } from '@/db/schema';
-import { corePermissionDefinitions } from '@/core/permissions/core-permissions.js';
+import { corePermissionDefinitions } from '@/core/permissions/generated/core-permissions.js';
 import type { MenuSeedNode } from '../config.js';
 import type { SeedDb } from '../context.js';
 

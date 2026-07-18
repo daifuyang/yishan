@@ -14,6 +14,7 @@ async function buildApp() {
     // 单测不需要真实 RBAC 校验：no-op 占位。
     app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
     app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
+    app.decorate('authenticate', async () => undefined)
   await app.register(errorHandlerPlugin)
   // 先注册通用Schema（包含paginationResponse），否则响应schema校验会失败
   registerCommonSchemas(app)

@@ -1,6 +1,7 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { ResponseUtil } from '../../../../../../utils/response.js';
-import { corePermissions } from '../../../../../permissions/core-permissions.js';
+import rolePermissions from '../roles/permissions.js';
 import { getGlobalCatalog } from '../../../../../services/permission-catalog.service.js';
 
 /**
@@ -8,10 +9,11 @@ import { getGlobalCatalog } from '../../../../../services/permission-catalog.ser
  * 管理端可选择其中的能力给角色授权，但不能通过 UI 创建任意权限码。
  */
 const permissionsRoute: FastifyPluginAsync = async (fastify): Promise<void> => {
-  fastify.get(
+  const route = createRouteRegistrar(fastify);
+  route.get(
     '/catalog',
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_ROLE_GRANT)] as any,
+      access: { permission: rolePermissions.GRANT },
       schema: {
         summary: '获取活动功能/API 权限目录',
         operationId: 'getPermissionCatalog',

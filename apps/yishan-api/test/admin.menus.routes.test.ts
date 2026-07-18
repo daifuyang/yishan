@@ -15,25 +15,7 @@ async function buildApp() {
     app.decorate('requirePermission', () => async (_request: any, _reply: any) => undefined)
     app.decorate('requireRole', () => async (_request: any, _reply: any) => undefined)
   app.decorate('authenticate', async (request: any) => {
-    const auth = request.headers.authorization
-    if (!auth || !auth.startsWith('Bearer ')) {
-      throw new Error('Unauthorized')
-    }
-    request.currentUser = {
-      id: 1,
-      username: 'admin',
-      email: 'admin@example.com',
-      realName: 'Admin',
-      gender: 1,
-      genderName: '男',
-      status: 1,
-      statusName: '启用',
-      loginCount: 10,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastLoginTime: new Date().toISOString(),
-      roleIds: [1, 2]
-    }
+    request.currentUser = { id: 1, roleIds: [1, 2] }
   })
   await app.register(errorHandlerPlugin)
   // 注册通用与菜单相关Schema

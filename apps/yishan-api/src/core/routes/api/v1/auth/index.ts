@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { ResponseUtil } from "../../../../../utils/response.js";
 import { getAuthMessage, AuthMessageKeys } from "../../../../../constants/messages/auth.js";
@@ -16,10 +17,12 @@ import {
 } from "../../../../auth/auth-helpers.js";
 
 const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // POST /api/v1/auth/login - 用户登录
-  fastify.post(
+  route.post(
     "/login",
     {
+      access: 'public',
       // Section 7：登录限流（默认 5/min）
       preHandler: [fastify.rateLimit("login")],
       schema: {
@@ -58,10 +61,10 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/auth/logout - 用户登出
-  fastify.post(
+  route.post(
     "/logout",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "用户登出",
         description: "用户登出，清除认证状态",
@@ -101,10 +104,10 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/auth/me - 获取当前用户信息
-  fastify.get(
+  route.get(
     "/me",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "获取当前用户信息",
         description: "获取当前登录用户的详细信息",
@@ -130,9 +133,10 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/auth/refresh - 刷新访问令牌
-  fastify.post(
+  route.post(
     "/refresh",
     {
+      access: 'public',
       // Section 7：refresh 限流（默认 30/min）
       preHandler: [fastify.rateLimit("refresh")],
       schema: {

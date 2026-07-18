@@ -9,7 +9,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { sysRole, sysRolePermission } from '@/db/schema';
 import { ROLE_CODES } from '@/constants/permission-codes.js';
-import { corePermissionDefinitions } from '@/core/permissions/core-permissions.js';
+import { corePermissionDefinitions } from '@/core/permissions/generated/core-permissions.js';
 import type { SeedDb } from '../context.js';
 
 async function findRoleByCode(db: SeedDb, code: string) {

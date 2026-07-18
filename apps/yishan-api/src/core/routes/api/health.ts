@@ -10,6 +10,7 @@
  */
 
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
+import { createRouteRegistrar } from '../route-registrar.js';
 import { dateUtils } from "../../../utils/date.js";
 import { ResponseUtil } from "../../../utils/response.js";
 import { drizzleDb } from "../../../db/index.js";
@@ -30,9 +31,11 @@ async function checkDb(): Promise<{ ok: boolean; latencyMs?: number; error?: str
 }
 
 const health: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
-  fastify.get(
+  const route = createRouteRegistrar(fastify);
+  route.get(
     "/health",
     {
+      access: 'public',
       schema: {
         summary: "服务健康检查",
         description:

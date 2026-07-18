@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { ResponseUtil } from "../../../../../../utils/response.js";
 import { MenuService } from "../../../../../services/menu.service.js";
@@ -6,11 +7,12 @@ import { MenuService } from "../../../../../services/menu.service.js";
  * 移动端菜单路由 - /api/v1/app/menus
  */
 const menus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // GET /api/v1/app/menus/authorized - 当前用户已授权菜单（树形）
-  fastify.get(
+  route.get(
     "/authorized",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "获取已授权菜单树",
         description: "根据当前用户角色并集返回授权菜单树，移动端用于渲染应用 Tab",
@@ -28,10 +30,10 @@ const menus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/app/menus/flatten - 当前用户已授权菜单（扁平）
-  fastify.get(
+  route.get(
     "/flatten",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "获取已授权菜单（扁平）",
         description: "根据当前用户角色并集返回授权菜单扁平列表，包含完整字段（icon, path, perm 等）",

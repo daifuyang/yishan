@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
@@ -6,14 +7,15 @@ import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import { DeptListQuery, CreateDeptReq, UpdateDeptReq } from "../../../../../schemas/department.js";
 import { DeptService } from "../../../../../services/dept.service.js";
 import { getDepartmentMessage, DepartmentMessageKeys } from "../../../../../../constants/messages/department.js";
-import { corePermissions } from '../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // GET /api/v1/admin/departments - 获取部门列表
-  fastify.get(
+  route.get(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DEPARTMENT_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取部门列表",
         description: "分页获取部门列表，支持关键词、状态、上级部门过滤",
@@ -45,10 +47,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/admin/departments/{id} - 获取部门详情
-  fastify.get(
+  route.get(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DEPARTMENT_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取部门详情",
         description: "根据部门ID获取部门详情",
@@ -76,10 +78,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/admin/departments - 创建部门
-  fastify.post(
+  route.post(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DEPARTMENT_CREATE)] as any,
+      access: { permission: permissions.CREATE },
       schema: {
         summary: "创建部门",
         description: "创建一个新的部门",
@@ -103,10 +105,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // PUT /api/v1/admin/departments/{id} - 更新部门
-  fastify.put(
+  route.put(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DEPARTMENT_UPDATE)] as any,
+      access: { permission: permissions.UPDATE },
       schema: {
         summary: "更新部门",
         description: "根据部门ID更新部门信息",
@@ -132,10 +134,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // DELETE /api/v1/admin/departments/{id} - 删除部门（软删除）
-  fastify.delete(
+  route.delete(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DEPARTMENT_DELETE)] as any,
+      access: { permission: permissions.DELETE },
       schema: {
         summary: "删除部门",
         description: "根据部门ID进行软删除，存在子部门禁止删除",
@@ -160,10 +162,10 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/admin/departments/tree - 获取部门树形结构
-  fastify.get(
+  route.get(
     "/tree",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_DEPARTMENT_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取部门树",
         description: "返回部门树形结构（按 sortOrder 排序）",

@@ -1,16 +1,18 @@
+import { createRouteRegistrar } from '../../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../../utils/response.js";
 import { LoginLogService } from "../../../../../../services/login-log.service.js";
 import { SysLoginLogListQuery } from "../../../../../../schemas/login-log.js";
 import { getSystemMessage, SystemMessageKeys } from "../../../../../../../constants/messages/system.js";
-import { corePermissions } from '../../../../../../permissions/core-permissions.js';
+import permissions from './permissions.js';
 
 const sysLoginLog: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
-  fastify.get(
+  const route = createRouteRegistrar(fastify);
+  route.get(
     "/",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_LOGIN_LOG_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取登录日志列表",
         description: "分页获取系统登录日志列表，支持关键词搜索与状态筛选",
@@ -34,10 +36,10 @@ const sysLoginLog: FastifyPluginAsync = async (fastify, opts): Promise<void> => 
     }
   );
 
-  fastify.get(
+  route.get(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(corePermissions.SYSTEM_LOGIN_LOG_LIST)] as any,
+      access: { permission: permissions.LIST },
       schema: {
         summary: "获取登录日志详情",
         description: "根据日志ID获取登录日志详情",

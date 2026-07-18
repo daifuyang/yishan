@@ -1,3 +1,4 @@
+import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
@@ -13,11 +14,12 @@ import { LoginLogService } from "../../../../../services/login-log.service.js";
  * 所有数据访问与业务校验下沉到 Service（UserService / LoginLogService）。
  */
 const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
   // PUT /api/v1/app/users/me - 更新个人资料
-  fastify.put(
+  route.put(
     "/me",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "更新当前用户资料",
         description: "移动端更新当前登录用户的昵称/性别/邮箱/头像等可编辑字段",
@@ -50,10 +52,10 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // PUT /api/v1/app/users/me/password - 修改自己密码
-  fastify.put(
+  route.put(
     "/me/password",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "修改当前用户密码",
         description: "需要传入旧密码与新密码，旧密码校验通过后写入新密码并撤销所有 token",
@@ -95,10 +97,10 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // GET /api/v1/app/users/me/login-logs - 我的登录日志
-  fastify.get(
+  route.get(
     "/me/login-logs",
     {
-      preHandler: fastify.authenticate,
+      access: 'authenticated',
       schema: {
         summary: "我的登录日志",
         description: "分页获取当前用户的登录日志",

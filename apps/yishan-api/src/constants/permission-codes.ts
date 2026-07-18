@@ -13,7 +13,7 @@
 
 import { BusinessError } from "../exceptions/business-error.js";
 import { ValidationErrorCode } from "./business-codes/validation.js";
-import { corePermissionDefinitions } from '../core/permissions/core-permissions.js';
+import { corePermissionDefinitions } from '../core/permissions/generated/core-permissions.js';
 
 /** Permission codes are declared by Core modules or plugin manifests. */
 export type PermissionCode = string;
@@ -101,4 +101,3 @@ export const ROLE_CODES = {
 } as const;
 
 export type RoleCode = typeof ROLE_CODES[keyof typeof ROLE_CODES];
-
