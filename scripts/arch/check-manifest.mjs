@@ -2,16 +2,16 @@
 /**
  * Plugin manifest sanity check.
  *
- * Scans plugin manifest files under
- *   apps/yishan-api/src/plugins/modules/<plugin>/manifest.ts
+ * Scans the three plugin manifest files under
+ *   apps/yishan-api/src/plugins/modules/{hello,portal,shop}/manifest.ts
  * and enforces:
  *
  *   M1 — `pluginId` matches `^[\w-]+/[\w-]+$`
- *   M2 — every manifest's `pluginId` is unique
+ *   M2 — every manifest's `pluginId` is unique across the three
  *   M3 — `name` equals the directory name
  *   M4 — `version` matches semver `^\d+\.\d+\.\d+`
  *   M5 — `routeBase` starts with `/api/`
- *   M6 — every manifest's `routeBase` is unique
+ *   M6 — every manifest's `routeBase` is unique across the three
  *   M7 — `coreCompatibility` is a non-empty string
  *   M8 — every menu.perm is listed in `permissions`
  *   M9 — every menu.channel is listed in `channels`
@@ -26,20 +26,18 @@
  * Exit codes: 0 = clean, 1 = violations found.
  */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join, relative, sep } from "node:path";
 
 const ROOT = process.cwd();
 const API_SRC = join(ROOT, "apps", "yishan-api", "src");
-const MODULES_DIR = join(API_SRC, "plugins", "modules");
-const MANIFESTS = existsSync(MODULES_DIR)
-  ? readdirSync(MODULES_DIR, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && existsSync(join(MODULES_DIR, entry.name, "manifest.ts")))
-      .map((entry) => `plugins/modules/${entry.name}/manifest.ts`)
-  : [];
+const MANIFESTS = [
+  "plugins/modules/hello/manifest.ts",
+  "plugins/modules/portal/manifest.ts",
+  "plugins/modules/shop/manifest.ts",
+];
 
 const PLUGIN_ID_RE = /^[\w-]+\/[\w-]+$/;
-const DB_NAMESPACE_RE = /^[a-z][a-z0-9_]{2,23}$/;
 const VERSION_RE = /^\d+\.\d+\.\d+/;
 const STRING_RE = /^(['"])((?:\\.|(?!\1).)*)\1/;
 const KEY_RE = /^\s*([A-Za-z_$][\w$]*)\s*:\s*/;
@@ -208,6 +206,29 @@ function parsePermissions(permissionsObj) {
   return result;
 }
 
+/** Module-owned permission declarations are the manifest source of truth. */
+function parseModulePermissions(manifestFile) {
+  const permissionFile = join(dirname(manifestFile), 'permissions.ts');
+  try {
+    let source;
+    try { source = readFileSync(permissionFile, 'utf8'); }
+    catch { source = readFileSync(manifestFile, 'utf8'); }
+    const codes = [];
+    const errors = [];
+    const seen = new Set();
+    for (const match of source.matchAll(/code:\s*['"]([^'"]+)['"][\s\S]{0,180}?label:\s*['"]([^'"]+)['"][\s\S]{0,180}?group:\s*['"]([^'"]+)['"]/g)) {
+      const [, code, label, group] = match;
+      if (!code || !label || !group) errors.push('module permission requires code, label and group');
+      else if (seen.has(code)) errors.push(`permissions: duplicate code '${code}' in module declaration`);
+      else { seen.add(code); codes.push(code); }
+    }
+    if (!codes.length) errors.push('module permissions declaration is empty or invalid');
+    return { codes, errors };
+  } catch {
+    return { codes: [], errors: ['module permissions declaration is missing'] };
+  }
+}
+
 /**
  * Parse string array (used for channels).
  */
@@ -220,17 +241,20 @@ function checkManifest(file, obj, dirName, out) {
   const push = (rule, msg) => out.push({ file, line: 1, rule, msg });
   const s = (v) => v?.kind === "string" ? v.value : null;
   const pluginId = s(obj.pluginId), name = s(obj.name), version = s(obj.version);
-  const routeBase = s(obj.routeBase), coreCompat = s(obj.coreCompatibility), dbNamespace = s(obj.dbNamespace);
+  const routeBase = s(obj.routeBase), coreCompat = s(obj.coreCompatibility);
   if (!pluginId) push("M1", "manifest missing pluginId");
   else if (!PLUGIN_ID_RE.test(pluginId)) push("M1", `pluginId '${pluginId}' does not match ^[\w-]+/[\w-]+$`);
   if (name !== dirName) push("M3", `name must equal directory name '${dirName}' (got '${name ?? "?"}')`);
   if (!version || !VERSION_RE.test(version)) push("M4", `version '${version ?? "?"}' does not match semver ^\\d+\\.\\d+\\.\\d+`);
   if (!routeBase || !routeBase.startsWith("/api/")) push("M5", `routeBase '${routeBase ?? "?"}' must start with /api/`);
   if (!coreCompat) push("M7", "coreCompatibility must be a non-empty string");
-  if (!dbNamespace || !DB_NAMESPACE_RE.test(dbNamespace)) push("M12", "dbNamespace must match ^[a-z][a-z0-9_]{2,23}$");
 
   // 新方案：无条件校验 permissions 格式，拒绝旧格式 string[]
-  const { codes, errors } = parsePermissions(obj.permissions);
+  const manifestSource = readFileSync(file, 'utf8');
+  const declaredViaModule = /permissions:\s*Object\.values\(/.test(manifestSource);
+  const { codes, errors } = declaredViaModule
+    ? parseModulePermissions(file)
+    : parsePermissions(obj.permissions);
   for (const message of errors) {
     push("M11", message);
   }

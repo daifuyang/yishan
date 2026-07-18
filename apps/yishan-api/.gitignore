@@ -65,8 +65,7 @@ test/types/index.js
 dist
 /public
 
-src/generated/*
-!src/generated/core-permission-route-audit.json
+src/generated
 deploy/fc3/certs
 deploy/fc3/.build
 deploy/fc3/runtime-layer.zip
