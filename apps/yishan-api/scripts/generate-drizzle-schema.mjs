@@ -101,8 +101,23 @@ function parseTableBody(body) {
   const columns = []
   const indexes = []
 
-  for (const rawLine of body.split('\n')) {
-    const line = rawLine.trim().replace(/,\s*$/, '')
+  // SQL migrations may put several columns on one physical line. Split only
+  // on top-level commas so VARCHAR/DECIMAL parameter lists stay intact.
+  const definitions = []
+  let start = 0
+  let depth = 0
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === '(') depth++
+    else if (body[i] === ')') depth--
+    else if (body[i] === ',' && depth === 0) {
+      definitions.push(body.slice(start, i))
+      start = i + 1
+    }
+  }
+  definitions.push(body.slice(start))
+
+  for (const rawLine of definitions) {
+    const line = rawLine.trim()
     if (!line) continue
 
     if (line.startsWith('PRIMARY KEY')) continue
@@ -210,6 +225,22 @@ const FK_MAP = {
   plugin_install_id: 'sysPluginInstall',
 }
 
+// Plugin schemas may reuse generic column names (for example status_id).
+// Keep those associations scoped to their owning table so Core mappings do
+// not leak business-plugin knowledge into unrelated tables.
+const TABLE_FK_MAP = {
+  iximei_crm_customer: { status_id: 'iximeiCrmCustomerStatus', owner_user_id: 'sysUser' },
+  iximei_crm_customer_remark: { customer_id: 'iximeiCrmCustomer', user_id: 'sysUser' },
+  iximei_crm_customer_browse: { customer_id: 'iximeiCrmCustomer', user_id: 'sysUser' },
+  iximei_crm_dispatch: { customer_id: 'iximeiCrmCustomer', hospital_id: 'iximeiCrmHospital', status_id: 'iximeiCrmDispatchStatus' },
+  iximei_crm_dispatch_reply: { dispatch_id: 'iximeiCrmDispatch', user_id: 'sysUser' },
+  iximei_crm_dispatch_follow_log: { dispatch_id: 'iximeiCrmDispatch', user_id: 'sysUser' },
+  iximei_crm_member_customer: { owner_user_id: 'sysUser' },
+  iximei_crm_member_remark: { member_id: 'iximeiCrmMemberCustomer', user_id: 'sysUser' },
+  iximei_crm_member_browse: { member_id: 'iximeiCrmMemberCustomer', user_id: 'sysUser' },
+  iximei_crm_hospital_account: { hospital_id: 'iximeiCrmHospital', user_id: 'sysUser' },
+}
+
 // Map FK column name → consumer-facing relation key. When absent, the FK
 // column name itself (camelCased) is used.
 const RELATION_KEY_ALIAS = {
@@ -233,6 +264,16 @@ const SEMANTIC_RELATION_ALIAS = {
   shopCart: { userId: 'user', productId: 'product', skuId: 'sku' },
   shopOrder: { userId: 'user', addressId: 'address' },
   shopOrderItem: { orderId: 'order', productId: 'product', skuId: 'sku' },
+  iximeiCrmCustomer: { statusId: 'status', ownerUserId: 'owner' },
+  iximeiCrmCustomerRemark: { customerId: 'customer', userId: 'user' },
+  iximeiCrmCustomerBrowse: { customerId: 'customer', userId: 'user' },
+  iximeiCrmDispatch: { customerId: 'customer', hospitalId: 'hospital', statusId: 'status' },
+  iximeiCrmDispatchReply: { dispatchId: 'dispatch', userId: 'user' },
+  iximeiCrmDispatchFollowLog: { dispatchId: 'dispatch', userId: 'user' },
+  iximeiCrmMemberCustomer: { ownerUserId: 'owner' },
+  iximeiCrmMemberRemark: { memberId: 'member', userId: 'user' },
+  iximeiCrmMemberBrowse: { memberId: 'member', userId: 'user' },
+  iximeiCrmHospitalAccount: { hospitalId: 'hospital', userId: 'user' },
 }
 const SKIP_FOR_RELATIONS = new Set([])
 
@@ -244,7 +285,7 @@ function buildRelations(parsedTables) {
       if (SKIP_FOR_RELATIONS.has(col.name)) continue
       if (!col.name.endsWith('_id')) continue
 
-      let parent = FK_MAP[col.name]
+      let parent = TABLE_FK_MAP[t.name]?.[col.name] ?? FK_MAP[col.name]
       // Disambiguate category_id by host-table prefix.
       if (col.name === 'category_id') {
         parent = t.name.startsWith('portal_') ? 'portalCategory' : 'shopCategory'

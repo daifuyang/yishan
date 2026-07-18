@@ -1,6 +1,6 @@
 // Generated from drizzle/*.sql. Do not edit manually.
 import { relations } from 'drizzle-orm'
-import { sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
+import { iximeiCrmCustomer, iximeiCrmCustomerBrowse, iximeiCrmCustomerRemark, iximeiCrmCustomerStatus, iximeiCrmDispatch, iximeiCrmDispatchFollowLog, iximeiCrmDispatchReply, iximeiCrmDispatchStatus, iximeiCrmHospital, iximeiCrmHospitalAccount, iximeiCrmMemberBrowse, iximeiCrmMemberCustomer, iximeiCrmMemberRemark, sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
 
 export const sysAppRelations = relations(sysApp, ({ one, many }) => ({
   creator: one(sysUser, { fields: [sysApp.creatorId], references: [sysUser.id], relationName: 'sysApp_creatorId' }),
@@ -84,7 +84,26 @@ export const sysUserRelations = relations(sysUser, ({ one, many }) => ({
   sysAttachmentFolder_updater_id: many(sysAttachmentFolder, { relationName: 'sysAttachmentFolder_updaterId' }),
   sysAttachment_creator_id: many(sysAttachment, { relationName: 'sysAttachment_creatorId' }),
   sysAttachment_updater_id: many(sysAttachment, { relationName: 'sysAttachment_updaterId' }),
-  sysApiToken_user_id: many(sysApiToken, { relationName: 'sysApiToken_userId' })
+  sysApiToken_user_id: many(sysApiToken, { relationName: 'sysApiToken_userId' }),
+  iximeiCrmHospital_creator_id: many(iximeiCrmHospital, { relationName: 'iximeiCrmHospital_creatorId' }),
+  iximeiCrmHospital_updater_id: many(iximeiCrmHospital, { relationName: 'iximeiCrmHospital_updaterId' }),
+  iximeiCrmCustomer_owner_user_id: many(iximeiCrmCustomer, { relationName: 'iximeiCrmCustomer_ownerUserId' }),
+  iximeiCrmCustomer_creator_id: many(iximeiCrmCustomer, { relationName: 'iximeiCrmCustomer_creatorId' }),
+  iximeiCrmCustomer_updater_id: many(iximeiCrmCustomer, { relationName: 'iximeiCrmCustomer_updaterId' }),
+  iximeiCrmCustomerRemark_user_id: many(iximeiCrmCustomerRemark, { relationName: 'iximeiCrmCustomerRemark_userId' }),
+  iximeiCrmCustomerBrowse_user_id: many(iximeiCrmCustomerBrowse, { relationName: 'iximeiCrmCustomerBrowse_userId' }),
+  iximeiCrmDispatch_creator_id: many(iximeiCrmDispatch, { relationName: 'iximeiCrmDispatch_creatorId' }),
+  iximeiCrmDispatch_updater_id: many(iximeiCrmDispatch, { relationName: 'iximeiCrmDispatch_updaterId' }),
+  iximeiCrmDispatchReply_user_id: many(iximeiCrmDispatchReply, { relationName: 'iximeiCrmDispatchReply_userId' }),
+  iximeiCrmDispatchFollowLog_user_id: many(iximeiCrmDispatchFollowLog, { relationName: 'iximeiCrmDispatchFollowLog_userId' }),
+  iximeiCrmMemberCustomer_owner_user_id: many(iximeiCrmMemberCustomer, { relationName: 'iximeiCrmMemberCustomer_ownerUserId' }),
+  iximeiCrmMemberCustomer_creator_id: many(iximeiCrmMemberCustomer, { relationName: 'iximeiCrmMemberCustomer_creatorId' }),
+  iximeiCrmMemberCustomer_updater_id: many(iximeiCrmMemberCustomer, { relationName: 'iximeiCrmMemberCustomer_updaterId' }),
+  iximeiCrmMemberRemark_user_id: many(iximeiCrmMemberRemark, { relationName: 'iximeiCrmMemberRemark_userId' }),
+  iximeiCrmMemberBrowse_user_id: many(iximeiCrmMemberBrowse, { relationName: 'iximeiCrmMemberBrowse_userId' }),
+  iximeiCrmHospitalAccount_user_id: many(iximeiCrmHospitalAccount, { relationName: 'iximeiCrmHospitalAccount_userId' }),
+  iximeiCrmHospitalAccount_creator_id: many(iximeiCrmHospitalAccount, { relationName: 'iximeiCrmHospitalAccount_creatorId' }),
+  iximeiCrmHospitalAccount_updater_id: many(iximeiCrmHospitalAccount, { relationName: 'iximeiCrmHospitalAccount_updaterId' })
 }))
 
 export const sysUserTokenRelations = relations(sysUserToken, ({ one, many }) => ({
@@ -192,5 +211,85 @@ export const sysPluginSyncLogRelations = relations(sysPluginSyncLog, ({ one, man
 
 export const sysApiTokenRelations = relations(sysApiToken, ({ one, many }) => ({
   userId: one(sysUser, { fields: [sysApiToken.userId], references: [sysUser.id], relationName: 'sysApiToken_userId' })
+}))
+
+export const iximeiCrmHospitalRelations = relations(iximeiCrmHospital, ({ one, many }) => ({
+  creator: one(sysUser, { fields: [iximeiCrmHospital.creatorId], references: [sysUser.id], relationName: 'iximeiCrmHospital_creatorId' }),
+  updater: one(sysUser, { fields: [iximeiCrmHospital.updaterId], references: [sysUser.id], relationName: 'iximeiCrmHospital_updaterId' }),
+  iximeiCrmDispatch_hospital_id: many(iximeiCrmDispatch, { relationName: 'iximeiCrmDispatch_hospitalId' }),
+  iximeiCrmHospitalAccount_hospital_id: many(iximeiCrmHospitalAccount, { relationName: 'iximeiCrmHospitalAccount_hospitalId' })
+}))
+
+export const iximeiCrmCustomerRelations = relations(iximeiCrmCustomer, ({ one, many }) => ({
+  status: one(iximeiCrmCustomerStatus, { fields: [iximeiCrmCustomer.statusId], references: [iximeiCrmCustomerStatus.id], relationName: 'iximeiCrmCustomer_statusId' }),
+  owner: one(sysUser, { fields: [iximeiCrmCustomer.ownerUserId], references: [sysUser.id], relationName: 'iximeiCrmCustomer_ownerUserId' }),
+  creator: one(sysUser, { fields: [iximeiCrmCustomer.creatorId], references: [sysUser.id], relationName: 'iximeiCrmCustomer_creatorId' }),
+  updater: one(sysUser, { fields: [iximeiCrmCustomer.updaterId], references: [sysUser.id], relationName: 'iximeiCrmCustomer_updaterId' }),
+  iximeiCrmCustomerRemark_customer_id: many(iximeiCrmCustomerRemark, { relationName: 'iximeiCrmCustomerRemark_customerId' }),
+  iximeiCrmCustomerBrowse_customer_id: many(iximeiCrmCustomerBrowse, { relationName: 'iximeiCrmCustomerBrowse_customerId' }),
+  iximeiCrmDispatch_customer_id: many(iximeiCrmDispatch, { relationName: 'iximeiCrmDispatch_customerId' })
+}))
+
+export const iximeiCrmCustomerRemarkRelations = relations(iximeiCrmCustomerRemark, ({ one, many }) => ({
+  customer: one(iximeiCrmCustomer, { fields: [iximeiCrmCustomerRemark.customerId], references: [iximeiCrmCustomer.id], relationName: 'iximeiCrmCustomerRemark_customerId' }),
+  user: one(sysUser, { fields: [iximeiCrmCustomerRemark.userId], references: [sysUser.id], relationName: 'iximeiCrmCustomerRemark_userId' })
+}))
+
+export const iximeiCrmCustomerBrowseRelations = relations(iximeiCrmCustomerBrowse, ({ one, many }) => ({
+  customer: one(iximeiCrmCustomer, { fields: [iximeiCrmCustomerBrowse.customerId], references: [iximeiCrmCustomer.id], relationName: 'iximeiCrmCustomerBrowse_customerId' }),
+  user: one(sysUser, { fields: [iximeiCrmCustomerBrowse.userId], references: [sysUser.id], relationName: 'iximeiCrmCustomerBrowse_userId' })
+}))
+
+export const iximeiCrmDispatchRelations = relations(iximeiCrmDispatch, ({ one, many }) => ({
+  customer: one(iximeiCrmCustomer, { fields: [iximeiCrmDispatch.customerId], references: [iximeiCrmCustomer.id], relationName: 'iximeiCrmDispatch_customerId' }),
+  hospital: one(iximeiCrmHospital, { fields: [iximeiCrmDispatch.hospitalId], references: [iximeiCrmHospital.id], relationName: 'iximeiCrmDispatch_hospitalId' }),
+  status: one(iximeiCrmDispatchStatus, { fields: [iximeiCrmDispatch.statusId], references: [iximeiCrmDispatchStatus.id], relationName: 'iximeiCrmDispatch_statusId' }),
+  creator: one(sysUser, { fields: [iximeiCrmDispatch.creatorId], references: [sysUser.id], relationName: 'iximeiCrmDispatch_creatorId' }),
+  updater: one(sysUser, { fields: [iximeiCrmDispatch.updaterId], references: [sysUser.id], relationName: 'iximeiCrmDispatch_updaterId' }),
+  iximeiCrmDispatchReply_dispatch_id: many(iximeiCrmDispatchReply, { relationName: 'iximeiCrmDispatchReply_dispatchId' }),
+  iximeiCrmDispatchFollowLog_dispatch_id: many(iximeiCrmDispatchFollowLog, { relationName: 'iximeiCrmDispatchFollowLog_dispatchId' })
+}))
+
+export const iximeiCrmDispatchReplyRelations = relations(iximeiCrmDispatchReply, ({ one, many }) => ({
+  dispatch: one(iximeiCrmDispatch, { fields: [iximeiCrmDispatchReply.dispatchId], references: [iximeiCrmDispatch.id], relationName: 'iximeiCrmDispatchReply_dispatchId' }),
+  user: one(sysUser, { fields: [iximeiCrmDispatchReply.userId], references: [sysUser.id], relationName: 'iximeiCrmDispatchReply_userId' })
+}))
+
+export const iximeiCrmDispatchFollowLogRelations = relations(iximeiCrmDispatchFollowLog, ({ one, many }) => ({
+  dispatch: one(iximeiCrmDispatch, { fields: [iximeiCrmDispatchFollowLog.dispatchId], references: [iximeiCrmDispatch.id], relationName: 'iximeiCrmDispatchFollowLog_dispatchId' }),
+  user: one(sysUser, { fields: [iximeiCrmDispatchFollowLog.userId], references: [sysUser.id], relationName: 'iximeiCrmDispatchFollowLog_userId' })
+}))
+
+export const iximeiCrmMemberCustomerRelations = relations(iximeiCrmMemberCustomer, ({ one, many }) => ({
+  owner: one(sysUser, { fields: [iximeiCrmMemberCustomer.ownerUserId], references: [sysUser.id], relationName: 'iximeiCrmMemberCustomer_ownerUserId' }),
+  creator: one(sysUser, { fields: [iximeiCrmMemberCustomer.creatorId], references: [sysUser.id], relationName: 'iximeiCrmMemberCustomer_creatorId' }),
+  updater: one(sysUser, { fields: [iximeiCrmMemberCustomer.updaterId], references: [sysUser.id], relationName: 'iximeiCrmMemberCustomer_updaterId' }),
+  iximeiCrmMemberRemark_member_id: many(iximeiCrmMemberRemark, { relationName: 'iximeiCrmMemberRemark_memberId' }),
+  iximeiCrmMemberBrowse_member_id: many(iximeiCrmMemberBrowse, { relationName: 'iximeiCrmMemberBrowse_memberId' })
+}))
+
+export const iximeiCrmMemberRemarkRelations = relations(iximeiCrmMemberRemark, ({ one, many }) => ({
+  member: one(iximeiCrmMemberCustomer, { fields: [iximeiCrmMemberRemark.memberId], references: [iximeiCrmMemberCustomer.id], relationName: 'iximeiCrmMemberRemark_memberId' }),
+  user: one(sysUser, { fields: [iximeiCrmMemberRemark.userId], references: [sysUser.id], relationName: 'iximeiCrmMemberRemark_userId' })
+}))
+
+export const iximeiCrmMemberBrowseRelations = relations(iximeiCrmMemberBrowse, ({ one, many }) => ({
+  member: one(iximeiCrmMemberCustomer, { fields: [iximeiCrmMemberBrowse.memberId], references: [iximeiCrmMemberCustomer.id], relationName: 'iximeiCrmMemberBrowse_memberId' }),
+  user: one(sysUser, { fields: [iximeiCrmMemberBrowse.userId], references: [sysUser.id], relationName: 'iximeiCrmMemberBrowse_userId' })
+}))
+
+export const iximeiCrmHospitalAccountRelations = relations(iximeiCrmHospitalAccount, ({ one, many }) => ({
+  hospital: one(iximeiCrmHospital, { fields: [iximeiCrmHospitalAccount.hospitalId], references: [iximeiCrmHospital.id], relationName: 'iximeiCrmHospitalAccount_hospitalId' }),
+  user: one(sysUser, { fields: [iximeiCrmHospitalAccount.userId], references: [sysUser.id], relationName: 'iximeiCrmHospitalAccount_userId' }),
+  creator: one(sysUser, { fields: [iximeiCrmHospitalAccount.creatorId], references: [sysUser.id], relationName: 'iximeiCrmHospitalAccount_creatorId' }),
+  updater: one(sysUser, { fields: [iximeiCrmHospitalAccount.updaterId], references: [sysUser.id], relationName: 'iximeiCrmHospitalAccount_updaterId' })
+}))
+
+export const iximeiCrmCustomerStatusRelations = relations(iximeiCrmCustomerStatus, ({ one, many }) => ({
+  iximeiCrmCustomer_status_id: many(iximeiCrmCustomer, { relationName: 'iximeiCrmCustomer_statusId' })
+}))
+
+export const iximeiCrmDispatchStatusRelations = relations(iximeiCrmDispatchStatus, ({ one, many }) => ({
+  iximeiCrmDispatch_status_id: many(iximeiCrmDispatch, { relationName: 'iximeiCrmDispatch_statusId' })
 }))
 
