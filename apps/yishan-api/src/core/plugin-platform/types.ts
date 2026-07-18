@@ -16,6 +16,8 @@ export interface PluginMenuItem {
 export interface PluginManifest {
   pluginId: string
   name: string
+  /** Whether plugin menus are grouped below a generated root menu. Defaults to true. */
+  menuRoot?: boolean
   menuRootName?: string
   menuRootIcon?: string
   menuRootSort?: number

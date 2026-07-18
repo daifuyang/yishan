@@ -1,16 +1,25 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import {
+  type ActionType,
+  PageContainer,
+  type ProColumns,
+  ProTable,
+} from '@ant-design/pro-components';
+import { useModel } from '@umijs/max';
 import { Button, message, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
-import { getDeptTree, updateDept, deleteDept } from '@/services/yishan-admin/sysDepts';
+import {
+  deleteDept,
+  getDeptTree,
+  updateDept,
+} from '@/services/yishan-admin/sysDepts';
 import DepartmentForm from './components/DepartmentForm';
-import { useModel } from '@umijs/max';
 
 type DeptTreeNode = API.deptTreeNode;
 
 const DeptStatus = {
-  ENABLED: "1",
-  DISABLED: "0",
+  ENABLED: '1',
+  DISABLED: '0',
 } as const;
 
 const DepartmentList: React.FC = () => {
@@ -21,14 +30,13 @@ const DepartmentList: React.FC = () => {
 
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
-  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+  const defaultStatusDict: Array<{ label: string; value: string }> =
+    dictDataMap.default_status || [];
 
-  const handleStatusChange = async (id: number, status: "0" | "1") => {
-    const newStatus = status === DeptStatus.ENABLED ? DeptStatus.DISABLED : DeptStatus.ENABLED;
-    const res = await updateDept(
-      { id },
-      { status: newStatus as "0" | "1" }
-    );
+  const handleStatusChange = async (id: number, status: '0' | '1') => {
+    const newStatus =
+      status === DeptStatus.ENABLED ? DeptStatus.DISABLED : DeptStatus.ENABLED;
+    const res = await updateDept({ id }, { status: newStatus as '0' | '1' });
     if (res.success) {
       message.success(res.message);
     }
@@ -47,8 +55,6 @@ const DepartmentList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-
-
   const handleBatchRemove = async () => {
     if (!selectedRowKeys.length) {
       message.warning('请先选择要删除的部门');
@@ -63,7 +69,9 @@ const DepartmentList: React.FC = () => {
     const failureCount = results.length - successCount;
 
     if (successCount > 0) {
-      message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
+      message.success(
+        `批量删除完成：成功 ${successCount}，失败 ${failureCount}`,
+      );
     } else {
       message.error('批量删除失败');
     }
@@ -93,45 +101,68 @@ const DepartmentList: React.FC = () => {
     { title: '上级部门', dataIndex: 'parentName', search: false, width: 160 },
     { title: '负责人', dataIndex: 'leaderName', search: false, width: 120 },
     { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
-    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime', width: 180 },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      search: false,
+      valueType: 'dateTime',
+      width: 180,
+    },
+    {
+      title: '更新时间',
+      dataIndex: 'updatedAt',
+      search: false,
+      valueType: 'dateTime',
+      width: 180,
+    },
     {
       title: '状态',
       dataIndex: 'status',
       width: 100,
-      valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
-        acc[item.value] = {
-          text: item.label,
-          status: item.value === '1' ? 'Success' : 'Error',
-        };
-        return acc;
-      }, {} as Record<string, { text: string; status: string }>),
+      valueEnum: defaultStatusDict.reduce(
+        (acc: Record<string, { text: string; status: string }>, item) => {
+          acc[item.value] = {
+            text: item.label,
+            status: item.value === '1' ? 'Success' : 'Error',
+          };
+          return acc;
+        },
+        {} as Record<string, { text: string; status: string }>,
+      ),
     },
     {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
-      width: 160,
-      render: (_, record) => [
-        <DepartmentForm
-          key="edit"
-          title="编辑部门"
-          trigger={<a>编辑</a>}
-          initialValues={record}
-          onFinish={handleFormSuccess}
-        />,
-        <a key="status" onClick={() => handleStatusChange(record.id || 0, (record.status || '0'))}>
-          {record.status === DeptStatus.ENABLED
-            ? (defaultStatusDict.find(item => item.value === '0')?.label || '禁用')
-            : (defaultStatusDict.find(item => item.value === '1')?.label || '启用')}
-        </a>,
-        <Popconfirm key="delete" title="确定要删除该部门吗？" onConfirm={() => handleRemove(record.id || 0)}>
-          <Button className='p-0' type="link" danger>
-            删除
-          </Button>
-        </Popconfirm>,
-      ],
+      width: 180,
+      render: (_, record) => (
+        <Space size={16}>
+          <DepartmentForm
+            title="编辑部门"
+            trigger={<a>编辑</a>}
+            initialValues={record}
+            onFinish={handleFormSuccess}
+          />
+          <a
+            onClick={() =>
+              handleStatusChange(record.id || 0, record.status || '0')
+            }
+          >
+            {record.status === DeptStatus.ENABLED
+              ? defaultStatusDict.find((item) => item.value === '0')?.label ||
+                '禁用'
+              : defaultStatusDict.find((item) => item.value === '1')?.label ||
+                '启用'}
+          </a>
+          <Popconfirm
+            title="确定要删除该部门吗？"
+            onConfirm={() => handleRemove(record.id || 0)}
+          >
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ];
 
@@ -171,7 +202,8 @@ const DepartmentList: React.FC = () => {
         columns={columns}
         rowSelection={{
           selectedRowKeys,
-          onChange: (keys: React.Key[], _rows: DeptTreeNode[]) => setSelectedRowKeys(keys),
+          onChange: (keys: React.Key[], _rows: DeptTreeNode[]) =>
+            setSelectedRowKeys(keys),
         }}
         scroll={{ x: 1400 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
@@ -192,11 +224,20 @@ const DepartmentList: React.FC = () => {
                 onConfirm={handleBatchRemove}
                 disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
               >
-                <Button className='p-0' type="link" danger disabled={selectedRowKeys.length === 0 || batchDeleteLoading}>
+                <Button
+                  className="p-0"
+                  type="link"
+                  danger
+                  disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
+                >
                   {batchDeleteLoading ? '删除中...' : '批量删除'}
                 </Button>
               </Popconfirm>
-              <Button className='p-0' type="link" onClick={() => message.info('暂未实现')}>
+              <Button
+                className="p-0"
+                type="link"
+                onClick={() => message.info('暂未实现')}
+              >
                 批量导出
               </Button>
             </Space>

@@ -17,6 +17,7 @@ import { seedMenus } from './modules/system-menu.js';
 import { bindRoleMenusByDefault } from './modules/system-role-menu.js';
 import { seedDicts } from './modules/system-dict.js';
 import { seedSysOptions } from './modules/system-option.js';
+import { seedCrm } from './modules/crm.js';
 
 async function runSeedTransaction(db: SeedDb) {
   const adminUser = await ensureAdminUser(db);
@@ -30,6 +31,7 @@ async function runSeedTransaction(db: SeedDb) {
   await bindRoleMenusByDefault(db, adminUser.id);
   await seedDicts(db, adminUser.id, dictsSeed);
   await seedSysOptions(db, adminUser.id, sysOptionsSeed);
+  await seedCrm(db, adminUser.id);
 
 }
 

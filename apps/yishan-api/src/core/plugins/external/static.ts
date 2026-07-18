@@ -33,8 +33,10 @@ export default fp(async (fastify) => {
     prefix: '/admin'
   })
 
-  // 根路径重定向到 /admin/，让 admin SPA 自己根据登录态决定显示 dashboard 或跳转登录页
-  fastify.get('/', (_request, reply) => reply.redirect('/admin/', 301))
+  // 生产环境根路径进入 Admin SPA；开发态保留根路径，避免调试 API 时被重定向。
+  if (process.env.NODE_ENV === 'production') {
+    fastify.get('/', (_request, reply) => reply.redirect('/admin/', 301))
+  }
 }, {
   name: 'static'
 })

@@ -1,4 +1,4 @@
-import { AppstoreOutlined, FileTextOutlined, FolderOutlined, InboxOutlined, LinkOutlined, ReadOutlined, SettingOutlined, ShoppingOutlined, SmileOutlined } from "@ant-design/icons";
+import { BookOpen, ClipboardList, ContactRound, ExternalLink, FileText, Folder, Hospital, Inbox, LayoutDashboard, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
@@ -32,23 +32,35 @@ const getRelativePath = (pathname: string) => {
 
 const isLoginRoute = (pathname: string) => getRelativePath(pathname) === loginPath;
 
-const IconMap: Record<string, () => JSX.Element> = {
-  appstore: () => <AppstoreOutlined />,
-  appstoreoutlined: () => <AppstoreOutlined />,
-  setting: () => <SettingOutlined />,
-  settingoutlined: () => <SettingOutlined />,
-  smile: () => <SmileOutlined />,
-  smileoutlined: () => <SmileOutlined />,
-  read: () => <ReadOutlined />,
-  readoutlined: () => <ReadOutlined />,
-  shopping: () => <ShoppingOutlined />,
-  folder: () => <FolderOutlined />,
-  inbox: () => <InboxOutlined />,
-  'file-text': () => <FileTextOutlined />,
+const IconMap: Record<string, LucideIcon> = {
+  appstore: LayoutDashboard,
+  appstoreoutlined: LayoutDashboard,
+  setting: Settings,
+  settingoutlined: Settings,
+  smile: Smile,
+  smileoutlined: Smile,
+  read: BookOpen,
+  readoutlined: BookOpen,
+  shopping: ShoppingBag,
+  folder: Folder,
+  inbox: Inbox,
+  'file-text': FileText,
+  'medicine-box': Hospital,
+  hospital: Hospital,
+  medicineboxoutlined: Hospital,
+  team: UsersRound,
+  'users-round': UsersRound,
+  teamoutlined: UsersRound,
+  idcard: ContactRound,
+  'contact-round': ContactRound,
+  idcardoutlined: ContactRound,
+  send: Send,
+  sendoutlined: Send,
+  'clipboard-list': ClipboardList,
 };
 function pickIcon(key: string): JSX.Element | undefined {
-  const factory = IconMap[String(key).toLowerCase()];
-  return factory ? factory() : undefined;
+  const Icon = IconMap[String(key).toLowerCase()];
+  return Icon ? <Icon size={16} strokeWidth={1.8} /> : undefined;
 }
 
 /**
@@ -223,7 +235,7 @@ export const layout: RunTimeLayoutConfig = ({
     links: isDev
       ? [
         <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
-          <LinkOutlined />
+          <ExternalLink size={16} strokeWidth={1.8} />
           <span>OpenAPI 文档</span>
         </Link>,
       ]

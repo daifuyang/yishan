@@ -6,6 +6,7 @@ import { NodeSelection, TextSelection } from "@tiptap/pm/state"
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
+import { useTiptapLocale } from "@/i18n"
 
 // --- Lib ---
 import {
@@ -205,6 +206,7 @@ export function useCodeBlock(config?: UseCodeBlockConfig) {
   } = config || {}
 
   const { editor } = useTiptapEditor(providedEditor)
+  const locale = useTiptapLocale()
   const [isVisible, setIsVisible] = React.useState<boolean>(true)
   const canToggleState = canToggle(editor)
   const isActive = editor?.isActive("codeBlock") || false
@@ -240,7 +242,7 @@ export function useCodeBlock(config?: UseCodeBlockConfig) {
     isActive,
     handleToggle,
     canToggle: canToggleState,
-    label: "Code Block",
+    label: locale.codeBlock,
     shortcutKeys: CODE_BLOCK_SHORTCUT_KEY,
     Icon: CodeBlockIcon,
   }

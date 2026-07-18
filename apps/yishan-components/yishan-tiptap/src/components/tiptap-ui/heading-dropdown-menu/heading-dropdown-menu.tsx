@@ -5,6 +5,7 @@ import { ChevronDownIcon } from "@/components/tiptap-icons/chevron-down-icon"
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
+import { useTiptapLocale } from "@/i18n"
 
 // --- Tiptap UI ---
 import { HeadingButton } from "@/components/tiptap-ui/heading-button"
@@ -67,6 +68,7 @@ export const HeadingDropdownMenu = React.forwardRef<
     ref
   ) => {
     const { editor } = useTiptapEditor(providedEditor)
+    const locale = useTiptapLocale()
     const [isOpen, setIsOpen] = React.useState(false)
     const { isVisible, isActive, canToggle, Icon } = useHeadingDropdownMenu({
       editor,
@@ -98,9 +100,9 @@ export const HeadingDropdownMenu = React.forwardRef<
             tabIndex={-1}
             disabled={!canToggle}
             data-disabled={!canToggle}
-            aria-label="Format text as heading"
+            aria-label={locale.formatHeading}
             aria-pressed={isActive}
-            tooltip="标题"
+            tooltip={locale.heading}
             {...buttonProps}
             ref={ref}
           >

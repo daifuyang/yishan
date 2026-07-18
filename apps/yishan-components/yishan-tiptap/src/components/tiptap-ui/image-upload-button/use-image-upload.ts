@@ -6,6 +6,7 @@ import { type Editor } from "@tiptap/react"
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
+import { useTiptapLocale } from "@/i18n"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 // --- Lib ---
@@ -153,6 +154,7 @@ export function useImageUpload(config?: UseImageUploadConfig) {
   } = config || {}
 
   const { editor } = useTiptapEditor(providedEditor)
+  const locale = useTiptapLocale()
   const isMobile = useIsMobile()
   const [isVisible, setIsVisible] = React.useState<boolean>(true)
   const canInsert = canInsertImage(editor)
@@ -235,7 +237,7 @@ export function useImageUpload(config?: UseImageUploadConfig) {
     isActive,
     handleImage,
     canInsert,
-    label: "Add image",
+    label: locale.addImage,
     shortcutKeys: IMAGE_UPLOAD_SHORTCUT_KEY,
     Icon: ImagePlusIcon,
   }

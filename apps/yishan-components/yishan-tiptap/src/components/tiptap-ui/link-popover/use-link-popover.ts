@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/react"
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
+import { useTiptapLocale } from "@/i18n"
 
 // --- Icons ---
 import { LinkIcon } from "@/components/tiptap-icons/link-icon"
@@ -254,6 +255,7 @@ export function useLinkPopover(config?: UseLinkPopoverConfig) {
   } = config || {}
 
   const { editor } = useTiptapEditor(providedEditor)
+  const locale = useTiptapLocale()
 
   const { isVisible, canSet, isActive } = useLinkState({
     editor,
@@ -269,7 +271,7 @@ export function useLinkPopover(config?: UseLinkPopoverConfig) {
     isVisible,
     canSet,
     isActive,
-    label: "Link",
+    label: locale.link,
     Icon: LinkIcon,
     ...linkHandler,
   }

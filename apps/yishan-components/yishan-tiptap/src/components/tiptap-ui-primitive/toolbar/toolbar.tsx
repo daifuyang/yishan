@@ -4,6 +4,7 @@ import "@/components/tiptap-ui-primitive/toolbar/toolbar.scss"
 import { cn } from "@/lib/tiptap-utils"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { useComposedRef } from "@/hooks/use-composed-ref"
+import { useTiptapLocale } from "@/i18n"
 
 type BaseProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -79,6 +80,7 @@ const useToolbarNavigation = (
 
 export const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
   ({ children, className, variant = "fixed", ...props }, ref) => {
+    const locale = useTiptapLocale()
     const toolbarRef = React.useRef<HTMLDivElement>(null)
     const composedRef = useComposedRef(toolbarRef, ref)
     useToolbarNavigation(toolbarRef)
@@ -87,7 +89,7 @@ export const Toolbar = React.forwardRef<HTMLDivElement, ToolbarProps>(
       <div
         ref={composedRef}
         role="toolbar"
-        aria-label="toolbar"
+        aria-label={locale.toolbar}
         data-variant={variant}
         className={cn("tiptap-toolbar", className)}
         {...props}

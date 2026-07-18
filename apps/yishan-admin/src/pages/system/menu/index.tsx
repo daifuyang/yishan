@@ -1,12 +1,21 @@
 import { PlusOutlined } from '@ant-design/icons';
-import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Popconfirm, Space, App } from 'antd';
-import React, { useRef, useState } from 'react';
-import { getMenuTree, updateMenu, deleteMenu } from '@/services/yishan-admin/sysMenus';
-import MenuForm from './components/MenuForm';
+import {
+  type ActionType,
+  PageContainer,
+  type ProColumns,
+  ProTable,
+} from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
+import { App, Button, Popconfirm, Space } from 'antd';
+import React, { useRef, useState } from 'react';
+import {
+  deleteMenu,
+  getMenuTree,
+  updateMenu,
+} from '@/services/yishan-admin/sysMenus';
+import MenuForm from './components/MenuForm';
 
-const MenuStatus = { ENABLED: "1", DISABLED: "0" } as const;
+const MenuStatus = { ENABLED: '1', DISABLED: '0' } as const;
 
 const MenuList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
@@ -17,11 +26,16 @@ const MenuList: React.FC = () => {
 
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
-  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+  const defaultStatusDict: Array<{ label: string; value: string }> =
+    dictDataMap.default_status || [];
 
-  const handleStatusChange = async (id: number, status: "0" | "1") => {
-    const newStatus = status === MenuStatus.ENABLED ? MenuStatus.DISABLED : MenuStatus.ENABLED;
-    const res = await updateMenu({ id: String(id) }, { status: newStatus as "0" | "1" });
+  const handleStatusChange = async (id: number, status: '0' | '1') => {
+    const newStatus =
+      status === MenuStatus.ENABLED ? MenuStatus.DISABLED : MenuStatus.ENABLED;
+    const res = await updateMenu(
+      { id: String(id) },
+      { status: newStatus as '0' | '1' },
+    );
     if (res.success) {
       message.success(res.message);
     }
@@ -54,7 +68,9 @@ const MenuList: React.FC = () => {
     const failureCount = results.length - successCount;
 
     if (successCount > 0) {
-      message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
+      message.success(
+        `批量删除完成：成功 ${successCount}，失败 ${failureCount}`,
+      );
     } else {
       message.error('批量删除失败');
     }
@@ -64,8 +80,6 @@ const MenuList: React.FC = () => {
     setBatchDeleteLoading(false);
   };
 
-
-
   const columns: ProColumns<API.menuTreeNode>[] = [
     { title: 'ID', dataIndex: 'id', search: false, width: 80 },
     { title: '菜单名称', dataIndex: 'name', width: 120 },
@@ -73,45 +87,68 @@ const MenuList: React.FC = () => {
     { title: '组件', dataIndex: 'component', search: false, width: 200 },
     { title: '图标', dataIndex: 'icon', search: false, width: 100 },
     { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
-    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime', width: 180 },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      search: false,
+      valueType: 'dateTime',
+      width: 180,
+    },
+    {
+      title: '更新时间',
+      dataIndex: 'updatedAt',
+      search: false,
+      valueType: 'dateTime',
+      width: 180,
+    },
     {
       title: '状态',
       dataIndex: 'status',
       width: 100,
-      valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
-        acc[item.value] = {
-          text: item.label,
-          status: item.value === '1' ? 'Success' : 'Error',
-        };
-        return acc;
-      }, {} as Record<string, { text: string; status: string }>),
+      valueEnum: defaultStatusDict.reduce(
+        (acc: Record<string, { text: string; status: string }>, item) => {
+          acc[item.value] = {
+            text: item.label,
+            status: item.value === '1' ? 'Success' : 'Error',
+          };
+          return acc;
+        },
+        {} as Record<string, { text: string; status: string }>,
+      ),
     },
     {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
-      width: 160,
-      render: (_, record) => [
-        <MenuForm
-          key="edit"
-          title="编辑菜单"
-          trigger={<a>编辑</a>}
-          initialValues={record}
-          onFinish={handleFormSuccess}
-        />,
-        <a key="status" onClick={() => handleStatusChange(record.id || 0, (record.status || '0'))}>
-          {record.status === MenuStatus.ENABLED
-            ? (defaultStatusDict.find(item => item.value === '0')?.label || '禁用')
-            : (defaultStatusDict.find(item => item.value === '1')?.label || '启用')}
-        </a>,
-        <Popconfirm key="delete" title="确定要删除该菜单吗？" onConfirm={() => handleRemove(record.id || 0)}>
-          <Button className='p-0' type="link" danger>
-            删除
-          </Button>
-        </Popconfirm>,
-      ],
+      width: 180,
+      render: (_, record) => (
+        <Space size={16}>
+          <MenuForm
+            title="编辑菜单"
+            trigger={<a>编辑</a>}
+            initialValues={record}
+            onFinish={handleFormSuccess}
+          />
+          <a
+            onClick={() =>
+              handleStatusChange(record.id || 0, record.status || '0')
+            }
+          >
+            {record.status === MenuStatus.ENABLED
+              ? defaultStatusDict.find((item) => item.value === '0')?.label ||
+                '禁用'
+              : defaultStatusDict.find((item) => item.value === '1')?.label ||
+                '启用'}
+          </a>
+          <Popconfirm
+            title="确定要删除该菜单吗？"
+            onConfirm={() => handleRemove(record.id || 0)}
+          >
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ];
 
@@ -123,25 +160,36 @@ const MenuList: React.FC = () => {
         rowKey="id"
         search={false}
         pagination={false}
-        expandable={{ expandedRowKeys, onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]) }}
+        expandable={{
+          expandedRowKeys,
+          onExpandedRowsChange: (keys) => setExpandedRowKeys([...keys]),
+        }}
         toolBarRender={() => [
           <MenuForm
             key="create"
             title="新建菜单"
-            trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
+            trigger={
+              <Button type="primary">
+                <PlusOutlined /> 新建
+              </Button>
+            }
             onFinish={handleFormSuccess}
           />,
         ]}
         request={async () => {
           const result = await getMenuTree();
-          const normalize = (nodes: API.menuTreeNode[] | null | undefined): API.menuTreeNode[] => {
+          const normalize = (
+            nodes: API.menuTreeNode[] | null | undefined,
+          ): API.menuTreeNode[] => {
             if (!nodes) return [];
             return nodes.map((n) => ({
               ...n,
               children: n.children ? normalize(n.children) : null,
             }));
           };
-          const collectIds = (nodes: API.menuTreeNode[] | null | undefined): number[] => {
+          const collectIds = (
+            nodes: API.menuTreeNode[] | null | undefined,
+          ): number[] => {
             if (!nodes) return [];
             const acc: number[] = [];
             const walk = (list: API.menuTreeNode[]) => {
@@ -177,8 +225,13 @@ const MenuList: React.FC = () => {
         )}
         tableAlertOptionRender={() => (
           <Space>
-            <Popconfirm title={`确定要删除选中的 ${selectedRowKeys.length} 个菜单吗？`} onConfirm={handleBatchRemove}>
-              <Button type="link" danger loading={batchDeleteLoading}>批量删除</Button>
+            <Popconfirm
+              title={`确定要删除选中的 ${selectedRowKeys.length} 个菜单吗？`}
+              onConfirm={handleBatchRemove}
+            >
+              <Button type="link" danger loading={batchDeleteLoading}>
+                批量删除
+              </Button>
             </Popconfirm>
           </Space>
         )}

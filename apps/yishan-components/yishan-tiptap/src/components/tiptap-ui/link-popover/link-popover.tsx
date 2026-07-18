@@ -6,6 +6,7 @@ import type { Editor } from "@tiptap/react"
 // --- Hooks ---
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
+import { useTiptapLocale } from "@/i18n"
 
 // --- Icons ---
 import { CornerDownLeftIcon } from "@/components/tiptap-icons/corner-down-left-icon"
@@ -79,6 +80,7 @@ export interface LinkPopoverProps
  */
 export const LinkButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, children, ...props }, ref) => {
+    const locale = useTiptapLocale()
     return (
       <Button
         type="button"
@@ -86,8 +88,8 @@ export const LinkButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
         data-style="ghost"
         role="button"
         tabIndex={-1}
-        aria-label="Link"
-        tooltip="Link"
+        aria-label={locale.link}
+        tooltip={locale.link}
         ref={ref}
         {...props}
       >
@@ -111,6 +113,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
   isActive,
 }) => {
   const isMobile = useIsMobile()
+  const locale = useTiptapLocale()
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "Enter") {
@@ -134,7 +137,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
           <InputGroup>
             <Input
               type="url"
-              placeholder="Paste a link..."
+              placeholder={locale.pasteLink}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -149,7 +152,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
             <Button
               type="button"
               onClick={setLink}
-              title="Apply link"
+              title={locale.applyLink}
               disabled={!url && !isActive}
               data-style="ghost"
             >
@@ -163,7 +166,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
             <Button
               type="button"
               onClick={openLink}
-              title="Open in new window"
+              title={locale.openLink}
               disabled={!url && !isActive}
               data-style="ghost"
             >
@@ -173,7 +176,7 @@ const LinkMain: React.FC<LinkMainProps> = ({
             <Button
               type="button"
               onClick={removeLink}
-              title="Remove link"
+              title={locale.removeLink}
               disabled={!url && !isActive}
               data-style="ghost"
             >

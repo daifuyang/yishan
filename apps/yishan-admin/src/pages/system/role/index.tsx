@@ -1,9 +1,18 @@
-import { PlusOutlined, DownOutlined } from '@ant-design/icons';
-import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, message, Popconfirm, Space, Tag, Dropdown } from 'antd';
-import React, { useRef, useState } from 'react';
+import { DownOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  type ActionType,
+  PageContainer,
+  type ProColumns,
+  ProTable,
+} from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { getRoleList, updateRole, deleteRole } from '@/services/yishan-admin/sysRoles';
+import { Button, Dropdown, message, Popconfirm, Space, Tag } from 'antd';
+import React, { useRef, useState } from 'react';
+import {
+  deleteRole,
+  getRoleList,
+  updateRole,
+} from '@/services/yishan-admin/sysRoles';
 import RoleForm from './components/RoleForm';
 
 const IsSystem = {
@@ -26,8 +35,11 @@ const SystemRoleTag: React.FC<{ isSystem?: number }> = ({ isSystem }) => {
   return <Tag color="green">自定义角色</Tag>;
 };
 
-const DataScopeTag: React.FC<{ dataScope?: API.sysRole['dataScope'] }> = ({ dataScope }) => {
-  const label = dataScopeOptions.find((o) => o.value === dataScope)?.label || '-';
+const DataScopeTag: React.FC<{ dataScope?: API.sysRole['dataScope'] }> = ({
+  dataScope,
+}) => {
+  const label =
+    dataScopeOptions.find((o) => o.value === dataScope)?.label || '-';
   const colorMap: Record<string, string> = {
     '1': 'blue',
     '2': 'green',
@@ -45,14 +57,12 @@ const RoleList: React.FC = () => {
 
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
-  const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
+  const defaultStatusDict: Array<{ label: string; value: string }> =
+    dictDataMap.default_status || [];
 
   const handleStatusChange = async (id: number, status: string) => {
-    const newStatus = status === "1" ? "0" : "1";
-    const res = await updateRole(
-      { id },
-      { status: newStatus as "0" | "1" }
-    );
+    const newStatus = status === '1' ? '0' : '1';
+    const res = await updateRole({ id }, { status: newStatus as '0' | '1' });
     if (res.success) {
       message.success(res.message);
     }
@@ -75,17 +85,21 @@ const RoleList: React.FC = () => {
 
     setBatchDeleteLoading(true);
 
-    const deletePromises = selectedRowKeys.map(key => deleteRole({ id: Number(key) }));
+    const deletePromises = selectedRowKeys.map((key) =>
+      deleteRole({ id: Number(key) }),
+    );
     const results = await Promise.allSettled(deletePromises);
 
-    const successCount = results.filter(result => result.status === 'fulfilled').length;
+    const successCount = results.filter(
+      (result) => result.status === 'fulfilled',
+    ).length;
     const failedCount = results.length - successCount;
 
     if (failedCount === 0) {
       message.success(`成功删除 ${successCount} 个角色`);
     } else {
       message.warning(
-        `删除完成，成功 ${successCount} 个，失败 ${failedCount} 个。失败的角色可能为系统角色、正在被使用或已不存在。`
+        `删除完成，成功 ${successCount} 个，失败 ${failedCount} 个。失败的角色可能为系统角色、正在被使用或已不存在。`,
       );
     }
 
@@ -121,7 +135,11 @@ const RoleList: React.FC = () => {
       title: '系统角色',
       dataIndex: 'isSystemDefault',
       width: 120,
-      render: (_, record) => <SystemRoleTag isSystem={record.isSystemDefault ? IsSystem.YES : IsSystem.NO} />,
+      render: (_, record) => (
+        <SystemRoleTag
+          isSystem={record.isSystemDefault ? IsSystem.YES : IsSystem.NO}
+        />
+      ),
     },
     {
       title: '数据权限',
@@ -134,13 +152,16 @@ const RoleList: React.FC = () => {
       title: '状态',
       dataIndex: 'status',
       width: 100,
-      valueEnum: defaultStatusDict.reduce((acc: Record<string, { text: string; status: string }>, item) => {
-        acc[item.value] = {
-          text: item.label,
-          status: item.value === "1" ? "Success" : "Error"
-        };
-        return acc;
-      }, {} as Record<string, { text: string; status: string }>),
+      valueEnum: defaultStatusDict.reduce(
+        (acc: Record<string, { text: string; status: string }>, item) => {
+          acc[item.value] = {
+            text: item.label,
+            status: item.value === '1' ? 'Success' : 'Error',
+          };
+          return acc;
+        },
+        {} as Record<string, { text: string; status: string }>,
+      ),
     },
     {
       title: '创建时间',
@@ -161,42 +182,48 @@ const RoleList: React.FC = () => {
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
-      width: 160,
+      width: 180,
       render: (_, record) => {
         const moreItems = [
           {
             key: 'status',
             label: (
-              <a onClick={() => handleStatusChange(record.id || 0, record.status || "0")}>
-                {record.status === "1"
-                  ? (defaultStatusDict.find(item => item.value === "0")?.label || '禁用')
-                  : (defaultStatusDict.find(item => item.value === "1")?.label || '启用')}
+              <a
+                onClick={() =>
+                  handleStatusChange(record.id || 0, record.status || '0')
+                }
+              >
+                {record.status === '1'
+                  ? defaultStatusDict.find((item) => item.value === '0')
+                      ?.label || '禁用'
+                  : defaultStatusDict.find((item) => item.value === '1')
+                      ?.label || '启用'}
               </a>
             ),
-          }
+          },
         ];
 
-        return [
-          <RoleForm
-            key="edit"
-            title="编辑角色"
-            trigger={<a>编辑</a>}
-            onFinish={handleFormSuccess}
-            initialValues={record}
-          />,
-          <Popconfirm
-            key="delete"
-            title="确定要删除该角色吗？"
-            onConfirm={() => handleRemove(record.id || 0)}
-          >
-            <a style={{ color: '#ff4d4f' }}>删除</a>
-          </Popconfirm>,
-          <Dropdown key="more" menu={{ items: moreItems }}>
-            <a onClick={(e) => e.preventDefault()}>
-              更多 <DownOutlined />
-            </a>
-          </Dropdown>,
-        ];
+        return (
+          <Space size={16}>
+            <RoleForm
+              title="编辑角色"
+              trigger={<a>编辑</a>}
+              onFinish={handleFormSuccess}
+              initialValues={record}
+            />
+            <Popconfirm
+              title="确定要删除该角色吗？"
+              onConfirm={() => handleRemove(record.id || 0)}
+            >
+              <a style={{ color: '#ff4d4f' }}>删除</a>
+            </Popconfirm>
+            <Dropdown menu={{ items: moreItems }}>
+              <a onClick={(e) => e.preventDefault()}>
+                更多 <DownOutlined />
+              </a>
+            </Dropdown>
+          </Space>
+        );
       },
     },
   ];
@@ -255,7 +282,7 @@ const RoleList: React.FC = () => {
           return (
             <Space size={16}>
               <Popconfirm
-                placement='bottomRight'
+                placement="bottomRight"
                 title="确定要批量删除选中的角色吗？"
                 description={`将删除 ${selectedRowKeys.length} 个角色，此操作不可恢复`}
                 onConfirm={handleBatchDelete}
@@ -263,10 +290,18 @@ const RoleList: React.FC = () => {
                 cancelText="取消"
                 disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
               >
-                <a style={{
-                  color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
-                  cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
-                }}>
+                <a
+                  style={{
+                    color:
+                      selectedRowKeys.length === 0 || batchDeleteLoading
+                        ? '#ccc'
+                        : '#ff4d4f',
+                    cursor:
+                      selectedRowKeys.length === 0 || batchDeleteLoading
+                        ? 'not-allowed'
+                        : 'pointer',
+                  }}
+                >
                   {batchDeleteLoading ? '删除中...' : '批量删除'}
                 </a>
               </Popconfirm>

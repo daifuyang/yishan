@@ -4,6 +4,7 @@ import { type Editor } from "@tiptap/react"
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
+import { useTiptapLocale } from "@/i18n"
 
 // --- Lib ---
 import {
@@ -54,13 +55,6 @@ export const textAlignIcons = {
   center: AlignCenterIcon,
   right: AlignRightIcon,
   justify: AlignJustifyIcon,
-}
-
-export const textAlignLabels: Record<TextAlign, string> = {
-  left: "Align left",
-  center: "Align center",
-  right: "Align right",
-  justify: "Align justify",
 }
 
 /**
@@ -180,6 +174,7 @@ export function useTextAlign(config: UseTextAlignConfig) {
   } = config
 
   const { editor } = useTiptapEditor(providedEditor)
+  const locale = useTiptapLocale()
   const [isVisible, setIsVisible] = React.useState<boolean>(true)
   const canAlign = canSetTextAlign(editor, align)
   const isActive = isTextAlignActive(editor, align)
@@ -215,7 +210,7 @@ export function useTextAlign(config: UseTextAlignConfig) {
     isActive,
     handleTextAlign,
     canAlign,
-    label: textAlignLabels[align],
+    label: { left: locale.alignLeft, center: locale.alignCenter, right: locale.alignRight, justify: locale.alignJustify }[align],
     shortcutKeys: TEXT_ALIGN_SHORTCUT_KEYS[align],
     Icon: textAlignIcons[align],
   }

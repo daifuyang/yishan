@@ -65,6 +65,7 @@ import { MinimizeIcon } from "@/components/tiptap-icons/minimize";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWindowSize } from "@/hooks/use-window-size";
 import { useCursorVisibility } from "@/hooks/use-cursor-visibility";
+import { TiptapLocaleProvider, type TiptapLocale, useTiptapLocale } from "../../../i18n";
 
 
 // --- Lib ---
@@ -88,6 +89,8 @@ const MainToolbarContent = ({
   onFullscreenToggle: () => void;
   onPickImage?: () => Promise<ImageInsertItem[]>;
 }) => {
+  const locale = useTiptapLocale();
+
   return (
     <div className="form-editor-toolbar">
       <ToolbarGroup>
@@ -148,7 +151,7 @@ const MainToolbarContent = ({
       <ToolbarSeparator className="toolbar-separator" />
 
       <ToolbarGroup>
-        <Button data-style="ghost" onClick={onFullscreenToggle} aria-label="toggle-fullscreen">
+        <Button data-style="ghost" onClick={onFullscreenToggle} aria-label={locale.toggleFullscreen}>
           {isFullscreen ? (
             <MinimizeIcon className="tiptap-button-icon" />
           ) : (
@@ -196,6 +199,7 @@ export interface FormEditorProps {
   maxHeight?: number
   onChange?: (value: string) => void
   imageUploadAdapter?: ImageUploadAdapter
+  locale?: Partial<TiptapLocale>
 }
 
 export type ImageInsertItem = {
@@ -215,8 +219,9 @@ export type ImageUploadAdapter = {
   pick?: (options?: { multiple?: boolean; limit?: number }) => Promise<ImageInsertItem[]>
 }
 
-export function FormEditor(props: FormEditorProps) {
+const FormEditorContent: React.FC<Omit<FormEditorProps, 'locale'>> = (props) => {
   const { maxHeight = 400, value, onChange, imageUploadAdapter } = props;
+  const locale = useTiptapLocale();
   const isMobile = useIsMobile();
   const { height } = useWindowSize();
   const [isFullscreen, setIsFullscreen] = React.useState(false);
@@ -234,7 +239,7 @@ export function FormEditor(props: FormEditorProps) {
         autocomplete: "off",
         autocorrect: "off",
         autocapitalize: "off",
-        "aria-label": "Main content area, start typing to enter text.",
+        "aria-label": locale.editorAriaLabel,
         class: "form-editor",
       },
     },
@@ -328,4 +333,12 @@ export function FormEditor(props: FormEditorProps) {
       </EditorContext.Provider>
     </div>
   );
+}
+
+export function FormEditor({ locale, ...props }: FormEditorProps) {
+  return (
+    <TiptapLocaleProvider locale={locale}>
+      <FormEditorContent {...props} />
+    </TiptapLocaleProvider>
+  )
 }

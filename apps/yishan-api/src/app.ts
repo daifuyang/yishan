@@ -146,7 +146,9 @@ const app: FastifyPluginAsync<AppOptions> = async (
       }
 
       if (existsSync(moduleAppPlugins)) {
-        fastify.register(AutoLoad, {
+        // Module schemas/decorators must be registered before their route tree
+        // is loaded; otherwise route $ref validation can run first.
+        await fastify.register(AutoLoad, {
           dir: moduleAppPlugins,
           options: { ...opts }
         })

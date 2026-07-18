@@ -5,6 +5,7 @@ import type { Editor } from "@tiptap/react"
 
 // --- Hooks ---
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
+import { useTiptapLocale } from "@/i18n"
 
 // --- Icons ---
 import { ListIcon } from "@/components/tiptap-icons/list-icon"
@@ -168,6 +169,7 @@ export function useListDropdownMenu(config?: UseListDropdownMenuConfig) {
   } = config || {}
 
   const { editor } = useTiptapEditor(providedEditor)
+  const locale = useTiptapLocale()
   const [isVisible, setIsVisible] = React.useState(false)
 
   const listInSchema = types.some((type) => isNodeInSchema(type, editor))
@@ -213,7 +215,7 @@ export function useListDropdownMenu(config?: UseListDropdownMenuConfig) {
     canToggle: canToggleAny,
     types,
     filteredLists,
-    label: "List",
+    label: locale.list,
     Icon: activeList ? listIcons[activeList.type] : ListIcon,
   }
 }
