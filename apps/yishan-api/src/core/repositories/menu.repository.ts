@@ -17,7 +17,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
-import { sysMenu, sysRoleMenu, sysUser } from "@/db/schema";
+import { sysMenu, sysMenuPermission, sysRoleMenu, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
 
 // ============================================================================
@@ -26,7 +26,7 @@ import { dateUtils } from "../../utils/date.js";
 
 type MenuPersistedFields = Pick<
   typeof sysMenu.$inferInsert,
-  "name" | "type" | "parentId" | "path" | "icon" | "component" | "status" | "sortOrder" | "hideInMenu" | "isExternalLink" | "perm" | "keepAlive"
+  "name" | "type" | "parentId" | "path" | "icon" | "component" | "status" | "sortOrder" | "hideInMenu" | "isDefaultAction" | "isExternalLink" | "keepAlive"
 >;
 
 /** Service 已完成认证、校验和 API DTO 到持久化输入的转换。 */
@@ -95,7 +95,6 @@ function buildMenuWhere(opts: {
         like(sysMenu.name, like_),
         like(sysMenu.path, like_),
         like(sysMenu.component, like_),
-        like(sysMenu.perm, like_),
       )!,
     );
   }
@@ -132,6 +131,20 @@ async function fetchMenuDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
 // ============================================================================
 
 export class MenuRepository {
+  static async findPermissionCodesByMenuIds(menuIds: number[], db: AppQueryDb = drizzleDb): Promise<Map<number, string[]>> {
+    const result = new Map<number, string[]>();
+    if (menuIds.length === 0) return result;
+    const rows = await db.select({ menuId: sysMenuPermission.menuId, permissionCode: sysMenuPermission.permissionCode })
+      .from(sysMenuPermission).where(inArray(sysMenuPermission.menuId, [...new Set(menuIds)]));
+    for (const row of rows) result.set(row.menuId, [...(result.get(row.menuId) || []), row.permissionCode]);
+    return result;
+  }
+
+  static async replacePermissionCodes(menuId: number, codes: string[], db: AppQueryDb = drizzleDb): Promise<void> {
+    await db.delete(sysMenuPermission).where(eq(sysMenuPermission.menuId, menuId));
+    const uniqueCodes = [...new Set(codes)];
+    if (uniqueCodes.length > 0) await db.insert(sysMenuPermission).values(uniqueCodes.map((permissionCode) => ({ menuId, permissionCode })));
+  }
   /** 获取菜单列表 */
   static async list(query: { page?: number; pageSize?: number; keyword?: string; status?: number; type?: number; parentId?: number; sortBy?: string; sortOrder?: string } = {}): Promise<MenuListRow[]> {
     const { page = 1, pageSize = 10, keyword, status, type, parentId, sortBy, sortOrder = "asc" } = query;

@@ -9,7 +9,8 @@ export interface PluginMenuItem {
   channel: string
   path: string
   name: string
-  perm?: string
+  /** 页面完整操作映射；每个 code 必须在 manifest.permissions 中声明。 */
+  permissionCodes?: string[]
   icon?: string
   hideInMenu?: boolean
 }

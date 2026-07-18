@@ -7,7 +7,7 @@ describe('CRM plugin contracts', () => {
     expect(validateManifest(manifest)).toEqual({ valid: true, errors: [] })
     expect(manifest.routeBase).toBe('/api/modules/crm/v1')
     expect(manifest.permissions.map((permission) => permission.code)).toEqual(expect.arrayContaining([
-      'crm:hospital:list', 'crm:customer:list', 'crm:member:list', 'crm:dispatch:list', 'crm:region:list',
+      'crm:hospital:list', 'crm:customer:list', 'crm:member:list', 'crm:dispatch:list',
     ]))
   })
 })

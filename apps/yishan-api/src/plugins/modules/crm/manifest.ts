@@ -27,13 +27,11 @@ export default {
     { code: 'crm:dispatch:update', label: '派单管理-更新', group: 'crm' },
     { code: 'crm:dispatch:reply', label: '派单管理-回复', group: 'crm' },
     { code: 'crm:dispatch:log', label: '派单管理-跟进', group: 'crm' },
-    { code: 'crm:region:list', label: '地区-列表', group: 'crm' },
   ],
   menus: [
-    { channel: 'admin', path: '/plugins/iximei/crm/hospitals', name: '医院管理', perm: 'crm:hospital:list', icon: 'hospital' },
-    { channel: 'admin', path: '/plugins/iximei/crm/customers', name: '客户管理', perm: 'crm:customer:list', icon: 'users-round' },
-    { channel: 'admin', path: '/plugins/iximei/crm/members', name: '会员顾客', perm: 'crm:member:list', icon: 'contact-round' },
-    { channel: 'admin', path: '/plugins/iximei/crm/dispatches', name: '派单管理', perm: 'crm:dispatch:list', icon: 'clipboard-list' },
-    { channel: 'admin', path: '/plugins/iximei/crm/dispatches/reply', name: '派单回复', perm: 'crm:dispatch:reply', hideInMenu: true },
+    { channel: 'admin', path: '/plugins/iximei/crm/hospitals', name: '医院管理', permissionCodes: [], icon: 'hospital' },
+    { channel: 'admin', path: '/plugins/iximei/crm/customers', name: '客户管理', permissionCodes: [], icon: 'users-round' },
+    { channel: 'admin', path: '/plugins/iximei/crm/members', name: '会员顾客', permissionCodes: [], icon: 'contact-round' },
+    { channel: 'admin', path: '/plugins/iximei/crm/dispatches', name: '派单管理', permissionCodes: [], icon: 'clipboard-list' },
   ],
 } as const;

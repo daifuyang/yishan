@@ -13,6 +13,10 @@ export const RoleErrorCode = {
   ROLE_STATUS_ERROR: 32103,
   /** 系统默认角色不允许删除 */
   ROLE_DELETE_FORBIDDEN: 32104,
+  /** 待授予的权限码不在当前活动权限目录中 */
+  ROLE_PERMISSION_INVALID: 32105,
+  /** 操作者试图授予自身未持有的权限 */
+  ROLE_PERMISSION_FORBIDDEN: 32106,
 } as const;
 
 // ============= 错误消息映射 =============
@@ -21,6 +25,8 @@ export const RoleErrorMessages = {
   [RoleErrorCode.ROLE_ALREADY_EXISTS]: '角色已存在',
   [RoleErrorCode.ROLE_STATUS_ERROR]: '角色状态异常',
   [RoleErrorCode.ROLE_DELETE_FORBIDDEN]: '系统默认角色不允许删除',
+  [RoleErrorCode.ROLE_PERMISSION_INVALID]: '权限码不存在或未启用',
+  [RoleErrorCode.ROLE_PERMISSION_FORBIDDEN]: '不能授予当前操作者未拥有的权限',
 } as const;
 
 // ============= 类型定义 =============

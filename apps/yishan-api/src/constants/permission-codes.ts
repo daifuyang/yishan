@@ -6,7 +6,7 @@
  * `shop:product:update`。
  *
  * 路由层通过 `fastify.requirePermission(permCode)` 校验；菜单或插件 manifest
- * 中 `<menuItem.perm>` 必须与这里的某个 code 严格匹配，不能依赖菜单 ID。
+ * 中 `<menuItem.permissionCodes>` 必须引用这里或插件 manifest 中已声明的 code，不能依赖菜单 ID。
  *
  * 新增权限点请同步更新本文件，并在 README/RBAC.md 文档里登记。
  */
@@ -24,6 +24,8 @@ export const PERMISSION_CODES = {
   SYSTEM_ROLE_CREATE: "system:role:create",
   SYSTEM_ROLE_UPDATE: "system:role:update",
   SYSTEM_ROLE_DELETE: "system:role:delete",
+  /** 配置角色的后端功能/API 权限；与角色基本资料编辑分离。 */
+  SYSTEM_ROLE_GRANT: "system:role:grant",
   SYSTEM_MENU_LIST: "system:menu:list",
   SYSTEM_MENU_CREATE: "system:menu:create",
   SYSTEM_MENU_UPDATE: "system:menu:update",
@@ -50,7 +52,6 @@ export const PERMISSION_CODES = {
   SYSTEM_OPTION_UPDATE: "system:option:update",
   SYSTEM_DASHBOARD_READ: "system:dashboard:read",
   SYSTEM_LOGIN_LOG_LIST: "system:login-log:list",
-  SYSTEM_REGION_LIST: "system:region:list",
   SYSTEM_STORAGE_LIST: "system:storage:list",
   SYSTEM_STORAGE_UPDATE: "system:storage:update",
   SYSTEM_STORAGE_UPLOAD_TOKEN: "system:storage:upload-token",
@@ -176,6 +177,7 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { code: "system:role:create", group: "system", label: "角色管理-创建" },
   { code: "system:role:update", group: "system", label: "角色管理-更新" },
   { code: "system:role:delete", group: "system", label: "角色管理-删除" },
+  { code: "system:role:grant", group: "system", label: "角色管理-授权" },
   { code: "system:menu:list", group: "system", label: "菜单管理-列表" },
   { code: "system:menu:create", group: "system", label: "菜单管理-创建" },
   { code: "system:menu:update", group: "system", label: "菜单管理-更新" },
@@ -206,7 +208,6 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   { code: "system:option:update", group: "system", label: "系统选项-更新" },
   { code: "system:dashboard:read", group: "system", label: "仪表盘-读取" },
   { code: "system:login-log:list", group: "system", label: "登录日志-列表" },
-  { code: "system:region:list", group: "system", label: "地区管理-列表" },
   { code: "system:storage:list", group: "system", label: "存储管理-列表" },
   { code: "system:storage:update", group: "system", label: "存储管理-更新" },
   { code: "system:storage:upload-token", group: "system", label: "存储管理-上传令牌" },

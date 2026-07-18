@@ -48,14 +48,11 @@ export async function getPositionDetail(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<API.positionDetailResp>(
-    `/api/v1/admin/positions/${param0}`,
-    {
-      method: "GET",
-      params: { ...queryParams },
-      ...(options || {}),
-    }
-  );
+  return request<API.positionDetailResp>(`/api/v1/admin/positions/${param0}`, {
+    method: "GET",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
 }
 
 /** 更新岗位 根据岗位ID更新岗位信息 PUT /api/v1/admin/positions/${param0} */
@@ -66,17 +63,15 @@ export async function updatePosition(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<API.positionDetailResp>(
-    `/api/v1/admin/positions/${param0}`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      params: { ...queryParams },
-      data: body,
-    }
-  );
+  return request<API.positionDetailResp>(`/api/v1/admin/positions/${param0}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...queryParams },
+    data: body,
+    ...(options || {}),
+  });
 }
 
 /** 删除岗位 根据岗位ID进行软删除 DELETE /api/v1/admin/positions/${param0} */
@@ -86,12 +81,9 @@ export async function deletePosition(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<API.positionDeleteResp>(
-    `/api/v1/admin/positions/${param0}`,
-    {
-      method: "DELETE",
-      params: { ...queryParams },
-      ...(options || {}),
-    }
-  );
+  return request<API.positionDeleteResp>(`/api/v1/admin/positions/${param0}`, {
+    method: "DELETE",
+    params: { ...queryParams },
+    ...(options || {}),
+  });
 }

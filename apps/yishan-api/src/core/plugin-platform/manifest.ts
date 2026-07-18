@@ -122,10 +122,24 @@ export function validateManifest(manifest: unknown): ManifestValidationResult {
   if (value.menus) {
     const menusValid =
       Array.isArray(value.menus) &&
-      value.menus.every((item) => isNonEmptyString(item?.channel) && isNonEmptyString(item?.path) && isNonEmptyString(item?.name))
+      value.menus.every((item) =>
+        isNonEmptyString(item?.channel)
+        && isNonEmptyString(item?.path)
+        && isNonEmptyString(item?.name)
+        && (item.permissionCodes === undefined || (Array.isArray(item.permissionCodes) && item.permissionCodes.every(isNonEmptyString)))
+      )
 
     if (!menusValid) {
-      errors.push('manifest.menus must contain { channel, path, name } with non-empty strings')
+      errors.push('manifest.menus must contain { channel, path, name } and optional non-empty permissionCodes')
+    } else {
+      const declaredCodes = new Set(value.permissions?.map((permission) => permission.code) ?? []);
+      for (const menu of value.menus) {
+        for (const code of menu.permissionCodes ?? []) {
+          if (!declaredCodes.has(code)) {
+            errors.push(`menu ${menu.path} references undeclared permission '${code}'`);
+          }
+        }
+      }
     }
   }
 

@@ -1,112 +1,33 @@
 import { request } from '@umijs/max';
-
 const base = '/api/modules/crm/v1/admin';
-
-export async function getHospitals(params?: any) {
-  return request(`${base}/hospitals/`, { method: 'GET', params });
-}
-
-export async function getHospital(id: number) {
-  return request(`${base}/hospitals/${id}`, { method: 'GET' });
-}
-
-export async function createHospital(data: any) {
-  return request(`${base}/hospitals/`, { method: 'POST', data });
-}
-
-export async function updateHospital(id: number, data: any) {
-  return request(`${base}/hospitals/${id}`, { method: 'PUT', data });
-}
-
-export async function deleteHospital(id: number) {
-  return request(`${base}/hospitals/${id}`, { method: 'DELETE' });
-}
-
-export async function searchHospitals(params?: any) {
-  return request(`${base}/hospitals/search/options`, { method: 'GET', params });
-}
-
-export async function getHospitalAccounts(hospitalId: number) {
-  return request(`${base}/hospitals/${hospitalId}/accounts`, { method: 'GET' });
-}
-
-export async function createHospitalAccount(hospitalId: number, data: any) {
-  return request(`${base}/hospitals/${hospitalId}/accounts`, { method: 'POST', data });
-}
-
-export async function assignHospitalAccount(hospitalId: number, data: any) {
-  return request(`${base}/hospitals/${hospitalId}/accounts/assign`, { method: 'POST', data });
-}
-
-export async function updateHospitalAccount(hospitalId: number, userId: number, data: any) {
-  return request(`${base}/hospitals/${hospitalId}/accounts/${userId}`, { method: 'PUT', data });
-}
-
-export async function deleteHospitalAccount(hospitalId: number, userId: number) {
-  return request(`${base}/hospitals/${hospitalId}/accounts/${userId}`, { method: 'DELETE' });
-}
-
-export async function getCustomerStatuses() {
-  return request(`${base}/customers/statuses`, { method: 'GET' });
-}
-
-export async function getCustomers(params?: any) {
-  return request(`${base}/customers/`, { method: 'GET', params });
-}
-
-export async function createCustomer(data: any) {
-  return request(`${base}/customers/`, { method: 'POST', data });
-}
-
-export async function updateCustomer(id: number, data: any) {
-  return request(`${base}/customers/${id}`, { method: 'PUT', data });
-}
-
-export async function dispatchCustomer(id: number, data: any) {
-  return request(`${base}/customers/${id}/dispatch`, { method: 'POST', data });
-}
-
-export async function getMembers(params?: any) {
-  return request(`${base}/members/`, { method: 'GET', params });
-}
-
-export async function getMember(id: number) {
-  return request(`${base}/members/${id}`, { method: 'GET' });
-}
-
-export async function createMember(data: any) {
-  return request(`${base}/members/`, { method: 'POST', data });
-}
-
-export async function updateMember(id: number, data: any) {
-  return request(`${base}/members/${id}`, { method: 'PUT', data });
-}
-
-export async function addMemberRemark(id: number, data: any) {
-  return request(`${base}/members/${id}/remarks`, { method: 'POST', data });
-}
-
-export async function getDispatchStatuses() {
-  return request(`${base}/dispatches/statuses`, { method: 'GET' });
-}
-
-export async function getDispatches(params?: any) {
-  return request(`${base}/dispatches/`, { method: 'GET', params });
-}
-
-export async function getDispatch(id: number) {
-  return request(`${base}/dispatches/${id}`, { method: 'GET' });
-}
-
-export async function updateDispatch(id: number, data: any) {
-  return request(`${base}/dispatches/${id}`, { method: 'PUT', data });
-}
-
-export async function addDispatchReply(id: number, data: any) {
-  return request(`${base}/dispatches/${id}/replies`, { method: 'POST', data });
-}
-
-export async function addDispatchLog(id: number, data: any) {
-  return request(`${base}/dispatches/${id}/logs`, { method: 'POST', data });
-}
-
+const get = (path: string, params?: any) => request(`${base}${path}`, { method: 'GET', params });
+const post = (path: string, data?: any) => request(`${base}${path}`, { method: 'POST', data });
+const put = (path: string, data?: any) => request(`${base}${path}`, { method: 'PUT', data });
+const del = (path: string) => request(`${base}${path}`, { method: 'DELETE' });
+export const getHospitals = (params?: any) => get('/hospitals/', params);
+export const getHospital = (id: number) => get(`/hospitals/${id}`);
+export const createHospital = (data: any) => post('/hospitals/', data);
+export const updateHospital = (id: number, data: any) => put(`/hospitals/${id}`, data);
+export const deleteHospital = (id: number) => del(`/hospitals/${id}`);
+export const searchHospitals = (params?: any) => get('/hospitals/search/options', params);
+export const getHospitalAccounts = (id: number) => get(`/hospitals/${id}/accounts`);
+export const createHospitalAccount = (id: number, data: any) => post(`/hospitals/${id}/accounts`, data);
+export const assignHospitalAccount = (id: number, data: any) => post(`/hospitals/${id}/accounts/assign`, data);
+export const updateHospitalAccount = (id: number, userId: number, data: any) => put(`/hospitals/${id}/accounts/${userId}`, data);
+export const deleteHospitalAccount = (id: number, userId: number) => del(`/hospitals/${id}/accounts/${userId}`);
+export const getCustomerStatuses = () => get('/customers/statuses');
+export const getCustomers = (params?: any) => get('/customers/', params);
+export const createCustomer = (data: any) => post('/customers/', data);
+export const updateCustomer = (id: number, data: any) => put(`/customers/${id}`, data);
+export const dispatchCustomer = (id: number, data: any) => post(`/customers/${id}/dispatch`, data);
+export const getMembers = (params?: any) => get('/members/', params);
+export const getMember = (id: number) => get(`/members/${id}`);
+export const createMember = (data: any) => post('/members/', data);
+export const updateMember = (id: number, data: any) => put(`/members/${id}`, data);
+export const addMemberRemark = (id: number, data: any) => post(`/members/${id}/remarks`, data);
+export const getDispatchStatuses = () => get('/dispatches/statuses');
+export const getDispatches = (params?: any) => get('/dispatches/', params);
+export const getDispatch = (id: number) => get(`/dispatches/${id}`);
+export const updateDispatch = (id: number, data: any) => put(`/dispatches/${id}`, data);
+export const addDispatchReply = (id: number, data: any) => post(`/dispatches/${id}/replies`, data);
+export const addDispatchLog = (id: number, data: any) => post(`/dispatches/${id}/logs`, data);

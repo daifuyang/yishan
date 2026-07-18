@@ -8,6 +8,9 @@ import { SaveRoleReq, RoleListQuery, SysRoleResp, UpdateRoleReq } from "../schem
 import { BusinessError } from "../../exceptions/business-error.js";
 import { RoleErrorCode } from "../../constants/business-codes/role.js";
 import { PermissionService } from "./permission.service.js";
+import { getGlobalCatalog } from "./permission-catalog.service.js";
+import { ROLE_CODES, SUPER_ADMIN_BYPASS } from "../../constants/permission-codes.js";
+import { dbManager } from "@/db/manager";
 
 export class RoleService {
   /** 获取角色列表 */
@@ -43,6 +46,7 @@ export class RoleService {
   /** 创建角色（校验名称唯一） */
   static async createRole(req: SaveRoleReq, operatorId: number = 1): Promise<SysRoleResp> {
     await this.ensureUnique(req.name);
+    await this.assertGrantablePermissionCodes(operatorId, req.permissionCodes);
 
     const input: CreateRoleInput = {
       name: req.name,
@@ -50,11 +54,12 @@ export class RoleService {
       status: req.status ? parseInt(req.status, 10) : 1,
       dataScope: req.dataScope ? parseInt(req.dataScope, 10) : 1,
       menuIds: req.menuIds,
+      permissionCodes: req.permissionCodes,
       creatorId: operatorId,
       updaterId: operatorId,
     };
 
-    const role = await RoleRepository.create(input);
+    const role = await dbManager.transaction((tx) => RoleRepository.create(input, tx));
     // Section 1 — RBAC：新建角色后失效全局权限缓存（无具体 roleIds 可清，全清）。
     RoleService.invalidatePermissionCache();
     return RoleMapper.toDetailResp(role);
@@ -70,6 +75,7 @@ export class RoleService {
     if (req.name) {
       await this.ensureUnique(req.name, id);
     }
+    await this.assertGrantablePermissionCodes(operatorId, req.permissionCodes);
 
     const input: UpdateRoleInput = {
       updaterId: operatorId,
@@ -80,8 +86,9 @@ export class RoleService {
     if (req.status !== undefined) input.status = parseInt(req.status, 10);
     if (req.dataScope !== undefined) input.dataScope = parseInt(req.dataScope, 10);
     if (req.menuIds !== undefined) input.menuIds = req.menuIds;
+    if (req.permissionCodes !== undefined) input.permissionCodes = req.permissionCodes;
 
-    const role = await RoleRepository.update(id, input);
+    const role = await dbManager.transaction((tx) => RoleRepository.update(id, input, tx));
     // menuIds 变更直接影响该角色的权限集合；status 变更影响 disabled 过滤。
     RoleService.invalidatePermissionCache([id]);
     return RoleMapper.toDetailResp(role);
@@ -112,6 +119,32 @@ export class RoleService {
     const dup = await RoleRepository.findByName(name);
     if (dup && dup.id !== excludeId) {
       throw new BusinessError(RoleErrorCode.ROLE_ALREADY_EXISTS, "角色名称已存在");
+    }
+  }
+
+  /**
+   * 防止“有角色编辑权就能给自己或他人授予任意能力”的越权。
+   * 超级管理员可授予活动目录中的全部业务权限；其他操作者只能授予自己已有的权限。
+   */
+  private static async assertGrantablePermissionCodes(
+    operatorId: number,
+    requestedCodes: string[] | undefined,
+  ): Promise<void> {
+    if (requestedCodes === undefined) return;
+    const activeCodes = await getGlobalCatalog().getActiveCodes();
+    const normalizedCodes = [...new Set(requestedCodes)];
+    const unknownCode = normalizedCodes.find((code) => !activeCodes.has(code));
+    if (unknownCode) {
+      throw new BusinessError(RoleErrorCode.ROLE_PERMISSION_INVALID, `权限码不存在、未启用或不可授权: ${unknownCode}`);
+    }
+
+    const roleIds = await PermissionService.loadRoleIdsForUser(operatorId);
+    const { perms, roleCodes } = await PermissionService.loadForRoleIds(roleIds);
+    if (roleCodes.has(ROLE_CODES.SUPER_ADMIN) || perms.has(SUPER_ADMIN_BYPASS)) return;
+
+    const unauthorizedCode = normalizedCodes.find((code) => !perms.has(code));
+    if (unauthorizedCode) {
+      throw new BusinessError(RoleErrorCode.ROLE_PERMISSION_FORBIDDEN, `不能授予当前操作者未拥有的权限: ${unauthorizedCode}`);
     }
   }
 

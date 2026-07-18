@@ -12,7 +12,7 @@
 
 import { and, desc, eq, isNull, like, sql } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
-import { sysMenu, sysPlugin, sysPluginInstall, sysPluginSyncLog } from "@/db/schema";
+import { sysMenu, sysMenuPermission, sysPlugin, sysPluginInstall, sysPluginSyncLog } from "@/db/schema";
 import { toAffectedCount } from "../db/result.js";
 
 export type PluginRow = typeof sysPlugin.$inferSelect;
@@ -142,7 +142,7 @@ export interface PluginMenuUpsertInput {
   menuItemName: string;
   menuItemPath: string;
   menuItemIcon?: string | null;
-  menuItemPerm?: string | null;
+  permissionCodes?: string[];
   hideInMenu?: boolean;
   pluginMenuKey: string;
   pluginId: string;
@@ -236,13 +236,13 @@ export class PluginMenuRepository {
           source: 'plugin',
           pluginName: input.pluginName,
           pluginMenuKey: input.pluginMenuKey,
-          perm: input.menuItemPerm ?? null,
           icon: input.menuItemIcon ?? null,
           hideInMenu: input.hideInMenu ?? false,
           updaterId: input.updaterId,
           parentId: input.parentId,
         })
         .where(eq(sysMenu.id, existingByKey.id));
+      await this.replaceMenuPermissions(existingByKey.id, input.permissionCodes || [], db);
       return { id: existingByKey.id, isNew: false };
     }
 
@@ -275,7 +275,6 @@ export class PluginMenuRepository {
         source: 'plugin',
         pluginName: input.pluginName,
         pluginMenuKey: input.pluginMenuKey,
-        perm: input.menuItemPerm ?? null,
         icon: input.menuItemIcon ?? null,
         hideInMenu: input.hideInMenu ?? false,
         creatorId: input.creatorId,
@@ -283,7 +282,13 @@ export class PluginMenuRepository {
       })
       .$returningId();
 
+    await this.replaceMenuPermissions(created.id, input.permissionCodes || [], db);
     return { id: created.id, isNew: true };
+  }
+
+  private static async replaceMenuPermissions(menuId: number, codes: string[], db: AppQueryDb) {
+    await db.delete(sysMenuPermission).where(eq(sysMenuPermission.menuId, menuId));
+    if (codes.length) await db.insert(sysMenuPermission).values([...new Set(codes)].map((permissionCode) => ({ menuId, permissionCode })));
   }
 
   /** 把该插件名下所有菜单软删（设置 deletedAt）。 */

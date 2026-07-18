@@ -1,5 +1,6 @@
 import {
   accountMenusSeed,
+  crmMenusSeed,
   assertSeedEnvironment,
   deptTreeSeed,
   dictsSeed,
@@ -15,6 +16,7 @@ import { seedDepartments } from './modules/system-dept.js';
 import { seedPosts } from './modules/system-post.js';
 import { seedMenus } from './modules/system-menu.js';
 import { bindRoleMenusByDefault } from './modules/system-role-menu.js';
+import { bindRolePermissionsByDefault } from './modules/system-role-permission.js';
 import { seedDicts } from './modules/system-dict.js';
 import { seedSysOptions } from './modules/system-option.js';
 import { seedCrm } from './modules/crm.js';
@@ -26,9 +28,9 @@ async function runSeedTransaction(db: SeedDb) {
 
   await seedDepartments(db, adminUser.id, deptTreeSeed);
   await seedPosts(db, adminUser.id, postsSeed);
-  await seedMenus(db, adminUser.id, [systemMenusSeed, accountMenusSeed]);
-  // Section 1 — RBAC：菜单创建后立刻绑定角色，否则后续 requirePermission 不会放行。
+  await seedMenus(db, adminUser.id, [systemMenusSeed, accountMenusSeed, ...crmMenusSeed]);
   await bindRoleMenusByDefault(db);
+  await bindRolePermissionsByDefault(db, adminUser.id);
   await seedDicts(db, adminUser.id, dictsSeed);
   await seedSysOptions(db, adminUser.id, sysOptionsSeed);
   await seedCrm(db, adminUser.id);

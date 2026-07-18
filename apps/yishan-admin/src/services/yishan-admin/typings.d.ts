@@ -10,317 +10,92 @@ declare namespace API {
     useHttps?: boolean;
   };
 
-  type appDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
-  };
-
-  type appDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysApp;
-    timestamp: string;
-  };
-
-  type appListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    keyword?: string;
-    status?: "0" | "1";
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type appListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysApp[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type appMenuDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
-  };
-
-  type appMenuDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysAppMenu;
-    timestamp: string;
-  };
-
-  type appMenuListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称、路径、组件、权限） */
-    keyword?: string;
-    /** 菜单状态 */
-    status?: "0" | "1";
-    /** 菜单类型 */
-    type?: 0 | 1 | 2;
-    /** 父级菜单ID过滤 */
-    parentId?: number;
-    /** 排序字段 */
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-  };
-
-  type appMenuListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysAppMenu[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type appMenuTreeList = appMenuTreeNode[];
-
-  type appMenuTreeNode = {
-    /** 菜单ID */
+  type apiTokenCreateData = {
     id: number;
-    /** 应用ID */
-    appId: number;
-    /** 菜单名称 */
     name: string;
-    /** 类型（0:目录,1:菜单,2:按钮） */
-    type: 0 | 1 | 2;
-    /** 路由路径/URL */
-    path?: string;
-    /** 图标名 */
-    icon?: string;
-    /** 前端组件路径 */
-    component?: string;
-    /** 父级菜单ID */
-    parentId?: number;
-    /** 父级菜单名称 */
-    parentName?: string;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 排序序号 */
-    sort_order: number;
-    /** 是否在菜单中隐藏 */
-    hideInMenu: boolean;
-    /** 是否外链 */
-    isExternalLink: boolean;
-    /** 权限标识 */
-    perm?: string;
-    /** 是否缓存页面 */
-    keepAlive: boolean;
-    /** 关联资源ID */
-    resourceId?: number;
-    /** 创建人Id */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
+    scopes: string[];
+    userId: number;
+    expiresAt: string | null;
     createdAt: string;
-    /** 更新人Id */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
-    children: appMenuTreeNode[] | null;
+    token: string;
   };
 
-  type appMenuTreeResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: appMenuTreeList;
-    timestamp: string;
-  };
-
-  type appResourceDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
-  };
-
-  type appResourceDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysAppResource;
-    timestamp: string;
-  };
-
-  type appResourceListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称、描述） */
-    keyword?: string;
-    /** 资源类型 */
-    type?:
-      | "FORM"
-      | "PROCESS_FORM"
-      | "REPORT"
-      | "PORTAL_BROADCAST"
-      | "DASHBOARD"
-      | "CUSTOM_PAGE"
-      | "EXTERNAL_LINK"
-      | "FOLDER";
-    /** 父级资源ID过滤 */
-    parentId?: number;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序字段 */
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-  };
-
-  type appResourceListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysAppResource[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type appResourceTreeList = appResourceTreeNode[];
-
-  type appResourceTreeNode = {
-    /** 资源ID */
-    id: number;
-    /** 应用ID */
-    appId: number;
-    /** 父级资源ID（分组） */
-    parentId?: number;
-    /** 资源类型 */
-    type:
-      | "FORM"
-      | "PROCESS_FORM"
-      | "REPORT"
-      | "PORTAL_BROADCAST"
-      | "DASHBOARD"
-      | "CUSTOM_PAGE"
-      | "EXTERNAL_LINK"
-      | "FOLDER";
-    /** 资源名称 */
+  type apiTokenCreateReq = {
     name: string;
-    /** 资源描述 */
-    description?: string;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 排序序号 */
-    sort_order: number;
-    /** 资源配置 */
-    config?: any;
-    /** 创建人ID */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
+    duration?: apiTokenDuration;
+    /** 自定义过期时间(ISO datetime)。与 duration 互斥。 */
+    expiresAt?: string;
+    /** 授权范围（permission code 列表）。为空/不传 = 创建空 scopes（保守默认，无任何资源授权）。 特殊值：'*' = 完全继承用户角色权限（含 super_admin 旁路）；'__super_admin__' = 显式要求保留 super_admin 旁路；其余 code 必须是 PERMISSION_CODES 中已登记的静态 code 或 manifest 注册的扩展 code，未知 code 将被拒绝（400 INVALID_PARAMETER）。 */
+    scopes?: string[];
+  };
+
+  type apiTokenCreateResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: apiTokenCreateData;
+    timestamp: string;
+  };
+
+  type apiTokenDeleteData = {
+    id: number;
+  };
+
+  type apiTokenDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: apiTokenDeleteData;
+    timestamp: string;
+  };
+
+  type apiTokenDuration = Record<string, any>;
+
+  type apiTokenListData = {
+    list: apiTokenRecord[];
+    total: number;
+  };
+
+  type apiTokenListResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: apiTokenListData;
+    timestamp: string;
+  };
+
+  type apiTokenRecord = {
+    id: number;
+    name: string;
+    /** 授权范围 (Section 2 PAT scopes)。空数组表示无任何权限。 */
+    scopes: string[];
+    userId: number;
+    expiresAt: string | null;
+    lastUsedAt: string | null;
+    lastUsedIp: string | null;
     createdAt: string;
-    /** 更新人ID */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
     updatedAt: string;
-    children: appResourceTreeNode[] | null;
   };
 
-  type appResourceTreeResp = {
+  type apiTokenRecordResp = {
     code: number;
     message: string;
     success: boolean;
-    data: appResourceTreeList;
+    data: apiTokenRecord;
     timestamp: string;
   };
 
-  type appResourceType =
-    | "FORM"
-    | "PROCESS_FORM"
-    | "REPORT"
-    | "PORTAL_BROADCAST"
-    | "DASHBOARD"
-    | "CUSTOM_PAGE"
-    | "EXTERNAL_LINK"
-    | "FOLDER";
-
-  type articleDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
+  type appGetDeptUsersParams = {
+    id: number;
   };
 
-  type articleDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: portalArticle;
-    timestamp: string;
+  type appGetDictByTypeParams = {
+    type: string;
   };
 
-  type articleListQuery = {
-    /** 页码 */
+  type appGetMyLoginLogsParams = {
     page?: number;
-    /** 每页数量 */
     pageSize?: number;
-    /** 搜索关键词（标题、摘要、内容） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 分类ID过滤 */
-    categoryId?: number;
-    /** 开始时间 */
-    startTime?: string;
-    /** 结束时间 */
-    endTime?: string;
-    /** 排序字段 */
-    sortBy?: "createdAt" | "updatedAt" | "publishTime";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-  };
-
-  type articleListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: portalArticle[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type assignArticleTemplateParams = {
-    /** 文章ID */
-    id: number;
-  };
-
-  type assignPageTemplateParams = {
-    /** 页面ID */
-    id: number;
-  };
-
-  type assignTemplateReq = {
-    /** 模板ID（null表示取消设置） */
-    templateId: number | null;
   };
 
   type attachmentBatchDeleteReq = {
@@ -432,6 +207,30 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
+  type availableScopeGroup = {
+    /** 分组名称，如 系统管理 */
+    label: string;
+    system: "system" | "shop" | "portal" | "special";
+    options: availableScopeItem[];
+  };
+
+  type availableScopeItem = {
+    /** 权限码，如 system:user:list */
+    value: string;
+    /** 展示用中文标签，如 用户管理-列表 */
+    label: string;
+    /** 可选的描述/提示文本 */
+    description?: string;
+  };
+
+  type availableScopesResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { groups: availableScopeGroup[] };
+    timestamp: string;
+  };
+
   type batchGetSystemOptionByQueryParams = {
     /** 通过数组语法传参：?key[]=a&key[]=b */
     "key[]": systemOptionKey[];
@@ -466,46 +265,6 @@ declare namespace API {
     };
   };
 
-  type categoryDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
-  };
-
-  type categoryDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: portalCategory;
-    timestamp: string;
-  };
-
-  type categoryListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称、描述） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 父级分类ID */
-    parentId?: number;
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type categoryListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: portalCategory[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
   type cleanupTokensReq = {
     /** 定时任务令牌，用于接口鉴权 */
     cron_token: string;
@@ -519,65 +278,6 @@ declare namespace API {
     message?: string;
     timestamp?: string;
     data?: { deletedCount?: number; revokedCount?: number; message?: string };
-  };
-
-  type createAppMenuParams = {
-    appId: number;
-  };
-
-  type createAppResourceParams = {
-    appId: number;
-  };
-
-  type createAppResourceReq = {
-    /** 资源类型 */
-    type:
-      | "FORM"
-      | "PROCESS_FORM"
-      | "REPORT"
-      | "PORTAL_BROADCAST"
-      | "DASHBOARD"
-      | "CUSTOM_PAGE"
-      | "EXTERNAL_LINK"
-      | "FOLDER";
-    /** 父级资源ID（分组） */
-    parentId?: number;
-    /** 资源名称 */
-    name: string;
-    /** 资源描述 */
-    description?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 资源配置 */
-    config?: any;
-  };
-
-  type createArticleReq = {
-    /** 标题 */
-    title: string;
-    /** URL标识 */
-    slug?: string;
-    /** 摘要 */
-    summary?: string;
-    /** 正文内容 */
-    content: string;
-    /** 封面图URL */
-    coverImage?: string;
-    /** 状态（0-草稿，1-已发布） */
-    status?: "0" | "1";
-    /** 是否置顶 */
-    isPinned?: boolean;
-    /** 发布时间 */
-    publishTime?: string;
-    /** 标签 */
-    tags?: string[];
-    attributes?: dynamicAttributes;
-    /** 模板ID */
-    templateId?: number;
-    /** 分类ID列表 */
-    categoryIds?: number[];
   };
 
   type createAttachmentFolderReq = {
@@ -632,89 +332,6 @@ declare namespace API {
     leaderId?: number;
   };
 
-  type createFormFieldParams = {
-    appId: number;
-    formId: number;
-  };
-
-  type createFormFieldReq = {
-    /** 字段Key */
-    key: string;
-    /** 字段名称 */
-    label?: string;
-    /** 字段类型 */
-    type: string;
-    /** 是否必填 */
-    required?: boolean;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 字段配置 */
-    config?: any;
-  };
-
-  type createFormParams = {
-    appId: number;
-  };
-
-  type createFormRecordParams = {
-    appId: number;
-    formId: number;
-  };
-
-  type createFormRecordReq = {
-    /** 表单数据 */
-    data: Record<string, any>;
-    /** 状态 */
-    status?: "0" | "1";
-  };
-
-  type createFormReq = {
-    /** 表单名称 */
-    name: string;
-    /** 表单描述 */
-    description?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 表单配置 */
-    config?: any;
-  };
-
-  type createPageReq = {
-    /** 页面标题 */
-    title: string;
-    /** 页面路径（唯一） */
-    path: string;
-    /** 页面内容 */
-    content: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 发布时间 */
-    publishTime?: string;
-    attributes?: pageDynamicAttributes;
-    /** 模板ID */
-    templateId?: number;
-  };
-
-  type createTemplateReq = {
-    /** 模板名称 */
-    name: string;
-    /** 模板描述 */
-    description?: string;
-    /** 模板类型 */
-    type: "article" | "page";
-    schema?: templateSchemaFields;
-    /** 模板配置（JSON） */
-    config?: any;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 是否系统默认 */
-    isSystemDefault?: boolean;
-  };
-
   type createUserReq = {
     /** 用户名 */
     username?: string;
@@ -739,6 +356,351 @@ declare namespace API {
     deptIds?: number[];
     /** 角色ID列表 */
     roleIds?: number[];
+  };
+
+  type crmAddDispatchLogParams = {
+    id: number;
+  };
+
+  type crmAddDispatchReplyParams = {
+    id: number;
+  };
+
+  type crmAddMemberRemarkParams = {
+    id: number;
+  };
+
+  type crmAssignHospitalAccountParams = {
+    id: number;
+  };
+
+  type crmBindWechatOpenidParams = {
+    id: number;
+    hospital_id: string;
+    openid: string;
+  };
+
+  type crmContentReq = {
+    content: string;
+  };
+
+  type crmCreateHospitalAccountParams = {
+    id: number;
+  };
+
+  type crmCustomerListQuery = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    startTime?: string;
+    endTime?: string;
+  } & {
+    statusId?: number;
+  };
+
+  type crmCustomerReq = {
+    numberId?: string;
+    name: string;
+    gender?: number;
+    birthday?: string;
+    telphone?: string;
+    mobile?: string;
+    qq?: string;
+    wechat?: string;
+    provinceId?: number;
+    cityId?: number;
+    districtId?: number;
+    address?: string;
+    plastic?: string;
+    statusId?: number;
+    remark?: string;
+    ownerUserId?: number;
+  };
+
+  type crmCustomerUpdateReq = {
+    numberId?: string;
+    name?: string;
+    gender?: number;
+    birthday?: string;
+    telphone?: string;
+    mobile?: string;
+    qq?: string;
+    wechat?: string;
+    provinceId?: number;
+    cityId?: number;
+    districtId?: number;
+    address?: string;
+    plastic?: string;
+    statusId?: number;
+    remark?: string;
+    ownerUserId?: number;
+  };
+
+  type crmDeleteHospitalAccountParams = {
+    id: number;
+    userId: number;
+  };
+
+  type crmDeleteHospitalParams = {
+    id: number;
+  };
+
+  type crmDispatchCreateReq = {
+    hospitalIds: number[];
+    reply?: string;
+    statusId?: number;
+  };
+
+  type crmDispatchCustomerParams = {
+    id: number;
+  };
+
+  type crmDispatchReplyReq = {
+    content?: string;
+    receiveQq?: string;
+    receiveWechat?: string;
+    image?: string;
+    statusId?: number;
+  };
+
+  type crmDispatchReq = {
+    hospitalId?: number;
+    statusId?: number;
+    image?: string;
+    receiveQq?: string;
+    receiveWechat?: string;
+    finishedAt?: string;
+  };
+
+  type crmExportDispatchesParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    startTime?: string;
+    endTime?: string;
+  };
+
+  type crmGetCustomerParams = {
+    id: number;
+  };
+
+  type crmGetDispatchParams = {
+    id: number;
+  };
+
+  type crmGetHospitalParams = {
+    id: number;
+  };
+
+  type crmGetMemberParams = {
+    id: number;
+  };
+
+  type crmHospitalAccountAssignReq = {
+    userId: number;
+    role?: string;
+    remark?: string;
+  };
+
+  type crmHospitalAccountCreateReq = {
+    username: string;
+    phone: string;
+    realName?: string;
+    email?: string;
+    password: string;
+    role?: string;
+    remark?: string;
+  };
+
+  type crmHospitalAccountParams = {
+    id: number;
+    userId: number;
+  };
+
+  type crmHospitalAccountUpdateReq = {
+    role?: string;
+    status?: number;
+    remark?: string;
+    username?: string;
+    realName?: string;
+    phone?: string;
+    email?: string;
+    password?: string;
+  };
+
+  type crmHospitalReq = {
+    accountUserId?: number | null;
+    hospitalName: string;
+    provinceId?: number;
+    cityId?: number;
+    districtId?: number;
+    hospitalAddress?: string;
+    hospitalPhone?: string;
+    hospitalSelling?: string;
+    hospitalWebsite?: string;
+    hospitalNature?: number;
+    doctorName?: string;
+    doctorPhone?: string;
+    doctorQq?: string;
+    receptionName?: string;
+    receptionPhone?: string;
+    receptionQq?: string;
+    busStation?: string;
+    busAddress?: string;
+    subwayStation?: string;
+    subwayAddress?: string;
+    taxiFare?: string;
+    vipDiscount?: string;
+    returnPoint?: string;
+    hospitalIntroduction?: string;
+    contractPhotos?: string[];
+    wechatOpenid?: string;
+    status?: number;
+  };
+
+  type crmHospitalSearchQuery = {
+    keyword?: string;
+    provinceId?: number;
+    cityId?: number;
+    districtId?: number;
+  };
+
+  type crmHospitalUpdateReq = {
+    accountUserId?: number | null;
+    hospitalName?: string;
+    provinceId?: number;
+    cityId?: number;
+    districtId?: number;
+    hospitalAddress?: string;
+    hospitalPhone?: string;
+    hospitalSelling?: string;
+    hospitalWebsite?: string;
+    hospitalNature?: number;
+    doctorName?: string;
+    doctorPhone?: string;
+    doctorQq?: string;
+    receptionName?: string;
+    receptionPhone?: string;
+    receptionQq?: string;
+    busStation?: string;
+    busAddress?: string;
+    subwayStation?: string;
+    subwayAddress?: string;
+    taxiFare?: string;
+    vipDiscount?: string;
+    returnPoint?: string;
+    hospitalIntroduction?: string;
+    contractPhotos?: string[];
+    wechatOpenid?: string;
+    status?: number;
+  };
+
+  type crmIdParams = {
+    id: number;
+  };
+
+  type crmListCustomersParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    startTime?: string;
+    endTime?: string;
+    statusId?: number;
+  };
+
+  type crmListDispatchesParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    startTime?: string;
+    endTime?: string;
+    statusId?: number;
+  };
+
+  type crmListHospitalAccountsParams = {
+    id: number;
+  };
+
+  type crmListHospitalsParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    startTime?: string;
+    endTime?: string;
+  };
+
+  type crmListMembersParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    startTime?: string;
+    endTime?: string;
+  };
+
+  type crmListRegionsParams = {
+    parentId?: number;
+  };
+
+  type crmMemberReq = {
+    numberId?: string;
+    name: string;
+    gender?: number;
+    birthday?: string;
+    address?: string;
+    mobile?: string;
+    project?: string;
+    ownerUserId?: number;
+  };
+
+  type crmMemberUpdateReq = {
+    numberId?: string;
+    name?: string;
+    gender?: number;
+    birthday?: string;
+    address?: string;
+    mobile?: string;
+    project?: string;
+    ownerUserId?: number;
+  };
+
+  type crmPageQuery = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    startTime?: string;
+    endTime?: string;
+  };
+
+  type crmRegionListQuery = {
+    parentId?: number;
+  };
+
+  type crmSearchHospitalsParams = {
+    keyword?: string;
+    provinceId?: number;
+    cityId?: number;
+    districtId?: number;
+  };
+
+  type crmUpdateCustomerParams = {
+    id: number;
+  };
+
+  type crmUpdateDispatchParams = {
+    id: number;
+  };
+
+  type crmUpdateHospitalAccountParams = {
+    id: number;
+    userId: number;
+  };
+
+  type crmUpdateHospitalParams = {
+    id: number;
+  };
+
+  type crmUpdateMemberParams = {
+    id: number;
   };
 
   type currentUser = {
@@ -786,30 +748,6 @@ declare namespace API {
     timestamp: string;
   };
 
-  type deleteAppMenuParams = {
-    appId: number;
-    id: number;
-  };
-
-  type deleteAppParams = {
-    id: number;
-  };
-
-  type deleteAppResourceParams = {
-    appId: number;
-    id: number;
-  };
-
-  type deleteArticleParams = {
-    /** 文章ID */
-    id: number;
-  };
-
-  type deleteArticleTemplateParams = {
-    /** 模板ID */
-    id: number;
-  };
-
   type deleteAttachmentFolderParams = {
     /** 分组ID */
     id: number;
@@ -817,11 +755,6 @@ declare namespace API {
 
   type deleteAttachmentParams = {
     /** 素材ID */
-    id: number;
-  };
-
-  type deleteCategoryParams = {
-    /** 分类ID */
     id: number;
   };
 
@@ -838,65 +771,14 @@ declare namespace API {
     id: number;
   };
 
-  type deleteFormFieldParams = {
-    appId: number;
-    formId: number;
-    fieldId: number;
-  };
-
-  type deleteFormParams = {
-    appId: number;
-    formId: number;
-  };
-
-  type deleteFormRecordParams = {
-    appId: number;
-    formId: number;
-    recordId: number;
-  };
-
   type deleteMenuParams = {
     /** 菜单ID */
     id: string;
   };
 
-  type deleteModulesShopV1AdminAttributesIdParams = {
-    id: number;
-  };
-
-  type deleteModulesShopV1AdminAttributesValuesValueIdParams = {
-    valueId: number;
-  };
-
-  type deleteModulesShopV1AdminCategoriesIdParams = {
-    id: number;
-  };
-
-  type deleteModulesShopV1AdminSkusIdParams = {
-    id: number;
-  };
-
-  type deleteOrderParams = {
-    id: number;
-  };
-
-  type deletePageParams = {
-    /** 页面ID */
-    id: number;
-  };
-
-  type deletePageTemplateParams = {
-    /** 模板ID */
-    id: number;
-  };
-
   type deletePositionParams = {
     /** 岗位ID */
     id: string;
-  };
-
-  type deleteProductParams = {
-    id: number;
   };
 
   type deleteRoleParams = {
@@ -907,15 +789,6 @@ declare namespace API {
   type deleteUserParams = {
     /** 用户ID */
     id: number;
-  };
-
-  type deliverOrderParams = {
-    id: number;
-  };
-
-  type deliverOrderReq = {
-    expressCompany: string;
-    expressNo: string;
   };
 
   type deptDeleteResp = {
@@ -1086,251 +959,12 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
-  type dynamicAttributes = true;
-
-  type formDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
+  type disablePluginParams = {
+    name: string;
   };
 
-  type formDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysForm;
-    timestamp: string;
-  };
-
-  type formFieldDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
-  };
-
-  type formFieldDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysFormField;
-    timestamp: string;
-  };
-
-  type formFieldListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（key/label） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序字段 */
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-  };
-
-  type formFieldListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysFormField[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type formListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称、描述） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序字段 */
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-  };
-
-  type formListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysForm[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type formRecordDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
-  };
-
-  type formRecordDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysFormRecord;
-    timestamp: string;
-  };
-
-  type formRecordListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序字段 */
-    sortBy?: "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-  };
-
-  type formRecordListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: sysFormRecord[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type getAppDetailParams = {
-    id: number;
-  };
-
-  type getAppListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    keyword?: string;
-    status?: "0" | "1";
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getAppMenuDetailParams = {
-    appId: number;
-    id: number;
-  };
-
-  type getAppMenuListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称、路径、组件、权限） */
-    keyword?: string;
-    /** 菜单状态 */
-    status?: "0" | "1";
-    /** 菜单类型 */
-    type?: 0 | 1 | 2;
-    /** 父级菜单ID过滤 */
-    parentId?: number;
-    /** 排序字段 */
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-    appId: number;
-  };
-
-  type getAppMenuTreeParams = {
-    appId: number;
-  };
-
-  type getAppResourceDetailParams = {
-    appId: number;
-    id: number;
-  };
-
-  type getAppResourceListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称、描述） */
-    keyword?: string;
-    /** 资源类型 */
-    type?:
-      | "FORM"
-      | "PROCESS_FORM"
-      | "REPORT"
-      | "PORTAL_BROADCAST"
-      | "DASHBOARD"
-      | "CUSTOM_PAGE"
-      | "EXTERNAL_LINK"
-      | "FOLDER";
-    /** 父级资源ID过滤 */
-    parentId?: number;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序字段 */
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-    appId: number;
-  };
-
-  type getAppResourceTreeParams = {
-    appId: number;
-  };
-
-  type getArticleDetailParams = {
-    /** 文章ID */
-    id: number;
-  };
-
-  type getArticleListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（标题、摘要、内容） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 分类ID过滤 */
-    categoryId?: number;
-    /** 开始时间 */
-    startTime?: string;
-    /** 结束时间 */
-    endTime?: string;
-    /** 排序字段 */
-    sortBy?: "createdAt" | "updatedAt" | "publishTime";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getArticleTemplateListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称） */
-    keyword?: string;
-    /** 模板类型 */
-    type?: "article" | "page";
-    /** 状态 */
-    status?: "0" | "1";
-    sortBy?: "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getArticleTemplateSchemaParams = {
-    /** 模板ID */
-    id: number;
+  type enablePluginParams = {
+    name: string;
   };
 
   type getAttachmentDetailParams = {
@@ -1378,26 +1012,6 @@ declare namespace API {
     /** 状态 */
     status?: "0" | "1";
     sortBy?: "createdAt" | "size" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getCategoryDetailParams = {
-    /** 分类ID */
-    id: number;
-  };
-
-  type getCategoryListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称、描述） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 父级分类ID */
-    parentId?: number;
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1455,71 +1069,6 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
-  type getFormDetailParams = {
-    appId: number;
-    formId: number;
-  };
-
-  type getFormFieldDetailParams = {
-    appId: number;
-    formId: number;
-    fieldId: number;
-  };
-
-  type getFormFieldListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（key/label） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序字段 */
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-    appId: number;
-    formId: number;
-  };
-
-  type getFormListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称、描述） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序字段 */
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-    appId: number;
-  };
-
-  type getFormRecordDetailParams = {
-    appId: number;
-    formId: number;
-    recordId: number;
-  };
-
-  type getFormRecordListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序字段 */
-    sortBy?: "createdAt" | "updatedAt";
-    /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-    appId: number;
-    formId: number;
-  };
-
   type getLoginLogDetailParams = {
     /** 日志ID */
     id: number;
@@ -1568,100 +1117,12 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
-  type getModulesShopV1AdminAttributesIdParams = {
-    id: number;
+  type getPluginDetailParams = {
+    name: string;
   };
 
-  type getModulesShopV1AdminAttributesParams = {
-    page?: number;
-    pageSize?: number;
-    keyword?: string;
-    type?: number;
-    status?: string;
-  };
-
-  type getModulesShopV1AdminCategoriesIdParams = {
-    id: number;
-  };
-
-  type getModulesShopV1AdminCategoriesParams = {
-    page?: number;
-    pageSize?: number;
-    keyword?: string;
-    parentId?: number;
-    status?: string;
-    sortBy?: "sortOrder" | "createdAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getModulesShopV1AdminSkusIdParams = {
-    id: number;
-  };
-
-  type getModulesShopV1AdminSkusParams = {
-    page?: number;
-    pageSize?: number;
-    productId?: number;
-    keyword?: string;
-    status?: string;
-  };
-
-  type getOrderDetailParams = {
-    /** 订单ID */
-    id: number;
-  };
-
-  type getOrderListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    keyword?: string;
-    userId?: number;
-    orderStatus?: string;
-    payStatus?: string;
-    startDate?: string;
-    endDate?: string;
-    sortBy?: "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getPageDetailParams = {
-    /** 页面ID */
-    id: number;
-  };
-
-  type getPageListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（标题、路径） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    sortBy?: "createdAt" | "updatedAt" | "publishTime";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getPageTemplateListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称） */
-    keyword?: string;
-    /** 模板类型 */
-    type?: "article" | "page";
-    /** 状态 */
-    status?: "0" | "1";
-    sortBy?: "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getPageTemplateSchemaParams = {
-    /** 模板ID */
-    id: number;
+  type getPluginSyncLogsParams = {
+    name: string;
   };
 
   type getPositionDetailParams = {
@@ -1681,26 +1142,6 @@ declare namespace API {
     /** 排序字段 */
     sortBy?: "sortOrder" | "createdAt" | "updatedAt";
     /** 排序方向 */
-    sortOrder?: "asc" | "desc";
-  };
-
-  type getProductDetailParams = {
-    /** 商品ID */
-    id: number;
-  };
-
-  type getProductListParams = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    keyword?: string;
-    categoryId?: number;
-    status?: string;
-    isHot?: boolean;
-    isNew?: boolean;
-    isRecycle?: boolean;
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt" | "price" | "clickCount";
     sortOrder?: "asc" | "desc";
   };
 
@@ -1751,6 +1192,18 @@ declare namespace API {
     data?: string | null;
   };
 
+  type getSystemRegionParams = {
+    code: number;
+  };
+
+  type getSystemRegionPathParams = {
+    code: number;
+  };
+
+  type getSystemRegionTreeParams = {
+    level?: number;
+  };
+
   type getUserDetailParams = {
     /** 用户ID */
     id: number;
@@ -1775,12 +1228,8 @@ declare namespace API {
     sortOrder?: "asc" | "desc";
   };
 
-  type getV1AdminSystemPluginsNameParams = {
-    name: string;
-  };
-
-  type getV1AdminSystemPluginsNameSyncLogsParams = {
-    name: string;
+  type listSystemRegionsParams = {
+    parentCode?: number;
   };
 
   type loginData = {
@@ -1813,6 +1262,10 @@ declare namespace API {
     success: boolean;
     data: loginData;
     timestamp: string;
+  };
+
+  type meGetApiTokenParams = {
+    id: number;
   };
 
   type menuDeleteResp = {
@@ -1894,10 +1347,11 @@ declare namespace API {
     sort_order: number;
     /** 是否在菜单中隐藏 */
     hideInMenu: boolean;
+    isDefaultAction: boolean;
     /** 是否外链 */
     isExternalLink: boolean;
-    /** 权限标识 */
-    perm?: string;
+    /** 关联功能权限码 */
+    permissionCodes: string[];
     /** 是否缓存页面 */
     keepAlive: boolean;
     /** 创建人Id */
@@ -1912,7 +1366,7 @@ declare namespace API {
     updaterName?: string;
     /** 更新时间 */
     updatedAt: string;
-    children: menuTreeNode[] | null;
+    children?: menuTreeNode[] | null;
   };
 
   type menuTreeResp = {
@@ -1923,48 +1377,8 @@ declare namespace API {
     timestamp: string;
   };
 
-  type moveProductToRecycleParams = {
+  type meRevokeApiTokenParams = {
     id: number;
-  };
-
-  type pageDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
-  };
-
-  type pageDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: portalPage;
-    timestamp: string;
-  };
-
-  type pageDynamicAttributes = true;
-
-  type pageListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（标题、路径） */
-    keyword?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    sortBy?: "createdAt" | "updatedAt" | "publishTime";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type pageListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: portalPage[];
-    timestamp: string;
-    pagination: paginationResponse;
   };
 
   type paginationResponse = {
@@ -1974,140 +1388,25 @@ declare namespace API {
     totalPages: number;
   };
 
-  type portalArticle = {
-    /** 文章ID */
-    id: number;
-    /** 标题 */
-    title: string;
-    /** URL标识 */
-    slug?: string;
-    /** 摘要 */
-    summary?: string;
-    /** 正文内容 */
-    content: string;
-    /** 封面图URL */
-    coverImage?: string;
-    /** 状态（0-草稿，1-已发布） */
-    status: "0" | "1";
-    /** 是否置顶 */
-    isPinned?: boolean;
-    /** 发布时间 */
-    publishTime?: string;
-    /** 标签 */
-    tags?: string[];
-    attributes?: dynamicAttributes;
-    /** 模板ID */
-    templateId?: number;
-    /** 模板名称 */
-    templateName?: string;
-    templateSchema?: templateSchemaFields;
-    /** 所属分类ID列表 */
-    categoryIds?: number[];
-    /** 创建人Id */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人Id */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
-  };
-
-  type portalCategory = {
-    /** 分类ID */
-    id: number;
-    /** 分类名称 */
-    name: string;
-    /** URL标识 */
-    slug?: string;
-    /** 父级分类ID */
-    parentId?: number;
-    /** 父级分类名称 */
-    parentName?: string;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 排序序号 */
-    sort_order: number;
-    /** 分类描述 */
+  type permissionCatalogItem = {
+    /** 权限码 */
+    code: string;
+    /** 面向管理员的功能名称 */
+    label: string;
+    /** 功能说明 */
     description?: string;
-    /** 创建人Id */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人Id */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
+    /** 权限分组 */
+    group: string;
+    /** 来源：core 或插件 ID */
+    source: string;
   };
 
-  type portalPage = {
-    /** 页面ID */
-    id: number;
-    /** 页面标题 */
-    title: string;
-    /** 页面路径（唯一） */
-    path: string;
-    /** 页面内容 */
-    content: string;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 发布时间 */
-    publishTime?: string;
-    attributes?: pageDynamicAttributes;
-    /** 模板ID */
-    templateId?: number;
-    /** 模板名称 */
-    templateName?: string;
-    /** 创建人Id */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人Id */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
-  };
-
-  type portalTemplate = {
-    /** 模板ID */
-    id: number;
-    /** 模板名称 */
-    name: string;
-    /** 模板描述 */
-    description?: string;
-    /** 模板类型 */
-    type: "article" | "page";
-    schema?: templateSchemaFields;
-    /** 模板配置（JSON） */
-    config?: any;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 是否系统默认 */
-    isSystemDefault?: boolean;
-    /** 创建人Id */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人Id */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
+  type permissionCatalogResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: permissionCatalogItem[];
+    timestamp: string;
   };
 
   type positionDeleteResp = {
@@ -2150,43 +1449,6 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
-  type postModulesShopV1AdminAttributesIdValuesParams = {
-    id: number;
-  };
-
-  type postV1AdminSystemPluginsNameDisableParams = {
-    name: string;
-  };
-
-  type postV1AdminSystemPluginsNameEnableParams = {
-    name: string;
-  };
-
-  type postV1AdminSystemPluginsNameSyncParams = {
-    name: string;
-  };
-
-  type publishArticleParams = {
-    /** 文章ID */
-    id: number;
-  };
-
-  type putModulesShopV1AdminAttributesIdParams = {
-    id: number;
-  };
-
-  type putModulesShopV1AdminAttributesValuesValueIdParams = {
-    valueId: number;
-  };
-
-  type putModulesShopV1AdminCategoriesIdParams = {
-    id: number;
-  };
-
-  type putModulesShopV1AdminSkusIdParams = {
-    id: number;
-  };
-
   type qiniuConfigSchema = {
     provider?: "qiniu";
     accessKey?: string;
@@ -2214,10 +1476,6 @@ declare namespace API {
     success: boolean;
     data: loginData;
     timestamp: string;
-  };
-
-  type restoreProductFromRecycleParams = {
-    id: number;
   };
 
   type roleDeleteResp = {
@@ -2260,59 +1518,6 @@ declare namespace API {
     pagination: paginationResponse;
   };
 
-  type saveAppMenuReq = {
-    /** 菜单名称 */
-    name: string;
-    /** 菜单类型 */
-    type?: 0 | 1 | 2;
-    /** 父级菜单ID */
-    parentId?: number;
-    /** 路由路径/URL */
-    path?: string;
-    /** 图标名 */
-    icon?: string;
-    /** 组件路径 */
-    component?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 隐藏菜单 */
-    hideInMenu?: boolean;
-    /** 是否外链 */
-    isExternalLink?: boolean;
-    /** 权限标识 */
-    perm?: string;
-    /** 是否缓存 */
-    keepAlive?: boolean;
-    /** 关联资源ID */
-    resourceId?: number;
-  };
-
-  type saveAppReq = {
-    name: string;
-    icon?: string;
-    iconColor?: string;
-    status?: "0" | "1";
-    sort_order?: number;
-    description?: string;
-  };
-
-  type saveCategoryReq = {
-    /** 分类名称 */
-    name: string;
-    /** URL标识 */
-    slug?: string;
-    /** 父级分类ID */
-    parentId?: number;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 分类描述 */
-    description?: string;
-  };
-
   type saveDictDataReq = {
     typeId: number;
     label: string;
@@ -2351,10 +1556,11 @@ declare namespace API {
     sort_order?: number;
     /** 隐藏菜单 */
     hideInMenu?: boolean;
+    isDefaultAction?: boolean;
     /** 是否外链 */
     isExternalLink?: boolean;
-    /** 权限标识 */
-    perm?: string;
+    /** 关联功能权限码 */
+    permissionCodes?: string[];
     /** 是否缓存 */
     keepAlive?: boolean;
   };
@@ -2381,6 +1587,8 @@ declare namespace API {
     dataScope?: "1" | "2" | "3" | "4" | "5";
     /** 菜单ID列表 */
     menuIds?: number[];
+    /** 后端功能/API 权限码列表 */
+    permissionCodes?: string[];
   };
 
   type setSystemOptionParams = {
@@ -2390,552 +1598,6 @@ declare namespace API {
   type setSystemOptionReq = {
     /** 参数字符串 */
     value: string;
-  };
-
-  type shopAddress = {
-    id: number;
-    userId: number;
-    userName: string | null;
-    receiver: string;
-    phone: string;
-    province: string;
-    city: string;
-    district: string;
-    address: string;
-    fullAddress: string;
-    isDefault: boolean;
-    status: string;
-    statusName: string;
-    creatorId: number;
-    createdAt: string;
-    updaterId: number;
-    updatedAt: string;
-  };
-
-  type shopAddToCartReq = {
-    productId: number;
-    skuId?: number;
-    quantity: number;
-  };
-
-  type shopAttribute = {
-    id: number;
-    name: string;
-    type: number;
-    typeName: string;
-    sortOrder: number;
-    status: string;
-    statusName: string;
-    creatorId: number;
-    creatorName: string | null;
-    createdAt: string;
-    updaterId: number;
-    updaterName: string | null;
-    updatedAt: string;
-    values: {
-      id: number;
-      attributeId: number;
-      value: string;
-      image: string | null;
-      sortOrder: number;
-      status: string;
-      creatorId: number;
-      createdAt: string;
-    }[];
-  };
-
-  type shopAttributeListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    keyword?: string;
-    type?: number;
-    status?: string;
-  };
-
-  type shopAttributeValue = {
-    id: number;
-    attributeId: number;
-    value: string;
-    image: string | null;
-    sortOrder: number;
-    status: string;
-    creatorId: number;
-    createdAt: string;
-  };
-
-  type shopCart = {
-    id: number;
-    userId: number;
-    productId: number;
-    productName: string;
-    productCoverImage: string | null;
-    skuId: number | null;
-    skuName: string | null;
-    skuCoverImage: string | null;
-    price: string;
-    stock: number;
-    quantity: number;
-    subtotal: string;
-    attributes: {
-      attributeId: number;
-      attributeName: string;
-      valueId: number;
-      valueName: string;
-      image: string | null;
-    }[];
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-  };
-
-  type shopCategory = {
-    /** 分类ID */
-    id: number;
-    /** 分类名称 */
-    name: string;
-    /** 父级ID */
-    parentId: number | null;
-    /** 父级名称 */
-    parentName: string | null;
-    /** 封面图 */
-    coverImage: string | null;
-    /** 图标 */
-    icon: string | null;
-    /** 描述 */
-    description: string | null;
-    /** 排序 */
-    sortOrder: number;
-    /** 状态 */
-    status: string;
-    /** 状态名称 */
-    statusName: string;
-    /** 创建人ID */
-    creatorId: number;
-    /** 创建人 */
-    creatorName: string | null;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人ID */
-    updaterId: number;
-    /** 更新人 */
-    updaterName: string | null;
-    /** 更新时间 */
-    updatedAt: string;
-    children?: shopCategory[];
-  };
-
-  type shopCategoryListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 关键词 */
-    keyword?: string;
-    /** 父级ID */
-    parentId?: number;
-    /** 状态 */
-    status?: string;
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type shopCreateAddressReq = {
-    receiver: string;
-    phone: string;
-    province: string;
-    city: string;
-    district: string;
-    address: string;
-    isDefault?: boolean;
-  };
-
-  type shopCreateAttributeReq = {
-    name: string;
-    type?: number;
-    sortOrder?: number;
-    status?: number;
-    values?: { value: string; image?: string; sortOrder?: number }[];
-  };
-
-  type shopCreateAttributeValueReq = {
-    value: string;
-    image?: string;
-    sortOrder?: number;
-  };
-
-  type shopCreateCategoryReq = {
-    /** 分类名称 */
-    name: string;
-    parentId?: number | null;
-    coverImage?: string;
-    icon?: string;
-    description?: string;
-    sortOrder?: number;
-    status?: number;
-  };
-
-  type shopCreateProductReq = {
-    categoryId: number;
-    name: string;
-    subtitle?: string;
-    coverImage?: string;
-    images?: string[];
-    description?: string;
-    price: number;
-    costPrice?: number;
-    stock?: number;
-    unit?: string;
-    weight?: number;
-    status?: number;
-    isHot?: boolean;
-    isNew?: boolean;
-    sortOrder?: number;
-    skus?: {
-      skuCode: string;
-      skuName: string;
-      price: number;
-      costPrice?: number;
-      stock?: number;
-      weight?: number;
-      coverImage?: string;
-      attributes?: { attributeId: number; valueId: number }[];
-    }[];
-  };
-
-  type shopCreateSkuReq = {
-    productId: number;
-    skuCode: string;
-    skuName: string;
-    price: number;
-    costPrice?: number;
-    stock?: number;
-    weight?: number;
-    coverImage?: string;
-    status?: number;
-    attributes?: { attributeId: number; valueId: number }[];
-  };
-
-  type shopIdResp = {
-    /** ID */
-    id: number;
-  };
-
-  type shopOrder = {
-    id: number;
-    orderNo: string;
-    userId: number;
-    userName: string;
-    userPhone: string;
-    addressId: number;
-    address: {
-      receiver: string;
-      phone: string;
-      province: string;
-      city: string;
-      district: string;
-      address: string;
-      isDefault: boolean;
-    };
-    totalAmount: string;
-    freightAmount: string;
-    discountAmount: string;
-    payAmount: string;
-    payStatus: string;
-    payStatusName: string;
-    payTime: string | null;
-    payMethod: string | null;
-    payTransactionId: string | null;
-    orderStatus: string;
-    orderStatusName: string;
-    expressCompany: string | null;
-    expressNo: string | null;
-    deliverTime: string | null;
-    receiveTime: string | null;
-    cancelReason: string | null;
-    remark: string | null;
-    status: string;
-    creatorId: number;
-    creatorName: string | null;
-    createdAt: string;
-    updaterId: number;
-    updaterName: string | null;
-    updatedAt: string;
-    items: {
-      id: number;
-      orderId: number;
-      productId: number;
-      productName: string;
-      skuId: number | null;
-      skuName: string | null;
-      coverImage: string | null;
-      price: string;
-      quantity: number;
-      subtotal: string;
-      attributes: { attributeName: string; valueName: string }[];
-    }[];
-  };
-
-  type shopOrderAddress = {
-    receiver: string;
-    phone: string;
-    province: string;
-    city: string;
-    district: string;
-    address: string;
-    isDefault: boolean;
-  };
-
-  type shopOrderDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: shopOrder;
-    timestamp: string;
-  };
-
-  type shopOrderItem = {
-    id: number;
-    orderId: number;
-    productId: number;
-    productName: string;
-    skuId: number | null;
-    skuName: string | null;
-    coverImage: string | null;
-    price: string;
-    quantity: number;
-    subtotal: string;
-    attributes: { attributeName: string; valueName: string }[];
-  };
-
-  type shopOrderListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    keyword?: string;
-    userId?: number;
-    orderStatus?: string;
-    payStatus?: string;
-    startDate?: string;
-    endDate?: string;
-    sortBy?: "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type shopOrderListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: shopOrder[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type shopProduct = {
-    id: number;
-    categoryId: number;
-    categoryName: string | null;
-    name: string;
-    subtitle: string | null;
-    coverImage: string | null;
-    images?: string[];
-    description: string | null;
-    price: string;
-    costPrice: string | null;
-    stock: number;
-    unit: string;
-    weight: string | null;
-    status: string;
-    statusName: string;
-    isHot: boolean;
-    isNew: boolean;
-    isRecycle: boolean;
-    clickCount: number;
-    sortOrder: number;
-    creatorId: number;
-    creatorName: string | null;
-    createdAt: string;
-    updaterId: number;
-    updaterName: string | null;
-    updatedAt: string;
-    skus: {
-      id: number;
-      productId: number;
-      productName: string | null;
-      skuCode: string;
-      skuName: string;
-      price: string;
-      costPrice: string | null;
-      stock: number;
-      weight: string | null;
-      coverImage: string | null;
-      status: string;
-      statusName: string;
-      attributes: {
-        attributeId: number;
-        attributeName: string;
-        valueId: number;
-        valueName: string;
-        image: string | null;
-      }[];
-      creatorId: number;
-      creatorName: string | null;
-      createdAt: string;
-      updaterId: number;
-      updaterName: string | null;
-      updatedAt: string;
-    }[];
-  };
-
-  type shopProductDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: shopProduct;
-    timestamp: string;
-  };
-
-  type shopProductListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    keyword?: string;
-    categoryId?: number;
-    status?: string;
-    isHot?: boolean;
-    isNew?: boolean;
-    isRecycle?: boolean;
-    sortBy?: "sortOrder" | "createdAt" | "updatedAt" | "price" | "clickCount";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type shopProductListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: shopProduct[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type shopSku = {
-    id: number;
-    productId: number;
-    productName: string | null;
-    skuCode: string;
-    skuName: string;
-    price: string;
-    costPrice: string | null;
-    stock: number;
-    weight: string | null;
-    coverImage: string | null;
-    status: string;
-    statusName: string;
-    attributes: {
-      attributeId: number;
-      attributeName: string;
-      valueId: number;
-      valueName: string;
-      image: string | null;
-    }[];
-    creatorId: number;
-    creatorName: string | null;
-    createdAt: string;
-    updaterId: number;
-    updaterName: string | null;
-    updatedAt: string;
-  };
-
-  type shopSkuAttribute = {
-    attributeId: number;
-    attributeName: string;
-    valueId: number;
-    valueName: string;
-    image: string | null;
-  };
-
-  type shopSkuListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    productId?: number;
-    keyword?: string;
-    status?: string;
-  };
-
-  type shopUpdateAddressReq = {
-    receiver?: string;
-    phone?: string;
-    province?: string;
-    city?: string;
-    district?: string;
-    address?: string;
-    isDefault?: boolean;
-  };
-
-  type shopUpdateCartReq = {
-    quantity: number;
-  };
-
-  type shopUpdateCategoryReq = {
-    /** 分类名称 */
-    name?: string;
-    parentId?: number | null;
-    coverImage?: string;
-    icon?: string;
-    description?: string;
-    sortOrder?: number;
-    status?: number;
-  };
-
-  type shopUpdateOrderStatusReq = {
-    orderStatus?: "1" | "2" | "3" | "4" | "5" | "6";
-    cancelReason?: string;
-  };
-
-  type shopUpdateProductReq = {
-    categoryId?: number;
-    name?: string;
-    subtitle?: string;
-    coverImage?: string;
-    images?: string[];
-    description?: string;
-    price?: number;
-    costPrice?: number;
-    stock?: number;
-    unit?: string;
-    weight?: number;
-    status?: number;
-    isHot?: boolean;
-    isNew?: boolean;
-    sortOrder?: number;
-    skus?: {
-      skuCode: string;
-      skuName: string;
-      price: number;
-      costPrice?: number;
-      stock?: number;
-      weight?: number;
-      coverImage?: string;
-      attributes?: { attributeId: number; valueId: number }[];
-    }[];
-  };
-
-  type shopUpdateSkuReq = {
-    productId?: number;
-    skuCode?: string;
-    skuName?: string;
-    price?: number;
-    costPrice?: number;
-    stock?: number;
-    weight?: number;
-    coverImage?: string;
-    status?: number;
-    attributes?: { attributeId: number; valueId: number }[];
   };
 
   type storageConfigExportPayload = {
@@ -2980,108 +1642,8 @@ declare namespace API {
 
   type storageProvider = "disabled" | "qiniu" | "aliyunOss";
 
-  type sysApp = {
-    id: number;
+  type syncPluginMenuParams = {
     name: string;
-    icon?: string;
-    iconColor?: string;
-    status: "0" | "1";
-    sort_order: number;
-    description?: string;
-    creatorId?: number;
-    creatorName?: string;
-    createdAt: string;
-    updaterId?: number;
-    updaterName?: string;
-    updatedAt: string;
-  };
-
-  type sysAppMenu = {
-    /** 菜单ID */
-    id: number;
-    /** 应用ID */
-    appId: number;
-    /** 菜单名称 */
-    name: string;
-    /** 类型（0:目录,1:菜单,2:按钮） */
-    type: 0 | 1 | 2;
-    /** 路由路径/URL */
-    path?: string;
-    /** 图标名 */
-    icon?: string;
-    /** 前端组件路径 */
-    component?: string;
-    /** 父级菜单ID */
-    parentId?: number;
-    /** 父级菜单名称 */
-    parentName?: string;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 排序序号 */
-    sort_order: number;
-    /** 是否在菜单中隐藏 */
-    hideInMenu: boolean;
-    /** 是否外链 */
-    isExternalLink: boolean;
-    /** 权限标识 */
-    perm?: string;
-    /** 是否缓存页面 */
-    keepAlive: boolean;
-    /** 关联资源ID */
-    resourceId?: number;
-    /** 创建人Id */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人Id */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
-  };
-
-  type sysAppResource = {
-    /** 资源ID */
-    id: number;
-    /** 应用ID */
-    appId: number;
-    /** 父级资源ID（分组） */
-    parentId?: number;
-    /** 资源类型 */
-    type:
-      | "FORM"
-      | "PROCESS_FORM"
-      | "REPORT"
-      | "PORTAL_BROADCAST"
-      | "DASHBOARD"
-      | "CUSTOM_PAGE"
-      | "EXTERNAL_LINK"
-      | "FOLDER";
-    /** 资源名称 */
-    name: string;
-    /** 资源描述 */
-    description?: string;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 排序序号 */
-    sort_order: number;
-    /** 资源配置 */
-    config?: any;
-    /** 创建人ID */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人ID */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
   };
 
   type sysAttachment = {
@@ -3236,91 +1798,6 @@ declare namespace API {
     updatedAt: string;
   };
 
-  type sysForm = {
-    /** 表单ID（资源ID） */
-    id: number;
-    /** 应用ID */
-    appId: number;
-    /** 表单名称 */
-    name: string;
-    /** 表单描述 */
-    description?: string;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 排序序号 */
-    sort_order: number;
-    /** 表单配置 */
-    config?: any;
-    /** 创建人ID */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人ID */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
-  };
-
-  type sysFormField = {
-    /** 字段ID */
-    id: number;
-    /** 资源ID */
-    resourceId: number;
-    /** 字段Key */
-    key: string;
-    /** 字段名称 */
-    label?: string;
-    /** 字段类型 */
-    type: string;
-    /** 是否必填 */
-    required: boolean;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 排序序号 */
-    sort_order: number;
-    /** 字段配置 */
-    config?: any;
-    /** 创建人ID */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人ID */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
-  };
-
-  type sysFormRecord = {
-    /** 数据ID */
-    id: number;
-    /** 资源ID */
-    resourceId: number;
-    /** 表单数据 */
-    data: Record<string, any>;
-    /** 状态（0-禁用，1-启用） */
-    status: "0" | "1";
-    /** 创建人ID */
-    creatorId?: number;
-    /** 创建人名称 */
-    creatorName?: string;
-    /** 创建时间 */
-    createdAt: string;
-    /** 更新人ID */
-    updaterId?: number;
-    /** 更新人名称 */
-    updaterName?: string;
-    /** 更新时间 */
-    updatedAt: string;
-  };
-
   type sysLoginLog = {
     /** 日志ID */
     id: number;
@@ -3403,10 +1880,11 @@ declare namespace API {
     sort_order: number;
     /** 是否在菜单中隐藏 */
     hideInMenu: boolean;
+    isDefaultAction: boolean;
     /** 是否外链 */
     isExternalLink: boolean;
-    /** 权限标识 */
-    perm?: string;
+    /** 关联功能权限码 */
+    permissionCodes: string[];
     /** 是否缓存页面 */
     keepAlive: boolean;
     /** 创建人Id */
@@ -3475,6 +1953,8 @@ declare namespace API {
     updatedAt: string;
     /** 菜单ID列表 */
     menuIds?: number[];
+    /** 后端功能/API 权限码列表 */
+    permissionCodes?: string[];
   };
 
   type systemOptionItem = {
@@ -3534,78 +2014,6 @@ declare namespace API {
     roleIds?: number[];
   };
 
-  type templateDeleteResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: { id: number };
-    timestamp: string;
-  };
-
-  type templateDetailResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: portalTemplate;
-    timestamp: string;
-  };
-
-  type templateField = {
-    /** 字段显示名称 */
-    label: string;
-    /** 组件类型，如 input、radio、select 等 */
-    type: string;
-    /** 字段标识名称（可选） */
-    name?: string;
-    /** 是否必填 */
-    required?: boolean;
-    /** 可选项（适用于 radio/select/checkbox 等） */
-    options?: { label: string; value: any }[];
-    /** 组件属性 */
-    props?: Record<string, any>;
-  };
-
-  type templateFieldOption = {
-    /** 选项文本 */
-    label: string;
-    /** 选项值 */
-    value: any;
-  };
-
-  type templateListQuery = {
-    /** 页码 */
-    page?: number;
-    /** 每页数量 */
-    pageSize?: number;
-    /** 搜索关键词（名称） */
-    keyword?: string;
-    /** 模板类型 */
-    type?: "article" | "page";
-    /** 状态 */
-    status?: "0" | "1";
-    sortBy?: "createdAt" | "updatedAt";
-    sortOrder?: "asc" | "desc";
-  };
-
-  type templateListResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: portalTemplate[];
-    timestamp: string;
-    pagination: paginationResponse;
-  };
-
-  type templateSchemaFields = Record<string, any>;
-
-  type templateSchemaResp = {
-    code: number;
-    message: string;
-    success: boolean;
-    data: templateSchemaFields;
-    timestamp: string;
-  };
-
   type tokenStatsResp = {
     success?: boolean;
     code?: number;
@@ -3617,124 +2025,6 @@ declare namespace API {
       expiredTokens?: number;
       revokedTokens?: number;
     };
-  };
-
-  type updateAppMenuParams = {
-    appId: number;
-    id: number;
-  };
-
-  type updateAppMenuReq = {
-    /** 菜单名称 */
-    name?: string;
-    /** 菜单类型 */
-    type?: 0 | 1 | 2;
-    /** 父级菜单ID */
-    parentId?: number;
-    /** 路由路径/URL */
-    path?: string;
-    /** 图标名 */
-    icon?: string;
-    /** 组件路径 */
-    component?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 隐藏菜单 */
-    hideInMenu?: boolean;
-    /** 是否外链 */
-    isExternalLink?: boolean;
-    /** 权限标识 */
-    perm?: string;
-    /** 是否缓存 */
-    keepAlive?: boolean;
-    /** 关联资源ID */
-    resourceId?: number;
-  };
-
-  type updateAppParams = {
-    id: number;
-  };
-
-  type updateAppReq = {
-    name?: string;
-    icon?: string;
-    iconColor?: string;
-    status?: "0" | "1";
-    sort_order?: number;
-    description?: string;
-  };
-
-  type updateAppResourceParams = {
-    appId: number;
-    id: number;
-  };
-
-  type updateAppResourceReq = {
-    /** 资源类型 */
-    type?:
-      | "FORM"
-      | "PROCESS_FORM"
-      | "REPORT"
-      | "PORTAL_BROADCAST"
-      | "DASHBOARD"
-      | "CUSTOM_PAGE"
-      | "EXTERNAL_LINK"
-      | "FOLDER";
-    /** 父级资源ID（分组） */
-    parentId?: number;
-    /** 资源名称 */
-    name?: string;
-    /** 资源描述 */
-    description?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 资源配置 */
-    config?: any;
-  };
-
-  type updateArticleParams = {
-    /** 文章ID */
-    id: number;
-  };
-
-  type updateArticleReq = {
-    /** 标题 */
-    title?: string;
-    /** URL标识 */
-    slug?: string;
-    /** 摘要 */
-    summary?: string;
-    /** 正文内容 */
-    content?: string;
-    /** 封面图URL */
-    coverImage?: string;
-    /** 状态（0-草稿，1-已发布） */
-    status?: "0" | "1";
-    /** 是否置顶 */
-    isPinned?: boolean;
-    /** 发布时间 */
-    publishTime?: string;
-    /** 标签 */
-    tags?: string[];
-    attributes?: dynamicAttributes;
-    /** 模板ID */
-    templateId?: number;
-    /** 分类ID列表 */
-    categoryIds?: number[];
-  };
-
-  type updateArticleTemplateParams = {
-    /** 模板ID */
-    id: number;
-  };
-
-  type updateArticleTemplateSchemaParams = {
-    /** 模板ID */
-    id: number;
   };
 
   type updateAttachmentFolderParams = {
@@ -3770,26 +2060,6 @@ declare namespace API {
     status?: "0" | "1";
     /** 扩展信息 */
     metadata?: any;
-  };
-
-  type updateCategoryParams = {
-    /** 分类ID */
-    id: number;
-  };
-
-  type updateCategoryReq = {
-    /** 分类名称 */
-    name?: string;
-    /** URL标识 */
-    slug?: string;
-    /** 父级分类ID */
-    parentId?: number;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 分类描述 */
-    description?: string;
   };
 
   type updateDeptParams = {
@@ -3839,60 +2109,6 @@ declare namespace API {
     remark?: string;
   };
 
-  type updateFormFieldParams = {
-    appId: number;
-    formId: number;
-    fieldId: number;
-  };
-
-  type updateFormFieldReq = {
-    /** 字段Key */
-    key?: string;
-    /** 字段名称 */
-    label?: string;
-    /** 字段类型 */
-    type?: string;
-    /** 是否必填 */
-    required?: boolean;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 字段配置 */
-    config?: any;
-  };
-
-  type updateFormParams = {
-    appId: number;
-    formId: number;
-  };
-
-  type updateFormRecordParams = {
-    appId: number;
-    formId: number;
-    recordId: number;
-  };
-
-  type updateFormRecordReq = {
-    /** 表单数据 */
-    data?: Record<string, any>;
-    /** 状态 */
-    status?: "0" | "1";
-  };
-
-  type updateFormReq = {
-    /** 表单名称 */
-    name?: string;
-    /** 表单描述 */
-    description?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 排序序号 */
-    sort_order?: number;
-    /** 表单配置 */
-    config?: any;
-  };
-
   type updateMenuParams = {
     /** 菜单ID */
     id: string;
@@ -3917,47 +2133,13 @@ declare namespace API {
     sort_order?: number;
     /** 隐藏菜单 */
     hideInMenu?: boolean;
+    isDefaultAction?: boolean;
     /** 是否外链 */
     isExternalLink?: boolean;
-    /** 权限标识 */
-    perm?: string;
+    /** 关联功能权限码 */
+    permissionCodes?: string[];
     /** 是否缓存 */
     keepAlive?: boolean;
-  };
-
-  type updateOrderStatusParams = {
-    id: number;
-  };
-
-  type updatePageParams = {
-    /** 页面ID */
-    id: number;
-  };
-
-  type updatePageReq = {
-    /** 页面标题 */
-    title?: string;
-    /** 页面路径（唯一） */
-    path?: string;
-    /** 页面内容 */
-    content?: string;
-    /** 状态 */
-    status?: "0" | "1";
-    /** 发布时间 */
-    publishTime?: string;
-    attributes?: pageDynamicAttributes;
-    /** 模板ID */
-    templateId?: number;
-  };
-
-  type updatePageTemplateParams = {
-    /** 模板ID */
-    id: number;
-  };
-
-  type updatePageTemplateSchemaParams = {
-    /** 模板ID */
-    id: number;
   };
 
   type updatePositionParams = {
@@ -3976,11 +2158,6 @@ declare namespace API {
     description?: string;
   };
 
-  type updateProductParams = {
-    /** 商品ID */
-    id: number;
-  };
-
   type updateRoleParams = {
     /** 角色ID */
     id: number;
@@ -3997,24 +2174,8 @@ declare namespace API {
     dataScope?: "1" | "2" | "3" | "4" | "5";
     /** 菜单ID列表 */
     menuIds?: number[];
-  };
-
-  type updateTemplateReq = {
-    /** 模板名称 */
-    name?: string;
-    /** 模板描述 */
-    description?: string;
-    /** 模板类型 */
-    type?: "article" | "page";
-    schema?: templateSchemaFields;
-    /** 模板配置（JSON） */
-    config?: any;
-    /** 状态 */
-    status?: "0" | "1";
-  };
-
-  type updateTemplateSchemaReq = {
-    schema: templateSchemaFields;
+    /** 后端功能/API 权限码列表 */
+    permissionCodes?: string[];
   };
 
   type updateUserParams = {

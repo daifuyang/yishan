@@ -1,6 +1,13 @@
 import { sql } from 'drizzle-orm'
 import { drizzleDb, pool } from './client.js'
 
+type TransactionClient = Parameters<typeof drizzleDb.transaction>[0] extends (
+  tx: infer Client,
+  ...args: never[]
+) => unknown
+  ? Client
+  : never
+
 /**
  * Lifecycle and health-check wrapper around the Drizzle client.
  *
@@ -49,8 +56,8 @@ class DbManager {
    * transaction-bound Drizzle client (a transactional view over the same
    * schema). Both the query builder and the relational query API work.
    */
-  async transaction<T>(fn: Parameters<typeof drizzleDb.transaction>[0]): Promise<T> {
-    return drizzleDb.transaction(fn) as Promise<T>
+  async transaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
+    return drizzleDb.transaction(fn)
   }
 }
 

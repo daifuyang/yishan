@@ -83,7 +83,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post(
     "/",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_ROLE_CREATE)] as any,
+      preHandler: [
+        fastify.requirePermission(PERMISSION_CODES.SYSTEM_ROLE_CREATE),
+        fastify.requirePermission(PERMISSION_CODES.SYSTEM_ROLE_GRANT),
+      ] as any,
       schema: {
         summary: "创建角色",
         description: "创建一个新的系统角色",
@@ -100,7 +103,7 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       request: FastifyRequest<{ Body: SaveRoleReq }>,
       reply: FastifyReply
     ) => {
-      const role = await RoleService.createRole(request.body);
+      const role = await RoleService.createRole(request.body, request.currentUser.id);
       {
         const message = getRoleMessage(RoleMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
         return ResponseUtil.success(reply, role, message);
@@ -112,7 +115,10 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.put(
     "/:id",
     {
-      preHandler: [fastify.requirePermission(PERMISSION_CODES.SYSTEM_ROLE_UPDATE)] as any,
+      preHandler: [
+        fastify.requirePermission(PERMISSION_CODES.SYSTEM_ROLE_UPDATE),
+        fastify.requirePermission(PERMISSION_CODES.SYSTEM_ROLE_GRANT),
+      ] as any,
       schema: {
         summary: "更新角色",
         description: "根据角色ID更新角色信息",
@@ -133,7 +139,7 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       reply: FastifyReply
     ) => {
       const roleId = request.params.id;
-      const role = await RoleService.updateRole(roleId, request.body);
+      const role = await RoleService.updateRole(roleId, request.body, request.currentUser.id);
       {
         const message = getRoleMessage(RoleMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
         return ResponseUtil.success(reply, role, message);

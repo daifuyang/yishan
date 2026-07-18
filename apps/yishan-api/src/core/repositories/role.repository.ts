@@ -17,7 +17,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
-import { sysRole, sysRoleMenu, sysUser } from "@/db/schema";
+import { sysRole, sysRoleMenu, sysRolePermission, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
 
 // ============================================================================
@@ -34,12 +34,14 @@ export interface CreateRoleInput extends RolePersistedFields {
   creatorId: number;
   updaterId: number;
   menuIds?: number[];
+  permissionCodes?: string[];
 }
 
 /** `undefined` 表示不更新。 */
 export interface UpdateRoleInput extends Partial<RolePersistedFields> {
   updaterId: number;
   menuIds?: number[];
+  permissionCodes?: string[];
 }
 
 // ============================================================================
@@ -56,6 +58,7 @@ interface RoleListRow extends PublicRoleRow {
 
 interface RoleDetailRow extends RoleListRow {
   menuIds: number[];
+  permissionCodes: string[];
 }
 
 // ============================================================================
@@ -110,14 +113,21 @@ async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
 
   if (!row) return null;
 
-  const roleMenus = await db
-    .select({ menuId: sysRoleMenu.menuId })
-    .from(sysRoleMenu)
-    .where(and(eq(sysRoleMenu.roleId, id), isNull(sysRoleMenu.deletedAt)));
+  const [roleMenus, rolePermissions] = await Promise.all([
+    db
+      .select({ menuId: sysRoleMenu.menuId })
+      .from(sysRoleMenu)
+      .where(and(eq(sysRoleMenu.roleId, id), isNull(sysRoleMenu.deletedAt))),
+    db
+      .select({ permissionCode: sysRolePermission.permissionCode })
+      .from(sysRolePermission)
+      .where(and(eq(sysRolePermission.roleId, id), isNull(sysRolePermission.deletedAt))),
+  ]);
 
   return {
     ...row,
     menuIds: roleMenus.map((rm) => rm.menuId),
+    permissionCodes: rolePermissions.map((rp) => rp.permissionCode),
   };
 }
 
@@ -178,8 +188,9 @@ export class RoleRepository {
 
   /** 创建角色 */
   static async create(input: CreateRoleInput, db: AppQueryDb = drizzleDb): Promise<RoleDetailRow> {
-    const { creatorId, updaterId, menuIds, ...fields } = input;
+    const { creatorId, updaterId, menuIds, permissionCodes, ...fields } = input;
     const uniqueMenuIds = menuIds ? [...new Set(menuIds)] : [];
+    const uniquePermissionCodes = permissionCodes ? [...new Set(permissionCodes)] : [];
     const now = dateUtils.now();
 
     const [inserted] = await db
@@ -197,6 +208,11 @@ export class RoleRepository {
     if (uniqueMenuIds.length > 0) {
       await db.insert(sysRoleMenu).values(uniqueMenuIds.map((menuId) => ({ roleId: inserted.id, menuId })));
     }
+    if (uniquePermissionCodes.length > 0) {
+      await db.insert(sysRolePermission).values(
+        uniquePermissionCodes.map((permissionCode) => ({ roleId: inserted.id, permissionCode, creatorId })),
+      );
+    }
 
     const role = await fetchRoleDetail(inserted.id, db);
     if (!role) throw new Error("Failed to read back created role");
@@ -205,7 +221,7 @@ export class RoleRepository {
 
   /** 更新角色 */
   static async update(id: number, input: UpdateRoleInput, db: AppQueryDb = drizzleDb): Promise<RoleDetailRow> {
-    const { updaterId, menuIds, ...fields } = input;
+    const { updaterId, menuIds, permissionCodes, ...fields } = input;
 
     await db
       .update(sysRole)
@@ -226,6 +242,27 @@ export class RoleRepository {
       }
       if (toDelete.length) {
         await db.delete(sysRoleMenu).where(and(eq(sysRoleMenu.roleId, id), inArray(sysRoleMenu.menuId, toDelete)));
+      }
+    }
+
+    if (permissionCodes !== undefined) {
+      const uniquePermissionCodes = [...new Set(permissionCodes)];
+      const existingLinks = await db
+        .select({ permissionCode: sysRolePermission.permissionCode })
+        .from(sysRolePermission)
+        .where(and(eq(sysRolePermission.roleId, id), isNull(sysRolePermission.deletedAt)));
+      const existingCodes = existingLinks.map((link) => link.permissionCode);
+      const toCreate = uniquePermissionCodes.filter((code) => !existingCodes.includes(code));
+      const toDelete = existingCodes.filter((code) => !uniquePermissionCodes.includes(code));
+      if (toCreate.length > 0) {
+        await db.insert(sysRolePermission).values(
+          toCreate.map((permissionCode) => ({ roleId: id, permissionCode, creatorId: updaterId })),
+        );
+      }
+      if (toDelete.length > 0) {
+        await db.delete(sysRolePermission).where(
+          and(eq(sysRolePermission.roleId, id), inArray(sysRolePermission.permissionCode, toDelete)),
+        );
       }
     }
 

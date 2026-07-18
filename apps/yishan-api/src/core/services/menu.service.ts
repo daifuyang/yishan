@@ -9,6 +9,7 @@ import { BusinessError } from "../../exceptions/business-error.js";
 import { MenuErrorCode } from "../../constants/business-codes/menu.js";
 import { PermissionService } from "./permission.service.js";
 import { ROLE_CODES } from "../../constants/permission-codes.js";
+import { getGlobalCatalog } from './permission-catalog.service.js';
 
 export class MenuService {
   /** 获取菜单列表 */
@@ -25,7 +26,7 @@ export class MenuService {
     });
 
     return {
-      list: list.map(MenuMapper.toListResp),
+      list: await this.withPermissionCodes(list),
       total,
       page: query.page || 1,
       pageSize: query.pageSize || 10,
@@ -35,7 +36,7 @@ export class MenuService {
   /** 获取菜单树 */
   static async getMenuTree(rootId?: number | null): Promise<MenuTreeNode[]> {
     const menus = await MenuRepository.listAllForTree();
-    const mappedMenus = menus.map(MenuMapper.toListResp);
+    const mappedMenus = await this.withPermissionCodes(menus);
     return buildMenuTree(mappedMenus, rootId);
   }
 
@@ -67,7 +68,7 @@ export class MenuService {
 
     // 过滤并构建树
     const filteredMenus = menus.filter(menu => allow.has(menu.id) && menu.status === 1);
-    const mappedMenus = filteredMenus.map(MenuMapper.toListResp);
+    const mappedMenus = await this.withPermissionCodes(filteredMenus);
     return buildMenuTree(mappedMenus);
   }
 
@@ -112,7 +113,7 @@ export class MenuService {
   /** 获取菜单详情 */
   static async getMenuById(id: number): Promise<SysMenuResp | null> {
     const menu = await MenuRepository.findById(id);
-    return menu ? MenuMapper.toDetailResp(menu) : null;
+    return menu ? (await this.withPermissionCodes([menu]))[0] : null;
   }
 
   /** 创建菜单（校验名称/路径唯一 & 父级合法） */
@@ -130,17 +131,19 @@ export class MenuService {
       status: req.status ? parseInt(req.status, 10) : 1,
       sortOrder: req.sort_order ?? 0,
       hideInMenu: req.hideInMenu ?? false,
+      isDefaultAction: req.isDefaultAction ?? false,
       isExternalLink: req.isExternalLink ?? false,
-      perm: req.perm,
       keepAlive: req.keepAlive ?? false,
       creatorId: operatorId,
       updaterId: operatorId,
     };
 
+    await this.assertPermissionCodes(req.permissionCodes, input.type ?? 1);
     const menu = await MenuRepository.create(input);
-    // Section 1 — RBAC：新建菜单（带 perm）会改变任意绑定了该菜单的角色的权限集合。
+    await MenuRepository.replacePermissionCodes(menu.id, req.permissionCodes || []);
+    // 菜单绑定仅决定角色编辑页中的功能归属，不直接授予后端权限。
     MenuService.invalidatePermissionCache();
-    return MenuMapper.toDetailResp(menu);
+    return (await this.withPermissionCodes([menu]))[0];
   }
 
   /** 更新菜单（校验名称/路径唯一 & 父级合法） */
@@ -170,14 +173,16 @@ export class MenuService {
     if (req.status !== undefined) input.status = parseInt(req.status, 10);
     if (req.sort_order !== undefined) input.sortOrder = req.sort_order;
     if (req.hideInMenu !== undefined) input.hideInMenu = req.hideInMenu;
+    if (req.isDefaultAction !== undefined) input.isDefaultAction = req.isDefaultAction;
     if (req.isExternalLink !== undefined) input.isExternalLink = req.isExternalLink;
-    if (req.perm !== undefined) input.perm = req.perm;
     if (req.keepAlive !== undefined) input.keepAlive = req.keepAlive;
 
+    await this.assertPermissionCodes(req.permissionCodes, req.type ?? existing.type);
     const menu = await MenuRepository.update(id, input);
-    // perm / status 变更会影响通过该菜单拿到的权限。
+    if (req.permissionCodes !== undefined) await MenuRepository.replacePermissionCodes(id, req.permissionCodes);
+    // 功能归属更新不改变角色已持有的后端权限。
     MenuService.invalidatePermissionCache();
-    return MenuMapper.toDetailResp(menu);
+    return (await this.withPermissionCodes([menu]))[0];
   }
 
   /** 删除菜单（存在子菜单或已绑定角色则禁止） */
@@ -234,6 +239,24 @@ export class MenuService {
     if (!parent) {
       throw new BusinessError(MenuErrorCode.MENU_INVALID_PARENT, "父级菜单不存在");
     }
+  }
+
+  private static async assertPermissionCodes(codes: string[] | undefined, menuType: number): Promise<void> {
+    if (codes === undefined) return;
+    if (menuType === 0 && codes.length > 0) {
+      throw new BusinessError(MenuErrorCode.MENU_INVALID_PARENT, '目录不能关联功能');
+    }
+    const activeCodes = await getGlobalCatalog().getActiveCodes();
+    const unknownCode = codes.find((code) => !activeCodes.has(code));
+    if (unknownCode) throw new BusinessError(MenuErrorCode.MENU_INVALID_PARENT, `关联功能不存在或未启用: ${unknownCode}`);
+  }
+
+  private static async withPermissionCodes<T extends { id: number }>(menus: T[]): Promise<Array<T & SysMenuResp>> {
+    const codesByMenuId = await MenuRepository.findPermissionCodesByMenuIds(menus.map((menu) => menu.id));
+    return menus.map((menu) => ({
+      ...MenuMapper.toListResp(menu as any),
+      permissionCodes: codesByMenuId.get(menu.id) || [],
+    })) as Array<T & SysMenuResp>;
   }
 
   /**

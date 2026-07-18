@@ -30,10 +30,6 @@ export const CrmHospitalSearchQuery = Type.Object({
   districtId: Type.Optional(Type.Integer({ minimum: 1 })),
 }, { $id: 'crmHospitalSearchQuery' })
 
-export const CrmRegionListQuery = Type.Object({
-  parentId: Type.Optional(Type.Integer({ default: 0, minimum: 0 })),
-}, { $id: 'crmRegionListQuery' })
-
 export const CrmHospitalReq = Type.Object({
   accountUserId: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
   hospitalName: Type.String({ minLength: 1, maxLength: 100 }),
@@ -72,7 +68,6 @@ export const CrmHospitalAccountUpdateReq = Type.Object({ role: Type.Optional(Typ
 export type CrmPageQueryDto = Static<typeof CrmPageQuery>
 export type CrmCustomerListQueryDto = Static<typeof CrmCustomerListQuery>
 export type CrmHospitalSearchQueryDto = Static<typeof CrmHospitalSearchQuery>
-export type CrmRegionListQueryDto = Static<typeof CrmRegionListQuery>
 export type CrmHospitalDto = Static<typeof CrmHospitalReq>
 export type CrmCustomerDto = Static<typeof CrmCustomerReq>
 export type CrmMemberDto = Static<typeof CrmMemberReq>
@@ -85,5 +80,5 @@ export type CrmHospitalAccountAssignDto = Static<typeof CrmHospitalAccountAssign
 export type CrmHospitalAccountUpdateDto = Static<typeof CrmHospitalAccountUpdateReq>
 
 export default function registerCrmSchemas(fastify: FastifyInstance) {
-  [CrmIdParams, CrmHospitalAccountParams, CrmPageQuery, CrmCustomerListQuery, CrmHospitalSearchQuery, CrmRegionListQuery, CrmHospitalReq, CrmHospitalUpdateReq, CrmCustomerReq, CrmCustomerUpdateReq, CrmMemberReq, CrmMemberUpdateReq, CrmDispatchReq, CrmDispatchCreateReq, CrmDispatchReplyReq, CrmContentReq, CrmHospitalAccountCreateReq, CrmHospitalAccountAssignReq, CrmHospitalAccountUpdateReq].forEach((schema) => fastify.addSchema(schema))
+  [CrmIdParams, CrmHospitalAccountParams, CrmPageQuery, CrmCustomerListQuery, CrmHospitalSearchQuery, CrmHospitalReq, CrmHospitalUpdateReq, CrmCustomerReq, CrmCustomerUpdateReq, CrmMemberReq, CrmMemberUpdateReq, CrmDispatchReq, CrmDispatchCreateReq, CrmDispatchReplyReq, CrmContentReq, CrmHospitalAccountCreateReq, CrmHospitalAccountAssignReq, CrmHospitalAccountUpdateReq].forEach((schema) => fastify.addSchema(schema))
 }

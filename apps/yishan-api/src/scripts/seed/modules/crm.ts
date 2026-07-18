@@ -1,16 +1,11 @@
-import { eq } from 'drizzle-orm';
-import { iximeiCrmHospital, iximeiCrmCustomer, iximeiCrmCustomerStatus, iximeiCrmDispatch, iximeiCrmDispatchStatus, iximeiCrmMemberCustomer } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { iximeiCrmHospital, iximeiCrmCustomer, iximeiCrmDispatch, iximeiCrmDispatchStatus, iximeiCrmMemberCustomer } from '@/db/schema';
 import type { SeedDb } from '../context';
 
 export async function seedCrm(db: SeedDb, adminId: number) {
   const now = new Date();
 
-  await db.insert(iximeiCrmCustomerStatus).values([
-    { id: 1, name: '未派单', sortOrder: 1, status: 1, createdAt: now, updatedAt: now },
-    { id: 2, name: '已派单', sortOrder: 2, status: 1, createdAt: now, updatedAt: now },
-    { id: 3, name: '重单', sortOrder: 3, status: 1, createdAt: now, updatedAt: now },
-    { id: 4, name: '已成交', sortOrder: 4, status: 1, createdAt: now, updatedAt: now },
-  ]).onDuplicateKeyUpdate({ set: { id: 1 } });
+  // 客户状态由 CRM 迁移 0002_customer_statuses.sql 统一维护，seed 不重复写入。
 
   await db.insert(iximeiCrmDispatchStatus).values([
     { id: 1, name: '待回复', sortOrder: 1, status: 1, createdAt: now, updatedAt: now },
@@ -19,7 +14,7 @@ export async function seedCrm(db: SeedDb, adminId: number) {
     { id: 4, name: '已成交', sortOrder: 4, status: 1, createdAt: now, updatedAt: now },
     { id: 5, name: '未成交', sortOrder: 5, status: 1, createdAt: now, updatedAt: now },
     { id: 6, name: '重单', sortOrder: 6, status: 1, createdAt: now, updatedAt: now },
-  ]).onDuplicateKeyUpdate({ set: { id: 1 } });
+  ]).onDuplicateKeyUpdate({ set: { name: sql`${iximeiCrmDispatchStatus.name}` } });
 
   await db.insert(iximeiCrmHospital).values({
     hospitalName: '上海华美医疗美容医院',

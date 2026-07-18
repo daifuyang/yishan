@@ -130,7 +130,6 @@ export const sysAppMenu = mysqlTable(
   sortOrder: int('sort_order').notNull().default(0),
   hideInMenu: boolean('hide_in_menu').notNull().default(false),
   isExternalLink: boolean('is_external_link').notNull().default(false),
-  perm: varchar('perm', { length: 100 }),
   keepAlive: boolean('keep_alive').notNull().default(false),
   resourceId: int('resource_id'),
   creatorId: int('creator_id'),
@@ -417,8 +416,8 @@ export const sysMenu = mysqlTable(
   status: tinyint('status').notNull().default(1),
   sortOrder: int('sort_order').notNull().default(0),
   hideInMenu: boolean('hide_in_menu').notNull().default(false),
+  isDefaultAction: boolean('is_default_action').notNull().default(false),
   isExternalLink: boolean('is_external_link').notNull().default(false),
-  perm: varchar('perm', { length: 100 }),
   keepAlive: boolean('keep_alive').notNull().default(false),
   source: varchar('source', { length: 20 }).notNull().default('custom'),
   pluginName: varchar('plugin_name', { length: 100 }),
@@ -446,6 +445,21 @@ export const sysMenu = mysqlTable(
   })
 )
 
+export const sysMenuPermission = mysqlTable(
+  'sys_menu_permission',
+  {
+  id: int('id').primaryKey().autoincrement().notNull(),
+  menuId: int('menu_id').notNull(),
+  permissionCode: varchar('permission_code', { length: 128 }).notNull(),
+  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  },
+  (t) => ({
+    idxMenuPermissionMenuId: index('idx_menu_permission_menu_id').on(t.menuId),
+    idxMenuPermissionCode: index('idx_menu_permission_code').on(t.permissionCode),
+    uniqMenuPermission: uniqueIndex('uniq_menu_permission').on(t.menuId, t.permissionCode),
+  })
+)
+
 export const sysRoleMenu = mysqlTable(
   'sys_role_menu',
   {
@@ -460,6 +474,24 @@ export const sysRoleMenu = mysqlTable(
     idxRoleMenuRoleId: index('idx_role_menu_role_id').on(t.roleId),
     idxRoleMenuMenuId: index('idx_role_menu_menu_id').on(t.menuId),
     uniqRoleMenu: uniqueIndex('uniq_role_menu').on(t.roleId, t.menuId),
+  })
+)
+
+export const sysRolePermission = mysqlTable(
+  'sys_role_permission',
+  {
+  id: int('id').primaryKey().autoincrement().notNull(),
+  roleId: int('role_id').notNull(),
+  permissionCode: varchar('permission_code', { length: 128 }).notNull(),
+  creatorId: int('creator_id'),
+  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  deletedAt: datetime('deleted_at', { mode: 'date' }),
+  },
+  (t) => ({
+    idxRolePermissionRoleId: index('idx_role_permission_role_id').on(t.roleId),
+    idxRolePermissionCode: index('idx_role_permission_code').on(t.permissionCode),
+    uniqRolePermission: uniqueIndex('uniq_role_permission').on(t.roleId, t.permissionCode),
   })
 )
 

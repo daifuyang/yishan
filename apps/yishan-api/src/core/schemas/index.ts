@@ -11,6 +11,7 @@ import registerDict from "./dict.js";
 import registerAttachment from "./attachment.js";
 import registerLoginLog from "./login-log.js";
 import { registerApiToken } from "./api-token.js";
+import registerPermission from './permission.js';
 
 // Schema插件，定义共享的Schema引用
 export default fp(async (fastify, opts) => {
@@ -26,4 +27,5 @@ export default fp(async (fastify, opts) => {
   registerAttachment(fastify);
   registerLoginLog(fastify);
   registerApiToken(fastify);
+  registerPermission(fastify);
 });

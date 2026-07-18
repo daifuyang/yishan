@@ -7,7 +7,7 @@
 
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
-import { sysMenu, sysRole, sysRoleMenu, sysUserRole } from "@/db/schema";
+import { sysRole, sysRolePermission, sysUserRole } from "@/db/schema";
 
 export interface PermissionQueryResult {
   perms: Set<string>;
@@ -16,13 +16,13 @@ export interface PermissionQueryResult {
 
 export class PermissionRepository {
   /**
-   * 加载一组角色 ID 对应的权限点（来自角色 ↔ 菜单 ↔ perm）。
+ * 加载一组角色 ID 对应的权限点（来自角色 ↔ 独立权限关联）。
    * 返回 Set<string> 类型的权限集合 + 角色 code 集合。
    *
    * Section 1 — RBAC 完整性修复：
-   *   - 仅查询 status = "1"（启用）的角色与菜单
+   *   - 仅查询 status = "1"（启用）的角色
    *   - 软删除（deletedAt IS NOT NULL）的记录一律排除
-   *   - 否则禁用/逻辑删除的角色或菜单仍会授予权限，导致与 UI 状态不一致
+   *   - 否则禁用/逻辑删除的角色仍会授予权限，导致与配置状态不一致
    */
   static async loadPermissionsByRoleIds(
     roleIds: number[] | number | undefined | null,
@@ -42,7 +42,7 @@ export class PermissionRepository {
       return { perms: new Set<string>(), roleCodes: new Set<string>() };
     }
     const sortedIds = [...new Set(validRoleIds)];
-    const [roleRows, menuLinks] = await Promise.all([
+    const [roleRows, permissionLinks] = await Promise.all([
       db
         .select({ id: sysRole.id, code: sysRole.code })
         .from(sysRole)
@@ -54,24 +54,24 @@ export class PermissionRepository {
           ),
         ),
       db
-        .select({ roleId: sysRoleMenu.roleId, perm: sysMenu.perm })
-        .from(sysRoleMenu)
+        .select({ roleId: sysRolePermission.roleId, perm: sysRolePermission.permissionCode })
+        .from(sysRolePermission)
         .innerJoin(
-          sysMenu,
+          sysRole,
           and(
-            eq(sysMenu.id, sysRoleMenu.menuId),
-            isNull(sysMenu.deletedAt),
-            eq(sysMenu.status, 1),
+            eq(sysRole.id, sysRolePermission.roleId),
+            isNull(sysRole.deletedAt),
+            eq(sysRole.status, 1),
           ),
         )
-        .where(and(inArray(sysRoleMenu.roleId, sortedIds), isNull(sysRoleMenu.deletedAt))),
+        .where(and(inArray(sysRolePermission.roleId, sortedIds), isNull(sysRolePermission.deletedAt))),
     ]);
     const perms = new Set<string>();
     const roleCodes = new Set<string>();
     for (const row of roleRows) {
       if (row.code) roleCodes.add(row.code);
     }
-    for (const link of menuLinks) {
+    for (const link of permissionLinks) {
       if (link.perm) perms.add(link.perm);
     }
     return { perms, roleCodes };

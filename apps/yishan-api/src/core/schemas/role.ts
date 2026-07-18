@@ -35,6 +35,7 @@ const SysRoleSchema = Type.Object(
     updaterName: Type.Optional(Type.String({ description: "更新人名称", example: "admin" })),
     updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
     menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),
+    permissionCodes: Type.Optional(Type.Array(Type.String(), { description: "后端功能/API 权限码列表" })),
   },
   { $id: "sysRole" }
 );
@@ -66,6 +67,7 @@ const SaveRoleReqSchema = Type.Object(
       })
     ),
     menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),
+    permissionCodes: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { description: "后端功能/API 权限码列表" })),
   },
   { $id: "saveRoleReq" }
 );

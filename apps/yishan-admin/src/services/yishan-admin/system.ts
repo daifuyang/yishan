@@ -2,6 +2,27 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
+/** 服务健康检查 返回服务的健康状态、版本号、当前时间和数据库连通性（Section 7）。 GET /api/health */
+export async function healthCheck(options?: { [key: string]: any }) {
+  return request<{
+    success?: boolean;
+    code?: number;
+    message?: string;
+    data?: {
+      status?: string;
+      version?: string;
+      commitSha?: string;
+      uptimeSeconds?: number;
+      timestamp?: string;
+      db?: { ok?: boolean; latencyMs?: number; error?: string };
+    };
+    timestamp?: string;
+  }>("/api/health", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
 /** 获取系统参数 根据键获取系统参数值 GET /api/v1/admin/system/options/${param0} */
 export async function getSystemOption(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
@@ -78,9 +99,7 @@ export async function batchGetSystemOptionByQuery(
 }
 
 /** 获取插件列表 GET /api/v1/admin/system/plugins/ */
-export async function getV1AdminSystemPlugins(options?: {
-  [key: string]: any;
-}) {
+export async function listPlugins(options?: { [key: string]: any }) {
   return request<any>("/api/v1/admin/system/plugins/", {
     method: "GET",
     ...(options || {}),
@@ -88,9 +107,9 @@ export async function getV1AdminSystemPlugins(options?: {
 }
 
 /** 获取插件详情 GET /api/v1/admin/system/plugins/${param0} */
-export async function getV1AdminSystemPluginsName(
+export async function getPluginDetail(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getV1AdminSystemPluginsNameParams,
+  params: API.getPluginDetailParams,
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
@@ -102,9 +121,9 @@ export async function getV1AdminSystemPluginsName(
 }
 
 /** 停用插件 POST /api/v1/admin/system/plugins/${param0}/disable */
-export async function postV1AdminSystemPluginsNameDisable(
+export async function disablePlugin(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.postV1AdminSystemPluginsNameDisableParams,
+  params: API.disablePluginParams,
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
@@ -116,9 +135,9 @@ export async function postV1AdminSystemPluginsNameDisable(
 }
 
 /** 启用插件（可选 syncStrategy: strict | safe） POST /api/v1/admin/system/plugins/${param0}/enable */
-export async function postV1AdminSystemPluginsNameEnable(
+export async function enablePlugin(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.postV1AdminSystemPluginsNameEnableParams,
+  params: API.enablePluginParams,
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
@@ -130,9 +149,9 @@ export async function postV1AdminSystemPluginsNameEnable(
 }
 
 /** 手动同步插件菜单（插件需已启用） POST /api/v1/admin/system/plugins/${param0}/sync */
-export async function postV1AdminSystemPluginsNameSync(
+export async function syncPluginMenu(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.postV1AdminSystemPluginsNameSyncParams,
+  params: API.syncPluginMenuParams,
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
@@ -144,9 +163,9 @@ export async function postV1AdminSystemPluginsNameSync(
 }
 
 /** 获取插件菜单同步历史 GET /api/v1/admin/system/plugins/${param0}/sync-logs */
-export async function getV1AdminSystemPluginsNameSyncLogs(
+export async function getPluginSyncLogs(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getV1AdminSystemPluginsNameSyncLogsParams,
+  params: API.getPluginSyncLogsParams,
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
@@ -158,9 +177,7 @@ export async function getV1AdminSystemPluginsNameSyncLogs(
 }
 
 /** 获取插件 Hook 执行报告 GET /api/v1/admin/system/plugins/hooks/reports */
-export async function getV1AdminSystemPluginsHooksReports(options?: {
-  [key: string]: any;
-}) {
+export async function getPluginHookReports(options?: { [key: string]: any }) {
   return request<any>("/api/v1/admin/system/plugins/hooks/reports", {
     method: "GET",
     ...(options || {}),

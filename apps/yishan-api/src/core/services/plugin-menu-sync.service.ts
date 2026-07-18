@@ -77,7 +77,7 @@ export class PluginMenuSyncService {
       menuItemName: menuItem.name,
       menuItemPath: menuItem.path,
       menuItemIcon: menuItem.icon ?? null,
-      menuItemPerm: menuItem.perm ?? null,
+      permissionCodes: menuItem.permissionCodes ?? [],
       hideInMenu: menuItem.hideInMenu ?? false,
       pluginMenuKey,
       pluginId,
@@ -104,7 +104,7 @@ export class PluginMenuSyncService {
 
     for (const [index, menuItem] of manifest.menus.entries()) {
       try {
-        const upsertResult = await this.upsertPluginMenu(manifest, menuItem, creatorId, parentId, index + 1)
+        const upsertResult = await this.upsertPluginMenu(manifest, menuItem, creatorId, parentId, index + 2)
 
         if (upsertResult.skipped && upsertResult.conflict) {
           result.conflictDetails.push(upsertResult.conflict)

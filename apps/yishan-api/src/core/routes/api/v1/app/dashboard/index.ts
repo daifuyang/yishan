@@ -11,8 +11,7 @@ const dashboard: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       preHandler: [
         fastify.authenticate,
         // Section 1 — 新增 Admin route 必须绑定 permission code。这里使用
-        // 系统级 `system:dashboard:read`，与 menu.perm、manifest.permissions
-        // 保持一致；super_admin 自动旁路。
+        // 系统级 `system:dashboard:read` 在核心权限目录中登记；super_admin 自动旁路。
         fastify.requirePermission(PERMISSION_CODES.SYSTEM_DASHBOARD_READ),
       ],
       schema: {

@@ -120,7 +120,6 @@ CREATE TABLE `sys_app_menu` (
     `sort_order` INTEGER NOT NULL DEFAULT 0,
     `hide_in_menu` BOOLEAN NOT NULL DEFAULT false,
     `is_external_link` BOOLEAN NOT NULL DEFAULT false,
-    `perm` VARCHAR(100) NULL,
     `keep_alive` BOOLEAN NOT NULL DEFAULT false,
     `resource_id` INTEGER NULL,
     `creator_id` INTEGER NULL,
@@ -387,8 +386,8 @@ CREATE TABLE `sys_menu` (
     `status` TINYINT NOT NULL DEFAULT 1,
     `sort_order` INTEGER NOT NULL DEFAULT 0,
     `hide_in_menu` BOOLEAN NOT NULL DEFAULT false,
+    `is_default_action` BOOLEAN NOT NULL DEFAULT false,
     `is_external_link` BOOLEAN NOT NULL DEFAULT false,
-    `perm` VARCHAR(100) NULL,
     `keep_alive` BOOLEAN NOT NULL DEFAULT false,
     `source` VARCHAR(20) NOT NULL DEFAULT 'custom',
     `plugin_name` VARCHAR(100) NULL,
@@ -416,6 +415,19 @@ CREATE TABLE `sys_menu` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `sys_menu_permission` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `menu_id` INTEGER NOT NULL,
+    `permission_code` VARCHAR(128) NOT NULL,
+    `created_at` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+
+    INDEX `idx_menu_permission_menu_id`(`menu_id`),
+    INDEX `idx_menu_permission_code`(`permission_code`),
+    UNIQUE INDEX `uniq_menu_permission`(`menu_id`, `permission_code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `sys_role_menu` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `role_id` INTEGER NOT NULL,
@@ -427,6 +439,24 @@ CREATE TABLE `sys_role_menu` (
     INDEX `idx_role_menu_role_id`(`role_id`),
     INDEX `idx_role_menu_menu_id`(`menu_id`),
     UNIQUE INDEX `uniq_role_menu`(`role_id`, `menu_id`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+-- 角色的后端能力授权。与 sys_role_menu 明确分离：菜单只控制导航可见性，
+-- 这里的 permission_code 才是 requirePermission() 的授权事实来源。
+CREATE TABLE `sys_role_permission` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `role_id` INTEGER NOT NULL,
+    `permission_code` VARCHAR(128) NOT NULL,
+    `creator_id` INTEGER NULL,
+    `created_at` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+    `updated_at` DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+    `deleted_at` DATETIME(0) NULL,
+
+    INDEX `idx_role_permission_role_id`(`role_id`),
+    INDEX `idx_role_permission_code`(`permission_code`),
+    UNIQUE INDEX `uniq_role_permission`(`role_id`, `permission_code`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

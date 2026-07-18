@@ -10,7 +10,7 @@ import { invalidateGlobalCatalog, initGlobalCatalog } from './permission-catalog
 export interface PluginMenuItemResponse {
   name: string
   path: string
-  perm?: string
+  permissionCodes: string[]
 }
 
 export interface PluginSyncStatus {
@@ -438,7 +438,7 @@ export class PluginManageService {
       menus: enabled ? (runtimePlugin?.manifest.menus ?? []).map(m => ({
         name: m.name,
         path: m.path,
-        perm: m.perm
+        permissionCodes: m.permissionCodes ?? []
       })) : [],
       syncStatus: null,
     }

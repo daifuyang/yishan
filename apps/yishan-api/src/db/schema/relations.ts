@@ -1,6 +1,6 @@
 // Generated from drizzle/*.sql. Do not edit manually.
 import { relations } from 'drizzle-orm'
-import { iximeiCrmCustomer, iximeiCrmCustomerBrowse, iximeiCrmCustomerRemark, iximeiCrmCustomerStatus, iximeiCrmDispatch, iximeiCrmDispatchFollowLog, iximeiCrmDispatchReply, iximeiCrmDispatchStatus, iximeiCrmHospital, iximeiCrmHospitalAccount, iximeiCrmMemberBrowse, iximeiCrmMemberCustomer, iximeiCrmMemberRemark, sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
+import { iximeiCrmCustomer, iximeiCrmCustomerBrowse, iximeiCrmCustomerRemark, iximeiCrmCustomerStatus, iximeiCrmDispatch, iximeiCrmDispatchFollowLog, iximeiCrmDispatchReply, iximeiCrmDispatchStatus, iximeiCrmHospital, iximeiCrmHospitalAccount, iximeiCrmMemberBrowse, iximeiCrmMemberCustomer, iximeiCrmMemberRemark, sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysMenuPermission, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysRolePermission, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
 
 export const sysAppRelations = relations(sysApp, ({ one, many }) => ({
   creator: one(sysUser, { fields: [sysApp.creatorId], references: [sysUser.id], relationName: 'sysApp_creatorId' }),
@@ -76,6 +76,7 @@ export const sysUserRelations = relations(sysUser, ({ one, many }) => ({
   sysPost_updater_id: many(sysPost, { relationName: 'sysPost_updaterId' }),
   sysMenu_creator_id: many(sysMenu, { relationName: 'sysMenu_creatorId' }),
   sysMenu_updater_id: many(sysMenu, { relationName: 'sysMenu_updaterId' }),
+  sysRolePermission_creator_id: many(sysRolePermission, { relationName: 'sysRolePermission_creatorId' }),
   sysDictType_creator_id: many(sysDictType, { relationName: 'sysDictType_creatorId' }),
   sysDictType_updater_id: many(sysDictType, { relationName: 'sysDictType_updaterId' }),
   sysDictData_creator_id: many(sysDictData, { relationName: 'sysDictData_creatorId' }),
@@ -118,7 +119,8 @@ export const sysRoleRelations = relations(sysRole, ({ one, many }) => ({
   creator: one(sysUser, { fields: [sysRole.creatorId], references: [sysUser.id], relationName: 'sysRole_creatorId' }),
   updater: one(sysUser, { fields: [sysRole.updaterId], references: [sysUser.id], relationName: 'sysRole_updaterId' }),
   sysUserRole_role_id: many(sysUserRole, { relationName: 'sysUserRole_roleId' }),
-  sysRoleMenu_role_id: many(sysRoleMenu, { relationName: 'sysRoleMenu_roleId' })
+  sysRoleMenu_role_id: many(sysRoleMenu, { relationName: 'sysRoleMenu_roleId' }),
+  sysRolePermission_role_id: many(sysRolePermission, { relationName: 'sysRolePermission_roleId' })
 }))
 
 export const sysUserRoleRelations = relations(sysUserRole, ({ one, many }) => ({
@@ -150,12 +152,22 @@ export const sysMenuRelations = relations(sysMenu, ({ one, many }) => ({
   creator: one(sysUser, { fields: [sysMenu.creatorId], references: [sysUser.id], relationName: 'sysMenu_creatorId' }),
   updater: one(sysUser, { fields: [sysMenu.updaterId], references: [sysUser.id], relationName: 'sysMenu_updaterId' }),
   children: many(sysMenu, { relationName: 'sysMenu_parentId' }),
+  sysMenuPermission_menu_id: many(sysMenuPermission, { relationName: 'sysMenuPermission_menuId' }),
   sysRoleMenu_menu_id: many(sysRoleMenu, { relationName: 'sysRoleMenu_menuId' })
+}))
+
+export const sysMenuPermissionRelations = relations(sysMenuPermission, ({ one, many }) => ({
+  menuId: one(sysMenu, { fields: [sysMenuPermission.menuId], references: [sysMenu.id], relationName: 'sysMenuPermission_menuId' })
 }))
 
 export const sysRoleMenuRelations = relations(sysRoleMenu, ({ one, many }) => ({
   roleId: one(sysRole, { fields: [sysRoleMenu.roleId], references: [sysRole.id], relationName: 'sysRoleMenu_roleId' }),
   menuId: one(sysMenu, { fields: [sysRoleMenu.menuId], references: [sysMenu.id], relationName: 'sysRoleMenu_menuId' })
+}))
+
+export const sysRolePermissionRelations = relations(sysRolePermission, ({ one, many }) => ({
+  roleId: one(sysRole, { fields: [sysRolePermission.roleId], references: [sysRole.id], relationName: 'sysRolePermission_roleId' }),
+  creator: one(sysUser, { fields: [sysRolePermission.creatorId], references: [sysUser.id], relationName: 'sysRolePermission_creatorId' })
 }))
 
 export const sysDictTypeRelations = relations(sysDictType, ({ one, many }) => ({

@@ -4,7 +4,7 @@ import { drizzleDb, type AppQueryDb } from '@/db'
 import {
   iximeiCrmCustomer, iximeiCrmCustomerStatus, iximeiCrmDispatch, iximeiCrmDispatchFollowLog,
   iximeiCrmDispatchReply, iximeiCrmDispatchStatus, iximeiCrmHospital, iximeiCrmHospitalAccount,
-  iximeiCrmMemberBrowse, iximeiCrmMemberCustomer, iximeiCrmMemberRemark, sysRegion, sysRole,
+  iximeiCrmMemberBrowse, iximeiCrmMemberCustomer, iximeiCrmMemberRemark, sysRole,
   sysUser, sysUserRole,
 } from '@/db/schema'
 import { ROLE_CODES } from '@/constants/permission-codes'
@@ -187,6 +187,5 @@ export class CrmRepository {
   static async assignHospitalAccount(input: typeof iximeiCrmHospitalAccount.$inferInsert) { return drizzleDb.transaction(async (tx) => { const result = await tx.insert(iximeiCrmHospitalAccount).values(input); await this.bindHospitalAccountRole(input.userId, tx); return (await drizzleDb.select().from(iximeiCrmHospitalAccount).where(eq(iximeiCrmHospitalAccount.id, Number(result[0].insertId))).limit(1))[0] }) }
   static async updateUser(id: number, input: Partial<typeof sysUser.$inferInsert>) { await drizzleDb.update(sysUser).set(input).where(eq(sysUser.id, id)) }
   static async updateHospitalAccount(id: number, input: Partial<typeof iximeiCrmHospitalAccount.$inferInsert>) { await drizzleDb.update(iximeiCrmHospitalAccount).set(input).where(eq(iximeiCrmHospitalAccount.id, id)); return (await drizzleDb.select().from(iximeiCrmHospitalAccount).where(eq(iximeiCrmHospitalAccount.id, id)).limit(1))[0] }
-  static listRegions(parentId: number) { return drizzleDb.select().from(sysRegion).where(eq(sysRegion.parentCode, parentId)).orderBy(asc(sysRegion.code)) }
   static bindWechatOpenid(hospitalId: number, openid: string) { return this.updateHospital(hospitalId, { wechatOpenid: openid }) }
 }

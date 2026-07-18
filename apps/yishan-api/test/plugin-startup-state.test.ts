@@ -28,7 +28,7 @@ function makeManifest(pluginId: string, name: string): PluginManifest {
     version: '1.0.0',
     scope: pluginId,
     permissions: [{ code: `${name}:read`, label: '读取', group: name }],
-    menus: [{ name: `${name}-menu`, path: `/${name}`, perm: `${name}:read` }],
+    menus: [{ name: `${name}-menu`, path: `/${name}`, permissionCodes: [`${name}:read`] }],
   } as PluginManifest
 }
 

@@ -7,17 +7,22 @@ export type DeptSeedNode = {
 
 export type MenuSeedNode = {
   name: string;
-  path: string;
+  path?: string;
   type: number;
   sortOrder: number;
   icon?: string;
   component?: string;
   hideInMenu?: boolean;
   /**
-   * 菜单绑定的 permission code（来自 PERMISSION_CODES）。
-   * Section 1 — RBAC：菜单授权职责收敛到 perm 字段，路由层通过 requirePermission 校验。
+   * 页面完整操作映射。每个权限码对应页面上的一个可见操作，并由后端接口
+   * 使用同一权限码校验；不再根据权限码前缀推断页面按钮。
    */
-  perm?: string;
+  permissionCodes?: string[];
+  /** 按钮是否为页面默认访问操作（通常为查看/列表）。 */
+  isDefaultAction?: boolean;
+  source?: 'custom' | 'plugin';
+  pluginName?: string;
+  pluginMenuKey?: string;
   children?: MenuSeedNode[];
 };
 
@@ -217,24 +222,49 @@ export const portalArticlesSeed: PortalArticleSeed[] = [
   },
 ];
 
+const action = (name: string, permissionCode: string, sortOrder: number, isDefaultAction = false): MenuSeedNode => ({
+  name,
+  type: 2,
+  sortOrder,
+  hideInMenu: true,
+  permissionCodes: [permissionCode],
+  isDefaultAction,
+});
+
+const page = (args: Omit<MenuSeedNode, 'type' | 'children' | 'permissionCodes'> & { actions: MenuSeedNode[] }): MenuSeedNode => ({
+  ...args,
+  type: 1,
+  children: args.actions,
+});
+
+const crmPage = (args: Omit<MenuSeedNode, 'type' | 'children' | 'permissionCodes' | 'source' | 'pluginName' | 'pluginMenuKey'> & { actions: MenuSeedNode[] }): MenuSeedNode =>
+  page({
+    ...args,
+    source: 'plugin',
+    pluginName: 'crm',
+    pluginMenuKey: `iximei/crm:${args.path}`,
+  });
+
 export const systemMenusSeed: MenuSeedNode = {
   name: '系统管理',
   path: '/system',
   type: 0,
-  sortOrder: 1,
+  // 系统管理固定置顶；其余一级菜单保持各自现有排序。
+  sortOrder: 0,
   icon: 'setting',
   children: [
-    { name: '用户管理', path: '/system/user', type: 1, sortOrder: 1, component: './system/user', perm: 'system:user:list' },
-    { name: '角色管理', path: '/system/role', type: 1, sortOrder: 2, component: './system/role', perm: 'system:role:list' },
-    { name: '部门管理', path: '/system/department', type: 1, sortOrder: 3, component: './system/department', perm: 'system:department:list' },
-    { name: '岗位管理', path: '/system/position', type: 1, sortOrder: 4, component: './system/position', perm: 'system:position:list' },
-    { name: '菜单管理', path: '/system/menu', type: 1, sortOrder: 5, component: './system/menu', perm: 'system:menu:list' },
-    { name: '字典管理', path: '/system/dict', type: 1, sortOrder: 6, component: './system/dict', perm: 'system:dict:list' },
-    { name: '站点配置', path: '/system/site', type: 1, sortOrder: 7, component: './system/site', perm: 'system:option:list' },
-    { name: '云存储', path: '/system/storage', type: 1, sortOrder: 8, component: './system/storage', perm: 'system:storage:list' },
-    { name: '媒体库', path: '/system/attachments', type: 1, sortOrder: 9, component: './system/attachments', perm: 'system:attachment:list' },
-    { name: '登录日志', path: '/system/login-log', type: 1, sortOrder: 10, component: './system/login-log', perm: 'system:login-log:list' },
-    { name: '插件管理', path: '/system/plugins', type: 1, sortOrder: 13, component: './system/plugins', perm: 'system:plugin:list' },
+    page({ name: '仪表盘', path: '/', sortOrder: 0, component: './index', hideInMenu: true, actions: [action('查看', 'system:dashboard:read', 1, true)] }),
+    page({ name: '用户管理', path: '/system/user', sortOrder: 1, component: './system/user', actions: [action('查看', 'system:user:list', 1, true), action('新增', 'system:user:create', 2), action('编辑', 'system:user:update', 3), action('删除', 'system:user:delete', 4)] }),
+    page({ name: '角色管理', path: '/system/role', sortOrder: 2, component: './system/role', actions: [action('查看', 'system:role:list', 1, true), action('新增', 'system:role:create', 2), action('编辑', 'system:role:update', 3), action('删除', 'system:role:delete', 4), action('授权', 'system:role:grant', 5)] }),
+    page({ name: '部门管理', path: '/system/department', sortOrder: 3, component: './system/department', actions: [action('查看', 'system:department:list', 1, true), action('新增', 'system:department:create', 2), action('编辑', 'system:department:update', 3), action('删除', 'system:department:delete', 4)] }),
+    page({ name: '岗位管理', path: '/system/position', sortOrder: 4, component: './system/position', actions: [action('查看', 'system:position:list', 1, true), action('新增', 'system:position:create', 2), action('编辑', 'system:position:update', 3), action('删除', 'system:position:delete', 4)] }),
+    page({ name: '菜单管理', path: '/system/menu', sortOrder: 5, component: './system/menu', actions: [action('查看', 'system:menu:list', 1, true), action('新增', 'system:menu:create', 2), action('编辑', 'system:menu:update', 3), action('删除', 'system:menu:delete', 4)] }),
+    page({ name: '字典管理', path: '/system/dict', sortOrder: 6, component: './system/dict', actions: [action('查看', 'system:dict:list', 1, true), action('新增', 'system:dict:create', 2), action('编辑', 'system:dict:update', 3), action('删除', 'system:dict:delete', 4)] }),
+    page({ name: '站点配置', path: '/system/site', sortOrder: 7, component: './system/site', actions: [action('查看', 'system:option:list', 1, true), action('编辑', 'system:option:update', 2)] }),
+    page({ name: '云存储', path: '/system/storage', sortOrder: 8, component: './system/storage', actions: [action('查看', 'system:storage:list', 1, true), action('编辑', 'system:storage:update', 2), action('上传凭证', 'system:storage:upload-token', 3)] }),
+    page({ name: '媒体库', path: '/system/attachments', sortOrder: 9, component: './system/attachments', actions: [action('查看', 'system:attachment:list', 1, true), action('上传', 'system:attachment:create', 2), action('编辑', 'system:attachment:update', 3), action('删除', 'system:attachment:delete', 4)] }),
+    page({ name: '登录日志', path: '/system/login-log', sortOrder: 10, component: './system/login-log', actions: [action('查看', 'system:login-log:list', 1, true)] }),
+    page({ name: '插件管理', path: '/system/plugins', sortOrder: 13, component: './system/plugins', actions: [action('查看', 'system:plugin:list', 1, true), action('安装', 'system:plugin:install', 2), action('启用', 'system:plugin:enable', 3), action('禁用', 'system:plugin:disable', 4), action('同步', 'system:plugin:sync', 5), action('审计', 'system:plugin:audit', 6)] }),
   ],
 };
 
@@ -242,14 +272,22 @@ export const accountMenusSeed: MenuSeedNode = {
   name: '我的账户',
   path: '/account',
   type: 0,
-  sortOrder: 2,
+  sortOrder: 1,
   icon: 'user',
   hideInMenu: true,
   children: [
-    { name: 'API Token', path: '/account/api-tokens', type: 1, sortOrder: 1, icon: 'key', component: './account/api-tokens', hideInMenu: true, perm: 'system:api-token:manage' },
+    page({ name: 'API Token', path: '/account/api-tokens', sortOrder: 1, icon: 'key', component: './account/api-tokens', hideInMenu: true, actions: [action('管理', 'system:api-token:manage', 1, true), action('列表', 'system:token:list', 2), action('清理', 'system:token:cleanup', 3)] }),
     { name: '个人中心', path: '/account/center', type: 1, sortOrder: 2, icon: 'user', component: './account/center', hideInMenu: true },
   ],
 };
+
+/** CRM 插件的管理端页面与按钮树。插件菜单同步与初始化 seed 共享此结构。 */
+export const crmMenusSeed: MenuSeedNode[] = [
+  crmPage({ name: '医院管理', path: '/plugins/iximei/crm/hospitals', sortOrder: 2, icon: 'hospital', actions: [action('查看', 'crm:hospital:list', 1, true), action('新增', 'crm:hospital:create', 2), action('编辑', 'crm:hospital:update', 3), action('删除', 'crm:hospital:delete', 4)] }),
+  crmPage({ name: '客户管理', path: '/plugins/iximei/crm/customers', sortOrder: 3, icon: 'users-round', actions: [action('查看', 'crm:customer:list', 1, true), action('新增', 'crm:customer:create', 2), action('编辑', 'crm:customer:update', 3), action('派单', 'crm:customer:dispatch', 4)] }),
+  crmPage({ name: '会员顾客', path: '/plugins/iximei/crm/members', sortOrder: 4, icon: 'contact-round', actions: [action('查看', 'crm:member:list', 1, true), action('新增', 'crm:member:create', 2), action('编辑', 'crm:member:update', 3), action('备注', 'crm:member:remark', 4)] }),
+  crmPage({ name: '派单管理', path: '/plugins/iximei/crm/dispatches', sortOrder: 5, icon: 'clipboard-list', actions: [action('查看', 'crm:dispatch:list', 1, true), action('编辑', 'crm:dispatch:update', 2), action('回复', 'crm:dispatch:reply', 3), action('跟进', 'crm:dispatch:log', 4)] }),
+];
 
 export const sysOptionsSeed: SysOptionSeed[] = [
   { key: 'basicConfig', value: '{}' }, // 站点基本配置

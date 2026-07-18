@@ -20,7 +20,7 @@ import {
   Space,
 } from 'antd';
 import dayjs from 'dayjs';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   createCustomer,
   dispatchCustomer,
@@ -57,6 +57,12 @@ const CustomerPage: React.FC = () => {
   const [customerStatusOptions, setCustomerStatusOptions] = useState<
     Array<{ label: string; value: number }>
   >([]);
+  const [hospitalOptions, setHospitalOptions] = useState<
+    Array<{ label: string; value: number }>
+  >([]);
+  const [hospitalLoading, setHospitalLoading] = useState(false);
+  const [dispatchSubmitting, setDispatchSubmitting] = useState(false);
+  const dispatchSubmittingRef = useRef(false);
   const [form] = Form.useForm();
   const [dispatchForm] = Form.useForm();
 
@@ -67,6 +73,22 @@ const CustomerPage: React.FC = () => {
         if (res.success) setRegionOptions(toRegionOptions(res.data || []));
       })
       .finally(() => setRegionLoading(false));
+  }, []);
+
+  const loadHospitalOptions = useCallback(async (keyword?: string) => {
+    setHospitalLoading(true);
+    try {
+      const res = await searchHospitals({ keyword });
+      if (!res.success) return;
+      setHospitalOptions(
+        (res.data || []).map((hospital: any) => ({
+          label: hospital.hospitalName,
+          value: hospital.id,
+        })),
+      );
+    } finally {
+      setHospitalLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -114,6 +136,30 @@ const CustomerPage: React.FC = () => {
     setOpen(true);
   };
 
+  const submitDispatch = async () => {
+    if (dispatchSubmittingRef.current || !current?.id) return;
+
+    dispatchSubmittingRef.current = true;
+    setDispatchSubmitting(true);
+    try {
+      const values = await dispatchForm.validateFields();
+      const res = await dispatchCustomer(current.id, {
+        hospitalIds: values.hospitalIds,
+        reply: values.reply,
+      });
+      if (!res.success) {
+        message.error(res.message || '派单失败，请稍后重试');
+        return;
+      }
+      message.success(res.message);
+      setDispatchOpen(false);
+      actionRef.current?.reload();
+    } finally {
+      dispatchSubmittingRef.current = false;
+      setDispatchSubmitting(false);
+    }
+  };
+
   const submit = async () => {
     const values = await form.validateFields();
     const { regionCodes, ...restValues } = values;
@@ -159,7 +205,12 @@ const CustomerPage: React.FC = () => {
             onClick={() => {
               setCurrent(record);
               dispatchForm.resetFields();
+              dispatchForm.setFieldValue(
+                'reply',
+                '此客户是贵医院潜在客户，请跟进',
+              );
               setDispatchOpen(true);
+              void loadHospitalOptions();
             }}
           >
             派单
@@ -333,46 +384,45 @@ const CustomerPage: React.FC = () => {
       <Modal
         title={`派单：${current?.name || ''}`}
         open={dispatchOpen}
-        onOk={async () => {
-          const values = await dispatchForm.validateFields();
-          const hospitalIds = String(values.hospitalIds)
-            .split(',')
-            .map((item) => Number(item.trim()))
-            .filter(Boolean);
-          const res = await dispatchCustomer(current.id, {
-            hospitalIds,
-            reply: values.reply,
-          });
-          if (res.success) message.success(res.message);
-          setDispatchOpen(false);
+        onOk={submitDispatch}
+        onCancel={() => {
+          if (!dispatchSubmitting) setDispatchOpen(false);
         }}
-        onCancel={() => setDispatchOpen(false)}
+        confirmLoading={dispatchSubmitting}
+        okButtonProps={{ disabled: dispatchSubmitting }}
+        cancelButtonProps={{ disabled: dispatchSubmitting }}
+        closable={!dispatchSubmitting}
+        maskClosable={!dispatchSubmitting}
+        keyboard={!dispatchSubmitting}
+        width={640}
+        centered
+        destroyOnHidden
       >
         <Form form={dispatchForm} layout="vertical">
           <Form.Item
             name="hospitalIds"
-            label="医院ID，多个用英文逗号分隔"
+            label="派单医院"
             rules={[{ required: true }]}
+            extra="可按医院名称搜索并同时选择多家医院，最多 50 家。"
           >
-            <Input placeholder="1,2,3" />
+            <Select
+              mode="multiple"
+              allowClear
+              showSearch
+              filterOption={false}
+              disabled={dispatchSubmitting}
+              loading={hospitalLoading}
+              options={hospitalOptions}
+              placeholder="搜索并选择派单医院"
+              onSearch={(keyword) => void loadHospitalOptions(keyword)}
+              notFoundContent={
+                hospitalLoading ? '正在加载医院…' : '没有找到医院'
+              }
+            />
           </Form.Item>
-          <Form.Item
-            name="reply"
-            label="派单留言"
-            initialValue="此客户是贵医院潜在客户，请跟进"
-          >
-            <Input.TextArea rows={4} />
+          <Form.Item name="reply" label="派单留言">
+            <Input.TextArea disabled={dispatchSubmitting} rows={4} />
           </Form.Item>
-          <Button
-            onClick={async () => {
-              const res = await searchHospitals({});
-              message.info(
-                `可选医院：${(res.data || []).map((item: any) => `${item.id}-${item.hospitalName}`).join('，') || '暂无'}`,
-              );
-            }}
-          >
-            查看医院ID
-          </Button>
         </Form>
       </Modal>
     </PageContainer>

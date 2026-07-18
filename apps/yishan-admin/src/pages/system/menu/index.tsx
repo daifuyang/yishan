@@ -6,7 +6,7 @@ import {
   ProTable,
 } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { App, Button, Popconfirm, Space } from 'antd';
+import { App, Button, Popconfirm, Space, Tag } from 'antd';
 import React, { useRef, useState } from 'react';
 import {
   deleteMenu,
@@ -16,6 +16,12 @@ import {
 import MenuForm from './components/MenuForm';
 
 const MenuStatus = { ENABLED: '1', DISABLED: '0' } as const;
+
+const MENU_TYPE_META: Record<number, { label: string; color: string }> = {
+  0: { label: '目录', color: 'default' },
+  1: { label: '页面', color: 'blue' },
+  2: { label: '按钮', color: 'purple' },
+};
 
 const MenuList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
@@ -81,19 +87,39 @@ const MenuList: React.FC = () => {
   };
 
   const columns: ProColumns<API.menuTreeNode>[] = [
-    { title: 'ID', dataIndex: 'id', search: false, width: 80 },
-    { title: '菜单名称', dataIndex: 'name', width: 120 },
-    { title: '路由地址', dataIndex: 'path', search: false, width: 180 },
-    { title: '组件', dataIndex: 'component', search: false },
-    { title: '图标', dataIndex: 'icon', search: false, width: 100 },
-    { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
     {
-      title: '创建时间',
-      dataIndex: 'createdAt',
+      title: 'ID',
+      dataIndex: 'id',
       search: false,
-      valueType: 'dateTime',
-      width: 180,
+      width: 110,
+      render: (_, record) => <span style={{ whiteSpace: 'nowrap' }}>{record.id}</span>,
     },
+    { title: '菜单名称', dataIndex: 'name', width: 160 },
+    {
+      title: '类型',
+      dataIndex: 'type',
+      search: false,
+      width: 90,
+      render: (_, record) => {
+        const meta = MENU_TYPE_META[record.type] || MENU_TYPE_META[1];
+        return <Tag color={meta.color}>{meta.label}</Tag>;
+      },
+    },
+    {
+      title: '路由地址',
+      dataIndex: 'path',
+      search: false,
+      width: 210,
+      renderText: (value) => value || '—',
+    },
+    {
+      title: '组件',
+      dataIndex: 'component',
+      search: false,
+      width: 180,
+      renderText: (value) => value || '—',
+    },
+    { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
     {
       title: '更新时间',
       dataIndex: 'updatedAt',
@@ -212,7 +238,7 @@ const MenuList: React.FC = () => {
         }}
         columns={columns}
         rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-        scroll={{ x: 1380 }}
+        scroll={{ x: 1280 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

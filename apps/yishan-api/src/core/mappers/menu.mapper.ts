@@ -17,8 +17,9 @@ type MenuListRow = {
   status: number;
   sortOrder: number;
   hideInMenu: boolean;
+  isDefaultAction: boolean;
   isExternalLink: boolean;
-  perm: string | null;
+  permissionCodes?: string[];
   keepAlive: boolean;
   creatorId: number | null;
   createdAt: Date;
@@ -45,8 +46,9 @@ export class MenuMapper {
       status: menu.status.toString(),
       sort_order: menu.sortOrder ?? 0,
       hideInMenu: !!menu.hideInMenu,
+      isDefaultAction: !!menu.isDefaultAction,
       isExternalLink: !!menu.isExternalLink,
-      perm: menu.perm ?? undefined,
+      permissionCodes: menu.permissionCodes ?? [],
       keepAlive: !!menu.keepAlive,
       creatorId: menu.creatorId ?? undefined,
       creatorName: menu.creatorName ?? undefined,
