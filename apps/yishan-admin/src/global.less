@@ -78,6 +78,28 @@ body,
   left: unset;
 }
 
+// 菜单图标与文字均由 flex 容器居中，避免 SVG 按文字基线对齐时出现下沉。
+.ant-pro-sider .ant-menu-item,
+.ant-pro-sider .ant-menu-submenu-title {
+  display: flex;
+  align-items: center;
+}
+
+.ant-pro-sider .ant-menu-item-icon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-inline-end: 10px;
+  line-height: 1;
+}
+
+.ant-pro-sider .side-menu-icon {
+  display: block;
+  flex: none;
+}
+
 canvas {
   display: block;
 }
