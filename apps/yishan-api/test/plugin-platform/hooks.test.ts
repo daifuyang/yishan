@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HookBus } from '../../src/plugins-runtime/hooks'
+import { HookBus } from '../../src/core/plugin-platform/hooks'
 
 describe('HookBus', () => {
   it('runs handlers by priority descending', async () => {

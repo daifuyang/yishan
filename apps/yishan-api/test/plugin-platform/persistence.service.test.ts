@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { PluginPersistenceService } from '../../src/plugins-runtime/persistence'
+import { PluginPersistenceService } from '../../src/core/plugin-platform/persistence'
 
 describe('PluginPersistenceService', () => {
   describe('listPluginStatesStrict()', () => {

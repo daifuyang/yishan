@@ -1,9 +1,9 @@
 import { PluginRepository } from '../repositories/plugin.repository.js'
 import { ResourceErrorCode } from '../../constants/business-codes/resource.js'
 import { BusinessError } from '../../exceptions/business-error.js'
-import { HookEmitReport, PluginRuntime } from '../../plugins-runtime/index.js'
-import { RegisteredPlugin } from '../../plugins-runtime/types.js'
-import { PersistedPluginRuntimeState } from '../../plugins-runtime/persistence.js'
+import { HookEmitReport, PluginRuntime } from '../../core/plugin-platform/index.js'
+import { RegisteredPlugin } from '../../core/plugin-platform/types.js'
+import { PersistedPluginRuntimeState } from '../../core/plugin-platform/persistence.js'
 import { PluginMenuSyncService, type SyncStrategy, type ConflictDetail } from './plugin-menu-sync.service.js'
 import { invalidateGlobalCatalog, initGlobalCatalog } from './permission-catalog.service.js'
 

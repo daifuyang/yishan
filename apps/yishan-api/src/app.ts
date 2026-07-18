@@ -3,12 +3,12 @@ import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path';
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
-import { createPluginRuntime } from './plugins-runtime'
-import type { PluginRuntime } from './plugins-runtime'
+import { createPluginRuntime } from './core/plugin-platform'
+import type { PluginRuntime } from './core/plugin-platform'
 import { PluginMenuSyncService } from './core/services/plugin-menu-sync.service.js'
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
 import { initGlobalCatalog } from './core/services/permission-catalog.service.js'
-import { getEnabledPluginNames } from './plugins-runtime/startup-state.js'
+import { getEnabledPluginNames } from './core/plugin-platform/startup-state.js'
 
 export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {
 

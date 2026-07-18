@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { sysPlugin, sysPluginInstall, sysPluginVersion } from '../../src/db/schema'
-import { PluginPersistenceRepository } from '../../src/plugins-runtime/persistence'
+import { PluginPersistenceRepository } from '../../src/core/plugin-platform/persistence'
 
 function insertChain(terminal: ReturnType<typeof vi.fn>) {
   return {

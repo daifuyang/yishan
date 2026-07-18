@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PluginRegistry } from '../../src/plugins-runtime/registry'
+import { PluginRegistry } from '../../src/core/plugin-platform/registry'
 
 describe('PluginRegistry', () => {
   it('supports register/list/get', () => {

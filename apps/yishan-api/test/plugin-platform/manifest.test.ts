@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateManifest } from '../../src/plugins-runtime/manifest'
+import { validateManifest } from '../../src/core/plugin-platform/manifest'
 
 describe('validateManifest', () => {
   it('rejects manifest missing permissions field', () => {

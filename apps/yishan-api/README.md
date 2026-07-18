@@ -18,7 +18,7 @@
 ```
 ├── src/
 │   ├── core/             # 核心插件、路由、服务、模型、Schema
-│   ├── plugins-runtime/  # 插件运行时
+│   ├── core/plugin-platform/ # 插件平台（manifest、生命周期、持久化）
 │   ├── plugins/modules/  # 业务插件模块
 │   ├── constants/        # 常量定义 (错误码、业务码)
 │   ├── utils/            # 工具类 (响应工具、数据库连接等)

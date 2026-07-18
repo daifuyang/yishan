@@ -13,9 +13,9 @@ import { describe, expect, it } from 'vitest'
 import {
   getEnabledPluginNames,
   loadEnabledPluginManifests,
-} from '../src/plugins-runtime/startup-state'
-import type { PluginManifest } from '../src/plugins-runtime/types'
-import type { PluginStateSnapshot } from '../src/plugins-runtime/persistence'
+} from '../src/core/plugin-platform/startup-state'
+import type { PluginManifest } from '../src/core/plugin-platform/types'
+import type { PluginStateSnapshot } from '../src/core/plugin-platform/persistence'
 
 // ============================================================================
 // Helper: 构造一个 minimal manifest

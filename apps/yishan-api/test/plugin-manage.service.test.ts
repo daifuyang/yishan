@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPluginRuntime } from '../src/plugins-runtime/index.js'
+import { createPluginRuntime } from '../src/core/plugin-platform/index.js'
 import { PluginManageService } from '../src/core/services/plugin-manage.service.js'
-import type { PluginRuntime } from '../src/plugins-runtime/index.js'
-import type { PersistedPluginRuntimeState } from '../src/plugins-runtime/persistence.js'
+import type { PluginRuntime } from '../src/core/plugin-platform/index.js'
+import type { PersistedPluginRuntimeState } from '../src/core/plugin-platform/persistence.js'
 
 const pluginId = 'test/shop'
 const pluginName = 'shop'

@@ -28,7 +28,7 @@ import { PermissionService } from '../src/core/services/permission.service'
 import { BusinessError } from '../src/exceptions/business-error.js'
 import { AuthErrorCode } from '../src/constants/business-codes/auth.js'
 import { PAT_WILDCARD } from '../src/constants/permission-codes.js'
-import type { PluginManifest } from '../src/plugins-runtime/types'
+import type { PluginManifest } from '../src/core/plugin-platform/types'
 
 // --------------------------------------------------------------------------
 // 最小 jwt-auth 占位插件：rbac 声明了 dependencies: ['jwt-auth']，因此必须先

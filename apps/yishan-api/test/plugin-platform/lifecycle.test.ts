@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { PluginLifecycle } from '../../src/plugins-runtime/lifecycle'
-import { PluginRegistry } from '../../src/plugins-runtime/registry'
+import { PluginLifecycle } from '../../src/core/plugin-platform/lifecycle'
+import { PluginRegistry } from '../../src/core/plugin-platform/registry'
 
 describe('PluginLifecycle', () => {
   it('allows valid transitions', () => {

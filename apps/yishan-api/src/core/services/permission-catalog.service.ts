@@ -19,7 +19,7 @@
 import {
   PERMISSION_DEFINITIONS,
 } from '../../constants/permission-codes.js';
-import { PluginManifest } from '../../plugins-runtime/types.js';
+import { PluginManifest } from '../../core/plugin-platform/types.js';
 import { BusinessError } from '../../exceptions/business-error.js';
 import { ValidationErrorCode } from '../../constants/business-codes/validation.js';
 

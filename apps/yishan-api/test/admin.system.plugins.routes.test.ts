@@ -1,7 +1,7 @@
 import Fastify from 'fastify'
 import adminSystemPluginsPlugin from '../src/core/routes/api/v1/admin/system/plugins/index.ts'
 import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
-import { createPluginRuntime } from '../src/plugins-runtime/index.ts'
+import { createPluginRuntime } from '../src/core/plugin-platform/index.ts'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 /**

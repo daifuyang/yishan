@@ -1,5 +1,5 @@
 import { PluginMenuRepository, PluginSyncLogRepository } from "../repositories/plugin.repository.js";
-import { PluginManifest, PluginMenuItem } from "../../plugins-runtime/types.js";
+import { PluginManifest, PluginMenuItem } from "../../core/plugin-platform/types.js";
 
 export type SyncStrategy = 'strict' | 'safe'
 
