@@ -13,6 +13,10 @@
 
 import { BusinessError } from "../exceptions/business-error.js";
 import { ValidationErrorCode } from "./business-codes/validation.js";
+import {
+  defineCorePermission,
+  type CorePermissionDefinition,
+} from '../core/permissions/define-core-permission.js';
 
 export const PERMISSION_CODES = {
   // System
@@ -159,14 +163,14 @@ export type RoleCode = typeof ROLE_CODES[keyof typeof ROLE_CODES];
 // Permission Definitions (single source of truth for labels and grouping)
 // ============================================================================
 
-export interface PermissionDefinition {
-  code: string;
-  group: 'system' | 'shop' | 'portal';
-  label: string;
-  description?: string;
-}
+export type PermissionDefinition = CorePermissionDefinition;
 
-export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
+/**
+ * Core permission annotations.  This is the single Core source for labels
+ * and grouping; the route audit script verifies that every route reference
+ * resolves to this catalog.
+ */
+const CORE_PERMISSION_ANNOTATIONS: CorePermissionDefinition[] = [
   // System
   { code: "system:user:list", group: "system", label: "用户管理-列表" },
   { code: "system:user:create", group: "system", label: "用户管理-创建" },
@@ -216,6 +220,9 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   // NOTE: shop/portal/hello 权限已移至对应插件 manifest
   // Core 权限仅包含 system: 前缀的权限
 ];
+
+export const PERMISSION_DEFINITIONS: ReadonlyArray<PermissionDefinition> =
+  CORE_PERMISSION_ANNOTATIONS.map(defineCorePermission);
 
 // Development environment integrity assertion
 if (process.env.NODE_ENV !== 'production') {

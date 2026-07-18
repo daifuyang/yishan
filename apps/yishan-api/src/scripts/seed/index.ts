@@ -9,6 +9,9 @@ import {
 } from './config.js';
 import type { SeedDb } from './context.js';
 import { drizzleDb } from '@/db';
+import { createPluginPersistenceService } from '@/core/plugin-platform/persistence.js';
+import type { PluginManifest } from '@/core/plugin-platform/types.js';
+import helloManifest from '../../plugins/modules/hello/manifest.js';
 import { ensureAdminUser } from './modules/system-user.js';
 import { bindUserRole, ensureSystemRoles } from './modules/system-role.js';
 import { seedDepartments } from './modules/system-dept.js';
@@ -41,5 +44,14 @@ export async function runSeed() {
     await runSeedTransaction(tx as unknown as SeedDb);
   });
   console.log('种子数据创建完成');
+  await enableBuiltinPlugins();
+}
 
+/** Keep the platform exercised on main without bringing business modules in. */
+async function enableBuiltinPlugins(): Promise<void> {
+  const manifest = helloManifest as unknown as PluginManifest;
+  const persistence = createPluginPersistenceService(console);
+  await persistence.syncManifest(manifest);
+  await persistence.updateRuntimeStateStrict(manifest.pluginId, manifest.name, 'enabled', true);
+  console.log(`  ✓ ${manifest.pluginId} (${manifest.name}) enabled`);
 }
