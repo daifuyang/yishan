@@ -9,7 +9,7 @@ import { LoginReq, LoginData } from "../schemas/auth.js";
 import { AuthErrorCode } from "../../constants/business-codes/auth.js";
 import { UserErrorCode } from "../../constants/business-codes/user.js";
 import { BusinessError } from "../../exceptions/business-error.js";
-import { comparePassword } from "../../utils/password.js";
+import { hashPassword, verifyPassword } from "../../utils/password.js";
 import { JWT_CONFIG } from "../../config/index.js";
 import { dateUtils } from "../../utils/date.js";
 import { LoginLogService } from "./login-log.service.js";
@@ -41,9 +41,13 @@ export class AuthService {
         throw new BusinessError(AuthErrorCode.ACCOUNT_LOCKED, "账号已被锁定");
       }
 
-      const isPasswordValid = await comparePassword(password, user.passwordHash);
-      if (!isPasswordValid) {
+      const passwordVerification = await verifyPassword(password, user.passwordHash);
+      if (!passwordVerification.valid) {
         throw new BusinessError(AuthErrorCode.LOGIN_FAILED, "用户名或密码错误");
+      }
+
+      if (passwordVerification.needsRehash) {
+        await UserRepository.upgradePasswordHash(user.id, user.passwordHash, await hashPassword(password));
       }
 
       const accessTokenExpiresIn = rememberMe

@@ -455,6 +455,19 @@ export class UserRepository {
     return row?.passwordHash ?? null;
   }
 
+  /**
+   * Replace a legacy password hash after a successful login. The previous hash
+   * remains part of the predicate so a concurrent password reset cannot be
+   * overwritten by a delayed login upgrade.
+   */
+  static async upgradePasswordHash(userId: number, previousHash: string, passwordHash: string): Promise<boolean> {
+    const [result] = await drizzleDb
+      .update(sysUser)
+      .set({ passwordHash, updaterId: userId, updatedAt: dateUtils.now() })
+      .where(and(eq(sysUser.id, userId), eq(sysUser.passwordHash, previousHash), isNull(sysUser.deletedAt)));
+    return result.affectedRows === 1;
+  }
+
   // --------------------------------------------------------------------------
   // Transactional wrappers
   //
