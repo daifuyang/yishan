@@ -58,6 +58,28 @@ return {
 - 批量操作按钮放置在表格顶部的选择提示中
 - 常见批量操作：`批量删除`、`批量导出`
 
+### 2.4 操作列规范
+
+- 所有 `ProTable` 操作列必须声明 `dataIndex: 'option'`、`valueType: 'option'`、`fixed: 'right'` 和显式 `width`，禁止依赖内容自动撑开。
+- 操作项必须使用 `<Space size={16}>` 包裹；常规操作使用 `<a>`，危险操作使用红色 `<a>` 并包裹 `Popconfirm`，不得手写额外空格或分隔符。
+- 列宽按公式计算后向上取整到 `20px`：`max(120, 操作文本宽度总和 + (操作数 - 1) × 16 + 32)`。中文按每字 `14px` 估算，`32px` 是单元格左右安全留白；例如“账号管理、编辑、删除”为 `4 × 14 + 2 × 14 + 2 × 14 + 2 × 16 + 32 = 176`，设置为 `180`。
+
+```tsx
+{
+  title: '操作',
+  dataIndex: 'option',
+  valueType: 'option',
+  fixed: 'right',
+  width: 120,
+  render: (_, record) => (
+    <Space size={16}>
+      <a onClick={() => openEdit(record)}>编辑</a>
+      <a onClick={() => openDetail(record)}>详情</a>
+    </Space>
+  ),
+}
+```
+
 ## 3. API 响应处理规范
 
 ### 3.1 响应结构

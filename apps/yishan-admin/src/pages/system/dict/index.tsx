@@ -1,10 +1,19 @@
-import { PlusOutlined, DownOutlined } from '@ant-design/icons';
-import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Popconfirm, Space, Dropdown, App } from 'antd';
+import { DownOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  type ActionType,
+  PageContainer,
+  type ProColumns,
+  ProTable,
+} from '@ant-design/pro-components';
+import { App, Button, Dropdown, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
-import { getDictTypeList, updateDictType, deleteDictType } from '@/services/yishan-admin/sysDictTypes';
-import DictTypeForm from './components/DictTypeForm';
+import {
+  deleteDictType,
+  getDictTypeList,
+  updateDictType,
+} from '@/services/yishan-admin/sysDictTypes';
 import DictDataManager from './components/DictDataManager';
+import DictTypeForm from './components/DictTypeForm';
 
 const Status = { ENABLED: 1, DISABLED: 0 } as const;
 
@@ -17,7 +26,9 @@ const DictTypeList: React.FC = () => {
   const [dataOpen, setDataOpen] = useState(false);
   const [dataTypeId, setDataTypeId] = useState<number | undefined>(undefined);
   const [dataTypeKey, setDataTypeKey] = useState<string | undefined>(undefined);
-  const [dataTypeName, setDataTypeName] = useState<string | undefined>(undefined);
+  const [dataTypeName, setDataTypeName] = useState<string | undefined>(
+    undefined,
+  );
 
   const openDataManager = (record: API.sysDictType) => {
     setDataTypeId(record.id);
@@ -27,7 +38,8 @@ const DictTypeList: React.FC = () => {
   };
 
   const handleStatusChange = async (id: number, status: number) => {
-    const newStatus = status === Status.ENABLED ? Status.DISABLED : Status.ENABLED;
+    const newStatus =
+      status === Status.ENABLED ? Status.DISABLED : Status.ENABLED;
     const res = await updateDictType({ id }, { status: newStatus as 0 | 1 });
     if (res.success) message.success(res.message);
     actionRef.current?.reload();
@@ -54,14 +66,15 @@ const DictTypeList: React.FC = () => {
     const results = await Promise.allSettled(ps);
     const successCount = results.filter((r) => r.status === 'fulfilled').length;
     const failureCount = results.length - successCount;
-    if (successCount > 0) message.success(`批量删除完成：成功 ${successCount}，失败 ${failureCount}`);
+    if (successCount > 0)
+      message.success(
+        `批量删除完成：成功 ${successCount}，失败 ${failureCount}`,
+      );
     else message.error('批量删除失败');
     setSelectedRowKeys([]);
     setBatchDeleteLoading(false);
     actionRef.current?.reload();
   };
-
-
 
   const columns: ProColumns<API.sysDictType>[] = [
     { title: '字典编号', dataIndex: 'id', search: false, width: 90 },
@@ -74,8 +87,20 @@ const DictTypeList: React.FC = () => {
         <a onClick={() => openDataManager(record)}>{record.type}</a>
       ),
     },
-    { title: '备注', dataIndex: 'remark', search: false, ellipsis: true, width: 240 },
-    { title: '创建时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
+    {
+      title: '备注',
+      dataIndex: 'remark',
+      search: false,
+      ellipsis: true,
+      width: 240,
+    },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      search: false,
+      valueType: 'dateTime',
+      width: 180,
+    },
     {
       title: '状态',
       dataIndex: 'status',
@@ -90,41 +115,47 @@ const DictTypeList: React.FC = () => {
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
-      width: 160,
+      width: 180,
       render: (_, record) => {
         const moreItems = [
           {
             key: 'status',
             label: (
-              <a onClick={() => handleStatusChange(record.id || 0, record.status || 0)}>
+              <a
+                onClick={() =>
+                  handleStatusChange(record.id || 0, record.status || 0)
+                }
+              >
                 {record.status === Status.ENABLED ? '停用' : '启用'}
               </a>
             ),
           },
           {
             key: 'data',
-            label: (
-              <a onClick={() => openDataManager(record)}>查看字典数据</a>
-            ),
+            label: <a onClick={() => openDataManager(record)}>查看字典数据</a>,
           },
         ];
-        return [
-          <DictTypeForm
-            key="edit"
-            title="编辑字典类型"
-            trigger={<a>修改</a>}
-            initialValues={record}
-            onFinish={handleFormSuccess}
-          />,
-          <Popconfirm key="delete" title="确定要删除该字典类型吗？" onConfirm={() => handleRemove(record.id || 0)}>
-            <a style={{ color: '#ff4d4f' }}>删除</a>
-          </Popconfirm>,
-          <Dropdown key="more" menu={{ items: moreItems }}>
-            <a onClick={(e) => e.preventDefault()}>
-              更多 <DownOutlined />
-            </a>
-          </Dropdown>,
-        ];
+        return (
+          <Space size={16}>
+            <DictTypeForm
+              title="编辑字典类型"
+              trigger={<a>修改</a>}
+              initialValues={record}
+              onFinish={handleFormSuccess}
+            />
+            <Popconfirm
+              title="确定要删除该字典类型吗？"
+              onConfirm={() => handleRemove(record.id || 0)}
+            >
+              <a style={{ color: '#ff4d4f' }}>删除</a>
+            </Popconfirm>
+            <Dropdown menu={{ items: moreItems }}>
+              <a onClick={(e) => e.preventDefault()}>
+                更多 <DownOutlined />
+              </a>
+            </Dropdown>
+          </Space>
+        );
       },
     },
   ];
@@ -140,13 +171,21 @@ const DictTypeList: React.FC = () => {
           <DictTypeForm
             key="create"
             title="新建字典类型"
-            trigger={<Button type="primary"><PlusOutlined /> 新建</Button>}
+            trigger={
+              <Button type="primary">
+                <PlusOutlined /> 新建
+              </Button>
+            }
             onFinish={handleFormSuccess}
           />,
         ]}
         request={async (params) => {
           const { current, pageSize, ...rest } = params;
-          const result = await getDictTypeList({ page: current, pageSize, ...rest });
+          const result = await getDictTypeList({
+            page: current,
+            pageSize,
+            ...rest,
+          });
           return {
             data: result.data || [],
             success: result.success,
@@ -160,7 +199,9 @@ const DictTypeList: React.FC = () => {
           <Space size={24}>
             <span>
               已选 {selectedRowKeys.length} 项
-              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>取消选择</a>
+              <a style={{ marginLeft: 8 }} onClick={onCleanSelected}>
+                取消选择
+              </a>
             </span>
           </Space>
         )}
@@ -174,10 +215,18 @@ const DictTypeList: React.FC = () => {
               cancelText="取消"
               disabled={selectedRowKeys.length === 0 || batchDeleteLoading}
             >
-              <a style={{
-                color: selectedRowKeys.length === 0 || batchDeleteLoading ? '#ccc' : '#ff4d4f',
-                cursor: selectedRowKeys.length === 0 || batchDeleteLoading ? 'not-allowed' : 'pointer'
-              }}>
+              <a
+                style={{
+                  color:
+                    selectedRowKeys.length === 0 || batchDeleteLoading
+                      ? '#ccc'
+                      : '#ff4d4f',
+                  cursor:
+                    selectedRowKeys.length === 0 || batchDeleteLoading
+                      ? 'not-allowed'
+                      : 'pointer',
+                }}
+              >
                 {batchDeleteLoading ? '删除中...' : '批量删除'}
               </a>
             </Popconfirm>

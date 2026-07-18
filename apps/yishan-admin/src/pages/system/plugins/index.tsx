@@ -1,16 +1,31 @@
-import { PageContainer, type ActionType, type ProColumns, ProTable } from '@ant-design/pro-components';
+import {
+  type ActionType,
+  PageContainer,
+  type ProColumns,
+  ProTable,
+} from '@ant-design/pro-components';
+import {
+  Alert,
+  Button,
+  Descriptions,
+  Drawer,
+  Modal,
+  message,
+  Select,
+  Space,
+  Tag,
+} from 'antd';
 import React, { useRef, useState } from 'react';
-import { Button, Drawer, message, Space, Tag, Modal, Select, Alert, Descriptions } from 'antd';
 import {
   disablePlugin,
   enablePlugin,
   getPluginHookReports,
   getSyncLogs,
   listPlugins,
-  syncPlugin,
   type SysPlugin,
   type SysPluginHookReport,
   type SysPluginSyncLog,
+  syncPlugin,
 } from '@/services/yishan-admin/sysPlugins';
 
 const SYNC_STATUS_COLOR: Record<string, string> = {
@@ -35,7 +50,9 @@ const PluginList: React.FC = () => {
   const [syncLogsLoading, setSyncLogsLoading] = useState(false);
   const [currentPlugin, setCurrentPlugin] = useState<SysPlugin | null>(null);
   const [enableModalOpen, setEnableModalOpen] = useState(false);
-  const [selectedStrategy, setSelectedStrategy] = useState<'strict' | 'safe'>('safe');
+  const [selectedStrategy, setSelectedStrategy] = useState<'strict' | 'safe'>(
+    'safe',
+  );
   const [enabling, setEnabling] = useState(false);
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -129,7 +146,15 @@ const PluginList: React.FC = () => {
       search: false,
       width: 120,
       render: (_, record) => (
-        <Tag color={record.state === 'error' ? 'red' : record.enabled ? 'green' : 'default'}>
+        <Tag
+          color={
+            record.state === 'error'
+              ? 'red'
+              : record.enabled
+                ? 'green'
+                : 'default'
+          }
+        >
           {record.state || (record.enabled ? 'enabled' : 'disabled')}
         </Tag>
       ),
@@ -139,7 +164,11 @@ const PluginList: React.FC = () => {
       dataIndex: 'enabled',
       search: false,
       width: 100,
-      render: (_, record) => <Tag color={record.enabled ? 'success' : 'default'}>{record.enabled ? '是' : '否'}</Tag>,
+      render: (_, record) => (
+        <Tag color={record.enabled ? 'success' : 'default'}>
+          {record.enabled ? '是' : '否'}
+        </Tag>
+      ),
     },
     {
       title: '同步状态',
@@ -150,8 +179,11 @@ const PluginList: React.FC = () => {
         if (!record.syncStatus) return <Tag>未同步</Tag>;
         return (
           <Space>
-            <Tag color={SYNC_STATUS_COLOR[record.syncStatus.status] || 'default'}>
-              {SYNC_STATUS_TEXT[record.syncStatus.status] || record.syncStatus.status}
+            <Tag
+              color={SYNC_STATUS_COLOR[record.syncStatus.status] || 'default'}
+            >
+              {SYNC_STATUS_TEXT[record.syncStatus.status] ||
+                record.syncStatus.status}
             </Tag>
             {record.syncStatus.conflicted > 0 && (
               <Tag color="orange">冲突{record.syncStatus.conflicted}</Tag>
@@ -160,31 +192,36 @@ const PluginList: React.FC = () => {
         );
       },
     },
-    { title: '兼容版本', dataIndex: 'coreCompatibility', search: false, width: 140 },
-    { title: '更新时间', dataIndex: 'updatedAt', search: false, valueType: 'dateTime', width: 180 },
+    {
+      title: '兼容版本',
+      dataIndex: 'coreCompatibility',
+      search: false,
+      width: 140,
+    },
+    {
+      title: '更新时间',
+      dataIndex: 'updatedAt',
+      search: false,
+      valueType: 'dateTime',
+      width: 180,
+    },
     {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
       width: 180,
-      render: (_, record) => [
-        <a key="sync-logs" onClick={() => handleOpenSyncLogs(record)}>
-          同步记录
-        </a>,
-        <a key="sync" onClick={() => handleOpenSyncModal(record)}>
-          同步
-        </a>,
-        record.enabled ? (
-          <a key="disable" onClick={() => handleDisable(record.name)}>
-            停用
-          </a>
-        ) : (
-          <a key="enable" onClick={() => handleOpenEnableModal(record)}>
-            启用
-          </a>
-        ),
-      ],
+      render: (_, record) => (
+        <Space size={16}>
+          <a onClick={() => handleOpenSyncLogs(record)}>同步记录</a>
+          <a onClick={() => handleOpenSyncModal(record)}>同步</a>
+          {record.enabled ? (
+            <a onClick={() => handleDisable(record.name)}>停用</a>
+          ) : (
+            <a onClick={() => handleOpenEnableModal(record)}>启用</a>
+          )}
+        </Space>
+      ),
     },
   ];
 
@@ -197,17 +234,37 @@ const PluginList: React.FC = () => {
       width: 100,
       render: (val) => {
         const strVal = String(val ?? '');
-        return <Tag color={SYNC_STATUS_COLOR[strVal] || 'default'}>{SYNC_STATUS_TEXT[strVal] || strVal}</Tag>;
+        return (
+          <Tag color={SYNC_STATUS_COLOR[strVal] || 'default'}>
+            {SYNC_STATUS_TEXT[strVal] || strVal}
+          </Tag>
+        );
       },
     },
     { title: '新增', dataIndex: 'created', search: false, width: 90 },
     { title: '更新', dataIndex: 'updated', search: false, width: 90 },
     { title: '跳过', dataIndex: 'skipped', search: false, width: 90 },
-    { title: '冲突', dataIndex: 'conflicted', search: false, width: 90, render: (val) => {
-      const numVal = Number(val);
-      return numVal > 0 ? <span style={{ color: 'orange' }}>{numVal}</span> : numVal;
-    }},
-    { title: '时间', dataIndex: 'createdAt', search: false, valueType: 'dateTime', width: 180 },
+    {
+      title: '冲突',
+      dataIndex: 'conflicted',
+      search: false,
+      width: 90,
+      render: (val) => {
+        const numVal = Number(val);
+        return numVal > 0 ? (
+          <span style={{ color: 'orange' }}>{numVal}</span>
+        ) : (
+          numVal
+        );
+      },
+    },
+    {
+      title: '时间',
+      dataIndex: 'createdAt',
+      search: false,
+      valueType: 'dateTime',
+      width: 180,
+    },
   ];
 
   return (
@@ -242,8 +299,12 @@ const PluginList: React.FC = () => {
         confirmLoading={enabling}
       >
         <Descriptions column={1}>
-          <Descriptions.Item label="插件名">{currentPlugin?.name}</Descriptions.Item>
-          <Descriptions.Item label="版本">{currentPlugin?.version}</Descriptions.Item>
+          <Descriptions.Item label="插件名">
+            {currentPlugin?.name}
+          </Descriptions.Item>
+          <Descriptions.Item label="版本">
+            {currentPlugin?.version}
+          </Descriptions.Item>
         </Descriptions>
         <div style={{ marginTop: 16 }}>
           <label htmlFor="sync-strategy-select">同步策略：</label>
@@ -254,7 +315,9 @@ const PluginList: React.FC = () => {
             style={{ width: 200, marginLeft: 8 }}
           >
             <Select.Option value="safe">safe（冲突跳过，有告警）</Select.Option>
-            <Select.Option value="strict">strict（冲突即失败，状态标 error）</Select.Option>
+            <Select.Option value="strict">
+              strict（冲突即失败，状态标 error）
+            </Select.Option>
           </Select>
         </div>
         {selectedStrategy === 'strict' && (
@@ -275,8 +338,12 @@ const PluginList: React.FC = () => {
         confirmLoading={syncing}
       >
         <Descriptions column={1}>
-          <Descriptions.Item label="插件名">{currentPlugin?.name}</Descriptions.Item>
-          <Descriptions.Item label="版本">{currentPlugin?.version}</Descriptions.Item>
+          <Descriptions.Item label="插件名">
+            {currentPlugin?.name}
+          </Descriptions.Item>
+          <Descriptions.Item label="版本">
+            {currentPlugin?.version}
+          </Descriptions.Item>
         </Descriptions>
         <div style={{ marginTop: 16 }}>
           <label htmlFor="manual-sync-strategy-select">同步策略：</label>
@@ -307,7 +374,9 @@ const PluginList: React.FC = () => {
         onClose={() => setReportDrawerOpen(false)}
       >
         <ProTable<SysPluginHookReport>
-          rowKey={(row) => `${row.id || ''}-${row.pluginName || ''}-${row.hookName || ''}-${row.createdAt || ''}`}
+          rowKey={(row) =>
+            `${row.id || ''}-${row.pluginName || ''}-${row.hookName || ''}-${row.createdAt || ''}`
+          }
           loading={reportsLoading}
           search={false}
           options={false}
@@ -318,7 +387,12 @@ const PluginList: React.FC = () => {
             { title: 'Hook', dataIndex: 'hookName', width: 160 },
             { title: '状态', dataIndex: 'status', width: 100 },
             { title: '信息', dataIndex: 'message', ellipsis: true, width: 300 },
-            { title: '时间', dataIndex: 'createdAt', valueType: 'dateTime', width: 180 },
+            {
+              title: '时间',
+              dataIndex: 'createdAt',
+              valueType: 'dateTime',
+              width: 180,
+            },
           ]}
           scroll={{ x: 1100 }}
           toolBarRender={() => [
@@ -340,15 +414,24 @@ const PluginList: React.FC = () => {
             message="最近一次同步"
             description={
               <div>
-                <p>策略: {currentPlugin.syncStatus.strategy} | 状态: {SYNC_STATUS_TEXT[currentPlugin.syncStatus.status]}</p>
-                <p>新增: {currentPlugin.syncStatus.created} | 更新: {currentPlugin.syncStatus.updated} | 跳过: {currentPlugin.syncStatus.skipped} | 冲突: {currentPlugin.syncStatus.conflicted}</p>
+                <p>
+                  策略: {currentPlugin.syncStatus.strategy} | 状态:{' '}
+                  {SYNC_STATUS_TEXT[currentPlugin.syncStatus.status]}
+                </p>
+                <p>
+                  新增: {currentPlugin.syncStatus.created} | 更新:{' '}
+                  {currentPlugin.syncStatus.updated} | 跳过:{' '}
+                  {currentPlugin.syncStatus.skipped} | 冲突:{' '}
+                  {currentPlugin.syncStatus.conflicted}
+                </p>
                 {currentPlugin.syncStatus.conflicted > 0 && (
                   <div style={{ marginTop: 8 }}>
                     <strong>冲突详情：</strong>
                     <ul>
                       {currentPlugin.syncStatus.conflictDetails.map((c) => (
                         <li key={c.path}>
-                          路径 {c.path} 被 {c.existingPluginName} 占用 ({c.reason})
+                          路径 {c.path} 被 {c.existingPluginName} 占用 (
+                          {c.reason})
                         </li>
                       ))}
                     </ul>
@@ -356,7 +439,13 @@ const PluginList: React.FC = () => {
                 )}
               </div>
             }
-            type={currentPlugin.syncStatus.status === 'failed' ? 'error' : currentPlugin.syncStatus.conflicted > 0 ? 'warning' : 'success'}
+            type={
+              currentPlugin.syncStatus.status === 'failed'
+                ? 'error'
+                : currentPlugin.syncStatus.conflicted > 0
+                  ? 'warning'
+                  : 'success'
+            }
             style={{ marginBottom: 16 }}
           />
         )}
@@ -371,7 +460,13 @@ const PluginList: React.FC = () => {
           scroll={{ x: 900 }}
           toolBarRender={() => [
             <Space key="sync-actions">
-              <Button onClick={() => currentPlugin && handleOpenSyncLogs(currentPlugin)}>刷新</Button>
+              <Button
+                onClick={() =>
+                  currentPlugin && handleOpenSyncLogs(currentPlugin)
+                }
+              >
+                刷新
+              </Button>
             </Space>,
           ]}
         />

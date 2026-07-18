@@ -1,8 +1,46 @@
-import { PlusOutlined, SendOutlined } from '@ant-design/icons';
-import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
-import { App, Button, Form, Input, InputNumber, Modal, Space } from 'antd';
-import React, { useRef, useState } from 'react';
-import { createCustomer, dispatchCustomer, getCustomers, searchHospitals, updateCustomer } from '@/services/yishan-admin/crm';
+import { PlusOutlined } from '@ant-design/icons';
+import {
+  type ActionType,
+  PageContainer,
+  type ProColumns,
+  ProTable,
+} from '@ant-design/pro-components';
+import {
+  App,
+  Button,
+  Cascader,
+  Col,
+  DatePicker,
+  Divider,
+  Form,
+  Input,
+  Modal,
+  Row,
+  Select,
+  Space,
+} from 'antd';
+import dayjs from 'dayjs';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  createCustomer,
+  dispatchCustomer,
+  getCustomerStatuses,
+  getCustomers,
+  searchHospitals,
+  updateCustomer,
+} from '@/services/yishan-admin/crm';
+import { getRegionTree } from '@/services/yishan-admin/regions';
+import { getUserList } from '@/services/yishan-admin/sysUsers';
+
+const toRegionOptions = (nodes: any[] = []): any[] =>
+  nodes.map((node) => ({
+    label: node.name,
+    value: node.code,
+    children:
+      Array.isArray(node.children) && node.children.length > 0
+        ? toRegionOptions(node.children)
+        : undefined,
+  }));
 
 const CustomerPage: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
@@ -11,18 +49,84 @@ const CustomerPage: React.FC = () => {
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [editing, setEditing] = useState<any>();
   const [current, setCurrent] = useState<any>();
+  const [regionOptions, setRegionOptions] = useState<any[]>([]);
+  const [regionLoading, setRegionLoading] = useState(false);
+  const [customerServiceOptions, setCustomerServiceOptions] = useState<
+    Array<{ label: string; value: number }>
+  >([]);
+  const [customerStatusOptions, setCustomerStatusOptions] = useState<
+    Array<{ label: string; value: number }>
+  >([]);
   const [form] = Form.useForm();
   const [dispatchForm] = Form.useForm();
 
+  useEffect(() => {
+    setRegionLoading(true);
+    getRegionTree({ level: 3 })
+      .then((res) => {
+        if (res.success) setRegionOptions(toRegionOptions(res.data || []));
+      })
+      .finally(() => setRegionLoading(false));
+  }, []);
+
+  useEffect(() => {
+    getUserList({ pageSize: 100, status: '1' }).then((res) => {
+      if (!res.success) return;
+      setCustomerServiceOptions(
+        (res.data || []).map((user) => ({
+          label: user.realName
+            ? `${user.realName}（${user.username || user.phone}）`
+            : user.username || user.phone || `用户 #${user.id}`,
+          value: user.id,
+        })),
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    getCustomerStatuses().then((res) => {
+      if (!res.success) return;
+      setCustomerStatusOptions(
+        (res.data || []).map((status: any) => ({
+          label: status.name,
+          value: status.id,
+        })),
+      );
+    });
+  }, []);
+
   const showForm = (record?: any) => {
     setEditing(record);
-    form.setFieldsValue(record || { gender: 0, statusId: 1 });
+    form.resetFields();
+    const regionCodes =
+      record?.provinceId && record?.cityId && record?.districtId
+        ? [record.provinceId, record.cityId, record.districtId]
+        : undefined;
+    form.setFieldsValue(
+      record
+        ? {
+            ...record,
+            birthday: record.birthday ? dayjs(record.birthday) : undefined,
+            regionCodes,
+          }
+        : { gender: 0, statusId: 1 },
+    );
     setOpen(true);
   };
 
   const submit = async () => {
     const values = await form.validateFields();
-    const res = editing?.id ? await updateCustomer(editing.id, values) : await createCustomer(values);
+    const { regionCodes, ...restValues } = values;
+    const payload = {
+      ...restValues,
+      birthday: values.birthday?.format('YYYY-MM-DD'),
+      provinceId: regionCodes?.[0],
+      cityId: regionCodes?.[1],
+      districtId: regionCodes?.[2],
+    };
+    const res = editing?.id
+      ? await updateCustomer(editing.id, payload)
+      : await createCustomer(payload);
     if (res.success) message.success(res.message);
     setOpen(false);
     actionRef.current?.reload();
@@ -36,18 +140,32 @@ const CustomerPage: React.FC = () => {
     { title: '整形项目', dataIndex: 'plastic', search: false },
     { title: '客户状态', dataIndex: ['status', 'name'], search: false },
     { title: '所属客服', dataIndex: ['owner', 'username'], search: false },
-    { title: '创建时间', dataIndex: 'createdAt', valueType: 'dateTime', search: false },
+    {
+      title: '创建时间',
+      dataIndex: 'createdAt',
+      valueType: 'dateTime',
+      search: false,
+    },
     {
       title: '操作',
+      dataIndex: 'option',
       valueType: 'option',
-      render: (_, record) => [
-        <a key="edit" onClick={() => showForm(record)}>编辑</a>,
-        <a key="dispatch" onClick={() => {
-          setCurrent(record);
-          dispatchForm.resetFields();
-          setDispatchOpen(true);
-        }}><SendOutlined /> 派单</a>,
-      ],
+      fixed: 'right',
+      width: 120,
+      render: (_, record) => (
+        <Space size={16}>
+          <a onClick={() => showForm(record)}>编辑</a>
+          <a
+            onClick={() => {
+              setCurrent(record);
+              dispatchForm.resetFields();
+              setDispatchOpen(true);
+            }}
+          >
+            派单
+          </a>
+        </Space>
+      ),
     },
   ];
 
@@ -58,52 +176,203 @@ const CustomerPage: React.FC = () => {
         rowKey="id"
         headerTitle="客户管理"
         request={async (params) => {
-          const res = await getCustomers({ page: params.current, pageSize: params.pageSize, keyword: params.name || params.numberId });
-          return { data: res.data || [], success: res.success, total: res.pagination?.total || 0 };
+          const res = await getCustomers({
+            page: params.current,
+            pageSize: params.pageSize,
+            keyword: params.name || params.numberId,
+          });
+          return {
+            data: res.data || [],
+            success: res.success,
+            total: res.pagination?.total || 0,
+          };
         }}
         columns={columns}
-        toolBarRender={() => [<Button key="new" type="primary" icon={<PlusOutlined />} onClick={() => showForm()}>新建</Button>]}
+        toolBarRender={() => [
+          <Button
+            key="new"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => showForm()}
+          >
+            新建
+          </Button>,
+        ]}
       />
-      <Modal title={editing ? '编辑客户' : '新建客户'} open={open} onOk={submit} onCancel={() => setOpen(false)} width={820} destroyOnHidden>
+      <Modal
+        title={editing ? '编辑客户' : '新建客户'}
+        open={open}
+        onOk={submit}
+        onCancel={() => setOpen(false)}
+        width={880}
+        centered
+        destroyOnHidden
+        styles={{
+          body: {
+            maxHeight: 'calc(100vh - 220px)',
+            overflowY: 'auto',
+            paddingRight: 24,
+          },
+        }}
+      >
         <Form form={form} layout="vertical">
-          <Space wrap align="start">
-            <Form.Item name="numberId" label="会员编号"><Input /></Form.Item>
-            <Form.Item name="name" label="客户姓名" rules={[{ required: true }]}><Input /></Form.Item>
-            <Form.Item name="gender" label="性别 0男/1女"><InputNumber min={0} max={1} /></Form.Item>
-            <Form.Item name="birthday" label="生日"><Input placeholder="YYYY-MM-DD" /></Form.Item>
-            <Form.Item name="ownerUserId" label="归属客服ID"><InputNumber /></Form.Item>
-            <Form.Item name="statusId" label="客户状态ID"><InputNumber min={1} /></Form.Item>
-          </Space>
-          <Space wrap align="start">
-            <Form.Item name="telphone" label="固定电话"><Input /></Form.Item>
-            <Form.Item name="mobile" label="手机"><Input /></Form.Item>
-            <Form.Item name="qq" label="QQ"><Input /></Form.Item>
-            <Form.Item name="wechat" label="微信"><Input /></Form.Item>
-          </Space>
-          <Space wrap align="start">
-            <Form.Item name="provinceId" label="省ID"><InputNumber /></Form.Item>
-            <Form.Item name="cityId" label="市ID"><InputNumber /></Form.Item>
-            <Form.Item name="districtId" label="区ID"><InputNumber /></Form.Item>
-            <Form.Item name="address" label="地址"><Input style={{ width: 320 }} /></Form.Item>
-          </Space>
-          <Form.Item name="plastic" label="整形项目"><Input /></Form.Item>
-          <Form.Item name="remark" label="重单理由/备注"><Input.TextArea rows={4} /></Form.Item>
+          <Divider titlePlacement="start" plain>
+            基本信息
+          </Divider>
+          <Row gutter={24}>
+            <Col xs={24} md={8}>
+              <Form.Item name="numberId" label="会员编号">
+                <Input placeholder="请输入会员编号" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="ownerUserId" label="归属客服">
+                <Select
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  options={customerServiceOptions}
+                  placeholder="请选择归属客服"
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item
+                name="name"
+                label="客户姓名"
+                required
+                rules={[{ required: true }]}
+              >
+                <Input placeholder="请输入客户姓名" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="birthday" label="生日">
+                <DatePicker
+                  format="YYYY-MM-DD"
+                  placeholder="请选择生日"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="gender" label="性别">
+                <Select
+                  options={[
+                    { label: '保密', value: 0 },
+                    { label: '男', value: 1 },
+                    { label: '女', value: 2 },
+                  ]}
+                  placeholder="请选择性别"
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="statusId" label="客户状态">
+                <Select
+                  options={customerStatusOptions}
+                  placeholder="请选择客户状态"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Divider titlePlacement="start" plain>
+            联系方式
+          </Divider>
+          <Row gutter={24}>
+            <Col xs={24} md={8}>
+              <Form.Item name="mobile" label="手机号">
+                <Input placeholder="请输入手机号" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="qq" label="QQ号">
+                <Input placeholder="请输入QQ号" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="wechat" label="微信号">
+                <Input placeholder="请输入微信号" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Divider titlePlacement="start" plain>
+            地址与需求
+          </Divider>
+          <Row gutter={24}>
+            <Col xs={24} md={8}>
+              <Form.Item name="regionCodes" label="省市区">
+                <Cascader
+                  allowClear
+                  changeOnSelect
+                  loading={regionLoading}
+                  options={regionOptions}
+                  placeholder="请选择省市区"
+                  style={{ width: '100%' }}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={16}>
+              <Form.Item name="address" label="详细地址">
+                <Input placeholder="请输入详细地址" />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item name="plastic" label="整形项目">
+                <Input placeholder="请输入整形项目" />
+              </Form.Item>
+            </Col>
+            <Col span={24}>
+              <Form.Item name="remark" label="备注">
+                <Input.TextArea placeholder="请输入备注" rows={4} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
-      <Modal title={`派单：${current?.name || ''}`} open={dispatchOpen} onOk={async () => {
-        const values = await dispatchForm.validateFields();
-        const hospitalIds = String(values.hospitalIds).split(',').map((item) => Number(item.trim())).filter(Boolean);
-        const res = await dispatchCustomer(current.id, { hospitalIds, reply: values.reply });
-        if (res.success) message.success(res.message);
-        setDispatchOpen(false);
-      }} onCancel={() => setDispatchOpen(false)}>
+      <Modal
+        title={`派单：${current?.name || ''}`}
+        open={dispatchOpen}
+        onOk={async () => {
+          const values = await dispatchForm.validateFields();
+          const hospitalIds = String(values.hospitalIds)
+            .split(',')
+            .map((item) => Number(item.trim()))
+            .filter(Boolean);
+          const res = await dispatchCustomer(current.id, {
+            hospitalIds,
+            reply: values.reply,
+          });
+          if (res.success) message.success(res.message);
+          setDispatchOpen(false);
+        }}
+        onCancel={() => setDispatchOpen(false)}
+      >
         <Form form={dispatchForm} layout="vertical">
-          <Form.Item name="hospitalIds" label="医院ID，多个用英文逗号分隔" rules={[{ required: true }]}><Input placeholder="1,2,3" /></Form.Item>
-          <Form.Item name="reply" label="派单留言" initialValue="此客户是贵医院潜在客户，请跟进"><Input.TextArea rows={4} /></Form.Item>
-          <Button onClick={async () => {
-            const res = await searchHospitals({});
-            message.info(`可选医院：${(res.data || []).map((item: any) => `${item.id}-${item.hospitalName}`).join('，') || '暂无'}`);
-          }}>查看医院ID</Button>
+          <Form.Item
+            name="hospitalIds"
+            label="医院ID，多个用英文逗号分隔"
+            rules={[{ required: true }]}
+          >
+            <Input placeholder="1,2,3" />
+          </Form.Item>
+          <Form.Item
+            name="reply"
+            label="派单留言"
+            initialValue="此客户是贵医院潜在客户，请跟进"
+          >
+            <Input.TextArea rows={4} />
+          </Form.Item>
+          <Button
+            onClick={async () => {
+              const res = await searchHospitals({});
+              message.info(
+                `可选医院：${(res.data || []).map((item: any) => `${item.id}-${item.hospitalName}`).join('，') || '暂无'}`,
+              );
+            }}
+          >
+            查看医院ID
+          </Button>
         </Form>
       </Modal>
     </PageContainer>
@@ -111,4 +380,3 @@ const CustomerPage: React.FC = () => {
 };
 
 export default CustomerPage;
-

@@ -48,8 +48,8 @@ export class CrmRepository {
   }
 
   static async ensureDefaultStatuses(db: AppQueryDb = drizzleDb) {
-    for (const [id, name] of [[1, '未派单'], [2, '已派单'], [3, '重单'], [4, '已成交']] as const) {
-      await db.insert(iximeiCrmCustomerStatus).values({ id, name, sortOrder: id }).onDuplicateKeyUpdate({ set: { id } })
+    for (const [id, name] of [[1, '资料录入'], [2, '待跟进'], [3, '重单'], [4, '已手术'], [5, '无效用户']] as const) {
+      await db.insert(iximeiCrmCustomerStatus).values({ id, name, sortOrder: id, status: 1 }).onDuplicateKeyUpdate({ set: { name, sortOrder: id, status: 1 } })
     }
     for (const [id, name] of [[1, '待回复'], [2, '已联系'], [3, '已到院'], [4, '已成交'], [5, '未成交'], [6, '重单']] as const) {
       await db.insert(iximeiCrmDispatchStatus).values({ id, name, sortOrder: id }).onDuplicateKeyUpdate({ set: { id } })
