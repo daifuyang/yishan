@@ -53,11 +53,26 @@ console.log('Running generator...')
 execSync('node scripts/generate-drizzle-schema.mjs', { cwd: root, stdio: 'inherit' })
 
 const drizzleDir = path.join(root, 'drizzle')
-const sqlFiles = readdirSync(drizzleDir)
+const coreSqlFiles = readdirSync(drizzleDir)
   .filter((name) => name.endsWith('.sql'))
   .sort()
-const tablesSql = sqlFiles
-  .map((name) => readFileSync(path.join(drizzleDir, name), 'utf8'))
+  .map((name) => path.join(drizzleDir, name))
+const pluginsRoot = path.join(root, 'src/plugins/modules')
+const pluginSqlFiles = (statSync(pluginsRoot, { throwIfNoEntry: false })?.isDirectory()
+  ? readdirSync(pluginsRoot, { withFileTypes: true })
+  : [])
+  .filter((entry) => entry.isDirectory())
+  .flatMap((entry) => {
+    const migrationsDir = path.join(pluginsRoot, entry.name, 'migrations')
+    return statSync(migrationsDir, { throwIfNoEntry: false })?.isDirectory()
+      ? readdirSync(migrationsDir)
+          .filter((name) => name.endsWith('.sql'))
+          .sort()
+          .map((name) => path.join(migrationsDir, name))
+      : []
+  })
+const tablesSql = [...coreSqlFiles, ...pluginSqlFiles]
+  .map((name) => readFileSync(name, 'utf8'))
   .join('\n\n')
 
 const tablesTs = readFileSync(path.join(generatedDir, 'tables.ts'), 'utf8')
