@@ -48,7 +48,9 @@ import {
 import { getGlobalCatalog } from "../../services/permission-catalog.service.js";
 import type { PermissionRef } from '../../permissions/define-permissions.js';
 
-type PreHandler = (request: FastifyRequest, reply: FastifyReply) => Promise<void> | void;
+type PreHandler = ((request: FastifyRequest, reply: FastifyReply) => Promise<void> | void) & {
+  permission?: PermissionRef;
+};
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -56,7 +58,7 @@ declare module "fastify" {
      * 校验 `request.currentUser` 是否持有 `permCode`。要求 preHandler 已先
      * 执行 `fastify.authenticate`。super_admin 自动放行。
      */
-    requirePermission: (permission: string | PermissionRef) => PreHandler;
+    requirePermission: (permission: PermissionRef) => PreHandler;
     /**
      * 校验 `request.currentUser` 是否持有 `roleCode`。同样要求 authenticate 已执行。
      */
@@ -116,9 +118,9 @@ export function computeEffectivePerms(
 
 export default fp<Record<string, never>>(
   async (fastify: FastifyInstance) => {
-    fastify.decorate("requirePermission", (permission: string | PermissionRef): PreHandler => {
-      const permCode = typeof permission === 'string' ? permission : permission.code;
-      return async (request: FastifyRequest, _reply: FastifyReply) => {
+    fastify.decorate("requirePermission", (permission: PermissionRef): PreHandler => {
+      const permCode = permission.code;
+      const handler: PreHandler = async (request: FastifyRequest, _reply: FastifyReply) => {
         const currentUser = (request as any).currentUser;
         if (!currentUser?.id) {
           throw new BusinessError(
@@ -159,6 +161,17 @@ export default fp<Record<string, never>>(
         // 给后续 hook 用：把有效 permissions 注入 request 上下文
         (request as any).effectivePermissions = effectivePerms;
       };
+      handler.permission = permission;
+      return handler;
+    });
+
+    fastify.addHook('onRoute', (route) => {
+      const handlers = Array.isArray(route.preHandler) ? route.preHandler : route.preHandler ? [route.preHandler] : [];
+      const permission = handlers.map((handler) => (handler as PreHandler).permission).find(Boolean);
+      if (!permission) return;
+      const schema = (route.schema ??= {}) as Record<string, unknown>;
+      schema['x-permission-code'] = permission.code;
+      schema['x-permission-label'] = permission.label;
     });
 
     fastify.decorate("requireRole", (roleCode: string): PreHandler => {

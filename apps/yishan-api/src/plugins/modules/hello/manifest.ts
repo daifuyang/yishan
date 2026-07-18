@@ -1,3 +1,9 @@
+import { definePermissions } from '../../../core/permissions/define-permissions.js';
+
+export const helloPermissions = definePermissions({
+  HEALTH_READ: { code: 'hello:health:read', label: '健康检查-读取', description: '读取 Hello 示例插件状态', group: 'hello' },
+});
+
 export default {
   pluginId: 'yishan/hello',
   dbNamespace: 'ys_hello',
@@ -9,9 +15,7 @@ export default {
   channels: ['admin'],
   routeBase: '/api/modules/hello/v1',
   icon: 'smile',
-  permissions: [
-    { code: 'hello:health:read', label: '健康检查-读取', description: '读取 Hello 示例插件状态', group: 'hello' },
-  ],
+  permissions: Object.values(helloPermissions),
   menus: [
     {
       channel: 'admin',
@@ -19,8 +23,8 @@ export default {
       name: 'Hello Health',
       // Kept for the manifest architecture check; permissionCodes is the
       // runtime field consumed by PluginMenuSyncService.
-      perm: 'hello:health:read',
-      permissionCodes: ['hello:health:read'],
+      perm: helloPermissions.HEALTH_READ.code,
+      permissionCodes: [helloPermissions.HEALTH_READ.code],
       icon: 'smile',
     },
   ],
