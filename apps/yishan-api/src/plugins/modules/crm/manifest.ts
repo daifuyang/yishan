@@ -2,8 +2,8 @@ export default {
   pluginId: 'iximei/crm',
   dbNamespace: 'iximei_crm',
   name: 'crm',
-  menuRootName: '客户管理',
-  menuRootSort: 30,
+  // CRM 页面在业务产品中作为一级菜单展示，不生成插件目录菜单。
+  menuRoot: false,
   version: '1.0.0',
   coreCompatibility: '^1.0.0',
   channels: ['admin'],

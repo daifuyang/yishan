@@ -69,6 +69,10 @@ export function validateManifest(manifest: unknown): ManifestValidationResult {
     errors.push('manifest.name must be a non-empty string')
   }
 
+  if (value.menuRoot !== undefined && typeof value.menuRoot !== 'boolean') {
+    errors.push('manifest.menuRoot must be a boolean when provided')
+  }
+
   if (!isNonEmptyString(value.version)) {
     errors.push('manifest.version must be a non-empty string')
   }

@@ -39,6 +39,8 @@ export class PluginMenuSyncService {
   }
 
   async resolveParentMenuId(manifest: PluginManifest): Promise<number | null> {
+    if (manifest.menuRoot === false) return null
+
     // 菜单命名空间属于插件标识，而非 API 路由。routeBase 的末段通常是
     // API 版本（例如 /api/modules/crm/v1），用它推导会错误生成
     // /plugins/crm/v1；pluginId 才是稳定的 <组织>/<插件> 标识。
