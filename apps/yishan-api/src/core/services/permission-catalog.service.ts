@@ -274,6 +274,16 @@ export class PermissionCatalogService {
     return this.cachedCodes!;
   }
 
+  /** All declared codes, including permissions of disabled plugins. */
+  async getDeclaredCodes(): Promise<Set<string>> {
+    this.ensureInitialized();
+    const codes = new Set(corePermissionDefinitions.map((item) => item.code));
+    for (const manifest of this.manifestReader!.listManifests()) {
+      for (const permission of manifest.permissions) codes.add(permission.code);
+    }
+    return codes;
+  }
+
   /**
    * 校验某个 code 是否在活动权限目录中。
    */

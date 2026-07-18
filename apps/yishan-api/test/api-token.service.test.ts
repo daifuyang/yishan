@@ -79,6 +79,9 @@ function mockUserWithDisabledPluginPerm() {
   vi.spyOn(getGlobalCatalog(), "getActiveCodes").mockResolvedValue(
     new Set(["system:user:list"]),
   );
+  vi.spyOn(getGlobalCatalog(), "getDeclaredCodes").mockResolvedValue(
+    new Set(["system:user:list", "shop:product:list"]),
+  );
 }
 
 beforeEach(() => {

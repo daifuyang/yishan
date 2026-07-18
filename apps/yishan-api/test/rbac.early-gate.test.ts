@@ -29,6 +29,10 @@ import { BusinessError } from '../src/exceptions/business-error.js'
 import { AuthErrorCode } from '../src/constants/business-codes/auth.js'
 import { PAT_WILDCARD } from '../src/constants/permission-codes.js'
 import type { PluginManifest } from '../src/core/plugin-platform/types'
+import type { PermissionRef } from '../src/core/permissions/define-permissions'
+
+const SHOP_PRODUCT_LIST: PermissionRef = { code: 'shop:product:list', label: '商品列表', group: 'shop' }
+const CORE_USER_LIST: PermissionRef = { code: 'system:user:list', label: '用户列表', group: 'system' }
 
 // --------------------------------------------------------------------------
 // 最小 jwt-auth 占位插件：rbac 声明了 dependencies: ['jwt-auth']，因此必须先
@@ -101,10 +105,10 @@ async function buildApp({ shopEnabled }: BuildAppOptions): Promise<BuiltApp> {
   await fastify.register(rbacPlugin)
   // 注册被真实 requirePermission 保护的路由
   fastify.get('/shop-product-list', {
-    preHandler: fastify.requirePermission('shop:product:list'),
+    preHandler: fastify.requirePermission(SHOP_PRODUCT_LIST),
   }, async () => ({ ok: true, scope: 'shop' }))
   fastify.get('/user-list', {
-    preHandler: fastify.requirePermission('system:user:list'),
+    preHandler: fastify.requirePermission(CORE_USER_LIST),
   }, async () => ({ ok: true, scope: 'core' }))
   await fastify.ready()
   return {
@@ -122,7 +126,7 @@ async function buildApp({ shopEnabled }: BuildAppOptions): Promise<BuiltApp> {
  */
 async function callPreHandler(
   fastify: FastifyInstance,
-  perm: string,
+  perm: PermissionRef,
   request: { currentUser?: unknown; tokenScope?: string[] | undefined },
 ): Promise<{ status: number; body?: { code?: number } }> {
   try {
@@ -168,7 +172,7 @@ describe('requirePermission early gate — 通过真实 RBAC plugin', () => {
     })
     const { fastify, close } = await buildApp({ shopEnabled: false })
 
-    const result = await callPreHandler(fastify, 'shop:product:list', {
+    const result = await callPreHandler(fastify, SHOP_PRODUCT_LIST, {
       currentUser: { id: 1, roleIds: [10] },
     })
 
@@ -189,7 +193,7 @@ describe('requirePermission early gate — 通过真实 RBAC plugin', () => {
 
     const { fastify, close } = await buildApp({ shopEnabled: false })
 
-    const result = await callPreHandler(fastify, 'shop:product:list', {
+    const result = await callPreHandler(fastify, SHOP_PRODUCT_LIST, {
       currentUser: { id: 1, roleIds: [1] },
     })
     expect(result.status).toBe(403)
@@ -209,7 +213,7 @@ describe('requirePermission early gate — 通过真实 RBAC plugin', () => {
 
     const { fastify, close } = await buildApp({ shopEnabled: false })
 
-    const result = await callPreHandler(fastify, 'shop:product:list', {
+    const result = await callPreHandler(fastify, SHOP_PRODUCT_LIST, {
       currentUser: { id: 1, roleIds: [1] },
       tokenScope: [PAT_WILDCARD],
     })
@@ -231,7 +235,7 @@ describe('requirePermission early gate — 通过真实 RBAC plugin', () => {
     // 重新初始化为 enabled
     const { fastify, close } = await buildApp({ shopEnabled: true })
 
-    const result = await callPreHandler(fastify, 'shop:product:list', {
+    const result = await callPreHandler(fastify, SHOP_PRODUCT_LIST, {
       currentUser: { id: 1, roleIds: [10] },
     })
     expect(result.status).toBe(200)
@@ -250,7 +254,7 @@ describe('requirePermission early gate — 通过真实 RBAC plugin', () => {
 
     const { fastify, close } = await buildApp({ shopEnabled: false })
 
-    const result = await callPreHandler(fastify, 'system:user:list', {
+    const result = await callPreHandler(fastify, CORE_USER_LIST, {
       currentUser: { id: 1, roleIds: [10] },
     })
     expect(result.status).toBe(200)
@@ -281,10 +285,10 @@ describe('requirePermission early gate — 通过真实 RBAC plugin', () => {
       ;(request as any).currentUser = { id: 1, roleIds: [10] }
     })
     fastify.get('/shop-product-list', {
-      preHandler: fastify.requirePermission('shop:product:list'),
+      preHandler: fastify.requirePermission(SHOP_PRODUCT_LIST),
     }, async () => ({ ok: true, scope: 'shop' }))
     fastify.get('/user-list', {
-      preHandler: fastify.requirePermission('system:user:list'),
+      preHandler: fastify.requirePermission(CORE_USER_LIST),
     }, async () => ({ ok: true, scope: 'core' }))
     await fastify.ready()
 
@@ -309,7 +313,7 @@ describe('requirePermission early gate — 通过真实 RBAC plugin', () => {
     const { fastify, close } = await buildApp({ shopEnabled: false })
 
     try {
-      await fastify.requirePermission('shop:product:list')(
+      await fastify.requirePermission(SHOP_PRODUCT_LIST)(
         { currentUser: { id: 1, roleIds: [10] } } as unknown as FastifyRequest,
         {} as FastifyReply,
       )

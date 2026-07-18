@@ -151,7 +151,8 @@ export class ApiTokenService {
     // scopes 默认为空；显式传入时通过 normalizeApiTokenScopes 校验：
     //   - 保留 "*"（通配符）、"__super_admin__"（super admin 显式旁路）、所有已登记 code
     //   - 未知 code 直接抛 BusinessError（防止静默配置失误）
-    const normalizedScopes: string[] = normalizeApiTokenScopes(req.scopes);
+    const declaredCodes = await getGlobalCatalog().getDeclaredCodes();
+    const normalizedScopes: string[] = normalizeApiTokenScopes(req.scopes, [...declaredCodes]);
 
     // 使用纯授权数据校验 scopes
     if (normalizedScopes.length > 0) {
