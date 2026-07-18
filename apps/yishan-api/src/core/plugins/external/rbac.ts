@@ -46,6 +46,7 @@ import {
   SUPER_ADMIN_BYPASS,
 } from "../../../constants/permission-codes.js";
 import { getGlobalCatalog } from "../../services/permission-catalog.service.js";
+import type { PermissionRef } from '../../permissions/define-permissions.js';
 
 type PreHandler = (request: FastifyRequest, reply: FastifyReply) => Promise<void> | void;
 
@@ -55,7 +56,7 @@ declare module "fastify" {
      * 校验 `request.currentUser` 是否持有 `permCode`。要求 preHandler 已先
      * 执行 `fastify.authenticate`。super_admin 自动放行。
      */
-    requirePermission: (permCode: string) => PreHandler;
+    requirePermission: (permission: string | PermissionRef) => PreHandler;
     /**
      * 校验 `request.currentUser` 是否持有 `roleCode`。同样要求 authenticate 已执行。
      */
@@ -115,7 +116,8 @@ export function computeEffectivePerms(
 
 export default fp<Record<string, never>>(
   async (fastify: FastifyInstance) => {
-    fastify.decorate("requirePermission", (permCode: string): PreHandler => {
+    fastify.decorate("requirePermission", (permission: string | PermissionRef): PreHandler => {
+      const permCode = typeof permission === 'string' ? permission : permission.code;
       return async (request: FastifyRequest, _reply: FastifyReply) => {
         const currentUser = (request as any).currentUser;
         if (!currentUser?.id) {
