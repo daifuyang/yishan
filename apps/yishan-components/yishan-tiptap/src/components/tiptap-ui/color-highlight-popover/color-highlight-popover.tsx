@@ -5,6 +5,7 @@ import { type Editor } from "@tiptap/react";
 import { useMenuNavigation } from "@/hooks/use-menu-navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor";
+import { useTiptapLocale } from "@/i18n";
 
 // --- Icons ---
 import { BanIcon } from "@/components/tiptap-icons/ban-icon";
@@ -73,22 +74,23 @@ export interface ColorHighlightPopoverProps
 export const ColorHighlightPopoverButton = React.forwardRef<
   HTMLButtonElement,
   ButtonProps
->(({ className, children, ...props }, ref) => (
-  <Button
+>(({ className, children, ...props }, ref) => {
+  const locale = useTiptapLocale();
+  return <Button
     type="button"
     className={className}
     data-style="ghost"
     data-appearance="default"
     role="button"
     tabIndex={-1}
-    aria-label="Highlight text"
-    tooltip="Highlight"
+    aria-label={locale.highlight}
+    tooltip={locale.highlight}
     ref={ref}
     {...props}
   >
     {children ?? <HighlighterIcon className="tiptap-button-icon" />}
-  </Button>
-));
+  </Button>;
+});
 
 ColorHighlightPopoverButton.displayName = "ColorHighlightPopoverButton";
 
