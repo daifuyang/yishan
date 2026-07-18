@@ -11,7 +11,7 @@ resources:
       region: ${vars.region}
       description: "Temporary internal runner for Yishan database migrations"
       runtime: custom.debian12
-      handler: migration-runner.handler
+      handler: infrastructure/migrations/runner.handler
       timeout: 600
       cpu: 1
       memorySize: 1024
@@ -39,5 +39,5 @@ resources:
       customRuntimeConfig:
         command:
           - node
-          - ./migration-runner-server.js
+          - ./infrastructure/migrations/server.js
         port: 3000
