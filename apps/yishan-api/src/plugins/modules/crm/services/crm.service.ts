@@ -1,5 +1,6 @@
 import { CrmRepository } from '../repositories/crm.repository.js'
 import sanitizeHtml from 'sanitize-html'
+import { hashPassword } from '../../../../utils/password.js'
 
 export type PageQuery = { page?: number; pageSize?: number; keyword?: string; startTime?: string; endTime?: string }
 
@@ -36,7 +37,6 @@ const sanitizeDispatchReplies = (dispatch: any) => ({
   })),
 })
 function normalizeContractPhotos(value: unknown) { if (value === undefined) return undefined; if (value === null || value === '') return null; if (typeof value === 'string') { try { return JSON.parse(value) } catch { return [{ url: value, name: '' }] } }; return value }
-function hashPassword(password: string) { return import('node:crypto').then((crypto) => crypto.createHash('sha256').update(password).digest('hex')) }
 
 /** CRM use cases. Persistence is deliberately delegated to CrmRepository. */
 export class CrmService {
