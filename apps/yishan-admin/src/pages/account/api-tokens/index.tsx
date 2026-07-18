@@ -293,7 +293,6 @@ const ApiTokensPage: React.FC = () => {
       title: t('account.apiTokens.col.scopes'),
       dataIndex: 'scopes',
       key: 'scopes',
-      width: 200,
       render: (scopes: string[] | null) => {
         if (!scopes?.length) {
           return (
@@ -335,24 +334,31 @@ const ApiTokensPage: React.FC = () => {
     {
       title: t('account.apiTokens.col.actions'),
       key: 'actions',
-      width: 140,
+      width: 120,
       fixed: 'right',
       render: (_, record) => (
-        <Popconfirm
-          title={t('account.apiTokens.revoke.confirm')}
-          okText={t('account.apiTokens.revoke.ok')}
-          cancelText={t('account.apiTokens.revoke.cancel')}
-          okButtonProps={{ danger: true }}
-          onConfirm={() => handleRevoke(record.id)}
-        >
-          <Button
-            type="link"
-            danger
-            disabled={loading}
+        <Space size={16}>
+          <Popconfirm
+            title={t('account.apiTokens.revoke.confirm')}
+            okText={t('account.apiTokens.revoke.ok')}
+            cancelText={t('account.apiTokens.revoke.cancel')}
+            okButtonProps={{ danger: true }}
+            onConfirm={() => handleRevoke(record.id)}
           >
-            {t('account.apiTokens.revoke.ok')}
-          </Button>
-        </Popconfirm>
+            <a
+              aria-disabled={loading}
+              onClick={(event) => {
+                if (loading) event.preventDefault();
+              }}
+              style={{
+                color: '#ff4d4f',
+                pointerEvents: loading ? 'none' : undefined,
+              }}
+            >
+              {t('account.apiTokens.revoke.ok')}
+            </a>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

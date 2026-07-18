@@ -138,7 +138,7 @@ const PluginList: React.FC = () => {
 
   const columns: ProColumns<SysPlugin>[] = [
     { title: '插件ID', dataIndex: 'pluginId', search: false, width: 180 },
-    { title: '插件名', dataIndex: 'name', width: 180 },
+    { title: '插件名', dataIndex: 'name' },
     { title: '版本', dataIndex: 'version', search: false, width: 120 },
     {
       title: '状态',
@@ -288,7 +288,7 @@ const PluginList: React.FC = () => {
             Hooks Reports
           </Button>,
         ]}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1380 }}
       />
 
       <Modal

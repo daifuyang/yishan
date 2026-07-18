@@ -74,7 +74,7 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({
 
   const columns: ProColumns<API.sysDictData>[] = [
     { title: '字典编号', dataIndex: 'id', search: false, width: 90 },
-    { title: '字典标签', dataIndex: 'label', width: 160 },
+    { title: '字典标签', dataIndex: 'label' },
     { title: '字典键值', dataIndex: 'value', width: 160 },
     { title: '字典排序', dataIndex: 'sort_order', search: false, width: 100 },
     {
@@ -193,7 +193,7 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({
         }}
         columns={columns}
         rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1330 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

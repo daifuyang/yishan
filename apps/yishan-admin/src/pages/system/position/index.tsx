@@ -157,7 +157,7 @@ const PositionList: React.FC = () => {
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
-      width: 180,
+      width: 160,
       render: (_, record) => (
         <Space size={16}>
           <PositionForm

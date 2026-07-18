@@ -129,7 +129,6 @@ const RoleList: React.FC = () => {
       dataIndex: 'description',
       search: false,
       ellipsis: true,
-      width: 220,
     },
     {
       title: '系统角色',
@@ -267,7 +266,7 @@ const RoleList: React.FC = () => {
           selectedRowKeys,
           onChange: setSelectedRowKeys,
         }}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1370 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>

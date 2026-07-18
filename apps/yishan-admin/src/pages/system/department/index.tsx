@@ -98,7 +98,7 @@ const DepartmentList: React.FC = () => {
   const columns: ProColumns<DeptTreeNode>[] = [
     { title: 'ID', dataIndex: 'id', search: false, width: 80 },
     { title: '部门名称', dataIndex: 'name', width: 160 },
-    { title: '上级部门', dataIndex: 'parentName', search: false, width: 160 },
+    { title: '上级部门', dataIndex: 'parentName', search: false },
     { title: '负责人', dataIndex: 'leaderName', search: false, width: 120 },
     { title: '排序', dataIndex: 'sort_order', search: false, width: 80 },
     {
@@ -135,7 +135,7 @@ const DepartmentList: React.FC = () => {
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
-      width: 180,
+      width: 160,
       render: (_, record) => (
         <Space size={16}>
           <DepartmentForm
@@ -205,7 +205,7 @@ const DepartmentList: React.FC = () => {
           onChange: (keys: React.Key[], _rows: DeptTreeNode[]) =>
             setSelectedRowKeys(keys),
         }}
-        scroll={{ x: 1400 }}
+        scroll={{ x: 1220 }}
         tableAlertRender={({ selectedRowKeys, onCleanSelected }) => (
           <Space size={24}>
             <span>
