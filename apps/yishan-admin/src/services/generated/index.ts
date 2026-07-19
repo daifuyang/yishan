@@ -25,14 +25,6 @@ import * as appUsers from "./appUsers";
 import * as auth from "./auth";
 import * as meApiTokens from "./meApiTokens";
 import * as helloModule from "./helloModule";
-import * as portalArticles from "./portalArticles";
-import * as portalCategories from "./portalCategories";
-import * as portalPages from "./portalPages";
-import * as shopAttributes from "./shopAttributes";
-import * as shopCategories from "./shopCategories";
-import * as shopOrders from "./shopOrders";
-import * as shopProducts from "./shopProducts";
-import * as shopSkus from "./shopSkus";
 export default {
   system,
   attachments,
@@ -57,12 +49,4 @@ export default {
   auth,
   meApiTokens,
   helloModule,
-  portalArticles,
-  portalCategories,
-  portalPages,
-  shopAttributes,
-  shopCategories,
-  shopOrders,
-  shopProducts,
-  shopSkus,
 };
