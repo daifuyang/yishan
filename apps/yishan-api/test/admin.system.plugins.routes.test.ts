@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import adminSystemPluginsPlugin from '../src/core/routes/api/v1/admin/system/plugins/index.ts'
 import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
+import registerSchemas from '../src/core/schemas/index.ts'
 import { createPluginRuntime } from '../src/core/plugin-platform/index.ts'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
@@ -93,6 +94,8 @@ async function buildApp() {
   await runtime.hooks.emit({ name: 'plugin:test', payload: { ok: true } })
 
   app.decorate('pluginRuntime', runtime)
+  // 注册共享 schemas，否则路由里 $ref: 'sysPlugin*#' 无法 resolve，Fastify 启动失败。
+  await app.register(registerSchemas)
   await app.register(adminSystemPluginsPlugin)
   await app.ready()
   return app
