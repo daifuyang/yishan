@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-FC_DIR="$ROOT_DIR/deploy/fc3"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FC_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$FC_DIR/../.." && pwd)"
 FUNCTION_DIR="$FC_DIR/.build/function-code"
 
 cd "$ROOT_DIR"
@@ -24,7 +25,7 @@ if [ -d src/plugins/modules ]; then
   mkdir -p "$FUNCTION_DIR/src/plugins"
   cp -R src/plugins/modules "$FUNCTION_DIR/src/plugins/modules"
 fi
-cp "$FC_DIR/migration-runner-package.json" "$FUNCTION_DIR/package.json"
+cp "$FC_DIR/config/migration-runner-package.json" "$FUNCTION_DIR/package.json"
 
 echo "4. 安装 Runner 的最小运行时依赖"
 npm install --omit=dev --omit=optional --omit=peer --package-lock=false --prefix "$FUNCTION_DIR"

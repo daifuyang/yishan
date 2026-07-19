@@ -15,11 +15,13 @@ jobs:
     timeout-minutes: 90
     environment: YISHAN_API
     env:
-      DOMAIN: ${{ vars.YISHAN_FC_DOMAIN || 'demo.zerocmf.com' }}
+      DOMAIN: ${{ vars.CUSTOM_DOMAIN || 'fastify.zerocmf.com' }}
       CERT_MIN_AGE_DAYS: '30'
       ACME_MODE: ${{ vars.ACME_MODE || 'staging' }}
       ACME_CA: ${{ vars.ACME_CA || 'letsencrypt' }}
-      FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
+      FC_REGION: ${{ vars.FUNCTION_REGION || 'cn-shanghai' }}
+      FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
+      CERT_NAME: ${{ vars.CERT_NAME }}
     steps:
       - uses: actions/checkout@v4
 
@@ -205,7 +207,10 @@ jobs:
       - name: Deploy domain with renewed cert
         if: steps.cert_age.outputs.rotate == 'true'
         working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/deploy-domain-cert.sh
+        run: |
+          set -euo pipefail
+          export CUSTOM_DOMAIN="$DOMAIN"
+          s deploy -y -t deploy/fc3/templates/domain.yaml -a enterprise
 
       - name: Verify cert after deploy
         if: steps.cert_age.outputs.rotate == 'true'

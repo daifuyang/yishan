@@ -1,15 +1,15 @@
 edition: 3.0.0
-name: yishan-migration-runner
+name: yishan-runner
 access: "enterprise"
 vars:
-  region: "cn-shanghai"
-  functionName: "yishan-migration-runner"
+  region: ${env(FUNCTION_REGION)}
+  functionName: ${env(FUNCTION_NAME)}
 resources:
-  yishan_migration_runner:
+  yishan_runner:
     component: fc3
     props:
       region: ${vars.region}
-      description: "Temporary internal runner for Yishan database migrations"
+      description: ${env(FUNCTION_DESCRIPTION)}
       runtime: custom.debian12
       handler: infrastructure/migrations/runner.handler
       timeout: 600
@@ -17,10 +17,10 @@ resources:
       memorySize: 1024
       diskSize: 512
       vpcConfig:
-        vpcId: vpc-uf65806lcuh5b43szs1db
+        vpcId: ${env(FUNCTION_VPC_ID)}
         vSwitchIds:
-          - vsw-uf6fcm08qor78wfioz1c2
-        securityGroupId: sg-uf6bl327dijrauls3ism
+          - ${env(FUNCTION_VSWITCH_ID)}
+        securityGroupId: ${env(FUNCTION_SECURITY_GROUP)}
       environmentVariables:
         NODE_ENV: production
         PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin:/code:/code/bin
@@ -29,13 +29,12 @@ resources:
         DATABASE_USER: ${env(DATABASE_USER)}
         DATABASE_PASSWORD: ${env(DATABASE_PASSWORD)}
         DATABASE_NAME: ${env(DATABASE_NAME)}
-        DATABASE_HOST: 172.23.212.135
+        DATABASE_HOST: ${env(DATABASE_HOST)}
         DATABASE_PORT: ${env(DATABASE_PORT)}
         ALLOW_PRODUCTION_SEED: ${env(ALLOW_PRODUCTION_SEED)}
         SEED_ADMIN_PASSWORD: ${env(SEED_ADMIN_PASSWORD)}
       functionName: ${vars.functionName}
-      # Code paths are resolved relative to this YAML file by Serverless Devs.
-      code: ./.build/function-code
+      code: ../.build/function-code
       customRuntimeConfig:
         command:
           - node

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-FC_DIR="$ROOT_DIR/deploy/fc3"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FC_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$FC_DIR/../.." && pwd)"
 FUNCTION_DIR="$FC_DIR/.build/function-code"
-LAYER_CONFIG="$FC_DIR/layer-dependencies.json"
+LAYER_CONFIG="$FC_DIR/config/layer-dependencies.json"
 
 cd "$ROOT_DIR"
 
@@ -29,7 +30,7 @@ cp -R dist/. "$FUNCTION_DIR/"
 rm -rf "$FUNCTION_DIR/node_modules" "$FUNCTION_DIR/package.json" "$FUNCTION_DIR/package-lock.json" "$FUNCTION_DIR/public" "$FUNCTION_DIR/.env"
 
 echo "5. 安装函数本地依赖"
-node "$FC_DIR/write-function-package.cjs" package.json "$LAYER_CONFIG" "$FUNCTION_DIR/package.json"
+node "$FC_DIR/scripts/lib/write-function-package.cjs" package.json "$LAYER_CONFIG" "$FUNCTION_DIR/package.json"
 if node -e "const p=require('$FUNCTION_DIR/package.json'); process.exit(Object.keys(p.dependencies || {}).length === 0 ? 0 : 1)"; then
   echo "函数包无本地 npm 依赖，跳过 node_modules 安装"
 else

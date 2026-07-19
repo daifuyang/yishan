@@ -1,0 +1,27 @@
+edition: 3.0.0
+name: yishan-domain
+access: enterprise
+vars:
+  region: ${env(FUNCTION_REGION)}
+  functionName: ${env(FUNCTION_NAME)}
+  domainName: ${env(CUSTOM_DOMAIN)}
+resources:
+  yishan_domain:
+    component: fc3-domain
+    props:
+      region: ${vars.region}
+      domainName: ${vars.domainName}
+      protocol: HTTPS
+      certConfig:
+        certName: ${env(CERT_NAME)}
+        certificate: ${file(../certs/fullchain.cer)}
+        privateKey: ${file(../certs/private.key)}
+      routeConfig:
+        routes:
+          - path: /
+            functionName: ${vars.functionName}
+            methods:
+              - GET
+              - HEAD
+          - path: /*
+            functionName: ${vars.functionName}

@@ -1,0 +1,5 @@
+# FC3 环境变量
+
+GitHub Environment `YISHAN_API` 保存非敏感部署变量：`FUNCTION_REGION`、`FUNCTION_NAME`、`FUNCTION_DESCRIPTION`、`FUNCTION_VPC_ID`、`FUNCTION_VSWITCH_ID`、`FUNCTION_SECURITY_GROUP`、`MIGRATION_RUNNER_NAME`、`MIGRATION_RUNNER_DESCRIPTION`、`CUSTOM_DOMAIN` 和 `CERT_NAME`。
+
+数据库、Redis、JWT、管理员密码及云访问凭据必须保存为 GitHub Secrets。运行时函数与临时迁移 Runner 使用同一组应用数据库凭据；每个部署单元必须使用独立数据库和数据库账号。

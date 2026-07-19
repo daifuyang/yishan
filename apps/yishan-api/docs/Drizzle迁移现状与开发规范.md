@@ -258,7 +258,7 @@ pnpm --filter yishan-api cli:dev -- --help   # 等价于 cli（跑 ts-node）
 | `runner.ts` | 调用 `inspectMigrations`、`runMigrations` 或 `resetDatabaseAndSeed`，分别支持 `dry-run`、`apply`、`reset-and-seed`。 |
 | `server.ts` | 对 FC 的 `GET` 健康检查返回 200，并将 invocation 的 `POST` 事件转交给 `runner.ts`。 |
 
-函数 handler 为 `infrastructure/migrations/runner.handler`，启动命令为 `node ./infrastructure/migrations/server.js`。工作流在迁移成功后删除该临时函数；部署配置见 `deploy/fc3/s-migration-runner.yaml`。
+函数启动命令为 `node ./infrastructure/migrations/server.js`。工作流在迁移成功后删除该临时函数；部署配置见 `deploy/fc3/templates/runner.yaml`。
 
 > `pnpm db:reset` 在根 `package.json` 已声明，但 `yishan-api` 子包当前未实现对应脚本。调用会报错；如确需"删库重建"，请走 `db:init && db:seed` 或补充子包 `db:reset` 后再恢复该别名。
 

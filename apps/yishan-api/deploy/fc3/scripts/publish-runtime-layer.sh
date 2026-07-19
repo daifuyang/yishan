@@ -12,10 +12,11 @@
 # 依赖：apps/yishan-api/deploy/fc3/.build/runtime-layer 已构建
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-FC_DIR="$ROOT_DIR/deploy/fc3"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FC_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$FC_DIR/../.." && pwd)"
 SOURCE_PACKAGE="$ROOT_DIR/package.json"
-LAYER_CONFIG="$FC_DIR/layer-dependencies.json"
+LAYER_CONFIG="$FC_DIR/config/layer-dependencies.json"
 LOCK_FILE="$FC_DIR/layer-lock.json"
 BUILD_DIR="$FC_DIR/.build"
 
@@ -29,7 +30,7 @@ if [ ! -d "$BUILD_DIR/runtime-layer" ]; then
 fi
 
 echo "1. 计算当前 Layer 指纹"
-CURRENT_FINGERPRINT="$(node "$FC_DIR/layer-state.cjs" fingerprint "$SOURCE_PACKAGE" "$LAYER_CONFIG" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{console.log(JSON.parse(d).fingerprint)})')"
+CURRENT_FINGERPRINT="$(node "$FC_DIR/scripts/lib/layer-state.cjs" fingerprint "$SOURCE_PACKAGE" "$LAYER_CONFIG" | node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{console.log(JSON.parse(d).fingerprint)})')"
 echo "   current: $CURRENT_FINGERPRINT"
 
 LOCKED_FINGERPRINT=""
@@ -144,7 +145,7 @@ LAYER_ARN="$(
         "请设置真实 accountId 后重试：\n" +
         "  export ALIBABA_CLOUD_ACCOUNT_ID=<真实账号 ID>\n" +
         "或在 publish 后手动 record：\n" +
-        "  node deploy/fc3/layer-state.cjs record package.json deploy/fc3/layer-dependencies.json deploy/fc3/layer-lock.json '完整 ARN'\n"
+        "  node deploy/fc3/scripts/lib/layer-state.cjs record package.json deploy/fc3/config/layer-dependencies.json deploy/fc3/layer-lock.json '完整 ARN'\n"
       );
       process.exit(2);
     }
@@ -166,7 +167,7 @@ rm -f "$PUBLISH_TMP"
 echo "   published ARN: $LAYER_ARN"
 
 echo "3. 写回 layer-lock.json"
-node "$FC_DIR/layer-state.cjs" record \
+  node "$FC_DIR/scripts/lib/layer-state.cjs" record \
   "$SOURCE_PACKAGE" \
   "$LAYER_CONFIG" \
   "$LOCK_FILE" \

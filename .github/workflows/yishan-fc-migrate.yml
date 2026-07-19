@@ -69,7 +69,7 @@ jobs:
 
       - name: Build migration runner package
         working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/prepare-migration-runner.sh
+        run: bash ./deploy/fc3/scripts/prepare-migration-runner.sh
 
       - name: Install and configure Serverless Devs
         env:
@@ -92,15 +92,22 @@ jobs:
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           ALLOW_PRODUCTION_SEED: ${{ inputs.mode == 'reset-and-seed' && 'true' || 'false' }}
           SEED_ADMIN_PASSWORD: ${{ secrets.YISHAN_API_SEED_ADMIN_PASSWORD }}
           MIGRATION_MODE: ${{ inputs.mode }}
+          FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
+          FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
+          FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
+          FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
+          FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
+          FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
-          s deploy -t deploy/fc3/s-migration-runner.yaml -y
-          s invoke -t deploy/fc3/s-migration-runner.yaml --event "{\"mode\":\"${MIGRATION_MODE}\"}" | tee /tmp/migration_invoke.log
+          s deploy -t deploy/fc3/templates/runner.yaml -y
+          s invoke -t deploy/fc3/templates/runner.yaml --event "{\"mode\":\"${MIGRATION_MODE}\"}" | tee /tmp/migration_invoke.log
           if grep -q '"error"' /tmp/migration_invoke.log; then
             echo "Migration runner returned an error" >&2
             exit 1
@@ -113,10 +120,17 @@ jobs:
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           ALLOW_PRODUCTION_SEED: 'false'
           SEED_ADMIN_PASSWORD: unused
+          FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
+          FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
+          FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
+          FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
+          FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
+          FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
-          s remove -t deploy/fc3/s-migration-runner.yaml -y
+          s remove -t deploy/fc3/templates/runner.yaml -y

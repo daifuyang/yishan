@@ -6,20 +6,7 @@ on:
       - all
     paths:
       - "apps/**"
-      - "!apps/**/deploy/**"
-      - "apps/yishan-api/deploy/fc3/s-function-layered.yaml"
-      - "apps/yishan-api/deploy/fc3/s-domain-layered.yaml"
-      - "apps/yishan-api/deploy/fc3/pre-deploy-layered.sh"
-      - "apps/yishan-api/deploy/fc3/deploy-layered-function.sh"
-      - "apps/yishan-api/deploy/fc3/deploy-layered-domain.sh"
-      - "apps/yishan-api/deploy/fc3/build-runtime-layer.sh"
-      - "apps/yishan-api/deploy/fc3/publish-runtime-layer.sh"
-      - "apps/yishan-api/deploy/fc3/layer-dependencies.json"
-      - "apps/yishan-api/deploy/fc3/layer-lock.example.json"
-      - "apps/yishan-api/deploy/fc3/layer-state.cjs"
-      - "apps/yishan-api/deploy/fc3/write-function-package.cjs"
-      - "apps/yishan-api/deploy/fc3/write-layer-package.cjs"
-      - "apps/yishan-api/deploy/fc3/package-version.cjs"
+      - "apps/yishan-api/deploy/fc3/**"
       - "!apps/**/docs/**"
       - "!apps/**/*.md"
       - "!apps/**/README.md"
@@ -210,19 +197,19 @@ jobs:
 
       - name: Build runtime layer
         working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/build-runtime-layer.sh
+        run: bash ./deploy/fc3/scripts/build-runtime-layer.sh
 
       - name: Publish runtime layer if needed
         id: publish_layer
         working-directory: apps/yishan-api
         env:
-          YISHAN_FC_REGION: ${{ vars.YISHAN_FC_REGION || 'cn-shanghai' }}
+          YISHAN_FC_REGION: ${{ vars.FUNCTION_REGION || 'cn-shanghai' }}
           YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
           YISHAN_FC_ACCESS_ALIAS: enterprise
           ALIBABA_CLOUD_ACCOUNT_ID: ${{ vars.ALIBABA_CLOUD_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          bash ./deploy/fc3/publish-runtime-layer.sh | tee /tmp/publish_layer.log
+          bash ./deploy/fc3/scripts/publish-runtime-layer.sh | tee /tmp/publish_layer.log
           LAYER_ARN="$(grep -E '^YISHAN_API_RUNTIME_LAYER_ARN=' /tmp/publish_layer.log | tail -n1 | cut -d= -f2-)"
           if [ -z "$LAYER_ARN" ]; then
             echo "Unable to extract runtime layer ARN" >&2
@@ -239,7 +226,7 @@ jobs:
 
       - name: Build Layered Package
         working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/pre-deploy-layered.sh
+        run: bash ./deploy/fc3/scripts/pre-deploy-layered.sh
 
       - name: Deploy layered function
         working-directory: apps/yishan-api
@@ -253,6 +240,12 @@ jobs:
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
           JWT_SECRET: ${{ secrets.YISHAN_API_JWT_SECRET }}
           YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
+          FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
+          FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
+          FUNCTION_DESCRIPTION: ${{ vars.FUNCTION_DESCRIPTION }}
+          FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
+          FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
+          FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
@@ -272,6 +265,7 @@ jobs:
             DATABASE_USER: process.env.DATABASE_USER || '',
             DATABASE_PASSWORD: process.env.DATABASE_PASSWORD || '',
             DATABASE_NAME: process.env.DATABASE_NAME || '',
+            DATABASE_HOST: process.env.DATABASE_HOST || '',
             DATABASE_PORT: process.env.DATABASE_PORT || '3306',
             JWT_SECRET: process.env.JWT_SECRET || '',
             REDIS_PORT: redisPort,
@@ -283,4 +277,4 @@ jobs:
           }
           NODE
           . /tmp/yishan_layered_env.sh
-          bash ./deploy/fc3/deploy-layered-function.sh
+          bash ./deploy/fc3/scripts/deploy-layered-function.sh
