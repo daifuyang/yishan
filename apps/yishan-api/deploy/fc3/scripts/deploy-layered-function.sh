@@ -6,7 +6,6 @@ FC_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT_DIR="$(cd "$FC_DIR/../.." && pwd)"
 LOCK_FILE="$FC_DIR/layer-lock.json"
 BUILD_DIR="$FC_DIR/.build"
-FUNCTION_YAML="$ROOT_DIR/.s-layered.yaml"
 
 if [ -z "${YISHAN_API_RUNTIME_LAYER_ARN:-}" ]; then
   if [ ! -f "$LOCK_FILE" ]; then
@@ -36,10 +35,7 @@ if [ -z "${YISHAN_API_RUNTIME_LAYER_ARN:-}" ]; then
 fi
 
 mkdir -p "$BUILD_DIR"
-trap 'rm -f "$FUNCTION_YAML"' EXIT
 
-echo "1. 生成 Layered 函数临时部署模板"
-cp "$FC_DIR/templates/function.yaml" "$FUNCTION_YAML"
-echo "2. 部署 Layered 函数资源"
-s deploy -y -t "$FUNCTION_YAML"
+echo "1. 部署 Layered 函数资源"
+s deploy -y -t "$FC_DIR/templates/function.yaml"
 echo "✅ Layered 函数部署完成"
