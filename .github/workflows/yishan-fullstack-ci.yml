@@ -2,8 +2,6 @@ name: yishan-fullstack-ci
 
 on:
   push:
-    branches:
-      - all
     paths:
       - ".github/workflows/**"
       - "apps/yishan-admin/**"
