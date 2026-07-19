@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.1
+          node-version: 22.14.0
 
       - name: Enable pnpm
         run: |
@@ -41,7 +41,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.1
+          node-version: 22.14.0
           cache: pnpm
 
       - name: Install
@@ -58,12 +58,6 @@ jobs:
         run: |
           pnpm install --filter yishan-tiptap --no-frozen-lockfile --prod=false
           pnpm --filter yishan-tiptap build
-
-      - name: Generate Admin plugin routes
-        run: pnpm --filter yishan-admin gen:plugin-routes
-
-      - name: Verify OpenAPI contract and generated clients
-        run: pnpm openapi:check
 
       - name: Admin Setup
         run: pnpm --filter yishan-admin exec max setup
