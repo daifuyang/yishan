@@ -4,7 +4,7 @@ import { getDictDataDetail, createDictData, updateDictData } from '@/services/ge
 
 export interface DictDataFormProps {
   title: string;
-  trigger?: JSX.Element;
+  trigger?: React.JSX.Element;
   typeId: number;
   initialValues?: Partial<API.sysDictData>;
   onFinish?: () => Promise<void>;

@@ -47,12 +47,25 @@ export interface PluginManifest {
   version: string                   // semver
   coreVersion: string               // semver range
   kind?: PluginKind                 // defaults to 'production'
-  api?: PluginApiConfig
+  // —— SDK-native fields（与 plugin-platform legacy 兼容）——
+  name?: string                     // 默认从 id 末段派生；plugin-platform 旧 runtime 需要
   database?: PluginDatabaseConfig
+  api?: PluginApiConfig
   permissions: PluginPermission[]
   menus: PluginMenuItem[]
   admin?: PluginAdminConfig
   app?: PluginAppConfig
   migrations?: string               // relative path
   seed?: string                     // relative path
+  // —— legacy 字段（Wave 4 完全删除）——
+  /** @deprecated derive from id; will be removed in Wave 4 */
+  channels?: string[]
+  /** @deprecated use api.prefix; will be removed in Wave 4 */
+  routeBase?: string
+  /** @deprecated use menus[].icon; will be removed in Wave 4 */
+  icon?: string
+  /** @deprecated use menus[].name at top level; will be removed in Wave 4 */
+  menuRootName?: string
+  /** @deprecated use a separate menu priority field; will be removed in Wave 4 */
+  menuRootSort?: number
 }

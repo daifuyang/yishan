@@ -14,7 +14,7 @@ import { ProFormDeptTreeSelect } from "@/components";
 
 export interface UserFormProps {
   title: string;
-  trigger?: JSX.Element;
+  trigger?: React.JSX.Element;
   initialValues?: Partial<API.sysUser>;
   onFinish?: () => Promise<void>;
   onInit?: () => Promise<API.sysUser | undefined>;

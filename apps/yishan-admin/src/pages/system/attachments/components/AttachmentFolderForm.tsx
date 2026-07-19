@@ -18,7 +18,7 @@ import {
 
 export interface AttachmentFolderFormProps {
   title: string;
-  trigger?: JSX.Element;
+  trigger?: React.JSX.Element;
   initialValues?: Partial<API.sysAttachmentFolder>;
   onFinish?: () => Promise<void>;
 }

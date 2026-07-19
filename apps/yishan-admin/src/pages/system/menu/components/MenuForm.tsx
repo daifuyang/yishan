@@ -40,7 +40,7 @@ type MenuFormValues = {
 
 export interface MenuFormProps {
   title: string;
-  trigger?: JSX.Element;
+  trigger?: React.JSX.Element;
   initialValues?: Partial<API.sysMenu>;
   onFinish?: () => Promise<void>;
 }

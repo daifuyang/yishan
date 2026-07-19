@@ -24,7 +24,7 @@ import {
 
 export interface RoleFormProps {
   title: string;
-  trigger?: JSX.Element;
+  trigger?: React.JSX.Element;
   initialValues?: Partial<API.sysRole>;
   onFinish?: () => Promise<void>;
 }

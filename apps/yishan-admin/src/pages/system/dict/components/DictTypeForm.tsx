@@ -4,7 +4,7 @@ import { getDictTypeDetail, createDictType, updateDictType } from '@/services/ge
 
 export interface DictTypeFormProps {
   title: string;
-  trigger?: JSX.Element;
+  trigger?: React.JSX.Element;
   initialValues?: Partial<API.sysDictType>;
   onFinish?: () => Promise<void>;
 }

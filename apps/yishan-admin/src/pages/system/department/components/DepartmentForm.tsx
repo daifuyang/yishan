@@ -5,7 +5,7 @@ import { useModel } from '@umijs/max';
 
 export interface DepartmentFormProps {
   title: string;
-  trigger?: JSX.Element;
+  trigger?: React.JSX.Element;
   initialValues?: Partial<API.sysDept>;
   onFinish?: () => Promise<void>;
 }

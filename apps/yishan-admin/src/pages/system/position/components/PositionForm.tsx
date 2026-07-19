@@ -5,7 +5,7 @@ import { getPositionDetail, createPosition, updatePosition } from '@/services/ge
 
 export interface PositionFormProps {
   title: string;
-  trigger?: JSX.Element;
+  trigger?: React.JSX.Element;
   initialValues?: Partial<API.sysPosition>;
   onFinish?: () => Promise<void>;
 }

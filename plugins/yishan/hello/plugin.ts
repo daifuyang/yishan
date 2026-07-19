@@ -1,9 +1,7 @@
-// Wave 2 — hello plugin manifest under `plugins/<vendor>/<slug>/plugin.ts`.
+// Wave 3 — hello plugin manifest under `plugins/<vendor>/<slug>/plugin.ts`.
 //
-// This file is the single source of truth for hello (merging what used to be
-// `apps/yishan-api/src/plugins/modules/hello/manifest.ts` and
-// `apps/yishan-admin/src/plugins/modules/hello.manifest.ts`). The catalog
-// generator reads this manifest at profile build time; `apps/yishan-api/src/app.ts`
+// This file is the single source of truth for hello. The catalog generator
+// reads this manifest at profile build time; `apps/yishan-api/src/app.ts`
 // reads the catalog at boot time and dynamically imports this file.
 //
 // SDK contract: see `packages/plugin-sdk/src/types.ts` (PluginManifest).
@@ -12,6 +10,20 @@
 // loadable without a runtime require to `packages/plugin-sdk/src/index.ts`
 // (which Node cannot resolve as .ts), we inline the identity function. The
 // final Wave 2 (post workspace reference) swap is tracked separately.
+//
+// IMPORTANT — legacy mirror fields:
+//   The fields `pluginId`, `name`, `dbNamespace`, and `routeBase` below
+//   mirror SDK-derived values and exist ONLY to satisfy the legacy
+//   `apps/yishan-api/src/core/plugin-platform` runtime validator and the
+//   sys_plugin DB persistence. They are marked `/** @deprecated */` and
+//   will be removed in Wave 4 once the legacy runtime layer is retired.
+//   The SDK's `PluginManifest` already covers the canonical representation
+//   (id, version, coreVersion, database.namespace, api.prefix, …).
+//
+//   `definePermissions` is also inlined (rather than imported from the SDK
+//   package) because the admin `generate-plugin-routes.mjs` script loads
+//   this file via `data:` URL transpilation and cannot resolve cross-package
+//   relative imports at runtime.
 
 import type { PluginManifest } from '../../../packages/plugin-sdk/src/types.ts'
 
@@ -65,44 +77,12 @@ const helloMenuCode = helloPermissions.HEALTH_READ.code
 /**
  * hello plugin manifest — single source of truth.
  *
- * The manifest object intentionally carries fields from both layers:
- *   - SDK surface (id, version, coreVersion, kind, api, database, …)
- *   - Legacy `apps/yishan-api/src/core/plugin-platform` runtime surface
- *     (pluginId, name, dbNamespace, coreCompatibility, compatRange, …)
- *
- * The object literal is shaped as `Record<string, unknown>` so TypeScript
- * does not flag the extras; the runtime identifies the layer by which
- * fields it consumes. We re-cast to `PluginManifest` for the default export
- * so downstream SDK consumers see a strictly-typed view.
- *
- * Compatibility field set:
- *   - The SDK's `PluginManifest` only carries `id`, `version`,
- *     `coreVersion`, `kind`, `api`, `database`, `permissions`, `menus`,
- *     `admin`, `app`, `migrations`, `seed`.
- *   - The Wave 2 legacy runtime at
- *     `apps/yishan-api/src/core/plugin-platform` still validates against
- *     `pluginId + name + dbNamespace + compatRange + coreCompatibility`
- *     (see `core/plugin-platform/manifest.ts`). Until Wave 3 retires that
- *     layer, we mirror those fields on the same object so the catalog
- *     pipeline can hand it directly to `pluginRuntime.register(...)`.
- *
- * The admin route declaration (formerly
- * `apps/yishan-admin/src/plugins/modules/hello.manifest.ts`) is preserved
- * as a deferred dynamic import via `admin.routes()`. Stage B will migrate
- * the actual page file to `plugins/yishan/hello/admin/pages/`.
+ * Carries both SDK surface fields and the legacy mirror fields required
+ * by `apps/yishan-api/src/core/plugin-platform` (pluginId, name,
+ * dbNamespace, routeBase). The deprecated mirrors will be removed in Wave 4.
  */
 const manifest = definePlugin({
   id: 'yishan/hello',
-  name: 'hello',
-  pluginId: 'yishan/hello',
-  dbNamespace: 'ys_hello',
-  coreCompatibility: '^2.0.0',
-  compatRange: '^2.0.0',
-  icon: 'smile',
-  channels: ['admin'],
-  routeBase: '/api/plugins/yishan/hello/v1',
-  menuRootName: 'Hello 示例',
-  menuRootSort: 21,
   version: '1.0.0',
   coreVersion: '^2.0.0',
   kind: 'sample',
@@ -147,6 +127,18 @@ const manifest = definePlugin({
     },
   },
   migrations: './migrations',
+  // —— legacy mirror fields ——
+  // Kept until Wave 4 retires apps/yishan-api/src/core/plugin-platform and
+  // the sys_plugin row's route_base column. Each value is derivable from
+  // SDK fields above; do not consume these fields in new code.
+  /** @deprecated derive from `id`; will be removed in Wave 4 */
+  name: 'hello',
+  /** @deprecated derive from `id`; will be removed in Wave 4 */
+  pluginId: 'yishan/hello',
+  /** @deprecated derive from `database.namespace`; will be removed in Wave 4 */
+  dbNamespace: 'ys_hello',
+  /** @deprecated derive from `api.prefix`; will be removed in Wave 4 */
+  routeBase: '/api/plugins/yishan/hello/v1',
 })
 
 export default manifest as PluginManifest

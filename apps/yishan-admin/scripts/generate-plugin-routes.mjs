@@ -1,18 +1,15 @@
-// Wave 2 — admin plugin-routes generator.
+// Wave 3 — admin plugin-routes generator.
 //
-// Reads `artifacts/plugin-catalog.json` (the catalog produced by
-// `scripts/profiles/parse.mjs --profile <name>`), dynamically imports each
-// catalog plugin's `plugin.ts`, and asks the manifest for its admin-route
-// declaration via `admin.routes()`.
+// Two sources of admin routes are merged into `config/generated/plugin-routes.ts`:
+//   1. Plugin routes — read from `artifacts/plugin-catalog.json` (produced by
+//      `scripts/profiles/parse.mjs --profile <name>`). For each catalog entry
+//      we dynamic-import `plugins/<id>/plugin.ts`, ask the manifest for its
+//      `admin.routes()` factory, and read the resolved module's `routes`.
+//   2. Core routes — read from `apps/yishan-admin/src/core/routes.ts`. The
+//      five system/* admin pages (plugins/storage/attachments/login-log) are
+//      Core-owned and are no longer declared as a fake plugin manifest.
 //
-// Old behavior (Wave 1 and earlier): scanned
-// `apps/yishan-admin/src/plugins/modules/*.manifest.ts` as static files
-// and parsed them with the TypeScript transpileModule. The old files
-// (`hello.manifest.ts`, `system.manifest.ts`) are still on disk during Wave 2
-// for system routes (system.manifest.ts is Wave 3 scope), so we keep that
-// file as a static read but switch `hello` to catalog-driven loading.
-//
-// See specs/baseline-v2/decisions/ADR-006 + ADR-002.
+// See specs/baseline-v2/decisions/ADR-002-plugin-sdk.md step 6 + ADR-006.
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -23,10 +20,9 @@ const REPO_ROOT = path.resolve(ADMIN_ROOT, '..', '..');
 const CATALOG_PATH = path.join(REPO_ROOT, 'artifacts', 'plugin-catalog.json');
 const ROUTES_FILE = path.join(ADMIN_ROOT, 'config/routes.ts');
 const OUTPUT_FILE = path.join(ADMIN_ROOT, 'config/generated/plugin-routes.ts');
-// Wave 2: keep scanning the legacy admin-side modules directory so
-// `system.manifest.ts` (Wave 3 scope) still contributes its routes. The
-// hello entry is loaded from the catalog instead.
-const LEGACY_MODULES_DIR = path.join(ADMIN_ROOT, 'src/plugins/modules');
+// Wave 3: Core admin routes are declared in src/core/routes.ts (ADR-002
+// step 6). The legacy src/plugins/modules/*.manifest.ts directory is gone.
+const CORE_ROUTES_FILE = path.join(ADMIN_ROOT, 'src/core/routes.ts');
 
 const staticRoutePathPattern = /path:\s*['"]([^'"]+)['"]/g;
 
@@ -116,31 +112,21 @@ async function loadCatalogPluginRoutes() {
   return records;
 }
 
-async function loadLegacyModuleRoutes() {
-  let files = [];
+async function loadCoreRoutes() {
   try {
-    files = (await fs.readdir(LEGACY_MODULES_DIR))
-      .filter((name) => name.endsWith('.manifest.ts'))
-      .sort();
-  } catch {
+    const manifest = await loadManifest(CORE_ROUTES_FILE);
+    validateManifest(manifest, 'core/routes.ts');
+    const records = [];
+    for (const route of manifest.routes) {
+      if (!route?.path || !route?.component) continue;
+      records.push({ pluginName: '__core__', route: normalizeRoute(route) });
+    }
+    return records;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[generate-plugin-routes] core/routes.ts: ${message}`);
     return [];
   }
-  const records = [];
-  for (const fileName of files) {
-    const filePath = path.join(LEGACY_MODULES_DIR, fileName);
-    try {
-      const manifest = await loadManifest(filePath);
-      validateManifest(manifest, fileName);
-      for (const route of manifest.routes) {
-        if (!route?.path || !route?.component) continue;
-        records.push({ pluginName: manifest.name, route: normalizeRoute(route) });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn(`[generate-plugin-routes] legacy ${fileName}: ${message}`);
-    }
-  }
-  return records;
 }
 
 async function main() {
@@ -149,7 +135,7 @@ async function main() {
 
   const records = [
     ...(await loadCatalogPluginRoutes()),
-    ...(await loadLegacyModuleRoutes()),
+    ...(await loadCoreRoutes()),
   ];
 
   const filtered = records.filter((item) => !staticPaths.has(item.route.path));
