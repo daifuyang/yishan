@@ -64,6 +64,13 @@ export type AttachmentSelectProps = {
   folderId?: number;
   maxCount?: number;
   disabled?: boolean;
+  /**
+   * 上传前拦截钩子（仅本地上传路径生效，从素材库选择不触发）。
+   * - 返回 `File`：替换原文件继续走默认上传管线（用于客户端裁切/压缩）。
+   * - 返回 `null`：取消本次上传。
+   * - 不传 / 返回 `undefined`：原文件直接走默认上传管线（向后兼容）。
+   */
+  beforeUpload?: (file: File) => Promise<File | null | undefined>;
 };
 
 const getKindFromFile = (file: File): AttachmentKind => {
@@ -182,6 +189,11 @@ export type AttachmentLibraryModalProps = {
   valueType: ValueType;
   initialFolderId?: number;
   initialSelectedValues: Array<string | number>;
+  /**
+   * 上传前拦截钩子。modal 里点「上传」时同样会先走这个钩子：
+   * 返回 File 替换、返回 null 取消、undefined 沿用原文件。
+   */
+  beforeUpload?: (file: File) => Promise<File | null | undefined>;
 };
 
 export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
@@ -193,6 +205,7 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
   valueType,
   initialFolderId,
   initialSelectedValues,
+  beforeUpload,
 }) => {
   const { message } = App.useApp();
   const { token } = theme.useToken();
@@ -376,7 +389,19 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
   }, [folderTree, folderSearchValue]);
 
   const handleFilesSelected = async (files: FileList | null) => {
-    const selectedFiles = files ? Array.from(files) : [];
+    const rawSelected = files ? Array.from(files) : [];
+    if (!rawSelected.length) return;
+    // 与主区上传一致：先经 beforeUpload 拦截（裁切/压缩），再走默认上传
+    const selectedFiles: File[] = [];
+    if (beforeUpload) {
+      for (const file of rawSelected) {
+        const next = await beforeUpload(file);
+        if (next === null) continue;
+        selectedFiles.push(next || file);
+      }
+    } else {
+      selectedFiles.push(...rawSelected);
+    }
     if (!selectedFiles.length) return;
     setUploading(true);
     try {
@@ -1029,6 +1054,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
   folderId,
   maxCount,
   disabled,
+  beforeUpload,
 }) => {
   const { message } = App.useApp();
   const { initialState } = useModel('@@initialState');
@@ -1098,7 +1124,16 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
   const customRequest: UploadProps['customRequest'] = async (options: any) => {
     const { file, onSuccess, onError } = options;
     try {
-      const f: File = file as File;
+      let f: File = file as File;
+      // 上传前拦截：返回新 File 则替换；返回 null 取消；undefined 沿用原文件
+      if (beforeUpload) {
+        const next = await beforeUpload(f);
+        if (next === null) {
+          // 取消：既不 onSuccess 也不 onError，避免 antd 报红框
+          return;
+        }
+        if (next) f = next;
+      }
       const uploadKind: AttachmentKind =
         kind && kind !== 'all' ? (kind as AttachmentKind) : getKindFromFile(f);
 
@@ -1222,6 +1257,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
         initialSelectedValues={
           (modalSelectedValues as Array<string | number>) || []
         }
+        beforeUpload={beforeUpload}
         onSelect={(items) => {
           const next = items
             .map((a) => resolveAttachmentValue(a, valueType))

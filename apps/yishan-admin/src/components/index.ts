@@ -24,6 +24,9 @@ import {
   AttachmentFileSelect,
 } from "./AttachmentSelect";
 
+export { default as ImageCropperModal } from "./ImageCropperModal";
+export type { ImageCropperShape, ImageCropperModalProps } from "./ImageCropperModal";
+
 export {
   AvatarDropdown,
   AvatarName,

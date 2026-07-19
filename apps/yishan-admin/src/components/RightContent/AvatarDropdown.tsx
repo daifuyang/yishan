@@ -1,5 +1,4 @@
 import {
-  KeyOutlined,
   LogoutOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -65,7 +64,6 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
     }
     // Keys are camelCase but Umi routes are kebab-case — map explicitly.
     const pathByKey: Record<string, string> = {
-      apiTokens: '/account/api-tokens',
       center: '/account/center',
     };
     const target = pathByKey[key];
@@ -89,20 +87,12 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({
   }
 
   const { currentUser } = initialState;
-  const canManageApiTokens = initialState.authorizedMenuPaths?.includes('/account/api-tokens') ?? false;
 
   if (!currentUser?.username) {
     return loading;
   }
 
   const menuItems: MenuProps['items'] = [
-    ...(canManageApiTokens ? [{
-      key: 'apiTokens',
-      icon: <KeyOutlined />,
-      label: 'API Token',
-    }, {
-      type: 'divider' as const,
-    }] : []),
     {
       key: 'center',
       icon: <UserOutlined />,

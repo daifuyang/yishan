@@ -2,7 +2,7 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
-/** 更新当前用户资料 移动端更新当前登录用户的昵称/性别/邮箱/头像等可编辑字段 PUT /api/v1/app/users/me */
+/** 更新当前用户资料 移动端更新当前登录用户的昵称/真实姓名/邮箱/性别/出生日期/手机号/头像等可编辑字段 PUT /api/v1/app/users/me */
 export async function appUpdateMe(
   body: {
     nickname?: string;
@@ -10,6 +10,8 @@ export async function appUpdateMe(
     email?: string;
     gender?: "0" | "1" | "2";
     birthDate?: string;
+    phone?: string;
+    avatar?: string;
   },
   options?: { [key: string]: any }
 ) {

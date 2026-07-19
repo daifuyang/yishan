@@ -10070,7 +10070,7 @@
         "tags": [
           "app-users"
         ],
-        "description": "移动端更新当前登录用户的昵称/性别/邮箱/头像等可编辑字段",
+        "description": "移动端更新当前登录用户的昵称/真实姓名/邮箱/性别/出生日期/手机号/头像等可编辑字段",
         "requestBody": {
           "content": {
             "application/json": {
@@ -10099,6 +10099,14 @@
                   },
                   "birthDate": {
                     "format": "date",
+                    "type": "string"
+                  },
+                  "phone": {
+                    "pattern": "^1[3-9]\\d{9}$",
+                    "type": "string"
+                  },
+                  "avatar": {
+                    "maxLength": 500,
                     "type": "string"
                   }
                 }

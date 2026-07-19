@@ -22,7 +22,7 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       access: 'authenticated',
       schema: {
         summary: "更新当前用户资料",
-        description: "移动端更新当前登录用户的昵称/性别/邮箱/头像等可编辑字段",
+        description: "移动端更新当前登录用户的昵称/真实姓名/邮箱/性别/出生日期/手机号/头像等可编辑字段",
         operationId: "appUpdateMe",
         tags: ["app-users"],
         security: [{ bearerAuth: [] }],
@@ -32,6 +32,8 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           email: Type.Optional(Type.String({ format: "email" })),
           gender: Type.Optional(Type.String({ enum: ["0", "1", "2"] })),
           birthDate: Type.Optional(Type.String({ format: "date" })),
+          phone: Type.Optional(Type.String({ pattern: "^1[3-9]\\d{9}$" })),
+          avatar: Type.Optional(Type.String({ maxLength: 500 })),
         }),
         response: { 200: { $ref: "userDetailResp#" } },
       },

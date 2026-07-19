@@ -68,9 +68,7 @@ export default [
   },
   {
     path: '/account/api-tokens',
-    name: 'account.apiTokens.title',
-    component: './account/api-tokens',
-    access: 'canDo',
+    redirect: '/account/center',
   },
   {
     path: '/account/center',
