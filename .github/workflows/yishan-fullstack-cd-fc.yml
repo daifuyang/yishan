@@ -24,7 +24,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: YISHAN_API
+    env:
+      FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
+      FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
+      FUNCTION_DESCRIPTION: ${{ vars.FUNCTION_DESCRIPTION }}
+      FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
+      FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
+      FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
     steps:
+      - name: Validate deployment variables
+        run: |
+          set -euo pipefail
+          : "${FUNCTION_REGION:?Missing FUNCTION_REGION}"
+          : "${FUNCTION_NAME:?Missing FUNCTION_NAME}"
+          : "${FUNCTION_DESCRIPTION:?Missing FUNCTION_DESCRIPTION}"
+          : "${FUNCTION_VPC_ID:?Missing FUNCTION_VPC_ID}"
+          : "${FUNCTION_VSWITCH_ID:?Missing FUNCTION_VSWITCH_ID}"
+          : "${FUNCTION_SECURITY_GROUP:?Missing FUNCTION_SECURITY_GROUP}"
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -34,7 +50,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.14.0
+          node-version: 22.22.1
 
       - name: Enable pnpm
         run: |
@@ -43,7 +59,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.14.0
+          node-version: 22.22.1
           cache: pnpm
 
       - name: Install
@@ -54,6 +70,18 @@ jobs:
         run: |
           pnpm install --filter yishan-tiptap --no-frozen-lockfile
           pnpm build --filter yishan-tiptap
+
+      - name: Generate Admin plugin routes
+        run: pnpm --filter yishan-admin gen:plugin-routes
+
+      - name: Verify OpenAPI contract and generated clients
+        run: pnpm openapi:check
+
+      - name: Admin Setup
+        run: pnpm --filter yishan-admin exec max setup
+
+      - name: Quality Gate
+        run: pnpm verify
 
       - name: Build yishan-admin for FC
         run: pnpm build:admin:fc
