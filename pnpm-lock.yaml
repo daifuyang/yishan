@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
 
   apps/yishan-admin:
     dependencies:
@@ -239,7 +243,7 @@ importers:
         version: 5.8.3
       vitest:
         specifier: ^4.0.7
-        version: 4.0.9(@types/node@22.19.1)
+        version: 4.0.9(@types/node@22.19.1)(yaml@2.9.0)
 
   apps/yishan-app:
     dependencies:
@@ -490,7 +494,7 @@ importers:
     devDependencies:
       '@react-router/dev':
         specifier: ^7.9.2
-        version: 7.9.6(@react-router/serve@7.9.6)(@types/node@22.19.1)(react-router@7.9.6)(typescript@5.9.3)(vite@7.2.2)
+        version: 7.9.6(@react-router/serve@7.9.6)(@types/node@22.19.1)(react-router@7.9.6)(typescript@5.9.3)(vite@7.2.2)(yaml@2.9.0)
       '@tailwindcss/vite':
         specifier: ^4.1.13
         version: 4.1.17(vite@7.2.2)
@@ -511,7 +515,7 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^7.1.12
-        version: 7.2.2(@types/node@22.19.1)
+        version: 7.2.2(@types/node@22.19.1)(yaml@2.9.0)
       vite-tsconfig-paths:
         specifier: ^5.1.4
         version: 5.1.4(typescript@5.9.3)(vite@7.2.2)
@@ -669,6 +673,12 @@ importers:
       typescript:
         specifier: ~5.6.2
         version: 5.6.3
+
+  packages/plugin-sdk:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
 
 packages:
 
@@ -7492,7 +7502,7 @@ packages:
       fastify-plugin: 5.1.0
       openapi-types: 12.1.3
       rfdc: 1.4.1
-      yaml: 2.8.1
+      yaml: 2.9.0
     dev: false
 
   /@fastify/swagger@9.6.1:
@@ -7502,7 +7512,7 @@ packages:
       json-schema-resolver: 3.0.0
       openapi-types: 12.1.3
       rfdc: 1.4.1
-      yaml: 2.8.1
+      yaml: 2.9.0
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -10308,7 +10318,7 @@ packages:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
-  /@react-router/dev@7.9.6(@react-router/serve@7.9.6)(@types/node@22.19.1)(react-router@7.9.6)(typescript@5.9.3)(vite@7.2.2):
+  /@react-router/dev@7.9.6(@react-router/serve@7.9.6)(@types/node@22.19.1)(react-router@7.9.6)(typescript@5.9.3)(vite@7.2.2)(yaml@2.9.0):
     resolution: {integrity: sha512-pBkbczGwI+NcZPcK8JPvWGWdjUpT/+okXYp6IXvt7zI3WLxr5hQLLRox5FkLiVxkykbqARO1hk9NRp9KFwJ2sA==}
     engines: {node: '>=20.0.0'}
     hasBin: true
@@ -10359,8 +10369,8 @@ packages:
       tinyglobby: 0.2.15
       typescript: 5.9.3
       valibot: 1.1.0(typescript@5.9.3)
-      vite: 7.2.2(@types/node@22.19.1)
-      vite-node: 3.2.4(@types/node@22.19.1)
+      vite: 7.2.2(@types/node@22.19.1)(yaml@2.9.0)
+      vite-node: 3.2.4(@types/node@22.19.1)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@types/node'
       - babel-plugin-macros
@@ -11504,7 +11514,7 @@ packages:
       '@tailwindcss/node': 4.1.17
       '@tailwindcss/oxide': 4.1.17
       tailwindcss: 4.1.17
-      vite: 7.2.2(@types/node@22.19.1)
+      vite: 7.2.2(@types/node@22.19.1)(yaml@2.9.0)
     dev: true
 
   /@tanstack/match-sorter-utils@8.19.4:
@@ -15047,7 +15057,7 @@ packages:
       '@rolldown/pluginutils': 1.0.0-beta.47
       '@types/babel__core': 7.20.5
       react-refresh: 0.18.0
-      vite: 7.2.2(@types/node@22.19.1)
+      vite: 7.2.2(@types/node@22.19.1)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -15077,7 +15087,7 @@ packages:
       '@vitest/spy': 4.0.9
       estree-walker: 3.0.3
       magic-string: 0.30.21
-      vite: 7.2.2(@types/node@22.19.1)
+      vite: 7.2.2(@types/node@22.19.1)(yaml@2.9.0)
     dev: true
 
   /@vitest/pretty-format@4.0.9:
@@ -37464,7 +37474,7 @@ packages:
       replace-ext: 1.0.1
     dev: true
 
-  /vite-node@3.2.4(@types/node@22.19.1):
+  /vite-node@3.2.4(@types/node@22.19.1)(yaml@2.9.0):
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
@@ -37473,7 +37483,7 @@ packages:
       debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 7.2.2(@types/node@22.19.1)
+      vite: 7.2.2(@types/node@22.19.1)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -37500,7 +37510,7 @@ packages:
       debug: 4.4.3
       globrex: 0.1.2
       tsconfck: 3.1.6(typescript@5.9.3)
-      vite: 7.2.2(@types/node@22.19.1)
+      vite: 7.2.2(@types/node@22.19.1)(yaml@2.9.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -37544,7 +37554,7 @@ packages:
       fsevents: 2.3.3
     dev: true
 
-  /vite@7.2.2(@types/node@22.19.1):
+  /vite@7.2.2(@types/node@22.19.1)(yaml@2.9.0):
     resolution: {integrity: sha512-BxAKBWmIbrDgrokdGZH1IgkIk/5mMHDreLDmCJ0qpyJaAteP8NvMhkwr/ZCQNqNH97bw/dANTE9PDzqwJghfMQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
@@ -37591,10 +37601,11 @@ packages:
       postcss: 8.5.6
       rollup: 4.53.2
       tinyglobby: 0.2.15
+      yaml: 2.9.0
     optionalDependencies:
       fsevents: 2.3.3
 
-  /vitest@4.0.9(@types/node@22.19.1):
+  /vitest@4.0.9(@types/node@22.19.1)(yaml@2.9.0):
     resolution: {integrity: sha512-E0Ja2AX4th+CG33yAFRC+d1wFx2pzU5r6HtG6LiPSE04flaE0qB6YyjSw9ZcpJAtVPfsvZGtJlKWZpuW7EHRxg==}
     engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
     hasBin: true
@@ -37647,7 +37658,7 @@ packages:
       tinyexec: 0.3.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vite: 7.2.2(@types/node@22.19.1)
+      vite: 7.2.2(@types/node@22.19.1)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     transitivePeerDependencies:
       - jiti
@@ -38410,19 +38421,11 @@ packages:
     resolution: {integrity: sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==}
     engines: {node: '>= 6'}
 
-  /yaml@2.8.1:
-    resolution: {integrity: sha512-lcYcMxX2PO9XMGvAJkJ3OsNMw+/7FKes7/hgerGUYWIoWu5j/+YQqcZr5JnPZWzOsEBgMbSbiSTn/dv/69Mkpw==}
-    engines: {node: '>= 14.6'}
-    hasBin: true
-    dev: false
-
   /yaml@2.9.0:
     resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
     engines: {node: '>= 14.6'}
     hasBin: true
     requiresBuild: true
-    dev: true
-    optional: true
 
   /yargs-parser@13.1.1:
     resolution: {integrity: sha512-oVAVsHz6uFrg3XQheFII8ESO2ssAf9luWuAd6Wexsu4F3OtIW0o8IribPXYrD4WC24LWtPrJlGy87y5udK+dxQ==}

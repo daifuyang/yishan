@@ -1,7 +1,7 @@
-import { createRouteRegistrar } from '../../../../../../core/routes/route-registrar.js';
+import { createRouteRegistrar } from '../../../../../../../apps/yishan-api/src/core/routes/route-registrar.ts';
 import type { FastifyPluginAsync } from 'fastify';
-import { ResponseUtil } from '../../../../../../utils/response.js';
-import { helloPermissions } from '../../../manifest.js';
+import { ResponseUtil } from '../../../../../../../apps/yishan-api/src/utils/response.ts';
+import { helloPermissions } from '../../../../plugin.ts';
 
 const helloAdminRoutes: FastifyPluginAsync = async (fastify) => {
   const route = createRouteRegistrar(fastify);

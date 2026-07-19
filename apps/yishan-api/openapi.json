@@ -11183,7 +11183,7 @@
         }
       }
     },
-    "/api/modules/hello/v1/admin/": {
+    "/api/plugins/yishan/hello/v1/admin/": {
       "get": {
         "operationId": "getHelloAdminHealth",
         "summary": "Hello 示例插件健康检查",

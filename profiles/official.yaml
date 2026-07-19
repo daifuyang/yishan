@@ -1,0 +1,27 @@
+# official profile — `all` branch default (see specs/baseline-v2/PROPOSAL §2.1).
+# Field semantics:
+#   profile:   logical name; matches the file basename.
+#   version:   schema version of the profile document itself (not the product).
+#   samples:   SDK/sample plugins kept in the catalog for smoke + contract tests (ADR-006).
+#   plugins:   production plugins to ship in this profile (catalog kind = production).
+#   targets:   surfaces this release ships to (api, admin, app-weapp, app-h5, docs).
+#   verify.db: ephemeral DB strategy used by `pnpm verify --profile <name>`.
+profile: official
+version: 2.0.0
+description: Official integrated distribution with portal + shop example plugins.
+samples: []
+plugins:
+  - yishan/hello
+  - yishan/portal
+  - yishan/shop
+targets:
+  - api
+  - admin
+  - app-weapp
+  - app-h5
+  - docs
+verify:
+  db:
+    strategy: ephemeral-mysql
+    services:
+      - mysql:8

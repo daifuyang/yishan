@@ -1,0 +1,21 @@
+# template profile — customer-project starter (copy to profiles/<your-profile>.yaml).
+# Field semantics:
+#   profile:   logical name; matches the file basename (replace <customer-name> with yours).
+#   version:   schema version of the profile document itself (not the product).
+#   samples:   SDK/sample plugins kept in the catalog for smoke + contract tests (ADR-006).
+#   plugins:   production plugins to ship in this profile (catalog kind = production).
+#   targets:   surfaces this release ships to (api, admin, app-weapp, app-h5, docs).
+#   verify.db: ephemeral DB strategy used by `pnpm verify --profile <name>`.
+profile: <customer-name>
+version: 0.1.0
+description: |
+  Copy this file to profiles/<your-profile>.yaml and edit.
+  - samples: SDK smoke fixtures (keep yishan/hello for CI sanity)
+  - plugins: your production plugins
+  - targets: which surfaces this release ships to
+samples:
+  - yishan/hello
+plugins: []
+targets:
+  - api
+  - admin

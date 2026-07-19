@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path';
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
@@ -46,22 +46,46 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const pluginRuntime = createPluginRuntime({ logger: fastify.log })
   fastify.decorate('pluginRuntime', pluginRuntime)
 
-  const pluginManifestModulesDir = join(__dirname, 'plugins/modules')
-  const discoveredManifests = pluginRuntime.scan(pluginManifestModulesDir)
-  // Phase 1: register + load（不 enable），同步 manifest 到数据库
-  for (const item of discoveredManifests) {
+  // Wave 2: catalog-driven plugin discovery. The old `pluginRuntime.scan()`
+  // (which read `apps/yishan-api/src/plugins/modules/`) is intentionally NOT
+  // called here — plugins now live under `plugins/<vendor>/<slug>/plugin.ts`
+  // and are picked up from the catalog emitted at profile build time.
+  //
+  // See specs/baseline-v2/decisions/ADR-002 + ADR-003 for the design.
+  const repoRoot = join(__dirname, '..', '..', '..')
+  const catalogPath = join(repoRoot, 'artifacts', 'plugin-catalog.json')
+  interface CatalogEntry { id: string; kind?: 'sample' | 'production' }
+  interface CatalogShape { plugins: CatalogEntry[] }
+  let catalog: CatalogShape = { plugins: [] }
+  try {
+    catalog = JSON.parse(readFileSync(catalogPath, 'utf8')) as CatalogShape
+  } catch {
+    // Catalog missing — empty plugin set (dev/local mode without profile build).
+  }
+
+  const discoveredManifests: Array<{ manifest: any; moduleName: string }> = []
+  // Phase 1: register + load (not yet enable). Plugin lifecycle in this
+  // codebase uses the legacy `name` field (e.g. `hello`) for
+  // `register()/lifecycle.load()/lifecycle.enable()` lookups; the new SDK
+  // identifier is `yishan/hello`. We derive the runtime `name` from the
+  // catalog id's trailing slug to keep both layers compatible.
+  for (const entry of catalog.plugins) {
     try {
-      pluginRuntime.register(item.manifest)
-      pluginRuntime.lifecycle.load(item.manifest.name)
-      await pluginRuntime.persistence.syncManifest(item.manifest)
-      fastify.log.info({ plugin: item.manifest.name, module: item.moduleName }, 'plugin manifest registered')
+      const manifestPath = join(repoRoot, 'plugins', entry.id, 'plugin.ts')
+      const mod = (await import(manifestPath)) as { default?: any }
+      const manifest = mod.default
+      if (!manifest || typeof manifest !== 'object') {
+        throw new Error(`plugin manifest missing default export at ${manifestPath}`)
+      }
+      const moduleName = manifest.id.split('/').pop() ?? manifest.id
+      discoveredManifests.push({ manifest, moduleName })
+      pluginRuntime.register(manifest)
+      pluginRuntime.lifecycle.load(moduleName)
+      await pluginRuntime.persistence.syncManifest(manifest)
+      fastify.log.info({ plugin: manifest.id, module: moduleName }, 'plugin manifest registered')
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown plugin runtime error'
-      const pluginName = item.manifest.name || item.moduleName
-      if (pluginRuntime.registry.get(pluginName)) {
-        pluginRuntime.registry.updateState(pluginName, 'error', message)
-      }
-      fastify.log.warn({ plugin: pluginName, module: item.moduleName, error: message }, 'plugin manifest registration failed')
+      fastify.log.warn({ plugin: entry.id, error: message }, 'plugin manifest registration failed')
     }
   }
 
@@ -128,40 +152,49 @@ const app: FastifyPluginAsync<AppOptions> = async (
     options: { ...opts }
   })
 
-  const modulesDir = join(__dirname, 'plugins/modules')
-  if (existsSync(modulesDir)) {
-    const moduleNames = readdirSync(modulesDir).filter((name) => statSync(join(modulesDir, name)).isDirectory())
+  // Wave 2: catalog-driven route mount. Each discovered plugin's
+  // `plugins/<id>/api/{plugins/external,plugins/app,routes}` directory is
+  // mounted via AutoLoad with `manifest.api.prefix` as the mount point.
+  for (const item of discoveredManifests) {
+    const apiDir = join(repoRoot, 'plugins', item.manifest.id, 'api')
+    const moduleExternalPlugins = join(apiDir, 'plugins/external')
+    const moduleAppPlugins = join(apiDir, 'plugins/app')
+    const moduleRoutes = join(apiDir, 'routes')
 
-    for (const moduleName of moduleNames) {
-      const moduleRoot = join(modulesDir, moduleName)
-      const moduleExternalPlugins = join(moduleRoot, 'plugins/external')
-      const moduleAppPlugins = join(moduleRoot, 'plugins/app')
-      const moduleRoutes = join(moduleRoot, 'routes')
+    if (existsSync(moduleExternalPlugins)) {
+      await fastify.register(AutoLoad, {
+        dir: moduleExternalPlugins,
+        options: { ...opts }
+      })
+    }
 
-      if (existsSync(moduleExternalPlugins)) {
-        await fastify.register(AutoLoad, {
-          dir: moduleExternalPlugins,
-          options: { ...opts }
-        })
-      }
+    if (existsSync(moduleAppPlugins)) {
+      // Module schemas/decorators must be registered before their route tree
+      // is loaded; otherwise route $ref validation can run first.
+      await fastify.register(AutoLoad, {
+        dir: moduleAppPlugins,
+        options: { ...opts }
+      })
+    }
 
-      if (existsSync(moduleAppPlugins)) {
-        // Module schemas/decorators must be registered before their route tree
-        // is loaded; otherwise route $ref validation can run first.
-        await fastify.register(AutoLoad, {
-          dir: moduleAppPlugins,
-          options: { ...opts }
-        })
-      }
-
-      if (existsSync(moduleRoutes)) {
-        fastify.register(AutoLoad, {
-          dir: moduleRoutes,
-          autoHooks: true,
-          cascadeHooks: true,
-          options: { ...opts, prefix: `api/modules/${moduleName}` }
-        })
-      }
+    if (existsSync(moduleRoutes)) {
+      // `manifest.api.prefix` pins `/api/plugins/<id>/v1` per the SDK
+      // contract. `@fastify/autoload` walks the directory tree of
+      // `routes/...` and *appends* each path segment to the prefix;
+      // with `plugins/yishan/hello/api/routes/v1/admin/index.ts` the
+      // traversal already inserts `v1/admin`, so the AutoLoad prefix
+      // must stop BEFORE the version segment, otherwise we'd emit
+      // `/api/plugins/yishan/hello/v1/v1/admin/`.
+      const apiPrefix = item.manifest.api?.prefix ?? `/api/plugins/${item.manifest.id}/v1`
+      const fastifyPrefix = apiPrefix
+        .replace(/^\/api\//, '')
+        .replace(/\/v\d+.*$/, '')
+      fastify.register(AutoLoad, {
+        dir: moduleRoutes,
+        autoHooks: true,
+        cascadeHooks: true,
+        options: { ...opts, prefix: fastifyPrefix }
+      })
     }
   }
 
