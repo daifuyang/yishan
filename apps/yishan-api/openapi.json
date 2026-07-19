@@ -1348,6 +1348,480 @@
           }
         }
       },
+      "sysPluginConflictDetail": {
+        "type": "object",
+        "description": "菜单同步冲突详情（plugin-menu-sync.service.ts → ConflictDetail）",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "冲突的菜单路径"
+          },
+          "name": {
+            "type": "string",
+            "description": "冲突的菜单名"
+          },
+          "existingPluginName": {
+            "type": "string",
+            "description": "占用该路径的已有插件名"
+          },
+          "reason": {
+            "type": "string",
+            "description": "冲突原因描述"
+          }
+        },
+        "required": [
+          "path",
+          "existingPluginName",
+          "reason"
+        ]
+      },
+      "sysPluginSyncStatus": {
+        "type": "object",
+        "description": "最近一次菜单同步结果（plugin-manage.service.ts → PluginSyncStatus）",
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "strict",
+              "safe"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed"
+            ]
+          },
+          "created": {
+            "type": "integer",
+            "description": "新增菜单数"
+          },
+          "updated": {
+            "type": "integer",
+            "description": "更新菜单数"
+          },
+          "skipped": {
+            "type": "integer",
+            "description": "跳过菜单数"
+          },
+          "conflicted": {
+            "type": "integer",
+            "description": "冲突菜单数"
+          },
+          "conflictDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/sysPluginConflictDetail"
+            }
+          },
+          "lastSyncAt": {
+            "type": "string",
+            "description": "ISO 时间戳"
+          }
+        },
+        "required": [
+          "strategy",
+          "status",
+          "created",
+          "updated",
+          "skipped",
+          "conflicted",
+          "conflictDetails"
+        ]
+      },
+      "sysPlugin": {
+        "type": "object",
+        "description": "插件管理列表项（plugin-manage.service.ts → PluginManageItem）",
+        "properties": {
+          "pluginId": {
+            "type": "string",
+            "description": "插件唯一 ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "插件名"
+          },
+          "version": {
+            "type": "string",
+            "description": "插件版本"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "discovered",
+              "enabled",
+              "disabled",
+              "error"
+            ],
+            "description": "运行时生命周期状态"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "是否已启用"
+          },
+          "coreCompatibility": {
+            "type": "string",
+            "description": "核心兼容版本"
+          },
+          "lastError": {
+            "type": "string",
+            "description": "最近一次错误信息"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "更新时间（ISO）"
+          },
+          "menus": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "permissionCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "syncStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/sysPluginSyncStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "state",
+          "enabled"
+        ]
+      },
+      "sysPluginHookReport": {
+        "type": "object",
+        "description": "插件 Hook 执行报告（plugin-platform/hooks.ts → HookEmitReport）",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "兼容字段：可能由调用方基于 traceId 拼接"
+          },
+          "pluginName": {
+            "type": "string",
+            "description": "兼容字段：调用方展示用，HookBus 暂未填充"
+          },
+          "hookName": {
+            "type": "string",
+            "description": "兼容字段：调用方展示用，等价于 event"
+          },
+          "traceId": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string",
+            "description": "Hook 事件名"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "pre",
+              "main",
+              "post",
+              "pipeline"
+            ]
+          },
+          "failPolicy": {
+            "type": "string",
+            "enum": [
+              "abort",
+              "continue",
+              "bestEffort"
+            ]
+          },
+          "durationMs": {
+            "type": "number"
+          },
+          "shortCircuited": {
+            "type": "boolean"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "error",
+              "skipped"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "兼容字段：调用方展示用"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "兼容字段：调用方展示用"
+          },
+          "handlers": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        },
+        "required": [
+          "event",
+          "status"
+        ]
+      },
+      "sysPluginSyncLog": {
+        "type": "object",
+        "description": "插件菜单同步历史记录（plugin-menu-sync.service.ts → SyncLogRecord）",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "strict",
+              "safe"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "partial",
+              "failed"
+            ]
+          },
+          "created": {
+            "type": "integer"
+          },
+          "updated": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "conflicted": {
+            "type": "integer"
+          },
+          "conflictDetails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/sysPluginConflictDetail"
+            }
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 时间戳"
+          }
+        },
+        "required": [
+          "strategy",
+          "status",
+          "created",
+          "updated",
+          "skipped",
+          "conflicted",
+          "createdAt"
+        ]
+      },
+      "sysPluginResp": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/sysPlugin"
+          }
+        },
+        "required": [
+          "success",
+          "code",
+          "message",
+          "timestamp",
+          "data"
+        ]
+      },
+      "sysPluginListResp": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/sysPlugin"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "code",
+          "message",
+          "timestamp",
+          "data"
+        ]
+      },
+      "sysPluginSyncLogListResp": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/sysPluginSyncLog"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "code",
+          "message",
+          "timestamp",
+          "data"
+        ]
+      },
+      "sysPluginHookReportListResp": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/sysPluginHookReport"
+            }
+          }
+        },
+        "required": [
+          "success",
+          "code",
+          "message",
+          "timestamp",
+          "data"
+        ]
+      },
+      "sysPluginListQuery": {
+        "type": "object",
+        "properties": {}
+      },
+      "sysPluginSyncLogQuery": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 10,
+            "description": "返回条数，默认 10"
+          }
+        }
+      },
+      "sysPluginHookReportQuery": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50,
+            "description": "返回条数，默认 50"
+          }
+        }
+      },
+      "sysPluginEnableQuery": {
+        "type": "object",
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "strict",
+              "safe"
+            ],
+            "default": "safe",
+            "description": "菜单同步策略"
+          }
+        }
+      },
+      "sysPluginSyncQuery": {
+        "type": "object",
+        "properties": {
+          "strategy": {
+            "type": "string",
+            "enum": [
+              "strict",
+              "safe"
+            ],
+            "default": "safe",
+            "description": "菜单同步策略"
+          }
+        }
+      },
       "sysRole": {
         "type": "object",
         "properties": {
@@ -8520,11 +8994,32 @@
         "tags": [
           "system"
         ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "返回条数，默认 50"
+          }
+        ],
         "x-permission-code": "system:plugin:audit",
         "x-permission-label": "插件管理-审计",
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sysPluginHookReportListResp"
+                }
+              }
+            }
           }
         }
       }
@@ -8540,7 +9035,14 @@
         "x-permission-label": "插件管理-列表",
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sysPluginListResp"
+                }
+              }
+            }
           }
         }
       }
@@ -8566,7 +9068,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sysPluginResp"
+                }
+              }
+            }
           }
         }
       }
@@ -8578,9 +9087,19 @@
         "tags": [
           "system"
         ],
-        "x-permission-code": "system:plugin:list",
-        "x-permission-label": "插件管理-列表",
         "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 10
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "返回条数，默认 10"
+          },
           {
             "schema": {
               "type": "string"
@@ -8590,9 +9109,18 @@
             "required": true
           }
         ],
+        "x-permission-code": "system:plugin:list",
+        "x-permission-label": "插件管理-列表",
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sysPluginSyncLogListResp"
+                }
+              }
+            }
           }
         }
       }
@@ -8604,9 +9132,21 @@
         "tags": [
           "system"
         ],
-        "x-permission-code": "system:plugin:enable",
-        "x-permission-label": "插件管理-启用",
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "safe"
+              ],
+              "default": "safe"
+            },
+            "in": "query",
+            "name": "strategy",
+            "required": false,
+            "description": "菜单同步策略"
+          },
           {
             "schema": {
               "type": "string"
@@ -8616,9 +9156,18 @@
             "required": true
           }
         ],
+        "x-permission-code": "system:plugin:enable",
+        "x-permission-label": "插件管理-启用",
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sysPluginResp"
+                }
+              }
+            }
           }
         }
       }
@@ -8630,9 +9179,21 @@
         "tags": [
           "system"
         ],
-        "x-permission-code": "system:plugin:sync",
-        "x-permission-label": "插件管理-同步",
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "strict",
+                "safe"
+              ],
+              "default": "safe"
+            },
+            "in": "query",
+            "name": "strategy",
+            "required": false,
+            "description": "菜单同步策略"
+          },
           {
             "schema": {
               "type": "string"
@@ -8642,9 +9203,18 @@
             "required": true
           }
         ],
+        "x-permission-code": "system:plugin:sync",
+        "x-permission-label": "插件管理-同步",
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sysPluginResp"
+                }
+              }
+            }
           }
         }
       }
@@ -8670,7 +9240,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response"
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sysPluginResp"
+                }
+              }
+            }
           }
         }
       }

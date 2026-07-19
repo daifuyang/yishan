@@ -35,13 +35,13 @@ const mockHandles: MockHandles = {
 
 ;(globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks = mockHandles
 
-jest.mock('@/services/yishan-admin/auth', () => ({
+jest.mock('@/services/generated/auth', () => ({
   __esModule: true,
   getCurrentUser: (...args: unknown[]) =>
     (globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks.getCurrentUser(...(args as [])),
 }))
 
-jest.mock('@/services/yishan-admin/sysDictData', () => ({
+jest.mock('@/services/generated/sysDictData', () => ({
   __esModule: true,
   default: (globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks,
   getDictDataMap: (...args: unknown[]) =>
@@ -78,6 +78,8 @@ jest.mock('query-string', () => ({
 }))
 jest.mock('../shared/publicPath', () => ({
   __esModule: true,
+  normalizePublicPath: (rawPath?: string) => (rawPath ? `/${rawPath.replace(/^\/+|\/+$/g, '')}/` : '/'),
+  isValidPublicPath: () => true,
   getBasePrefixFromPublicPath: () => '/',
   stripBasePrefix: (_path: string, _base: string) => _path,
 }))
@@ -113,7 +115,7 @@ jest.mock('@/components', () => ({
   Question: () => null,
   SelectLang: () => null,
 }))
-jest.mock('@/services/yishan-admin/sysMenus', () => ({
+jest.mock('@/services/generated/sysMenus', () => ({
   __esModule: true,
   getAuthorizedMenuTree: jest.fn(),
 }))

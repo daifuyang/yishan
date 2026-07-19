@@ -19,6 +19,8 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
         summary: '获取插件 Hook 执行报告',
         tags: ['system'],
         operationId: 'getPluginHookReports',
+        querystring: { $ref: 'sysPluginHookReportQuery#' },
+        response: { 200: { $ref: 'sysPluginHookReportListResp#' } },
       }
     },
     async (request, reply) => {
@@ -36,6 +38,8 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
         summary: '获取插件列表',
         tags: ['system'],
         operationId: 'listPlugins',
+        querystring: { $ref: 'sysPluginListQuery#' },
+        response: { 200: { $ref: 'sysPluginListResp#' } },
       }
     },
     async (_request, reply) => {
@@ -52,6 +56,7 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
         summary: '获取插件详情',
         tags: ['system'],
         operationId: 'getPluginDetail',
+        response: { 200: { $ref: 'sysPluginResp#' } },
       }
     },
     async (request, reply) => {
@@ -68,6 +73,8 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
         summary: '获取插件菜单同步历史',
         tags: ['system'],
         operationId: 'getPluginSyncLogs',
+        querystring: { $ref: 'sysPluginSyncLogQuery#' },
+        response: { 200: { $ref: 'sysPluginSyncLogListResp#' } },
       }
     },
     async (request, reply) => {
@@ -86,6 +93,8 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
         summary: '启用插件（可选 syncStrategy: strict | safe）',
         tags: ['system'],
         operationId: 'enablePlugin',
+        querystring: { $ref: 'sysPluginEnableQuery#' },
+        response: { 200: { $ref: 'sysPluginResp#' } },
       }
     },
     async (request, reply) => {
@@ -105,6 +114,8 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
         summary: '手动同步插件菜单（插件需已启用）',
         tags: ['system'],
         operationId: 'syncPluginMenu',
+        querystring: { $ref: 'sysPluginSyncQuery#' },
+        response: { 200: { $ref: 'sysPluginResp#' } },
       }
     },
     async (request, reply) => {
@@ -124,6 +135,7 @@ const adminSystemPlugins: FastifyPluginAsync = async (fastify) => {
         summary: '停用插件',
         tags: ['system'],
         operationId: 'disablePlugin',
+        response: { 200: { $ref: 'sysPluginResp#' } },
       }
     },
     async (request, reply) => {

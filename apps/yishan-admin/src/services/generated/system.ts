@@ -100,7 +100,7 @@ export async function batchGetSystemOptionByQuery(
 
 /** 获取插件列表 GET /api/v1/admin/system/plugins/ */
 export async function listPlugins(options?: { [key: string]: any }) {
-  return request<any>("/api/v1/admin/system/plugins/", {
+  return request<API.sysPluginListResp>("/api/v1/admin/system/plugins/", {
     method: "GET",
     ...(options || {}),
   });
@@ -113,7 +113,7 @@ export async function getPluginDetail(
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
-  return request<any>(`/api/v1/admin/system/plugins/${param0}`, {
+  return request<API.sysPluginResp>(`/api/v1/admin/system/plugins/${param0}`, {
     method: "GET",
     params: { ...queryParams },
     ...(options || {}),
@@ -127,11 +127,14 @@ export async function disablePlugin(
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
-  return request<any>(`/api/v1/admin/system/plugins/${param0}/disable`, {
-    method: "POST",
-    params: { ...queryParams },
-    ...(options || {}),
-  });
+  return request<API.sysPluginResp>(
+    `/api/v1/admin/system/plugins/${param0}/disable`,
+    {
+      method: "POST",
+      params: { ...queryParams },
+      ...(options || {}),
+    }
+  );
 }
 
 /** 启用插件（可选 syncStrategy: strict | safe） POST /api/v1/admin/system/plugins/${param0}/enable */
@@ -141,11 +144,18 @@ export async function enablePlugin(
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
-  return request<any>(`/api/v1/admin/system/plugins/${param0}/enable`, {
-    method: "POST",
-    params: { ...queryParams },
-    ...(options || {}),
-  });
+  return request<API.sysPluginResp>(
+    `/api/v1/admin/system/plugins/${param0}/enable`,
+    {
+      method: "POST",
+      params: {
+        // strategy has a default value: safe
+        strategy: "safe",
+        ...queryParams,
+      },
+      ...(options || {}),
+    }
+  );
 }
 
 /** 手动同步插件菜单（插件需已启用） POST /api/v1/admin/system/plugins/${param0}/sync */
@@ -155,11 +165,18 @@ export async function syncPluginMenu(
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
-  return request<any>(`/api/v1/admin/system/plugins/${param0}/sync`, {
-    method: "POST",
-    params: { ...queryParams },
-    ...(options || {}),
-  });
+  return request<API.sysPluginResp>(
+    `/api/v1/admin/system/plugins/${param0}/sync`,
+    {
+      method: "POST",
+      params: {
+        // strategy has a default value: safe
+        strategy: "safe",
+        ...queryParams,
+      },
+      ...(options || {}),
+    }
+  );
 }
 
 /** 获取插件菜单同步历史 GET /api/v1/admin/system/plugins/${param0}/sync-logs */
@@ -169,19 +186,38 @@ export async function getPluginSyncLogs(
   options?: { [key: string]: any }
 ) {
   const { name: param0, ...queryParams } = params;
-  return request<any>(`/api/v1/admin/system/plugins/${param0}/sync-logs`, {
-    method: "GET",
-    params: { ...queryParams },
-    ...(options || {}),
-  });
+  return request<API.sysPluginSyncLogListResp>(
+    `/api/v1/admin/system/plugins/${param0}/sync-logs`,
+    {
+      method: "GET",
+      params: {
+        // limit has a default value: 10
+        limit: "10",
+        ...queryParams,
+      },
+      ...(options || {}),
+    }
+  );
 }
 
 /** 获取插件 Hook 执行报告 GET /api/v1/admin/system/plugins/hooks/reports */
-export async function getPluginHookReports(options?: { [key: string]: any }) {
-  return request<any>("/api/v1/admin/system/plugins/hooks/reports", {
-    method: "GET",
-    ...(options || {}),
-  });
+export async function getPluginHookReports(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getPluginHookReportsParams,
+  options?: { [key: string]: any }
+) {
+  return request<API.sysPluginHookReportListResp>(
+    "/api/v1/admin/system/plugins/hooks/reports",
+    {
+      method: "GET",
+      params: {
+        // limit has a default value: 50
+        limit: "50",
+        ...params,
+      },
+      ...(options || {}),
+    }
+  );
 }
 
 /** 获取七牛云上传临时凭证 根据七牛云官方文档生成上传凭证（uptoken） GET /api/v1/admin/system/qiniu/token */

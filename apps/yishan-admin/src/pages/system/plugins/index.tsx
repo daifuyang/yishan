@@ -22,11 +22,13 @@ import {
   getPluginHookReports,
   getPluginSyncLogs,
   listPlugins,
-  type SysPlugin,
-  type SysPluginHookReport,
-  type SysPluginSyncLog,
   syncPluginMenu,
 } from '@/services/generated/system';
+
+// 类型从 OpenAPI 自动生成的 typings.d.ts（API 命名空间）取，禁止手写。
+type SysPlugin = API.sysPlugin;
+type SysPluginSyncLog = API.sysPluginSyncLog;
+type SysPluginHookReport = API.sysPluginHookReport;
 
 const SYNC_STATUS_COLOR: Record<string, string> = {
   success: 'green',
@@ -61,7 +63,10 @@ const PluginList: React.FC = () => {
   const handleEnable = async () => {
     if (!currentPlugin) return;
     setEnabling(true);
-    const res = await enablePlugin(currentPlugin.name, selectedStrategy);
+    const res = await enablePlugin(
+      { name: currentPlugin.name },
+      { strategy: selectedStrategy },
+    );
     setEnabling(false);
     setEnableModalOpen(false);
     if (res.success) {
@@ -87,7 +92,10 @@ const PluginList: React.FC = () => {
   const handleSync = async () => {
     if (!currentPlugin?.name) return;
     setSyncing(true);
-    const res = await syncPluginMenu(currentPlugin.name, syncStrategy);
+    const res = await syncPluginMenu(
+      { name: currentPlugin.name },
+      { strategy: syncStrategy },
+    );
     setSyncing(false);
     setSyncModalOpen(false);
     if (res.success) {
@@ -100,7 +108,7 @@ const PluginList: React.FC = () => {
 
   const handleDisable = async (name?: string) => {
     if (!name) return;
-    const res = await disablePlugin(name);
+    const res = await disablePlugin({ name });
     if (res.success) {
       message.success('停用成功，请刷新页面查看菜单变化');
       actionRef.current?.reload();
@@ -123,10 +131,10 @@ const PluginList: React.FC = () => {
   };
 
   const handleOpenSyncLogs = async (plugin: SysPlugin) => {
-    setCurrentPlugin({ name: plugin.name, pluginId: plugin.pluginId });
+    setCurrentPlugin(plugin);
     setSyncDrawerOpen(true);
     setSyncLogsLoading(true);
-    const res = await getPluginSyncLogs(plugin.name, 10);
+    const res = await getPluginSyncLogs({ name: plugin.name }, { limit: 10 });
     setSyncLogsLoading(false);
     if (res.success) {
       setSyncLogs(res.data || []);
