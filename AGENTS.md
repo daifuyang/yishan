@@ -7,6 +7,14 @@
 - **Docs** (yishan-docs): Docusaurus 3
 - **Components** (yishan-tiptap): TipTap 3, Rollup, workspace dependency of admin
 
+## Branch and Plugin Boundaries
+
+- `main` is the Core distribution. It contains the platform and the `hello` example plugin only; it must not include the official business plugins `portal` or `shop`.
+- `all` is the integrated distribution. It contains the same Core foundation plus the official `portal` and `shop` business plugins (their API modules, Admin pages, manifests, routes, and generated clients).
+- The branches have diverged and are not in a fast-forward relationship. Do not assume `all` can be merged wholesale into `main`, or that `main` can be merged wholesale into `all`.
+- When moving a Core change between branches, cherry-pick only the intended commits and resolve conflicts according to the target branch's plugin boundary. Never restore `portal` or `shop` files on `main` merely to satisfy stale local build artifacts.
+- OpenAPI is generated from the target branch's API modules. After a cross-branch change, regenerate the spec and Admin clients, then regenerate Admin plugin routes with `pnpm --filter yishan-admin gen:plugin-routes`. Do not retain generated clients or route entries for plugins absent from the target branch.
+
 ## Developer Commands
 
 ```bash
