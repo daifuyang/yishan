@@ -25,9 +25,7 @@ export default function IndexPage() {
 
   useRequireAuth()
 
-  const isAdmin = user?.roleIds && user.roleIds.some(id => {
-    return true
-  })
+  const isAdmin = user?.roleIds?.some(() => true) ?? false
 
   const loadStats = useCallback(async () => {
     if (!isAdmin) return
@@ -37,7 +35,7 @@ export default function IndexPage() {
     try {
       const data = await dashboardApi.getStats()
       setStats(data)
-    } catch (err: any) {
+    } catch {
       setStatsError('数据加载失败')
     } finally {
       setStatsLoading(false)
@@ -95,6 +93,8 @@ export default function IndexPage() {
 
   return (
     <View className={`page-container ${styles.index}`}>
+      {/* DashboardHero 内部已处理 user 为空的情况；useRequireAuth 保证 user 此时非空 */}
+      {/* biome-ignore lint/style/noNonNullAssertion: useRequireAuth 守门 */}
       <DashboardHero user={user!} dateText={getDateText()} />
 
       {isAdmin && (

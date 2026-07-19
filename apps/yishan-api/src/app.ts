@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
 import { createPluginRuntime } from './core/plugin-platform'
@@ -9,6 +9,68 @@ import { PluginMenuSyncService } from './core/services/plugin-menu-sync.service.
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
 import { initGlobalCatalog } from './core/services/permission-catalog.service.js'
 import { getEnabledPluginNames } from './core/plugin-platform/startup-state.js'
+import {
+  pluginGate,
+  registerPluginGate,
+  setPluginState,
+  type PluginRuntimeState,
+} from './core/middleware/plugin-gate.js'
+
+// Wave 4 SDK validation is intentionally kept inline (rather than
+// imported from packages/plugin-sdk) for two reasons:
+//   1. packages/plugin-sdk is noEmit; importing it from compiled app.ts
+//      forces tsc into mirrored layout (dist/apps/yishan-api/src/...).
+//   2. The checks are small enough to live next to the boot path that
+//      uses them, and keeping the surface dependency-free matches the
+//      rest of `apps/yishan-api/src/core/`. PROPOSAL §2.2 / ADR-002
+//      name this alignment as the SDK's whole point.
+//
+// If a future Wave needs additional SDK checks, restore the import and
+// either emit the SDK package or split validation here.
+interface SdkValidationIssue {
+  field: string
+  message: string
+}
+function validateSdkManifest(manifest: unknown): SdkValidationIssue[] {
+  const issues: SdkValidationIssue[] = []
+  const m = manifest as Partial<{
+    id: string; version: string; coreVersion: string
+    permissions: unknown; menus: unknown; api: { prefix?: string }
+  }>
+  const PLUGIN_ID_RE = /^[\w-]+\/[\w-]+$/
+  const SEMVER_RE = /^\d+\.\d+\.\d+/
+  const SEMVER_RANGE_RE = /^[\^~]?\d+\.\d+\.\d+/
+  if (typeof m.id !== 'string' || !PLUGIN_ID_RE.test(m.id)) {
+    issues.push({ field: 'id', message: 'must match ^[\\w-]+/[\\w-]+$' })
+  }
+  if (typeof m.version !== 'string' || !SEMVER_RE.test(m.version)) {
+    issues.push({ field: 'version', message: 'must be semver' })
+  }
+  if (typeof m.coreVersion !== 'string' || !SEMVER_RANGE_RE.test(m.coreVersion)) {
+    issues.push({ field: 'coreVersion', message: 'must be semver range' })
+  }
+  if (!Array.isArray(m.permissions)) {
+    issues.push({ field: 'permissions', message: 'must be an array' })
+  }
+  if (!Array.isArray(m.menus)) {
+    issues.push({ field: 'menus', message: 'must be an array' })
+  }
+  const apiPrefix = m.api?.prefix
+  if (apiPrefix !== undefined) {
+    if (typeof apiPrefix !== 'string' || !apiPrefix.startsWith('/api/')) {
+      issues.push({ field: 'api.prefix', message: 'must start with /api/' })
+    } else if (typeof m.id === 'string' && apiPrefix !== `/api/plugins/${m.id}/v1`) {
+      issues.push({
+        field: 'api.prefix',
+        message: `must equal /api/plugins/${m.id}/v1 (derived from id)`,
+      })
+    }
+  }
+  return issues
+}
+
+interface CatalogEntry { id: string; kind?: 'sample' | 'production' }
+interface CatalogShape { plugins: CatalogEntry[] }
 
 export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {
 
@@ -46,47 +108,107 @@ const app: FastifyPluginAsync<AppOptions> = async (
   const pluginRuntime = createPluginRuntime({ logger: fastify.log })
   fastify.decorate('pluginRuntime', pluginRuntime)
 
-  // Wave 2: catalog-driven plugin discovery. The old `pluginRuntime.scan()`
-  // (which read `apps/yishan-api/src/plugins/modules/`) is intentionally NOT
-  // called here — plugins now live under `plugins/<vendor>/<slug>/plugin.ts`
-  // and are picked up from the catalog emitted at profile build time.
+  // Wave 4: plugin gate decorator + catalog-driven discovery.
   //
-  // See specs/baseline-v2/decisions/ADR-002 + ADR-003 for the design.
-  const repoRoot = join(__dirname, '..', '..', '..')
-  const catalogPath = join(repoRoot, 'artifacts', 'plugin-catalog.json')
-  interface CatalogEntry { id: string; kind?: 'sample' | 'production' }
-  interface CatalogShape { plugins: CatalogEntry[] }
-  let catalog: CatalogShape = { plugins: [] }
+  // ADR-003 §3.2 brings the gate model: each plugin is wrapped in a sub-app
+  // whose preHandler checks the in-memory `pluginState` map. Wave 4 only
+  // wires boot-time state (catalog ∩ DB enable); runtime enable/disable from
+  // admin endpoints will continue to use the same `setPluginState` helper
+  // and is a Wave 5 concern.
+  registerPluginGate(fastify)
+
+  // Wave 4: release artifact friendly catalog + plugin resolution.
+  //
+  // The flat dist layout (set via tsconfig rootDir: src) lands compiled
+  // code at apps/yishan-api/dist/<src-path>.js; artifacts live adjacent
+  // at apps/yishan-api/dist/artifacts/plugin-catalog.json and
+  // apps/yishan-api/dist/plugins/<id>/plugin.js (written by the
+  // build-plugins companion script). Dev mode (vitest / ts-node)
+  // lands src files at apps/yishan-api/src/*.ts; the catalog and
+  // plugins live at the monorepo root, i.e. ../../../artifacts/...
+  // and ../../../plugins/<id>/plugin.ts.
+  const normDir = __dirname.split(sep).join('/')
+  const isDist = normDir.includes('/dist/')
+  const artifactRoot = isDist
+    ? __dirname
+    : join(__dirname, '..', '..', '..')
+  const catalogPath = join(artifactRoot, 'artifacts', 'plugin-catalog.json')
+
+  // Wave 4 fail-fast (PROPOSAL §11 — no silent degradation on catalog
+  // bootstrap errors). Previously the catch swallowed missing/invalid
+  // catalog JSON and the API booted with zero plugins, masking release
+  // bugs as "no plugins enabled". We now re-throw so the surrounding
+  // Fastify boot surfaces the error; the call chain above has already
+  // installed the JWT-secret exit-on-failure guard.
+  let catalog: CatalogShape
   try {
     catalog = JSON.parse(readFileSync(catalogPath, 'utf8')) as CatalogShape
-  } catch {
-    // Catalog missing — empty plugin set (dev/local mode without profile build).
+  } catch (err) {
+    fastify.log.error(
+      { err, catalogPath },
+      'catalog missing or invalid; refusing to boot',
+    )
+    throw err
+  }
+  if (!Array.isArray(catalog.plugins) || catalog.plugins.length === 0) {
+    throw new Error(`plugin catalog is empty at ${catalogPath}; refusing to boot`)
   }
 
   const discoveredManifests: Array<{ manifest: any; moduleName: string }> = []
-  // Phase 1: register + load (not yet enable). Plugin lifecycle in this
-  // codebase uses the legacy `name` field (e.g. `hello`) for
-  // `register()/lifecycle.load()/lifecycle.enable()` lookups; the new SDK
-  // identifier is `yishan/hello`. We derive the runtime `name` from the
-  // catalog id's trailing slug to keep both layers compatible.
+  // Phase 1: register + load (not yet enable). Wave 4 also drives the
+  // pluginGate cache from this loop. Disabled/failed catalogs get a
+  // `disabled` snapshot at boot, and `enabled` set after the DB state
+  // step below. Catalog miss (entry id has no plugin.ts) is fatal.
   for (const entry of catalog.plugins) {
+    // Wave 4 note: dev runs (vitest, ts-node) and dist runs share the
+    // same layout offset — `__dirname/../../..` reaches the artifact root
+    // (monorepo in dev, dist in release). Only the file extension differs.
+    const manifestPath = isDist
+      ? join(artifactRoot, 'plugins', entry.id, 'plugin.js')
+      : join(artifactRoot, 'plugins', entry.id, 'plugin.ts')
+    let mod: { default?: any }
     try {
-      const manifestPath = join(repoRoot, 'plugins', entry.id, 'plugin.ts')
-      const mod = (await import(manifestPath)) as { default?: any }
-      const manifest = mod.default
-      if (!manifest || typeof manifest !== 'object') {
-        throw new Error(`plugin manifest missing default export at ${manifestPath}`)
-      }
-      const moduleName = manifest.id.split('/').pop() ?? manifest.id
-      discoveredManifests.push({ manifest, moduleName })
-      pluginRuntime.register(manifest)
-      pluginRuntime.lifecycle.load(moduleName)
-      await pluginRuntime.persistence.syncManifest(manifest)
-      fastify.log.info({ plugin: manifest.id, module: moduleName }, 'plugin manifest registered')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown plugin runtime error'
-      fastify.log.warn({ plugin: entry.id, error: message }, 'plugin manifest registration failed')
+      mod = (await import(manifestPath)) as { default?: any }
+    } catch (err) {
+      fastify.log.error(
+        { err, plugin: entry.id, manifestPath },
+        'plugin manifest load failed; refusing to boot',
+      )
+      throw err
     }
+    const manifest = mod.default
+    if (!manifest || typeof manifest !== 'object') {
+      throw new Error(`plugin manifest missing default export at ${manifestPath}`)
+    }
+    const issues = validateSdkManifest(manifest)
+    if (issues.length > 0) {
+      const joined = issues.map((i) => `${i.field}: ${i.message}`).join('; ')
+      throw new Error(`plugin ${entry.id} manifest invalid: ${joined}`)
+    }
+    const moduleName = manifest.id.split('/').pop() ?? manifest.id
+    discoveredManifests.push({ manifest, moduleName })
+    pluginRuntime.register(manifest)
+    pluginRuntime.lifecycle.load(moduleName)
+    // DB persistence is best-effort: a transient DB outage should not
+    // block boot (the gate stays at the boot default and is overwritten
+    // when the DB recovers on the next request — see ADR-003 §Consequences
+    // "gate cache must be driven by DB state"). Catalogue miss above,
+    // however, is a build-time bug and must fail.
+    try {
+      await pluginRuntime.persistence.syncManifest(manifest)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown syncManifest error'
+      fastify.log.warn(
+        { plugin: manifest.id, error: message },
+        'plugin persistence sync skipped; continuing boot',
+      )
+    }
+    fastify.log.info({ plugin: manifest.id, module: moduleName }, 'plugin manifest registered')
+    // Gate defaults to `disabled` at boot — the DB enable pass below may
+    // flip it to `enabled`. A plugin that fails lifecycle transitions is
+    // surfaced as `failed`.
+    const initialState: PluginRuntimeState = 'disabled'
+    setPluginState(fastify, manifest.id, initialState)
   }
 
   // Do not touch the following lines
@@ -103,6 +225,9 @@ const app: FastifyPluginAsync<AppOptions> = async (
 
   // Phase 3: 按数据库中的 enabled 决定 runtime 状态（不调用 enable 的插件保持 disabled）。
   // 使用 startup-state 纯函数计算启用集合，禁止再次回写数据库。
+  // Wave 4 also drives the pluginGate cache: any plugin present in the
+  // "enabled" set flips from `disabled` to `enabled`; everything else
+  // stays at the boot default.
   const enabledPluginNames = getEnabledPluginNames(
     discoveredManifests.map((item) => item.manifest),
     pluginStateSnapshots,
@@ -110,6 +235,7 @@ const app: FastifyPluginAsync<AppOptions> = async (
   for (const item of discoveredManifests) {
     if (enabledPluginNames.has(item.manifest.name)) {
       pluginRuntime.lifecycle.enable(item.manifest.name)
+      setPluginState(fastify, item.manifest.id, 'enabled')
     }
   }
 
@@ -152,50 +278,59 @@ const app: FastifyPluginAsync<AppOptions> = async (
     options: { ...opts }
   })
 
-  // Wave 2: catalog-driven route mount. Each discovered plugin's
-  // `plugins/<id>/api/{plugins/external,plugins/app,routes}` directory is
-  // mounted via AutoLoad with `manifest.api.prefix` as the mount point.
+  // Wave 2/4: catalog-driven route mount with ADR-003 pluginGate wrapping.
+  // Each plugin's `plugins/<id>/api/...` tree mounts inside a dedicated
+  // Fastify sub-app whose preHandler is the per-plugin gate. Fastify's
+  // encapsulation keeps the gate isolated per plugin so it cannot leak
+  // across plugin boundaries.
   for (const item of discoveredManifests) {
-    const apiDir = join(repoRoot, 'plugins', item.manifest.id, 'api')
+    // Wave 4 note: dev runs (vitest, ts-node) and dist runs share the
+    // same layout offset — `__dirname/../../..` reaches the artifact root
+    // (monorepo in dev, dist in release). Only the file extension differs.
+    const apiDir = join(artifactRoot, 'plugins', item.manifest.id, 'api')
     const moduleExternalPlugins = join(apiDir, 'plugins/external')
     const moduleAppPlugins = join(apiDir, 'plugins/app')
     const moduleRoutes = join(apiDir, 'routes')
 
-    if (existsSync(moduleExternalPlugins)) {
-      await fastify.register(AutoLoad, {
-        dir: moduleExternalPlugins,
-        options: { ...opts }
-      })
-    }
+    // Manifest `api.prefix` always pins `/api/plugins/<id>/v1` per the SDK
+    // contract — set as the sub-app's own `prefix` so each gate actually
+    // wraps the public surface. The inner AutoLoad walks `routes/...` and
+    // *appends* each path segment to the prefix; with
+    // `plugins/yishan/hello/api/routes/v1/admin/index.ts` the traversal
+    // already inserts `v1/admin`, so the AutoLoad prefix must stop BEFORE
+    // the version segment, otherwise we'd emit
+    // `/api/plugins/yishan/hello/v1/v1/admin/`.
+    const apiPrefix = item.manifest.api?.prefix ?? `/api/plugins/${item.manifest.id}/v1`
+    const fastifyPrefix = apiPrefix
+      .replace(/^\/api\//, '')
+      .replace(/\/v\d+.*$/, '')
 
-    if (existsSync(moduleAppPlugins)) {
-      // Module schemas/decorators must be registered before their route tree
-      // is loaded; otherwise route $ref validation can run first.
-      await fastify.register(AutoLoad, {
-        dir: moduleAppPlugins,
-        options: { ...opts }
-      })
-    }
-
-    if (existsSync(moduleRoutes)) {
-      // `manifest.api.prefix` pins `/api/plugins/<id>/v1` per the SDK
-      // contract. `@fastify/autoload` walks the directory tree of
-      // `routes/...` and *appends* each path segment to the prefix;
-      // with `plugins/yishan/hello/api/routes/v1/admin/index.ts` the
-      // traversal already inserts `v1/admin`, so the AutoLoad prefix
-      // must stop BEFORE the version segment, otherwise we'd emit
-      // `/api/plugins/yishan/hello/v1/v1/admin/`.
-      const apiPrefix = item.manifest.api?.prefix ?? `/api/plugins/${item.manifest.id}/v1`
-      const fastifyPrefix = apiPrefix
-        .replace(/^\/api\//, '')
-        .replace(/\/v\d+.*$/, '')
-      fastify.register(AutoLoad, {
-        dir: moduleRoutes,
-        autoHooks: true,
-        cascadeHooks: true,
-        options: { ...opts, prefix: fastifyPrefix }
-      })
-    }
+    await fastify.register(async (instance) => {
+      // Gate FIRST so it short-circuits before any sub-app route lookup.
+      instance.addHook('preHandler', pluginGate(item.manifest.id))
+      if (existsSync(moduleExternalPlugins)) {
+        await instance.register(AutoLoad, {
+          dir: moduleExternalPlugins,
+          options: { ...opts }
+        })
+      }
+      if (existsSync(moduleAppPlugins)) {
+        // Module schemas/decorators must be registered before their route
+        // tree is loaded; otherwise route $ref validation can run first.
+        await instance.register(AutoLoad, {
+          dir: moduleAppPlugins,
+          options: { ...opts }
+        })
+      }
+      if (existsSync(moduleRoutes)) {
+        await instance.register(AutoLoad, {
+          dir: moduleRoutes,
+          autoHooks: true,
+          cascadeHooks: true,
+          options: { ...opts, prefix: fastifyPrefix }
+        })
+      }
+    })
   }
 
   // This loads all plugins defined in core/routes

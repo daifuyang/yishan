@@ -59,7 +59,10 @@ export default defineConfig(async (merge, _env) => {
       publicPath: '/',
       staticDirectory: 'static',
       useHtmlComponents: true,
-      devServer: {
+      // Taro 的 webpack5 UserConfigExport' devServer 类型不直接接受 https，
+      // 但 webpack-dev-server 自身支持。cast 保留显式关闭 HTTPS 的意图
+      // （外层 nginx 已终止 TLS）。
+      devServer: ({
         host: '0.0.0.0',
         port: 21003,
         // allowedHosts: 'all' 让 webpack-dev-server 接受非 localhost 的 Host
@@ -78,7 +81,7 @@ export default defineConfig(async (merge, _env) => {
             secure: false,
           },
         ],
-      },
+      }) as any,
       postcss: {
         autoprefixer: { enable: true },
         pxtransform: {

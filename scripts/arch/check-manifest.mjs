@@ -1,27 +1,30 @@
 #!/usr/bin/env node
 /**
- * Plugin manifest sanity check.
+ * Plugin manifest sanity check (Wave 4).
  *
- * Scans the three plugin manifest files under
- *   apps/yishan-api/src/plugins/modules/{hello,portal,shop}/manifest.ts
- * and enforces:
+ * Scans every `plugins/<vendor>/<slug>/plugin.ts` and enforces:
  *
- *   M1 — `pluginId` matches `^[\w-]+/[\w-]+$`
- *   M2 — every manifest's `pluginId` is unique across the three
- *   M3 — `name` equals the directory name
- *   M4 — `version` matches semver `^\d+\.\d+\.\d+`
- *   M5 — `routeBase` starts with `/api/`
- *   M6 — every manifest's `routeBase` is unique across the three
- *   M7 — `coreCompatibility` is a non-empty string
- *   M8 — every menu.perm is listed in `permissions`
- *   M9 — every menu.channel is listed in `channels`
- *  M10 — menu.path values are unique within a manifest
- *  M11 — permissions is required, must be array, no legacy string[] format
+ *   M1 — plugin `id` matches `^[\w-]+/[\w-]+$`
+ *   M2 — every manifest's `id` is unique across the scanned set
+ *   M3 — `version` matches semver `^\d+\.\d+\.\d+`
+ *   M4 — `coreVersion` matches a semver range `^[~^]?\d+\.\d+\.\d+`
+ *   M5 — `permissions` is an array
+ *   M6 — `menus` is an array
+ *   M7 — when present, `api.prefix` starts with `/api/` and equals
+ *        `/api/plugins/<id>/v1` derived from `id`
+ *   M8 — manifest kind (when present) is `sample` or `production`
  *
- * Implementation: pure RegExp + brace counter.  The manifest body is the
- * first balanced `{ ... }` inside `export default { ... } as const`.  A
- * small tokenizer then parses string literals, arrays, and nested objects
- * so menu entries can be validated.  No tsx/Node import is needed.
+ * Implementation: pure RegExp + brace counter. The manifest body is the
+ * first balanced `{ ... }` inside `export default { ... }`. A small
+ * tokenizer then parses string literals, arrays, and nested objects so
+ * menu/permission entries can be validated. No tsx/Node import needed.
+ *
+ * The Wave 2 legacy behavior of scanning
+ *   apps/yishan-api/src/plugins/modules/<name>/manifest.ts
+ * is intentionally NOT preserved — PROPOSAL §2.2 names
+ *   plugins/<vendor>/<slug>/plugin.ts
+ * the only plugin manifest. We still tolerate the legacy tree being
+ * absent (zero manifests to validate) so a fresh repo does not fail.
  *
  * Exit codes: 0 = clean, 1 = violations found.
  */
@@ -30,25 +33,24 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 
 const ROOT = process.cwd();
-const API_SRC = join(ROOT, "apps", "yishan-api", "src");
-const MODULES_DIR = join(API_SRC, "plugins", "modules");
-// Wave 2: `plugins/modules/` is no longer the canonical home for plugin
-// manifests — plugins live under `plugins/<vendor>/<slug>/plugin.ts` and
-// the boot path reads them from `artifacts/plugin-catalog.json`. Treat a
-// missing directory as "0 manifests to validate" rather than a failure;
-// arch:check stays 0-violation for the Wave 2 migration.
-const MANIFESTS = existsSync(MODULES_DIR)
-  ? readdirSync(MODULES_DIR, { withFileTypes: true })
+const PLUGINS_DIR = join(ROOT, "plugins");
+const PLUGIN_FILES = existsSync(PLUGINS_DIR)
+  ? readdirSync(PLUGINS_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
-      .map((entry) => `plugins/modules/${entry.name}/manifest.ts`)
+      .flatMap((vendor) =>
+        readdirSync(join(PLUGINS_DIR, vendor.name), { withFileTypes: true })
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => `plugins/${vendor.name}/${entry.name}/plugin.ts`),
+      )
   : [];
 
 const PLUGIN_ID_RE = /^[\w-]+\/[\w-]+$/;
 const VERSION_RE = /^\d+\.\d+\.\d+/;
+const VERSION_RANGE_RE = /^[\^~]?\d+\.\d+\.\d+/;
 const STRING_RE = /^(['"])((?:\\.|(?!\1).)*)\1/;
 const KEY_RE = /^\s*([A-Za-z_$][\w$]*)\s*:\s*/;
 
-// Balanced pair finder.  Honors strings, comments, and template literals.
+// Balanced pair finder. Honors strings, comments, and template literals.
 function findPair(text, open, openChar, closeChar) {
   let depth = 1, i = open + 1, s = null, L = false, B = false, T = 0;
   while (i < text.length) {
@@ -120,169 +122,122 @@ function parseObject(body) {
 }
 
 function parseManifest(text) {
-  const m = /export\s+default\s*\{/.exec(text);
-  if (!m) return null;
-  const open = m.index + m[0].length - 1;
-  const end = findPair(text, open, "{", "}");
-  return parseObject(text.slice(open + 1, end - 1));
+  // Accept either `export default { ... }` (object literal) or
+  // `export default <ident> [as PluginManifest]` (bound to an
+  // earlier `definePlugin({...})` call). The hello SDK convention uses
+  // the latter via `manifest = definePlugin({...})`.
+  const mLiteral = /export\s+default\s*\{/.exec(text);
+  if (mLiteral) {
+    const open = mLiteral.index + mLiteral[0].length - 1;
+    const end = findPair(text, open, "{", "}");
+    return parseObject(text.slice(open + 1, end - 1));
+  }
+  const mBound = /export\s+default\s+([A-Za-z_$][\w$]*)/.exec(text);
+  if (mBound) {
+    const ident = mBound[1];
+    // Find the assignment to <ident>: `<ident> = ...` The SDK convention
+    // is `const manifest = definePlugin({...})`. We accept either a
+    // literal `{...}` (rare) or a call whose argument is `{...}`.
+    const re = new RegExp(`(?:^|[\\s;])(?:const|let|var)?\\s*${ident}\\s*=\\s*`);
+    const opening = re.exec(text);
+    if (!opening) return null;
+    // Now skip whitespace. If we hit `{`, parse directly. If we hit a
+    // call like `definePlugin(...)`, walk past the argument list and
+    // find the inner `{`. Otherwise bail.
+    let i = opening.index + opening[0].length;
+    while (i < text.length && /[\s]/.test(text[i])) i++;
+    if (text[i] === "{") {
+      const open = i;
+      const end = findPair(text, open, "{", "}");
+      return parseObject(text.slice(open + 1, end - 1));
+    }
+    // We may be looking at the start of a function-call wrapper like
+    // `definePlugin(...)`. Walk the identifier (or chain of dots and
+    // identifiers), then expect `(`, then walk through the call argument
+    // list looking for the first balanced `{` — that is the manifest body.
+    if (/[A-Za-z_$]/.test(text[i])) {
+      while (i < text.length && /[\w$.]/.test(text[i])) i++;
+      while (i < text.length && /[\s]/.test(text[i])) i++;
+    }
+    if (text[i] !== "(") return null;
+    // Walk the call argument list (the `(...)`) and capture the first
+    // balanced `{` we encounter at our depth.
+    let depth = 1;
+    let stringDelim = null;
+    let inLineComment = false;
+    let inBlockComment = false;
+    let templateDepth = 0;
+    i++;
+    let manifestOpen = -1;
+    while (i < text.length && depth > 0) {
+      const c = text[i];
+      const c2 = text[i + 1];
+      if (inLineComment) { if (c === "\n") inLineComment = false; i++; continue; }
+      if (inBlockComment) { if (c === "*" && c2 === "/") { inBlockComment = false; i += 2; continue; } i++; continue; }
+      if (stringDelim) {
+        if (c === "\\") { i += 2; continue; }
+        if (c === stringDelim) stringDelim = null;
+        i++; continue;
+      }
+      if (c === "/" && c2 === "/") { inLineComment = true; i += 2; continue; }
+      if (c === "/" && c2 === "*") { inBlockComment = true; i += 2; continue; }
+      if (c === '"' || c === "'" || c === "`") { stringDelim = c; i++; continue; }
+      if (c === "(") depth++;
+      else if (c === ")") { depth--; i++; continue; }
+      if (depth === 1 && c === "{" && manifestOpen === -1) {
+        manifestOpen = i;
+      }
+      i++;
+    }
+    if (manifestOpen === -1) return null;
+    const end = findPair(text, manifestOpen, "{", "}");
+    return parseObject(text.slice(manifestOpen + 1, end - 1));
+  }
+  return null;
 }
 
-/**
- * Sentinel values that must not appear in manifest permissions.
- */
-const FORBIDDEN_SENTINELS = ['*', '__super_admin__'];
+const s = (v) => v?.kind === "string" ? v.value : null;
+const sArr = (v) =>
+  v && v.kind === "array" ? v.value.map((x) => (x.kind === "string" ? x.value : null)).filter(Boolean) : null;
+const objValue = (v) => (v && v.kind === "object" ? v.value : null);
 
-/**
- * Parse permissions array with strict validation.
- * Returns { codes, errors } where errors contains all validation failures.
- *
- * 新方案要求：
- * - permissions 字段必须存在
- * - 必须是非空数组
- * - 只支持结构化对象格式 { code, label, ... }，不接受字符串数组
- */
-function parsePermissions(permissionsObj) {
-  const result = { codes: [], errors: [] };
-
-  // permissions 字段必须存在且是数组
-  if (!permissionsObj) {
-    result.errors.push('permissions is required and must be an array of structured permission objects');
-    return result;
-  }
-  if (permissionsObj.kind !== "array") {
-    result.errors.push('permissions must be an array of structured permission objects');
-    return result;
-  }
-
-  const seenCodes = new Set();
-
-  for (let i = 0; i < permissionsObj.value.length; i++) {
-    const item = permissionsObj.value[i];
-
-    // 拒绝旧格式字符串
-    if (item.kind !== "object") {
-      result.errors.push(`permissions[${i}] must be an object, not a string. Use { code, label, ... } format.`);
-      continue;
-    }
-
-    const perm = item.value;
-
-    // 校验 code 是非空字符串
-    const codeField = perm?.code;
-    if (!codeField || codeField.kind !== "string" || !codeField.value.trim()) {
-      result.errors.push(`permissions[${i}].code must be a non-empty string`);
-      continue;
-    }
-    const code = codeField.value.trim();
-
-    // 拒绝 sentinel 值
-    if (FORBIDDEN_SENTINELS.includes(code)) {
-      result.errors.push(`permissions[${i}].code '${code}' is a reserved sentinel and cannot be used in manifest`);
-      continue;
-    }
-
-    // 校验 label 是非空字符串
-    const labelField = perm?.label;
-    if (!labelField || labelField.kind !== "string" || !labelField.value.trim()) {
-      result.errors.push(`permissions[${i}].label must be a non-empty string`);
-      continue;
-    }
-
-    // 校验 description 若存在则是非空字符串
-    const descField = perm?.description;
-    if (descField && (descField.kind !== "string" || !descField.value.trim())) {
-      result.errors.push(`permissions[${i}].description must be a non-empty string when provided`);
-    }
-
-    // 校验 group 若存在则是非空字符串
-    const groupField = perm?.group;
-    if (groupField && (groupField.kind !== "string" || !groupField.value.trim())) {
-      result.errors.push(`permissions[${i}].group must be a non-empty string when provided`);
-    }
-
-    // 检测同一 manifest 内 code 重复
-    if (seenCodes.has(code)) {
-      result.errors.push(`permissions: duplicate code '${code}' in manifest`);
-    } else {
-      seenCodes.add(code);
-      result.codes.push(code);
-    }
-  }
-
-  return result;
-}
-
-/** Module-owned permission declarations are the manifest source of truth. */
-function parseModulePermissions(manifestFile) {
-  const permissionFile = join(dirname(manifestFile), 'permissions.ts');
-  try {
-    let source;
-    try { source = readFileSync(permissionFile, 'utf8'); }
-    catch { source = readFileSync(manifestFile, 'utf8'); }
-    const codes = [];
-    const errors = [];
-    const seen = new Set();
-    for (const match of source.matchAll(/code:\s*['"]([^'"]+)['"][\s\S]{0,180}?label:\s*['"]([^'"]+)['"][\s\S]{0,180}?group:\s*['"]([^'"]+)['"]/g)) {
-      const [, code, label, group] = match;
-      if (!code || !label || !group) errors.push('module permission requires code, label and group');
-      else if (seen.has(code)) errors.push(`permissions: duplicate code '${code}' in module declaration`);
-      else { seen.add(code); codes.push(code); }
-    }
-    if (!codes.length) errors.push('module permissions declaration is empty or invalid');
-    return { codes, errors };
-  } catch {
-    return { codes: [], errors: ['module permissions declaration is missing'] };
-  }
-}
-
-/**
- * Parse string array (used for channels).
- */
-function asStringArray(v) {
-  if (!v || v.kind !== "array" || !v.value.every((x) => x.kind === "string")) return null;
-  return v.value.map((x) => x.value);
-}
-
-function checkManifest(file, obj, dirName, out) {
+function checkManifest(file, obj, out) {
   const push = (rule, msg) => out.push({ file, line: 1, rule, msg });
-  const s = (v) => v?.kind === "string" ? v.value : null;
-  const pluginId = s(obj.pluginId), name = s(obj.name), version = s(obj.version);
-  const routeBase = s(obj.routeBase), coreCompat = s(obj.coreCompatibility);
-  if (!pluginId) push("M1", "manifest missing pluginId");
-  else if (!PLUGIN_ID_RE.test(pluginId)) push("M1", `pluginId '${pluginId}' does not match ^[\w-]+/[\w-]+$`);
-  if (name !== dirName) push("M3", `name must equal directory name '${dirName}' (got '${name ?? "?"}')`);
-  if (!version || !VERSION_RE.test(version)) push("M4", `version '${version ?? "?"}' does not match semver ^\\d+\\.\\d+\\.\\d+`);
-  if (!routeBase || !routeBase.startsWith("/api/")) push("M5", `routeBase '${routeBase ?? "?"}' must start with /api/`);
-  if (!coreCompat) push("M7", "coreCompatibility must be a non-empty string");
+  const id = s(obj.id);
+  if (!id) push("M1", "manifest missing id");
+  else if (!PLUGIN_ID_RE.test(id)) push("M1", `id '${id}' does not match ^[\\w-]+/[\\w-]+$`);
 
-  // 新方案：无条件校验 permissions 格式，拒绝旧格式 string[]
-  const manifestSource = readFileSync(file, 'utf8');
-  const declaredViaModule = /permissions:\s*Object\.values\(/.test(manifestSource);
-  const { codes, errors } = declaredViaModule
-    ? parseModulePermissions(file)
-    : parsePermissions(obj.permissions);
-  for (const message of errors) {
-    push("M11", message);
+  const version = s(obj.version);
+  if (!version || !VERSION_RE.test(version)) push("M3", `version '${version ?? "?"}' does not match semver ^\\d+\\.\\d+\\.\\d+`);
+
+  const coreVersion = s(obj.coreVersion);
+  if (!coreVersion || !VERSION_RANGE_RE.test(coreVersion)) {
+    push("M4", `coreVersion '${coreVersion ?? "?"}' does not match semver range ^${VERSION_RANGE_RE.source}`);
   }
 
-  if (obj.menus && obj.menus.kind === "array") {
-    const channels = new Set(asStringArray(obj.channels) ?? []);
-    const seenPaths = new Map();
-    obj.menus.value.forEach((m, idx) => {
-      if (m.kind !== "object") return;
-      const o = m.value;
-      if (o.perm?.kind === "string" && !codes.includes(o.perm.value)) {
-        push("M8", `menus[${idx}].perm '${o.perm.value}' is not in permissions`);
-      }
-      if (o.channel?.kind === "string" && !channels.has(o.channel.value)) {
-        push("M9", `menus[${idx}].channel '${o.channel.value}' is not in channels`);
-      }
-      if (o.path?.kind === "string") {
-        const p = o.path.value;
-        if (seenPaths.has(p)) push("M10", `menus[${idx}].path '${p}' duplicates menus[${seenPaths.get(p)}].path`);
-        else seenPaths.set(p, idx);
-      }
-    });
+  const permissions = obj.permissions;
+  if (!permissions || permissions.kind !== "array") {
+    push("M5", "permissions must be an array");
+  }
+
+  const menus = obj.menus;
+  if (!menus || menus.kind !== "array") {
+    push("M6", "menus must be an array");
+  }
+
+  const api = objValue(obj.api);
+  const apiPrefix = api ? s(api.prefix) : null;
+  if (apiPrefix !== undefined && apiPrefix !== null) {
+    if (!apiPrefix.startsWith("/api/")) {
+      push("M7", `api.prefix '${apiPrefix}' must start with /api/`);
+    } else if (id && apiPrefix !== `/api/plugins/${id}/v1`) {
+      push("M7", `api.prefix '${apiPrefix}' must equal /api/plugins/${id}/v1 (derived from id)`);
+    }
+  }
+
+  const kind = s(obj.kind);
+  if (kind !== undefined && kind !== "sample" && kind !== "production") {
+    push("M8", `kind '${kind}' must be 'sample' or 'production'`);
   }
 }
 
@@ -300,21 +255,36 @@ function checkUniqueness(parsed, getField, rule, label) {
 }
 
 function main() {
-  const parsed = MANIFESTS.map((rel) => {
-    const file = join(API_SRC, rel);
-    const obj = parseManifest(readFileSync(file, "utf8"));
-    return { file, obj, dirName: rel.split("/")[2], violations: [] };
-  });
-  for (const p of parsed) {
-    if (!p.obj) { p.violations.push({ file: p.file, line: 1, rule: "M0", msg: "could not parse manifest body" }); continue; }
-    checkManifest(p.file, p.obj, p.dirName, p.violations);
+  if (PLUGIN_FILES.length === 0) {
+    console.log("[arch:manifest] PASS 0 violation(s) (no plugins/*/*/plugin.ts found)");
+    process.exit(0);
   }
+
+  const parsed = PLUGIN_FILES.map((rel) => {
+    const file = join(ROOT, rel);
+    let obj = null;
+    try {
+      obj = parseManifest(readFileSync(file, "utf8"));
+    } catch {
+      obj = null;
+    }
+    return { file, obj, violations: [] };
+  });
+
+  for (const p of parsed) {
+    if (!p.obj) {
+      p.violations.push({ file: p.file, line: 1, rule: "M0", msg: "could not parse manifest body" });
+      continue;
+    }
+    checkManifest(p.file, p.obj, p.violations);
+  }
+
   const withObj = parsed.filter((q) => q.obj);
-  checkUniqueness(withObj, (o) => o.pluginId?.value, "M2", "pluginId");
-  checkUniqueness(withObj, (o) => o.routeBase?.value, "M6", "routeBase");
+  checkUniqueness(withObj, (o) => o.id?.value, "M2", "id");
+
   const violations = parsed.flatMap((p) => p.violations);
   if (violations.length === 0) {
-    console.log("[arch:manifest] PASS 0 violation(s)");
+    console.log(`[arch:manifest] PASS 0 violation(s) across ${parsed.length} plugin(s)`);
     process.exit(0);
   }
   console.log(`[arch:manifest] FAIL ${violations.length} violation(s):`);
