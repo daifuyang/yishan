@@ -35,3 +35,6 @@ demo/
 .playwright-cli/
 apps/yishan-app/.swc/
 tmp/
+
+# Generated artifacts (release output, plugin catalog from profiles/*.yaml)
+artifacts/

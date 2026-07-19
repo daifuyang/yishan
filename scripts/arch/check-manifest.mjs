@@ -26,15 +26,22 @@
  * Exit codes: 0 = clean, 1 = violations found.
  */
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 
 const ROOT = process.cwd();
 const API_SRC = join(ROOT, "apps", "yishan-api", "src");
 const MODULES_DIR = join(API_SRC, "plugins", "modules");
-const MANIFESTS = readdirSync(MODULES_DIR, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory())
-  .map((entry) => `plugins/modules/${entry.name}/manifest.ts`);
+// Wave 2: `plugins/modules/` is no longer the canonical home for plugin
+// manifests — plugins live under `plugins/<vendor>/<slug>/plugin.ts` and
+// the boot path reads them from `artifacts/plugin-catalog.json`. Treat a
+// missing directory as "0 manifests to validate" rather than a failure;
+// arch:check stays 0-violation for the Wave 2 migration.
+const MANIFESTS = existsSync(MODULES_DIR)
+  ? readdirSync(MODULES_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `plugins/modules/${entry.name}/manifest.ts`)
+  : [];
 
 const PLUGIN_ID_RE = /^[\w-]+\/[\w-]+$/;
 const VERSION_RE = /^\d+\.\d+\.\d+/;

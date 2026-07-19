@@ -1,3 +1,5 @@
+> Archived 2026-07-19 — superseded by specs/baseline-v2/PROPOSAL.md + decisions/ADR-001..007. This document described the Prisma-era architecture and is kept for historical reference only.
+
 # ADR-0003: 插件生命周期与 Hook 机制
 
 - 状态：Accepted

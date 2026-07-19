@@ -38,9 +38,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify all includes main
-        run: node scripts/arch/check-all-sync.mjs
-
       - name: Validate deployment variables
         run: |
           set -euo pipefail

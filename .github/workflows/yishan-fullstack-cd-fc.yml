@@ -45,9 +45,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify all includes main
-        run: node scripts/arch/check-all-sync.mjs
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22.22.1

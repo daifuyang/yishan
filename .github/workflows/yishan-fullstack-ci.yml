@@ -50,10 +50,6 @@ jobs:
       - name: Architecture Guard
         run: pnpm arch:check
 
-      - name: All branch includes main
-        if: github.ref == 'refs/heads/all' || github.base_ref == 'all'
-        run: pnpm branch:check:all-sync
-
       - name: Prepare yishan-tiptap
         run: |
           pnpm install --filter yishan-tiptap --no-frozen-lockfile --prod=false

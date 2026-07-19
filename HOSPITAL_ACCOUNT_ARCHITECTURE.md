@@ -112,6 +112,7 @@ CrmHospital
 
 建议字段：
 
+<!-- Archived 2026-07-19 — Prisma is no longer the project's ORM. The snippet below is preserved verbatim for the historical feature discussion. See ARCHITECTURE.md for the current data layer. -->
 ```prisma
 model CrmHospitalAccount {
   id         Int       @id @default(autoincrement()) @map("id")
@@ -136,6 +137,7 @@ model CrmHospitalAccount {
   @@map("crm_hospital_account")
 }
 ```
+<!-- Archived 2026-07-19 — end of historical Prisma model snippet -->
 
 说明：
 
@@ -463,6 +465,7 @@ ON DUPLICATE KEY UPDATE
 
 伪代码：
 
+<!-- Archived 2026-07-19 — Prisma is no longer the project's ORM. The snippet below is preserved verbatim for the historical feature discussion. See ARCHITECTURE.md for the current data layer. -->
 ```ts
 async function getAccessibleHospitalIds(userId: number) {
   if (isSystemAdmin(userId) || hasGlobalCrmAdminRole(userId)) {
@@ -482,6 +485,7 @@ async function getAccessibleHospitalIds(userId: number) {
   return rows.map((item) => item.hospitalId);
 }
 ```
+<!-- Archived 2026-07-19 — end of historical Prisma query snippet -->
 
 ### 9.2 派单列表
 

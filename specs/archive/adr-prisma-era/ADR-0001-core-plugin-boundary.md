@@ -1,3 +1,5 @@
+> Archived 2026-07-19 — superseded by specs/baseline-v2/PROPOSAL.md + decisions/ADR-001..007. This document described the Prisma-era architecture and is kept for historical reference only.
+
 # ADR-0001: Core 与 Plugin 严格边界
 
 - 状态：Accepted

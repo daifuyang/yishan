@@ -1,110 +1,90 @@
 # AGENTS.md — Yishan Monorepo
 
-## Stack
-- **Admin** (yishan-admin): Umi 4 + Ant Design Pro, React 19, Biome lint, Jest test
-- **API** (yishan-api): Fastify 5, Drizzle ORM + MySQL, TypeBox, JWT, `type: commonjs`
-- **App** (yishan-app): Taro 4 + React 18, Biome lint, TypeScript, WeChat 微信小程序 + H5
-- **Docs** (yishan-docs): Docusaurus 3
-- **Components** (yishan-tiptap): TipTap 3, Rollup, workspace dependency of admin
+AI 与开发者必须遵守的强制规则，短且稳定。详细架构与实现见根目录其他规范文档。
 
-## Branch and Plugin Boundaries
+## 1. 技术栈与版本来源
 
-- `main` is the Core distribution. It contains the platform and the `hello` example plugin only; it must not include the official business plugins `portal` or `shop`.
-- `all` is the integrated distribution. It contains the same Core foundation plus the official `portal` and `shop` business plugins (their API modules, Admin pages, manifests, routes, and generated clients).
-- The branches have diverged and are not in a fast-forward relationship. Do not assume `all` can be merged wholesale into `main`, or that `main` can be merged wholesale into `all`.
-- When moving a Core change between branches, cherry-pick only the intended commits and resolve conflicts according to the target branch's plugin boundary. Never restore `portal` or `shop` files on `main` merely to satisfy stale local build artifacts.
-- OpenAPI is generated from the target branch's API modules. After a cross-branch change, regenerate the spec and Admin clients, then regenerate Admin plugin routes with `pnpm --filter yishan-admin gen:plugin-routes`. Do not retain generated clients or route entries for plugins absent from the target branch.
+- **Admin** (yishan-admin)：Umi 4 + Ant Design Pro，React 19，Biome lint，Jest test
+- **API** (yishan-api)：Fastify 5，Drizzle ORM + MySQL，TypeBox，JWT，commonjs
+- **App** (yishan-app)：Taro 4 + React 18，Biome lint，TypeScript，微信小程序 + H5
+- **Docs** (yishan-docs)：Docusaurus 3
+- **Components** (yishan-tiptap)：TipTap 3，Rollup，admin 的 workspace 依赖
 
-## Developer Commands
+Node 与 pnpm 版本以 `.tool-versions`（`node 22.22.1`、`pnpm 8.15.9`）和根 `package.json#packageManager` 为唯一来源；不要在文档或脚本中再写具体数字。
 
-```bash
-pnpm --filter yishan-admin dev        # Admin dev (MOCK=none by default)
-pnpm --filter yishan-api dev          # API dev (build:ts + watch)
-pnpm --filter yishan-app dev:weapp    # 微信小程序 dev (watch)
-pnpm --filter yishan-app dev:h5       # H5 dev (watch)
-pnpm --filter yishan-admin lint       # biome:lint + tsc --noEmit
-pnpm --filter yishan-app lint         # biome:lint + tsc --noEmit
-pnpm --filter yishan-admin test        # Jest
-pnpm --filter yishan-api test          # Vitest
-pnpm --filter yishan-api test:integration   # MySQL 集成测试（需要 YISHAN_RUN_INTEGRATION=1 + YISHAN_TEST_MYSQL_URL）
-pnpm --filter yishan-tiptap build      # Must build before admin dev/build
-pnpm verify                            # 唯一质量门禁：arch + db 生成 + build + lint + test
-```
+## 2. 开始开发前必须阅读的根文档
 
-## Build Order (critical for workspace dependency)
-yishan-tiptap → yishan-admin → (for deploy) copy admin/dist → yishan-api
+- `ARCHITECTURE.md` — 当前架构事实与目录边界
+- `PLUGIN_CONTRACT.md` — 插件开发、manifest、生命周期、迁移契约
+- `RELEASE_CONTRACT.md` — artifact、迁移、provider adapter、回滚契约
+- `CONTRIBUTING.md` — 提交流程与质量门禁
+- `README.md` — 项目介绍、五分钟启动、profile 选择
 
-`yishan-app` 与 `yishan-tiptap` 无强依赖，可与 admin 并行构建。
+## 3. Core / 插件边界
 
-Admin `dist/` is copied to `yishan-api/public/admin/` before FC3 deployment. Do not assume admin is independently served.
+- Core 是基座；不允许出现具体业务插件的命名空间、迁移、表、权限或菜单。
+- 插件目录必须落在 `plugins/<vendor>/<slug>/plugin.ts`，唯一 manifest，禁止在 API / Admin 另建 manifest（详见 ADR-002）。
+- 装载与 gate：Core 只 AutoLoad `core/routes/**`；插件通过 `plugin.register(app)` 显式注册，并由 `pluginGate(pluginId)` 统一管控 disabled 状态（详见 ADR-003）。
+- 分支策略：`main` = Core + hello；`all` = Core + 官方业务插件；两条发行线已分叉，禁止以 ancestry 作为同步证据（详见 ADR-001）。
 
-## CI Order
-1. `pnpm install --no-frozen-lockfile`
-2. `pnpm --filter yishan-tiptap build`
-3. `pnpm --filter yishan-admin lint`
-4. `pnpm --filter yishan-admin build`
-5. `pnpm --filter yishan-app lint`
-6. `pnpm --filter yishan-app build:weapp`
-7. `pnpm --filter yishan-api db:generate`
-8. `pnpm --filter yishan-api build:ts`
-9. `pnpm --filter yishan-api test`
+## 4. Route → Service → Repository 规则
 
-## FC3 Deployment (yishan-api/deploy/fc3/)
-- Runtime: custom.debian12 with Node 22.14.0
-- Pre-deploy: installs deps, validates checked-in Drizzle migrations, builds TypeScript, copies admin dist + .env to dist/
-- Entrypoint: `node ./server.js` via customRuntimeConfig
-- Admin static served from `public/admin/` inside the API package
+- **Route**：只负责 schema、认证、权限、DTO 与 HTTP 响应；禁止直接访问 DB。
+- **Service**：业务编排与事务边界；可调用 Repository 与其他 Service。
+- **Repository**：唯一允许访问 `@/db`、Drizzle 表定义与 SQL 的层；禁止被 Route 直接调用。
+- 跨层反向依赖、Core import 插件、插件跨插件 import 均属违规。
 
-## API Entry
-Compiled to `dist/app.js` (commonjs). `dist/server.js` is the start script. Not `app.ts`.
+## 5. profile、生成物与 verify 命令
 
-## API Architecture Standard (mandatory)
-Before creating or refactoring an API module, read and follow [后端代码架构规范](apps/yishan-api/docs/后端代码架构规范.md). It defines mandatory Route → Service → Repository boundaries, transaction ownership, DTO mapping, security, tests, and the new-module delivery checklist. New modules must use `repositories/` and `XxxRepository`; `*Model` is legacy-only.
-
-## Lint Note
-Admin uses Biome only (no ESLint/Prettier). Biome config: single quotes, reactClassic jsxRuntime.
-
-## Drizzle / DB
-- SQL migrations: `apps/yishan-api/drizzle/*.sql` (`0000` base, `0001` portal, `0002` shop) — DDL source of truth
-- Generated Drizzle tables + relations: `apps/yishan-api/src/db/schema/{tables,relations,index}.ts` (regenerated by `pnpm db:generate`, do not edit by hand)
-- Drizzle client + lifecycle: `apps/yishan-api/src/db/{client,manager,index}.ts`
-- Consumers import `drizzleDb` from `@/db` and `dbManager` from `@/db/manager`. The legacy Prisma shim `src/utils/db.ts` no longer exists.
-- Pattern for reads: `drizzleDb.query.<table>.findMany/findFirst({ where, with, orderBy, limit, offset })`
-- Pattern for writes: `drizzleDb.insert/update/delete(<table>).values/set(...).where(...)`; for nested writes use `drizzleDb.transaction(async tx => { ... })`
-- For list reads with optional pagination, define shared query config once and conditionally append `limit/offset`; avoid duplicating `pageSize === 0 ? queryA : queryB` branches when only pagination differs.
-- `db:seed` requires compiled output (`node dist/scripts/seed.js`)
-- API `.env` is NOT in git; use `.env.example` as reference
-
-## OpenAPI
-Admin: `pnpm --filter yishan-admin openapi` generates types/services from the API spec.
-
-## Quality Gate
-
-唯一入口：`pnpm verify`，顺序执行：
+profile 是构建期与运行期的唯一插件选择来源：
 
 ```bash
-pnpm arch:check                       # routes / manifest / boundaries 三大门禁
-pnpm --filter yishan-api db:generate:test  # Drizzle 链路自检
-pnpm --filter yishan-api build:ts     # TypeScript 编译
-pnpm --filter yishan-admin lint       # Admin lint
-pnpm --filter yishan-admin test       # Admin 单测
-pnpm --filter yishan-admin build      # Admin 构建
-pnpm --filter yishan-api test         # API Vitest
+pnpm profile:validate -- --profile core
+pnpm plugins:catalog -- --profile core
+pnpm db:generate -- --profile core
+pnpm openapi:generate -- --profile core
+pnpm admin:generate-routes -- --profile core
+
+pnpm verify:core -- --profile core
+pnpm verify:admin -- --profile core
+pnpm verify:app -- --profile core --target weapp
+pnpm verify:docs
+pnpm verify:integration -- --profile official
+pnpm verify -- --profile core
 ```
 
-提交前本地必须 `pnpm verify` 通过，CI 也只调用该命令。
+`pnpm verify -- --profile <name>` 必须在干净 checkout 中完成安装、catalog、TipTap 构建、Drizzle 生成、OpenAPI 生成、Admin route 生成、API build/test、Admin lint/test/build、App lint/build、Docs build、架构检查与生成物 diff 检查；不得依赖已存在的 `dist/`、`.umi/` 或本地 `.env`。
 
-## RBAC
+## 6. 禁止项
 
-- 权限点常量位于 `apps/yishan-api/src/constants/permission-codes.ts`；
-- 校验装饰器 `fastify.requirePermission(code)` / `fastify.requireRole(code)`；
-- 详细说明见 `apps/yishan-api/docs/RBAC权限规范.md`。
+- 引入除 Drizzle 之外的 ORM；Drizzle 是当前 ORM
+- 在 API / Admin 双 manifest；插件只能有一份 `plugins/<vendor>/<slug>/plugin.ts`
+- 在 Core、admin pages、routes、脚本或文档中硬编码业务插件命名空间（`portal`、`shop`、`hello` 仅作为 SDK 示例，不参与生产默认 profile）
+- 跳过 catalog / openapi / admin route 任一生成检查
+- 把环境专属云账号、地域、bucket、ARN 或 secret 名称作为基座默认值
+- 在根规范文档中写"具体业务插件清单"或"账户/地域"
 
-## 部署
+## 7. 变更类型 → 测试命令映射
 
-环境变量、构建、启动、备份恢复、`pnpm verify` 等详见 `apps/yishan-api/docs/部署说明.md`。
+| 改动范围 | 必跑命令 |
+| --- | --- |
+| Core API / 插件契约 | `pnpm verify -- --profile core` |
+| 某插件 | 包含该插件的最小 profile verify + plugin 集成测试 |
+| Admin | admin build/test + 受影响 profile 的 openapi / route check |
+| App | `pnpm verify:app -- --profile core --target weapp|h5` |
+| Docs / 根规范 | docs build + docs check |
+| deploy provider | release build/validate + provider adapter dry-run |
 
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-<!-- SPECKIT END -->
+## 快速命令（开发者日常）
+
+```bash
+pnpm --filter yishan-admin lint
+pnpm --filter yishan-admin test
+pnpm --filter yishan-admin build
+pnpm --filter yishan-api test
+pnpm --filter yishan-tiptap build    # admin dev/build 之前
+pnpm --filter yishan-app lint
+pnpm --filter yishan-app build:weapp
+```
+
+> specs/archive/** 是历史资料，不得作为当前架构依据；当前事实以 ARCHITECTURE.md、PLUGIN_CONTRACT.md、RELEASE_CONTRACT.md 和 package.json#scripts 为准。
