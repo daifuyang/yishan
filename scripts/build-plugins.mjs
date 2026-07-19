@@ -110,7 +110,10 @@ function compilePlugin({ id, source }) {
     '--skipLibCheck',
   ]
   log(`tsc ${args.join(' ')}`)
-  execSync(`npx tsc ${args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`, {
+  // Use pnpm exec to resolve the local TypeScript binary (the yishan-api
+  // workspace package depends on typescript). npx tsc would otherwise fetch
+  // the deprecated tsc@2.0.4 npm package.
+  execSync(`pnpm exec tsc ${args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`, {
     cwd: ROOT,
     stdio: 'inherit',
   })
