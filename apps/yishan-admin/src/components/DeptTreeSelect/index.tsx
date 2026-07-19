@@ -3,7 +3,7 @@ import {
   ProFormTreeSelect,
   type ProFormTreeSelectProps,
 } from "@ant-design/pro-components";
-import { getDeptTree } from "@/services/yishan-admin/sysDepts";
+import { getDeptTree } from "@/services/generated/sysDepts";
 
 /**
  * ProForm 部门树选择组件

@@ -36,7 +36,8 @@
     "clean": "pnpm -r exec -- node -e \"['dist','.next','node_modules/.cache'].forEach(p=>{try{require('fs').rmSync(p,{recursive:true,force:true})}catch{}})\"",
     "type-check": "pnpm --filter yishan-admin tsc && pnpm --filter yishan-docs typecheck",
     "test": "pnpm --filter yishan-admin test && pnpm --filter yishan-api test",
-    "verify": "pnpm arch:check && pnpm --filter yishan-api db:generate:test && pnpm --filter yishan-api build:ts && pnpm --filter yishan-admin lint && pnpm --filter yishan-admin test && pnpm --filter yishan-admin build && pnpm --filter yishan-api test"
+    "openapi:check": "pnpm --filter yishan-admin openapi && git diff --exit-code -- apps/yishan-api/openapi.json apps/yishan-admin/src/services/generated",
+    "verify": "pnpm arch:check && pnpm --filter yishan-api db:generate:test && pnpm openapi:check && pnpm --filter yishan-api build:ts && pnpm --filter yishan-admin lint && pnpm --filter yishan-admin test && pnpm --filter yishan-admin build && pnpm --filter yishan-api test"
   },
   "keywords": [
     "react",

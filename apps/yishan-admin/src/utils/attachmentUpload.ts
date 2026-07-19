@@ -1,5 +1,5 @@
-import { batchGetSystemOptionByQuery, getQiniuUploadToken } from "@/services/yishan-admin/system";
-import { createCloudAttachment, uploadAttachments } from "@/services/yishan-admin/attachments";
+import { batchGetSystemOptionByQuery, getQiniuUploadToken } from "@/services/generated/system";
+import { createCloudAttachment, uploadAttachments } from "@/services/generated/attachments";
 
 export type StorageProvider = "disabled" | "qiniu" | "aliyunOss";
 

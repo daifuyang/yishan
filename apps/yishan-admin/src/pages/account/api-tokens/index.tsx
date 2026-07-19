@@ -26,14 +26,14 @@ import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import React, { useEffect, useState } from 'react';
 import {
-  createMyApiToken,
-  listMyApiTokens,
-  revokeMyApiToken,
-  listMyAvailableScopes,
+  meCreateApiToken,
+  meListApiTokens,
+  meRevokeApiToken,
+  meListAvailableScopes,
   type ApiTokenDuration,
   type ApiTokenRecord,
   type AvailableScopeGroup,
-} from '@/services/yishan-admin/api-token';
+} from '@/services/generated/meApiTokens';
 
 const DATE_FMT = 'YYYY-MM-DD HH:mm';
 
@@ -87,7 +87,7 @@ const ApiTokensPage: React.FC = () => {
   const loadList = async () => {
     setLoading(true);
     try {
-      const res = await listMyApiTokens();
+      const res = await meListApiTokens();
       if (res.success && res.data) {
         setTokens(res.data.list || []);
         return;
@@ -116,7 +116,7 @@ const ApiTokensPage: React.FC = () => {
     // 从 API 加载当前用户可授予的权限范围
     setScopesLoading(true);
     try {
-      const res = await listMyAvailableScopes();
+      const res = await meListAvailableScopes();
       if (res.success && res.data) {
         setAvailableScopeGroups(res.data.groups || []);
       } else {
@@ -155,7 +155,7 @@ const ApiTokensPage: React.FC = () => {
   const doCreate = async (values: FormValues) => {
     setCreateLoading(true);
     try {
-      const res = await createMyApiToken({
+      const res = await meCreateApiToken({
         name: values.name,
         duration: values.duration,
         scopes: values.scopes,
@@ -185,7 +185,7 @@ const ApiTokensPage: React.FC = () => {
 
   const handleRevoke = async (id: number) => {
     try {
-      const res = await revokeMyApiToken(id);
+      const res = await meRevokeApiToken(id);
       if (res.success) {
         message.success(res.message || '撤销成功');
         loadList();

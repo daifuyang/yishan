@@ -240,3 +240,21 @@ export async function getAttachmentFolderTree(options?: {
     }
   );
 }
+
+/** 链接导入图片 下载公开图片链接并批量保存到素材库 POST /api/v1/admin/attachments/import */
+export async function importRemoteImages(
+  body: API.importRemoteImagesReq,
+  options?: { [key: string]: any }
+) {
+  return request<API.uploadAttachmentsResp>(
+    "/api/v1/admin/attachments/import",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      data: body,
+      ...(options || {}),
+    }
+  );
+}

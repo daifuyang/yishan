@@ -12,7 +12,7 @@ import {
   deleteMenu,
   getMenuTree,
   updateMenu,
-} from '@/services/yishan-admin/sysMenus';
+} from '@/services/generated/sysMenus';
 import MenuForm from './components/MenuForm';
 
 const MenuStatus = { ENABLED: '1', DISABLED: '0' } as const;

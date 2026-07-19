@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormTreeSelect } from '@ant-design/pro-components';
-import { getDeptTree, createDept, updateDept, getDeptDetail } from '@/services/yishan-admin/sysDepts';
+import { getDeptTree, createDept, updateDept, getDeptDetail } from '@/services/generated/sysDepts';
 import { useModel } from '@umijs/max';
 
 export interface DepartmentFormProps {

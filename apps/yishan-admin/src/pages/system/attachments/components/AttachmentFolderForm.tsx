@@ -14,7 +14,7 @@ import {
   getAttachmentFolderDetail,
   getAttachmentFolderTree,
   updateAttachmentFolder,
-} from '@/services/yishan-admin/attachments';
+} from '@/services/generated/attachments';
 
 export interface AttachmentFolderFormProps {
   title: string;

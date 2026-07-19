@@ -7,7 +7,7 @@ import {
   getAuthorizationHeader,
   clearTokens,
 } from "@/utils/token";
-import { refreshToken as apiRefreshToken } from "@/services/yishan-admin/auth";
+import { refreshToken as apiRefreshToken } from "@/services/generated/auth";
 
 // 401 refresh 单飞锁：多个并发 401 共享同一次 /auth/refresh 调用。
 // 当前为 CSR 模块级单实例，足够覆盖单页签内的并发刷新。

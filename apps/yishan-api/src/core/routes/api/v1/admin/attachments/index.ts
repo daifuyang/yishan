@@ -13,6 +13,7 @@ import {
   AttachmentListQuery,
   CreateAttachmentFolderReq,
   CreateCloudAttachmentReq,
+  ImportRemoteImagesReq,
   UpdateAttachmentFolderReq,
   UpdateAttachmentReq,
 } from "../../../../../schemas/attachment.js";
@@ -311,6 +312,43 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
         request.headers["accept-language"] as string
       );
       return ResponseUtil.success(reply, result, message);
+    }
+  );
+
+  route.post(
+    "/import",
+    {
+      access: { permission: permissions.CREATE },
+      schema: {
+        summary: "链接导入图片",
+        description: "下载公开图片链接并批量保存到素材库",
+        operationId: "importRemoteImages",
+        tags: ["attachments"],
+        security: [{ bearerAuth: [] }],
+        body: { $ref: "importRemoteImagesReq#" },
+        response: { 200: { $ref: "uploadAttachmentsResp#" } },
+      },
+    },
+    async (request: FastifyRequest<{ Body: ImportRemoteImagesReq }>, reply: FastifyReply) => {
+      const attachments = await AttachmentService.importRemoteImages(
+        request.body.urls,
+        request.body.folderId,
+        request.currentUser.id
+      );
+      return ResponseUtil.success(
+        reply,
+        attachments.map((attachment) => ({
+          id: attachment.id,
+          filename: attachment.filename,
+          originalName: attachment.originalName,
+          mimeType: attachment.mimeType,
+          size: attachment.size,
+          path: attachment.path || attachment.url || "",
+          kind: attachment.kind,
+          url: attachment.url || attachment.path || undefined,
+        })),
+        "导入成功"
+      );
     }
   );
 

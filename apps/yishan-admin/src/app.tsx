@@ -10,12 +10,12 @@ import {
   Question,
   SelectLang,
 } from "@/components";
-import { getCurrentUser } from "@/services/yishan-admin/auth";
+import { getCurrentUser } from "@/services/generated/auth";
 import { App as AntdApp } from "antd";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
-import { getAuthorizedMenuTree } from "@/services/yishan-admin/sysMenus";
-import { getDictDataMap } from "@/services/yishan-admin/sysDictData";
+import { getAuthorizedMenuTree } from "@/services/generated/sysMenus";
+import { getDictDataMap } from "@/services/generated/sysDictData";
 import type { CloudStorageConfig } from "@/utils/attachmentUpload";
 import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
 import avatarFallback from "@public/icons/avatar.png";

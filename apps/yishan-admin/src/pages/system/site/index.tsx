@@ -7,7 +7,7 @@ import {
   ProFormTextArea,
 } from "@ant-design/pro-components";
 import { App, Card } from "antd";
-import { batchGetSystemOptionByQuery, batchSetSystemOption } from "@/services/yishan-admin/system";
+import { batchGetSystemOptionByQuery, batchSetSystemOption } from "@/services/generated/system";
 
 type BasicConfig = {
   siteName: string;

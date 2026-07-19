@@ -20,13 +20,13 @@ import {
   disablePlugin,
   enablePlugin,
   getPluginHookReports,
-  getSyncLogs,
+  getPluginSyncLogs,
   listPlugins,
   type SysPlugin,
   type SysPluginHookReport,
   type SysPluginSyncLog,
-  syncPlugin,
-} from '@/services/yishan-admin/sysPlugins';
+  syncPluginMenu,
+} from '@/services/generated/system';
 
 const SYNC_STATUS_COLOR: Record<string, string> = {
   success: 'green',
@@ -87,7 +87,7 @@ const PluginList: React.FC = () => {
   const handleSync = async () => {
     if (!currentPlugin?.name) return;
     setSyncing(true);
-    const res = await syncPlugin(currentPlugin.name, syncStrategy);
+    const res = await syncPluginMenu(currentPlugin.name, syncStrategy);
     setSyncing(false);
     setSyncModalOpen(false);
     if (res.success) {
@@ -126,7 +126,7 @@ const PluginList: React.FC = () => {
     setCurrentPlugin({ name: plugin.name, pluginId: plugin.pluginId });
     setSyncDrawerOpen(true);
     setSyncLogsLoading(true);
-    const res = await getSyncLogs(plugin.name, 10);
+    const res = await getPluginSyncLogs(plugin.name, 10);
     setSyncLogsLoading(false);
     if (res.success) {
       setSyncLogs(res.data || []);

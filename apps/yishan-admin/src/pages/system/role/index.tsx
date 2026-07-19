@@ -12,7 +12,7 @@ import {
   deleteRole,
   getRoleList,
   updateRole,
-} from '@/services/yishan-admin/sysRoles';
+} from '@/services/generated/sysRoles';
 import RoleForm from './components/RoleForm';
 
 const IsSystem = {

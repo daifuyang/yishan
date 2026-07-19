@@ -6,7 +6,7 @@
 import { history } from '@umijs/max';
 import { message } from 'antd';
 import { clearTokens, isLoggedIn } from './token';
-import { logout as apiLogout } from '@/services/yishan-admin/auth';
+import { logout as apiLogout } from '@/services/generated/auth';
 
 const ADMIN_BASE = __APP_BASE__.replace(/\/+$/, '');
 const LOGIN_PATH = '/user/login';

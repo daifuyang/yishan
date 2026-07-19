@@ -10,7 +10,7 @@ import {
   deleteDictData,
   getDictDataList,
   updateDictData,
-} from '@/services/yishan-admin/sysDictData';
+} from '@/services/generated/sysDictData';
 import DictDataForm from './DictDataForm';
 
 export interface DictDataManagerProps {

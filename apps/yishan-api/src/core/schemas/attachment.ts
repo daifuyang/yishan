@@ -188,6 +188,20 @@ const CreateCloudAttachmentReqSchema = Type.Object(
 
 export type CreateCloudAttachmentReq = Static<typeof CreateCloudAttachmentReqSchema>;
 
+const ImportRemoteImagesReqSchema = Type.Object(
+  {
+    urls: Type.Array(Type.String({ format: "uri", maxLength: 2000 }), {
+      minItems: 1,
+      maxItems: 20,
+      description: "图片链接，单次最多导入 20 个",
+    }),
+    folderId: Type.Optional(Type.Union([Type.Integer({ description: "分组ID", minimum: 1 }), Type.Null()])),
+  },
+  { $id: "importRemoteImagesReq" }
+);
+
+export type ImportRemoteImagesReq = Static<typeof ImportRemoteImagesReqSchema>;
+
 const AttachmentDeleteRespSchema = successResponse({
   data: Type.Object({ id: Type.Number({ description: "素材ID" }) }),
   $id: "attachmentDeleteResp",
@@ -242,6 +256,7 @@ const registerAttachment = (fastify: FastifyInstance) => {
   fastify.addSchema(AttachmentDetailRespSchema);
   fastify.addSchema(UpdateAttachmentReqSchema);
   fastify.addSchema(CreateCloudAttachmentReqSchema);
+  fastify.addSchema(ImportRemoteImagesReqSchema);
   fastify.addSchema(AttachmentDeleteRespSchema);
   fastify.addSchema(AttachmentBatchDeleteReqSchema);
   fastify.addSchema(AttachmentBatchDeleteRespSchema);

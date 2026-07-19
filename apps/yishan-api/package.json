@@ -18,6 +18,7 @@
     "dev": "NODE_ENV=development npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
     "dev:start": "NODE_ENV=development fastify start --ignore-watch='public/**' --ignore-watch=.ts$ -w -l info -P dist/app.js",
     "db:generate": "node scripts/generate-drizzle-schema.mjs",
+    "openapi:export": "npm run build:ts && node dist/scripts/export-openapi.js",
     "permissions:generate": "node scripts/generate-core-permissions.mjs",
     "permissions:check": "node scripts/generate-core-permissions.mjs --check",
     "db:generate:test": "node scripts/test-generator.mjs",

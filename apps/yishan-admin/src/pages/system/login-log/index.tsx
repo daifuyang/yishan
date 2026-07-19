@@ -1,6 +1,6 @@
 import { PageContainer, type ActionType, type ProColumns, ProTable } from "@ant-design/pro-components";
 import React, { useRef } from "react";
-import { getLoginLogList } from "@/services/yishan-admin/sysLoginLogs";
+import { getLoginLogList } from "@/services/generated/sysLoginLogs";
 import { Tag } from "antd";
 
 const statusEnum = {

@@ -11,7 +11,7 @@ import {
   deleteDictType,
   getDictTypeList,
   updateDictType,
-} from '@/services/yishan-admin/sysDictTypes';
+} from '@/services/generated/sysDictTypes';
 import DictDataManager from './components/DictDataManager';
 import DictTypeForm from './components/DictTypeForm';
 

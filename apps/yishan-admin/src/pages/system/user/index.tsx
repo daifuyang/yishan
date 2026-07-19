@@ -12,7 +12,7 @@ import {
   deleteUser,
   getUserList,
   updateUser,
-} from '@/services/yishan-admin/sysUsers';
+} from '@/services/generated/sysUsers';
 import UserForm from './components/UserForm';
 
 /**

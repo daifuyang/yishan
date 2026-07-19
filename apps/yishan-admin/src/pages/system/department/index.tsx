@@ -12,7 +12,7 @@ import {
   deleteDept,
   getDeptTree,
   updateDept,
-} from '@/services/yishan-admin/sysDepts';
+} from '@/services/generated/sysDepts';
 import DepartmentForm from './components/DepartmentForm';
 
 type DeptTreeNode = API.deptTreeNode;

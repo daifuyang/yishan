@@ -4,7 +4,7 @@ import { Alert, App, Button, Checkbox, Form, Input } from "antd";
 import { createStyles } from "antd-style";
 import React, { useState } from "react";
 import { flushSync } from "react-dom";
-import { login as userLogin, getCurrentUser } from "@/services/yishan-admin/auth";
+import { login as userLogin, getCurrentUser } from "@/services/generated/auth";
 import { saveTokens } from "@/utils/token";
 import loginBgImage from "@public/images/login-bg.png";
 import loginBrandImage from "@public/images/login-brand.png";

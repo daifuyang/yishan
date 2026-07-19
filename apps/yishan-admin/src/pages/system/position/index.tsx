@@ -12,7 +12,7 @@ import {
   deletePosition,
   getPositionList,
   updatePosition,
-} from '@/services/yishan-admin/sysPositions';
+} from '@/services/generated/sysPositions';
 import PositionForm from './components/PositionForm';
 
 const PositionStatus = {

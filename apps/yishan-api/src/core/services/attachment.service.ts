@@ -19,6 +19,71 @@ import {
   UpdateAttachmentFolderReq,
   UpdateAttachmentReq,
 } from "../schemas/attachment.js";
+import { createHash, randomUUID } from "crypto";
+import { lookup } from "dns/promises";
+import { promises as fs } from "fs";
+import { extname, join } from "path";
+import { isIP } from "net";
+import { STORAGE_CONFIG } from "../../config/index.js";
+
+const REMOTE_IMAGE_MAX_SIZE = 10 * 1024 * 1024;
+const REMOTE_IMAGE_TIMEOUT = 15_000;
+const REMOTE_IMAGE_MAX_REDIRECTS = 3;
+
+const isPrivateIp = (address: string) => {
+  if (isIP(address) === 4) {
+    const [first, second] = address.split(".").map(Number);
+    return first === 10 || first === 127 || first === 0 || first >= 224 ||
+      (first === 169 && second === 254) || (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168);
+  }
+  const normalized = address.toLowerCase();
+  return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") ||
+    normalized.startsWith("fd") || normalized.startsWith("fe80:");
+};
+
+const assertPublicImageUrl = async (rawUrl: string) => {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片链接格式不正确");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片链接仅支持 HTTP 或 HTTPS");
+  }
+  if (url.username || url.password) {
+    throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片链接不能包含账号信息");
+  }
+  const addresses = await lookup(url.hostname, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some(({ address }) => isPrivateIp(address))) {
+    throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片链接不能指向内网地址");
+  }
+  return url;
+};
+
+const readResponseBody = async (response: Response) => {
+  const contentLength = Number(response.headers.get("content-length") || 0);
+  if (contentLength > REMOTE_IMAGE_MAX_SIZE) {
+    throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片不能超过 10MB");
+  }
+  if (!response.body) throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片内容为空");
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > REMOTE_IMAGE_MAX_SIZE) {
+      await reader.cancel();
+      throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片不能超过 10MB");
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks, size);
+};
 
 export class AttachmentService {
   private static kindStrToNum(kind?: SysAttachmentResp["kind"]): number {
@@ -372,5 +437,98 @@ export class AttachmentService {
 
     const attachment = await AttachmentRepository.createAttachment(createInput);
     return AttachmentMapper.toAttachmentDetailResp(attachment);
+  }
+
+  static async importRemoteImages(
+    urls: string[],
+    folderId: number | null | undefined,
+    currentUserId: number
+  ) {
+    if (folderId && !(await AttachmentRepository.getFolderById(folderId))) {
+      throw new BusinessError(AttachmentErrorCode.FOLDER_NOT_FOUND, "分组不存在");
+    }
+    return await Promise.all(urls.map((url) => this.importRemoteImage(url, folderId, currentUserId)));
+  }
+
+  private static async importRemoteImage(
+    rawUrl: string,
+    folderId: number | null | undefined,
+    currentUserId: number
+  ) {
+    let url = await assertPublicImageUrl(rawUrl);
+    let response: Response | undefined;
+    for (let redirectCount = 0; redirectCount <= REMOTE_IMAGE_MAX_REDIRECTS; redirectCount += 1) {
+      response = await fetch(url, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(REMOTE_IMAGE_TIMEOUT),
+        headers: { Accept: "image/*" },
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) break;
+      const location = response.headers.get("location");
+      if (!location) throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片链接重定向无效");
+      url = await assertPublicImageUrl(new URL(location, url).toString());
+    }
+    if (!response || [301, 302, 303, 307, 308].includes(response.status)) {
+      throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片链接重定向次数过多");
+    }
+    if (!response.ok) throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "图片链接无法访问");
+
+    const mimeType = response.headers.get("content-type")?.split(";", 1)[0].toLowerCase() || "";
+    if (!mimeType.startsWith("image/")) {
+      throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "链接不是图片资源");
+    }
+    const content = await readResponseBody(response);
+    const hash = createHash("md5").update(content).digest("hex");
+    const existing = await this.getAttachmentByHash(hash, "local");
+    if (existing) return existing;
+
+    const sourceName = decodeURIComponent(url.pathname.split("/").pop() || "image");
+    const ext = extname(sourceName) || this.getImageExtension(mimeType);
+    const originalName = `${sourceName.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/\.[^.]*$/, "") || "image"}${ext}`;
+    const filename = `${randomUUID().replace(/-/g, "")}${ext}`;
+    const uploadRoot = join(process.cwd(), STORAGE_CONFIG.uploadDir);
+    await fs.mkdir(uploadRoot, { recursive: true });
+    const filepath = join(uploadRoot, filename);
+    await fs.writeFile(filepath, content);
+
+    const uploadDirNormalized = STORAGE_CONFIG.uploadDir.replace(/\\/g, "/").replace(/^\/+/, "");
+    const urlBase = uploadDirNormalized.startsWith("public/")
+      ? `/${uploadDirNormalized.slice("public/".length)}`
+      : `/${uploadDirNormalized}`;
+    const urlPath = `${urlBase}/${filename}`.replace(/\/+/g, "/");
+
+    try {
+      return await this.createLocalAttachment(
+        {
+          folderId,
+          kind: "image",
+          originalName,
+          filename,
+          ext,
+          mimeType,
+          size: content.length,
+          path: urlPath,
+          url: urlPath,
+          hash,
+          metadata: { sourceUrl: rawUrl },
+        },
+        currentUserId
+      );
+    } catch (error) {
+      await fs.unlink(filepath).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private static getImageExtension(mimeType: string) {
+    const extensions: Record<string, string> = {
+      "image/jpeg": ".jpg",
+      "image/png": ".png",
+      "image/gif": ".gif",
+      "image/webp": ".webp",
+      "image/svg+xml": ".svg",
+      "image/avif": ".avif",
+    };
+    return extensions[mimeType] || ".img";
   }
 }

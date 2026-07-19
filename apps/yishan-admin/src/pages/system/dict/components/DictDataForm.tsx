@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormSwitch } from '@ant-design/pro-components';
-import { getDictDataDetail, createDictData, updateDictData } from '@/services/yishan-admin/sysDictData';
+import { getDictDataDetail, createDictData, updateDictData } from '@/services/generated/sysDictData';
 
 export interface DictDataFormProps {
   title: string;

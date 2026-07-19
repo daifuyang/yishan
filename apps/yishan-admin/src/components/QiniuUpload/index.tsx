@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { UploadFile, UploadProps } from "antd";
 import { Upload, App, Image } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { getQiniuUploadToken, getSystemOption } from "@/services/yishan-admin/system";
+import { getQiniuUploadToken, getSystemOption } from "@/services/generated/system";
 
 interface QiniuUploadProps {
   value?: string;

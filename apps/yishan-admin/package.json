@@ -19,7 +19,7 @@
     "lint": "npx @biomejs/biome lint && tsc --noEmit",
     "lint-staged": "lint-staged",
     "biome:lint": "npx @biomejs/biome lint",
-    "openapi": "max openapi",
+    "openapi": "pnpm --filter yishan-api openapi:export && max openapi",
     "prepare": "husky",
     "preview": "npm run build && max preview --port 8000",
     "record": "cross-env NODE_ENV=development UMI_ENV=test max record --scene=login",

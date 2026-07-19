@@ -26,8 +26,8 @@ import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { history } from '@umijs/max';
-import { getCurrentUser } from '@/services/yishan-admin/auth';
-import { updateMyProfile } from '@/services/yishan-admin/user';
+import { getCurrentUser } from '@/services/generated/auth';
+import { appUpdateMe } from '@/services/generated/appUsers';
 
 const useStyles = createStyles(({ token }) => {
   return {
@@ -192,7 +192,7 @@ const ProfilePanel: React.FC<{
         onFinish={async (values) => {
           setSubmitting(true);
           try {
-            const res: any = await updateMyProfile({
+            const res: any = await appUpdateMe({
               nickname: values.nickname,
               realName: values.realName,
               email: values.email,

@@ -8,8 +8,8 @@ import {
 } from "@ant-design/pro-components";
 import type { Dayjs } from "dayjs";
 import { useModel } from "@umijs/max";
-import { getRoleList } from "@/services/yishan-admin/sysRoles";
-import { getUserDetail, createUser, updateUser } from "@/services/yishan-admin/sysUsers";
+import { getRoleList } from "@/services/generated/sysRoles";
+import { getUserDetail, createUser, updateUser } from "@/services/generated/sysUsers";
 import { ProFormDeptTreeSelect } from "@/components";
 
 export interface UserFormProps {

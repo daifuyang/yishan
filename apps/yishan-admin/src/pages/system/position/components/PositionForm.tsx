@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { getPositionDetail, createPosition, updatePosition } from '@/services/yishan-admin/sysPositions';
+import { getPositionDetail, createPosition, updatePosition } from '@/services/generated/sysPositions';
 
 export interface PositionFormProps {
   title: string;

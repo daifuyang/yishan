@@ -4,8 +4,8 @@ import {
   getMenuDetail,
   createMenu,
   updateMenu,
-} from '@/services/yishan-admin/sysMenus';
-import { getPermissionCatalog } from '@/services/yishan-admin/sysPermissions';
+} from '@/services/generated/sysMenus';
+import { getPermissionCatalog } from '@/services/generated/sysPermissions';
 import {
   ModalForm,
   ProFormText,

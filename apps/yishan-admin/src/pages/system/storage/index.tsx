@@ -17,7 +17,7 @@ import {
   getStorageConfig,
   importStorageConfig,
   upsertStorageConfig,
-} from "@/services/yishan-admin/storage";
+} from "@/services/generated/storage";
 
 type FormValues = {
   provider: API.storageProvider;

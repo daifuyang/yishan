@@ -37,7 +37,7 @@ jest.mock('@/utils/token', () => ({
   clearTokens: (...args: unknown[]) => mockClearTokens(...args),
 }));
 
-jest.mock('@/services/yishan-admin/auth', () => ({
+jest.mock('@/services/generated/auth', () => ({
   refreshToken: (...args: unknown[]) => mockRefreshToken(...args),
 }));
 

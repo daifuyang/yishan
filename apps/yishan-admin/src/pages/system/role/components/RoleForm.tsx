@@ -15,12 +15,12 @@ import {
 } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
 import type { DataNode } from 'antd/es/tree';
-import { getMenuTree } from '@/services/yishan-admin/sysMenus';
+import { getMenuTree } from '@/services/generated/sysMenus';
 import {
   createRole,
   getRoleDetail,
   updateRole,
-} from '@/services/yishan-admin/sysRoles';
+} from '@/services/generated/sysRoles';
 
 export interface RoleFormProps {
   title: string;
