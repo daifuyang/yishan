@@ -124,16 +124,19 @@ jobs:
           DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
+          REDIS_HOST: ${{ vars.REDIS_HOST }}
         run: |
           set -euo pipefail
           ENV_FILE="$(pwd)/.env"
           node <<'NODE' > "$ENV_FILE"
           const redisUrl = process.env.REDIS_URL || '';
           let redisPort = '6379';
+          let redisHost = process.env.REDIS_HOST || '';
           let redisPassword = '';
           let redisDb = '0';
           if (redisUrl) {
             const parsed = new URL(redisUrl);
+            redisHost = redisHost || parsed.hostname;
             redisPort = parsed.port || redisPort;
             redisPassword = decodeURIComponent(parsed.password || '');
             redisDb = (parsed.pathname || '/0').replace(/^\//, '') || redisDb;
@@ -146,6 +149,7 @@ jobs:
             `DATABASE_HOST=${process.env.DATABASE_HOST || ''}`,
             `DATABASE_PORT=${process.env.DATABASE_PORT || '3306'}`,
             `REDIS_URL=${redisUrl}`,
+            `REDIS_HOST=${redisHost}`,
             `REDIS_PORT=${redisPort}`,
             `REDIS_PASSWORD=${redisPassword}`,
             `REDIS_DB=${redisDb}`,
@@ -238,6 +242,7 @@ jobs:
           DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
+          REDIS_HOST: ${{ vars.REDIS_HOST }}
           JWT_SECRET: ${{ secrets.YISHAN_API_JWT_SECRET }}
           YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
           FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
@@ -252,10 +257,12 @@ jobs:
           node <<'NODE' > /tmp/yishan_layered_env.sh
           const redisUrl = process.env.REDIS_URL || '';
           let redisPort = '6379';
+          let redisHost = process.env.REDIS_HOST || '';
           let redisPassword = '';
           let redisDb = '0';
           if (redisUrl) {
             const parsed = new URL(redisUrl);
+            redisHost = redisHost || parsed.hostname;
             redisPort = parsed.port || redisPort;
             redisPassword = decodeURIComponent(parsed.password || '');
             redisDb = (parsed.pathname || '/0').replace(/^\//, '') || redisDb;
@@ -269,6 +276,7 @@ jobs:
             DATABASE_PORT: process.env.DATABASE_PORT || '3306',
             JWT_SECRET: process.env.JWT_SECRET || '',
             REDIS_PORT: redisPort,
+            REDIS_HOST: redisHost,
             REDIS_PASSWORD: redisPassword,
             REDIS_DB: redisDb,
           };
