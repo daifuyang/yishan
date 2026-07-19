@@ -26,6 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: YISHAN_API
+    env:
+      FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
+      FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
+      FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
+      FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
+      FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
+      DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,6 +40,15 @@ jobs:
 
       - name: Verify all includes main
         run: node scripts/arch/check-all-sync.mjs
+
+      - name: Validate deployment variables
+        run: |
+          set -euo pipefail
+          : "${FUNCTION_NAME:?Missing MIGRATION_RUNNER_NAME}"
+          : "${FUNCTION_DESCRIPTION:?Missing MIGRATION_RUNNER_DESCRIPTION}"
+          : "${FUNCTION_VPC_ID:?Missing FUNCTION_VPC_ID}"
+          : "${FUNCTION_VSWITCH_ID:?Missing FUNCTION_VSWITCH_ID}"
+          : "${FUNCTION_SECURITY_GROUP:?Missing FUNCTION_SECURITY_GROUP}"
 
       - name: Require explicit apply confirmation
         env:
