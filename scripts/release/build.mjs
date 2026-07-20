@@ -30,6 +30,7 @@ import { dirname, join, relative, sep } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
+import { createRequire } from 'node:module'
 
 const __filename = fileURLToPath(import.meta.url)
 const SCRIPT_DIR = dirname(__filename)
@@ -181,47 +182,44 @@ function collectSbom(roots) {
  * we fall back to a placeholder.
  */
 function buildMigrationPlan() {
-  const scriptPath = join(API_DIST, '..', 'src', 'scripts', 'migration-plan.ts')
-  if (!existsSync(scriptPath)) {
-    return {
-      generated: false,
-      note: 'migration-plan collector not found; placeholder emitted',
-      schema: 'core',
-      migrations: [],
-    }
+  // Use the COMPILED collector from the API dist. The .ts source cannot be
+  // import-loaded here because apps/yishan-api is a CommonJS package
+  // ("type":"commonjs"), so strip-types rejects its ESM imports. The dist
+  // twin is emitted by build:ts (which release:build requires to have run).
+  const compiled = join(API_DIST, 'scripts', 'migration-plan.js')
+  if (!existsSync(compiled)) {
+    fail(`compiled migration-plan collector missing at ${compiled}; run build:ts before release:build`)
   }
-  const result = spawnSync(
-    process.execPath,
-    [
-      '--experimental-strip-types',
-      '--no-warnings=ExperimentalWarning',
-      '-e',
-      `import('${scriptPath}').then(m => { try { const plan = m.collectMigrationPlan('${ROOT}'); console.log(JSON.stringify({ ok: true, migrations: plan.map(e => ({ id: e.id, path: e.path })) })); } catch (e) { console.log(JSON.stringify({ ok: false, error: e.message })); } });`,
-    ],
-    { cwd: ROOT, encoding: 'utf8' },
-  )
-  if (result.status !== 0 || !result.stdout) {
-    return {
-      generated: false,
-      note: 'requires DB / Node >= 22.6 with --experimental-strip-types',
-      schema: 'core',
-      migrations: [],
-      error: result.stderr || result.stdout || 'unknown',
-    }
+  const apiRoot = join(API_DIST, '..')
+  let plan
+  try {
+    const require = createRequire(join(ROOT, 'apps', 'yishan-api', 'package.json'))
+    const mod = require(compiled)
+    plan = mod.collectMigrationPlan(apiRoot)
+  } catch (e) {
+    fail(`migration-plan collector failed: ${e instanceof Error ? e.message : String(e)}`)
   }
-  const parsed = readJsonSafe(result.stdout.trim())
-  if (!parsed?.ok) {
-    return {
-      generated: false,
-      note: parsed?.error ?? 'collector failed',
-      schema: 'core',
-      migrations: [],
-    }
+  if (!Array.isArray(plan)) {
+    fail('migration-plan collector did not return an array')
   }
+  // A profile with no migrations is legitimate; emit an empty (but generated)
+  // plan rather than failing.
+  const migrations = plan.map((e) => {
+    const id = String(e.id)
+    const file = id.split('/').pop()
+    const vm = file.match(/^(\d+)/)
+    const scope = id.startsWith('core/') ? 'core' : id.split('/').slice(0, 2).join('/')
+    return {
+      scope,
+      version: vm ? vm[1] : file,
+      checksum: sha256(e.sql ?? ''),
+      source: id,
+    }
+  })
   return {
     generated: true,
-    schema: 'core',
-    migrations: parsed.migrations,
+    profile: args.profile,
+    migrations,
   }
 }
 

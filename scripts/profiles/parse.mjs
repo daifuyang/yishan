@@ -156,6 +156,14 @@ function main() {
     plugins: profile.plugins.map((id) => ({
       id,
       kind: Array.isArray(profile.samples) && profile.samples.includes(id) ? 'sample' : 'production',
+      // Runtime entry, derived from the id convention. Core mounts the
+      // default export of `api.entry` under `api.prefix` inside the gate.
+      // release:validate imports every plugin's entry generically (no
+      // per-plugin special cases).
+      api: {
+        prefix: `/api/plugins/${id}/v1`,
+        entry: `api/plugins/${id}/api/register.js`,
+      },
     })),
     targets: profile.targets,
     verify: profile.verify ?? null,

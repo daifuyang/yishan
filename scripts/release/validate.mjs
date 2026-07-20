@@ -23,6 +23,7 @@ import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createHash } from 'node:crypto'
+import { createRequire } from 'node:module'
 
 const __filename = fileURLToPath(import.meta.url)
 const SCRIPT_DIR = dirname(__filename)
@@ -166,6 +167,27 @@ function checkMigrationPlanChecksum(manifest) {
       `migration-plan.json checksum drifted: recorded ${manifest.migrationPlan.checksum}, current ${fileChecksum}`,
     )
   }
+  // The plan must be a fully generated plan — no placeholders.
+  if (manifest.migrationPlan.generated !== true) {
+    fail('migration plan must be generated (generated=true); placeholder plans are not shippable')
+  }
+  const plan = readJsonMaybe(MIGRATION_PLAN_PATH)
+  if (!plan || plan.generated !== true) {
+    fail('migration-plan.json must have generated=true')
+  }
+  // A profile with no migrations is legitimate — do NOT require a non-empty
+  // migrations[]. Only require that the field is an array and that every
+  // present entry is complete.
+  if (!Array.isArray(plan.migrations)) {
+    fail('migration-plan.json migrations must be an array')
+  }
+  plan.migrations.forEach((m, i) => {
+    for (const field of ['scope', 'version', 'checksum', 'source']) {
+      if (typeof m?.[field] !== 'string' || m[field].length === 0) {
+        fail(`migration-plan.json migrations[${i}] missing required string field '${field}'`)
+      }
+    }
+  })
 }
 
 function checkSbom(manifest) {
@@ -232,22 +254,97 @@ function assertImportable(modulePath, label, expectedType) {
   }
 }
 
-function checkPluginRuntimeArtifacts(catalog) {
+// Collect the (method, url) of every route registered under `app`, using a
+// root-level onRoute hook (inherited by encapsulated children).
+function attachRouteCollector(app) {
+  const routes = []
+  app.addHook('onRoute', (r) => {
+    const methods = Array.isArray(r.method) ? r.method : [r.method]
+    for (const method of methods) routes.push({ method, url: r.url })
+  })
+  return routes
+}
+
+function injectableUrl(url) {
+  // Replace path params (:id) and wildcards (*) with a placeholder so the
+  // route matches during inject.
+  return url.replace(/:[^/]+/g, 'x').replace(/\*/g, 'x')
+}
+
+async function checkPluginRuntimeArtifacts(catalog) {
+  // Resolve fastify from the API package (pnpm isolates it there, not at the
+  // repo root), so the validator can mount plugins in-process.
+  const require = createRequire(join(ROOT, 'apps', 'yishan-api', 'package.json'))
+  const Fastify = (await import(pathToFileURL(require.resolve('fastify')).href)).default
+  const vendored = join(ARTIFACT, 'api', 'node_modules', '@yishan', 'plugin-api', 'dist', 'index.js')
+  if (!existsSync(vendored)) {
+    fail(`vendored @yishan/plugin-api runtime missing at ${vendored}`)
+  }
+  const sdk = await import(pathToFileURL(vendored).href)
+  const { registerPlugin, PLUGIN_DISABLED } = sdk
+
   for (const entry of catalog.plugins) {
     const pluginRoot = join(ARTIFACT, 'api', 'plugins', entry.id)
-    assertImportable(
-      join(pluginRoot, 'plugin.js'),
-      `plugin ${entry.id}`,
-      'object',
-    )
 
-    if (entry.id === 'yishan/hello') {
-      assertImportable(
-        join(pluginRoot, 'api', 'routes', 'v1', 'admin', 'index.js'),
-        `plugin ${entry.id} admin API route`,
-        'function',
-      )
+    // 1. The manifest is importable and default-exports an object.
+    assertImportable(join(pluginRoot, 'plugin.js'), `plugin ${entry.id}`, 'object')
+
+    // 2. The declared API runtime entry is importable and default-exports a
+    //    Fastify plugin (function). No per-plugin special cases — the entry
+    //    comes from the catalog (falling back to the id convention).
+    const entryRel = entry.api?.entry ?? `api/plugins/${entry.id}/api/register.js`
+    const entryAbs = join(ARTIFACT, entryRel)
+    assertImportable(entryAbs, `plugin ${entry.id} api entry`, 'function')
+
+    const prefix = entry.api?.prefix ?? `/api/plugins/${entry.id}/v1`
+
+    // 3 + 4. Register the entry on a minimal Fastify under the Core-owned
+    //        gate wrapper and assert (a) every route lands under the prefix
+    //        and (b) a disabled plugin is gated before the handler runs.
+    const routeMod = await import(pathToFileURL(entryAbs).href)
+    const routes = routeMod.default?.default ?? routeMod.default
+
+    const app = Fastify({ logger: false })
+    app.decorate('pluginState', new Map())
+    app.decorate('authenticate', async () => undefined)
+    app.decorate('requirePermission', () => async () => undefined)
+    const collected = attachRouteCollector(app)
+    app.pluginState.set(entry.id, 'disabled')
+    try {
+      await registerPlugin(app, entry.id, async (instance) => {
+        await instance.register(routes, { prefix })
+      })
+      await app.ready()
+    } catch (err) {
+      await app.close()
+      fail(`plugin ${entry.id} failed to register under ${prefix}: ${err.message}`)
     }
+
+    // (a) prefix containment
+    for (const r of collected) {
+      if (!r.url.startsWith(prefix)) {
+        await app.close()
+        fail(`plugin ${entry.id} registered route ${r.method} ${r.url} outside its prefix ${prefix}`)
+      }
+    }
+
+    // (b) disabled plugin is gated (GET routes only, to avoid schema
+    //     validation firing before the preHandler gate).
+    const getRoutes = collected.filter((r) => r.method === 'GET')
+    for (const r of getRoutes) {
+      const res = await app.inject({ method: 'GET', url: injectableUrl(r.url) })
+      if (res.statusCode !== 404 || res.json()?.code !== PLUGIN_DISABLED) {
+        await app.close()
+        fail(
+          `plugin ${entry.id} route GET ${r.url} was not gated when disabled ` +
+            `(status=${res.statusCode}, code=${res.json()?.code}); Core gate not applied`,
+        )
+      }
+    }
+    if (getRoutes.length === 0) {
+      warn(`plugin ${entry.id} exposes no GET routes; gate behavior not asserted at release:validate`)
+    }
+    await app.close()
   }
 }
 
@@ -266,7 +363,7 @@ function rerunProfileValidate(manifest) {
   }
 }
 
-function main() {
+async function main() {
   if (!existsSync(ARTIFACT)) {
     fail(`artifact path does not exist: ${ARTIFACT}`)
   }
@@ -276,7 +373,7 @@ function main() {
   checkMigrationPlanChecksum(manifest)
   checkSbom(manifest)
   checkTargets(manifest)
-  checkPluginRuntimeArtifacts(catalog)
+  await checkPluginRuntimeArtifacts(catalog)
   rerunProfileValidate(manifest)
 
   console.log(
@@ -284,4 +381,6 @@ function main() {
   )
 }
 
-main()
+main().catch((err) => {
+  fail(err instanceof Error ? err.message : String(err))
+})
