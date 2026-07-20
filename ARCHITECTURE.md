@@ -263,8 +263,8 @@ API boot 顺序是：
 3. 加载构建时生成的 plugin catalog。
 4. 校验 catalog 与 release metadata 一致。
 5. 读取 catalog 内插件的运行状态。
-6. 为插件入口安装统一 PluginGate。
-7. 按 catalog 调用插件 `register(app)`。
+6. 为每个插件入口安装 Core 拥有的统一 PluginGate（`registerPlugin`）。
+7. 按 catalog 调用插件 `api.register()`，并在 gate 内把其 default export 挂载到 `api.prefix` 之下。
 8. 仅为 enabled 插件启动任务、订阅和异步消费者。
 9. 完成健康检查后接受流量。
 

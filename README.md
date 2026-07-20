@@ -25,8 +25,7 @@ yishan/
 
 ## 环境要求
 
-- Node.js 22.22.1（与 `.tool-versions` 一致；CI 与本地均以此为准）
-- pnpm 8.15.9（`packageManager` 字段固定）
+- Node 与 pnpm 版本以 `.tool-versions` 和根 `package.json#packageManager` 为准
 - 建议使用 asdf / mise / fnm 等工具读取 `.tool-versions` 自动切换
 
 ## 五分钟启动

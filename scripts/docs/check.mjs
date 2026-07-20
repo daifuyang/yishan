@@ -54,6 +54,19 @@ const FORBIDDEN_TERMS = [
   { term: 'core/models', pattern: /\bcore\/models\b/ },
   { term: 'prisma/schema', pattern: /\bprisma\/schema\b/ },
   { term: 'plugins/modules', pattern: /\bplugins\/modules\b/ },
+  // Legacy plugin entry contract. The current contract mounts plugins via
+  // manifest.api.register() inside the Core-owned gate (PLUGIN_CONTRACT §9),
+  // so a documented root register(app) entry is drift.
+  { term: 'register(app) (legacy root plugin entry — use api.register)', pattern: /\bregister\(app\)/ },
+]
+
+// Hardcoded Node / pnpm tool versions. Per AGENTS.md §1 these live ONLY in
+// .tool-versions and package.json#packageManager; docs must not restate the
+// numbers. Framework versions (React 19, Fastify 5, …) are single integers and
+// intentionally not matched — only tool semver (x.y.z) is.
+const TOOL_VERSION_PATTERNS = [
+  { tool: 'Node', pattern: /\bNode(?:\.js)?\s+v?\d+\.\d+\.\d+/i },
+  { tool: 'pnpm', pattern: /\bpnpm[@\s]v?\d+\.\d+\.\d+/i },
 ]
 
 const WHITELIST_HINTS = [
@@ -87,6 +100,22 @@ function checkForbiddenTerms(filePath, content) {
             `${filePath}:${idx + 1}: forbidden term '${term}': ${line.slice(0, 120)}`,
           )
         }
+      }
+    }
+  })
+  return violations
+}
+
+function checkHardcodedToolVersions(filePath, content) {
+  const violations = []
+  const lines = content.split('\n')
+  lines.forEach((line, idx) => {
+    for (const { tool, pattern } of TOOL_VERSION_PATTERNS) {
+      if (pattern.test(line)) {
+        violations.push(
+          `${filePath}:${idx + 1}: hardcoded ${tool} version — versions live only in ` +
+            `.tool-versions / package.json#packageManager: ${line.trim().slice(0, 100)}`,
+        )
       }
     }
   })
@@ -169,6 +198,7 @@ function checkDocument(filePath, scripts) {
   const violations = []
   if (!FORBIDDEN_TERMS_WHITELIST.has(basename)) {
     violations.push(...checkForbiddenTerms(filePath, content))
+    violations.push(...checkHardcodedToolVersions(filePath, content))
   }
   violations.push(...checkPnpmCommands(filePath, content, scripts))
   violations.push(...checkMarkdownLinks(filePath, content))

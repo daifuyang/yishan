@@ -212,19 +212,29 @@ prefix 必须包含显式 API major version。
 两个插件不能声明相同 prefix。
 prefix 冲突必须在 catalog generation 时失败。
 
-`api.register` 指向插件 API 注册模块。
-注册模块必须暴露：
+`api.register` 是插件的运行入口，必须是一个返回 API 注册模块的动态 import：
 
 ```ts
-export async function register(app: FastifyInstance): Promise<void>
+api: {
+  prefix: '/api/plugins/<vendor>/<slug>/v1',
+  register: () => import('./api/register.js'),
+}
 ```
 
-SDK 装载后的插件对象必须可由 Core 调用 `plugin.register(app)`。
-`register(app)` 只注册该插件的路由与受控入口。
-`register(app)` 不负责决定插件是否被 profile 选择。
-`register(app)` 不绕过 Core 安装的 preHandler。
-`register(app)` 不读取其他插件目录。
-`register(app)` 应保持确定性，不能按目录临时发现额外 route。
+注册模块的 default export 必须是一个 Fastify 插件：
+
+```ts
+import type { FastifyPluginAsync } from '@yishan/plugin-api'
+const register: FastifyPluginAsync = async (app) => { /* 注册本插件路由 */ }
+export default register
+```
+
+Core 会 `await manifest.api.register()`，取其 default export，并在 Core 拥有的
+plugin gate（`registerPlugin`）内把它挂载到 `api.prefix` 之下。因此：
+- 插件只注册自己 prefix 之下的路由与受控入口，不再自行调用 `registerPlugin` 或 `pluginGate`。
+- 是否被 profile 选择由 catalog 决定，不由插件代码决定。
+- 插件无法绕过 Core 安装的 preHandler gate —— 即使插件只调用 `app.register()` 也仍被 Core 包裹。
+- 插件不读取其他插件目录，注册必须确定性，不能按目录临时发现额外 route。
 
 ## 10. API 分层要求
 
@@ -394,7 +404,7 @@ PluginGate 还必须覆盖：
 
 插件 `enabled` 时：
 
-- Core 调用其 `register(app)`。
+- Core 调用其 `api.register()` 并在 gate 内挂载返回的 Fastify 插件。
 - API route 可在认证与权限检查后处理请求。
 - 已声明任务和订阅可以启动。
 - 权限进入可分配目录。
@@ -462,7 +472,7 @@ Core 不能 import 插件 manifest 来硬编码注册。
 ### 24.1 Profile 内且 enabled
 
 - catalog 包含插件 id、version、kind 和 checksum。
-- Core 调用 `register(app)`。
+- Core 调用 `api.register()` 并在 gate 内挂载返回的 Fastify 插件。
 - 规范 API path 可访问。
 - Route、Service、Repository 分层测试通过。
 - 任务和订阅按声明启动。

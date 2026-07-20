@@ -4,10 +4,9 @@ Thanks for your interest in contributing.
 
 ## Development Setup
 
-Prerequisites（以 `.tool-versions` 为准）：
+Prerequisites：
 
-- Node 22.22.1
-- pnpm 8.15.9
+- Node 与 pnpm 版本以 `.tool-versions` 和根 `package.json#packageManager` 为准
 
 Install dependencies at repo root:
 
