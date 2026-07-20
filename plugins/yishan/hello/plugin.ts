@@ -61,7 +61,7 @@ function definePermissions<T extends Record<string, PermissionRef>>(permissions:
  * helloPermissions is the structured permission object used by both the
  * `permissions` array in the manifest (below) and by the hello routes at
  * `api/routes/v1/admin/index.ts`. Routes import this named export via
- * `import { helloPermissions } from '../../../plugin.js'`.
+ * `import { helloPermissions } from '../../../../plugin.js'`.
  */
 export const helloPermissions = definePermissions({
   HEALTH_READ: {
@@ -88,6 +88,17 @@ const manifest = definePlugin({
   kind: 'sample',
   api: {
     prefix: '/api/plugins/yishan/hello/v1',
+  },
+  register: async (app) => {
+    const [{ registerPlugin }, { default: helloAdminRoutes }] = await Promise.all([
+      import('@yishan/plugin-api'),
+      import('./api/routes/v1/admin/index.js'),
+    ])
+    await registerPlugin(app, 'yishan/hello', async (instance) => {
+      await instance.register(helloAdminRoutes, {
+        prefix: '/api/plugins/yishan/hello/v1/admin',
+      })
+    })
   },
   database: {
     namespace: 'ys_hello',

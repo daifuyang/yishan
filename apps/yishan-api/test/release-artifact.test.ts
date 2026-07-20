@@ -50,10 +50,11 @@ describe('Wave 4: release artifact ships plugin source + catalog', () => {
     expect(existsSync(target)).toBe(true)
   })
 
-  it('compiled plugin.js is require()-able and exports a manifest default', () => {
+  it('compiled plugin.js is import()-able and exports a manifest default', async () => {
     const target = join(DIST_PLUGINS, 'yishan', 'hello', 'plugin.js')
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require(target) as { default?: { id: string; version: string } }
+    const mod = (await import(target)) as {
+      default?: { id: string; version: string }
+    }
     expect(mod.default?.id).toBe('yishan/hello')
     expect(typeof mod.default?.version).toBe('string')
     // semver shape

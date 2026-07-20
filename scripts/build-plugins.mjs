@@ -1,29 +1,10 @@
 #!/usr/bin/env node
-// scripts/build-plugins.mjs — Wave 5 release-artifact builder.
+// scripts/build-plugins.mjs — Wave 6 plugin runtime-artifact builder.
 //
-// PROPOSAL §6.1 says the release artifact must contain
-//   - compiled API server tree
-//   - compiled plugin source (plugins/<vendor>/<slug>/plugin.js)
-//   - plugin-catalog.json
-//   - plugin API routes (plugins/<vendor>/<slug>/api/...)
-//   - plugin admin assets (plugins/<vendor>/<slug>/admin/...)
-// so that `node dist/app.js` (production boot) finds everything next to it
-// without traversing back into the monorepo.
-//
-// Wave 4 only compiled plugin.ts; the runtime then could not find the
-// `api/routes/...` tree because it lives outside plugin.ts and was not
-// copied into dist. Wave 5 closes that gap by:
-//   1. Reading artifacts/plugin-catalog.json (single source of truth) and
-//      iterating only the plugins selected by the active profile.
-//   2. Per plugin, compiling plugin.ts via tsc and recursively copying the
-//      api/ and admin/ source trees verbatim under
-//      apps/yishan-api/dist/plugins/<vendor>/<slug>/{api,admin}/. The dist
-//      layout now matches what `app.ts` looks up via `resolveRuntimePaths`.
-//
-// `pnpm --filter yishan-api build:ts` runs this script after the main API
-// `tsc` completes. The script is invoked from the monorepo root by the
-// package script — paths are resolved relative to the script location so
-// the cwd can vary.
+// The active catalog drives the build. Each selected plugin gets a compiled
+// plugin.js plus an ESM api/ tree containing executable .js files only. The
+// runtime SDK is vendored beside the API dist so the resulting tree remains
+// loadable after it is detached from the monorepo.
 import { execSync } from 'node:child_process'
 import {
   copyFileSync,
@@ -32,16 +13,17 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
-  statSync,
   writeFileSync,
 } from 'node:fs'
-import { dirname, join, relative, sep } from 'node:path'
+import { dirname, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const SCRIPT_DIR = dirname(__filename)
 const ROOT = join(SCRIPT_DIR, '..')
 const PLUGINS_ROOT = join(ROOT, 'plugins')
+const PLUGIN_API_ROOT = join(ROOT, 'packages', 'plugin-api')
+const PLUGIN_API_DIST = join(PLUGIN_API_ROOT, 'dist')
 const DIST_ROOT = join(ROOT, 'apps', 'yishan-api', 'dist')
 const DIST_PLUGINS = join(DIST_ROOT, 'plugins')
 const DIST_ARTIFACTS = join(DIST_ROOT, 'artifacts')
@@ -49,12 +31,10 @@ const SOURCE_CATALOG = join(ROOT, 'artifacts', 'plugin-catalog.json')
 const TARGET_CATALOG = join(DIST_ARTIFACTS, 'plugin-catalog.json')
 
 function log(message) {
-  // eslint-disable-next-line no-console
   console.log(`[build-plugins] ${message}`)
 }
 
 function die(message) {
-  // eslint-disable-next-line no-console
   console.error(`[build-plugins] FAIL: ${message}`)
   process.exit(1)
 }
@@ -72,34 +52,64 @@ function listCatalogPluginIds() {
   if (!Array.isArray(parsed?.plugins) || parsed.plugins.length === 0) {
     die(`catalog at ${SOURCE_CATALOG} has empty plugins[]; refusing to build zero-plugin artifact`)
   }
-  return parsed.plugins.map((p) => p.id)
+  return parsed.plugins.map((plugin) => plugin.id)
 }
 
-function findCompiledJs(rootDir, targetName) {
+function findCompiledFile(rootDir, targetName) {
   const stack = [rootDir]
-  let found = null
   while (stack.length) {
     const dir = stack.pop()
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = join(dir, entry.name)
       if (entry.isDirectory()) stack.push(full)
-      else if (entry.name === targetName) found = full
+      else if (entry.name === targetName) return full
     }
   }
-  return found
+  return null
+}
+
+function copyDirRecursive(srcDir, dstDir) {
+  let count = 0
+  const stack = [{ src: srcDir, dst: dstDir }]
+  while (stack.length) {
+    const { src, dst } = stack.pop()
+    mkdirSync(dst, { recursive: true })
+    for (const entry of readdirSync(src, { withFileTypes: true })) {
+      const source = join(src, entry.name)
+      const target = join(dst, entry.name)
+      if (entry.isDirectory()) {
+        stack.push({ src: source, dst: target })
+      } else if (entry.isFile()) {
+        copyFileSync(source, target)
+        count += 1
+      }
+    }
+  }
+  return count
+}
+
+function countFilesRecursive(rootDir, extension) {
+  if (!existsSync(rootDir)) return 0
+  let count = 0
+  const stack = [rootDir]
+  while (stack.length) {
+    const dir = stack.pop()
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) stack.push(full)
+      else if (entry.isFile() && entry.name.endsWith(extension)) count += 1
+    }
+  }
+  return count
 }
 
 function compilePlugin(id) {
-  // Use a temp outDir sibling to DIST_PLUGINS so we can move the single
-  // plugin.js result to <DIST_PLUGINS>/<vendor>/<slug>/plugin.js without
-  // having tsc mirror the leading `plugins/` segment.
   const [vendor, slug] = id.split('/')
   const source = join(PLUGINS_ROOT, vendor, slug, 'plugin.ts')
-  if (!existsSync(source)) {
-    die(`plugin source missing at ${source}`)
-  }
+  if (!existsSync(source)) die(`plugin source missing at ${source}`)
+
   const tmpOut = join(DIST_ROOT, '.plugin-build', vendor, slug)
-  if (existsSync(tmpOut)) rmSync(tmpOut, { recursive: true, force: true })
+  rmSync(tmpOut, { recursive: true, force: true })
   mkdirSync(tmpOut, { recursive: true })
   const args = [
     source,
@@ -111,146 +121,139 @@ function compilePlugin(id) {
     '--skipLibCheck',
   ]
   log(`tsc ${args.join(' ')}`)
-  // Use pnpm exec to resolve the local TypeScript binary (the yishan-api
-  // workspace package depends on typescript). npx tsc would otherwise fetch
-  // the deprecated tsc@2.0.4 npm package.
-  execSync(`pnpm exec tsc ${args.map((a) => `"${a.replace(/"/g, '\\"')}"`).join(' ')}`, {
+  execSync(`pnpm exec tsc ${args.map((arg) => `"${arg.replace(/"/g, '\\"')}"`).join(' ')}`, {
     cwd: ROOT,
     stdio: 'inherit',
   })
-  // Find the compiled plugin.js (tsc mirrors source path inside outDir).
-  const compiled = findCompiledJs(tmpOut, 'plugin.js')
-  if (!compiled) {
-    die(`tsc produced no plugin.js for ${id}`)
-  }
+
+  const compiled = findCompiledFile(tmpOut, 'plugin.js')
+  if (!compiled) die(`tsc produced no plugin.js for ${id}`)
   const finalOut = join(DIST_PLUGINS, vendor, slug)
   mkdirSync(finalOut, { recursive: true })
   copyFileSync(compiled, join(finalOut, 'plugin.js'))
-  // Also copy the .d.ts if produced (helpful for downstream type
-  // consumers; production boot does not need it).
-  const dts = findCompiledJs(tmpOut, 'plugin.d.ts')
-  if (dts) {
-    copyFileSync(dts, join(finalOut, 'plugin.d.ts'))
+  // Copy plugin root package.json (if present) so dist subtree carries the
+  // `{"type": "module"}` marker that Node ESM resolver needs.
+  const pluginPkg = join(PLUGINS_ROOT, vendor, slug, 'package.json')
+  if (existsSync(pluginPkg)) {
+    copyFileSync(pluginPkg, join(finalOut, 'package.json'))
+  } else {
+    writeFileSync(join(finalOut, 'package.json'), JSON.stringify({ type: 'module' }, null, 2))
   }
-  // Tidy temp.
   rmSync(tmpOut, { recursive: true, force: true })
 }
 
-function copyDirRecursive(srcDir, dstDir) {
-  if (!existsSync(srcDir)) return 0
-  const stat = statSync(srcDir)
-  if (!stat.isDirectory()) {
-    die(`expected directory at ${srcDir}, got ${stat.isFile() ? 'file' : 'other'}`)
+function compilePluginApi(id) {
+  const [vendor, slug] = id.split('/')
+  const pluginRoot = join(PLUGINS_ROOT, vendor, slug)
+  const apiSrc = join(pluginRoot, 'api')
+  if (!existsSync(apiSrc)) {
+    log(`no api/ tree for ${id}; skipping`)
+    return 0
   }
-  let count = 0
-  const stack = [{ src: srcDir, dst: dstDir }]
-  while (stack.length) {
-    const { src, dst } = stack.pop()
-    mkdirSync(dst, { recursive: true })
-    for (const entry of readdirSync(src, { withFileTypes: true })) {
-      const s = join(src, entry.name)
-      const d = join(dst, entry.name)
-      if (entry.isDirectory()) {
-        stack.push({ src: s, dst: d })
-      } else if (entry.isFile()) {
-        copyFileSync(s, d)
-        count += 1
-      } else if (entry.isSymbolicLink()) {
-        // Skip symlinks — the artifact is meant to be self-contained
-        // and links would dangle outside the dist tree.
-        log(`skipping symlink ${relative(ROOT, s)}`)
-      }
+
+  const finalOut = join(DIST_PLUGINS, vendor, slug)
+  const apiDst = join(finalOut, 'api')
+  const tmpOut = join(DIST_ROOT, '.plugin-api-build', vendor, slug)
+  const tsconfig = join(DIST_ROOT, '.plugin-tsconfig.json')
+  rmSync(apiDst, { recursive: true, force: true })
+  rmSync(tmpOut, { recursive: true, force: true })
+  mkdirSync(tmpOut, { recursive: true })
+
+  writeFileSync(
+    tsconfig,
+    JSON.stringify(
+      {
+        compilerOptions: {
+          module: 'nodenext',
+          moduleResolution: 'nodenext',
+          target: 'es2022',
+          esModuleInterop: true,
+          skipLibCheck: true,
+          outDir: tmpOut,
+          rootDir: ROOT,
+          declaration: false,
+        },
+        include: [join(apiSrc, '**/*.ts')],
+      },
+      null,
+      2,
+    ),
+  )
+
+  try {
+    log(`tsc -p ${tsconfig}`)
+    execSync(`pnpm exec tsc -p "${tsconfig}"`, {
+      cwd: ROOT,
+      stdio: 'inherit',
+    })
+    const compiledApi = join(tmpOut, 'plugins', vendor, slug, 'api')
+    if (!existsSync(compiledApi)) {
+      die(`tsc produced no api/ output for ${id}`)
     }
+    copyDirRecursive(compiledApi, apiDst)
+    const apiPackage = join(apiSrc, 'package.json')
+    if (existsSync(apiPackage)) {
+      copyFileSync(apiPackage, join(apiDst, 'package.json'))
+    } else {
+      writeFileSync(join(apiDst, 'package.json'), JSON.stringify({ type: 'module' }, null, 2))
+    }
+  } finally {
+    rmSync(tsconfig, { force: true })
+    rmSync(tmpOut, { recursive: true, force: true })
   }
+
+  const count = countFilesRecursive(apiDst, '.js')
+  log(`compiled api/ for ${id}: ${count} JavaScript file(s)`)
   return count
 }
 
-function copyPluginApiAndAdmin(id) {
-  const [vendor, slug] = id.split('/')
-  const pluginRoot = join(PLUGINS_ROOT, vendor, slug)
-  const finalOut = join(DIST_PLUGINS, vendor, slug)
-  mkdirSync(finalOut, { recursive: true })
-
-  // api/ tree holds the runtime Fastify routes — AutoLoad walks it
-  // recursively, so every file (.ts included for source map legibility)
-  // must be present at the dist path.
-  const apiSrc = join(pluginRoot, 'api')
-  if (existsSync(apiSrc)) {
-    const apiDst = join(finalOut, 'api')
-    if (existsSync(apiDst)) rmSync(apiDst, { recursive: true, force: true })
-    const n = copyDirRecursive(apiSrc, apiDst)
-    log(`copied api/ for ${id}: ${n} file(s)`)
-  } else {
-    log(`no api/ tree for ${id}; skipping`)
+function vendorPluginApiRuntime() {
+  const entry = join(PLUGIN_API_DIST, 'index.js')
+  if (!existsSync(entry)) {
+    die(`@yishan/plugin-api is not built at ${entry}; run pnpm --filter @yishan/plugin-api build first`)
   }
-
-  // admin/ tree is static assets consumed by the admin bundler; we still
-  // ship it for parity (an admin build pipeline could pluck from dist/).
-  const adminSrc = join(pluginRoot, 'admin')
-  if (existsSync(adminSrc)) {
-    const adminDst = join(finalOut, 'admin')
-    if (existsSync(adminDst)) rmSync(adminDst, { recursive: true, force: true })
-    const n = copyDirRecursive(adminSrc, adminDst)
-    log(`copied admin/ for ${id}: ${n} file(s)`)
-  }
+  const target = join(DIST_ROOT, 'node_modules', '@yishan', 'plugin-api')
+  rmSync(target, { recursive: true, force: true })
+  mkdirSync(target, { recursive: true })
+  copyFileSync(join(PLUGIN_API_ROOT, 'package.json'), join(target, 'package.json'))
+  const count = copyDirRecursive(PLUGIN_API_DIST, join(target, 'dist'))
+  log(`vendored @yishan/plugin-api runtime: ${count} file(s)`)
 }
 
 function copyCatalog() {
-  if (!existsSync(SOURCE_CATALOG)) {
-    die(`catalog not found at ${SOURCE_CATALOG}; run pnpm profile:catalog first`)
-  }
   mkdirSync(DIST_ARTIFACTS, { recursive: true })
   copyFileSync(SOURCE_CATALOG, TARGET_CATALOG)
   log(`copied ${SOURCE_CATALOG} -> ${TARGET_CATALOG}`)
 }
 
 function main() {
-  log('Wave 5 release-artifact builder starting')
-
-  // 1. Drive from the catalog — only plugins in the active profile ship
-  //    into dist. Plugins that exist on disk but are not in the catalog
-  //    (e.g. portal/shop on a core branch) are intentionally NOT compiled
-  //    so the dist surface matches what `app.ts` will look up at boot.
+  log('Wave 6 plugin runtime-artifact builder starting')
   const pluginIds = listCatalogPluginIds()
   log(`catalog lists ${pluginIds.length} plugin(s): ${pluginIds.join(', ')}`)
 
-  // 2. Wipe the previous plugin tree to avoid stale entries from an
-  //    earlier profile (e.g. switching from official → core must drop
-  //    portal/shop from dist/plugins/).
-  if (existsSync(DIST_PLUGINS)) {
-    rmSync(DIST_PLUGINS, { recursive: true, force: true })
-  }
-  if (existsSync(join(DIST_ROOT, '.plugin-build'))) {
-    rmSync(join(DIST_ROOT, '.plugin-build'), { recursive: true, force: true })
-  }
+  rmSync(DIST_PLUGINS, { recursive: true, force: true })
+  rmSync(join(DIST_ROOT, '.plugin-build'), { recursive: true, force: true })
+  rmSync(join(DIST_ROOT, '.plugin-api-build'), { recursive: true, force: true })
 
   for (const id of pluginIds) {
     const [vendor, slug] = id.split('/')
     if (!vendor || !slug) die(`invalid catalog plugin id '${id}'`)
     compilePlugin(id)
-    copyPluginApiAndAdmin(id)
+    const apiFiles = compilePluginApi(id)
+    if (apiFiles === 0) die(`plugin ${id} api/ produced no executable JavaScript`)
   }
 
+  vendorPluginApiRuntime()
   copyCatalog()
 
-  // 3. Smoke check — surface the final dist tree shape so a CI log makes
-  //    the result obvious without a follow-up `find dist/plugins`.
-  const summary = []
   for (const id of pluginIds) {
     const [vendor, slug] = id.split('/')
     const finalOut = join(DIST_PLUGINS, vendor, slug)
-    const exists = existsSync(join(finalOut, 'plugin.js'))
-    const apiExists = existsSync(join(finalOut, 'api'))
-    summary.push(`  - ${id}: plugin.js=${exists} api=${apiExists}`)
+    log(
+      `  - ${id}: plugin.js=${existsSync(join(finalOut, 'plugin.js'))} api.js=${countFilesRecursive(join(finalOut, 'api'), '.js')}`,
+    )
   }
-  log('dist summary:')
-  for (const line of summary) log(line)
 
-  // Cross-platform path print (sep differs on Windows); use forward slashes
-  // for stable assertions in tests/CI.
-  log(`done. catalog=${TARGET_CATALOG.split(sep).join('/')}`)
-  // Touch a build marker so tests can detect "this dist was built by
-  // Wave 5 build-plugins" without checking internal layout.
   const marker = join(DIST_ARTIFACTS, '.build-plugins.marker')
   writeFileSync(
     marker,
@@ -258,13 +261,13 @@ function main() {
       {
         builtAt: new Date().toISOString(),
         plugins: pluginIds,
-        scriptVersion: 'wave5',
+        scriptVersion: 'wave6',
       },
       null,
       2,
     ),
   )
-  log(`wrote marker ${marker}`)
+  log(`done. catalog=${TARGET_CATALOG.split(sep).join('/')}`)
 }
 
 main()

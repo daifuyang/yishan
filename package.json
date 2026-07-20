@@ -74,6 +74,7 @@
     "pnpm": ">=8.0.0"
   },
   "devDependencies": {
+    "@yishan/plugin-api": "workspace:*",
     "yaml": "^2.9.0"
   }
 }

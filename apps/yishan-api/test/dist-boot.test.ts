@@ -3,7 +3,7 @@ import Fastify from 'fastify'
 import { execSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 /**
  * Wave 5 — dist-mode boot integration test.
@@ -51,14 +51,23 @@ const DIST_HELLO_API_ADMIN_INDEX = join(
   'routes',
   'v1',
   'admin',
-  'index.ts',
+  'index.js',
+)
+const DIST_PLUGIN_API_ENTRY = join(
+  DIST_ROOT,
+  'node_modules',
+  '@yishan',
+  'plugin-api',
+  'dist',
+  'index.js',
 )
 const SOURCE_CATALOG = join(REPO_ROOT, 'artifacts', 'plugin-catalog.json')
 
 function ensureBuilt() {
-  if (existsSync(DIST_HELLO_API_ADMIN_INDEX)) return
+  if (existsSync(DIST_HELLO_API_ADMIN_INDEX) && existsSync(DIST_PLUGIN_API_ENTRY)) return
   // eslint-disable-next-line no-console
-  console.log('[dist-boot] dist tree incomplete; rebuilding build-plugins output')
+  console.log('[dist-boot] dist tree incomplete; rebuilding plugin runtime output')
+  execSync('pnpm --filter @yishan/plugin-api build', { cwd: REPO_ROOT, stdio: 'inherit' })
   execSync('node scripts/build-plugins.mjs', { cwd: REPO_ROOT, stdio: 'inherit' })
 }
 
@@ -89,7 +98,7 @@ describe('Wave 5: dist-mode boot integration', () => {
     expect(mod.default?.api?.prefix).toBe('/api/plugins/yishan/hello/v1')
   })
 
-  it('dist/plugins/yishan/hello/api/... is copied (Wave 5 fix)', () => {
+  it('dist/plugins/yishan/hello/api/... contains compiled JavaScript (Wave 6 fix)', () => {
     expect(existsSync(DIST_HELLO_API_ADMIN_INDEX)).toBe(true)
     const body = readFileSync(DIST_HELLO_API_ADMIN_INDEX, 'utf8')
     // The route file imports helloPermissions from plugin.ts; that
@@ -100,11 +109,57 @@ describe('Wave 5: dist-mode boot integration', () => {
     expect(body).toContain('HEALTH_READ')
   })
 
-  it('dist/artifacts/.build-plugins.marker records the Wave 5 build', () => {
+  it('imports and registers the compiled hello admin API route', async () => {
+    const routeMod = (await import(pathToFileURL(DIST_HELLO_API_ADMIN_INDEX).href)) as {
+      default?: unknown
+    }
+    expect(typeof routeMod.default).toBe('function')
+
+    const runtimeSdk = (await import(pathToFileURL(DIST_PLUGIN_API_ENTRY).href)) as {
+      registerPlugin: (
+        app: Awaited<ReturnType<typeof Fastify>>,
+        pluginId: string,
+        registerFn: (instance: Awaited<ReturnType<typeof Fastify>>) => Promise<void>,
+      ) => Promise<void>
+    }
+    const gateMod = (await import('../src/core/middleware/plugin-gate.js')) as {
+      registerPluginGate: (app: Awaited<ReturnType<typeof Fastify>>) => void
+      setPluginState: (
+        app: Awaited<ReturnType<typeof Fastify>>,
+        id: string,
+        state: 'enabled',
+      ) => void
+    }
+    const app = Fastify({ logger: false })
+    app.decorate('authenticate', async () => undefined)
+    app.decorate('requirePermission', () => async () => undefined)
+    gateMod.registerPluginGate(app)
+    gateMod.setPluginState(app, 'yishan/hello', 'enabled')
+
+    await runtimeSdk.registerPlugin(app, 'yishan/hello', async (instance) => {
+      await instance.register(routeMod.default as any, {
+        prefix: '/api/plugins/yishan/hello/v1/admin',
+      })
+    })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/plugins/yishan/hello/v1/admin/',
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      success: true,
+      data: { module: 'hello', status: 'ok' },
+    })
+    await app.close()
+  })
+
+  it('dist/artifacts/.build-plugins.marker records the Wave 6 build', () => {
     const marker = join(DIST_ARTIFACTS, '.build-plugins.marker')
     expect(existsSync(marker)).toBe(true)
     const body = JSON.parse(readFileSync(marker, 'utf8')) as { scriptVersion?: string; plugins?: string[] }
-    expect(body.scriptVersion).toBe('wave5')
+    expect(body.scriptVersion).toBe('wave6')
     expect(body.plugins).toContain('yishan/hello')
   })
 

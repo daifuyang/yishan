@@ -19,9 +19,9 @@
 //   0 — clean
 //   1 — violation
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createHash } from 'node:crypto'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -43,7 +43,7 @@ if (!args.artifact) {
   process.exit(1)
 }
 
-const ARTIFACT = args.artifact
+const ARTIFACT = resolve(args.artifact)
 const MANIFEST_PATH = join(ARTIFACT, 'release-manifest.json')
 const CATALOG_PATH = join(ARTIFACT, 'plugin-catalog.json')
 const OPENAPI_PATH = join(ARTIFACT, 'openapi.json')
@@ -138,6 +138,7 @@ function checkCatalogVsManifest(manifest) {
   if (catalog.plugins.length === 0) {
     fail('plugin-catalog.json plugins[] is empty')
   }
+  return catalog
 }
 
 function checkOpenapiChecksum(manifest) {
@@ -209,6 +210,47 @@ function checkTargets(manifest) {
   }
 }
 
+function assertImportable(modulePath, label, expectedType) {
+  if (!existsSync(modulePath)) {
+    fail(`${label} missing at ${modulePath}`)
+  }
+  const moduleUrl = pathToFileURL(modulePath).href
+  const script = [
+    `const mod = await import(${JSON.stringify(moduleUrl)});`,
+    'const exported = mod.default?.default ?? mod.default;',
+    `if (typeof exported !== ${JSON.stringify(expectedType)}) {`,
+    `  throw new Error(${JSON.stringify(`expected default export type ${expectedType}`)} + ', got ' + typeof exported);`,
+    '}',
+  ].join('\n')
+  const result = spawnSync(
+    process.execPath,
+    ['--input-type=module', '--eval', script],
+    { cwd: ARTIFACT, encoding: 'utf8', stdio: 'pipe' },
+  )
+  if (result.status !== 0) {
+    fail(`${label} failed to load: ${(result.stderr || result.stdout || 'unknown import error').trim()}`)
+  }
+}
+
+function checkPluginRuntimeArtifacts(catalog) {
+  for (const entry of catalog.plugins) {
+    const pluginRoot = join(ARTIFACT, 'api', 'plugins', entry.id)
+    assertImportable(
+      join(pluginRoot, 'plugin.js'),
+      `plugin ${entry.id}`,
+      'object',
+    )
+
+    if (entry.id === 'yishan/hello') {
+      assertImportable(
+        join(pluginRoot, 'api', 'routes', 'v1', 'admin', 'index.js'),
+        `plugin ${entry.id} admin API route`,
+        'function',
+      )
+    }
+  }
+}
+
 function rerunProfileValidate(manifest) {
   if (!manifest.profile) return
   const validator = join(ROOT, 'scripts', 'profiles', 'validate.mjs')
@@ -229,11 +271,12 @@ function main() {
     fail(`artifact path does not exist: ${ARTIFACT}`)
   }
   const manifest = checkManifest()
-  checkCatalogVsManifest(manifest)
+  const catalog = checkCatalogVsManifest(manifest)
   checkOpenapiChecksum(manifest)
   checkMigrationPlanChecksum(manifest)
   checkSbom(manifest)
   checkTargets(manifest)
+  checkPluginRuntimeArtifacts(catalog)
   rerunProfileValidate(manifest)
 
   console.log(

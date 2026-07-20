@@ -10,7 +10,6 @@ import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-valid
 import { initGlobalCatalog } from './core/services/permission-catalog.service.js'
 import { getEnabledPluginNames } from './core/plugin-platform/startup-state.js'
 import {
-  pluginGate,
   registerPluginGate,
   setPluginState,
   type PluginRuntimeState,
@@ -338,59 +337,14 @@ const app: FastifyPluginAsync<AppOptions> = async (
     options: { ...opts }
   })
 
-  // Wave 2/4: catalog-driven route mount with ADR-003 pluginGate wrapping.
-  // Each plugin's `plugins/<id>/api/...` tree mounts inside a dedicated
-  // Fastify sub-app whose preHandler is the per-plugin gate. Fastify's
-  // encapsulation keeps the gate isolated per plugin so it cannot leak
-  // across plugin boundaries.
+  // Wave 6: plugins own their runtime registration explicitly. The manifest
+  // registrar mounts routes/services and wraps its public surface with the
+  // plugin gate; core no longer infers runtime behavior by scanning api/.
   for (const item of discoveredManifests) {
-    // Wave 4 note: dev runs (vitest, ts-node) and dist runs share the
-    // same layout offset — `__dirname/../../..` reaches the artifact root
-    // (monorepo in dev, dist in release). Only the file extension differs.
-    const apiDir = join(artifactRoot, 'plugins', item.manifest.id, 'api')
-    const moduleExternalPlugins = join(apiDir, 'plugins/external')
-    const moduleAppPlugins = join(apiDir, 'plugins/app')
-    const moduleRoutes = join(apiDir, 'routes')
-
-    // Manifest `api.prefix` always pins `/api/plugins/<id>/v1` per the SDK
-    // contract — set as the sub-app's own `prefix` so each gate actually
-    // wraps the public surface. The inner AutoLoad walks `routes/...` and
-    // *appends* each path segment to the prefix; with
-    // `plugins/yishan/hello/api/routes/v1/admin/index.ts` the traversal
-    // already inserts `v1/admin`, so the AutoLoad prefix must stop BEFORE
-    // the version segment, otherwise we'd emit
-    // `/api/plugins/yishan/hello/v1/v1/admin/`.
-    const apiPrefix = item.manifest.api?.prefix ?? `/api/plugins/${item.manifest.id}/v1`
-    const fastifyPrefix = apiPrefix
-      .replace(/^\/api\//, '')
-      .replace(/\/v\d+.*$/, '')
-
-    await fastify.register(async (instance) => {
-      // Gate FIRST so it short-circuits before any sub-app route lookup.
-      instance.addHook('preHandler', pluginGate(item.manifest.id))
-      if (existsSync(moduleExternalPlugins)) {
-        await instance.register(AutoLoad, {
-          dir: moduleExternalPlugins,
-          options: { ...opts }
-        })
-      }
-      if (existsSync(moduleAppPlugins)) {
-        // Module schemas/decorators must be registered before their route
-        // tree is loaded; otherwise route $ref validation can run first.
-        await instance.register(AutoLoad, {
-          dir: moduleAppPlugins,
-          options: { ...opts }
-        })
-      }
-      if (existsSync(moduleRoutes)) {
-        await instance.register(AutoLoad, {
-          dir: moduleRoutes,
-          autoHooks: true,
-          cascadeHooks: true,
-          options: { ...opts, prefix: fastifyPrefix }
-        })
-      }
-    })
+    if (typeof item.manifest.register !== 'function') {
+      throw new Error(`plugin ${item.manifest.id} manifest missing register(app)`)
+    }
+    await fastify.register(item.manifest.register)
   }
 
   // This loads all plugins defined in core/routes

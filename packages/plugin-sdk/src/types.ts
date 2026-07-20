@@ -9,6 +9,8 @@
  * See specs/baseline-v2/decisions/ADR-002-plugin-sdk.md and PLUGIN_CONTRACT.md.
  */
 
+import type { FastifyInstance } from 'fastify'
+
 export type PluginKind = 'sample' | 'production'
 
 export interface PluginPermission {
@@ -57,6 +59,12 @@ export interface PluginManifest {
   app?: PluginAppConfig
   migrations?: string               // relative path
   seed?: string                     // relative path
+  /**
+   * Optional explicit register function. Plugins that don't provide one
+   * fall back to catalog-driven AutoLoad (Wave 5). Plugins with one take
+   * full ownership of how their routes/services mount.
+   */
+  register?: (app: FastifyInstance) => Promise<void> | void
   // —— legacy 字段（Wave 4 完全删除）——
   /** @deprecated derive from id; will be removed in Wave 4 */
   channels?: string[]
