@@ -72,6 +72,60 @@ function validateSdkManifest(manifest: unknown): SdkValidationIssue[] {
 interface CatalogEntry { id: string; kind?: 'sample' | 'production' }
 interface CatalogShape { plugins: CatalogEntry[] }
 
+/**
+ * Wave 5: resolve runtime paths from `__dirname` so dev and dist boot
+ * agree on where the catalog and plugin trees live.
+ *
+ * Dev mode (vitest, ts-node):
+ *   __dirname = <repo>/apps/yishan-api/src
+ *     → artifactRoot = <repo>  (three levels up)
+ *     → catalogPath  = <repo>/artifacts/plugin-catalog.json
+ *     → pluginBase   = <repo>/plugins/<id>/{plugin.ts, api/, admin/}
+ *
+ * Dist mode (production `node dist/app.js`):
+ *   __dirname = <repo>/apps/yishan-api/dist
+ *     → artifactRoot = <repo>/apps/yishan-api/dist
+ *     → catalogPath  = <repo>/apps/yishan-api/dist/artifacts/plugin-catalog.json
+ *     → pluginBase   = <repo>/apps/yishan-api/dist/plugins/<id>/{plugin.js, api/, admin/}
+ *
+ * Detection logic:
+ *   1. normDir ends with `/dist` or `/dist/` → definitely dist mode.
+ *   2. normDir contains `/dist/` (e.g. some workspaces land in
+ *      `<pkg>/dist/src/`) → also dist mode.
+ *   3. Adjacent compiled `app.js` exists in __dirname → still dist mode
+ *      (covers edge cases where rootDir is somewhere unexpected).
+ *   4. Anything else → dev mode.
+ *
+ * The function is exported so the dist-boot integration test can call
+ * it directly to assert the resolution without booting fastify.
+ */
+export interface RuntimePaths {
+  isDist: boolean
+  artifactRoot: string
+  catalogPath: string
+  pluginBasePath: string
+  appEntryPath: string
+}
+
+export function resolveRuntimePaths(dirname: string): RuntimePaths {
+  const normDir = dirname.split(sep).join('/')
+  const looksLikeDistDir =
+    normDir === 'dist' ||
+    normDir.endsWith('/dist') ||
+    normDir.endsWith('/dist/') ||
+    normDir.includes('/dist/')
+  const adjacentAppJs = existsSync(join(dirname, 'app.js'))
+  const isDist = looksLikeDistDir || adjacentAppJs
+  const artifactRoot = isDist ? dirname : join(dirname, '..', '..', '..')
+  return {
+    isDist,
+    artifactRoot,
+    catalogPath: join(artifactRoot, 'artifacts', 'plugin-catalog.json'),
+    pluginBasePath: join(artifactRoot, 'plugins'),
+    appEntryPath: join(dirname, 'app.js'),
+  }
+}
+
 export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {
 
 }
@@ -117,22 +171,28 @@ const app: FastifyPluginAsync<AppOptions> = async (
   // and is a Wave 5 concern.
   registerPluginGate(fastify)
 
-  // Wave 4: release artifact friendly catalog + plugin resolution.
+  // Wave 5: release artifact friendly catalog + plugin resolution.
   //
   // The flat dist layout (set via tsconfig rootDir: src) lands compiled
   // code at apps/yishan-api/dist/<src-path>.js; artifacts live adjacent
   // at apps/yishan-api/dist/artifacts/plugin-catalog.json and
-  // apps/yishan-api/dist/plugins/<id>/plugin.js (written by the
-  // build-plugins companion script). Dev mode (vitest / ts-node)
+  // apps/yishan-api/dist/plugins/<id>/{plugin.js,api/,admin/} (written
+  // by the build-plugins companion script). Dev mode (vitest / ts-node)
   // lands src files at apps/yishan-api/src/*.ts; the catalog and
   // plugins live at the monorepo root, i.e. ../../../artifacts/...
   // and ../../../plugins/<id>/plugin.ts.
-  const normDir = __dirname.split(sep).join('/')
-  const isDist = normDir.includes('/dist/')
-  const artifactRoot = isDist
-    ? __dirname
-    : join(__dirname, '..', '..', '..')
-  const catalogPath = join(artifactRoot, 'artifacts', 'plugin-catalog.json')
+  //
+  // Wave 5 fix: the previous `__dirname.includes('/dist/')` check
+  // failed when __dirname ended exactly with `/dist` (no trailing
+  // slash), so a compiled dist run sometimes fell through to the dev
+  // branch and tried to import `../../../plugins/<id>/plugin.ts`. We
+  // now use `resolveRuntimePaths` which (a) checks `endsWith('/dist')`
+  // and (b) falls back to the existence of the adjacent compiled
+  // `app.js` (a tell-tale that we are inside a built artifact).
+  const runtime = resolveRuntimePaths(__dirname)
+  const isDist = runtime.isDist
+  const artifactRoot = runtime.artifactRoot
+  const catalogPath = runtime.catalogPath
 
   // Wave 4 fail-fast (PROPOSAL §11 — no silent degradation on catalog
   // bootstrap errors). Previously the catch swallowed missing/invalid

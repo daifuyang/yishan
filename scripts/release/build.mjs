@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/release/build.mjs — Wave 4 release:build entry.
+// scripts/release/build.mjs — Wave 5 release:build entry.
 //
 // Usage:
 //   node scripts/release/build.mjs --profile <name> --version <semver>
@@ -7,28 +7,26 @@
 // Produces a provider-neutral release artifact at
 // `artifacts/release/<profile>/<version>/` per PROPOSAL §6.1:
 //
-//   api/                 (compiled API tree — out of scope for Wave 4)
-//   admin/               (admin static bundle — out of scope, see notes)
-//   app-weapp/, app-h5/  (optional — created only when target present)
-//   docs/                (static docs — out of scope, see notes)
-//   openapi.json         (per-profile OpenAPI excerpt — copied when present)
-//   plugin-catalog.json  (copy of artifacts/plugin-catalog.json)
+//   api/                 compiled API tree from apps/yishan-api/dist/
+//   admin/               admin static bundle from apps/yishan-admin/dist/
+//   app-weapp/, app-h5/  optional, created only when target present
+//   docs/                static docs from apps/yishan-docs/build/
+//   openapi.json         per-profile OpenAPI excerpt
+//   plugin-catalog.json  copy of artifacts/plugin-catalog.json
+//   migration-plan.json  serialized drizzle migration list (or
+//                        placeholder when no DB is available)
+//   sbom.json            file inventory with hashes for the shipped bundle
 //   release-manifest.json
 //
-// Wave 4 scope:
-//   - re-run profile:validate, refuse to build on failures
-//   - write plugin-catalog.json into the artifact
-//   - emit release-manifest.json with git SHA, node/pnpm versions,
-//     profile, plugins[id,version,checksum], openapi checksum (if any),
-//     timestamp
-//
-// The api/ admin/ docs/ subdirectories are intentionally left empty in
-// this Wave — the full FC3 adapter / admin bundling / docusaurus build
-// re-implementations belong to Wave 5 (ADR-007) and Wave 6. The script
-// reserves the layout so downstream adapters can drop their outputs in
-// without restructuring the artifact.
-import { existsSync, mkdirSync, copyFileSync, writeFileSync, readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+// Wave 5 changes from Wave 4:
+//   - api/ and admin/ are no longer empty placeholder dirs — the build
+//     script now copies the real compiled outputs.
+//   - migration-plan.json is always emitted (placeholder if no DB).
+//   - sbom.json is emitted by scanning api/ + plugins/.
+//   - release-manifest.json schema gains `migrationPlanChecksum`,
+//     `sbomChecksum`, and per-target `files` counts.
+import { existsSync, mkdirSync, copyFileSync, writeFileSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { dirname, join, relative, sep } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
@@ -73,15 +71,17 @@ const SOURCE_OPENAPI_ADMIN = join(
   args.profile,
   'openapi.json',
 )
+const API_DIST = join(ROOT, 'apps', 'yishan-api', 'dist')
+const ADMIN_DIST = join(ROOT, 'apps', 'yishan-admin', 'dist')
+const DOCS_BUILD = join(ROOT, 'apps', 'yishan-docs', 'build')
 
 function fail(msg) {
   console.error(`[release:build] FAIL: ${msg}`)
   process.exit(1)
 }
 
-function runStep(label, fn) {
-  console.log(`[release:build] ${label}`)
-  fn()
+function log(msg) {
+  console.log(`[release:build] ${msg}`)
 }
 
 function git(cmd) {
@@ -108,12 +108,128 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'))
 }
 
+function readJsonSafe(path) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+function copyDirRecursive(srcDir, dstDir) {
+  if (!existsSync(srcDir)) return 0
+  const stat = statSync(srcDir)
+  if (!stat.isDirectory()) {
+    fail(`expected directory at ${srcDir}, got ${stat.isFile() ? 'file' : 'other'}`)
+  }
+  let count = 0
+  const stack = [{ src: srcDir, dst: dstDir }]
+  while (stack.length) {
+    const { src, dst } = stack.pop()
+    mkdirSync(dst, { recursive: true })
+    for (const entry of readdirSync(src, { withFileTypes: true })) {
+      const s = join(src, entry.name)
+      const d = join(dst, entry.name)
+      if (entry.isDirectory()) stack.push({ src: s, dst: d })
+      else if (entry.isFile()) {
+        copyFileSync(s, d)
+        count += 1
+      }
+    }
+  }
+  return count
+}
+
+function collectSbom(roots) {
+  // Inventory every .js/.ts/.json file under each root, with sha256 and
+  // byte size. The artifact self-test (validate.mjs) recomputes this
+  // and refuses to ship if drift is detected.
+  const files = []
+  for (const root of roots) {
+    if (!existsSync(root)) continue
+    const stat = statSync(root)
+    if (!stat.isDirectory()) continue
+    const stack = [root]
+    while (stack.length) {
+      const dir = stack.pop()
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          stack.push(full)
+          continue
+        }
+        if (!entry.isFile()) continue
+        if (!/\.(js|ts|json|sql)$/.test(entry.name)) continue
+        const data = readFileSync(full)
+        files.push({
+          path: relative(ARTIFACT_ROOT, full).split(sep).join('/'),
+          size: data.length,
+          sha256: createHash('sha256').update(data).digest('hex'),
+        })
+      }
+    }
+  }
+  files.sort((a, b) => a.path.localeCompare(b.path))
+  return files
+}
+
+/**
+ * Run the migration-plan collector. We use Node's
+ * `--experimental-strip-types` because the API package's TS source
+ * already lives at `src/scripts/migration-plan.ts` and there's no
+ * precompiled JS for this helper. On environments without strip-types
+ * we fall back to a placeholder.
+ */
+function buildMigrationPlan() {
+  const scriptPath = join(API_DIST, '..', 'src', 'scripts', 'migration-plan.ts')
+  if (!existsSync(scriptPath)) {
+    return {
+      generated: false,
+      note: 'migration-plan collector not found; placeholder emitted',
+      schema: 'core',
+      migrations: [],
+    }
+  }
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      '--no-warnings=ExperimentalWarning',
+      '-e',
+      `import('${scriptPath}').then(m => { try { const plan = m.collectMigrationPlan('${ROOT}'); console.log(JSON.stringify({ ok: true, migrations: plan.map(e => ({ id: e.id, path: e.path })) })); } catch (e) { console.log(JSON.stringify({ ok: false, error: e.message })); } });`,
+    ],
+    { cwd: ROOT, encoding: 'utf8' },
+  )
+  if (result.status !== 0 || !result.stdout) {
+    return {
+      generated: false,
+      note: 'requires DB / Node >= 22.6 with --experimental-strip-types',
+      schema: 'core',
+      migrations: [],
+      error: result.stderr || result.stdout || 'unknown',
+    }
+  }
+  const parsed = readJsonSafe(result.stdout.trim())
+  if (!parsed?.ok) {
+    return {
+      generated: false,
+      note: parsed?.error ?? 'collector failed',
+      schema: 'core',
+      migrations: [],
+    }
+  }
+  return {
+    generated: true,
+    schema: 'core',
+    migrations: parsed.migrations,
+  }
+}
+
 function loadPluginChecksums(catalog) {
-  // We do not checksum the plugin bundle here yet — the artifact contains
-  // plugin-catalog.json only, and plugin sources are bundled into the api/
-  // tree by `scripts/build-plugins.mjs`. Until api/ is wired up in
-  // Wave 5, the checksum of the plugin source file + manifest id serves
-  // as a fingerprint.
+  // For each plugin in the catalog, sha256 its plugin.ts (the source
+  // the SDK validator loads). The artifact's `dist/plugins/<id>/plugin.js`
+  // is the compiled twin — its hash will be captured by sbom.json so
+  // downstream consumers can correlate build inputs and outputs.
   const items = []
   for (const entry of catalog.plugins ?? []) {
     const tsPath = join(ROOT, 'plugins', entry.id, 'plugin.ts')
@@ -124,6 +240,27 @@ function loadPluginChecksums(catalog) {
     items.push({ id: entry.id, kind: entry.kind ?? 'production', sourceChecksum: hash })
   }
   return items
+}
+
+function ensureDir(p) {
+  mkdirSync(p, { recursive: true })
+}
+
+function countFiles(dir) {
+  if (!existsSync(dir)) return 0
+  const stat = statSync(dir)
+  if (!stat.isDirectory()) return 0
+  let count = 0
+  const stack = [dir]
+  while (stack.length) {
+    const d = stack.pop()
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      const full = join(d, entry.name)
+      if (entry.isDirectory()) stack.push(full)
+      else if (entry.isFile()) count += 1
+    }
+  }
+  return count
 }
 
 function main() {
@@ -146,47 +283,101 @@ function main() {
   const catalog = readJson(SOURCE_CATALOG)
 
   // 3. Lay out the artifact directory.
-  runStep(`creating ${ARTIFACT_ROOT}`, () => {
-    mkdirSync(join(ARTIFACT_ROOT, 'api'), { recursive: true })
-    mkdirSync(join(ARTIFACT_ROOT, 'admin'), { recursive: true })
-    mkdirSync(join(ARTIFACT_ROOT, 'docs'), { recursive: true })
-    // app-weapp/, app-h5/ created only when explicitly listed in targets.
-    for (const target of catalog.targets ?? []) {
-      if (target === 'app-weapp' || target === 'app-h5') {
-        mkdirSync(join(ARTIFACT_ROOT, target), { recursive: true })
-      }
+  log(`creating ${ARTIFACT_ROOT}`)
+  ensureDir(join(ARTIFACT_ROOT, 'api'))
+  ensureDir(join(ARTIFACT_ROOT, 'admin'))
+  ensureDir(join(ARTIFACT_ROOT, 'docs'))
+  for (const target of catalog.targets ?? []) {
+    if (target === 'app-weapp' || target === 'app-h5') {
+      ensureDir(join(ARTIFACT_ROOT, target))
     }
-  })
-
-  // 4. Copy plugin-catalog.json.
-  runStep('copying plugin-catalog.json', () => {
-    copyFileSync(SOURCE_CATALOG, join(ARTIFACT_ROOT, 'plugin-catalog.json'))
-  })
-
-  // 5. Copy OpenAPI if present (Wave 4: best-effort; gated by file
-  // existence).
-  let openapiChecksum = null
-  if (existsSync(SOURCE_OPENAPI)) {
-    runStep('copying openapi.json (API)', () => {
-      copyFileSync(SOURCE_OPENAPI, join(ARTIFACT_ROOT, 'openapi.json'))
-    })
-    openapiChecksum = sha256(readFileSync(SOURCE_OPENAPI, 'utf8'))
-  } else if (existsSync(SOURCE_OPENAPI_ADMIN)) {
-    runStep('copying openapi.json (admin)', () => {
-      copyFileSync(SOURCE_OPENAPI_ADMIN, join(ARTIFACT_ROOT, 'openapi.json'))
-    })
-    openapiChecksum = sha256(readFileSync(SOURCE_OPENAPI_ADMIN, 'utf8'))
-  } else {
-    console.log('[release:build] openapi.json not found, skipping (Wave 4)')
   }
 
-  // 6. Compute per-plugin checksums.
+  // 4. Copy plugin-catalog.json.
+  log('copying plugin-catalog.json')
+  copyFileSync(SOURCE_CATALOG, join(ARTIFACT_ROOT, 'plugin-catalog.json'))
+
+  // 5. Copy OpenAPI if present.
+  let openapiChecksum = null
+  if (existsSync(SOURCE_OPENAPI)) {
+    log('copying openapi.json (API)')
+    copyFileSync(SOURCE_OPENAPI, join(ARTIFACT_ROOT, 'openapi.json'))
+    openapiChecksum = sha256(readFileSync(SOURCE_OPENAPI, 'utf8'))
+  } else if (existsSync(SOURCE_OPENAPI_ADMIN)) {
+    log('copying openapi.json (admin)')
+    copyFileSync(SOURCE_OPENAPI_ADMIN, join(ARTIFACT_ROOT, 'openapi.json'))
+    openapiChecksum = sha256(readFileSync(SOURCE_OPENAPI_ADMIN, 'utf8'))
+  } else {
+    log('openapi.json not found, skipping (will fail-fast in validate)')
+  }
+
+  // 6. Copy api/ tree from the built dist (apps/yishan-api/dist/).
+  let apiFiles = 0
+  if (existsSync(API_DIST)) {
+    apiFiles = copyDirRecursive(API_DIST, join(ARTIFACT_ROOT, 'api'))
+    log(`copied api/ from ${API_DIST}: ${apiFiles} file(s)`)
+  } else {
+    log('WARN: apps/yishan-api/dist not found — api/ left empty')
+  }
+  if (apiFiles === 0) {
+    fail(`api/ tree is empty; refusing to ship a release artifact without compiled API (run pnpm --filter yishan-api build:ts first)`)
+  }
+
+  // 7. Copy admin/ tree from the built dist (apps/yishan-admin/dist/).
+  let adminFiles = 0
+  if (existsSync(ADMIN_DIST)) {
+    adminFiles = copyDirRecursive(ADMIN_DIST, join(ARTIFACT_ROOT, 'admin'))
+    log(`copied admin/ from ${ADMIN_DIST}: ${adminFiles} file(s)`)
+  } else {
+    log('WARN: apps/yishan-admin/dist not found — admin/ left empty')
+  }
+  if (adminFiles === 0) {
+    fail(`admin/ tree is empty; refusing to ship a release artifact without compiled admin (run pnpm --filter yishan-admin build first)`)
+  }
+
+  // 8. Copy docs/ tree (best-effort — Docusaurus build may not exist on CI yet).
+  let docsFiles = 0
+  if (existsSync(DOCS_BUILD)) {
+    docsFiles = copyDirRecursive(DOCS_BUILD, join(ARTIFACT_ROOT, 'docs'))
+    log(`copied docs/ from ${DOCS_BUILD}: ${docsFiles} file(s)`)
+  } else {
+    log('WARN: apps/yishan-docs/build not found — docs/ left empty (best-effort)')
+  }
+
+  // 9. Emit migration-plan.json. Uses a placeholder when the DB / TS
+  // strip-types environment is unavailable.
+  const migrationPlan = buildMigrationPlan()
+  const migrationPlanPath = join(ARTIFACT_ROOT, 'migration-plan.json')
+  writeFileSync(migrationPlanPath, JSON.stringify(migrationPlan, null, 2))
+  const migrationPlanChecksum = sha256(readFileSync(migrationPlanPath, 'utf8'))
+  log(`wrote migration-plan.json (${migrationPlan.migrations.length} migration(s); generated=${migrationPlan.generated})`)
+
+  // 10. Emit sbom.json by walking api/ + plugins/.
+  const sbomFiles = collectSbom([
+    join(ARTIFACT_ROOT, 'api'),
+    join(ARTIFACT_ROOT, 'plugins'),
+  ])
+  const sbom = {
+    schema: 'yishan.sbom',
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    profile: args.profile,
+    version: args.version,
+    fileCount: sbomFiles.length,
+    files: sbomFiles,
+  }
+  const sbomPath = join(ARTIFACT_ROOT, 'sbom.json')
+  writeFileSync(sbomPath, JSON.stringify(sbom, null, 2))
+  const sbomChecksum = sha256(readFileSync(sbomPath, 'utf8'))
+  log(`wrote sbom.json (${sbom.fileCount} file(s))`)
+
+  // 11. Per-plugin checksums (input fingerprint).
   const pluginItems = loadPluginChecksums(catalog)
 
-  // 7. Write release-manifest.json.
+  // 12. Write release-manifest.json.
   const manifest = {
     schema: 'yishan.release-manifest',
-    schemaVersion: 1,
+    schemaVersion: 2,
     profile: args.profile,
     version: args.version,
     generatedAt: new Date().toISOString(),
@@ -204,15 +395,31 @@ function main() {
       present: openapiChecksum !== null,
       checksum: openapiChecksum,
     },
+    migrationPlan: {
+      present: true,
+      generated: migrationPlan.generated,
+      checksum: migrationPlanChecksum,
+      count: migrationPlan.migrations.length,
+    },
+    sbom: {
+      present: true,
+      checksum: sbomChecksum,
+      fileCount: sbom.fileCount,
+    },
     targets: catalog.targets ?? [],
+    fileCounts: {
+      api: apiFiles,
+      admin: adminFiles,
+      docs: docsFiles,
+    },
   }
   writeFileSync(
     join(ARTIFACT_ROOT, 'release-manifest.json'),
     JSON.stringify(manifest, null, 2),
   )
 
-  console.log(
-    `[release:build] PASS artifact at ${ARTIFACT_ROOT} (${pluginItems.length} plugin(s))`,
+  log(
+    `[release:build] PASS artifact at ${ARTIFACT_ROOT} (${pluginItems.length} plugin(s), api=${apiFiles} admin=${adminFiles} docs=${docsFiles})`,
   )
 }
 
