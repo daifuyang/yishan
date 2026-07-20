@@ -15,6 +15,7 @@
     "clean:dist": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "build:ts": "npm run clean:dist && tsc && tsc-alias && node ../../scripts/build-plugins.mjs",
     "_build_ts_note": "tsc resolves via yishan-api's devDep typescript (see scripts/build-plugins.mjs)",
+    "_verify_dist_runtime_note": "dist/plugins/<id>/plugin.js + api/**/*.js must be ESM-executable; release:validate imports them",
     "_profile_branch_note": "scripts/profiles/validate-branch.mjs honors YISHAN_PROFILE env override for CI",
     "watch:ts": "concurrently -k \"tsc -w\" \"tsc-alias -w\"",
     "dev": "NODE_ENV=development npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
