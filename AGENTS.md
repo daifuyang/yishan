@@ -63,6 +63,8 @@ pnpm verify -- --profile core
 - 跳过 catalog / openapi / admin route 任一生成检查
 - 把环境专属云账号、地域、bucket、ARN 或 secret 名称作为基座默认值
 - 在根规范文档中写"具体业务插件清单"或"账户/地域"
+- **手动修改 `apps/yishan-admin/src/services/generated/` 下的任何文件**（含 `*.ts` 与 `typings.d.ts`）。这些文件由 `pnpm --filter yishan-admin openapi` 从 `apps/yishan-api/openapi.json` 自动生成；需要变更时改 API 路由的 TypeBox schema 或 `apps/yishan-admin/config/config.ts` 的 openAPI 插件配置，再跑 `pnpm openapi:check` 让生成物落地。
+- **手写代码直接依赖 generated `API.*` ambient namespace**（如 `API.currentUser`、`API.sysAttachment`、`API.menuTreeList`）。Admin 业务代码应只 import `@yishan/plugin-api` 等基座包暴露的稳定类型，或通过 admin-sdk 包封装 generated types 后再消费——避免 openapi 字段增减导致手写代码大面积连锁报错。
 
 ## 7. 变更类型 → 测试命令映射
 
