@@ -114,9 +114,9 @@ describe.runIf(!ctx.skip)("integration: PAT lifecycle", () => {
     expect(found).toBeNull();
   });
 
-  it.runIf(!ctx.skip)("findByRawToken 拒绝已过期的 token（数据库时钟边界）", async () => {
-    // 创建一个刚好过期的 token（1ms 前到期）
-    const pastDate = new Date(Date.now() - 1);
+  it.runIf(!ctx.skip)("findByRawToken 拒绝已过期的 token（过期 5 秒）", async () => {
+    // 已过期 5 秒 —— 远大于 Node/MySQL 时钟误差与 DATETIME 秒级精度，结果确定为已过期。
+    const pastDate = new Date(Date.now() - 5000);
     const created = await ApiTokenRepository.create({
       userId: TEST_USER_ID,
       name: "expired-token",
@@ -241,28 +241,20 @@ describe.runIf(!ctx.skip)("integration: PAT lifecycle", () => {
   });
 
   // ============================================================================
-  // Expiry time boundary (clock drift simulation)
+  // Expiry time boundary
+  //
+  // findByRawToken filters `expiresAt > now` (see api-token.repository.ts), and
+  // the column is second-precision, so a sub-second (1ms) boundary is inherently
+  // racy and NOT a real business contract. These assert the actual contract —
+  // expired → not found, not-yet-expired → found — using intervals comfortably
+  // larger than any clock skew, so they are deterministic. (An exact-boundary
+  // assertion would require an injectable / DB-controlled clock, which this
+  // repository does not expose.)
   // ============================================================================
 
-  it.runIf(!ctx.skip)("findByRawToken 精确处理过期边界（1ms 误差）", async () => {
-    // 当前时间 - 1ms 到期
-    const justExpired = new Date(Date.now() - 1);
-    const created = await ApiTokenRepository.create({
-      userId: TEST_USER_ID,
-      name: "just-expired",
-      expiresAt: justExpired,
-      scopes: [],
-    });
-    // 数据库可能因时钟精度略有过期判断差异，测试结果取决于 DB 时钟
-    const found = await ApiTokenRepository.findByRawToken(created.raw);
-    // 1ms 过期理论上应该返回 null，但允许实现上的 ±1ms 误差
-    // 如果返回了记录，说明还没过期的边缘情况，这是可接受的
-    expect(found === null || found.id === created.id).toBe(true);
-  });
-
-  it.runIf(!ctx.skip)("findByRawToken 接受 1ms 后到期的 token（未过期）", async () => {
-    // 当前时间 + 1ms 到期
-    const notYetExpired = new Date(Date.now() + 1);
+  it.runIf(!ctx.skip)("findByRawToken 接受未过期的 token（60 秒后到期）", async () => {
+    // 60 秒后到期 —— 远大于任何时钟误差，结果确定为未过期。
+    const notYetExpired = new Date(Date.now() + 60_000);
     const created = await ApiTokenRepository.create({
       userId: TEST_USER_ID,
       name: "not-yet-expired",
@@ -270,8 +262,6 @@ describe.runIf(!ctx.skip)("integration: PAT lifecycle", () => {
       scopes: [],
     });
     const found = await ApiTokenRepository.findByRawToken(created.raw);
-    // 1ms 后过期，数据库应该认为还未过期
-    // 注意：取决于 MySQL 服务器时钟与 Node.js 时钟的同步
     expect(found !== null).toBe(true);
   });
 });
