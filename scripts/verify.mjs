@@ -149,6 +149,8 @@ function withEphemeralDb(label, fn) {
     const env = {
       ...process.env,
       DATABASE_URL: `mysql://root:${rootPw}@127.0.0.1:${hostPort}/${db}`,
+      // Mark this DB as an ephemeral throwaway so migrate:verify-apply will run.
+      YISHAN_EPHEMERAL_DB: '1',
     }
     return fn(env)
   } finally {
@@ -158,34 +160,37 @@ function withEphemeralDb(label, fn) {
   }
 }
 
-// Run fn with a database: prefer an already-configured DATABASE_URL, otherwise
-// provision an ephemeral one via Docker. Never silently skips.
-function requireDbThen(label, fn) {
-  if (process.env.DATABASE_URL || process.env.DATABASE_HOST) {
+// Run fn with an EPHEMERAL database. To avoid ever writing DDL / test data to
+// an unmanaged database, verify only uses the caller's DATABASE_URL when they
+// explicitly assert it is a throwaway (YISHAN_EPHEMERAL_DB=1); otherwise it
+// provisions a fresh Docker MySQL. Never silently skips.
+function withVerifiedDb(label, fn) {
+  if (process.env.YISHAN_EPHEMERAL_DB === '1' && (process.env.DATABASE_URL || process.env.DATABASE_HOST)) {
     return fn({ ...process.env })
   }
   if (!dockerAvailable()) {
     fail(
-      `${label} requires a database: set DATABASE_URL, or make Docker available so an ephemeral ` +
-        'database can be provisioned. Refusing to skip.',
+      `${label} needs an ephemeral database: set YISHAN_EPHEMERAL_DB=1 with a throwaway DATABASE_URL, ` +
+        'or make Docker available so one can be provisioned. Refusing to touch an unmanaged database.',
     )
   }
   return withEphemeralDb(label, fn)
 }
 
-function migrationDryRun() {
-  requireDbThen('migration dry-run', (env) => {
-    run('migrate:dry-run', process.execPath, [join(ROOT, 'scripts', 'migrate', 'dry-run.mjs')], { env })
+function migrationVerify() {
+  // Applies migrations for real, but only ever against an ephemeral DB.
+  withVerifiedDb('migration verify-apply', (env) => {
+    run('migrate:verify-apply', process.execPath, [join(ROOT, 'scripts', 'migrate', 'verify-apply.mjs')], { env })
   })
 }
 
 function integrationTests() {
-  requireDbThen('integration tests', (env) => {
+  withVerifiedDb('integration tests', (env) => {
     // The integration suite gates on YISHAN_RUN_INTEGRATION=1 and reads the
     // connection string from YISHAN_TEST_MYSQL_URL (see test/integration/_setup.ts).
     const url = env.DATABASE_URL
     if (!url) {
-      fail('integration tests need a DATABASE_URL; provide one or let Docker provision it')
+      fail('integration tests need a DATABASE_URL; provide a throwaway one or let Docker provision it')
     }
     run('api:test:integration', 'pnpm', ['--filter', 'yishan-api', 'test:integration'], {
       env: { ...env, YISHAN_RUN_INTEGRATION: '1', YISHAN_TEST_MYSQL_URL: url },
@@ -205,13 +210,13 @@ if (SCOPE === 'full') {
   run('profile:validate', process.execPath, [join(ROOT, 'scripts', 'profiles', 'validate.mjs'), '--profile', PROFILE])
 }
 
-// API build precedes the migration dry-run and integration tests, which both
+// API build precedes migration verify-apply and integration tests, which both
 // load compiled output / boot the built app under the selected profile.
 if (SCOPE === 'full' || SCOPE === 'core' || SCOPE === 'integration') {
   run('api:build', 'pnpm', ['--filter', 'yishan-api', 'build:ts'])
 }
 if (SCOPE === 'full') {
-  migrationDryRun()
+  migrationVerify()
 }
 // Integration = plugin integration tests under the selected profile (AGENTS §5:
 // `pnpm verify:integration -- --profile official`).

@@ -26,6 +26,7 @@
     "db:seed": "pnpm --filter yishan-api db:seed",
     "db:reset": "pnpm --filter yishan-api db:reset",
     "migrate:dry-run": "node scripts/migrate/dry-run.mjs",
+    "migrate:verify-apply": "node scripts/migrate/verify-apply.mjs",
     "lint": "pnpm --filter yishan-admin lint && pnpm --filter yishan-docs typecheck && pnpm --filter yishan-app lint",
     "arch:check": "pnpm --filter yishan-api permissions:check && node -e \"const fs=require('fs');const {spawnSync}=require('child_process');const checks=['scripts/arch/check-routes.mjs','scripts/arch/check-manifest.mjs','scripts/arch/check-boundaries.mjs','scripts/arch/check-admin-types.mjs'];for(const file of checks){if(!fs.existsSync(file)){console.log('[arch] '+file+' missing, skipped');continue;}const r=spawnSync(process.execPath,[file],{stdio:'inherit'});if(r.status!==0){process.exit(r.status||1);}}\"",
     "arch:check:routes": "node scripts/arch/check-routes.mjs",
