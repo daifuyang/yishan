@@ -70,7 +70,7 @@ async function loadCatalogPluginRoutes() {
   let catalogRaw;
   try {
     catalogRaw = await fs.readFile(CATALOG_PATH, 'utf8');
-  } catch (error) {
+  } catch {
     console.warn(`[generate-plugin-routes] catalog missing at ${CATALOG_PATH}; skipping catalog plugins.`);
     return [];
   }

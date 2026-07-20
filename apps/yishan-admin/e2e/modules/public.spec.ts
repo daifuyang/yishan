@@ -4,7 +4,7 @@
  * 公开页（不需要 auth）。目前只测登录页本身的渲染。
  */
 
-import { test, expect, type Cookie } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { buildLocaleInitScript } from '../helpers/auth';
 
 test.describe('模块 / 公开页', () => {

@@ -98,7 +98,7 @@ test.describe('模块 / 账户 - API Token CRUD', () => {
     await page.getByRole('button', { name: /新建 Token/ }).click();
 
     // 2. 等 scopes 加载完 + 模态打开
-    const [, scopesResp] = await Promise.all([
+    await Promise.all([
       page.waitForResponse(
         (r) =>
           r.url().includes('/api/v1/me/api-tokens/available-scopes') &&
