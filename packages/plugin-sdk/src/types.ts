@@ -9,7 +9,7 @@
  * See specs/baseline-v2/decisions/ADR-002-plugin-sdk.md and PLUGIN_CONTRACT.md.
  */
 
-import type { FastifyInstance } from 'fastify'
+import type { FastifyPluginAsync } from 'fastify'
 
 export type PluginKind = 'sample' | 'production'
 
@@ -30,6 +30,13 @@ export interface PluginMenuItem {
 
 export interface PluginApiConfig {
   prefix: string  // e.g. /api/plugins/yishan/hello/v1
+  /**
+   * The plugin's runtime entry. Core awaits this, takes the default export
+   * (a Fastify plugin), and mounts it under `prefix` inside the Core-owned
+   * plugin gate. The plugin never wires the gate itself — see
+   * PLUGIN_CONTRACT.md §9 and ADR-003.
+   */
+  register: () => Promise<{ default: FastifyPluginAsync }>
 }
 
 export interface PluginDatabaseConfig {
@@ -52,19 +59,13 @@ export interface PluginManifest {
   // —— SDK-native fields（与 plugin-platform legacy 兼容）——
   name?: string                     // 默认从 id 末段派生；plugin-platform 旧 runtime 需要
   database?: PluginDatabaseConfig
-  api?: PluginApiConfig
+  api: PluginApiConfig              // required: the plugin's runtime entry + prefix
   permissions: PluginPermission[]
   menus: PluginMenuItem[]
   admin?: PluginAdminConfig
   app?: PluginAppConfig
   migrations?: string               // relative path
   seed?: string                     // relative path
-  /**
-   * Optional explicit register function. Plugins that don't provide one
-   * fall back to catalog-driven AutoLoad (Wave 5). Plugins with one take
-   * full ownership of how their routes/services mount.
-   */
-  register?: (app: FastifyInstance) => Promise<void> | void
   // —— legacy 字段（Wave 4 完全删除）——
   /** @deprecated derive from id; will be removed in Wave 4 */
   channels?: string[]

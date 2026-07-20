@@ -21,14 +21,21 @@ export function validateManifest(manifest: PluginManifest): ValidationIssue[] {
   if (!Array.isArray(manifest.permissions)) push('permissions', 'must be an array')
   if (!Array.isArray(manifest.menus)) push('menus', 'must be an array')
 
-  const apiPrefix = manifest.api?.prefix
-  if (apiPrefix !== undefined && !apiPrefix.startsWith('/api/')) {
+  const api = manifest.api
+  if (!api || typeof api !== 'object') {
+    push('api', 'must be an object with prefix and register')
+    return issues
+  }
+  const apiPrefix = api.prefix
+  if (typeof apiPrefix !== 'string' || !apiPrefix.startsWith('/api/')) {
     push('api.prefix', 'must start with /api/')
   }
-
   const expectedPrefix = `/api/plugins/${manifest.id}/v1`
   if (apiPrefix && apiPrefix !== expectedPrefix) {
     push('api.prefix', `must equal ${expectedPrefix} (derived from id)`)
+  }
+  if (typeof api.register !== 'function') {
+    push('api.register', 'must be a function returning Promise<{ default: FastifyPluginAsync }>')
   }
 
   return issues

@@ -9,11 +9,8 @@ import { PluginMenuSyncService } from './core/services/plugin-menu-sync.service.
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
 import { initGlobalCatalog } from './core/services/permission-catalog.service.js'
 import { getEnabledPluginNames } from './core/plugin-platform/startup-state.js'
-import {
-  registerPluginGate,
-  setPluginState,
-  type PluginRuntimeState,
-} from './core/middleware/plugin-gate.js'
+import { registerPluginGate, setPluginState, type PluginRuntimeState } from './core/middleware/plugin-gate.js'
+import { registerPlugin } from '@yishan/plugin-api'
 
 // Wave 4 SDK validation is intentionally kept inline (rather than
 // imported from packages/plugin-sdk) for two reasons:
@@ -34,7 +31,7 @@ function validateSdkManifest(manifest: unknown): SdkValidationIssue[] {
   const issues: SdkValidationIssue[] = []
   const m = manifest as Partial<{
     id: string; version: string; coreVersion: string
-    permissions: unknown; menus: unknown; api: { prefix?: string }
+    permissions: unknown; menus: unknown; api: { prefix?: string; register?: unknown }
   }>
   const PLUGIN_ID_RE = /^[\w-]+\/[\w-]+$/
   const SEMVER_RE = /^\d+\.\d+\.\d+/
@@ -54,16 +51,21 @@ function validateSdkManifest(manifest: unknown): SdkValidationIssue[] {
   if (!Array.isArray(m.menus)) {
     issues.push({ field: 'menus', message: 'must be an array' })
   }
-  const apiPrefix = m.api?.prefix
-  if (apiPrefix !== undefined) {
-    if (typeof apiPrefix !== 'string' || !apiPrefix.startsWith('/api/')) {
-      issues.push({ field: 'api.prefix', message: 'must start with /api/' })
-    } else if (typeof m.id === 'string' && apiPrefix !== `/api/plugins/${m.id}/v1`) {
-      issues.push({
-        field: 'api.prefix',
-        message: `must equal /api/plugins/${m.id}/v1 (derived from id)`,
-      })
-    }
+  if (!m.api || typeof m.api !== 'object') {
+    issues.push({ field: 'api', message: 'must be an object with prefix and register' })
+    return issues
+  }
+  const apiPrefix = m.api.prefix
+  if (typeof apiPrefix !== 'string' || !apiPrefix.startsWith('/api/')) {
+    issues.push({ field: 'api.prefix', message: 'must start with /api/' })
+  } else if (typeof m.id === 'string' && apiPrefix !== `/api/plugins/${m.id}/v1`) {
+    issues.push({
+      field: 'api.prefix',
+      message: `must equal /api/plugins/${m.id}/v1 (derived from id)`,
+    })
+  }
+  if (typeof m.api.register !== 'function') {
+    issues.push({ field: 'api.register', message: 'must be a function returning Promise<{ default: FastifyPluginAsync }>' })
   }
   return issues
 }
@@ -337,14 +339,27 @@ const app: FastifyPluginAsync<AppOptions> = async (
     options: { ...opts }
   })
 
-  // Wave 6: plugins own their runtime registration explicitly. The manifest
-  // registrar mounts routes/services and wraps its public surface with the
-  // plugin gate; core no longer infers runtime behavior by scanning api/.
+  // Plugins own their route registration via `api.register`; Core owns the
+  // gate. Core awaits the plugin's api.register(), takes the default export
+  // (a Fastify plugin), and mounts it under api.prefix inside the
+  // Core-owned pluginGate (registerPlugin). A plugin cannot skip the gate:
+  // even a manifest whose register only calls `app.register()` is still
+  // wrapped here. See PLUGIN_CONTRACT.md §9 / ADR-003.
   for (const item of discoveredManifests) {
-    if (typeof item.manifest.register !== 'function') {
-      throw new Error(`plugin ${item.manifest.id} manifest missing register(app)`)
+    const api = item.manifest.api
+    if (!api || typeof api.register !== 'function') {
+      throw new Error(`plugin ${item.manifest.id} manifest missing api.register`)
     }
-    await fastify.register(item.manifest.register)
+    const mod = await api.register()
+    const routes = mod?.default
+    if (typeof routes !== 'function') {
+      throw new Error(
+        `plugin ${item.manifest.id} api.register default export must be a Fastify plugin (function)`,
+      )
+    }
+    await registerPlugin(fastify, item.manifest.id, async (instance) => {
+      await instance.register(routes, { prefix: api.prefix })
+    })
   }
 
   // This loads all plugins defined in core/routes

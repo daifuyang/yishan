@@ -88,17 +88,10 @@ const manifest = definePlugin({
   kind: 'sample',
   api: {
     prefix: '/api/plugins/yishan/hello/v1',
-  },
-  register: async (app) => {
-    const [{ registerPlugin }, { default: helloAdminRoutes }] = await Promise.all([
-      import('@yishan/plugin-api'),
-      import('./api/routes/v1/admin/index.js'),
-    ])
-    await registerPlugin(app, 'yishan/hello', async (instance) => {
-      await instance.register(helloAdminRoutes, {
-        prefix: '/api/plugins/yishan/hello/v1/admin',
-      })
-    })
+    // Core awaits this, takes the default export (a Fastify plugin), and
+    // mounts it under `prefix` inside the Core-owned gate. The plugin does
+    // NOT call registerPlugin/pluginGate itself — Core owns the gate.
+    register: () => import('./api/register.js'),
   },
   database: {
     namespace: 'ys_hello',

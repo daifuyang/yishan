@@ -86,16 +86,22 @@ function validateSdkManifestShape(manifest) {
   if (!Array.isArray(manifest?.menus)) {
     issues.push({ field: 'menus', message: 'must be an array' })
   }
-  const apiPrefix = manifest?.api?.prefix
-  if (apiPrefix !== undefined) {
-    if (!apiPrefix.startsWith('/api/')) {
-      issues.push({ field: 'api.prefix', message: 'must start with /api/' })
-    } else if (id && apiPrefix !== `/api/plugins/${id}/v1`) {
-      issues.push({
-        field: 'api.prefix',
-        message: `must equal /api/plugins/${id}/v1 (derived from id)`,
-      })
-    }
+  const api = manifest?.api
+  if (!api || typeof api !== 'object') {
+    issues.push({ field: 'api', message: 'must be an object with prefix and register' })
+    return issues
+  }
+  const apiPrefix = api.prefix
+  if (typeof apiPrefix !== 'string' || !apiPrefix.startsWith('/api/')) {
+    issues.push({ field: 'api.prefix', message: 'must start with /api/' })
+  } else if (id && apiPrefix !== `/api/plugins/${id}/v1`) {
+    issues.push({
+      field: 'api.prefix',
+      message: `must equal /api/plugins/${id}/v1 (derived from id)`,
+    })
+  }
+  if (typeof api.register !== 'function') {
+    issues.push({ field: 'api.register', message: 'must be a function returning Promise<{ default: FastifyPluginAsync }>' })
   }
   return issues
 }
@@ -119,7 +125,7 @@ async function loadManifest(id) {
       '--experimental-strip-types',
       '--no-warnings=ExperimentalWarning',
       '-e',
-      `import('${tsPath}').then(m => { console.log(JSON.stringify({ok: !!m.default, manifest: m.default ?? null})); }).catch(e => { console.error(e.message); process.exit(1); });`,
+      `import('${tsPath}').then(m => { const d = m.default ?? null; console.log(JSON.stringify({ok: !!d, manifest: d, apiRegisterIsFn: typeof d?.api?.register === 'function'})); }).catch(e => { console.error(e.message); process.exit(1); });`,
     ],
     { cwd: ROOT, encoding: 'utf8' },
   )
@@ -141,6 +147,12 @@ async function loadManifest(id) {
   }
   if (!parsed.ok || !parsed.manifest) {
     throw new Error(`plugin '${id}' did not export a default manifest`)
+  }
+  // JSON.stringify drops functions, so api.register is absent from the
+  // serialized manifest. Re-attach a marker so validateSdkManifestShape can
+  // assert it exists (the actual function was verified in the eval above).
+  if (parsed.apiRegisterIsFn && parsed.manifest.api && typeof parsed.manifest.api === 'object') {
+    parsed.manifest.api.register = () => Promise.resolve({ default: () => {} })
   }
   return parsed.manifest
 }

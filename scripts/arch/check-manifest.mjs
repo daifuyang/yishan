@@ -94,6 +94,31 @@ function parseArray(body) {
   return items;
 }
 
+// Skip a non-container value expression (arrow function, identifier,
+// number, call, etc.) starting at `start`, returning the index of the next
+// top-level comma or end of body. Respects nested (), [], {}, strings,
+// template literals and comments so arrow functions like
+// `() => import('./api/register.js')` are consumed whole.
+function skipExpr(text, start) {
+  let i = start, depth = 0, s = null, T = 0, L = false, B = false;
+  while (i < text.length) {
+    const c = text[i], c2 = text[i + 1];
+    if (L) { if (c === "\n") L = false; i++; continue; }
+    if (B) { if (c === "*" && c2 === "/") { B = false; i += 2; continue; } i++; continue; }
+    if (s) { if (c === "\\") { i += 2; continue; } if (c === s) s = null; i++; continue; }
+    if (T) { if (c === "\\") { i += 2; continue; } if (c === "`") { T--; i++; continue; } if (c === "$" && c2 === "{") { T++; i += 2; continue; } i++; continue; }
+    if (c === "/" && c2 === "/") { L = true; i += 2; continue; }
+    if (c === "/" && c2 === "*") { B = true; i += 2; continue; }
+    if (c === '"' || c === "'") { s = c; i++; continue; }
+    if (c === "`") { T = 1; i++; continue; }
+    if (c === "(" || c === "[" || c === "{") { depth++; i++; continue; }
+    if (c === ")" || c === "]" || c === "}") { depth--; i++; continue; }
+    if (c === "," && depth === 0) return i;
+    i++;
+  }
+  return i;
+}
+
 function parseObject(body) {
   const out = {};
   let i = 0;
@@ -115,7 +140,14 @@ function parseObject(body) {
     } else {
       const sm = STRING_RE.exec(body.slice(i));
       if (sm) { out[key] = { kind: "string", value: sm[2] }; i += sm[0].length; }
-      else i++;
+      else {
+        // Non-container value (arrow function, identifier, number, …).
+        // Record the key's presence and skip its expression so following
+        // keys still parse. Needed so `api.register: () => import(...)` is
+        // seen as present.
+        out[key] = { kind: "expr" };
+        i = skipExpr(body, i);
+      }
     }
   }
   return out;
@@ -226,12 +258,19 @@ function checkManifest(file, obj, out) {
   }
 
   const api = objValue(obj.api);
-  const apiPrefix = api ? s(api.prefix) : null;
-  if (apiPrefix !== undefined && apiPrefix !== null) {
-    if (!apiPrefix.startsWith("/api/")) {
+  if (!api) {
+    push("M7", "api must be an object with prefix and register");
+  } else {
+    const apiPrefix = s(api.prefix);
+    if (!apiPrefix) {
+      push("M7", "api.prefix is required");
+    } else if (!apiPrefix.startsWith("/api/")) {
       push("M7", `api.prefix '${apiPrefix}' must start with /api/`);
     } else if (id && apiPrefix !== `/api/plugins/${id}/v1`) {
       push("M7", `api.prefix '${apiPrefix}' must equal /api/plugins/${id}/v1 (derived from id)`);
+    }
+    if (!api.register) {
+      push("M7", "api.register is required (function returning Promise<{ default: FastifyPluginAsync }>)");
     }
   }
 

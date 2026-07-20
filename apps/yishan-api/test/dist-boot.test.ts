@@ -155,6 +155,61 @@ describe('Wave 5: dist-mode boot integration', () => {
     await app.close()
   })
 
+  it('manifest exposes api.register that yields a Fastify plugin (Core-owned gate contract)', async () => {
+    const mod = (await import(pathToFileURL(DIST_HELLO_PLUGIN).href)) as {
+      default?: { api?: { prefix?: string; register?: () => Promise<{ default?: unknown }> } }
+    }
+    const api = mod.default?.api
+    expect(typeof api?.register).toBe('function')
+    expect(api?.prefix).toBe('/api/plugins/yishan/hello/v1')
+    const routeMod = await api!.register!()
+    expect(typeof routeMod.default).toBe('function')
+  })
+
+  it('Core-owned gate blocks a disabled plugin even though the plugin wires no gate of its own', async () => {
+    // Reproduce the app.ts loader path: take manifest.api.register()'s
+    // default export and mount it via registerPlugin under api.prefix. The
+    // plugin's route module adds NO gate of its own — Core must supply it.
+    // A "naive" (or malicious) plugin that only calls app.register() is
+    // therefore still gated.
+    const manifestMod = (await import(pathToFileURL(DIST_HELLO_PLUGIN).href)) as {
+      default: { id: string; api: { prefix: string; register: () => Promise<{ default: unknown }> } }
+    }
+    const manifest = manifestMod.default
+    const routeMod = await manifest.api.register()
+    const runtimeSdk = (await import(pathToFileURL(DIST_PLUGIN_API_ENTRY).href)) as {
+      registerPlugin: (
+        app: Awaited<ReturnType<typeof Fastify>>,
+        pluginId: string,
+        registerFn: (instance: Awaited<ReturnType<typeof Fastify>>) => Promise<void>,
+      ) => Promise<void>
+    }
+    const gateMod = (await import('../src/core/middleware/plugin-gate.js')) as {
+      registerPluginGate: (app: Awaited<ReturnType<typeof Fastify>>) => void
+      setPluginState: (app: Awaited<ReturnType<typeof Fastify>>, id: string, s: string) => void
+      PLUGIN_DISABLED: string
+    }
+    const app = Fastify({ logger: false })
+    app.decorate('authenticate', async () => undefined)
+    app.decorate('requirePermission', () => async () => undefined)
+    gateMod.registerPluginGate(app)
+    gateMod.setPluginState(app, manifest.id, 'disabled')
+    await runtimeSdk.registerPlugin(app, manifest.id, async (instance) => {
+      await instance.register(routeMod.default as any, { prefix: manifest.api.prefix })
+    })
+    await app.ready()
+
+    const disabled = await app.inject({ method: 'GET', url: '/api/plugins/yishan/hello/v1/admin/' })
+    expect(disabled.statusCode).toBe(404)
+    expect(disabled.json()).toMatchObject({ success: false, code: gateMod.PLUGIN_DISABLED })
+
+    gateMod.setPluginState(app, manifest.id, 'enabled')
+    const enabled = await app.inject({ method: 'GET', url: '/api/plugins/yishan/hello/v1/admin/' })
+    expect(enabled.statusCode).toBe(200)
+    expect(enabled.json()).toMatchObject({ success: true, data: { module: 'hello', status: 'ok' } })
+    await app.close()
+  })
+
   it('dist/artifacts/.build-plugins.marker records the Wave 6 build', () => {
     const marker = join(DIST_ARTIFACTS, '.build-plugins.marker')
     expect(existsSync(marker)).toBe(true)
