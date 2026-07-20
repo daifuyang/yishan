@@ -71,8 +71,11 @@ jobs:
               echo "profile=official" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "::error::branch '${BRANCH}' does not map to a known profile (expected main or all)"
-              exit 1
+              # Feature / refactor / topic branches fall back to core
+              # with a warning. The strict release-branch mapping is enforced
+              # by `pnpm profile:validate:ci` (called from the next step).
+              echo "::warning::branch '${BRANCH}' is not a release branch; defaulting to core profile for development"
+              echo "profile=core" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
