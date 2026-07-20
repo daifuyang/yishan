@@ -6,6 +6,7 @@ const checks = [
   'scripts/arch/check-routes.mjs',
   'scripts/arch/check-manifest.mjs',
   'scripts/arch/check-boundaries.mjs',
+  'scripts/arch/check-admin-types.mjs',
 ];
 
 for (const file of checks) {

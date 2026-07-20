@@ -19,6 +19,7 @@ import { getAuthorizedMenuTree } from "@/services/generated/sysMenus";
 import { getDictDataMap } from "@/services/generated/sysDictData";
 import type { CloudStorageConfig } from "@/utils/attachmentUpload";
 import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
+import type { AttachmentKind, CurrentUser, MenuTreeList, MenuTreeNode, UploadAttachmentsResp } from "@yishan/admin-sdk";
 import avatarFallback from "@public/icons/avatar.png";
 import queryString from "query-string";
 import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPath";
@@ -69,9 +70,9 @@ function pickIcon(key: string): JSX.Element | undefined {
  * */
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
-  currentUser?: API.currentUser;
+  currentUser?: CurrentUser;
   loading?: boolean;
-  fetchUserInfo?: () => Promise<API.currentUser | undefined>;
+  fetchUserInfo?: () => Promise<CurrentUser | undefined>;
   dictDataMap?: Record<string, any>;
   fetchDictDataMap?: () => Promise<Record<string, any> | undefined>;
   cloudStorageConfig?: CloudStorageConfig;
@@ -79,8 +80,8 @@ export async function getInitialState(): Promise<{
   fetchCloudStorageConfig?: (options?: { force?: boolean }) => Promise<CloudStorageConfig>;
   uploadAttachmentFile?: (
     file: File,
-    params: { folderId?: number; kind?: API.sysAttachment["kind"]; name?: string; dir?: string }
-  ) => Promise<API.uploadAttachmentsResp>;
+    params: { folderId?: number; kind?: AttachmentKind; name?: string; dir?: string }
+  ) => Promise<UploadAttachmentsResp>;
 }> {
   const fetchUserInfo = async () => {
     const response = await getCurrentUser();
@@ -142,12 +143,12 @@ export async function getInitialState(): Promise<{
   };
 }
 
-let extraRoutes: API.menuTreeList = [];
+let extraRoutes: MenuTreeList = [];
 const clickableRoutePaths = new Set<string>();
 
-const collectAuthorizedMenuPaths = (nodes: API.menuTreeList = []): string[] => {
+const collectAuthorizedMenuPaths = (nodes: MenuTreeList = []): string[] => {
   const paths: string[] = [];
-  const visit = (items: API.menuTreeList) => {
+  const visit = (items: MenuTreeList) => {
     for (const item of items) {
       if (item.path) paths.push(normalizeRoutePath(item.path));
       if (item.children?.length) visit(item.children);
@@ -163,9 +164,9 @@ const normalizeRoutePath = (path?: string) => {
   return path.endsWith('/') ? path.slice(0, -1) : path;
 };
 
-const transformToMenuData = (nodes: API.menuTreeNode[] = []): MenuDataItem[] => {
+const transformToMenuData = (nodes: MenuTreeNode[] = []): MenuDataItem[] => {
 
-  const toItem = (n: API.menuTreeNode): MenuDataItem => {
+  const toItem = (n: MenuTreeNode): MenuDataItem => {
     const item: MenuDataItem = {
       name: n.name,
       path: n.path || '/',

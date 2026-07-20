@@ -44,8 +44,9 @@ import {
   normalizeAttachmentStoredValue,
   resolveAttachmentPublicUrl,
 } from '@/utils/attachmentUpload';
+import type { Attachment, AttachmentFolder, UploadAttachmentsResp } from '@yishan/admin-sdk';
 
-type AttachmentKind = API.sysAttachment['kind'];
+type AttachmentKind = Attachment['kind'];
 type KindTab = AttachmentKind | 'all';
 type ValueType = 'url' | 'id';
 
@@ -101,7 +102,7 @@ type FolderItem = {
 };
 
 const flattenFolders = (
-  nodes: API.sysAttachmentFolder[] = [],
+  nodes: AttachmentFolder[] = [],
   parentIds: number[] = [],
 ): FolderItem[] => {
   const list: FolderItem[] = [];
@@ -133,7 +134,7 @@ const highlightText = (text: string, keyword: string) => {
 };
 
 const mapTreeTitle = (
-  nodes: API.sysAttachmentFolder[] = [],
+  nodes: AttachmentFolder[] = [],
   keyword: string,
 ): DataNode[] => {
   return nodes.map((n) => ({
@@ -145,12 +146,12 @@ const mapTreeTitle = (
   }));
 };
 
-const resolveAttachmentValue = (a: API.sysAttachment, valueType: ValueType) => {
+const resolveAttachmentValue = (a: Attachment, valueType: ValueType) => {
   if (valueType === 'id') return a.id;
   return a.objectKey || a.path || a.url || '';
 };
 
-const getAttachmentCover = (record: API.sysAttachment, publicUrl: string) => {
+const getAttachmentCover = (record: Attachment, publicUrl: string) => {
   const src = publicUrl;
   if (record.kind === 'image' && src) {
     return <Image src={src} preview={false} />;
@@ -183,7 +184,7 @@ const getAttachmentCover = (record: API.sysAttachment, publicUrl: string) => {
 export type AttachmentLibraryModalProps = {
   open: boolean;
   onCancel: () => void;
-  onSelect: (items: API.sysAttachment[]) => void;
+  onSelect: (items: Attachment[]) => void;
   kind?: KindTab;
   multiple?: boolean;
   valueType: ValueType;
@@ -210,7 +211,7 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
   const { message } = App.useApp();
   const { token } = theme.useToken();
   const { initialState } = useModel('@@initialState');
-  const [folderTree, setFolderTree] = useState<API.sysAttachmentFolder[]>([]);
+  const [folderTree, setFolderTree] = useState<AttachmentFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<number>(
     initialFolderId || 0,
   );
@@ -223,12 +224,12 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
   const [pageSize, setPageSize] = useState(24);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<API.sysAttachment[]>([]);
+  const [data, setData] = useState<Attachment[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(() =>
     initialSelectedValues.map((x) => String(x)),
   );
   const [selectedMap, setSelectedMap] = useState<
-    Record<string, API.sysAttachment>
+    Record<string, Attachment>
   >({});
   const fixedKind = !!(kind && kind !== 'all');
   const [folderSearchValue, setFolderSearchValue] = useState('');
@@ -245,9 +246,9 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   const [gridContainerWidth, setGridContainerWidth] = useState(0);
   const [editingAttachment, setEditingAttachment] =
-    useState<API.sysAttachment>();
+    useState<Attachment>();
   const [deletingAttachment, setDeletingAttachment] =
-    useState<API.sysAttachment>();
+    useState<Attachment>();
   const gridColumns = useMemo(() => {
     const w = gridContainerWidth || 0;
     if (w < 576) return 4;
@@ -456,7 +457,7 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
     }
   };
 
-  const handleDeleteAttachment = async (attachment: API.sysAttachment) => {
+  const handleDeleteAttachment = async (attachment: Attachment) => {
     const res = await deleteAttachment({ id: attachment.id });
     if (!res.success) {
       message.error(res.message || '删除失败');
@@ -539,7 +540,7 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
       onOk={() => {
         const picked = selectedKeys
           .map((k) => selectedMap[k])
-          .filter(Boolean) as API.sysAttachment[];
+          .filter(Boolean) as Attachment[];
         if (picked.length === 0) {
           message.warning('请先选择素材');
           return;
@@ -1152,9 +1153,9 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
         onError?.(new Error(res.message || '上传失败'));
         return;
       }
-      const items = (res.data || []) as API.uploadAttachmentsResp['data'];
+      const items = (res.data || []) as UploadAttachmentsResp['data'];
       const nextValues = items
-        .map((x: API.uploadAttachmentsResp['data'][number]) => {
+        .map((x: UploadAttachmentsResp['data'][number]) => {
           if (valueType === 'id') return x.id || 0;
           return x.path || x.url || '';
         })

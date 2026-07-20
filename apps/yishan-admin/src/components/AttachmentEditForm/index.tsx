@@ -11,16 +11,17 @@ import {
   getAttachmentFolderTree,
   updateAttachment,
 } from '@/services/generated/attachments';
+import type { Attachment, AttachmentFolder } from '@yishan/admin-sdk';
 
 export interface AttachmentEditFormProps {
   title?: string;
   open: boolean;
-  initialValues?: Partial<API.sysAttachment>;
+  initialValues?: Partial<Attachment>;
   onFinish?: () => Promise<void>;
   onOpenChange?: (open: boolean) => void;
 }
 
-const topFolder: API.sysAttachmentFolder = {
+const topFolder: AttachmentFolder = {
   id: 0,
   name: '不选择分组',
   kind: 'all',

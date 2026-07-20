@@ -1,5 +1,6 @@
 import { batchGetSystemOptionByQuery, getQiniuUploadToken } from "@/services/generated/system";
 import { createCloudAttachment, uploadAttachments } from "@/services/generated/attachments";
+import type { Attachment, AttachmentKind, UploadAttachmentsResp } from "@yishan/admin-sdk";
 
 export type StorageProvider = "disabled" | "qiniu" | "aliyunOss";
 
@@ -94,11 +95,11 @@ export const uploadAttachmentFile = async (
   file: File,
   params: {
     folderId?: number;
-    kind?: API.sysAttachment["kind"];
+    kind?: AttachmentKind;
     name?: string;
     dir?: string;
   }
-): Promise<API.uploadAttachmentsResp> => {
+): Promise<UploadAttachmentsResp> => {
   const cfg = await fetchCloudStorageConfig();
   if (cfg.provider === "qiniu") {
     const uploaded = await uploadToQiniu(file, cfg, { dir: params.dir || "attachments" });
@@ -136,7 +137,7 @@ const joinUrl = (base: string, path: string) => {
 };
 
 export const resolveAttachmentPublicUrl = (
-  input: Pick<API.sysAttachment, "url" | "path" | "objectKey" | "storage"> | string | undefined | null,
+  input: Pick<Attachment, "url" | "path" | "objectKey" | "storage"> | string | undefined | null,
   cfg?: CloudStorageConfig
 ) => {
   const raw =
