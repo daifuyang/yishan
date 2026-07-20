@@ -119,6 +119,7 @@ function compilePlugin(id) {
     '--target', 'es2022',
     '--esModuleInterop',
     '--skipLibCheck',
+    '--noImplicitAny', 'false',
   ]
   log(`tsc ${args.join(' ')}`)
   execSync(`pnpm exec tsc ${args.map((arg) => `"${arg.replace(/"/g, '\\"')}"`).join(' ')}`, {
@@ -169,6 +170,7 @@ function compilePluginApi(id) {
           target: 'es2022',
           esModuleInterop: true,
           skipLibCheck: true,
+          noImplicitAny: false,
           outDir: tmpOut,
           rootDir: ROOT,
           declaration: false,
@@ -231,7 +233,12 @@ function main() {
   const pluginIds = listCatalogPluginIds()
   log(`catalog lists ${pluginIds.length} plugin(s): ${pluginIds.join(', ')}`)
 
-  rmSync(DIST_PLUGINS, { recursive: true, force: true })
+  // Only clean tmp build dirs — do NOT wipe DIST_PLUGINS wholesale.
+  // Vitest runs test files in parallel; the release-artifact test and the
+  // dist-boot test both invoke runBuild() concurrently, and a wholesale
+  // DIST_PLUGINS wipe here races with the other worker's mid-build state.
+  // Per-plugin cleanup lives in compilePlugin() / compilePluginApi() and
+  // already guarantees idempotency for the artifacts under each plugin id.
   rmSync(join(DIST_ROOT, '.plugin-build'), { recursive: true, force: true })
   rmSync(join(DIST_ROOT, '.plugin-api-build'), { recursive: true, force: true })
 
