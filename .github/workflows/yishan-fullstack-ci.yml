@@ -30,18 +30,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.1
+          node-version-file: .tool-versions
 
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22.22.1
+          node-version-file: .tool-versions
           cache: pnpm
 
       - name: Install
