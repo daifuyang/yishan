@@ -83,7 +83,25 @@ function validateProfile(profile) {
 }
 
 function main() {
+  // CI workflow sets YISHAN_PROFILE via the 'Determine profile from branch'
+  // step. Honor it as the authoritative source so feature/refactor branches
+  // that fall back to core don't trip the strict branch mapping here.
+  const envProfile = process.env.YISHAN_PROFILE
   const branch = readCurrentBranch()
+
+  if (envProfile) {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[profile:validate:ci] branch=${branch} → profile=${envProfile} (from YISHAN_PROFILE env)`,
+    )
+    validateProfile(envProfile)
+    // eslint-disable-next-line no-console
+    console.log(
+      `[profile:validate:ci] PASS branch=${branch} profile=${envProfile}`,
+    )
+    return
+  }
+
   const profile = profileForBranch(branch)
   // eslint-disable-next-line no-console
   console.log(`[profile:validate:ci] branch=${branch} → profile=${profile}`)
