@@ -208,8 +208,8 @@ const PositionList: React.FC = () => {
         request={async (params) => {
           const { current, pageSize, ...rest } = params;
           const result = await getPositionList({
-            page: Number(current || 1),
-            pageSize: Number(pageSize || 10),
+            page: current || 1,
+            pageSize: pageSize || 10,
             ...rest,
           });
           return {
