@@ -58,32 +58,6 @@ jobs:
       - name: Generate Admin plugin routes
         run: pnpm --filter yishan-admin gen:plugin-routes
 
-      - name: Determine profile from branch
-        id: profile
-        run: |
-          BRANCH="${GITHUB_REF_NAME:-main}"
-          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
-          case "${BRANCH}" in
-            main)
-              echo "profile=core" >> "$GITHUB_OUTPUT"
-              ;;
-            all)
-              echo "profile=official" >> "$GITHUB_OUTPUT"
-              ;;
-            *)
-              # Feature / refactor / topic branches fall back to core
-              # with a warning. The strict release-branch mapping is enforced
-              # by `pnpm profile:validate:ci` (called from the next step).
-              echo "::warning::branch '${BRANCH}' is not a release branch; defaulting to core profile for development"
-              echo "profile=core" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
-
-      - name: Profile validate (branch-derived)
-        env:
-          YISHAN_PROFILE: ${{ steps.profile.outputs.profile }}
-        run: pnpm profile:validate:ci
-
       - name: Admin Setup
         run: pnpm --filter yishan-admin exec max setup
 

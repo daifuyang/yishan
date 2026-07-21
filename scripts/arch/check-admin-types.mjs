@@ -3,7 +3,7 @@
 //
 // Handwritten Admin code must NOT depend on the generated ambient `API.*`
 // namespace (apps/yishan-admin/src/services/generated/typings.d.ts). It should
-// import stable types from `@yishan/admin-sdk` instead, so OpenAPI field churn
+// import stable types from `@/types/sdk` instead, so OpenAPI field churn
 // does not cascade into pages. See AGENTS.md §6 / PROPOSAL P1-3.
 //
 // Migration is incremental and ratcheted by a per-file BASELINE of tolerated
@@ -43,7 +43,6 @@ const BASELINE = {
   'apps/yishan-admin/src/pages/system/login-log/index.tsx': 2,
   'apps/yishan-admin/src/pages/system/menu/components/MenuForm.tsx': 5,
   'apps/yishan-admin/src/pages/system/menu/index.tsx': 7,
-  'apps/yishan-admin/src/pages/system/plugins/index.tsx': 3,
   'apps/yishan-admin/src/pages/system/position/components/PositionForm.tsx': 3,
   'apps/yishan-admin/src/pages/system/position/index.tsx': 2,
   'apps/yishan-admin/src/pages/system/role/components/RoleForm.tsx': 11,
@@ -61,6 +60,9 @@ function* walk(dir) {
     const full = join(dir, entry.name)
     if (entry.isDirectory()) {
       if (entry.name === 'generated' || entry.name.startsWith('.umi') || entry.name === 'node_modules') continue
+      // Skip the stable SDK types directory — it intentionally references
+      // generated `API.*` shapes as a migration shim (see PROPOSAL P1-3).
+      if (full.endsWith(join('src', 'types', 'sdk'))) continue
       yield* walk(full)
     } else if (/\.(ts|tsx)$/.test(entry.name) && !entry.name.endsWith('.d.ts')) {
       yield full
@@ -78,7 +80,7 @@ for (const file of walk(ADMIN_SRC)) {
   if (count === 0) continue
   if (!(rel in BASELINE)) {
     violations.push(
-      `${rel}: ${count} reference(s) to generated API.* — import stable types from @yishan/admin-sdk instead ` +
+      `${rel}: ${count} reference(s) to generated API.* — import stable types from @/types/sdk instead ` +
         `(this file is not in the migration baseline)`,
     )
     continue
@@ -88,7 +90,7 @@ for (const file of walk(ADMIN_SRC)) {
   if (count > allowed) {
     violations.push(
       `${rel}: API.* usage increased ${allowed} → ${count}; do not add new API.* dependencies to a pending page — ` +
-        `migrate it to @yishan/admin-sdk`,
+        `migrate it to @/types/sdk`,
     )
   } else if (count < allowed) {
     warnings.push(`${rel}: API.* usage dropped ${allowed} → ${count}; tighten the baseline to ${count}`)

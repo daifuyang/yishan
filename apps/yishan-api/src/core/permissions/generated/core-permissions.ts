@@ -7,17 +7,16 @@ import p4 from '../../routes/api/v1/admin/positions/permissions.js';
 import p5 from '../../routes/api/v1/admin/roles/permissions.js';
 import p6 from '../../routes/api/v1/admin/system/login-logs/permissions.js';
 import p7 from '../../routes/api/v1/admin/system/options/permissions.js';
-import p8 from '../../routes/api/v1/admin/system/plugins/permissions.js';
-import p9 from '../../routes/api/v1/admin/system/qiniu/permissions.js';
-import p10 from '../../routes/api/v1/admin/system/storage/permissions.js';
-import p11 from '../../routes/api/v1/admin/users/permissions.js';
-import p12 from '../../routes/api/v1/app/dashboard/permissions.js';
-import p13 from '../../routes/api/v1/me/api-tokens/permissions.js';
-import p14 from '../../routes/api/v1/system/permissions.js';
+import p8 from '../../routes/api/v1/admin/system/qiniu/permissions.js';
+import p9 from '../../routes/api/v1/admin/system/storage/permissions.js';
+import p10 from '../../routes/api/v1/admin/users/permissions.js';
+import p11 from '../../routes/api/v1/app/dashboard/permissions.js';
+import p12 from '../../routes/api/v1/me/api-tokens/permissions.js';
+import p13 from '../../routes/api/v1/system/permissions.js';
 
 import type { PermissionRef } from '../define-permissions.js';
 
-const sources = [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14] as const;
+const sources = [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13] as const;
 export const corePermissionDefinitions: readonly PermissionRef[] = Object.freeze(sources.flatMap((source) => Object.values(source)));
 
 const seen = new Set<string>();

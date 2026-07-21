@@ -38,3 +38,10 @@ tmp/
 
 # Generated artifacts (release output, plugin catalog from profiles/*.yaml)
 artifacts/
+apps/yishan-api/openapi.json
+
+# drizzle-kit generated metadata (rebuilt by `db:generate`)
+apps/yishan-api/drizzle/meta/
+
+# Local dev module enable/disable overrides (per-developer, never committed)
+apps/yishan-api/.dev-modules.json

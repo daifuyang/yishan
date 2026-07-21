@@ -8,17 +8,12 @@ export * from './common.js';
 export * from './validation.js';
 export * from './auth.js';
 export * from './user.js';
-export * from './resource.js';
-export * from './business.js';
 export * from './system.js';
 export * from './role.js';
 export * from './dept.js';
 export * from './position.js';
 export * from './menu.js';
 export * from './dict.js';
-export * from './article.js';
-export * from './page.js';
-export * from './template.js';
 export * from './attachment.js';
 
 // 重新导出常用的业务码
@@ -26,17 +21,12 @@ import { SUCCESS_CODE, SystemErrorCode } from './common.js';
 import { ValidationErrorCode } from './validation.js';
 import { AuthErrorCode } from './auth.js';
 import { UserErrorCode } from './user.js';
-import { ResourceErrorCode } from './resource.js';
-import { BusinessErrorCode } from './business.js';
 import { SystemManageErrorCode } from './system.js';
 import { RoleErrorCode } from './role.js';
 import { DeptErrorCode } from './dept.js';
 import { PositionErrorCode } from './position.js';
 import { MenuErrorCode } from './menu.js';
 import { DictErrorCode } from './dict.js';
-import { ArticleErrorCode, CategoryErrorCode } from './article.js';
-import { PageErrorCode } from './page.js';
-import { TemplateErrorCode } from './template.js';
 import { AttachmentErrorCode } from './attachment.js';
 
 // 合并所有错误码
@@ -45,69 +35,53 @@ export const ErrorCode = {
   ...ValidationErrorCode,
   ...AuthErrorCode,
   ...UserErrorCode,
-  ...ResourceErrorCode,
-  ...BusinessErrorCode,
   ...SystemManageErrorCode,
   ...RoleErrorCode,
   ...DeptErrorCode,
   ...PositionErrorCode,
   ...MenuErrorCode,
   ...DictErrorCode,
-  ...ArticleErrorCode,
-  ...CategoryErrorCode,
-  ...PageErrorCode,
-  ...TemplateErrorCode,
   ...AttachmentErrorCode,
-  // 添加一些常用的别名
-  NOT_FOUND: ResourceErrorCode.RESOURCE_NOT_FOUND,
 } as const;
 
 // 导入所有错误消息
-import { 
+import {
   SystemErrorMessages,
-  SystemHttpStatusMap 
+  SystemHttpStatusMap
 } from './common.js';
-import { 
+import {
   ValidationErrorMessages,
-  ValidationHttpStatusMap 
+  ValidationHttpStatusMap
 } from './validation.js';
-import { 
+import {
   AuthErrorMessages,
-  AuthHttpStatusMap 
+  AuthHttpStatusMap
 } from './auth.js';
-import { 
+import {
   UserErrorMessages
 } from './user.js';
-import { 
-  ResourceErrorMessages,
-  ResourceHttpStatusMap 
-} from './resource.js';
-import { 
-  BusinessErrorMessages
-} from './business.js';
-import { 
+import {
   SystemManageErrorMessages,
   SystemManageHttpStatusMap
 } from './system.js';
-import { 
+import {
   RoleErrorMessages
 } from './role.js';
-import { 
+import {
   DeptErrorMessages
 } from './dept.js';
 import {
   PositionErrorMessages
 } from './position.js';
-import { 
+import {
   MenuErrorMessages
 } from './menu.js';
-import { 
+import {
   DictErrorMessages
 } from './dict.js';
-import { ArticleErrorMessages, CategoryErrorMessages } from './article.js';
-import { PageErrorMessages } from './page.js';
-import { TemplateErrorMessages } from './template.js';
-import { AttachmentErrorMessages } from './attachment.js';
+import {
+  AttachmentErrorMessages
+} from './attachment.js';
 
 // 合并所有错误消息
 const ErrorMessages = {
@@ -115,18 +89,12 @@ const ErrorMessages = {
   ...ValidationErrorMessages,
   ...AuthErrorMessages,
   ...UserErrorMessages,
-  ...ResourceErrorMessages,
-  ...BusinessErrorMessages,
   ...SystemManageErrorMessages,
   ...RoleErrorMessages,
   ...DeptErrorMessages,
   ...PositionErrorMessages,
   ...MenuErrorMessages,
   ...DictErrorMessages,
-  ...ArticleErrorMessages,
-  ...CategoryErrorMessages,
-  ...PageErrorMessages,
-  ...TemplateErrorMessages,
   ...AttachmentErrorMessages,
 } as const;
 
@@ -135,7 +103,6 @@ const HttpStatusMap = {
   ...SystemHttpStatusMap,
   ...ValidationHttpStatusMap,
   ...AuthHttpStatusMap,
-  ...ResourceHttpStatusMap,
   ...SystemManageHttpStatusMap,
 } as const;
 
@@ -164,29 +131,21 @@ export class BusinessCode {
     if (mappedStatus !== undefined) {
       return mappedStatus;
     }
-    
-    // 根据业务码范围确定默认状态码
+
     if (code === SUCCESS_CODE) return 200;
-    
+
     // 系统错误 (20xxx) - 服务器内部错误
     if (code >= 20000 && code < 21000) return 500;
-    
+
     // 参数验证错误 (21xxx) - 客户端请求错误
     if (code >= 21000 && code < 22000) return 400;
-    
+
     // 认证授权错误 (22xxx) - 未授权错误
     if (code >= 22000 && code < 23000) return 401;
-    
-    // 用户相关错误 (30xxx) - 业务错误，返回200
-    if (code >= 30000 && code < 31000) return 200;
-    
-    // 资源相关错误 (31xxx) - 资源未找到等，返回200（业务层面的资源错误）
-    if (code >= 31000 && code < 32000) return 200;
-    
-    // 业务逻辑错误 (32xxx) - 业务错误，返回200
-    if (code >= 32000 && code < 33000) return 200;
-    
-    // 未知错误码，默认返回500
+
+    // 用户 / 业务相关错误 (30xxx / 32xxx) - 返回200
+    if (code >= 30000 && code < 33000) return 200;
+
     return 500;
   }
 
@@ -217,9 +176,7 @@ export class BusinessCode {
     if (code >= 20000 && code < 21000) return "系统错误";
     if (code >= 21000 && code < 22000) return "参数错误";
     if (code >= 22000 && code < 23000) return "权限错误";
-    if (code >= 30000 && code < 31000) return "用户错误";
-    if (code >= 31000 && code < 32000) return "资源错误";
-    if (code >= 32000 && code < 33000) return "业务错误";
+    if (code >= 30000 && code < 33000) return "业务错误";
     return "未知错误";
   }
 
@@ -232,9 +189,7 @@ export class BusinessCode {
     if (code >= 20000 && code < 21000) return "system";
     if (code >= 21000 && code < 22000) return "validation";
     if (code >= 22000 && code < 23000) return "auth";
-    if (code >= 30000 && code < 31000) return "user";
-    if (code >= 31000 && code < 32000) return "resource";
-    if (code >= 32000 && code < 33000) return "business";
+    if (code >= 30000 && code < 33000) return "business";
     return "unknown";
   }
 

@@ -14,7 +14,7 @@ Install dependencies at repo root:
 pnpm install
 ```
 
-修改前请先阅读根目录的 `AGENTS.md`、`ARCHITECTURE.md`、`PLUGIN_CONTRACT.md`、`RELEASE_CONTRACT.md`。
+修改前请先阅读根目录的 `AGENTS.md`、`ARCHITECTURE.md`。
 
 ## Common Commands
 
@@ -22,34 +22,35 @@ pnpm install
 pnpm lint
 pnpm test
 pnpm build
-pnpm verify -- --profile core
+pnpm verify
 ```
 
 ## Quality Gate
 
-提交前必须在本地通过 profile 化的质量门禁：
+提交前必须在本地通过质量门禁：
 
 ```bash
-pnpm verify -- --profile core
+pnpm verify
 ```
 
-该命令覆盖 arch 检查、Drizzle 生成、OpenAPI 生成、Admin route 生成、API build/test、Admin lint/test/build、App lint/build、Docs build 与生成物 diff 检查。详细步骤与子命令见 `AGENTS.md` §5。
+该命令覆盖 arch 检查、Drizzle 生成、OpenAPI 生成、API build/test、Admin lint/test/build、App lint/build、Docs build 与生成物 diff 检查。详细步骤与子命令见 `AGENTS.md` §5。
 
 ## Architecture Guardrails
 
 仓库在 CI 强制执行架构检查；所有 PR 必须通过：
 
 ```bash
-pnpm verify -- --profile core
+pnpm arch:check
+pnpm verify
 ```
 
 当前强制的规则：
 
-1. 插件只能有一份 `plugins/<vendor>/<slug>/plugin.ts` manifest，禁止双 manifest。
-2. 插件目录命名与 API 前缀必须由 `id = <vendor>/<slug>` 派生，不得硬编码具体业务插件。
+1. 模块只能有一份 `apps/yishan-api/src/modules/<id>/routes.ts`，禁止多 manifest。
+2. 模块前缀由 `meta.prefix` 派生，不得硬编码具体业务命名空间。
 3. Route 不得直接访问 DB；Repository 是唯一允许 import Drizzle 表与 SQL 的层。
-4. Core 不得 import 插件；插件不得跨插件 import。
-5. OpenAPI spec 与 Admin client 由 profile 驱动，跨 profile 残留物必须零命中。
+4. Core 不得 import 模块源码；模块不得跨模块 import。
+5. OpenAPI spec 与 Admin client 由当前已装载模块驱动，跨模块残留物必须零命中。
 
 更多规则与决策依据见 `specs/baseline-v2/decisions/`。
 
@@ -67,7 +68,7 @@ pnpm --filter yishan-docs start
 2. 保持改动聚焦、便于 review。
 3. 行为变更时同步新增或更新测试。
 4. 推送前在本地跑通对应改动范围的 verify 命令（参考 `AGENTS.md` §7）。
-5. 涉及架构、根规范、profile 的改动需同步更新根目录文档。
+5. 涉及架构、根规范的改动需同步更新根目录文档。
 
 ## Commit Message
 

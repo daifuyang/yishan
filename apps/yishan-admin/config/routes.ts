@@ -1,5 +1,3 @@
-import pluginRoutes from './generated/plugin-routes';
-
 /**
  * @name umi 的路由配置
  * @description 只支持 path,component,routes,redirect,wrappers,name,icon 的配置
@@ -8,12 +6,16 @@ import pluginRoutes from './generated/plugin-routes';
  * @param routes 配置子路由，通常在需要为多个路径增加 layout 组件时使用。
  * @param redirect 配置路由跳转
  * @param wrappers 配置路由组件的包装组件，通过包装组件可以为当前的路由组件组合进更多的功能。 比如，可以用于路由级别的权限校验
- * @param name 配置路由的标题，默认读取国际化文件 menu.ts 中 menu.xxxx 的值，如配置 name 为 login，则读取 menu.ts 中 menu.login 的取值作为标题
- * @param icon 配置路由的图标，取值参考 https://ant.design/components/icon-cn， 注意去除风格后缀和大小写，如想要配置图标为 <StepBackwardOutlined /> 则取值应为 stepBackward 或 StepBackward，如想要配置图标为 <UserOutlined /> 则取值应为 user 或者 User
+ * @param name 配置路由的标题，默认读取国际化文件 menu.ts 中 menu.xxxx 的值，如配置 name 为 login，则读取 menu.login 的取值作为标题
+ * @param icon 配置路由的图标，取值参考 https://ant.design/components/icon-cn, 注意去除风格后缀和大小写，如想要配置图标为 <StepBackwardOutlined /> 则取值应为 stepBackward 或 StepBackward，如想要配置图标为 <UserOutlined /> 则取值应为 user 或者 User
  * @doc https://umijs.org/docs/guides/routes
+ *
+ * Plugin routes are no longer declared here — module discovery is driven
+ * by `apps/yishan-api/src/modules/` at boot, and admin pages for modules
+ * live in `apps/yishan-admin/src/pages/<feature>/` like any other page.
  */
 export default [
-  // Menu single source of truth: backend sys_menu / plugin manifests.
+  // Menu single source of truth: backend sys_menu.
   // Frontend routes here are only for component mounting and access guards.
   {
     path: '/user',
@@ -62,11 +64,6 @@ export default [
     access: 'canDo',
   },
   {
-    path: '/system/plugins',
-    component: './system/plugins',
-    access: 'canDo',
-  },
-  {
     path: '/account/api-tokens',
     redirect: '/account/center',
   },
@@ -80,7 +77,6 @@ export default [
     path: '/',
     component: './index',
   },
-  ...pluginRoutes,
   {
     path: '*',
     layout: false,

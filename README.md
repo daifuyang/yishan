@@ -47,14 +47,11 @@ pnpm --filter yishan-api dev
 pnpm --filter yishan-docs start
 ```
 
-## Profile 选择
+## 模块发现
 
-Yishan 通过 profile 决定一份构建包含哪些插件。当前仓库根提供两种内置 profile（详见 `profiles/`）：
+Yishan 通过 `apps/yishan-api/src/modules/<id>/` 装载业务能力。`routes.ts` 同时导出 `meta`（id / name / defaultEnabled / prefix）和一个默认 Fastify 插件；Core 在 boot 时用 `@fastify/autoload` 扫描并挂载。开发期可通过 `.dev-modules.json` 覆盖默认启停状态，生产环境忽略该文件。
 
-- `core` — 仅包含 Core + `hello` 示例插件；对应 `main` 发行线
-- `official` — Core + 官方 `portal`、`shop` 等业务插件；对应 `all` 发行线
-
-客户项目可在自己 fork 中新增 `profiles/<name>.yaml` 描述自定义插件组合。所有 build / verify / release 命令都显式接收 `--profile <name>`，profile 是构建期与运行期的唯一插件选择来源。
+模块形态、依赖方向、生成物约束见 `ARCHITECTURE.md` §5 与 `AGENTS.md` §3。
 
 ## 常用脚本
 
@@ -84,8 +81,7 @@ pnpm --filter yishan-tiptap dev          # 开发模式（watch）
 ## 质量门禁
 
 ```bash
-pnpm verify -- --profile core            # 在干净环境复现：arch / db / openapi / build / test
-pnpm verify -- --profile official        # 含官方插件的集成 verify
+pnpm verify                              # 在干净环境复现：arch / db / openapi / build / test
 ```
 
 ## 技术栈
@@ -158,8 +154,8 @@ dist/                     # 构建产物（cjs、esm、d.ts、css）
 ## 贡献流程
 
 1. Fork 后从 `main` 创建特性分支。
-2. 修改前阅读 `AGENTS.md`、`ARCHITECTURE.md`、`PLUGIN_CONTRACT.md`、`RELEASE_CONTRACT.md`。
-3. 提交前确保 `pnpm verify -- --profile <name>` 在本地通过。
+2. 修改前阅读 `AGENTS.md`、`ARCHITECTURE.md`。
+3. 提交前确保 `pnpm verify` 在本地通过。
 4. 遵循 `CONTRIBUTING.md` 中的提交信息与 PR 规范。
 
 ## 许可证

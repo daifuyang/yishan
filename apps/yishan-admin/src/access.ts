@@ -1,7 +1,7 @@
 /**
  * @see https://umijs.org/docs/max/access#access
  * */
-import type { CurrentUser } from '@yishan/admin-sdk';
+import type { CurrentUser } from '@/types/sdk';
 
 export interface Route {
   path: string;

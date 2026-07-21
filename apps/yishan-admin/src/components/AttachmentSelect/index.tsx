@@ -44,7 +44,7 @@ import {
   normalizeAttachmentStoredValue,
   resolveAttachmentPublicUrl,
 } from '@/utils/attachmentUpload';
-import type { Attachment, AttachmentFolder, UploadAttachmentsResp } from '@yishan/admin-sdk';
+import type { Attachment, AttachmentFolder, UploadAttachmentsResp } from '@/types/sdk';
 
 type AttachmentKind = Attachment['kind'];
 type KindTab = AttachmentKind | 'all';

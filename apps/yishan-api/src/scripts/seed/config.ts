@@ -255,7 +255,7 @@ export const systemMenusSeed: MenuSeedNode = {
     page({ name: '云存储', path: '/system/storage', sortOrder: 8, component: './system/storage', actions: [action('查看', 'system:storage:list', 1, true), action('编辑', 'system:storage:update', 2), action('上传凭证', 'system:storage:upload-token', 3)] }),
     page({ name: '媒体库', path: '/system/attachments', sortOrder: 9, component: './system/attachments', actions: [action('查看', 'system:attachment:list', 1, true), action('上传', 'system:attachment:create', 2), action('编辑', 'system:attachment:update', 3), action('删除', 'system:attachment:delete', 4)] }),
     page({ name: '登录日志', path: '/system/login-log', sortOrder: 10, component: './system/login-log', actions: [action('查看', 'system:login-log:list', 1, true)] }),
-    page({ name: '插件管理', path: '/system/plugins', sortOrder: 13, component: './system/plugins', actions: [action('查看', 'system:plugin:list', 1, true), action('安装', 'system:plugin:install', 2), action('启用', 'system:plugin:enable', 3), action('禁用', 'system:plugin:disable', 4), action('同步', 'system:plugin:sync', 5), action('审计', 'system:plugin:audit', 6)] }),
+    // 插件管理已随精简删除（plugins/, plugin-platform/ 全部移除）；对应路由 + 权限 + 页面都不可用
   ],
 };
 
@@ -267,7 +267,7 @@ export const accountMenusSeed: MenuSeedNode = {
   icon: 'user',
   hideInMenu: true,
   children: [
-    page({ name: 'API Token', path: '/account/api-tokens', sortOrder: 1, icon: 'key', component: './account/api-tokens', hideInMenu: true, actions: [action('管理', 'system:api-token:manage', 1, true), action('列表', 'system:token:list', 2), action('清理', 'system:token:cleanup', 3)] }),
+    page({ name: 'API Token', path: '/account/api-tokens', sortOrder: 1, icon: 'key', component: './account/api-tokens', hideInMenu: true, actions: [action('管理', 'system:api-token:manage', 1, true)] }),
     { name: '个人中心', path: '/account/center', type: 1, sortOrder: 2, icon: 'user', component: './account/center', hideInMenu: true },
   ],
 };

@@ -1,6 +1,6 @@
 import { batchGetSystemOptionByQuery, getQiniuUploadToken } from "@/services/generated/system";
 import { createCloudAttachment, uploadAttachments } from "@/services/generated/attachments";
-import type { Attachment, AttachmentKind, UploadAttachmentsResp } from "@yishan/admin-sdk";
+import type { Attachment, AttachmentKind, UploadAttachmentsResp } from "@/types/sdk";
 
 export type StorageProvider = "disabled" | "qiniu" | "aliyunOss";
 

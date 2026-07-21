@@ -1,8 +1,7 @@
 import 'dotenv/config'
-import { createHash } from 'node:crypto'
+import { execSync } from 'node:child_process'
 import { createPool } from 'mysql2/promise'
 import { pool as drizzlePool } from '@/db'
-import { collectMigrationPlan } from './migration-plan.js'
 import { runSeed } from './seed/index.js'
 
 /**
@@ -11,12 +10,13 @@ import { runSeed } from './seed/index.js'
  * 流程：
  *   1) 校验 NODE_ENV（production 直接拒绝）
  *   2) DROP DATABASE → CREATE DATABASE
- *   3) 执行 Core + 插件的全量迁移计划
+ *   3) 调 `drizzle-kit migrate` 应用全量迁移（标准 drizzle-kit journal）
  *   4) 跑种子数据 runSeed
  *
  * 与 db:migrate / db:seed 的差异：先 DROP 整库重建，所有手工数据都会被清空。
  *
  * 默认不延迟。需要阻断式确认时设 RESET_CONFIRM_DELAY_MS=<ms>。
+ * 需要在 CI 自动跳过交互时设 RESET_CONFIRM_NONINTERACTIVE=1。
  */
 
 function serverConfig() {
@@ -49,7 +49,6 @@ async function dropAndRecreate(): Promise<void> {
   const charset = process.env.DATABASE_CHARSET ?? 'utf8mb4'
   const collation = process.env.DATABASE_COLLATION ?? 'utf8mb4_unicode_ci'
 
-  // 不带 database 的连接，用于 server-level DDL
   const pool = createPool(serverConfig())
   try {
     console.log(`[reset] DROP DATABASE IF EXISTS \`${name}\``)
@@ -65,53 +64,9 @@ async function dropAndRecreate(): Promise<void> {
   }
 }
 
-async function runMigrations(): Promise<void> {
-  const pool = createPool({ ...serverConfig(), database: dbName() })
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS __drizzle_migrations (
-        id INT NOT NULL AUTO_INCREMENT,
-        name VARCHAR(255) NOT NULL,
-        hash VARCHAR(64) NOT NULL,
-        applied_at DATETIME(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-        PRIMARY KEY (id),
-        UNIQUE KEY uniq_drizzle_migration_name (name)
-      )
-    `)
-
-    const [appliedRows] = await pool.query(
-      'SELECT name, hash FROM __drizzle_migrations',
-    )
-    const applied = new Map(
-      (appliedRows as Array<{ name: string; hash: string }>).map((row) => [
-        row.name,
-        row.hash,
-      ]),
-    )
-    const plan = collectMigrationPlan()
-
-    for (const migration of plan) {
-      const { id, sql } = migration
-      const hash = createHash('sha256').update(sql).digest('hex')
-      const previous = applied.get(id)
-
-      if (previous) {
-        if (previous !== hash) {
-          throw new Error(`Migration ${id} was modified after being applied`)
-        }
-        continue
-      }
-
-      console.log(`[reset] Applying migration ${id}`)
-      await pool.query(sql)
-      await pool.query(
-        'INSERT INTO __drizzle_migrations (name, hash) VALUES (?, ?)',
-        [id, hash],
-      )
-    }
-  } finally {
-    await pool.end()
-  }
+function runMigrations(): void {
+  console.log('[reset] drizzle-kit migrate')
+  execSync('npx drizzle-kit migrate', { stdio: 'inherit' })
 }
 
 async function confirmBeforeDrop(): Promise<void> {
@@ -131,20 +86,19 @@ async function confirmBeforeDrop(): Promise<void> {
 }
 
 /**
- * Rebuild the configured database from the checked-in migration plan and seed
- * it. The caller is responsible for an explicit production confirmation.
+ * Rebuild the configured database from the checked-in drizzle migrations and
+ * seed it. The caller is responsible for an explicit production confirmation.
  */
 export async function resetDatabaseAndSeed(): Promise<void> {
   await dropAndRecreate()
   console.log('[reset] database recreated')
 
-  await runMigrations()
+  runMigrations()
   console.log('[reset] migrations applied')
 
   await runSeed()
   console.log('[reset] seed completed')
 
-  // runSeed 走的是 @/db 的全局 drizzlePool，必须显式 end，否则 Node 不会退出
   await drizzlePool.end()
   console.log('[reset] drizzle pool closed')
 

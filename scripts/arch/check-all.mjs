@@ -4,9 +4,9 @@ import { spawnSync } from 'node:child_process';
 
 const checks = [
   'scripts/arch/check-routes.mjs',
-  'scripts/arch/check-manifest.mjs',
   'scripts/arch/check-boundaries.mjs',
   'scripts/arch/check-admin-types.mjs',
+  'scripts/arch/check-modules-autoload.mjs',
 ];
 
 for (const file of checks) {

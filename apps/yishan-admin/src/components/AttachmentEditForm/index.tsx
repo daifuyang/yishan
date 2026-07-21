@@ -11,7 +11,7 @@ import {
   getAttachmentFolderTree,
   updateAttachment,
 } from '@/services/generated/attachments';
-import type { Attachment, AttachmentFolder } from '@yishan/admin-sdk';
+import type { Attachment, AttachmentFolder } from '@/types/sdk';
 
 export interface AttachmentEditFormProps {
   title?: string;

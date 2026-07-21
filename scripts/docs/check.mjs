@@ -1,17 +1,15 @@
 #!/usr/bin/env node
-// scripts/docs/check.mjs — Wave 4 docs:check entry.
+// scripts/docs/check.mjs — root-spec gate.
 //
-// PROPOSAL §8.3 demands an automated check that the root spec/contract
-// documents stay aligned with the implementation. This script audits:
+// Audits the canonical root documents for internal consistency:
 //
 //   1. Root spec set (AGENTS.md, README.md, ARCHITECTURE.md,
-//      PLUGIN_CONTRACT.md, RELEASE_CONTRACT.md, CONTRIBUTING.md,
-//      MIGRATION_GUIDE.md) — listed explicitly, no directory listing
+//      CONTRIBUTING.md) — listed explicitly, no directory listing
 //      games that hide archived files.
 //
-//   2. Each spec must not mention the deprecated terms listed in
-//      PROPOSAL §8.3 (`Prisma`, `core/models`, `prisma/schema`,
-//      `plugins/modules`). Whitelist: any path under `specs/archive/`
+//   2. Each spec must not mention the deprecated terms listed in the
+//      historical ADR (Prisma, core/models, prisma/schema,
+//      plugins/modules). Whitelist: any path under `specs/archive/`
 //      and the literal string `prisma-era` (which appears in the
 //      marker we use to flag legacy sections for grep-ability).
 //
@@ -37,27 +35,14 @@ const ROOT_DOCS = [
   'AGENTS.md',
   'README.md',
   'ARCHITECTURE.md',
-  'PLUGIN_CONTRACT.md',
-  'RELEASE_CONTRACT.md',
   'CONTRIBUTING.md',
-  'MIGRATION_GUIDE.md',
 ]
-
-// MIGRATION_GUIDE is the canonical place to mention the legacy terms
-// we migrated away from. Treat its references to Prisma / core/models /
-// plugins/modules / prisma/schema as historical references rather than
-// current-truth statements.
-const FORBIDDEN_TERMS_WHITELIST = new Set(['MIGRATION_GUIDE.md'])
 
 const FORBIDDEN_TERMS = [
   { term: 'Prisma', pattern: /\bPrisma\b/ },
   { term: 'core/models', pattern: /\bcore\/models\b/ },
   { term: 'prisma/schema', pattern: /\bprisma\/schema\b/ },
   { term: 'plugins/modules', pattern: /\bplugins\/modules\b/ },
-  // Legacy plugin entry contract. The current contract mounts plugins via
-  // manifest.api.register() inside the Core-owned gate (PLUGIN_CONTRACT §9),
-  // so a documented root register(app) entry is drift.
-  { term: 'register(app) (legacy root plugin entry — use api.register)', pattern: /\bregister\(app\)/ },
 ]
 
 // Hardcoded Node / pnpm tool versions. Per AGENTS.md §1 these live ONLY in
@@ -191,15 +176,9 @@ function checkMarkdownLinks(filePath, content) {
 
 function checkDocument(filePath, scripts) {
   const content = readText(filePath)
-  const basename = filePath.split('/').pop()
-  // The migration guide is the canonical home for legacy term
-  // references (Prisma, plugins/modules, etc.); skip forbidden-term
-  // detection there. Other checks still apply.
   const violations = []
-  if (!FORBIDDEN_TERMS_WHITELIST.has(basename)) {
-    violations.push(...checkForbiddenTerms(filePath, content))
-    violations.push(...checkHardcodedToolVersions(filePath, content))
-  }
+  violations.push(...checkForbiddenTerms(filePath, content))
+  violations.push(...checkHardcodedToolVersions(filePath, content))
   violations.push(...checkPnpmCommands(filePath, content, scripts))
   violations.push(...checkMarkdownLinks(filePath, content))
   return violations
