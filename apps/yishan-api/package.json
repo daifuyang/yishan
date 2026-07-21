@@ -7,28 +7,17 @@
   "directories": {
     "test": "test"
   },
-"scripts": {
+  "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run test/integration",
-    "start": "npm run build:ts && fastify start -l info dist/app.js",
-    "clean:dist": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build:ts": "npm run clean:dist && tsc && tsc-alias",
+    "build:ts": "rm -rf dist && tsc && tsc-alias",
     "watch:ts": "concurrently -k \"tsc -w\" \"tsc-alias -w\"",
-    "dev": "NODE_ENV=development npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
-    "dev:start": "NODE_ENV=development fastify start --ignore-watch='public/**' --ignore-watch=.ts$ -w -l info -P dist/app.js",
+    "dev": "NODE_ENV=development npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"NODE_ENV=development fastify start --ignore-watch='public/**' --ignore-watch=.ts$ -w -l info -P dist/app.js\"",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:check": "drizzle-kit check",
-    "db:studio": "drizzle-kit studio",
     "db:migrate": "drizzle-kit migrate",
-    "db:init": "npm run db:generate && npm run db:migrate",
     "db:seed": "npm run build:ts && node dist/scripts/seed.js",
-    "db:reseed": "npm run db:migrate && npm run db:seed",
-    "db:reset": "npm run build:ts && node dist/scripts/reset.js",
-    "permissions:generate": "node scripts/generate-core-permissions.mjs",
-    "permissions:check": "node scripts/generate-core-permissions.mjs --check",
-    "db:generate:test": "node scripts/test-generator.mjs"
+    "db:reset": "npm run build:ts && node dist/scripts/reset.js"
   },
   "keywords": [],
   "author": "",

@@ -14,6 +14,12 @@ import { createRouteRegistrar } from '../route-registrar.js';
 import { dateUtils } from "../../../utils/date.js";
 import { ResponseUtil } from "../../../utils/response.js";
 import { drizzleDb } from "../../../db/index.js";
+import { registerPermissions, type PermissionRef } from '../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  HEALTH: { code: 'system:health', label: '系统-健康检查', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 
 /** 简单 SELECT 1 测试连通性，超时 1.5s */
 async function checkDb(): Promise<{ ok: boolean; latencyMs?: number; error?: string }> {
@@ -35,7 +41,7 @@ const health: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/health",
     {
-      access: 'public',
+      access: { permission: PERMS.HEALTH },
       schema: {
         summary: "服务健康检查",
         description:

@@ -1,6 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { sysMenu, sysMenuPermission } from '@/db/schema';
-import { corePermissionDefinitions } from '@/core/permissions/generated/core-permissions.js';
+import { PERMISSION_CODES } from '@/core/permissions/catalog.js';
 import type { MenuSeedNode } from '../config.js';
 import type { SeedDb } from '../context.js';
 
@@ -15,12 +15,9 @@ async function upsertMenuByPath(args: {
   component?: string;
   hideInMenu?: boolean;
   isDefaultAction?: boolean;
-  source?: 'custom' | 'plugin';
-  pluginName?: string;
-  pluginMenuKey?: string;
   adminUserId: number;
 }) {
-  const { db, name, path, type, sortOrder, parentId, icon, component, hideInMenu, isDefaultAction, source, pluginName, pluginMenuKey, adminUserId } = args;
+  const { db, name, path, type, sortOrder, parentId, icon, component, hideInMenu, isDefaultAction, adminUserId } = args;
   const parentCondition = parentId === null ? isNull(sysMenu.parentId) : eq(sysMenu.parentId, parentId);
   const existing = path
     ? await db.query.sysMenu.findFirst({ where: eq(sysMenu.path, path) })
@@ -36,9 +33,6 @@ async function upsertMenuByPath(args: {
     sortOrder,
     hideInMenu: hideInMenu ?? false,
     isDefaultAction: isDefaultAction ?? false,
-    ...(source !== undefined ? { source } : {}),
-    ...(pluginName !== undefined ? { pluginName } : {}),
-    ...(pluginMenuKey !== undefined ? { pluginMenuKey } : {}),
     isExternalLink: false,
     keepAlive: false,
     updaterId: adminUserId,
@@ -79,15 +73,10 @@ async function seedMenuTree(
     component: node.component,
     hideInMenu: node.hideInMenu,
     isDefaultAction: node.isDefaultAction,
-    source: node.source,
-    pluginName: node.pluginName,
-    pluginMenuKey: node.pluginMenuKey,
     adminUserId,
   });
   const codes = [...new Set(node.permissionCodes ?? [])];
-  const knownCodes = new Set<string>([
-    ...corePermissionDefinitions.map((permission) => permission.code),
-  ]);
+  const knownCodes = new Set<string>(PERMISSION_CODES);
   const unknownCodes = codes.filter((code) => !knownCodes.has(code));
   if (unknownCodes.length) {
     throw new Error(`菜单 ${node.path} 引用了未定义的核心权限：${unknownCodes.join(', ')}`);

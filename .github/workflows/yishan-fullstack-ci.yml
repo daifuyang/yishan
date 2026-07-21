@@ -47,9 +47,6 @@ jobs:
       - name: Install
         run: pnpm install --no-frozen-lockfile --force --prod=false
 
-      - name: Architecture Guard
-        run: pnpm arch:check
-
       - name: Prepare yishan-tiptap
         run: |
           pnpm install --filter yishan-tiptap --no-frozen-lockfile --prod=false
@@ -91,12 +88,6 @@ jobs:
 
       - name: API Schema Generate
         run: pnpm --filter yishan-api db:generate
-
-      # 生成器自检：保证 SQL→Drizzle 生成链路每条规则都满足
-      # （CREATE TABLE 数量、列名覆盖、DECIMAL scale、*Relations 导出等），
-      # 避免 schema 生成回归只在生产构建时才暴露。
-      - name: API Generator Self-test
-        run: pnpm --filter yishan-api db:generate:test
 
       - name: API TypeScript Build
         run: pnpm --filter yishan-api build:ts

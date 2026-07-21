@@ -3,6 +3,13 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
 import { DictService } from "../../../../../services/dict.service.js";
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  GET_BY_TYPE: { code: 'app:dict:by-type', label: '移动端-字典按类型查', group: 'app' },
+  TYPES:       { code: 'app:dict:types',   label: '移动端-字典类型列表', group: 'app' },
+});
+registerPermissions(...Object.values(PERMS));
 
 /**
  * 移动端字典路由 - /api/v1/app/dicts
@@ -14,7 +21,7 @@ const dicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/:type",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.GET_BY_TYPE },
       schema: {
         summary: "按类型查询字典数据（移动端）",
         description: "根据字典类型（type）返回启用状态的字典数据列表",
@@ -86,7 +93,7 @@ const dicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.TYPES },
       schema: {
         summary: "获取全量字典映射（移动端）",
         description: "返回 { [type]: [{label, value}] } 的字典映射，移动端可一次性加载",

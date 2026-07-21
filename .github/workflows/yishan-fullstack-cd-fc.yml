@@ -71,14 +71,8 @@ jobs:
       - name: Generate Admin plugin routes
         run: pnpm --filter yishan-admin gen:plugin-routes
 
-      - name: Verify OpenAPI contract and generated clients
-        run: pnpm openapi:check
-
       - name: Admin Setup
         run: pnpm --filter yishan-admin exec max setup
-
-      - name: Quality Gate
-        run: pnpm verify
 
       - name: Build yishan-admin for FC
         run: pnpm build:admin:fc

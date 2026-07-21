@@ -11,7 +11,15 @@ import {
 import { UserService } from "../../../../../services/user.service.js";
 import { UserErrorCode } from "../../../../../../constants/business-codes/user.js";
 import { getUserMessage, UserMessageKeys } from "../../../../../../constants/messages/user.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LIST:   { code: 'system:user:list',   label: '用户管理-列表', group: 'system' },
+  CREATE: { code: 'system:user:create', label: '用户管理-创建', group: 'system' },
+  UPDATE: { code: 'system:user:update', label: '用户管理-更新', group: 'system' },
+  DELETE: { code: 'system:user:delete', label: '用户管理-删除', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 
 const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
@@ -19,7 +27,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取管理员用户列表",
         description: "分页获取系统用户列表，支持关键词搜索和状态筛选",
@@ -57,7 +65,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/:id",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取用户详情",
         description: "根据用户ID获取用户详情",
@@ -93,7 +101,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/",
     {
-      access: { permission: permissions.CREATE },
+      access: { permission: PERMS.CREATE },
       schema: {
         summary: "创建用户",
         description: "创建一个新的系统用户",
@@ -122,7 +130,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.put(
     "/:id",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "更新用户",
         description: "根据用户ID更新用户信息",
@@ -176,7 +184,7 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.delete(
     "/:id",
     {
-      access: { permission: permissions.DELETE },
+      access: { permission: PERMS.DELETE },
       schema: {
         summary: "删除用户",
         description: "根据用户ID进行软删除，并撤销所有令牌",

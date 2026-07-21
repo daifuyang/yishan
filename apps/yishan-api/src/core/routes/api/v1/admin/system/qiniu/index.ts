@@ -7,14 +7,19 @@ import { SystemOptionService } from "../../../../../../services/system-option.se
 import qiniu from "qiniu";
 import { ValidationErrorCode } from "../../../../../../../constants/business-codes/validation.js";
 import { BusinessError } from "../../../../../../../exceptions/business-error.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  UPLOAD_TOKEN: { code: 'system:storage:upload-token', label: '存储管理-上传令牌', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 
 const adminQiniu: FastifyPluginAsync = async (fastify): Promise<void> => {
   const route = createRouteRegistrar(fastify);
   route.get(
     "/token",
     {
-      access: { permission: permissions.UPLOAD_TOKEN },
+      access: { permission: PERMS.UPLOAD_TOKEN },
       schema: {
         summary: "获取七牛云上传临时凭证",
         description: "根据七牛云官方文档生成上传凭证（uptoken）",

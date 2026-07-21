@@ -13,7 +13,7 @@
 
 import { BusinessError } from "../exceptions/business-error.js";
 import { ValidationErrorCode } from "./business-codes/validation.js";
-import { corePermissionDefinitions } from '../core/permissions/generated/core-permissions.js';
+import { PERMISSION_CODES } from '../core/permissions/catalog.js';
 
 /** Permission codes are declared by Core modules or plugin manifests. */
 export type PermissionCode = string;
@@ -34,9 +34,9 @@ export const PAT_WILDCARD = "*";
 
 /**
  * 静态已登记的 permission code 集合（用于 isKnownPermissionCode 校验）。
- * 运行时注册的 manifest.permissions 应通过 isKnownPermissionCodeRuntime 注入。
+ * 直接引用 catalog.ts 的 PERMISSION_CODES（启动期由 routes 顶层副作用注册完成）。
  */
-const STATIC_PERMISSION_SET: ReadonlySet<string> = new Set(corePermissionDefinitions.map((item) => item.code));
+const STATIC_PERMISSION_SET: ReadonlySet<string> = PERMISSION_CODES;
 
 /** 校验字符串是否为已登记的权限点编码（含 PAT 内部 sentinel 与通配符）。 */
 export function isKnownPermissionCode(

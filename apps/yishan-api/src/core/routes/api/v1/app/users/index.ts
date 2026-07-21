@@ -6,6 +6,14 @@ import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import { UserErrorCode } from "../../../../../../constants/business-codes/user.js";
 import { UserService } from "../../../../../services/user.service.js";
 import { LoginLogService } from "../../../../../services/login-log.service.js";
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  UPDATE_ME:        { code: 'app:user:update-me', label: '移动端-更新自己', group: 'app' },
+  CHANGE_MY_PWD:    { code: 'app:user:change-pwd', label: '移动端-改自己密码', group: 'app' },
+  LIST_MY_LOGINS:   { code: 'app:user:my-logins',  label: '移动端-自己登录日志', group: 'app' },
+});
+registerPermissions(...Object.values(PERMS));
 
 /**
  * 移动端个人路由 - /api/v1/app/users
@@ -19,7 +27,7 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.put(
     "/me",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.UPDATE_ME },
       schema: {
         summary: "更新当前用户资料",
         description: "移动端更新当前登录用户的昵称/真实姓名/邮箱/性别/出生日期/手机号/头像等可编辑字段",
@@ -57,7 +65,7 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.put(
     "/me/password",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.CHANGE_MY_PWD },
       schema: {
         summary: "修改当前用户密码",
         description: "需要传入旧密码与新密码，旧密码校验通过后写入新密码并撤销所有 token",
@@ -102,7 +110,7 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/me/login-logs",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.LIST_MY_LOGINS },
       schema: {
         summary: "我的登录日志",
         description: "分页获取当前用户的登录日志",

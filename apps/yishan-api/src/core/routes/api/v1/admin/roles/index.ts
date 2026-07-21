@@ -7,15 +7,23 @@ import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import { RoleListQuery, SaveRoleReq, UpdateRoleReq } from "../../../../../schemas/role.js";
 import { RoleService } from "../../../../../services/role.service.js";
 import { getRoleMessage, RoleMessageKeys } from "../../../../../../constants/messages/role.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
 
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LIST:   { code: 'system:role:list',   label: '角色管理-列表', group: 'system' },
+  CREATE: { code: 'system:role:create', label: '角色管理-创建', group: 'system' },
+  UPDATE: { code: 'system:role:update', label: '角色管理-更新', group: 'system' },
+  DELETE: { code: 'system:role:delete', label: '角色管理-删除', group: 'system' },
+  GRANT:  { code: 'system:role:grant',  label: '角色管理-授权', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
   // GET /api/v1/admin/roles - 获取角色列表
   route.get(
     "/",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取角色列表",
         description: "分页获取系统角色列表，支持关键词搜索和状态筛选",
@@ -50,7 +58,7 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/:id",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取角色详情",
         description: "根据角色ID获取角色详情",
@@ -85,9 +93,9 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/",
     {
-      access: { permission: permissions.CREATE },
+      access: { permission: PERMS.CREATE },
       preHandler: [
-        fastify.requirePermission(permissions.GRANT),
+        fastify.requirePermission(PERMS.GRANT),
       ] as any,
       schema: {
         summary: "创建角色",
@@ -117,9 +125,9 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.put(
     "/:id",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       preHandler: [
-        fastify.requirePermission(permissions.GRANT),
+        fastify.requirePermission(PERMS.GRANT),
       ] as any,
       schema: {
         summary: "更新角色",
@@ -153,7 +161,7 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.delete(
     "/:id",
     {
-      access: { permission: permissions.DELETE },
+      access: { permission: PERMS.DELETE },
       schema: {
         summary: "删除角色",
         description: "根据角色ID进行软删除",

@@ -21,7 +21,7 @@ import { ApiTokenRepository } from "../src/core/repositories/api-token.repositor
 import { PermissionService } from "../src/core/services/permission.service.js";
 import { ValidationErrorCode } from "../src/constants/business-codes/validation.js";
 import { SUPER_ADMIN_BYPASS } from "../src/constants/permission-codes.js";
-import { getGlobalCatalog } from "../src/core/services/permission-catalog.service.js";
+import { listPermissions } from "../src/core/permissions/catalog.js";
 
 // ============================================================================
 // Mock helpers

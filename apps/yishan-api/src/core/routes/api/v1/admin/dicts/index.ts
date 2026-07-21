@@ -14,14 +14,21 @@ import {
 } from "../../../../../schemas/dict.js";
 import { DictService } from "../../../../../services/dict.service.js";
 import { getDictMessage, DictMessageKeys } from "../../../../../../constants/messages/dict.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
 
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LIST:   { code: 'system:dict:list',   label: '字典管理-列表', group: 'system' },
+  CREATE: { code: 'system:dict:create', label: '字典管理-创建', group: 'system' },
+  UPDATE: { code: 'system:dict:update', label: '字典管理-更新', group: 'system' },
+  DELETE: { code: 'system:dict:delete', label: '字典管理-删除', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
   route.get(
     "/types",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取字典类型列表",
         description: "分页获取字典类型列表",
@@ -43,7 +50,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/types/:id",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取字典类型详情",
         description: "根据字典类型ID获取详情",
@@ -66,7 +73,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/types",
     {
-      access: { permission: permissions.CREATE },
+      access: { permission: PERMS.CREATE },
       schema: {
         summary: "创建字典类型",
         description: "创建字典类型",
@@ -87,7 +94,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.put(
     "/types/:id",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "更新字典类型",
         description: "更新字典类型",
@@ -110,7 +117,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.delete(
     "/types/:id",
     {
-      access: { permission: permissions.DELETE },
+      access: { permission: PERMS.DELETE },
       schema: {
         summary: "删除字典类型",
         description: "软删除字典类型",
@@ -132,7 +139,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/data",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取字典数据列表",
         description: "分页获取字典数据列表",
@@ -154,7 +161,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/data/:id",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取字典数据详情",
         description: "根据字典数据ID获取详情",
@@ -177,7 +184,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/data",
     {
-      access: { permission: permissions.CREATE },
+      access: { permission: PERMS.CREATE },
       schema: {
         summary: "创建字典数据",
         description: "创建字典数据",
@@ -198,7 +205,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.put(
     "/data/:id",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "更新字典数据",
         description: "更新字典数据",
@@ -221,7 +228,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.delete(
     "/data/:id",
     {
-      access: { permission: permissions.DELETE },
+      access: { permission: PERMS.DELETE },
       schema: {
         summary: "删除字典数据",
         description: "软删除字典数据",
@@ -243,7 +250,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/data/map",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取全部字典数据映射",
         description: "获取所有启用的字典数据，按字典类型分组，返回key:{label:'',value:''}的形式",

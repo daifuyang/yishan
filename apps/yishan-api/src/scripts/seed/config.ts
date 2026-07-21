@@ -20,9 +20,6 @@ export type MenuSeedNode = {
   permissionCodes?: string[];
   /** 按钮是否为页面默认访问操作（通常为查看/列表）。 */
   isDefaultAction?: boolean;
-  source?: 'custom' | 'plugin';
-  pluginName?: string;
-  pluginMenuKey?: string;
   children?: MenuSeedNode[];
 };
 

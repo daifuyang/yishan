@@ -9,7 +9,14 @@ import { ResponseUtil } from "../../../../../utils/response.js";
 import { BusinessError } from "../../../../../exceptions/business-error.js";
 import { SystemManageErrorCode } from "../../../../../constants/business-codes/system.js";
 import { SystemService } from "../../../../services/system.service.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  TOKEN_LIST: { code: 'system:token:list', label: 'API Token-列表', group: 'system' },
+  CRON_TOKEN_CLEANUP: { code: 'system:cron:cleanup-tokens', label: '系统-CRON 清理过期 token', group: 'system' },
+  CRON_USER_REFRESH:  { code: 'system:cron:user-refresh',    label: '系统-CRON 刷新用户',       group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 
 const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
@@ -33,7 +40,7 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/cleanup-tokens",
     {
-      access: 'public',
+      access: { permission: PERMS.CRON_TOKEN_CLEANUP },
       schema: {
         summary: "清理过期token",
         description: "定时任务接口，用于清理过期的用户token，需要特殊的定时任务令牌进行鉴权",
@@ -82,10 +89,10 @@ const system: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/token-stats",
     {
-      access: 'public',
+      access: { permission: PERMS.CRON_USER_REFRESH },
       preHandler: [
         fastify.authenticate,
-        fastify.requirePermission(permissions.TOKEN_LIST),
+        fastify.requirePermission(PERMS.TOKEN_LIST),
       ],
       schema: {
         summary: "获取token统计信息",

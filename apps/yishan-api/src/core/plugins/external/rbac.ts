@@ -1,217 +1,83 @@
 /**
- * rbac.ts — RBAC plugin
+ * rbac.ts — Section 1 RBAC 拦截唯一入口。
  *
- * Implements Section 1 of `tmp/个人项目收尾建议.md`:
- *   - 用户 → 角色 → 权限点
- *   - 菜单只负责展示，不承担授权职责
- *   - 后端统一校验 permission code，不再依赖数据库角色 ID
+ * 单一职责：
+ *   1. 装饰器 `requirePermission(permRef)` 返回一个 preHandler；
+ *   2. 该 preHandler 校验当前 JWT/PAT 身份是否持有 perm.code；
+ *   3. BYPASS_CODES 中的 code 仅做身份校验；
+ *   4. super_admin 旁路与 PAT scope 交集由 PermissionService.computeEffectivePerms 承担。
  *
- * Exposes two Fastify decorators:
- *
- *   fastify.requirePermission(permCode)
- *     返回一个 preHandler，校验当前请求的 JWT/cookie/PAT 身份是否持有 permCode 权限。
- *     super_admin 角色（code = 'super_admin'）仅对 JWT/cookie 登录生效；
- *     PAT 下旁路需通过 tokenScope `*` 或显式 `__super_admin__` 保留。
- *
- *   fastify.requireRole(roleCode)
- *     返回一个 preHandler，校验当前请求是否持有某个 roleCode。
- *
- * PAT（API Token）鉴权语义：
- *   - tokenScope 为 undefined            → JWT/cookie 普通登录：effectivePerms = rolePerms
- *   - tokenScope 包含 "*"                → 通配：effectivePerms = rolePerms（含 super_admin 旁路）
- *   - tokenScope 长度为 0                → 显式空 scopes：拒绝一切
- *   - tokenScope 为非空列表              → 交集 = rolePerms ∩ tokenScope ∩ activeCatalog
- *                                          super_admin 旁路被剥离，PAT 只持有所选 scopes
- *                                          非活动插件 scope 不生效
- *
- * super_admin bypass 规则（单一策略）：
- *   - "*" 通配符：保留 rolePerms 中的 super_admin 旁路（管理员主动选择全部权限）
- *   - "__super_admin__"：仅当 rolePerms 中包含旁路时才生效，不会凭空授予
- *   - 普通 scopes：super_admin 旁路被剥离，scopes 是严格上限
- *   - 空 scopes：即便 rolePerms 包含 super_admin 旁路，也一律拒绝
- *
- * 新方案约束（2026-07-14）：
- *   - computeEffectivePerms 计算交集后再与活动权限目录相交，非活动插件 scope 不生效
- *
- * 必须在 jwt-auth 之后注册（在 app.ts 已按字母顺序保证）。
+ * 不参与：
+ *   - schema 元数据注入（route-registrar.ts）；
+ *   - permission catalog 构建（routes 顶层自注册 + catalog.ts）；
+ *   - 缓存逻辑（permission.service.ts TTL）。
  */
 
-import fp from "fastify-plugin";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { BusinessError } from "../../../exceptions/business-error.js";
-import { AuthErrorCode } from "../../../constants/business-codes/auth.js";
-import { PermissionService } from "../../services/permission.service.js";
+import fp from 'fastify-plugin';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { BusinessError } from '../../../exceptions/business-error.js';
+import { AuthErrorCode } from '../../../constants/business-codes/auth.js';
 import {
-  PAT_WILDCARD,
-  SUPER_ADMIN_BYPASS,
-} from "../../../constants/permission-codes.js";
-import { getGlobalCatalog } from "../../services/permission-catalog.service.js";
-import type { PermissionRef } from '../../permissions/define-permissions.js';
+  PermissionService,
+  computeEffectivePerms,
+} from '../../services/permission.service.js';
+import {
+  isBypassCode,
+  PERMISSION_CODES,
+  type PermissionRef,
+} from '../../permissions/catalog.js';
 
-type PreHandler = ((request: FastifyRequest, reply: FastifyReply) => Promise<void> | void) & {
-  permission?: PermissionRef;
-};
-
-declare module "fastify" {
+declare module 'fastify' {
   interface FastifyInstance {
-    /**
-     * 校验 `request.currentUser` 是否持有 `permCode`。要求 preHandler 已先
-     * 执行 `fastify.authenticate`。super_admin 自动放行。
-     */
-    requirePermission: (permission: PermissionRef) => PreHandler;
-    /**
-     * 校验 `request.currentUser` 是否持有 `roleCode`。同样要求 authenticate 已执行。
-     */
-    requireRole: (roleCode: string) => PreHandler;
+    requirePermission: (permission: PermissionRef) => (request: FastifyRequest, reply: FastifyReply) => Promise<void> | void;
   }
 }
 
-/**
- * 辅助函数：判断权限代码是否对 PAT 生效。
- * `SUPER_ADMIN_BYPASS` 是内部 sentinel，不在活动权限目录中，但 PAT 仍可保留它。
- * 所有普通业务权限必须同时在 activeCodes 中才生效。
- */
-function isActiveForPat(code: string, activeCodes: Set<string>): boolean {
-  return code === SUPER_ADMIN_BYPASS || activeCodes.has(code);
-}
+export const makeRequirePermissionHandler = (
+  _fastify: FastifyInstance,
+): ((permission: PermissionRef) => (request: FastifyRequest, reply: FastifyReply) => Promise<void> | void) =>
+  (permission) => async (request, _reply) => {
+    const permCode = permission.code;
+    const currentUser = (request as any).currentUser;
+    const tokenScope: string[] | undefined = (request as any).tokenScope;
 
-/**
- * 内部：根据 tokenScope 与 rolePerms 计算 effectivePerms。
- * 与 requirePermission 装饰器共享同一套语义；单独 export 便于单测覆盖。
- *
- * PAT 最终计算公式（Section 2）：
- *   - tokenScope === undefined   → JWT/cookie 登录：effective = rolePerms
- *   - tokenScope 包含 "*"        → PAT 通配：effective = rolePerms（保留 bypass，受 activeCodes 限制）
- *   - tokenScope 长度为 0        → 显式空 scopes：拒绝一切
- *   - tokenScope 为非空列表      → rolePerms ∩ tokenScope（保留 bypass，受 activeCodes 限制）
- *
- * @param rolePerms 用户角色权限集合
- * @param tokenScope PAT scope 列表（undefined 表示 JWT/cookie 登录）
- * @param activeCodes 活动权限代码集合（由调用方从 Catalog 获取，不含 SUPER_ADMIN_BYPASS）
- */
-export function computeEffectivePerms(
-  rolePerms: Set<string>,
-  tokenScope: string[] | undefined,
-  activeCodes: Set<string>,
-): Set<string> {
-  // Case 1: 普通 JWT/cookie 登录，无 tokenScope，完整 rolePerms
-  if (tokenScope === undefined) {
-    return rolePerms;
-  }
-  // Case 2: PAT 通配
-  // 通配符继承用户角色权限，但必须与活动权限目录相交
-  // 非活动插件的权限不会因通配符而重新生效
-  // SUPER_ADMIN_BYPASS 不在 activeCodes 中，但仍可保留（sentinel 不受 activeCodes 限制）
-  if (tokenScope.includes(PAT_WILDCARD)) {
-    return new Set([...rolePerms].filter((code) => isActiveForPat(code, activeCodes)));
-  }
-  // Case 3: 显式空 scopes —— 即便 super_admin 也一律拒绝
-  if (tokenScope.length === 0) {
-    return new Set<string>();
-  }
-  // Case 4: 严格交集（SUPER_ADMIN_BYPASS 保留需同时满足 rolePerms 含旁路 + tokenScope 显式请求）
-  const requested = new Set<string>(
-    [...rolePerms].filter((code) => tokenScope.includes(code)),
-  );
-  return new Set([...requested].filter((code) => isActiveForPat(code, activeCodes)));
-}
+    if (!currentUser?.id) {
+      throw new BusinessError(AuthErrorCode.UNAUTHORIZED, '缺少认证身份，无法进行权限校验');
+    }
 
-export default fp<Record<string, never>>(
+    // 公共 / 认证通道：仅身份即可，不查 perm
+    if (isBypassCode(permCode)) {
+      return;
+    }
+
+    const roleIds: number[] = currentUser.roleIds ?? [];
+    if (!roleIds.length) {
+      throw new BusinessError(AuthErrorCode.FORBIDDEN, `当前用户没有权限访问要求 ${permCode} 的接口`);
+    }
+
+    const { perms: rolePerms } = await PermissionService.loadForRoleIds(roleIds);
+
+    // EARLY GATE：目标 code 不在活动目录中（已被禁用 / 不存在）→ 直接拒
+    if (!PERMISSION_CODES.has(permCode)) {
+      throw new BusinessError(AuthErrorCode.FORBIDDEN, `权限 ${permCode} 不在活动权限目录中`);
+    }
+
+    // PAT scope 交集：JWT/cookie 时 tokenScope === undefined
+    const effectivePerms = computeEffectivePerms(rolePerms, tokenScope, PERMISSION_CODES);
+
+    if (!PermissionService.has(effectivePerms, permCode)) {
+      throw new BusinessError(AuthErrorCode.FORBIDDEN, `当前用户没有权限访问要求 ${permCode} 的接口`);
+    }
+
+    (request as any).effectivePermissions = effectivePerms;
+  };
+
+export default fp(
   async (fastify: FastifyInstance) => {
-    fastify.decorate("requirePermission", (permission: PermissionRef): PreHandler => {
-      const permCode = permission.code;
-      const handler: PreHandler = async (request: FastifyRequest, _reply: FastifyReply) => {
-        const currentUser = (request as any).currentUser;
-        if (!currentUser?.id) {
-          throw new BusinessError(
-            AuthErrorCode.UNAUTHORIZED,
-            "缺少认证身份，无法进行权限校验",
-          );
-        }
-        const roleIds: number[] = currentUser.roleIds ?? [];
-        if (!roleIds.length) {
-          throw new BusinessError(
-            AuthErrorCode.FORBIDDEN,
-            `当前用户没有权限访问要求 ${permCode} 的接口`,
-          );
-        }
-        const { perms: rolePerms } = await PermissionService.loadForRoleIds(roleIds);
-        // 获取活动权限目录（refresh-on-read，确保多实例最终一致）
-        const activeCodes = await getGlobalCatalog().getActiveCodes();
-        // EARLY GATE: 目标权限不在活动目录中时直接拒绝，
-        // 确保禁用插件的接口对 JWT、PAT、super_admin 均不可访问
-        if (!activeCodes.has(permCode)) {
-          throw new BusinessError(
-            AuthErrorCode.FORBIDDEN,
-            `权限 ${permCode} 不在活动权限目录中（插件已禁用或不存在）`,
-          );
-        }
-        // PAT 有效权限由 computeEffectivePerms 统一计算；__super_admin__ 仅在
-        // 角色已有该旁路，且 Token 使用 `*` 或显式请求时保留，
-        // 普通业务权限必须处于活动目录中才生效。
-        const tokenScope: string[] | undefined = (request as any).tokenScope;
-        const effectivePerms = computeEffectivePerms(rolePerms, tokenScope, activeCodes);
-
-        if (!PermissionService.has(effectivePerms, permCode)) {
-          throw new BusinessError(
-            AuthErrorCode.FORBIDDEN,
-            `当前用户没有权限访问要求 ${permCode} 的接口`,
-          );
-        }
-        // 给后续 hook 用：把有效 permissions 注入 request 上下文
-        (request as any).effectivePermissions = effectivePerms;
-      };
-      handler.permission = permission;
-      return handler;
-    });
-
-    fastify.addHook('onRoute', (route) => {
-      const handlers = Array.isArray(route.preHandler) ? route.preHandler : route.preHandler ? [route.preHandler] : [];
-      const permission = handlers.map((handler) => (handler as PreHandler).permission).find(Boolean);
-      if (!permission) return;
-      const schema = (route.schema ??= {}) as Record<string, unknown>;
-      schema['x-permission-code'] = permission.code;
-      schema['x-permission-label'] = permission.label;
-    });
-
-    fastify.decorate("requireRole", (roleCode: string): PreHandler => {
-      return async (request: FastifyRequest, _reply: FastifyReply) => {
-        const currentUser = (request as any).currentUser;
-        if (!currentUser?.id) {
-          throw new BusinessError(
-            AuthErrorCode.UNAUTHORIZED,
-            "缺少认证身份，无法进行角色校验",
-          );
-        }
-        const roleIds: number[] = currentUser.roleIds ?? [];
-        if (!roleIds.length) {
-          throw new BusinessError(
-            AuthErrorCode.FORBIDDEN,
-            `当前用户未持有角色 ${roleCode}`,
-          );
-        }
-        // PAT 不允许被 requireRole 命中（角色与 tokenScope 是不同的维度）
-        const tokenScope: string[] | undefined = (request as any).tokenScope;
-        if (tokenScope) {
-          throw new BusinessError(
-            AuthErrorCode.FORBIDDEN,
-            "API Token 不能用 requireRole 校验，请改用 requirePermission / tokenScope",
-          );
-        }
-        const { roleCodes } = await PermissionService.loadForRoleIds(roleIds);
-        if (!roleCodes.has(roleCode)) {
-          throw new BusinessError(
-            AuthErrorCode.FORBIDDEN,
-            `当前用户未持有角色 ${roleCode}`,
-          );
-        }
-        (request as any).effectiveRoleCodes = roleCodes;
-      };
-    });
+    fastify.decorate('requirePermission', makeRequirePermissionHandler(fastify));
   },
   {
-    name: "rbac",
-    // rbac 只装饰器扩展，必须在 jwt-auth 之后注册
-    dependencies: ["jwt-auth"],
+    name: 'rbac',
+    dependencies: ['jwt-auth'],
   },
 );

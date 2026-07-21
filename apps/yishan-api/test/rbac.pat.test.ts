@@ -16,11 +16,9 @@
 import { describe, expect, it } from "vitest";
 import {
   computeEffectivePerms,
-} from "../src/core/plugins/external/rbac.ts";
-import {
   SUPER_ADMIN_BYPASS,
   PAT_WILDCARD,
-} from "../src/constants/permission-codes.js";
+} from "../src/core/services/permission.service.js";
 
 // ============================================================================
 // Test fixtures — activeCodes 不包含 SUPER_ADMIN_BYPASS

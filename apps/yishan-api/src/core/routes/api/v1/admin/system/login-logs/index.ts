@@ -5,14 +5,19 @@ import { ResponseUtil } from "../../../../../../../utils/response.js";
 import { LoginLogService } from "../../../../../../services/login-log.service.js";
 import { SysLoginLogListQuery } from "../../../../../../schemas/login-log.js";
 import { getSystemMessage, SystemMessageKeys } from "../../../../../../../constants/messages/system.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LIST: { code: 'system:login-log:list', label: '登录日志-列表', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 
 const sysLoginLog: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
   route.get(
     "/",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取登录日志列表",
         description: "分页获取系统登录日志列表，支持关键词搜索与状态筛选",
@@ -39,7 +44,7 @@ const sysLoginLog: FastifyPluginAsync = async (fastify, opts): Promise<void> => 
   route.get(
     "/:id",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取登录日志详情",
         description: "根据日志ID获取登录日志详情",

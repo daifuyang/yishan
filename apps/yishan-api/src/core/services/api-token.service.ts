@@ -31,7 +31,7 @@ import {
   SUPER_ADMIN_BYPASS,
 } from "../../constants/permission-codes.js";
 import { PermissionService } from "./permission.service.js";
-import { getGlobalCatalog } from "./permission-catalog.service.js";
+import { PERMISSION_CODES as ACTIVE_CODES, listPermissions } from '../permissions/catalog.js';
 
 // ============================================================================
 // Duration handling (moved from route)
@@ -84,7 +84,7 @@ export interface GrantableScopeCodes {
 export async function getGrantableScopeCodes(userId: number): Promise<GrantableScopeCodes> {
   const roleIds = await PermissionService.loadRoleIdsForUser(userId);
   const { perms, roleCodes } = await PermissionService.loadForRoleIds(roleIds);
-  const activeCodes = await getGlobalCatalog().getActiveCodes();
+  const activeCodes = ACTIVE_CODES;
 
   // 过滤：只保留在活动权限目录中的业务权限
   // SUPER_ADMIN_BYPASS 不在 activeCodes 中，但它是 sentinel，不需要过滤
@@ -151,7 +151,7 @@ export class ApiTokenService {
     // scopes 默认为空；显式传入时通过 normalizeApiTokenScopes 校验：
     //   - 保留 "*"（通配符）、"__super_admin__"（super admin 显式旁路）、所有已登记 code
     //   - 未知 code 直接抛 BusinessError（防止静默配置失误）
-    const declaredCodes = await getGlobalCatalog().getDeclaredCodes();
+    const declaredCodes = ACTIVE_CODES;
     const normalizedScopes: string[] = normalizeApiTokenScopes(req.scopes, [...declaredCodes]);
 
     // 使用纯授权数据校验 scopes
@@ -275,7 +275,7 @@ const SYSTEM_LABELS: Record<string, string> = {
 export async function getAvailableScopesForUser(userId: number): Promise<AvailableScopeGroup[]> {
   // Step 1: 获取纯授权数据 + 活动目录元数据
   const { codes: grantableCodes, isSuperAdmin } = await getGrantableScopeCodes(userId);
-  const catalog = await getGlobalCatalog().getActiveCatalog();
+  const catalog = listPermissions();
 
   // Step 2: 一次遍历 catalog，按 group 收集授权允许的条目
   const fixedOrder: ScopeSystem[] = ["system", "shop", "portal", "special"];

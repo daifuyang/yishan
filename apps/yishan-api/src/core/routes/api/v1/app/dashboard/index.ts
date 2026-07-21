@@ -3,19 +3,21 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { ResponseUtil } from "../../../../../../utils/response.js";
 import { DashboardService } from "../../../../../services/dashboard.service.js";
 import { DashboardStatsRespSchema } from "../../../../../schemas/dashboard.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  READ: { code: 'system:dashboard:read', label: '仪表盘-读取', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 
 const dashboard: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
   route.get(
     "/stats",
     {
-      access: 'public',
+      access: { permission: PERMS.READ },
       preHandler: [
         fastify.authenticate,
-        // Section 1 — 新增 Admin route 必须绑定 permission code。这里使用
-        // 系统级 `system:dashboard:read` 在核心权限目录中登记；super_admin 自动旁路。
-        fastify.requirePermission(permissions.READ),
       ],
       schema: {
         summary: "获取仪表盘统计",

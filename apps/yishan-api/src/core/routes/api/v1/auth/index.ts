@@ -15,6 +15,15 @@ import {
   clearAuthCookies,
   AUTH_COOKIE_NAMES,
 } from "../../../../auth/auth-helpers.js";
+import { registerPermissions, type PermissionRef } from '../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LOGIN:    { code: 'auth:login',    label: '认证-登录', group: 'auth' },
+  REFRESH:  { code: 'auth:refresh',  label: '认证-刷新令牌', group: 'auth' },
+  LOGOUT:   { code: 'auth:logout',   label: '认证-登出', group: 'auth' },
+  PROFILE:  { code: 'auth:profile',  label: '认证-当前会话', group: 'auth' },
+});
+registerPermissions(...Object.values(PERMS));
 
 const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
@@ -22,7 +31,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/login",
     {
-      access: 'public',
+      access: { permission: PERMS.LOGIN },
       // Section 7：登录限流（默认 5/min）
       preHandler: [fastify.rateLimit("login")],
       schema: {
@@ -64,7 +73,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/logout",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.LOGOUT },
       schema: {
         summary: "用户登出",
         description: "用户登出，清除认证状态",
@@ -107,7 +116,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/me",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.PROFILE },
       schema: {
         summary: "获取当前用户信息",
         description: "获取当前登录用户的详细信息",
@@ -136,7 +145,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/refresh",
     {
-      access: 'public',
+      access: { permission: PERMS.REFRESH },
       // Section 7：refresh 限流（默认 30/min）
       preHandler: [fastify.rateLimit("refresh")],
       schema: {

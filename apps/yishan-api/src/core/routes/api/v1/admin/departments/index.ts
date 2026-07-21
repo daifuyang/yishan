@@ -7,15 +7,22 @@ import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import { DeptListQuery, CreateDeptReq, UpdateDeptReq } from "../../../../../schemas/department.js";
 import { DeptService } from "../../../../../services/dept.service.js";
 import { getDepartmentMessage, DepartmentMessageKeys } from "../../../../../../constants/messages/department.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
 
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LIST:   { code: 'system:department:list',   label: '部门管理-列表', group: 'system' },
+  CREATE: { code: 'system:department:create', label: '部门管理-创建', group: 'system' },
+  UPDATE: { code: 'system:department:update', label: '部门管理-更新', group: 'system' },
+  DELETE: { code: 'system:department:delete', label: '部门管理-删除', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
   // GET /api/v1/admin/departments - 获取部门列表
   route.get(
     "/",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取部门列表",
         description: "分页获取部门列表，支持关键词、状态、上级部门过滤",
@@ -50,7 +57,7 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/:id",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取部门详情",
         description: "根据部门ID获取部门详情",
@@ -81,7 +88,7 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/",
     {
-      access: { permission: permissions.CREATE },
+      access: { permission: PERMS.CREATE },
       schema: {
         summary: "创建部门",
         description: "创建一个新的部门",
@@ -108,7 +115,7 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.put(
     "/:id",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "更新部门",
         description: "根据部门ID更新部门信息",
@@ -137,7 +144,7 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.delete(
     "/:id",
     {
-      access: { permission: permissions.DELETE },
+      access: { permission: PERMS.DELETE },
       schema: {
         summary: "删除部门",
         description: "根据部门ID进行软删除，存在子部门禁止删除",
@@ -165,7 +172,7 @@ const adminDepts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/tree",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取部门树",
         description: "返回部门树形结构（按 sortOrder 排序）",

@@ -6,7 +6,13 @@ import {
   getSystemMessage,
   SystemMessageKeys,
 } from "../../../../../../../constants/messages/system.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LIST:   { code: 'system:option:list',   label: '系统选项-列表', group: 'system' },
+  UPDATE: { code: 'system:option:update', label: '系统选项-更新', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 
 const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   const route = createRouteRegistrar(fastify);
@@ -14,7 +20,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   route.get(
     "/:key",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取系统参数",
         description: "根据键获取系统参数值",
@@ -45,7 +51,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   route.get(
     "/query",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "批量获取系统参数（QueryString）",
         description: "通过 query 参数 ?key[]=a&key[]=b 批量获取系统参数值",
@@ -87,7 +93,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   route.put(
     "/:key",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "设置系统参数",
         description: "根据键设置系统参数值",
@@ -121,7 +127,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
   route.post(
     "/batch",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "批量设置系统参数",
         description: "传入JSON数组批量新增或更新系统参数",

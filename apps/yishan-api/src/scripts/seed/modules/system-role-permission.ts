@@ -9,7 +9,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { sysRole, sysRolePermission } from '@/db/schema';
 import { ROLE_CODES } from '@/constants/permission-codes.js';
-import { corePermissionDefinitions } from '@/core/permissions/generated/core-permissions.js';
+import { listPermissions } from '@/core/permissions/catalog.js';
 import type { SeedDb } from '../context.js';
 
 async function findRoleByCode(db: SeedDb, code: string) {
@@ -44,7 +44,7 @@ export async function bindRolePermissionsByDefault(db: SeedDb, adminUserId: numb
     findRoleByCode(db, ROLE_CODES.SUPER_ADMIN),
     findRoleByCode(db, ROLE_CODES.ADMIN),
   ]);
-  const allCodes = corePermissionDefinitions.map((item) => item.code);
+  const allCodes = listPermissions().map((item) => item.code);
   const adminCodes = allCodes.filter((code) => !code.startsWith('system:plugin:'));
 
   await Promise.all([

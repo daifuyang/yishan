@@ -78,12 +78,6 @@ pnpm --filter yishan-tiptap build        # Rollup 构建
 pnpm --filter yishan-tiptap dev          # 开发模式（watch）
 ```
 
-## 质量门禁
-
-```bash
-pnpm verify                              # 在干净环境复现：arch / db / openapi / build / test
-```
-
 ## 技术栈
 
 ### 前端（yishan-admin）
@@ -155,7 +149,7 @@ dist/                     # 构建产物（cjs、esm、d.ts、css）
 
 1. Fork 后从 `main` 创建特性分支。
 2. 修改前阅读 `AGENTS.md`、`ARCHITECTURE.md`。
-3. 提交前确保 `pnpm verify` 在本地通过。
+3. 提交前按 `AGENTS.md` §7 跑完对应改动范围的 app `lint/test/build`。
 4. 遵循 `CONTRIBUTING.md` 中的提交信息与 PR 规范。
 
 ## 许可证

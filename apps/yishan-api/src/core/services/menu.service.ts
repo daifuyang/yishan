@@ -9,7 +9,7 @@ import { BusinessError } from "../../exceptions/business-error.js";
 import { MenuErrorCode } from "../../constants/business-codes/menu.js";
 import { PermissionService } from "./permission.service.js";
 import { ROLE_CODES } from "../../constants/permission-codes.js";
-import { getGlobalCatalog } from './permission-catalog.service.js';
+import { PERMISSION_CODES } from '../permissions/catalog.js';
 
 export class MenuService {
   /** 获取菜单列表 */
@@ -142,7 +142,6 @@ export class MenuService {
     const menu = await MenuRepository.create(input);
     await MenuRepository.replacePermissionCodes(menu.id, req.permissionCodes || []);
     // 菜单绑定仅决定角色编辑页中的功能归属，不直接授予后端权限。
-    MenuService.invalidatePermissionCache();
     return (await this.withPermissionCodes([menu]))[0];
   }
 
@@ -181,7 +180,6 @@ export class MenuService {
     const menu = await MenuRepository.update(id, input);
     if (req.permissionCodes !== undefined) await MenuRepository.replacePermissionCodes(id, req.permissionCodes);
     // 功能归属更新不改变角色已持有的后端权限。
-    MenuService.invalidatePermissionCache();
     return (await this.withPermissionCodes([menu]))[0];
   }
 
@@ -208,7 +206,6 @@ export class MenuService {
     if (!res) {
       throw new BusinessError(MenuErrorCode.MENU_NOT_FOUND, "菜单不存在或已删除");
     }
-    MenuService.invalidatePermissionCache();
     return { id };
   }
 
@@ -246,7 +243,7 @@ export class MenuService {
     if (menuType === 0 && codes.length > 0) {
       throw new BusinessError(MenuErrorCode.MENU_INVALID_PARENT, '目录不能关联功能');
     }
-    const activeCodes = await getGlobalCatalog().getActiveCodes();
+    const activeCodes = PERMISSION_CODES;
     const unknownCode = codes.find((code) => !activeCodes.has(code));
     if (unknownCode) throw new BusinessError(MenuErrorCode.MENU_INVALID_PARENT, `关联功能不存在或未启用: ${unknownCode}`);
   }
@@ -268,19 +265,6 @@ export class MenuService {
     return roleCodes.has(ROLE_CODES.SUPER_ADMIN);
   }
 
-  /**
-   * 菜单变更后失效 PermissionService 缓存。失败仅记录 warn，不影响主流程。
-   */
-  private static invalidatePermissionCache(): void {
-    try {
-      PermissionService.invalidate();
-    } catch (err) {
-      console.warn(
-        "[menu.service] invalidate permission cache failed:",
-        err instanceof Error ? err.message : String(err),
-      );
-    }
-  }
 }
 
 /** 构建菜单树的辅助函数 */

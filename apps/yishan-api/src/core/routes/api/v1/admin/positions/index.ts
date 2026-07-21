@@ -8,14 +8,21 @@ import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import { PositionListQuery, SavePositionReq, UpdatePositionReq } from "../../../../../schemas/position.js";
 import { PositionService } from "../../../../../services/position.service.js";
 import { getPositionMessage, PositionMessageKeys } from "../../../../../../constants/messages/position.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
 
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LIST:   { code: 'system:position:list',   label: '岗位管理-列表', group: 'system' },
+  CREATE: { code: 'system:position:create', label: '岗位管理-创建', group: 'system' },
+  UPDATE: { code: 'system:position:update', label: '岗位管理-更新', group: 'system' },
+  DELETE: { code: 'system:position:delete', label: '岗位管理-删除', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 const adminPositions: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
   route.get(
     "/",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取岗位列表",
         description: "分页获取系统岗位列表，支持关键词搜索和状态筛选",
@@ -49,7 +56,7 @@ const adminPositions: FastifyPluginAsync = async (fastify, opts): Promise<void> 
   route.get(
     "/:id",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取岗位详情",
         description: "根据岗位ID获取岗位详情",
@@ -82,7 +89,7 @@ const adminPositions: FastifyPluginAsync = async (fastify, opts): Promise<void> 
   route.post(
     "/",
     {
-      access: { permission: permissions.CREATE },
+      access: { permission: PERMS.CREATE },
       schema: {
         summary: "创建岗位",
         description: "创建一个新的岗位",
@@ -108,7 +115,7 @@ const adminPositions: FastifyPluginAsync = async (fastify, opts): Promise<void> 
   route.put(
     "/:id",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "更新岗位",
         description: "根据岗位ID更新岗位信息",
@@ -139,7 +146,7 @@ const adminPositions: FastifyPluginAsync = async (fastify, opts): Promise<void> 
   route.delete(
     "/:id",
     {
-      access: { permission: permissions.DELETE },
+      access: { permission: PERMS.DELETE },
       schema: {
         summary: "删除岗位",
         description: "根据岗位ID进行软删除",

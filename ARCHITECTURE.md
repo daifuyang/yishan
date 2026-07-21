@@ -25,7 +25,7 @@ Yishan 是一个以 Core 为基座的 monorepo。
 - Repository 是访问数据库实现（`@/db`、Drizzle 表定义、SQL）的唯一业务层。
 - 所有模块路由的 `meta.prefix` 互相不冲突；冲突时启动期直接报错。
 - Admin 路由必须能解析到模块页面或 Core 页面；菜单引用必须能解析到路由。
-- OpenAPI、Admin client、迁移计划按当前已装载模块动态生成；不再有静态 profile 文件。
+- OpenAPI spec、Admin `services/generated/`、模块迁移目录均按当前已装载模块动态生成；不再维护静态 profile 文件或 plugin 清单。
 - 生成物不得通过手工编辑改变架构事实。
 
 ## 4. 发行线
@@ -35,7 +35,7 @@ Yishan 是一个以 Core 为基座的 monorepo。
 - `main` 是 Core 发行线，唯一模块是 `_demo`（SDK 示范，`defaultEnabled: false`）。
 - `all` 是官方集成发行线，包含官方业务模块示例。
 
-两条发行线共享同一构建机制、同一 SDK 与同一 verify 门禁。跨线同步通过显式 cherry-pick / backport 完成，不再依赖 Git ancestry。分支名称不替代 `--profile` 输入 —— `pnpm verify -- --profile <name>` 必须显式传 profile 名（stage 2 起）。
+两条发行线共享同一构建机制与同一 SDK。跨线同步通过显式 cherry-pick / backport 完成，不再依赖 Git ancestry。
 
 ## 5. 模块发现
 
@@ -90,12 +90,7 @@ apps/yishan-api/src/modules/<id>/
 │   ├── yishan-docs/
 │   └── yishan-components/           # tiptap editor package
 ├── packages/                        # 共享 workspace 包
-├── scripts/
-│   ├── arch/                        # 架构静态检查
-│   ├── docs/                        # 文档校验
-│   ├── migrate/                     # 数据库迁移工具
-│   ├── openapi/                     # OpenAPI 生成
-│   └── verify.mjs                   # 一键 verify
+├── scripts/                         # 历史脚本目录已清空（scripts/{arch,docs,migrate}、verify.mjs、generate-core-permissions.mjs 等已删除），等待按新基线重新设计
 ├── specs/                           # 历史与进行中的方案（archive/ 视为历史）
 ├── AGENTS.md                        # AI/开发者强制规则
 ├── ARCHITECTURE.md                  # 本文件

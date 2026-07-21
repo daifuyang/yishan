@@ -3,14 +3,20 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from "fastify";
 import { ResponseUtil } from "../../../../../../../utils/response.js";
 import { getSystemMessage, SystemMessageKeys } from "../../../../../../../constants/messages/system.js";
 import { StorageConfigService } from "../../../../../../services/storage-config.service.js";
-import permissions from './permissions.js';
+import { registerPermissions, type PermissionRef } from '../../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LIST:   { code: 'system:storage:list',   label: '存储管理-列表', group: 'system' },
+  UPDATE: { code: 'system:storage:update', label: '存储管理-更新', group: 'system' },
+});
+registerPermissions(...Object.values(PERMS));
 
 const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> => {
   const route = createRouteRegistrar(fastify);
   route.get(
     "/config",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "获取云存储配置",
         description: "获取当前云存储配置（用于后台配置页面展示）",
@@ -33,7 +39,7 @@ const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> =>
   route.put(
     "/config",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "新增/更新云存储配置",
         description: "新增或覆盖当前云存储配置（固定写入 systemStorage/qiniuConfig/aliyunOssConfig）",
@@ -65,7 +71,7 @@ const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> =>
   route.get(
     "/export",
     {
-      access: { permission: permissions.LIST },
+      access: { permission: PERMS.LIST },
       schema: {
         summary: "导出云存储配置",
         description: "导出当前云存储配置（不包含 SecretKey 等敏感信息）",
@@ -93,7 +99,7 @@ const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> =>
   route.post(
     "/import",
     {
-      access: { permission: permissions.UPDATE },
+      access: { permission: PERMS.UPDATE },
       schema: {
         summary: "导入云存储配置",
         description: "导入云存储配置（会覆盖当前配置）",

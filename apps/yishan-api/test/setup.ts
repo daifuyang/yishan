@@ -1,21 +1,7 @@
-import { vi, beforeEach } from 'vitest'
+import { vi, beforeEach, beforeAll } from 'vitest'
 
 /**
- * Auto-mock the database layer for all tests in the repo. Each module gets
- * the same underlying factory (`./mocks/drizzle`) so production code under
- * test sees a noop Drizzle client regardless of which import path it uses.
- *
- * The mocked modules:
- *   - `../src/db/index.js`      — new entry point exporting `drizzleDb`,
- *                                 `pool`, `schema`
- *   - `../src/db/manager.js`    — new `dbManager` singleton
- *   - `../src/db/client.js`     — new `pool` + `drizzleDb` factory (so any
- *                                 direct import of the client still resolves
- *                                 to the test mock)
- *
- * The factory must be hoisted (via `vi.hoisted`) because Vitest lifts every
- * `vi.mock(...)` call above all imports, which would otherwise see an
- * uninitialized `mockFactory` reference.
+ * Auto-mock the database layer for all tests in the repo.
  */
 const { mockFactory } = vi.hoisted(() => ({
   mockFactory: async () => {
@@ -35,15 +21,36 @@ vi.mock('../src/db/manager.js', mockFactory)
 vi.mock('../src/db/client.js', mockFactory)
 
 /**
- * Initialize global permission catalog for all tests.
- * This is required because computeEffectivePerms and getGlobalCatalog are used
- * throughout the codebase, and they now require initialization.
+ * Force-import all routes so each route file's `registerPermissions(...)` runs
+ * before any test, populating the catalog.
  */
-beforeEach(async () => {
-  const { initGlobalCatalog } = await import('../src/core/services/permission-catalog.service.js')
-  // Initialize with empty plugin states (tests can override via their own setup)
-  await initGlobalCatalog(
-    async () => [],
-    { listManifests: () => [] }
-  )
-})
+beforeAll(async () => {
+  await import('../src/core/routes/api/health.js')
+  await import('../src/core/routes/api/v1/admin/users/index.js')
+  await import('../src/core/routes/api/v1/admin/roles/index.js')
+  await import('../src/core/routes/api/v1/admin/menus/index.js')
+  await import('../src/core/routes/api/v1/admin/departments/index.js')
+  await import('../src/core/routes/api/v1/admin/attachments/index.js')
+  await import('../src/core/routes/api/v1/admin/dicts/index.js')
+  await import('../src/core/routes/api/v1/admin/positions/index.js')
+  await import('../src/core/routes/api/v1/admin/system/options/index.js')
+  await import('../src/core/routes/api/v1/admin/system/storage/index.js')
+  await import('../src/core/routes/api/v1/admin/system/qiniu/index.js')
+  await import('../src/core/routes/api/v1/admin/system/login-logs/index.js')
+  await import('../src/core/routes/api/v1/admin/system/regions/index.js')
+  await import('../src/core/routes/api/v1/admin/permissions/index.js')
+  await import('../src/core/routes/api/v1/me/api-tokens/index.js')
+  await import('../src/core/routes/api/v1/system/index.js')
+  await import('../src/core/routes/api/v1/auth/index.js')
+  await import('../src/core/routes/api/v1/app/index.js')
+  await import('../src/core/routes/api/v1/app/menus/index.js')
+  await import('../src/core/routes/api/v1/app/users/index.js')
+  await import('../src/core/routes/api/v1/app/contacts/index.js')
+  await import('../src/core/routes/api/v1/app/dicts/index.js')
+  await import('../src/core/routes/api/v1/app/dashboard/index.js')
+  await import('../src/core/routes/api/v1/app/auth/index.js')
+});
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+});

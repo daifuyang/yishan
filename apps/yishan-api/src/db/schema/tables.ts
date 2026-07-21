@@ -419,9 +419,6 @@ export const sysMenu = mysqlTable(
   isDefaultAction: boolean('is_default_action').notNull().default(false),
   isExternalLink: boolean('is_external_link').notNull().default(false),
   keepAlive: boolean('keep_alive').notNull().default(false),
-  source: varchar('source', { length: 20 }).notNull().default('custom'),
-  pluginName: varchar('plugin_name', { length: 100 }),
-  pluginMenuKey: varchar('plugin_menu_key', { length: 255 }),
   creatorId: int('creator_id'),
   createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
   updaterId: int('updater_id'),
@@ -438,10 +435,7 @@ export const sysMenu = mysqlTable(
     idxMenuSortOrder: index('idx_menu_sort_order').on(t.sortOrder),
     sysMenuUpdaterIdIdx: index('sys_menu_updater_id_idx').on(t.updaterId),
     sysMenuCreatorIdIdx: index('sys_menu_creator_id_idx').on(t.creatorId),
-    idxMenuPluginName: index('idx_menu_plugin_name').on(t.pluginName),
-    idxMenuSource: index('idx_menu_source').on(t.source),
     uniqMenuParentName: uniqueIndex('uniq_menu_parent_name').on(t.parentId, t.name),
-    uniqPluginMenuKey: uniqueIndex('uniq_plugin_menu_key').on(t.pluginMenuKey),
   })
 )
 

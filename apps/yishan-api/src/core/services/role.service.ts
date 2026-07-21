@@ -8,7 +8,7 @@ import { SaveRoleReq, RoleListQuery, SysRoleResp, UpdateRoleReq } from "../schem
 import { BusinessError } from "../../exceptions/business-error.js";
 import { RoleErrorCode } from "../../constants/business-codes/role.js";
 import { PermissionService } from "./permission.service.js";
-import { getGlobalCatalog } from "./permission-catalog.service.js";
+import { PERMISSION_CODES as ACTIVE_CODES } from '../permissions/catalog.js';
 import { ROLE_CODES, SUPER_ADMIN_BYPASS } from "../../constants/permission-codes.js";
 import { dbManager } from "@/db/manager";
 
@@ -131,7 +131,7 @@ export class RoleService {
     requestedCodes: string[] | undefined,
   ): Promise<void> {
     if (requestedCodes === undefined) return;
-    const activeCodes = await getGlobalCatalog().getActiveCodes();
+    const activeCodes = ACTIVE_CODES;
     const normalizedCodes = [...new Set(requestedCodes)];
     const unknownCode = normalizedCodes.find((code) => !activeCodes.has(code));
     if (unknownCode) {

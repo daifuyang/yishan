@@ -2,6 +2,12 @@ import { createRouteRegistrar } from '../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { ResponseUtil } from "../../../../../utils/response.js";
 import dashboard from "./dashboard/index.js";
+import { registerPermissions, type PermissionRef } from '../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  ROOT: { code: 'app:root', label: '移动端根信息', group: 'app' },
+});
+registerPermissions(...Object.values(PERMS));
 
 /**
  * 移动端根路由 - /api/v1/app
@@ -14,7 +20,7 @@ const appRoot: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/",
     {
-      access: 'public',
+      access: { permission: PERMS.ROOT },
       schema: {
         summary: "移动端根",
         description: "返回移动端基座的基本信息",

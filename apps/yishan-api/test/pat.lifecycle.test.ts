@@ -238,7 +238,7 @@ describe('PAT scope semantics: computeEffectivePerms behavior', () => {
 
   it('普通用户 + 受限 scopes：effective = rolePerms ∩ tokenScope', async () => {
     const { computeEffectivePerms } = await import(
-      '../src/core/plugins/external/rbac.ts'
+      '../src/core/services/permission.service.js'
     )
     const rolePerms = new Set(['system:user:list', 'system:role:list'])
     const result = computeEffectivePerms(rolePerms, ['system:user:list'], CORE_CODES)
@@ -249,7 +249,7 @@ describe('PAT scope semantics: computeEffectivePerms behavior', () => {
 
   it('PAT 通配 ["*"]：effective = rolePerms ∩ activeCodes（含 super_admin 旁路）', async () => {
     const { computeEffectivePerms } = await import(
-      '../src/core/plugins/external/rbac.ts'
+      '../src/core/services/permission.service.js'
     )
     const rolePerms = new Set(['system:user:list', SUPER_ADMIN_BYPASS])
     // 通配符也必须受活动权限目录限制
@@ -261,7 +261,7 @@ describe('PAT scope semantics: computeEffectivePerms behavior', () => {
 
   it('super_admin + 受限 scopes（不含 *）：super_admin 旁路被剥离', async () => {
     const { computeEffectivePerms } = await import(
-      '../src/core/plugins/external/rbac.ts'
+      '../src/core/services/permission.service.js'
     )
     // rolePerms 来自用户角色含 super_admin
     const rolePerms = new Set(['system:user:list', SUPER_ADMIN_BYPASS])
@@ -275,7 +275,7 @@ describe('PAT scope semantics: computeEffectivePerms behavior', () => {
 
   it('super_admin + ["*"]：通配保留 super_admin 旁路（但受活动目录限制）', async () => {
     const { computeEffectivePerms } = await import(
-      '../src/core/plugins/external/rbac.ts'
+      '../src/core/services/permission.service.js'
     )
     const rolePerms = new Set(['system:user:list', SUPER_ADMIN_BYPASS])
     // 通配符继承 rolePerms，但必须与活动权限目录相交
@@ -286,7 +286,7 @@ describe('PAT scope semantics: computeEffectivePerms behavior', () => {
 
   it('显式空 scopes []：拒绝一切（即便 super_admin 也拒绝）', async () => {
     const { computeEffectivePerms } = await import(
-      '../src/core/plugins/external/rbac.ts'
+      '../src/core/services/permission.service.js'
     )
     const rolePerms = new Set(['system:user:list', SUPER_ADMIN_BYPASS])
     const result = computeEffectivePerms(rolePerms, [], CORE_CODES)
@@ -296,7 +296,7 @@ describe('PAT scope semantics: computeEffectivePerms behavior', () => {
 
   it('PAT scope 不可超出 rolePerms（权限不会因 tokenScope 而扩大）', async () => {
     const { computeEffectivePerms } = await import(
-      '../src/core/plugins/external/rbac.ts'
+      '../src/core/services/permission.service.js'
     )
     // 用户只有 system:user:list，tokenScope 申请了 system:role:list（用户没有的权限）
     const rolePerms = new Set(['system:user:list'])
@@ -309,7 +309,7 @@ describe('PAT scope semantics: computeEffectivePerms behavior', () => {
 
   it('非 super_admin + ["__super_admin__"]：旁路不会凭空出现', async () => {
     const { computeEffectivePerms } = await import(
-      '../src/core/plugins/external/rbac.ts'
+      '../src/core/services/permission.service.js'
     )
     // 用户角色不含 super_admin，但 tokenScope 显式包含旁路标记
     const rolePerms = new Set(['system:user:list'])

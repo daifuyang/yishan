@@ -10,6 +10,15 @@ import {
 } from "../../../../../schemas/auth.js";
 import { AuthService } from "../../../../../services/auth.service.js";
 import { MenuService } from "../../../../../services/menu.service.js";
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  LOGIN:    { code: 'app:auth:login',    label: '移动端-登录', group: 'app-auth' },
+  LOGOUT:   { code: 'app:auth:logout',   label: '移动端-登出', group: 'app-auth' },
+  REFRESH:  { code: 'app:auth:refresh',  label: '移动端-刷新令牌', group: 'app-auth' },
+  PROFILE:  { code: 'app:auth:profile',  label: '移动端-当前用户', group: 'app-auth' },
+});
+registerPermissions(...Object.values(PERMS));
 
 /**
  * 移动端认证路由 - /api/v1/app/auth
@@ -21,7 +30,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/login",
     {
-      access: 'public',
+      access: { permission: PERMS.LOGIN },
       // Section 7：移动端登录限流
       preHandler: [fastify.rateLimit("login")],
       schema: {
@@ -51,7 +60,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/logout",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.LOGOUT },
       schema: {
         summary: "移动端登出",
         description: "撤销当前用户的访问令牌",
@@ -86,7 +95,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/refresh",
     {
-      access: 'public',
+      access: { permission: PERMS.REFRESH },
       // Section 7：移动端 refresh 限流
       preHandler: [fastify.rateLimit("refresh")],
       schema: {
@@ -115,7 +124,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/me",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.PROFILE },
       schema: {
         summary: "获取当前用户信息",
         description: "获取当前登录用户的详细信息及已授权菜单路径",

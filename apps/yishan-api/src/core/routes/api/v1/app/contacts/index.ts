@@ -4,6 +4,13 @@ import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
 import { DeptService } from "../../../../../services/dept.service.js";
 import { UserRepository } from "../../../../../repositories/user.repository.js";
+import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+
+const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
+  DEPT_TREE: { code: 'app:contacts:dept-tree', label: '移动端通讯录-部门树', group: 'app' },
+  DEPT_USERS:{ code: 'app:contacts:dept-users',label: '移动端通讯录-部门成员', group: 'app' },
+});
+registerPermissions(...Object.values(PERMS));
 
 /**
  * 移动端通讯录路由 - /api/v1/app/contacts
@@ -15,7 +22,7 @@ const contacts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/depts/tree",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.DEPT_TREE },
       schema: {
         summary: "获取部门树（移动端）",
         description: "返回全部部门树形结构，供移动端通讯录展示",
@@ -46,7 +53,7 @@ const contacts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/depts/:id/users",
     {
-      access: 'authenticated',
+      access: { permission: PERMS.DEPT_USERS },
       schema: {
         summary: "获取部门成员（移动端）",
         description: "根据部门ID返回该部门下的所有启用用户",
