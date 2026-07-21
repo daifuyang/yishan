@@ -64,6 +64,21 @@ export default [
     access: 'canDo',
   },
   {
+    path: '/system/storage',
+    component: './system/storage',
+    access: 'canDo',
+  },
+  {
+    path: '/system/attachments',
+    component: './system/attachments',
+    access: 'canDo',
+  },
+  {
+    path: '/system/login-log',
+    component: './system/login-log',
+    access: 'canDo',
+  },
+  {
     path: '/account/api-tokens',
     redirect: '/account/center',
   },
