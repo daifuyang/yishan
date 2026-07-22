@@ -51,3 +51,6 @@ config/**/*.js
 config/**/*.d.ts
 mock/**/*.js
 mock/**/*.d.ts
+# 白名单：手写的 ambient declarations 必须入库
+!src/globals.d.ts
+!config/globals.d.ts
