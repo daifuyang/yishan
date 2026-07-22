@@ -49,7 +49,7 @@ pnpm --filter yishan-docs start
 
 ## 模块发现
 
-Yishan 通过 `apps/yishan-api/src/modules/<id>/` 装载业务能力。`routes.ts` 同时导出 `meta`（id / name / defaultEnabled / prefix）和一个默认 Fastify 插件；Core 在 boot 时用 `@fastify/autoload` 扫描并挂载。开发期可通过 `.dev-modules.json` 覆盖默认启停状态，生产环境忽略该文件。
+Yishan 通过 `apps/yishan-api/src/modules/<id>/` 装载业务能力。`routes.ts` 同时导出 `meta`（id / enabled）和一个默认 Fastify 插件；Core 在 boot 时用 `@fastify/autoload` 扫描并挂载。运行时启停由 `sys_module.enabled` 控制——首次 sync 该模块时若行不存在则用 `meta.enabled`（缺省 `true`）INSERT，已有行的 `enabled` 永不覆盖。
 
 模块形态、依赖方向、生成物约束见 `ARCHITECTURE.md` §5 与 `AGENTS.md` §3。
 

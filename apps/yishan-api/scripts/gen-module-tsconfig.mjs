@@ -1,20 +1,23 @@
 #!/usr/bin/env node
 /**
- * gen-module-tsconfig.mjs — 构建期打包 include 的落地。
+ * gen-module-tsconfig.mjs — 构建期产出 tsconfig.build.json 的脚本。
  *
- * 事实源：每模块 src/modules/<id>/module.json 的 `build` 字段。
- *   - build === false → 该模块加入 tsconfig 的 exclude，不编译进 dist、不参与打包。
- *   - 缺文件 / 缺字段 / 解析失败 → 一律按 build:true 处理（向后兼容 = 全打包）。
+ * 历史上这里根据 src/modules/<id>/module.json 的 `build` 字段往 tsconfig 追加 exclude，
+ * 用来"构建期排除某模块"。该机制已删除——所有模块一律进 dist，由运行时
+ * sys_module.enabled 决定是否挂载（见 src/core/module-loader.ts）。
  *
- * 另：所有模块的 admin/ 子目录永远是前端代码（Umi/Mako 编译），
- * 一律从 API 编译范围排除，不依赖 module.json。
+ * 现在这个脚本仍然存在并被 `build:ts` 调用，但只做一件事：把 src/modules/ 下所有
+ * 子目录名打印出来，提示"我发现了哪些模块"。tsconfig.build.json 仅继承基础
+ * tsconfig.json 的 include，自然覆盖 src/modules/<id>/。
  *
- * 产物：apps/yishan-api/tsconfig.build.json（extends 基础 tsconfig，仅追加 exclude）。
+ * 模块发现规则：src/modules/ 下任意子目录若存在 routes.ts 或 routes.js，即视为一个模块。
+ *
+ * 产物：apps/yishan-api/tsconfig.build.json（extends 基础 tsconfig）。
  * 该文件由构建流程生成，已在 .gitignore 忽略；tsc / tsc-alias 用 `-p tsconfig.build.json`。
  *
  * 纯 JS、无依赖，必须在 tsc 之前运行（此时还没有 dist）。
  */
-import { readdirSync, existsSync, readFileSync, writeFileSync, statSync } from 'node:fs'
+import { readdirSync, existsSync, writeFileSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -22,32 +25,27 @@ const apiRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const modulesDir = join(apiRoot, 'src', 'modules')
 const outPath = join(apiRoot, 'tsconfig.build.json')
 
-const excluded = []
+const moduleIds = []
 if (existsSync(modulesDir)) {
   for (const id of readdirSync(modulesDir)) {
     const dir = join(modulesDir, id)
     if (!statSync(dir).isDirectory()) continue
-    const metaPath = join(dir, 'module.json')
-    let build = true
-    if (existsSync(metaPath)) {
-      try {
-        const meta = JSON.parse(readFileSync(metaPath, 'utf8'))
-        if (meta && meta.build === false) build = false
-      } catch (err) {
-        console.warn(`[gen-module-tsconfig] 无法解析 ${metaPath}: ${err.message}，按 build:true 处理`)
-      }
+    const hasRoutes =
+      existsSync(join(dir, 'routes.ts')) || existsSync(join(dir, 'routes.js'))
+    if (!hasRoutes) {
+      console.warn(
+        `[gen-module-tsconfig] 跳过 src/modules/${id}：缺少 routes.{ts,js}`,
+      )
+      continue
     }
-    if (!build) excluded.push(`src/modules/${id}/**`)
+    moduleIds.push(id)
   }
 }
 
-const config = {
-  extends: './tsconfig.json',
-  exclude: Array.from(new Set(excluded)),
-}
+const config = { extends: './tsconfig.json' }
 writeFileSync(outPath, `${JSON.stringify(config, null, 2)}\n`)
 console.log(
-  excluded.length
-    ? `[gen-module-tsconfig] 已排除模块（不打包）: ${excluded.join(', ')}`
-    : '[gen-module-tsconfig] 无模块被排除，全部打包',
+  moduleIds.length
+    ? `[gen-module-tsconfig] 发现模块: ${moduleIds.sort().join(', ')}（全部纳入编译）`
+    : '[gen-module-tsconfig] 无模块',
 )

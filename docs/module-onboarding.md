@@ -79,9 +79,7 @@ import { <id>Sample } from './db/schema.js'
 
 export const meta = {
   id: '<id>',
-  name: '<Human Name>',
-  defaultEnabled: false,                    // 显式开启才装载
-  prefix: '/api/<id>',                      // 可省略，省略 = 默认 /api/<id>
+  enabled: true,                            // 可选；缺省 true。首次 sync 进 sys_module 的兜底值
 }
 
 export default fp<{ moduleId: string }>(async (app, opts) => {
@@ -98,6 +96,8 @@ export default fp<{ moduleId: string }>(async (app, opts) => {
   })
 })
 ```
+
+> 路由 prefix 硬约定为 `/api/${meta.id}`，由 `moduleRoutePrefix()` 生成，模块不再声明。
 
 ### `drizzle/0000_init.sql` —— 建表 SQL
 
@@ -136,15 +136,12 @@ npx drizzle-kit --config=apps/yishan-api/src/modules/<id>/drizzle.config.ts migr
 
 ## 步骤 5：开启模块（开发期）
 
-仓库根目录加 `.dev-modules.json`：
+模块默认装载，启停事实源是 `sys_module.enabled`：
 
-```json
-{ "<id>": true }
-```
+- 首次 sync 该模块到 sys_module 时，若行不存在则用 `meta.enabled`（缺省 `true`）INSERT。
+- 已有行的 `enabled` 永不被覆盖；运行时通过后台「模块控制」页或 toggle 接口切换。
 
-也可以让模块默认装载：把 `meta.defaultEnabled = true`。
-
-生产环境只看 `defaultEnabled`，**不看** `.dev-modules.json`。
+如需「出厂默认关闭」，把 `meta.enabled = false`。
 
 ## 步骤 6：启动与验证
 

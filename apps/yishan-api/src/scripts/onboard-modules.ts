@@ -5,7 +5,7 @@
  *   1. 迁移：调用 drizzle-kit migrate（应用模块 drizzle/ 下的 SQL 到 DB）。
  *      迁移完成后把 _journal.json 中的所有 tag 同步进 sys_module_migration。
  *   2. seed：执行模块自带的 seed 入口（seed.ts / scripts/seed.ts / db/seed.ts）。
- *      业务数据、菜单声明、权限码注册都在这里完成（不再依赖 module.json）。
+ *      业务数据、菜单声明、权限码注册都在这里完成。
  *   3. 占位：早期版本在这里处理 sys_menu 写入，模块自描述后改为由 seed.ts 负责。
  *
  * 入口：被 `pnpm db:seed` 的 Step 2/2 通过 spawnOnboard() 调用；
@@ -13,8 +13,8 @@
  *
  * 设计约束：
  *   - 单步失败不阻断后续模块。
- *   - 不写入 module.json / 不回写源码；只写 DB。
- *   - 菜单追加由模块 seed.ts 自管理，编排脚本不再关心 adminMenu 字段。
+ *   - 只写 DB；不写源码。
+ *   - 菜单追加由模块 seed.ts 自管理。
  */
 
 import 'dotenv/config'
@@ -167,10 +167,9 @@ async function seedModule(id: string): Promise<StepOutcome> {
 }
 
 async function appendModuleMenu(id: string): Promise<StepOutcome> {
-  // 菜单由模块自带的 seed.ts 负责写入（也是更直观的"插件自描述"形式）。
-  // 编排脚本不再读 module.json.adminMenu 字段，避免把菜单 schema 强加到后端。
+  // 菜单由模块自带的 seed.ts 负责写入（"插件自描述"形式）。
   void id
-  return { ok: true, message: '菜单由模块 seed.ts 负责（未读 module.json.adminMenu）' }
+  return { ok: true, message: '菜单由模块 seed.ts 负责' }
 }
 
 async function onboardOne(id: string): Promise<ModuleResult> {

@@ -34,7 +34,7 @@ export function moduleRoutePrefix(id: string): string {
 export interface ModuleDiskMeta {
   id: string
   name: string
-  defaultEnabled: boolean
+  enabled: boolean
   tablePrefix: string
   version: string
   /** 模块目录绝对路径，便于 re-import。 */
@@ -105,7 +105,7 @@ export class ModuleLoader {
         continue
       }
       const mod: {
-        meta?: Partial<ModuleDiskMeta & { name?: string; defaultEnabled?: boolean }>
+        meta?: Partial<ModuleDiskMeta & { name?: string; enabled?: boolean }>
       } = isTs
         ? await import(routesEntry).catch(() => ({} as { meta?: unknown }))
         : await import(routesEntry)
@@ -117,7 +117,7 @@ export class ModuleLoader {
       out.push({
         id: meta.id,
         name: typeof meta.name === 'string' && meta.name.length > 0 ? meta.name : meta.id,
-        defaultEnabled: Boolean(meta.defaultEnabled),
+        enabled: meta.enabled === undefined ? true : Boolean(meta.enabled),
         tablePrefix: typeof meta.tablePrefix === 'string' && meta.tablePrefix.length > 0
           ? meta.tablePrefix
           : `${meta.id}_`,
@@ -165,7 +165,7 @@ export class ModuleLoader {
           name: m.name,
           tablePrefix: m.tablePrefix,
           version: m.version,
-          enabled: m.defaultEnabled ? 1 : 0,
+          enabled: m.enabled ? 1 : 0,
         })
       }
     }

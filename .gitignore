@@ -31,7 +31,7 @@ yarn-error.log*
 *.tmp
 *.temp
 *.bak
-demo/
+/demo/
 .playwright-cli/
 apps/yishan-app/.swc/
 tmp/

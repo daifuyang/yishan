@@ -13,7 +13,6 @@
     "test:integration": "vitest run test/integration",
     "build:ts": "rm -rf dist && node scripts/gen-module-tsconfig.mjs && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "watch:ts": "concurrently -k \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\"",
-    "modules:build": "node scripts/module-build.mjs",
     "dev": "NODE_ENV=development npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"NODE_ENV=development fastify start --ignore-watch='public/**' --ignore-watch=.ts$ -w -l info -P dist/app.js\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
