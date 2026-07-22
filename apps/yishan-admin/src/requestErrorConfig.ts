@@ -2,7 +2,7 @@ import type { RequestOptions } from "@@/plugin-request/request";
 import type { RequestConfig } from "@umijs/max";
 import { request } from "@umijs/max";
 import { message, notification } from "antd";
-import { logout } from "@/utils/auth";
+import { logout, setCurrentUser } from "@/utils/auth";
 import {
   getAuthorizationHeader,
   clearTokens,
@@ -144,10 +144,9 @@ export const errorConfig: RequestConfig = {
                 (retryResp as any)?.data
               ) {
                 try {
-                  localStorage.setItem(
-                    "currentUser",
-                    JSON.stringify((retryResp as any).data),
-                  );
+                  // 走 setCurrentUser 统一封装，避免直接操作 localStorage；
+                  // logout() 也通过同一个 key 清理，保证状态同步。
+                  setCurrentUser((retryResp as any).data);
                 } catch {
                   // localStorage 写入失败不影响会话保留
                 }

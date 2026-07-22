@@ -17,6 +17,7 @@
 
 const mockRequest = jest.fn();
 const mockLogout = jest.fn();
+const mockSetCurrentUser = jest.fn();
 const mockClearTokens = jest.fn();
 const mockRefreshToken = jest.fn();
 const mockGetAuthorizationHeader = jest.fn();
@@ -30,6 +31,7 @@ jest.mock('@umijs/max', () => ({
 
 jest.mock('@/utils/auth', () => ({
   logout: (...args: unknown[]) => mockLogout(...args),
+  setCurrentUser: (...args: unknown[]) => mockSetCurrentUser(...args),
 }));
 
 jest.mock('@/utils/token', () => ({
@@ -91,6 +93,8 @@ beforeEach(() => {
   mockRequest.mockResolvedValue({ success: true, data: { id: 1, username: 'admin' } });
   // logout 默认 resolve
   mockLogout.mockResolvedValue(undefined);
+  // setCurrentUser 默认无副作用
+  mockSetCurrentUser.mockImplementation(() => undefined);
 });
 
 describe('requestErrorConfig.errorHandler —— 401 refresh 流程', () => {
@@ -127,7 +131,7 @@ describe('requestErrorConfig.errorHandler —— 401 refresh 流程', () => {
     });
   });
 
-  it('refresh 成功后若原请求是 /auth/me，把最新用户回写到 localStorage.currentUser', async () => {
+  it('refresh 成功后若原请求是 /auth/me，把最新用户回写到 setCurrentUser', async () => {
     const freshUser = {
       id: 7,
       username: 'fresh-admin',
@@ -141,10 +145,9 @@ describe('requestErrorConfig.errorHandler —— 401 refresh 流程', () => {
       { url: '/api/v1/auth/me', method: 'GET' },
     );
 
-    expect(localStorage.setItem).toHaveBeenCalledWith(
-      'currentUser',
-      JSON.stringify(freshUser),
-    );
+    // 走 utils/auth.setCurrentUser 统一封装，不再直接操作 localStorage。
+    // 这样 logout() 与 /auth/me refresh 走的都是同一个 key，避免状态漂移。
+    expect(mockSetCurrentUser).toHaveBeenCalledWith(freshUser);
   });
 
   it('refresh 成功后若 /auth/me 重放失败，不影响会话保留', async () => {
