@@ -1,9 +1,22 @@
 import 'dotenv/config'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
+import { join } from 'node:path'
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
+import { ModuleLoader } from './core/module-loader.js'
+
+// 应用根目录（dist/）和源码根目录（src/）。dev 路由需要扫描 src/modules/ 读迁移 journal；
+// 用装饰器挂出来，避免每个 dev 路由文件自己数 '../'。
+const APP_ROOT_DIST = __dirname
+const APP_ROOT_SRC = join(__dirname, '..', 'src')
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    moduleLoader: ModuleLoader
+    appRootDist: string
+    appRootSrc: string
+ }
+}
 
 /**
  * Section 2 安全门禁：生产环境使用默认 / 弱 JWT secret 直接拒绝启动。
@@ -21,7 +34,7 @@ try {
   process.exit(1)
 }
 
-export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {}
+export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> { }
 const options: AppOptions = {}
 
 const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void> => {
@@ -38,54 +51,55 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
     options: { ...opts },
   })
 
-  // 3. Module autoload — scans `src/modules/*/routes.ts`. Each module exports
-  //    `meta` (id, name, defaultEnabled, prefix) and a default Fastify plugin.
-  //    `.dev-modules.json` overrides the default on a per-developer basis in
-  //    non-production environments; production never reads it.
-  const modulesDir = join(__dirname, 'modules')
-  if (existsSync(modulesDir)) {
-    const devOverridePath = join(process.cwd(), '.dev-modules.json')
-    const overrides: Record<string, boolean> =
-      process.env.NODE_ENV !== 'production' && existsSync(devOverridePath)
-        ? (JSON.parse(readFileSync(devOverridePath, 'utf8')) as Record<string, boolean>)
-        : {}
+  // 2.5 数据库句柄暴露：core/plugins/external/database.ts 已经在 register 时
+  //     装饰了 fastify.db 与 fastify.drizzleDb。
 
-    for (const id of readdirSync(modulesDir)) {
-      const moduleDir = join(modulesDir, id)
-      if (!statSync(moduleDir).isDirectory()) continue
+  // 2.6 显式构造 ModuleLoader 并挂到 fastify 装饰器上。
+  //     显式 register 比依赖 autoload 排序更稳——boot 阶段立即可用。
+  //     路由 prefix 硬约定为 `/api/${id}`（见 core/module-loader.ts moduleRoutePrefix），
+  //     不再做跨模块 prefix 唯一性校验（id 唯一性由文件系统保证）。
+  const moduleLoader = new ModuleLoader(fastify, APP_ROOT_SRC, APP_ROOT_DIST)
+  fastify.decorate('moduleLoader', moduleLoader)
+  fastify.decorate('appRootDist', APP_ROOT_DIST)
+  fastify.decorate('appRootSrc', APP_ROOT_SRC)
 
-      const routesEntry = join(moduleDir, 'routes.js')
-      if (!existsSync(routesEntry)) {
-        fastify.log.warn({ module: id }, 'module skipped: routes.js missing')
-        continue
-      }
+  // 3. 业务模块：sync DB → 无条件挂载所有【已打包在盘上】的模块。
+  //    运行时启停不改挂载（fastify 插件树 boot 后不可变），由 onRequest gate
+  //    按 sys_module.enabled 拦截实现，即时生效、零重启。
+  const diskModules = await fastify.moduleLoader.scanDiskModules()
+  fastify.log.info({ count: diskModules.length }, 'disk modules scanned')
+  await fastify.moduleLoader.syncModulesFromDisk(diskModules)
 
-      const mod = await import(routesEntry)
-      const meta = (mod as { meta?: { id?: unknown; defaultEnabled?: unknown; prefix?: unknown } }).meta
-      if (!meta || typeof meta.id !== 'string') {
-        fastify.log.warn({ module: id }, 'module skipped: meta.id missing')
-        continue
-      }
-
-      const enabled = overrides[meta.id] ?? Boolean(meta.defaultEnabled)
-      if (!enabled) {
-        fastify.log.info({ module: meta.id }, 'module skipped')
-        continue
-      }
-
-      const prefix = typeof meta.prefix === 'string' && meta.prefix.length > 0
-        ? meta.prefix
-        : `/api/${meta.id}`
-
-      await fastify.register(AutoLoad, {
-        dir: moduleDir,
-        options: { ...opts, prefix },
+  // 3.5 模块启停 gate：先于任何路由挂载在 root 注册 onRequest（root hook + 提前注册，
+  //     才能覆盖后续挂载的模块子上下文；listModuleIds/enabled 都在请求期求值）。
+  //     命中 /api/<moduleId>/... 且该模块 enabled=false → 直接 404。
+  //     core 路由（/api/v1/...、/api/docs 等）首段不是模块 id，放行。
+  fastify.addHook('onRequest', async (request, reply) => {
+    const moduleIds = fastify.moduleLoader.listModuleIds()
+    if (moduleIds.size === 0) return
+    const match = /^\/api\/([^/?#]+)/.exec(request.url)
+    if (!match) return
+    const seg = match[1]
+    if (!moduleIds.has(seg)) return
+    const enabled = await fastify.moduleLoader.enabledIdsCached()
+    if (!enabled.has(seg)) {
+      reply.code(404).send({
+        success: false,
+        code: 40400,
+        message: `模块未启用：${seg}`,
+        data: null,
+        timestamp: new Date().toISOString(),
       })
-      fastify.log.info({ module: meta.id, prefix }, 'module mounted')
+      return reply
     }
-  }
+  })
+
+  // 3.6 挂载模块路由（gate 已就位）。
+  await fastify.moduleLoader.mountAllOnDisk(diskModules)
 
   // 4. Core HTTP routes — single source of truth for in-app endpoints.
+  //    模块控制台 dev-modules（admin/system/module-control/{list,toggle,migrate,generate,seed}）
+  //    在 core/routes 之下 autoload，跟现有 admin/system/{options,regions,...} 平级同形。
   // eslint-disable-next-line no-void
   void fastify.register(AutoLoad, {
     dir: join(__dirname, 'core/routes'),

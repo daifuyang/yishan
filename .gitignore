@@ -43,5 +43,4 @@ apps/yishan-api/openapi.json
 # drizzle-kit generated metadata (rebuilt by `db:generate`)
 apps/yishan-api/drizzle/meta/
 
-# Local dev module enable/disable overrides (per-developer, never committed)
-apps/yishan-api/.dev-modules.json
+# Local dev module enable/disable overrides — 已废弃。启停事实迁入 sys_module 表。

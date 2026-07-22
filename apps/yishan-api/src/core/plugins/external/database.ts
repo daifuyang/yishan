@@ -214,6 +214,7 @@ async function databasePlugin(
 
   // 装饰器：向路由和插件提供统一的 Drizzle 数据库入口
   fastify.decorate('db', drizzleDb)
+  fastify.decorate('drizzleDb', drizzleDb)
 
   // 装饰器：添加数据库健康检查方法
   fastify.decorate('dbHealthCheck', async () => {
@@ -286,6 +287,7 @@ async function databasePlugin(
 declare module 'fastify' {
   interface FastifyInstance {
     db: typeof drizzleDb
+    drizzleDb: typeof drizzleDb
     dbHealthCheck(): Promise<{
       status: 'healthy' | 'unhealthy' | 'error'
       timestamp: string

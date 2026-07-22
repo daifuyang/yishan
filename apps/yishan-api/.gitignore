@@ -65,6 +65,9 @@ test/types/index.js
 dist
 /public
 
+# 构建期生成的模块 tsconfig（由 scripts/gen-module-tsconfig.mjs 重建）
+tsconfig.build.json
+
 src/generated
 deploy/fc3/certs
 deploy/fc3/.build

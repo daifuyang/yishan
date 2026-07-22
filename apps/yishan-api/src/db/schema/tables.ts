@@ -1,5 +1,5 @@
 // Generated from drizzle/*.sql. Do not edit manually.
-import { boolean, date, datetime, int, json, text, tinyint, varchar, index, mysqlTable, uniqueIndex } from 'drizzle-orm/mysql-core'
+import { bigint, boolean, date, datetime, int, json, text, timestamp, tinyint, varchar, index, mysqlTable, uniqueIndex } from 'drizzle-orm/mysql-core'
 import { sql } from 'drizzle-orm'
 
 export const sysApp = mysqlTable(
@@ -741,6 +741,57 @@ export const sysApiToken = mysqlTable(
     idxApiTokenUserId: index('idx_api_token_user_id').on(t.userId),
     idxApiTokenDeletedAt: index('idx_api_token_deleted_at').on(t.deletedAt),
     idxApiTokenExpiresAt: index('idx_api_token_expires_at').on(t.expiresAt),
+  })
+)
+
+// ---------------------------------------------------------------------------
+// Module control tables (managed by Yishan Core, not by individual modules).
+//
+// `sys_module` is the single source of truth for module lifecycle:
+//   - id / table_prefix / version come from disk (`meta` in routes.ts).
+//   - 路由 prefix 硬约定为 `/api/${id}`（见 core/module-loader.ts moduleRoutePrefix），
+//     不再由模块 meta 声明，也不存到 sys_module。
+//   - `enabled` is the runtime switch, mutated by /api/dev/modules/:id/toggle.
+//   - `installed_at` records when the row was first inserted (first sync).
+//
+// Boot-time sync (`core/module-loader.ts` → `syncModulesFromDisk`) INSERTs
+// missing rows (defaulting `enabled = 1`) and UPDATEs the structural columns
+// from disk. It MUST NEVER touch `enabled` — an admin explicitly disabling a
+// module must not be silently re-enabled by a restart.
+// ---------------------------------------------------------------------------
+
+export const sysModule = mysqlTable(
+  'sys_module',
+  {
+    id: varchar('id', { length: 64 }).primaryKey().notNull(),
+    name: varchar('name', { length: 128 }).notNull(),
+    tablePrefix: varchar('table_prefix', { length: 32 }).notNull(),
+    version: varchar('version', { length: 32 }).notNull().default('0.0.0'),
+    enabled: tinyint('enabled').notNull().default(1),
+    installedAt: timestamp('installed_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP`).onUpdateNow(),
+  },
+  (t) => ({
+    idxSysModuleEnabled: index('idx_sys_module_enabled').on(t.enabled),
+  })
+)
+
+// `sys_module_migration` records which drizzle-kit migration hashes have been
+// applied to each module. The source of truth is still `__drizzle_migrations`
+// (managed by drizzle-kit); this table is the view layer that lets the admin
+// console show per-module applied/pending migrations without joining across
+// every module's own __drizzle_migrations instance.
+export const sysModuleMigration = mysqlTable(
+  'sys_module_migration',
+  {
+    id: bigint('id', { mode: 'number' }).autoincrement().primaryKey().notNull(),
+    moduleId: varchar('module_id', { length: 64 }).notNull(),
+    hash: varchar('hash', { length: 64 }).notNull(),
+    appliedAt: timestamp('applied_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => ({
+    uniqSysModuleMigrationModuleHash: uniqueIndex('uniq_sys_module_migration_module_hash').on(t.moduleId, t.hash),
+    idxSysModuleMigrationModuleId: index('idx_sys_module_migration_module_id').on(t.moduleId),
   })
 )
 

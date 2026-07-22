@@ -1,6 +1,6 @@
 // Generated from drizzle/*.sql. Do not edit manually.
 import { relations } from 'drizzle-orm'
-import { sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysMenuPermission, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysRolePermission, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
+import { sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysMenuPermission, sysModule, sysModuleMigration, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysRolePermission, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
 
 export const sysAppRelations = relations(sysApp, ({ one, many }) => ({
   creator: one(sysUser, { fields: [sysApp.creatorId], references: [sysUser.id], relationName: 'sysApp_creatorId' }),
@@ -202,7 +202,15 @@ export const sysPluginSyncLogRelations = relations(sysPluginSyncLog, ({ one, man
   pluginInstallId: one(sysPluginInstall, { fields: [sysPluginSyncLog.pluginInstallId], references: [sysPluginInstall.id], relationName: 'sysPluginSyncLog_pluginInstallId' })
 }))
 
-export const sysApiTokenRelations = relations(sysApiToken, ({ one, many }) => ({
+export const sysApiTokenRelations = relations(sysApiToken, ({ one }) => ({
   userId: one(sysUser, { fields: [sysApiToken.userId], references: [sysUser.id], relationName: 'sysApiToken_userId' })
+}))
+
+export const sysModuleRelations = relations(sysModule, ({ many }) => ({
+  sysModuleMigration_module_id: many(sysModuleMigration, { relationName: 'sysModuleMigration_moduleId' })
+}))
+
+export const sysModuleMigrationRelations = relations(sysModuleMigration, ({ one }) => ({
+  moduleId: one(sysModule, { fields: [sysModuleMigration.moduleId], references: [sysModule.id], relationName: 'sysModuleMigration_moduleId' })
 }))
 

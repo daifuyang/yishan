@@ -252,6 +252,7 @@ export const systemMenusSeed: MenuSeedNode = {
     page({ name: '云存储', path: '/system/storage', sortOrder: 8, component: './system/storage', actions: [action('查看', 'system:storage:list', 1, true), action('编辑', 'system:storage:update', 2), action('上传凭证', 'system:storage:upload-token', 3)] }),
     page({ name: '媒体库', path: '/system/attachments', sortOrder: 9, component: './system/attachments', actions: [action('查看', 'system:attachment:list', 1, true), action('上传', 'system:attachment:create', 2), action('编辑', 'system:attachment:update', 3), action('删除', 'system:attachment:delete', 4)] }),
     page({ name: '登录日志', path: '/system/login-log', sortOrder: 10, component: './system/login-log', actions: [action('查看', 'system:login-log:list', 1, true)] }),
+    page({ name: '模块控制', path: '/system/module-control', sortOrder: 99, icon: 'tool', component: './system/module-control', actions: [action('查看', 'system:module-control:list', 1, true)] }),
     // 插件管理已随精简删除（plugins/, plugin-platform/ 全部移除）；对应路由 + 权限 + 页面都不可用
   ],
 };

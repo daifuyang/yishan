@@ -29,6 +29,7 @@ export default fp(async function (fastify) {
         { name: 'system', description: 'System endpoints' },
         { name: 'attachments', description: 'System attachments' },
         { name: 'storage', description: 'Storage endpoints' },
+        { name: 'demo', description: 'Demo module endpoints（src/modules/demo/）' },
       ],
       components: {
         securitySchemes: {

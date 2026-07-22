@@ -16,14 +16,14 @@ Yishan 是一个以 Core 为基座的 monorepo。
 - **Docs**（`apps/yishan-docs`）：Docusaurus 3。
 - **Components**（`packages/yishan-tiptap`）：TipTap 3，被 Admin 通过 workspace 协议消费。
 
-业务能力以**模块**形式承载：每个模块在 `apps/yishan-api/src/modules/<id>/` 下提供 `routes.ts`（Fastify 插件）和 `meta`（id / name / defaultEnabled / prefix）。Core 通过 `@fastify/autoload` 扫描该目录装载模块；启停由 `meta.defaultEnabled` 决定，开发期可通过 `.dev-modules.json` 覆盖，生产环境忽略该文件。
+业务能力以**模块**形式承载：每个模块在 `apps/yishan-api/src/modules/<id>/` 下提供 `routes.ts`（Fastify 插件）和 `meta`（id / name / defaultEnabled / tablePrefix / version），并自带 `db/schema.ts`、drizzle 配置与产物、`repositories/`、`services/`、`schemas/`、`tests/`。Core 通过 `@fastify/autoload` 扫描该目录装载模块，路由 prefix 硬约定为 `/api/<id>`（`core/module-loader.ts` 的 `moduleRoutePrefix()` 为唯一来源）。启停分两级：**构建期打包** 由每模块 `module.json.build` 决定（`build:false` 不编译进 dist）；**运行时启停** 由 `sys_module.enabled` + `app.ts` 全局 `onRequest` gate 决定（停用模块请求直接 404，即时生效、零重启）。
 
 ## 3. 不可破坏的架构不变量
 
 - Core 不依赖任何业务模块实现；模块可调用 Core 暴露的 extension point。
 - API 业务调用遵守 Route → Service → Repository。
 - Repository 是访问数据库实现（`@/db`、Drizzle 表定义、SQL）的唯一业务层。
-- 所有模块路由的 `meta.prefix` 互相不冲突；冲突时启动期直接报错。
+- 所有模块路由 prefix 由 `moduleRoutePrefix()` 统一生成为 `/api/<id>`，id 唯一性由文件系统保证。
 - Admin 路由必须能解析到模块页面或 Core 页面；菜单引用必须能解析到路由。
 - OpenAPI spec、Admin `services/generated/`、模块迁移目录均按当前已装载模块动态生成；不再维护静态 profile 文件或 plugin 清单。
 - 生成物不得通过手工编辑改变架构事实。
@@ -32,7 +32,7 @@ Yishan 是一个以 Core 为基座的 monorepo。
 
 仓库维护 `main` 与 `all` 两条发行线。
 
-- `main` 是 Core 发行线，唯一模块是 `_demo`（SDK 示范，`defaultEnabled: false`）。
+- `main` 是 Core 发行线，唯一模块是 `demo`（SDK 示范，`defaultEnabled: false`，路径 `apps/yishan-api/src/modules/demo/`）。
 - `all` 是官方集成发行线，包含官方业务模块示例。
 
 两条发行线共享同一构建机制与同一 SDK。跨线同步通过显式 cherry-pick / backport 完成，不再依赖 Git ancestry。
@@ -41,23 +41,28 @@ Yishan 是一个以 Core 为基座的 monorepo。
 
 ```text
 apps/yishan-api/src/modules/<id>/
+├── README.md              # 模块自描述，新人入门首选
 ├── routes.ts              # export const meta = { id, name, defaultEnabled, prefix }
-│                          # export default <FastifyPluginAsync>
-├── services/              # 业务编排，可选
-├── repositories/          # 数据访问，可选
-├── migrations/            # DDL，可选
+│                          # export default <FastifyPluginAsync>，含 onRoute 把 moduleId 写入 route.config
+├── db/schema.ts           # Drizzle 表定义（表名 = <id>_<entity>）
+├── drizzle.config.ts      # 模块自带 drizzle-kit 配置
+├── drizzle/               # drizzle-kit 产物：SQL + meta/_journal.json + meta/snapshot.json
+├── repositories/          # 该模块唯一允许访问 @/db / Drizzle 表定义的层
+├── services/              # 业务编排
+├── schemas/               # TypeBox HTTP schema
 └── tests/                 # 单元 / 集成，可选
 ```
 
 `apps/yishan-api/src/app.ts` 在 boot 阶段：
 
 1. 用 `@fastify/autoload` 注册 `core/plugins/external/*` 与 `core/plugins/app/*`（Fastify 生态 helpers + 内部工具）。
-2. 读取 `process.cwd()/.dev-modules.json`（仅非 production）。
-3. 对 `src/modules/<id>/` 下每个目录：
-   - 读取 `<id>/routes.js` 的 `meta` 与 default export；
-   - 计算 `enabled = overrides[meta.id] ?? meta.defaultEnabled`，false 则跳过；
-   - 用 `@fastify/autoload` 注册该模块目录，`options.prefix` 取 `meta.prefix ?? /api/<id>`。
-4. 用 `@fastify/autoload` 注册 `core/routes/*`（Core 自有路由）。
+2. `fastify.decorate('drizzleDb', drizzleDb)`：把数据库句柄暴露给所有 module 的 routes.ts。
+3. 构造 `ModuleLoader` 并 `scanDiskModules()`（读各模块 `meta`）→ `syncModulesFromDisk()`（INSERT 缺失行按 `defaultEnabled` 兜底 `enabled`，UPDATE 结构字段但不动 `enabled`）。
+4. 在 root 注册全局 `onRequest` gate：命中 `/api/<moduleId>/...` 且该模块 `sys_module.enabled=false` 时直接 404；core 路由（`/api/v1/...` 等）放行。
+5. `mountAllOnDisk()`：对 `src/modules/<id>/` 下每个【已打包在 dist】的模块，用 `@fastify/autoload` 注册其 `routes/` 目录，`options.prefix = moduleRoutePrefix(id)`。**不看 enabled**——运行时启停交给 gate（fastify 插件树 boot 后不可变，无法运行时挂/卸）。
+6. 用 `@fastify/autoload` 注册 `core/routes/*`（Core 自有路由）。
+
+模块默认包含一份 `demo`（SDK 示范），路径 `apps/yishan-api/src/modules/demo/`，提供 `GET /api/demo/server-info`、`GET /api/demo/documents` 等入口。
 
 ## 6. 根目录结构
 
@@ -140,11 +145,13 @@ Route → Service → Repository → Drizzle / SQL
 
 ## 9. 模块边界
 
-- `meta.id` 是模块唯一标识，必须唯一且稳定。
-- `meta.prefix` 默认 `/api/<id>`，可在 `meta.prefix` 显式声明。
+- `meta.id` 是模块唯一标识，必须唯一且稳定；id 唯一性由文件系统目录名保证。
+- 路由 prefix 硬约定 `/api/<id>`，由 `moduleRoutePrefix()` 唯一生成，模块不再声明 `meta.prefix`。
+- 表名必须以 `<meta.id>_` 开头。
 - 模块不直接 import 其他模块的源码；跨模块交互只通过 Core 暴露的 extension point 或 HTTP API。
-- 模块不读取或修改 Core 表；只能访问自己的 migrations。
-- 模块启停只影响 HTTP 路由装载；不挂 preHandler gate，模块自身判断可见性。
+- 模块不读取或修改 Core 表；模块也不许建 `sys_*` 表，只能访问自己的 drizzle 工程。
+- 模块启停分两级：构建期打包（`module.json.build`，改后需 rebuild）与运行时启停（`sys_module.enabled` + 全局 `onRequest` gate，即时生效）。运行时启用蕴含必须已打包。
+- 模块启动期**不**自动跑迁移、不自动校验 pending；迁移由开发者手动执行 `drizzle-kit migrate`。
 
 ## 10. Admin 架构
 
@@ -167,9 +174,11 @@ Route → Service → Repository → Drizzle / SQL
 ## 13. 数据库与迁移
 
 - 数据库：仅 Drizzle，无 ORM 替代物。
-- Core DDL 在 `apps/yishan-api/drizzle/core/`；模块 DDL 在 `apps/yishan-api/src/modules/<id>/migrations/`。
-- 迁移计划由 boot 时扫描 `src/modules/<id>/migrations/` 生成。
-- 不允许 Core 创建业务表，不允许模块修改 Core 表。
+- Core DDL 在 `apps/yishan-api/drizzle/core/`（沿用根 `drizzle-kit`）。
+- **每个 module 自带一份独立 drizzle 工程**：`apps/yishan-api/src/modules/<id>/drizzle.config.ts` + `drizzle/` 输出目录，drizzle-kit 完全独立运行。
+- 模块迁移**永远**由开发者手动 `drizzle-kit migrate` 执行；模块的 routes.ts 不执行 SQL，不检查 pending。
+- 不允许 Core 创建业务表，不允许模块修改 Core 表，也不允许模块建 `sys_*` 表。
+- 表名约束：`demo_documents` 等所有模块表必须以 `<meta.id>_` 开头，由 `scripts/check-module-naming.mjs` 与启动期同时校验。
 
 ## 14. 请求与能力流
 
@@ -201,6 +210,9 @@ Service → Repository → Drizzle / SQL
 - 是否修改 `apps/yishan-admin/src/services/generated/` 下的非占位文件？
 - 是否让 admin 业务代码 import `API.*` namespace？
 - 是否在 Core 引入对模块源码的反向依赖？
+- 模块表名是否以 `<meta.id>_` 开头？跨模块表名是否撞？
+- `meta.id` / `meta.prefix` 是否全局唯一？
+- 模块是否在 routes.ts 之外碰 drizzleDb，或写了 SQL 字符串而绕过 repositories？
 
 ## 17. 事实优先级
 
