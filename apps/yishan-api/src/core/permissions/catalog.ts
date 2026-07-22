@@ -47,11 +47,13 @@ export const listPermissions = (): ReadonlyArray<PermissionRef> =>
  * 已知不需要 RBAC 角色持有的"公共"code：login / refresh / 定时任务回调 / 健康检查等。
  * 这些 code 仍然 catalog 注册（用于 OpenAPI、admin UI 展示），但运行时 rbac 跳过权限校验。
  * 仅认证身份，不强制要求 perm。
+ *
+ * 注意：'auth:logout' 不在本集合中。logout 必须携带有效 token 才能撤销当前用户
+ * 会话，鉴权由 route-registrar 自动注入的 authenticate + requirePermission 链完成。
  */
 export const BYPASS_CODES: ReadonlySet<string> = Object.freeze(
   new Set([
     'auth:login',
-    'auth:logout',
     'auth:refresh',
     'system:cron',
     'system:health',

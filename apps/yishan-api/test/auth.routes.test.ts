@@ -323,6 +323,8 @@ describe('Auth routes (/me + /logout, real jwt-auth plugin)', () => {
   })
 
   it('POST /api/v1/auth/logout 缺 Authorization 返回 401', async () => {
+    // `auth:logout` 不在 BYPASS_CODES 中，route-registrar 自动注入
+    // `authenticate` + `requirePermission` preHandler；缺 token 在 jwt-auth 阶段即被拦下。
     const app = await buildRealAuthApp()
 
     const res = await app.inject({ method: 'POST', url: '/api/v1/auth/logout' })
@@ -336,6 +338,7 @@ describe('Auth routes (/me + /logout, real jwt-auth plugin)', () => {
   })
 
   it('POST /api/v1/auth/logout 伪造签名 token 返回 401', async () => {
+    // 伪造签名 token 在 jwt-auth 阶段 jwtVerify 失败被拦下。
     const app = await buildRealAuthApp()
     const token = signAccessToken(app)
     const [header, payload] = token.split('.')
@@ -404,13 +407,9 @@ describe('Auth routes (/me + /logout, real jwt-auth plugin)', () => {
       .spyOn(UserTokenRepository, 'findActiveTokensByUserId')
       .mockResolvedValue([])
 
-    // 用受害者 ID 伪造一个未经后端签名的 JWT（攻击者只能控制 payload）。
     const forgeApp = Fastify({ logger: false })
     await forgeApp.register(jwtAuthPlugin)
-    // 用同样的 secret 自己签一个 id=999 的 JWT，绕过 jwt-auth 后调用 logout 应
-    // 仅撤销 999 号用户，不会动 42 号用户。然而 jwt-auth 在我们的实现里直接
-    // 用 fastify.jwt.verify，攻击者没有 secret 也无法签名，所以这里用「篡改
-    // 签名段」的等价物：构造一个用任意 secret 签的 token，期望被拒。
+    // 用任意 secret 自签 id=999 的 JWT；jwt-auth 用真实 secret verify 时签名不匹配。
     const forgedWithOtherSecret = forgeApp.jwt.sign(
       { id: 999, type: 'access_token' },
       { expiresIn: 600, key: 'forged-secret', algorithm: 'HS256' }
