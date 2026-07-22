@@ -8,11 +8,11 @@ import { registerPermissions, type PermissionRef } from '@/core/permissions/cata
 import { ResponseUtil } from '@/utils/response.js';
 
 const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  TOGGLE: { code: 'system:module-control:toggle', label: '模块启停', group: 'module-control' },
+  TOGGLE: { code: 'system:module-management:toggle', label: '模块启停', group: 'module-management' },
 });
 registerPermissions(PERMS.TOGGLE);
 
-const adminSystemModuleControlToggle: FastifyPluginAsync = async (fastify) => {
+const adminSystemModuleManagementToggle: FastifyPluginAsync = async (fastify) => {
   const route = createRouteRegistrar(fastify);
   route.post(
     '/:id/toggle',
@@ -21,8 +21,8 @@ const adminSystemModuleControlToggle: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: '切换模块启停',
         description: 'UPDATE sys_module.enabled 并清 enabled 缓存；由全局 onRequest gate 即时拦截，无需重启。',
-        operationId: 'toggleModuleControl',
-        tags: ['moduleControl'],
+        operationId: 'toggleModuleManagement',
+        tags: ['moduleManagement'],
         security: [{ bearerAuth: [] }],
         params: Type.Object({ id: Type.String() }),
         body: Type.Object({ enabled: Type.Boolean() }),
@@ -71,4 +71,4 @@ const adminSystemModuleControlToggle: FastifyPluginAsync = async (fastify) => {
   )
 }
 
-export default adminSystemModuleControlToggle
+export default adminSystemModuleManagementToggle

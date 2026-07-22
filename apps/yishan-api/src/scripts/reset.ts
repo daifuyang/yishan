@@ -1,8 +1,7 @@
 import 'dotenv/config'
-import { execSync } from 'node:child_process'
+import { execSync, spawnSync } from 'node:child_process'
 import { createPool } from 'mysql2/promise'
 import { pool as drizzlePool } from '@/db'
-import { runSeed } from './seed/index.js'
 
 /**
  * db:reset — 仅供开发环境使用。
@@ -11,7 +10,9 @@ import { runSeed } from './seed/index.js'
  *   1) 校验 NODE_ENV（production 直接拒绝）
  *   2) DROP DATABASE → CREATE DATABASE
  *   3) 调 `drizzle-kit migrate` 应用全量迁移（标准 drizzle-kit journal）
- *   4) 跑种子数据 runSeed
+ *   4) spawn 子进程跑 `node dist/scripts/seed/index.js` —— 必须独立进程,
+ *      否则 @/db 的 singleton pool 在 DROP 后持有的旧连接会被复用,
+ *      导致 seed 阶段 "Unknown database" 报错。
  *
  * 与 db:migrate / db:seed 的差异：先 DROP 整库重建，所有手工数据都会被清空。
  *
@@ -106,7 +107,17 @@ export async function resetDatabaseAndSeed(): Promise<void> {
   runMigrations()
   console.log('[reset] migrations applied')
 
-  await runSeed()
+  // 必须在独立进程里跑 seed：当前进程 import 的 @/db pool 是 DROP 之前创建的
+  // singleton,缓存的连接指向已删除的库;即使 CREATE 了同名库,那些连接也不会
+  // 重新做 USE 语句,会继续指向不存在的库,导致 "Unknown database" 报错。
+  console.log('[reset] spawn seed 子进程...')
+  const result = spawnSync(process.execPath, ['dist/scripts/seed/index.js'], {
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: process.env.NODE_ENV ?? 'development' },
+  })
+  if (result.status !== 0) {
+    throw new Error(`seed 子进程退出码 ${result.status}`)
+  }
   console.log('[seed] seed completed')
 
   await drizzlePool.end()

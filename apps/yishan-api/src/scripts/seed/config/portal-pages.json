@@ -1,0 +1,5 @@
+[
+  { "title": "首页",     "path": "/home",    "content": "欢迎访问门户网站",         "attributes": { "banner": "/assets/banner.jpg" } },
+  { "title": "关于我们", "path": "/about",   "content": "关于我们页面内容",         "attributes": { "layout": "full" } },
+  { "title": "联系我们", "path": "/contact", "content": "联系方式与地址",           "attributes": { "form": true } }
+]

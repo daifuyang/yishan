@@ -51,7 +51,7 @@ export default {
   'menu.system.department': 'Department Management',
   'menu.system.attachments': 'Media Library',
   'menu.system.login-log': 'Login Logs',
-  'menu.system.module-control': 'Module Control',
+  'menu.system.module-management': 'Module Management',
   'menu.system.demo-documents': 'Demo Documents',
   'menu.portal': 'Portal',
   'menu.portal.articles': 'Article Management',

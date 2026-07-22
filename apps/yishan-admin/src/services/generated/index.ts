@@ -13,7 +13,7 @@ import * as sysPermissions from "./sysPermissions";
 import * as sysPositions from "./sysPositions";
 import * as sysRoles from "./sysRoles";
 import * as sysLoginLogs from "./sysLoginLogs";
-import * as moduleControl from "./moduleControl";
+import * as moduleManagement from "./moduleManagement";
 import * as systemRegions from "./systemRegions";
 import * as storage from "./storage";
 import * as sysUsers from "./sysUsers";
@@ -38,7 +38,7 @@ export default {
   sysPositions,
   sysRoles,
   sysLoginLogs,
-  moduleControl,
+  moduleManagement,
   systemRegions,
   storage,
   sysUsers,

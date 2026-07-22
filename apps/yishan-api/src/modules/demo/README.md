@@ -16,6 +16,8 @@
 modules/demo/
 ├── README.md
 ├── module.ts                 # meta + 默认 Fastify 插件
+├── config/                   # 模块自身配置（admin 菜单等纯数据声明）
+│   └── admin-menu.ts
 ├── db/schema.ts              # Drizzle 表定义
 ├── drizzle.config.ts         # module 自带的 drizzle-kit 配置
 ├── drizzle/0000_init.sql     # 建表 + 3 条演示数据
@@ -54,7 +56,7 @@ export const meta = {
 
 ## 启停模块
 
-事实源是 `sys_module.enabled`。所有模块一律进 dist，运行时启停由后台「模块控制」页或 toggle 接口切换，写 DB + 清缓存，全局 `onRequest` gate 即时拦截，无需重启。停用的模块请求直接 404。
+事实源是 `sys_module.enabled`。所有模块一律进 dist，运行时启停由后台「模块管理」页或 toggle 接口切换，写 DB + 清缓存，全局 `onRequest` gate 即时拦截，无需重启。停用的模块请求直接 404。
 
 > 此前还存在一个构建期 `module.json.build` 开关用于"不把某模块编进 dist"——已删除。模块要不要出厂默认开启由 `meta.enabled` 控制；模块要不要随产品一起发布由「目录是否存在于 src/modules/」控制。
 
@@ -90,15 +92,15 @@ npx drizzle-kit --config=apps/yishan-api/src/modules/demo/drizzle.config.ts migr
 
 ## 管理入口
 
-demo 模块的菜单由模块自身的 `seed.ts` 注册进 `sys_menu`（通过 `pnpm db:seed` 触发）：
+demo 模块的菜单由 `config/system-menu.json` 声明、`seed.ts` 写入 `sys_menu`（通过 `pnpm db:seed` 触发）：
 
-- path：`/system/demo-documents`
-- component：`./system/demo-documents`
-- 权限码：`demo:documents:list`
+- 顶级目录「示例插件」下挂 3 个页面：`/demo/quickstart`、`/demo/health`、`/demo/todos`
+- `component` 字段使用虚拟路径 `./modules/demo/<page>`，由 [apps/yishan-admin/src/utils/moduleComponents.ts](file:///home/dfy/workspace/products/yishan/apps/yishan-admin/src/utils/moduleComponents.ts) 在运行时映射到 `apps/yishan-admin/src/modules/demo/pages/<page>/index.tsx`
+- 按钮对应的权限码统一在 `config/system-menu.json` 声明（页面 → `children[].permissionCodes`），`seed.ts` 把它们绑到 `sys_menu_permission`
 
-对应前端页 `apps/yishan-admin/src/pages/system/demo-documents/index.tsx` 用 ProTable 拉 `/api/demo/v1/documents`。
+修改菜单：只动 `config/system-menu.json`，重跑 `pnpm db:seed` 即可。不需要碰 core，也不需要重建 core seed。
 
-整个入驻链路：seed 声明菜单 → `pnpm db:seed`（INSERT sys_menu + 权限注册 + 角色绑定）→ 后台「系统管理」下出现「模块演示」菜单 → 列表页读模块 API → 表格渲染。
+整个入驻链路：`config/system-menu.json` 声明 → `pnpm db:seed`（INSERT sys_menu + 权限注册 + 角色绑定）→ 后台「示例插件」出现子菜单 → 前端页面通过 `component` 字段映射渲染 → 列表页读模块 API → 表格渲染。
 
 ## 测试
 
@@ -120,4 +122,4 @@ cd apps/yishan-api && npx vitest run src/modules/demo/tests
 4. 改 `module.ts`：把 `meta.id` 改成自己的，`meta.enabled` 视需要保留或省略（默认 true）
 5. `npx drizzle-kit --config=.../<id>/drizzle.config.ts generate`
 6. `npx drizzle-kit --config=.../<id>/drizzle.config.ts migrate`
-7. `pnpm --filter yishan-api build:ts` 后启动服务；在后台「模块控制」页启用（运行时启停即时生效）
+7. `pnpm --filter yishan-api build:ts` 后启动服务；在后台「模块管理」页启用（运行时启停即时生效）

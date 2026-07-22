@@ -1,0 +1,61 @@
+[
+  {
+    "type": 0,
+    "name": "示例插件",
+    "path": "/demo",
+    "sortOrder": 50,
+    "icon": "experiment",
+    "children": [
+      {
+        "type": 1,
+        "name": "快速入门",
+        "path": "/demo/quickstart",
+        "sortOrder": 1,
+        "icon": "read",
+        "component": "./modules/demo/quickstart",
+        "children": [
+          {
+            "type": 2,
+            "name": "查看",
+            "permissionCodes": ["demo:quickstart:read"],
+            "sortOrder": 1,
+            "hideInMenu": 1,
+            "isDefaultAction": 1
+          }
+        ]
+      },
+      {
+        "type": 1,
+        "name": "健康检查",
+        "path": "/demo/health",
+        "sortOrder": 2,
+        "icon": "smile",
+        "component": "./modules/demo/health",
+        "children": [
+          {
+            "type": 2,
+            "name": "查看",
+            "permissionCodes": ["demo:health:read"],
+            "sortOrder": 1,
+            "hideInMenu": 1,
+            "isDefaultAction": 1
+          }
+        ]
+      },
+      {
+        "type": 1,
+        "name": "Todo 示例",
+        "path": "/demo/todos",
+        "sortOrder": 3,
+        "icon": "clipboard-list",
+        "component": "./modules/demo/todos",
+        "children": [
+          { "type": 2, "name": "查看", "permissionCodes": ["demo:todos:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+          { "type": 2, "name": "新建", "permissionCodes": ["demo:todos:create"], "sortOrder": 2, "hideInMenu": 1 },
+          { "type": 2, "name": "编辑", "permissionCodes": ["demo:todos:update"], "sortOrder": 3, "hideInMenu": 1 },
+          { "type": 2, "name": "删除", "permissionCodes": ["demo:todos:delete"], "sortOrder": 4, "hideInMenu": 1 }
+        ]
+      }
+    ]
+  }
+]

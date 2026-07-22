@@ -13,7 +13,7 @@ export default {
   'menu.system.site': '站点配置',
   'menu.system.attachments': '媒体库',
   'menu.system.login-log': '登录日志',
-  'menu.system.module-control': '模块控制',
+  'menu.system.module-management': '模块管理',
   'menu.system.demo-documents': '模块演示',
   'menu.portal': '门户管理',
   'menu.portal.articles': '文章管理',

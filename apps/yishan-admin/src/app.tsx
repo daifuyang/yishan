@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { BookOpen, ClipboardList, ContactRound, ExternalLink, FileText, Folder, Hospital, Inbox, LayoutDashboard, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
+import { BookOpen, ClipboardList, ContactRound, ExternalLink, FileText, FlaskConical, Folder, Hospital, Inbox, LayoutDashboard, Package, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { PageLoading, SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
@@ -60,6 +60,12 @@ const IconMap: Record<string, LucideIcon> = {
   send: Send,
   sendoutlined: Send,
   'clipboard-list': ClipboardList,
+  experiment: FlaskConical,
+  experimentoutlined: FlaskConical,
+  flask: FlaskConical,
+  flaskoutlined: FlaskConical,
+  package: Package,
+  packageoutlined: Package,
 };
 function pickIcon(key: string): JSX.Element | undefined {
   const Icon = IconMap[String(key).toLowerCase()];
@@ -149,6 +155,33 @@ export async function getInitialState(): Promise<{
 
 let extraRoutes: MenuTreeList = [];
 const clickableRoutePaths = new Set<string>();
+
+/**
+ * 写死的「模块管理」菜单：和 OpenAPI 链接一样不进后端 sys_menu。
+ * - dev + super_admin：渲染菜单项 + 注册路由 + 页面可访问
+ * - 其余情况（含 prod / 非 super_admin）：完全不渲染
+ * 配合后端 menu.service 的 collectDevOnlyMenuIds 是 prod 的纵深防御，
+ * 前端这里只负责"该不该看到这个菜单"。
+ */
+const moduleManagementMenuEntry: MenuTreeNode = {
+  id: -1,
+  name: '模块管理',
+  type: 1,
+  path: '/system/module-management',
+  icon: 'package',
+  component: './system/module-management',
+  parentId: undefined,
+  parentName: '系统管理',
+  status: '1',
+  sort_order: 99,
+  hideInMenu: false,
+  isDefaultAction: true,
+  isExternalLink: false,
+  permissionCodes: ['system:module-management:list'],
+  keepAlive: false,
+  createdAt: '',
+  updatedAt: '',
+}
 
 const normalizeRoutePath = (path?: string) => {
   if (!path) return '';
@@ -389,16 +422,32 @@ export function render(oldRender: () => void) {
     return;
   }
 
-  getAuthorizedMenuTree().then((res) => {
-    const menus = res.data || [];
-    extraRoutes = menus;
-    oldRender();
-  }).catch((error: any) => {
-    if (error?.response?.status === 401) {
-      window.location.href = loginUrl;
-      return;
-    }
-    extraRoutes = [];
-    oldRender();
-  });
+  getAuthorizedMenuTree()
+    .then(async (res) => {
+      const menus = res.data || [];
+      extraRoutes = menus;
+
+      // dev + super_admin：把写死的「模块管理」单独追加在菜单最底部。
+      // 通过 menuTreeToRoutes 注入 patchClientRoutes 就能注册路由并显示菜单。
+      if (isDev) {
+        try {
+          const userRes = await getCurrentUser()
+          const isSuperAdmin = (userRes.data?.roleCodes ?? []).includes('super_admin')
+          if (isSuperAdmin) {
+            extraRoutes = [...extraRoutes, moduleManagementMenuEntry]
+          }
+        } catch {
+          // 用户态拉取失败时按"无菜单"处理,不影响主流程
+        }
+      }
+      oldRender();
+    })
+    .catch((error: any) => {
+      if (error?.response?.status === 401) {
+        window.location.href = loginUrl;
+        return;
+      }
+      extraRoutes = [];
+      oldRender();
+    });
 }

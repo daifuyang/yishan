@@ -66,8 +66,15 @@ export class MenuService {
       }
     }
 
+    // 生产环境下隐藏 dev-only 菜单：菜单项绑定的 perm code 若有任一未在当前进程的
+    // PERMISSION_CODES 注册表里（dev 路由因 app.ts env gate 不被 import → perm 未注册），
+    // 则视为 dev-only，菜单、路径、授权路由全部不暴露。
+    const devOnlyMenuIds = await MenuService.collectDevOnlyMenuIds(menus.map(m => m.id));
+
     // 过滤并构建树
-    const filteredMenus = menus.filter(menu => allow.has(menu.id) && menu.status === 1);
+    const filteredMenus = menus.filter(menu =>
+      allow.has(menu.id) && menu.status === 1 && !devOnlyMenuIds.has(menu.id),
+    );
     const mappedMenus = await this.withPermissionCodes(filteredMenus);
     return buildMenuTree(mappedMenus);
   }
@@ -98,9 +105,13 @@ export class MenuService {
       }
     }
 
+    // 生产环境同时把 dev-only 菜单路径剔掉（前端路由守卫用）。
+    const devOnlyMenuIds = await MenuService.collectDevOnlyMenuIds(menuPaths.map(m => m.id));
+
     // 收集路径
     const paths = new Set<string>();
     for (const id of allow) {
+      if (devOnlyMenuIds.has(id)) continue;
       const menu = menuPaths.find(m => m.id === id);
       if (!menu) continue;
       if (menu.path && !menu.isExternalLink) {
@@ -290,12 +301,64 @@ export class MenuService {
   }
 
   /**
-   * 判定一组角色中是否包含 super_admin（基于 role.code，禁止使用数据库 role ID）。
+   * 判定一组角色中是否包含 super_admin（基于 role.code，禁止使用数据库角色 ID）。
    */
   private static async hasSuperAdminRole(roleIds: number[]): Promise<boolean> {
     if (roleIds.length === 0) return false;
     const { roleCodes } = await PermissionService.loadForRoleIds(roleIds);
     return roleCodes.has(ROLE_CODES.SUPER_ADMIN);
+  }
+
+  /**
+   * 收集 dev-only 菜单 ID：菜单或其任意后代节点绑定的 perm code 若有任一未在当前进程
+   * 的 PERMISSION_CODES 注册表里，则视为 dev-only（仅在 NODE_ENV=production 时生效）。
+   *
+   * 背景：core/routes/_dev/ 在 prod 下不被 import（见 app.ts env gate），那些路由文件
+   * 顶部的 registerPermissions() 副作用不发生 → PERMISSION_CODES 不包含对应 code。
+   * 菜单项仍存在于 sys_menu / sys_menu_permission（dev/staging 共享同一份 seed 配置），
+   * 通过此过滤在 prod 下完全不暴露菜单、路径、授权路由。
+   *
+   * 注意：菜单树里 perm code 通常绑在子节点（type=2 按钮/动作节点）上，父页面菜单本身
+   * 不直接挂 perm code。所以判断时必须递归下钻到所有后代，否则父页面在 prod 下
+   * 会绕过过滤露出给 super_admin（绕开全链路）。
+   *
+   * dev / staging 下 devOnlyMenuIds 永远是空集，行为与改造前一致。
+   */
+  private static async collectDevOnlyMenuIds(menuIds: number[]): Promise<Set<number>> {
+    const devOnly = new Set<number>();
+    if (process.env.NODE_ENV !== 'production' || menuIds.length === 0) return devOnly;
+
+    // 拉全量菜单（含 type=2 子节点）和它们的 perm code,再构造 parentId → children 映射,
+    // 这样才能递归判定父菜单是否"携带"任何 dev-only 子节点。
+    const allMenus = await MenuRepository.listAllForAuthorization();
+    const allIds = allMenus.map((m) => m.id);
+    const codesByMenuId = await MenuRepository.findPermissionCodesByMenuIds(allIds);
+
+    const childMap = new Map<number, number[]>();
+    for (const m of allMenus) {
+      if (m.parentId != null) {
+        const arr = childMap.get(m.parentId) ?? [];
+        arr.push(m.id);
+        childMap.set(m.parentId, arr);
+      }
+    }
+
+    const hasUnboundCode = (id: number, visited: Set<number>): boolean => {
+      if (visited.has(id)) return false;
+      visited.add(id);
+      const codes = codesByMenuId.get(id) ?? [];
+      if (codes.length > 0 && codes.some((code) => !PERMISSION_CODES.has(code))) return true;
+      const children = childMap.get(id) ?? [];
+      for (const c of children) {
+        if (hasUnboundCode(c, visited)) return true;
+      }
+      return false;
+    };
+
+    for (const id of menuIds) {
+      if (hasUnboundCode(id, new Set())) devOnly.add(id);
+    }
+    return devOnly;
   }
 
 }

@@ -18,6 +18,7 @@ Core 只提供三件基础设施：Fastify 实例、`app.drizzleDb` 句柄、几
 | `meta.id` | 全局唯一；小写字母 + 数字 + 下划线；≤ 24 | 启动期 |
 | 路由 `prefix` | 默认 `/api/<id>`；自定义时必须全局唯一 | 启动期（Fastify `onRoute`） |
 | 表名 | 必须以 `<meta.id>_` 开头 | `scripts/check-module-naming.mjs` |
+| 前端菜单 `path` | `/<id>/...`,**不要**带 `/modules/` 前缀;`<id>` 段必须与 `meta.id` 严格对齐 | code review |
 
 违规后果：
 - 启动期撞 id 或 prefix → 服务起不来，`exit 1`
@@ -139,7 +140,7 @@ npx drizzle-kit --config=apps/yishan-api/src/modules/<id>/drizzle.config.ts migr
 模块默认装载，启停事实源是 `sys_module.enabled`：
 
 - 首次 sync 该模块到 sys_module 时，若行不存在则用 `meta.enabled`（缺省 `true`）INSERT。
-- 已有行的 `enabled` 永不被覆盖；运行时通过后台「模块控制」页或 toggle 接口切换。
+- 已有行的 `enabled` 永不被覆盖；运行时通过后台「模块管理」页或 toggle 接口切换。
 
 如需「出厂默认关闭」，把 `meta.enabled = false`。
 
@@ -161,6 +162,7 @@ pnpm --filter yishan-api dev
 - ✔ 表名必须以 `<meta.id>_` 开头（`pnpm lint` 卡死）
 - ✔ `meta.id` 全局唯一（启动期 fail-fast），`prefix` 硬约定 `/api/${meta.id}` 不再声明
 - ✔ 入口只放在 `module.ts` 一个文件，业务复杂再做拆分
+- ✔ 前端菜单 `path` 用 `/<id>/...` 直挂在根下（例：`/demo/quickstart`），**禁止**再加 `/modules/` 命名空间——`modules/` 只是源码目录约定，不出现在 URL 里
 
 ## 完整 demo
 

@@ -34,4 +34,6 @@ export interface CurrentUser {
   updatedAt: string
   /** 已授权菜单路径列表 */
   accessPath?: string[]
+  /** 已绑定角色编码（如 super_admin / admin），用于硬编码 dev-only 菜单的可见性判断 */
+  roleCodes?: string[]
 }

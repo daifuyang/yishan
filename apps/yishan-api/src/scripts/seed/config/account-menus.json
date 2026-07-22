@@ -1,0 +1,14 @@
+{
+  "name": "我的账户",
+  "path": "/account",
+  "type": 0,
+  "sortOrder": 1,
+  "icon": "user",
+  "hideInMenu": true,
+  "children": [
+    { "type": 1, "name": "API Token", "path": "/account/api-tokens", "sortOrder": 1, "icon": "key", "component": "./account/api-tokens", "hideInMenu": true, "children": [
+      { "type": 2, "name": "管理", "permissionCodes": ["system:api-token:manage"], "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true }
+    ] },
+    { "type": 1, "name": "个人中心", "path": "/account/center",       "sortOrder": 2, "icon": "user", "component": "./account/center", "hideInMenu": true }
+  ]
+}

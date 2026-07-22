@@ -1,3 +1,33 @@
+/**
+ * seed 模块的类型 + 运行时派生配置。
+ *
+ * 静态 seed 数据（菜单、字典、权限码、admin 账号、岗位、部门、portal 等）
+ * 拆到 config/*.json，一个功能一个 JSON 文件，便于非 TS 贡献者直接修改。
+ * 这里只留下：
+ *   1. 类型契约 —— MenuSeedNode / DeptSeedNode / DictSeedConfig / Portal* 等，
+ *      seed 流程依赖这些类型去校验 JSON 形状。
+ *   2. 运行时派生配置 —— assertSeedEnvironment 守卫、admin 密码来源（env 注入，
+ *      不写进 JSON）。
+ *   3. seedConfig 聚合对象 —— 把各 JSON re-export 出来，下游（seed/index.ts、
+ *      seed/modules/*.ts）从 seedConfig.* 取值，不感知具体 JSON 文件。
+ */
+import adminJson from './config/admin.json'
+import rolesJson from './config/roles.json'
+import departmentsJson from './config/departments.json'
+import postsJson from './config/posts.json'
+import dictsJson from './config/dicts.json'
+import systemMenusJson from './config/system-menus.json'
+import accountMenusJson from './config/account-menus.json'
+import sysOptionsJson from './config/sys-options.json'
+import portalCategoriesJson from './config/portal-categories.json'
+import portalPagesJson from './config/portal-pages.json'
+import portalTemplatesJson from './config/portal-templates.json'
+import portalArticlesJson from './config/portal-articles.json'
+
+// ---------------------------------------------------------------------------
+// 类型契约
+// ---------------------------------------------------------------------------
+
 export type DeptSeedNode = {
   name: string;
   sortOrder: number;
@@ -78,6 +108,10 @@ export type SysOptionSeed = {
   value: string;
 };
 
+// ---------------------------------------------------------------------------
+// 运行时派生配置（不能进 JSON：env 派生 / 守卫）
+// ---------------------------------------------------------------------------
+
 const isProduction = process.env.NODE_ENV === 'production';
 const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? (isProduction ? '' : 'admin123');
 
@@ -90,191 +124,46 @@ export function assertSeedEnvironment() {
   }
 }
 
+/** 管理员账号：静态字段来自 config/admin.json，password 从环境变量注入。 */
 export const adminSeed = {
-  username: 'admin',
+  ...adminJson,
   password: adminPassword,
-  email: 'admin@yishan.com',
-  phone: '13800138000',
-  realName: '愚公',
-  nickname: '超级管理员',
-  avatar: '',
-  gender: 1,
 };
 
-export const rolesSeed = {
-  superAdmin: { name: '超级管理员', code: 'super_admin', description: '拥有系统最高权限' },
-  admin: { name: '普通管理员', code: 'admin', description: '拥有基础管理权限' },
-};
+/** 角色种子：来自 config/roles.json。 */
+export const rolesSeed = rolesJson;
 
-export const deptTreeSeed: DeptSeedNode = {
-  name: '愚公软件',
-  sortOrder: 0,
-  description: '公司根节点',
-  children: [
-    {
-      name: '上海总公司',
-      sortOrder: 1,
-      description: '总部',
-      children: [
-        { name: '研发部门（上海）', sortOrder: 1, description: '研发部门' },
-        { name: '市场部门（上海）', sortOrder: 2, description: '市场部门' },
-        { name: '测试部门（上海）', sortOrder: 3, description: '测试部门' },
-        { name: '财务部门（上海）', sortOrder: 4, description: '财务部门' },
-        { name: '运维部门（上海）', sortOrder: 5, description: '运维部门' },
-      ],
-    },
-    {
-      name: '常州分公司',
-      sortOrder: 2,
-      description: '分公司',
-      children: [
-        { name: '市场部门（常州）', sortOrder: 1, description: '市场部门' },
-        { name: '财务部门（常州）', sortOrder: 2, description: '财务部门' },
-      ],
-    },
-  ],
-};
+// ---------------------------------------------------------------------------
+// 聚合 re-export：所有静态 seed 数据从此处取
+// ---------------------------------------------------------------------------
 
-export const postsSeed = [
-  { name: '董事长', sortOrder: 1, description: '公司最高负责人' },
-  { name: '项目经理', sortOrder: 2, description: '项目管理与协调' },
-  { name: '人力资源', sortOrder: 3, description: '人事管理' },
-  { name: '普通员工', sortOrder: 4, description: '基础岗位' },
-];
+export const seedConfig = {
+  adminSeed,
+  rolesSeed,
+  deptTreeSeed: departmentsJson as DeptSeedNode,
+  postsSeed: postsJson as Array<{ name: string; sortOrder: number; description: string }>,
+  dictsSeed: dictsJson as DictSeedConfig[],
+  systemMenusSeed: systemMenusJson as MenuSeedNode,
+  accountMenusSeed: accountMenusJson as MenuSeedNode,
+  sysOptionsSeed: sysOptionsJson as SysOptionSeed[],
+  portalCategoriesSeed: portalCategoriesJson as PortalCategorySeed[],
+  portalPagesSeed: portalPagesJson as PortalPageSeed[],
+  portalTemplatesSeed: portalTemplatesJson as PortalTemplateSeed[],
+  portalArticlesSeed: portalArticlesJson as PortalArticleSeed[],
+} as const;
 
-export const dictsSeed: DictSeedConfig[] = [
-  {
-    type: { name: '用户性别', type: 'user_gender', sortOrder: 1, remark: '用户性别字典' },
-    data: [
-      { label: '保密', value: '0', sortOrder: 0 },
-      { label: '男', value: '1', sortOrder: 1 },
-      { label: '女', value: '2', sortOrder: 2 },
-    ],
-  },
-  {
-    type: { name: '用户状态', type: 'user_status', sortOrder: 2, remark: '用户状态字典' },
-    data: [
-      { label: '禁用', value: '0', sortOrder: 0 },
-      { label: '启用', value: '1', sortOrder: 1, isDefault: true },
-      { label: '拉黑', value: '2', sortOrder: 2 },
-    ],
-  },
-  {
-    type: { name: '默认状态', type: 'default_status', sortOrder: 3, remark: '通用启用/禁用状态字典' },
-    data: [
-      { label: '禁用', value: '0', sortOrder: 0 },
-      { label: '启用', value: '1', sortOrder: 1, isDefault: true },
-    ],
-  },
-];
+// ---------------------------------------------------------------------------
+// 旧命名导出的兼容 shim：保留别名，下游 `import { x } from '../config.js'`
+// 的写法无需改动。新代码建议直接 `import { seedConfig } from '...'`。
+// ---------------------------------------------------------------------------
 
-export const portalCategoriesSeed: PortalCategorySeed[] = [
-  { name: '新闻', slug: 'news', sortOrder: 1, description: '公司新闻' },
-  { name: '公告', slug: 'notice', sortOrder: 2, description: '系统公告' },
-  { name: '技术博客', slug: 'blog', sortOrder: 3, description: '技术分享' },
-];
-
-export const portalPagesSeed: PortalPageSeed[] = [
-  { title: '首页', path: '/home', content: '欢迎访问门户网站', attributes: { banner: '/assets/banner.jpg' } },
-  { title: '关于我们', path: '/about', content: '关于我们页面内容', attributes: { layout: 'full' } },
-  { title: '联系我们', path: '/contact', content: '联系方式与地址', attributes: { form: true } },
-];
-
-export const portalTemplatesSeed: PortalTemplateSeed[] = [
-  { name: '默认详情', type: 'article', description: '系统默认文章详情模板' },
-  { name: '默认页面', type: 'page', description: '系统默认页面模板' },
-];
-
-export const portalArticlesSeed: PortalArticleSeed[] = [
-  {
-    title: '欢迎使用门户',
-    slug: 'welcome',
-    content: '这是门户的欢迎文章',
-    categorySlugs: ['news'],
-    status: 1,
-    isPinned: true,
-    tags: ['置顶', '公告'],
-    attributes: { readingTime: 3 },
-  },
-  {
-    title: '系统发布 1.0',
-    slug: 'release-1-0',
-    content: '系统 1.0 版本发布说明',
-    categorySlugs: ['notice'],
-    status: 1,
-    isPinned: false,
-    tags: ['发布'],
-    attributes: { version: '1.0.0' },
-  },
-  {
-    title: '使用指南',
-    slug: 'how-to-use',
-    content: '系统使用指南与最佳实践',
-    categorySlugs: ['blog'],
-    status: 1,
-    isPinned: false,
-    tags: ['指南'],
-    attributes: { level: 'beginner' },
-  },
-];
-
-const action = (name: string, permissionCode: string, sortOrder: number, isDefaultAction = false): MenuSeedNode => ({
-  name,
-  type: 2,
-  sortOrder,
-  hideInMenu: true,
-  permissionCodes: [permissionCode],
-  isDefaultAction,
-});
-
-const page = (args: Omit<MenuSeedNode, 'type' | 'children' | 'permissionCodes'> & { actions: MenuSeedNode[] }): MenuSeedNode => ({
-  ...args,
-  type: 1,
-  children: args.actions,
-});
-
-export const systemMenusSeed: MenuSeedNode = {
-  name: '系统管理',
-  path: '/system',
-  type: 0,
-  // 系统管理固定置顶；其余一级菜单保持各自现有排序。
-  sortOrder: 0,
-  icon: 'setting',
-  children: [
-    page({ name: '仪表盘', path: '/', sortOrder: 0, component: './index', hideInMenu: true, actions: [action('查看', 'system:dashboard:read', 1, true)] }),
-    page({ name: '用户管理', path: '/system/user', sortOrder: 1, component: './system/user', actions: [action('查看', 'system:user:list', 1, true), action('新增', 'system:user:create', 2), action('编辑', 'system:user:update', 3), action('删除', 'system:user:delete', 4)] }),
-    page({ name: '角色管理', path: '/system/role', sortOrder: 2, component: './system/role', actions: [action('查看', 'system:role:list', 1, true), action('新增', 'system:role:create', 2), action('编辑', 'system:role:update', 3), action('删除', 'system:role:delete', 4), action('授权', 'system:role:grant', 5)] }),
-    page({ name: '部门管理', path: '/system/department', sortOrder: 3, component: './system/department', actions: [action('查看', 'system:department:list', 1, true), action('新增', 'system:department:create', 2), action('编辑', 'system:department:update', 3), action('删除', 'system:department:delete', 4)] }),
-    page({ name: '岗位管理', path: '/system/position', sortOrder: 4, component: './system/position', actions: [action('查看', 'system:position:list', 1, true), action('新增', 'system:position:create', 2), action('编辑', 'system:position:update', 3), action('删除', 'system:position:delete', 4)] }),
-    page({ name: '菜单管理', path: '/system/menu', sortOrder: 5, component: './system/menu', actions: [action('查看', 'system:menu:list', 1, true), action('新增', 'system:menu:create', 2), action('编辑', 'system:menu:update', 3), action('删除', 'system:menu:delete', 4)] }),
-    page({ name: '字典管理', path: '/system/dict', sortOrder: 6, component: './system/dict', actions: [action('查看', 'system:dict:list', 1, true), action('新增', 'system:dict:create', 2), action('编辑', 'system:dict:update', 3), action('删除', 'system:dict:delete', 4)] }),
-    page({ name: '站点配置', path: '/system/site', sortOrder: 7, component: './system/site', actions: [action('查看', 'system:option:list', 1, true), action('编辑', 'system:option:update', 2)] }),
-    page({ name: '云存储', path: '/system/storage', sortOrder: 8, component: './system/storage', actions: [action('查看', 'system:storage:list', 1, true), action('编辑', 'system:storage:update', 2), action('上传凭证', 'system:storage:upload-token', 3)] }),
-    page({ name: '媒体库', path: '/system/attachments', sortOrder: 9, component: './system/attachments', actions: [action('查看', 'system:attachment:list', 1, true), action('上传', 'system:attachment:create', 2), action('编辑', 'system:attachment:update', 3), action('删除', 'system:attachment:delete', 4)] }),
-    page({ name: '登录日志', path: '/system/login-log', sortOrder: 10, component: './system/login-log', actions: [action('查看', 'system:login-log:list', 1, true)] }),
-    page({ name: '模块控制', path: '/system/module-control', sortOrder: 99, icon: 'tool', component: './system/module-control', actions: [action('查看', 'system:module-control:list', 1, true)] }),
-    // 插件管理已随精简删除（plugins/, plugin-platform/ 全部移除）；对应路由 + 权限 + 页面都不可用
-  ],
-};
-
-export const accountMenusSeed: MenuSeedNode = {
-  name: '我的账户',
-  path: '/account',
-  type: 0,
-  sortOrder: 1,
-  icon: 'user',
-  hideInMenu: true,
-  children: [
-    page({ name: 'API Token', path: '/account/api-tokens', sortOrder: 1, icon: 'key', component: './account/api-tokens', hideInMenu: true, actions: [action('管理', 'system:api-token:manage', 1, true)] }),
-    { name: '个人中心', path: '/account/center', type: 1, sortOrder: 2, icon: 'user', component: './account/center', hideInMenu: true },
-  ],
-};
-
-export const sysOptionsSeed: SysOptionSeed[] = [
-  { key: 'basicConfig', value: '{}' }, // 站点基本配置
-  { key: 'systemStorage', value: '0' },
-  { key: 'qiniuConfig', value: '{}' },
-  { key: 'aliyunOssConfig', value: '{}' },
-  { key: 'defaultArticleTemplateId', value: '1' },
-  { key: 'defaultPageTemplateId', value: '2' },
-]
+export const deptTreeSeed = seedConfig.deptTreeSeed;
+export const postsSeed = seedConfig.postsSeed;
+export const dictsSeed = seedConfig.dictsSeed;
+export const systemMenusSeed = seedConfig.systemMenusSeed;
+export const accountMenusSeed = seedConfig.accountMenusSeed;
+export const sysOptionsSeed = seedConfig.sysOptionsSeed;
+export const portalCategoriesSeed = seedConfig.portalCategoriesSeed;
+export const portalPagesSeed = seedConfig.portalPagesSeed;
+export const portalTemplatesSeed = seedConfig.portalTemplatesSeed;
+export const portalArticlesSeed = seedConfig.portalArticlesSeed;

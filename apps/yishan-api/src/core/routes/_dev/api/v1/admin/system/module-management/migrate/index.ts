@@ -11,13 +11,13 @@ import { registerPermissions, type PermissionRef } from '@/core/permissions/cata
 import { ResponseUtil } from '@/utils/response.js';
 
 const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  MIGRATE: { code: 'system:module-control:migrate', label: '模块迁移', group: 'module-control' },
+  MIGRATE: { code: 'system:module-management:migrate', label: '模块管理-迁移', group: 'module-management' },
 });
 registerPermissions(PERMS.MIGRATE);
 
 interface ModuleJournal { entries: { tag: string }[] }
 
-const adminSystemModuleControlMigrate: FastifyPluginAsync = async (fastify) => {
+const adminSystemModuleManagementMigrate: FastifyPluginAsync = async (fastify) => {
   const route = createRouteRegistrar(fastify);
   route.post(
     '/:id/migrate',
@@ -26,8 +26,8 @@ const adminSystemModuleControlMigrate: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: '执行模块迁移',
         description: '调用本模块的 drizzle-kit migrate；完成后把 journal 中所有 entry 同步进 sys_module_migration。',
-        operationId: 'migrateModuleControl',
-        tags: ['moduleControl'],
+        operationId: 'migrateModuleManagement',
+        tags: ['moduleManagement'],
         security: [{ bearerAuth: [] }],
         params: Type.Object({ id: Type.String() }),
         response: {
@@ -122,7 +122,7 @@ const adminSystemModuleControlMigrate: FastifyPluginAsync = async (fastify) => {
   )
 }
 
-export default adminSystemModuleControlMigrate
+export default adminSystemModuleManagementMigrate
 
 function runDrizzleKit(
   drizzleKit: string,

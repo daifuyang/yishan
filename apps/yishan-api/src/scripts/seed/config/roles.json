@@ -1,0 +1,4 @@
+{
+  "superAdmin": { "name": "超级管理员", "code": "super_admin", "description": "拥有系统最高权限" },
+  "admin":      { "name": "普通管理员", "code": "admin",      "description": "拥有基础管理权限" }
+}

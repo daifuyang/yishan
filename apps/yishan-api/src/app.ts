@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
 import { ModuleLoader } from './core/module-loader/module-loader.js'
 
@@ -98,15 +98,34 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
   await fastify.moduleLoader.mountAllOnDisk(diskModules)
 
   // 4. Core HTTP routes — single source of truth for in-app endpoints.
-  //    模块控制台 dev-modules（admin/system/module-control/{list,toggle,migrate,generate,seed}）
-  //    在 core/routes 之下 autoload，跟现有 admin/system/{options,regions,...} 平级同形。
+  //    dev-only 工具（_dev/ 子树，如模块管理 /system/module-management）在生产不加载：
+  //      - 既不 import 文件 → registerPermissions 副作用不发生 → perm 不进 catalog
+  //      - 也不注册路由 → fastify 直接返回 404 → OpenAPI 不暴露对应 path
+  //    生产环境由 menu.service 的 devOnlyMenuIds 兜底隐藏菜单项，前端 page-level guard
+  //    再做一次拦截，三层防御。
+  //    注意：_dev/ 内的目录结构必须镜像 core/routes/ 下的真实结构（api/v1/admin/...），
+  //    这样下方的条件 autoload 才能复用同一 URL 前缀（/api/v1/admin/system/module-management/...）。
   // eslint-disable-next-line no-void
   void fastify.register(AutoLoad, {
     dir: join(__dirname, 'core/routes'),
+    // 跳过 _dev/ 子树（_dev/<...>/<file>.ts）；下方的条件 autoload 单独处理 dev 路由。
+    ignoreFilter: (filepath) => filepath.includes(`${sep}_dev${sep}`),
     autoHooks: true,
     cascadeHooks: true,
     options: opts,
   })
+
+  // 4.5 Dev-only 路由（模块控制台等）。NODE_ENV=production 时整套不挂载，
+  //     spawn drizzle-kit / node seed.js 在 prod 永远不会触发；prod 镜像也
+  //     不带这些 devDeps（参见 deploy/fc3/scripts/build-runtime-layer.sh）。
+  if (process.env.NODE_ENV !== 'production') {
+    await fastify.register(AutoLoad, {
+      dir: join(__dirname, 'core/routes/_dev'),
+      autoHooks: true,
+      cascadeHooks: true,
+      options: opts,
+    })
+  }
 }
 
 export default app

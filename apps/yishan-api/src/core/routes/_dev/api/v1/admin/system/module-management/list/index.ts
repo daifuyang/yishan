@@ -11,7 +11,7 @@ import { registerPermissions, type PermissionRef } from '@/core/permissions/cata
 import { ResponseUtil } from '@/utils/response.js';
 
 const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  LIST: { code: 'system:module-control:list', label: '模块控制-列表', group: 'module-control' },
+  LIST: { code: 'system:module-management:list', label: '模块管理-列表', group: 'module-management' },
 });
 registerPermissions(PERMS.LIST);
 
@@ -31,7 +31,7 @@ const moduleItemSchema = Type.Object({
   pendingMigrations: Type.Array(Type.String()),
 });
 
-const adminSystemModuleControlList: FastifyPluginAsync = async (fastify) => {
+const adminSystemModuleManagementList: FastifyPluginAsync = async (fastify) => {
   const route = createRouteRegistrar(fastify);
   route.get(
     '/',
@@ -40,8 +40,8 @@ const adminSystemModuleControlList: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: '模块列表',
         description: '扫描 src/modules/ 并合并 sys_module 行；标注 enabled、是否已挂载、applied vs pending 迁移。routePrefix 由 moduleRoutePrefix() 统一生成为 /api/${id}。',
-        operationId: 'listModuleControl',
-        tags: ['moduleControl'],
+        operationId: 'listModuleManagement',
+        tags: ['moduleManagement'],
         security: [{ bearerAuth: [] }],
         response: {
           200: Type.Object({
@@ -129,4 +129,4 @@ const adminSystemModuleControlList: FastifyPluginAsync = async (fastify) => {
   )
 }
 
-export default adminSystemModuleControlList
+export default adminSystemModuleManagementList

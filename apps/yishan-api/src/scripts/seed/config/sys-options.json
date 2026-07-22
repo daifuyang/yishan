@@ -1,0 +1,8 @@
+[
+  { "key": "basicConfig",               "value": "{}" },
+  { "key": "systemStorage",             "value": "0" },
+  { "key": "qiniuConfig",               "value": "{}" },
+  { "key": "aliyunOssConfig",           "value": "{}" },
+  { "key": "defaultArticleTemplateId",  "value": "1" },
+  { "key": "defaultPageTemplateId",     "value": "2" }
+]

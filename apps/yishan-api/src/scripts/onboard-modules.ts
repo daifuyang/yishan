@@ -147,23 +147,30 @@ async function seedModule(id: string): Promise<StepOutcome> {
   if (!existsSync(entry.dist)) {
     return { ok: false, message: `seed 已写源码（${entry.src}）但未编译：${entry.dist}（先 npm run build:ts）` }
   }
-  return new Promise((resolve) => {
-    const cwd = join(MODULES_DIST, id)
-    const child = spawn(process.execPath, [entry.dist], { cwd, env: process.env })
-    let stdout = ''
-    let stderr = ''
-    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString() })
-    child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString() })
-    child.on('error', (err) => {
-      resolve({ ok: false, message: `seed 启动失败: ${err.message}` })
-    })
-    child.on('close', (code) => {
-      resolve({
-        ok: code === 0,
-        message: code === 0 ? 'seed 完成' : `seed exit ${code}\n${stderr || stdout}`.trim(),
-      })
-    })
-  })
+
+  // 动态 import 编译产物的 default export：
+  //   - 不再 spawn 子进程，stderr/stdout 不会因 pipe 缓冲丢失
+  //   - 复用进程内同一个 drizzleDb 连接池，不存在"子进程持连接、父进程已 close"的竞态
+  //   - demo seed 顶层有 `require.main === module` 守卫，import 不会触发副作用
+  //
+  // 用 createRequire + require 直接同步加载：CJS 模块顶层 (`require.main === module`
+  // 守卫) 在 require 时立即执行；如果模块是 ESM 编译产物，import() 会因 file:// 路径
+  // 在 Node 不同版本下的解析差异报"找不到模块"，require 是更稳的同进程注入路径。
+  try {
+    const { createRequire } = require('node:module') as typeof import('node:module')
+    const req = createRequire(__filename)
+    const mod = req(entry.dist) as { default?: () => Promise<void> }
+    if (typeof mod.default !== 'function') {
+      return { ok: false, message: `seed 入口 ${entry.dist} 未导出 default 函数` }
+    }
+    await mod.default()
+    return { ok: true, message: 'seed 完成' }
+  } catch (err) {
+    return {
+      ok: false,
+      message: `seed 异常: ${(err as Error).message}`,
+    }
+  }
 }
 
 async function appendModuleMenu(id: string): Promise<StepOutcome> {
@@ -203,6 +210,27 @@ async function main() {
   const results: ModuleResult[] = []
   for (const id of ids) {
     results.push(await onboardOne(id))
+  }
+
+  // 所有模块的 migrate/seed 完成后，强制做一次 sys_module sync。
+  // 否则首次 db:seed 后访问 /admin/system/module-management/list 接口会看到空表
+  // —— 因为 loader.syncModulesFromDisk 只在 app boot 时跑，seed 进程不经过 fastify。
+  // 这里用 loader 暴露的纯函数版，避免再启一次 app。
+  console.log('\n[sync] 同步 sys_module 行（loader.syncModulesFromDiskPure）...')
+  try {
+    const { scanDiskModulesPure, shouldPreferSrc, syncModulesFromDiskPure } = await import(
+      '../core/module-loader/module-loader.js'
+    )
+    const diskModules = await scanDiskModulesPure(
+      APP_ROOT_SRC,
+      APP_ROOT_DIST,
+      shouldPreferSrc(),
+    )
+    const { inserted, updated } = await syncModulesFromDiskPure(drizzleDb, diskModules)
+    console.log(`[sync] sys_module 完成：inserted=${inserted} updated=${updated} （preferSrc=${shouldPreferSrc()}）`)
+  } catch (err) {
+    console.error('[sync] 同步 sys_module 失败:', (err as Error).message)
+    process.exitCode = 1
   }
 
   const failed = results.filter((r) => !r.migrate.ok || !r.seed.ok || !r.menuAppend.ok)

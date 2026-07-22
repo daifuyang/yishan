@@ -1,0 +1,25 @@
+[
+  {
+    "type": { "name": "用户性别", "type": "user_gender", "sortOrder": 1, "remark": "用户性别字典" },
+    "data": [
+      { "label": "保密", "value": "0", "sortOrder": 0 },
+      { "label": "男",   "value": "1", "sortOrder": 1 },
+      { "label": "女",   "value": "2", "sortOrder": 2 }
+    ]
+  },
+  {
+    "type": { "name": "用户状态", "type": "user_status", "sortOrder": 2, "remark": "用户状态字典" },
+    "data": [
+      { "label": "禁用", "value": "0", "sortOrder": 0 },
+      { "label": "启用", "value": "1", "sortOrder": 1, "isDefault": true },
+      { "label": "拉黑", "value": "2", "sortOrder": 2 }
+    ]
+  },
+  {
+    "type": { "name": "默认状态", "type": "default_status", "sortOrder": 3, "remark": "通用启用/禁用状态字典" },
+    "data": [
+      { "label": "禁用", "value": "0", "sortOrder": 0 },
+      { "label": "启用", "value": "1", "sortOrder": 1, "isDefault": true }
+    ]
+  }
+]

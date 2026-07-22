@@ -14,14 +14,25 @@ import {
   Tooltip,
   message,
 } from 'antd'
-import React, { useRef, useState } from 'react'
+import { history } from '@umijs/max'
+import React, { useEffect, useRef, useState } from 'react'
 import {
-  generateModuleControlMigration,
-  listModuleControl,
-  migrateModuleControl,
-  seedModuleControl,
-  toggleModuleControl,
-} from '@/services/generated/moduleControl'
+  generateModuleManagementMigration,
+  listModuleManagement,
+  migrateModuleManagement,
+  seedModuleManagement,
+  toggleModuleManagement,
+} from '@/services/generated/moduleManagement'
+
+// 生产环境直接拒绝渲染模块管理：toggle 误点会让整个模块 API 面瞬时 404，
+// migrate/seed 误点会污染生产数据。三层防御中最末一层 —— 后端 app.ts 已经不挂载
+// dev 路由、menu service 已经过滤 dev-only 菜单，这里再兜一次防止 URL 直访。
+if (process.env.NODE_ENV === 'production') {
+  // 同步重定向；useEffect 不适合：要在首次渲染前就离开，否则会闪一帧 ProTable。
+  if (typeof window !== 'undefined' && window.location.pathname !== '/404') {
+    window.location.replace('/404')
+  }
+}
 
 const DevModules: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
@@ -30,6 +41,14 @@ const DevModules: React.FC = () => {
   const [logContent, setLogContent] = useState('')
   const [logOk, setLogOk] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+
+  // 兜底：prod 下 render hook 一进来就 replace 到 /404（覆盖 SSR / 静态构建等
+  // process.env 检测不到分支的场景）。
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production' && window.location.pathname !== '/404') {
+      history.replace('/404')
+    }
+  }, [])
 
   const openLog = (title: string, ok: boolean, stdout: string, stderr: string) => {
     setLogTitle(title)
@@ -43,7 +62,7 @@ const DevModules: React.FC = () => {
   const handleToggle = async (id: string, enabled: boolean) => {
     setBusyId(id)
     try {
-      const res = await toggleModuleControl({ id }, { enabled })
+      const res = await toggleModuleManagement({ id }, { enabled })
       if (res.success && res.data) {
         message.success(`已${enabled ? '启用' : '停用'}：${id}（即时生效）`)
         actionRef.current?.reload()
@@ -58,7 +77,7 @@ const DevModules: React.FC = () => {
   const handleMigrate = async (id: string) => {
     setBusyId(id)
     try {
-      const res = await migrateModuleControl({ id })
+      const res = await migrateModuleManagement({ id })
       const ok = Boolean(res.success && res.data?.success)
       if (ok) {
         message.success(res.message ?? '迁移完成')
@@ -75,7 +94,7 @@ const DevModules: React.FC = () => {
   const handleGenerate = async (id: string) => {
     setBusyId(id)
     try {
-      const res = await generateModuleControlMigration({ id }, {})
+      const res = await generateModuleManagementMigration({ id }, {})
       const ok = Boolean(res.success && res.data?.success)
       if (ok) {
         message.success(res.message ?? '已生成迁移文件')
@@ -92,7 +111,7 @@ const DevModules: React.FC = () => {
   const handleSeed = async (id: string) => {
     setBusyId(id)
     try {
-      const res = await seedModuleControl({ id })
+      const res = await seedModuleManagement({ id })
       const ok = Boolean(res.success && res.data?.success)
       if (ok) {
         message.success(res.message ?? 'seed 完成')
@@ -223,7 +242,7 @@ const DevModules: React.FC = () => {
         search={false}
         options={{ reload: true, density: false }}
         request={async () => {
-          const res = await listModuleControl()
+          const res = await listModuleManagement()
           const items = (res.data?.items ?? []) as RowItem[]
           return {
             data: items,

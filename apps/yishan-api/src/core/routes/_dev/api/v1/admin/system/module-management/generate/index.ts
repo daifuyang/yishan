@@ -8,11 +8,11 @@ import { registerPermissions, type PermissionRef } from '@/core/permissions/cata
 import { ResponseUtil } from '@/utils/response.js';
 
 const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  GENERATE: { code: 'system:module-control:generate', label: '生成模块迁移文件', group: 'module-control' },
+  GENERATE: { code: 'system:module-management:generate', label: '模块管理-生成迁移', group: 'module-management' },
 });
 registerPermissions(PERMS.GENERATE);
 
-const adminSystemModuleControlGenerate: FastifyPluginAsync = async (fastify) => {
+const adminSystemModuleManagementGenerate: FastifyPluginAsync = async (fastify) => {
   const route = createRouteRegistrar(fastify);
   route.post(
     '/:id/generate',
@@ -21,8 +21,8 @@ const adminSystemModuleControlGenerate: FastifyPluginAsync = async (fastify) => 
       schema: {
         summary: '生成模块迁移文件',
         description: '调用本模块的 drizzle-kit generate。',
-        operationId: 'generateModuleControlMigration',
-        tags: ['moduleControl'],
+        operationId: 'generateModuleManagementMigration',
+        tags: ['moduleManagement'],
         security: [{ bearerAuth: [] }],
         params: Type.Object({ id: Type.String() }),
         body: Type.Object({ name: Type.Optional(Type.String()) }),
@@ -86,7 +86,7 @@ const adminSystemModuleControlGenerate: FastifyPluginAsync = async (fastify) => 
   )
 }
 
-export default adminSystemModuleControlGenerate
+export default adminSystemModuleManagementGenerate
 
 function runDrizzleKit(
   drizzleKit: string,

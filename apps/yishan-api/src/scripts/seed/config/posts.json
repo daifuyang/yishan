@@ -1,0 +1,6 @@
+[
+  { "name": "董事长",     "sortOrder": 1, "description": "公司最高负责人" },
+  { "name": "项目经理",   "sortOrder": 2, "description": "项目管理与协调" },
+  { "name": "人力资源",   "sortOrder": 3, "description": "人事管理" },
+  { "name": "普通员工",   "sortOrder": 4, "description": "基础岗位" }
+]

@@ -2,10 +2,10 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
-/** 生成模块迁移文件 调用本模块的 drizzle-kit generate。 POST /api/v1/admin/system/module-control/generate/${param0}/generate */
-export async function generateModuleControlMigration(
+/** 生成模块迁移文件 调用本模块的 drizzle-kit generate。 POST /api/v1/admin/system/module-management/generate/${param0}/generate */
+export async function generateModuleManagementMigration(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.generateModuleControlMigrationParams,
+  params: API.generateModuleManagementMigrationParams,
   body: {
     name?: string;
   },
@@ -24,7 +24,7 @@ export async function generateModuleControlMigration(
       message: string;
     };
     timestamp: string;
-  }>(`/api/v1/admin/system/module-control/generate/${param0}/generate`, {
+  }>(`/api/v1/admin/system/module-management/generate/${param0}/generate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -35,8 +35,8 @@ export async function generateModuleControlMigration(
   });
 }
 
-/** 模块列表 扫描 src/modules/ 并合并 sys_module 行；标注 enabled、是否已挂载、applied vs pending 迁移。routePrefix 由 moduleRoutePrefix() 统一生成为 /api/${id}。 GET /api/v1/admin/system/module-control/list/ */
-export async function listModuleControl(options?: { [key: string]: any }) {
+/** 模块列表 扫描 src/modules/ 并合并 sys_module 行；标注 enabled、是否已挂载、applied vs pending 迁移。routePrefix 由 moduleRoutePrefix() 统一生成为 /api/${id}。 GET /api/v1/admin/system/module-management/list/ */
+export async function listModuleManagement(options?: { [key: string]: any }) {
   return request<{
     success: boolean;
     code: number;
@@ -57,16 +57,16 @@ export async function listModuleControl(options?: { [key: string]: any }) {
       }[];
     };
     timestamp: string;
-  }>("/api/v1/admin/system/module-control/list/", {
+  }>("/api/v1/admin/system/module-management/list/", {
     method: "GET",
     ...(options || {}),
   });
 }
 
-/** 执行模块迁移 调用本模块的 drizzle-kit migrate；完成后把 journal 中所有 entry 同步进 sys_module_migration。 POST /api/v1/admin/system/module-control/migrate/${param0}/migrate */
-export async function migrateModuleControl(
+/** 执行模块迁移 调用本模块的 drizzle-kit migrate；完成后把 journal 中所有 entry 同步进 sys_module_migration。 POST /api/v1/admin/system/module-management/migrate/${param0}/migrate */
+export async function migrateModuleManagement(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.migrateModuleControlParams,
+  params: API.migrateModuleManagementParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -82,17 +82,17 @@ export async function migrateModuleControl(
       message: string;
     };
     timestamp: string;
-  }>(`/api/v1/admin/system/module-control/migrate/${param0}/migrate`, {
+  }>(`/api/v1/admin/system/module-management/migrate/${param0}/migrate`, {
     method: "POST",
     params: { ...queryParams },
     ...(options || {}),
   });
 }
 
-/** 运行模块 seed 脚本 执行 dist/modules/<id>/{seed,scripts/seed,db/seed}.js。 POST /api/v1/admin/system/module-control/seed/${param0}/seed */
-export async function seedModuleControl(
+/** 运行模块 seed 脚本 执行 dist/modules/<id>/{seed,scripts/seed,db/seed}.js。 POST /api/v1/admin/system/module-management/seed/${param0}/seed */
+export async function seedModuleManagement(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.seedModuleControlParams,
+  params: API.seedModuleManagementParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -108,17 +108,17 @@ export async function seedModuleControl(
       message: string;
     };
     timestamp: string;
-  }>(`/api/v1/admin/system/module-control/seed/${param0}/seed`, {
+  }>(`/api/v1/admin/system/module-management/seed/${param0}/seed`, {
     method: "POST",
     params: { ...queryParams },
     ...(options || {}),
   });
 }
 
-/** 切换模块启停 UPDATE sys_module.enabled 并清 enabled 缓存；由全局 onRequest gate 即时拦截，无需重启。 POST /api/v1/admin/system/module-control/toggle/${param0}/toggle */
-export async function toggleModuleControl(
+/** 切换模块启停 UPDATE sys_module.enabled 并清 enabled 缓存；由全局 onRequest gate 即时拦截，无需重启。 POST /api/v1/admin/system/module-management/toggle/${param0}/toggle */
+export async function toggleModuleManagement(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.toggleModuleControlParams,
+  params: API.toggleModuleManagementParams,
   body: {
     enabled: boolean;
   },
@@ -131,7 +131,7 @@ export async function toggleModuleControl(
     message: string;
     data: { id: string; enabled: boolean };
     timestamp: string;
-  }>(`/api/v1/admin/system/module-control/toggle/${param0}/toggle`, {
+  }>(`/api/v1/admin/system/module-management/toggle/${param0}/toggle`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

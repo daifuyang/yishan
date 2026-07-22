@@ -97,6 +97,8 @@ const CurrentUserSchema = Type.Object(
     createdAt: Type.String({ format: "date-time", description: "创建时间" }),
     updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
     accessPath: Type.Optional(Type.Array(Type.String(), { description: "已授权菜单路径列表" })),
+    /** 已绑定角色编码列表（如 super_admin / admin）。前端用于硬编码 dev-only 菜单的可见性判断。 */
+    roleCodes: Type.Optional(Type.Array(Type.String(), { description: "已绑定角色编码列表（如 super_admin）" })),
   },
   { $id: "currentUser" }
 );

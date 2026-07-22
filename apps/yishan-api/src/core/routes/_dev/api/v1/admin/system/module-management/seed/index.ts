@@ -8,11 +8,11 @@ import { registerPermissions, type PermissionRef } from '@/core/permissions/cata
 import { ResponseUtil } from '@/utils/response.js';
 
 const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  SEED: { code: 'system:module-control:seed', label: '模块 seed', group: 'module-control' },
+  SEED: { code: 'system:module-management:seed', label: '模块管理-seed', group: 'module-management' },
 });
 registerPermissions(PERMS.SEED);
 
-const adminSystemModuleControlSeed: FastifyPluginAsync = async (fastify) => {
+const adminSystemModuleManagementSeed: FastifyPluginAsync = async (fastify) => {
   const route = createRouteRegistrar(fastify);
   route.post(
     '/:id/seed',
@@ -21,8 +21,8 @@ const adminSystemModuleControlSeed: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: '运行模块 seed 脚本',
         description: '执行 dist/modules/<id>/{seed,scripts/seed,db/seed}.js。',
-        operationId: 'seedModuleControl',
-        tags: ['moduleControl'],
+        operationId: 'seedModuleManagement',
+        tags: ['moduleManagement'],
         security: [{ bearerAuth: [] }],
         params: Type.Object({ id: Type.String() }),
         response: {
@@ -95,7 +95,7 @@ const adminSystemModuleControlSeed: FastifyPluginAsync = async (fastify) => {
   )
 }
 
-export default adminSystemModuleControlSeed
+export default adminSystemModuleManagementSeed
 
 function runNode(
   cwd: string,

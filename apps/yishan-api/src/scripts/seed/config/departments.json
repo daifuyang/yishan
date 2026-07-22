@@ -1,0 +1,28 @@
+{
+  "name": "愚公软件",
+  "sortOrder": 0,
+  "description": "公司根节点",
+  "children": [
+    {
+      "name": "上海总公司",
+      "sortOrder": 1,
+      "description": "总部",
+      "children": [
+        { "name": "研发部门（上海）", "sortOrder": 1, "description": "研发部门" },
+        { "name": "市场部门（上海）", "sortOrder": 2, "description": "市场部门" },
+        { "name": "测试部门（上海）", "sortOrder": 3, "description": "测试部门" },
+        { "name": "财务部门（上海）", "sortOrder": 4, "description": "财务部门" },
+        { "name": "运维部门（上海）", "sortOrder": 5, "description": "运维部门" }
+      ]
+    },
+    {
+      "name": "常州分公司",
+      "sortOrder": 2,
+      "description": "分公司",
+      "children": [
+        { "name": "市场部门（常州）", "sortOrder": 1, "description": "市场部门" },
+        { "name": "财务部门（常州）", "sortOrder": 2, "description": "财务部门" }
+      ]
+    }
+  ]
+}
