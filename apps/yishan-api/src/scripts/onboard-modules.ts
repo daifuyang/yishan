@@ -49,8 +49,8 @@ async function listModules(): Promise<string[]> {
   for (const id of readdirSync(MODULES_SRC)) {
     const dir = join(MODULES_SRC, id)
     if (!statSync(dir).isDirectory()) continue
-    const routesEntry = join(dir, 'routes.ts')
-    if (existsSync(routesEntry) || existsSync(join(MODULES_DIST, id, 'routes.js'))) {
+    const moduleEntry = join(dir, 'module.ts')
+    if (existsSync(moduleEntry) || existsSync(join(MODULES_DIST, id, 'module.js'))) {
       ids.push(id)
     }
   }

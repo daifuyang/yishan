@@ -71,7 +71,7 @@ export default defineConfig({
 })
 ```
 
-### `routes.ts` —— 入口插件
+### `module.ts` —— 入口插件
 
 ```ts
 import fp from 'fastify-plugin'
@@ -149,18 +149,18 @@ npx drizzle-kit --config=apps/yishan-api/src/modules/<id>/drizzle.config.ts migr
 pnpm --filter yishan-api dev
 ```
 
-按 `meta.prefix` 暴露的路径调用即可。
+按 `/api/<id>` 暴露的路径调用即可。
 
 ## 关键约束清单
 
 - ✖ 不许在 `db/schema.ts` 之外 import `drizzleDb` 或 `@/db`
-- ✖ 不许在 `services/` / `routes.ts` 直接写 SQL —— 走 `repositories/`
+- ✖ 不许在 `services/` / `module.ts` 直接写 SQL —— 走 `repositories/`
 - ✖ 不许改 Core 表（`sys_*` 全部不许动）
 - ✖ 不许跨模块 join 别的模块的表 —— 走 HTTP / Core extension
 - ✖ 不许建 `sys_*` 表（即使模块内）
 - ✔ 表名必须以 `<meta.id>_` 开头（`pnpm lint` 卡死）
-- ✔ `meta.id` 与 `meta.prefix` 全局唯一（启动期 fail-fast）
-- ✔ 路由只放在 `routes.ts` 一个文件，业务复杂再做拆分
+- ✔ `meta.id` 全局唯一（启动期 fail-fast），`prefix` 硬约定 `/api/${meta.id}` 不再声明
+- ✔ 入口只放在 `module.ts` 一个文件，业务复杂再做拆分
 
 ## 完整 demo
 

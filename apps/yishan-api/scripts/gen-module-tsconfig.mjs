@@ -4,13 +4,13 @@
  *
  * 历史上这里根据 src/modules/<id>/module.json 的 `build` 字段往 tsconfig 追加 exclude，
  * 用来"构建期排除某模块"。该机制已删除——所有模块一律进 dist，由运行时
- * sys_module.enabled 决定是否挂载（见 src/core/module-loader.ts）。
+ * sys_module.enabled 决定是否挂载（见 src/core/module-loader/module-loader.ts）。
  *
  * 现在这个脚本仍然存在并被 `build:ts` 调用，但只做一件事：把 src/modules/ 下所有
  * 子目录名打印出来，提示"我发现了哪些模块"。tsconfig.build.json 仅继承基础
  * tsconfig.json 的 include，自然覆盖 src/modules/<id>/。
  *
- * 模块发现规则：src/modules/ 下任意子目录若存在 routes.ts 或 routes.js，即视为一个模块。
+ * 模块发现规则：src/modules/ 下任意子目录若存在 module.ts 或 module.js，即视为一个模块。
  *
  * 产物：apps/yishan-api/tsconfig.build.json（extends 基础 tsconfig）。
  * 该文件由构建流程生成，已在 .gitignore 忽略；tsc / tsc-alias 用 `-p tsconfig.build.json`。
@@ -30,11 +30,11 @@ if (existsSync(modulesDir)) {
   for (const id of readdirSync(modulesDir)) {
     const dir = join(modulesDir, id)
     if (!statSync(dir).isDirectory()) continue
-    const hasRoutes =
-      existsSync(join(dir, 'routes.ts')) || existsSync(join(dir, 'routes.js'))
-    if (!hasRoutes) {
+    const hasModuleEntry =
+      existsSync(join(dir, 'module.ts')) || existsSync(join(dir, 'module.js'))
+    if (!hasModuleEntry) {
       console.warn(
-        `[gen-module-tsconfig] 跳过 src/modules/${id}：缺少 routes.{ts,js}`,
+        `[gen-module-tsconfig] 跳过 src/modules/${id}：缺少 module.{ts,js}`,
       )
       continue
     }

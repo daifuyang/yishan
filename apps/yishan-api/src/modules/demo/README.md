@@ -15,7 +15,7 @@
 ```
 modules/demo/
 ├── README.md
-├── routes.ts                 # meta + 默认 Fastify 插件
+├── module.ts                 # meta + 默认 Fastify 插件
 ├── db/schema.ts              # Drizzle 表定义
 ├── drizzle.config.ts         # module 自带的 drizzle-kit 配置
 ├── drizzle/0000_init.sql     # 建表 + 3 条演示数据
@@ -39,7 +39,7 @@ modules/demo/
 
 ## meta 字段
 
-模块在 `routes.ts` 中导出唯一元数据：
+模块在 `module.ts` 中导出唯一元数据：
 
 ```ts
 export const meta = {
@@ -117,7 +117,7 @@ cd apps/yishan-api && npx vitest run src/modules/demo/tests
 1. 在 `src/modules/<id>/` 拷贝本目录
 2. 把所有 `demo` 全局替换为你的 `id`
 3. 改 `db/schema.ts`：把表名从 `demo_documents` 改成 `<id>_<entity>`
-4. 改 `routes.ts`：把 `meta.id` 改成自己的，`meta.enabled` 视需要保留或省略（默认 true）
+4. 改 `module.ts`：把 `meta.id` 改成自己的，`meta.enabled` 视需要保留或省略（默认 true）
 5. `npx drizzle-kit --config=.../<id>/drizzle.config.ts generate`
 6. `npx drizzle-kit --config=.../<id>/drizzle.config.ts migrate`
 7. `pnpm --filter yishan-api build:ts` 后启动服务；在后台「模块控制」页启用（运行时启停即时生效）

@@ -6,7 +6,7 @@ import { inArray } from 'drizzle-orm';
 import { drizzleDb } from '@/db';
 import { sysModule, sysModuleMigration } from '@/db/schema/tables';
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
-import { moduleRoutePrefix } from '@/core/module-loader.js';
+import { moduleRoutePrefix } from '@/core/module-loader/module-loader.js';
 import { registerPermissions, type PermissionRef } from '@/core/permissions/catalog.js';
 import { ResponseUtil } from '@/utils/response.js';
 
@@ -60,8 +60,8 @@ const adminSystemModuleControlList: FastifyPluginAsync = async (fastify) => {
       if (existsSync(DEV_MODULES_DIR)) {
         for (const id of readdirSync(DEV_MODULES_DIR)) {
           if (
-            existsSync(join(DEV_MODULES_DIR, id, 'routes.ts')) ||
-            existsSync(join(DEV_MODULES_DIR, id, 'routes.js'))
+            existsSync(join(DEV_MODULES_DIR, id, 'module.ts')) ||
+            existsSync(join(DEV_MODULES_DIR, id, 'module.js'))
           ) {
             idsOnDisk.push(id)
           }

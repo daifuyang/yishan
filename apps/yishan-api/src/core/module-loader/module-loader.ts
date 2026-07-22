@@ -2,7 +2,7 @@
  * module-loader.ts — 单一职责：管理业务模块的装载与卸载。
  *
  * 模块启停的事实源是 MySQL `sys_module.enabled`。本文件封装三件事：
- *   1. `syncModulesFromDisk`：扫 src/modules/<id>/routes.ts，INSERT 缺失行（默认 enabled = 1）、
+ *   1. `syncModulesFromDisk`：扫 src/modules/<id>/module.ts，INSERT 缺失行（默认 enabled = 1）、
  *      UPDATE 结构字段（name / table_prefix / version）。永远不动 `enabled` 列。
  *   2. `loadEnabledModuleIds`：从 DB 读取 enabled = 1 的 id 集合，带 Redis 缓存。
  *   3. `mountAllOnDisk`：boot 期用标准 @fastify/autoload 挂载所有【已打包在盘上】的模块，
@@ -55,7 +55,7 @@ export class ModuleLoader {
   private readonly fastify: FastifyInstance
   /** 源码根（绝对路径），用于读 meta / migrations journal 等运行时元数据。 */
   private readonly srcRoot: string
-  /** 编译产物根（绝对路径），用于 `import('routes.js')`。 */
+  /** 编译产物根（绝对路径），用于 `import('module.js')`。 */
   private readonly distRoot: string
   private mounted = new Set<string>()
   private dbCache: AppDb | undefined
@@ -80,8 +80,8 @@ export class ModuleLoader {
 
   /**
    * 扫 src/modules/<id>/ 收集 disk meta。
-   * 自动推断 routes 入口：优先 dist/<id>/routes.js（编译产物），回退 src/<id>/routes.ts（dev/tsx 模式）。
-   * 同时携带 `defaultEnabled`（AGENTS.md §3 字段）与 `name`，供 sync 时使用。
+   * 自动推断模块入口：优先 dist/<id>/module.js（编译产物），回退 src/<id>/module.ts（dev/tsx 模式）。
+   * 同时携带 `enabled`（首次 sync 进 sys_module 的兜底值）与 `name`，供 sync 时使用。
    */
   async scanDiskModules(): Promise<ModuleDiskMeta[]> {
     const srcModulesDir = join(this.srcRoot, 'modules')
@@ -90,25 +90,25 @@ export class ModuleLoader {
     for (const id of readdirSync(srcModulesDir)) {
       const srcModuleDir = join(srcModulesDir, id)
       if (!statSync(srcModuleDir).isDirectory()) continue
-      const distRoutesJs = join(this.distRoot, 'modules', id, 'routes.js')
-      const srcRoutesTs = join(srcModuleDir, 'routes.ts')
-      let routesEntry: string | undefined
+      const distModuleJs = join(this.distRoot, 'modules', id, 'module.js')
+      const srcModuleTs = join(srcModuleDir, 'module.ts')
+      let moduleEntry: string | undefined
       let isTs: boolean
-      if (existsSync(distRoutesJs)) {
-        routesEntry = distRoutesJs
+      if (existsSync(distModuleJs)) {
+        moduleEntry = distModuleJs
         isTs = false
-      } else if (existsSync(srcRoutesTs)) {
-        routesEntry = srcRoutesTs
+      } else if (existsSync(srcModuleTs)) {
+        moduleEntry = srcModuleTs
         isTs = true
       } else {
-        this.fastify.log.warn({ module: id }, 'module skipped: routes.{js,ts} missing')
+        this.fastify.log.warn({ module: id }, 'module skipped: module.{js,ts} missing')
         continue
       }
       const mod: {
         meta?: Partial<ModuleDiskMeta & { name?: string; enabled?: boolean }>
       } = isTs
-        ? await import(routesEntry).catch(() => ({} as { meta?: unknown }))
-        : await import(routesEntry)
+        ? await import(moduleEntry).catch(() => ({} as { meta?: unknown }))
+        : await import(moduleEntry)
       const meta = mod.meta
       if (!meta?.id || typeof meta.id !== 'string') {
         this.fastify.log.warn({ module: id }, 'module skipped: meta.id missing')

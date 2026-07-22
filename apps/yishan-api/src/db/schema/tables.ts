@@ -748,8 +748,8 @@ export const sysApiToken = mysqlTable(
 // Module control tables (managed by Yishan Core, not by individual modules).
 //
 // `sys_module` is the single source of truth for module lifecycle:
-//   - id / table_prefix / version come from disk (`meta` in routes.ts).
-//   - 路由 prefix 硬约定为 `/api/${id}`（见 core/module-loader.ts moduleRoutePrefix），
+//   - id / table_prefix / version come from disk (`meta` in module.ts).
+//   - 路由 prefix 硬约定为 `/api/${id}`（见 core/module-loader/module-loader.ts moduleRoutePrefix），
 //     不再由模块 meta 声明，也不存到 sys_module。
 //   - `enabled` is the runtime switch, mutated by /api/dev/modules/:id/toggle.
 //   - `installed_at` records when the row was first inserted (first sync).

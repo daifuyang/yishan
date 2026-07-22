@@ -3,7 +3,7 @@ import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
 import { join } from 'node:path'
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
-import { ModuleLoader } from './core/module-loader.js'
+import { ModuleLoader } from './core/module-loader/module-loader.js'
 
 // 应用根目录（dist/）和源码根目录（src/）。dev 路由需要扫描 src/modules/ 读迁移 journal；
 // 用装饰器挂出来，避免每个 dev 路由文件自己数 '../'。
