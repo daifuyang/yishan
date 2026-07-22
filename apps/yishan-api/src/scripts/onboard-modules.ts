@@ -3,70 +3,33 @@
  *
  * 对 src/modules/<id>/ 下的每个模块依次执行三步：
  *   1. 迁移：调用 drizzle-kit migrate（应用模块 drizzle/ 下的 SQL 到 DB）。
- *      迁移完成后把 _journal.json 中的所有 tag 同步进 sys_module_migration，
- *      供控制台展示 applied/pending。
- *   2. seed：执行模块自带的 seed 入口（seed.ts / scripts/seed.ts / db/seed.ts），
- *      用于插入演示/基础数据。
- *   3. 菜单追加：若 module.json 里声明了 adminMenu，则 INSERT sys_menu 行
- *      （按 path 幂等，存在则跳过），并把对应权限码注册到 catalog、
- *      绑给 admin 角色与 super_admin 角色。
+ *      迁移完成后把 _journal.json 中的所有 tag 同步进 sys_module_migration。
+ *   2. seed：执行模块自带的 seed 入口（seed.ts / scripts/seed.ts / db/seed.ts）。
+ *      业务数据、菜单声明、权限码注册都在这里完成（不再依赖 module.json）。
+ *   3. 占位：早期版本在这里处理 sys_menu 写入，模块自描述后改为由 seed.ts 负责。
  *
- * 这是与 build/启停并列的「安装期」入口，由 npm run db:seed:modules 触发；
- * 已通过 drizzle-kit 应用过的 SQL 是幂等的，重复运行安全。
+ * 入口：被 `pnpm db:seed` 的 Step 2/2 通过 spawnOnboard() 调用；
+ *      不再有独立的 `db:seed:modules` 脚本——core seed 与模块入驻是一体编排。
  *
  * 设计约束：
- *   - 单步失败不阻断后续模块（错误码 + 日志明确），便于一次跑完看出全貌。
- *   - 不写入 module.json / 不回写源码；只写 DB（与运行时 toggle 一致）。
- *   - 菜单追加走 sys_menu.path 唯一索引；冲突时 SELECT 后跳过，不报错。
+ *   - 单步失败不阻断后续模块。
+ *   - 不写入 module.json / 不回写源码；只写 DB。
+ *   - 菜单追加由模块 seed.ts 自管理，编排脚本不再关心 adminMenu 字段。
  */
 
 import 'dotenv/config'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
-import { and, eq, inArray, isNull } from 'drizzle-orm'
-import { drizzleDb } from '@/db'
-import {
-  sysMenu,
-  sysMenuPermission,
-  sysModule,
-  sysModuleMigration,
-  sysRole,
-  sysRoleMenu,
-  sysRolePermission,
-  sysUser,
-} from '@/db/schema'
-import { ROLE_CODES } from '@/constants/permission-codes.js'
-import { PERMISSION_CODES, registerPermissions } from '@/core/permissions/catalog.js'
+import { inArray } from 'drizzle-orm'
+import { drizzleDb, pool } from '@/db'
+import { sysModuleMigration } from '@/db/schema'
 
-// dist/scripts/onboard-modules.js → APP_ROOT_DIST = dist/, APP_ROOT_SRC = src/
 const APP_ROOT_DIST = join(__dirname, '..')
 const APP_ROOT_SRC = join(APP_ROOT_DIST, '..', 'src')
-// drizzle-kit 装在 API 根目录的 node_modules，pnpm 不把它 hoist 进 dist/
-const APP_ROOT = join(APP_ROOT_DIST, '..')
 const MODULES_SRC = join(APP_ROOT_SRC, 'modules')
 const MODULES_DIST = join(APP_ROOT_DIST, 'modules')
-const DRIZZLE_KIT = join(APP_ROOT, 'node_modules', '.bin', 'drizzle-kit')
-
-interface ModuleJson {
-  id?: string
-  build?: boolean
-  adminMenu?: ModuleAdminMenuDecl
-}
-
-interface ModuleAdminMenuDecl {
-  name: string
-  path: string
-  icon?: string
-  /**
-   * 前端组件路径（umi 相对路径，如 ./system/demo-documents）。
-   * 模块菜单将被自动注册到前端路由树，缺此字段前端无法挂载组件路径。
-   */
-  component: string
-  parentPath?: string
-  sortOrder?: number
-  permission: { code: string; label: string; group: string }
-}
+const DRIZZLE_KIT = join(APP_ROOT_DIST, '..', 'node_modules', '.bin', 'drizzle-kit')
 
 interface StepOutcome {
   ok: boolean
@@ -94,20 +57,6 @@ async function listModules(): Promise<string[]> {
   return ids.sort()
 }
 
-function readModuleJson(id: string): ModuleJson {
-  const metaPath = join(MODULES_SRC, id, 'module.json')
-  if (!existsSync(metaPath)) return {}
-  try {
-    return JSON.parse(readFileSync(metaPath, 'utf8')) as ModuleJson
-  } catch {
-    return {}
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Step 1: 迁移
-// -----------------------------------------------------------------------------
-
 async function runDrizzleKit(
   cwd: string,
   configFlag: string,
@@ -117,12 +66,8 @@ async function runDrizzleKit(
     const child = spawn(DRIZZLE_KIT, [configFlag, ...args], { cwd, env: process.env })
     let stdout = ''
     let stderr = ''
-    child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString()
-    })
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString()
-    })
+    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString() })
+    child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString() })
     child.on('error', (err) => {
       resolve({ ok: false, message: `drizzle-kit 启动失败: ${err.message}` })
     })
@@ -181,10 +126,6 @@ async function migrateModule(id: string): Promise<StepOutcome> {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Step 2: seed
-// -----------------------------------------------------------------------------
-
 function resolveSeedEntry(id: string): { src: string; dist: string } | null {
   const moduleSrcDir = join(MODULES_SRC, id)
   const moduleDistDir = join(MODULES_DIST, id)
@@ -211,12 +152,8 @@ async function seedModule(id: string): Promise<StepOutcome> {
     const child = spawn(process.execPath, [entry.dist], { cwd, env: process.env })
     let stdout = ''
     let stderr = ''
-    child.stdout.on('data', (chunk: Buffer) => {
-      stdout += chunk.toString()
-    })
-    child.stderr.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString()
-    })
+    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString() })
+    child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString() })
     child.on('error', (err) => {
       resolve({ ok: false, message: `seed 启动失败: ${err.message}` })
     })
@@ -229,148 +166,12 @@ async function seedModule(id: string): Promise<StepOutcome> {
   })
 }
 
-// -----------------------------------------------------------------------------
-// Step 3: 菜单追加
-// -----------------------------------------------------------------------------
-
-async function findMenuByPath(path: string) {
-  return drizzleDb.query.sysMenu.findFirst({
-    where: and(eq(sysMenu.path, path), isNull(sysMenu.deletedAt)),
-  })
-}
-
-async function findMenuByName(parentId: number | null, name: string) {
-  const cond =
-    parentId === null
-      ? and(isNull(sysMenu.parentId), eq(sysMenu.name, name), isNull(sysMenu.deletedAt))
-      : and(eq(sysMenu.parentId, parentId), eq(sysMenu.name, name), isNull(sysMenu.deletedAt))
-  return drizzleDb.query.sysMenu.findFirst({ where: cond })
-}
-
-async function ensureAdminUserId(): Promise<number> {
-  const adminUser = await drizzleDb.query.sysUser
-    .findFirst({ where: eq(sysUser.username, 'admin') })
-    .catch(() => null)
-  return adminUser?.id ?? 1
-}
-
-async function resolveParentId(parentPath: string | undefined): Promise<number | null> {
-  if (!parentPath) return null
-  const parent = await findMenuByPath(parentPath)
-  return parent?.id ?? null
-}
-
-async function ensureSysModuleRow(id: string): Promise<void> {
-  // 让 sys_module 行存在；module-loader 启动期也会 sync，这里做兜底保证独立运行也成立。
-  const exists = await drizzleDb.query.sysModule.findFirst({ where: eq(sysModule.id, id) })
-  if (exists) return
-  await drizzleDb.insert(sysModule).values({
-    id,
-    name: id,
-    tablePrefix: `${id}_`,
-    version: '0.0.0',
-    enabled: 1,
-  })
-}
-
 async function appendModuleMenu(id: string): Promise<StepOutcome> {
-  const moduleJson = readModuleJson(id)
-  const decl = moduleJson.adminMenu
-  if (!decl) return { ok: true, message: '未声明 adminMenu，跳过菜单追加' }
-
-  // module.json 的 adminMenu.component 是前端动态路由的唯一入口，缺则拒绝。
-  if (!decl.component || !decl.component.trim()) {
-    return { ok: false, message: 'module.json 的 adminMenu.component 必填（umi 相对路径，如 ./system/demo-documents）' }
-  }
-  if (!/^\.{1,2}\/[\w\-./]+$/.test(decl.component)) {
-    return { ok: false, message: `adminMenu.component 格式不合法：${decl.component}（必须以 ./ 或 ../ 开头）` }
-  }
-
-  // 1) 权限码注册（模块顶层副作用也会做，这里兜底）
-  registerPermissions({
-    code: decl.permission.code,
-    label: decl.permission.label,
-    group: decl.permission.group,
-  })
-  if (!PERMISSION_CODES.has(decl.permission.code)) {
-    return { ok: false, message: `权限码注册失败：${decl.permission.code}` }
-  }
-
-  // 2) 父菜单解析（按 path；不存在则挂到根）
-  const parentId = await resolveParentId(decl.parentPath)
-
-  // 3) sys_menu 行：按 path 唯一，存在则跳过
-  const existing = await findMenuByPath(decl.path)
-  let menuId: number
-  let created = false
-  if (existing) {
-    menuId = existing.id
-  } else {
-    const byName = parentId === null ? await findMenuByName(null, decl.name) : await findMenuByName(parentId, decl.name)
-    if (byName) {
-      menuId = byName.id
-    } else {
-      const creatorId = await ensureAdminUserId()
-      await drizzleDb.insert(sysMenu).values({
-        name: decl.name,
-        path: decl.path,
-        icon: decl.icon,
-        component: decl.component,
-        type: 1,
-        parentId,
-        status: 1,
-        sortOrder: decl.sortOrder ?? 99,
-        hideInMenu: false,
-        isDefaultAction: false,
-        isExternalLink: false,
-        keepAlive: false,
-        creatorId,
-        updaterId: creatorId,
-      } as typeof sysMenu.$inferInsert)
-      const created2 = await findMenuByPath(decl.path)
-      if (!created2) {
-        return { ok: false, message: `菜单写入后未找到: ${decl.path}` }
-      }
-      menuId = created2.id
-      created = true
-    }
-  }
-
-  // 4) sys_menu_permission 关联（幂等）
-  await drizzleDb
-    .insert(sysMenuPermission)
-    .values({ menuId, permissionCode: decl.permission.code })
-    .onDuplicateKeyUpdate({ set: { permissionCode: decl.permission.code } })
-
-  // 5) 绑给 admin + super_admin 角色（幂等）
-  const roles = await drizzleDb
-    .select({ id: sysRole.id, code: sysRole.code })
-    .from(sysRole)
-    .where(inArray(sysRole.code, [ROLE_CODES.SUPER_ADMIN, ROLE_CODES.ADMIN]))
-  for (const role of roles) {
-    await drizzleDb
-      .insert(sysRoleMenu)
-      .values({ roleId: role.id, menuId })
-      .onDuplicateKeyUpdate({ set: { deletedAt: null } })
-
-    // 同步 sys_role_permission：admin 不应拿到 system:plugin:* 但模块自定义权限码不在排除前缀里。
-    await drizzleDb
-      .insert(sysRolePermission)
-      .values({ roleId: role.id, permissionCode: decl.permission.code, creatorId: menuId })
-      .onDuplicateKeyUpdate({ set: { deletedAt: null } })
-  }
-
-  await ensureSysModuleRow(id)
-
-  return {
-    ok: true,
-    message: created ? `已写入 sys_menu(${decl.path}) 并绑定 admin/super_admin` : `sys_menu(${decl.path}) 已存在，跳过写入`,
-  }
+  // 菜单由模块自带的 seed.ts 负责写入（也是更直观的"插件自描述"形式）。
+  // 编排脚本不再读 module.json.adminMenu 字段，避免把菜单 schema 强加到后端。
+  void id
+  return { ok: true, message: '菜单由模块 seed.ts 负责（未读 module.json.adminMenu）' }
 }
-
-// -----------------------------------------------------------------------------
-// 编排
-// -----------------------------------------------------------------------------
 
 async function onboardOne(id: string): Promise<ModuleResult> {
   console.log(`\n=== 模块 ${id} ===`)
@@ -414,6 +215,7 @@ async function main() {
   if (failed.length > 0) {
     process.exitCode = 1
   }
+  await pool.end()
 }
 
 main().catch((err) => {

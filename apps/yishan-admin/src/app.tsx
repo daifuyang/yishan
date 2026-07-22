@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { BookOpen, ClipboardList, ContactRound, ExternalLink, FileText, Folder, Hospital, Inbox, LayoutDashboard, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
-import { SettingDrawer } from "@ant-design/pro-components";
+import { PageLoading, SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
 import { history, Link, Navigate } from "@umijs/max";
 import {
@@ -254,7 +254,7 @@ export const layout: RunTimeLayoutConfig = ({
     // 增加一个 loading 的状态
     childrenRender: (children) => {
       // 使用 antd App 提供上下文，避免 message 等静态方法的上下文警告
-      // if (initialState?.loading) return <PageLoading />;
+      if (initialState?.loading) return <PageLoading />;
       return (
         <AntdApp>
           {children}

@@ -6,6 +6,9 @@
  *   - build === false → 该模块加入 tsconfig 的 exclude，不编译进 dist、不参与打包。
  *   - 缺文件 / 缺字段 / 解析失败 → 一律按 build:true 处理（向后兼容 = 全打包）。
  *
+ * 另：所有模块的 admin/ 子目录永远是前端代码（Umi/Mako 编译），
+ * 一律从 API 编译范围排除，不依赖 module.json。
+ *
  * 产物：apps/yishan-api/tsconfig.build.json（extends 基础 tsconfig，仅追加 exclude）。
  * 该文件由构建流程生成，已在 .gitignore 忽略；tsc / tsc-alias 用 `-p tsconfig.build.json`。
  *
@@ -40,7 +43,7 @@ if (existsSync(modulesDir)) {
 
 const config = {
   extends: './tsconfig.json',
-  exclude: excluded,
+  exclude: Array.from(new Set(excluded)),
 }
 writeFileSync(outPath, `${JSON.stringify(config, null, 2)}\n`)
 console.log(

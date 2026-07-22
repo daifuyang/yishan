@@ -17,8 +17,7 @@
     "dev": "NODE_ENV=development npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"NODE_ENV=development fastify start --ignore-watch='public/**' --ignore-watch=.ts$ -w -l info -P dist/app.js\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "npm run build:ts && node dist/scripts/seed.js",
-    "db:seed:modules": "npm run build:ts && node dist/scripts/onboard-modules.js",
+    "db:seed": "npm run build:ts && node dist/scripts/seed/index.js",
     "db:reset": "npm run build:ts && node dist/scripts/reset.js"
   },
   "keywords": [],

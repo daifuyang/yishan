@@ -35,7 +35,7 @@ export async function generateModuleControlMigration(
   });
 }
 
-/** 模块列表 扫描 src/modules/ 并合并 sys_module 行；标注 enabled、是否已挂载、applied vs pending 迁移。 GET /api/v1/admin/system/module-control/list/ */
+/** 模块列表 扫描 src/modules/ 并合并 sys_module 行；标注 enabled、是否已挂载、applied vs pending 迁移。routePrefix 由 moduleRoutePrefix() 统一生成为 /api/${id}。 GET /api/v1/admin/system/module-control/list/ */
 export async function listModuleControl(options?: { [key: string]: any }) {
   return request<{
     success: boolean;
@@ -129,10 +129,7 @@ export async function toggleModuleControl(
     success: boolean;
     code: number;
     message: string;
-    data: {
-      id: string;
-      enabled: boolean;
-    };
+    data: { id: string; enabled: boolean };
     timestamp: string;
   }>(`/api/v1/admin/system/module-control/toggle/${param0}/toggle`, {
     method: "POST",

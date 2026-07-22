@@ -49,18 +49,26 @@ async function dropAndRecreate(): Promise<void> {
   const charset = process.env.DATABASE_CHARSET ?? 'utf8mb4'
   const collation = process.env.DATABASE_COLLATION ?? 'utf8mb4_unicode_ci'
 
-  const pool = createPool(serverConfig())
+  // 必须分两个 pool：DROP 完一个 pool 立即 end，库里残留的连接仍然
+  // 引用被删的库；CREATE 必须用一个全新的 pool 才能拿到干净的连接。
+  console.log(`[reset] DROP DATABASE IF EXISTS \`${name}\``)
+  const dropPool = createPool(serverConfig())
   try {
-    console.log(`[reset] DROP DATABASE IF EXISTS \`${name}\``)
-    await pool.query(`DROP DATABASE IF EXISTS \`${name}\``)
-    console.log(
-      `[reset] CREATE DATABASE \`${name}\` CHARACTER SET ${charset} COLLATE ${collation}`,
-    )
-    await pool.query(
+    await dropPool.query(`DROP DATABASE IF EXISTS \`${name}\``)
+  } finally {
+    await dropPool.end().catch(() => {})
+  }
+
+  console.log(
+    `[reset] CREATE DATABASE \`${name}\` CHARACTER SET ${charset} COLLATE ${collation}`,
+  )
+  const createPool_ = createPool(serverConfig())
+  try {
+    await createPool_.query(
       `CREATE DATABASE \`${name}\` CHARACTER SET ${charset} COLLATE ${collation}`,
     )
   } finally {
-    await pool.end()
+    await createPool_.end().catch(() => {})
   }
 }
 
@@ -93,11 +101,13 @@ export async function resetDatabaseAndSeed(): Promise<void> {
   await dropAndRecreate()
   console.log('[reset] database recreated')
 
+  // Drizzle 顶层 pool 里残留的旧连接已经指向被删的库。
+  // mysql2 pool 在第一次失败时自动重连；不需要手动 end。
   runMigrations()
   console.log('[reset] migrations applied')
 
   await runSeed()
-  console.log('[reset] seed completed')
+  console.log('[seed] seed completed')
 
   await drizzlePool.end()
   console.log('[reset] drizzle pool closed')
