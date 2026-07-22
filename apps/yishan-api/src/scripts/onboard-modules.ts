@@ -58,7 +58,11 @@ interface ModuleAdminMenuDecl {
   name: string
   path: string
   icon?: string
-  component?: string
+  /**
+   * 前端组件路径（umi 相对路径，如 ./system/demo-documents）。
+   * 模块菜单将被自动注册到前端路由树，缺此字段前端无法挂载组件路径。
+   */
+  component: string
   parentPath?: string
   sortOrder?: number
   permission: { code: string; label: string; group: string }
@@ -273,6 +277,14 @@ async function appendModuleMenu(id: string): Promise<StepOutcome> {
   const moduleJson = readModuleJson(id)
   const decl = moduleJson.adminMenu
   if (!decl) return { ok: true, message: '未声明 adminMenu，跳过菜单追加' }
+
+  // module.json 的 adminMenu.component 是前端动态路由的唯一入口，缺则拒绝。
+  if (!decl.component || !decl.component.trim()) {
+    return { ok: false, message: 'module.json 的 adminMenu.component 必填（umi 相对路径，如 ./system/demo-documents）' }
+  }
+  if (!/^\.{1,2}\/[\w\-./]+$/.test(decl.component)) {
+    return { ok: false, message: `adminMenu.component 格式不合法：${decl.component}（必须以 ./ 或 ../ 开头）` }
+  }
 
   // 1) 权限码注册（模块顶层副作用也会做，这里兜底）
   registerPermissions({

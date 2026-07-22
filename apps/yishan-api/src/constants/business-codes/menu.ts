@@ -13,6 +13,8 @@ export const MenuErrorCode = {
   MENU_DELETE_FORBIDDEN: 32403,
   /** 菜单父级不合法（循环引用或父级不存在） */
   MENU_INVALID_PARENT: 32404,
+  /** 菜单组件路径缺失或格式不合法（非目录/非外链必须填写合法的 umi 相对路径） */
+  MENU_INVALID_COMPONENT: 32405,
 } as const;
 
 // ============= 错误消息映射 =============
@@ -21,6 +23,7 @@ export const MenuErrorMessages = {
   [MenuErrorCode.MENU_ALREADY_EXISTS]: '菜单已存在（名称或路径冲突）',
   [MenuErrorCode.MENU_DELETE_FORBIDDEN]: '存在子菜单或已绑定角色，禁止删除',
   [MenuErrorCode.MENU_INVALID_PARENT]: '菜单父级不合法',
+  [MenuErrorCode.MENU_INVALID_COMPONENT]: '菜单组件路径不合法',
 } as const;
 
 // ============= 类型定义 =============

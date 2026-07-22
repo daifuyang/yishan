@@ -23,6 +23,7 @@ import type { AttachmentKind, CurrentUser, MenuTreeList, MenuTreeNode, UploadAtt
 import avatarFallback from "@public/icons/avatar.png";
 import queryString from "query-string";
 import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPath";
+import { menuTreeToRoutes } from "@/utils/menuRoutes";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
@@ -353,12 +354,37 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
     if (rootRoute.children.find((r: any) => r.path === '/')) {
       rootRoute.children = rootRoute.children.filter((r: any) => r.path !== '/');
     }
+
+    // 后端 sys_menu 驱动的业务路由：单一真相源，无需在 routes.ts 重复声明。
+    // 按 path 去重，保留 routes.ts 中已声明的条目优先。
+    const dynamicRoutes = menuTreeToRoutes(extraRoutes || []);
+    const existingPaths = new Set(
+      rootRoute.children.map((c: any) => c?.path).filter(Boolean),
+    );
+    for (const r of dynamicRoutes) {
+      if (r.path && !existingPaths.has(r.path)) {
+        rootRoute.children.push(r);
+        existingPaths.add(r.path);
+      } else if (!r.path && r.routes?.length) {
+        // 目录节点没有 path：把它的 children 平铺到上一层
+        for (const child of r.routes) {
+          if (child.path && !existingPaths.has(child.path)) {
+            rootRoute.children.push(child);
+            existingPaths.add(child.path);
+          }
+        }
+      }
+    }
+
     const firstPath = resolveFirstPath(extraRoutes || []);
     if (firstPath !== '/') {
       rootRoute.children.unshift({
         id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath
       });
     }
+
+    // 把注入的动态路由也纳入面包屑可点击路径集合
+    walkRoutes(rootRoute.children);
   }
 }
 

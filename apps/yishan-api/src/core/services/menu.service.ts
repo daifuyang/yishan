@@ -121,6 +121,10 @@ export class MenuService {
     await this.ensureUnique(req.name, req.parentId ?? null, req.path);
     await this.ensureParentValid(req.parentId, undefined);
 
+    const targetType = req.type ?? 1;
+    const targetIsExternalLink = req.isExternalLink ?? false;
+    this.assertComponentForMenu(targetType, targetIsExternalLink, req.component);
+
     const input: CreateMenuInput = {
       name: req.name,
       type: req.type ?? 1,
@@ -175,6 +179,11 @@ export class MenuService {
     if (req.isDefaultAction !== undefined) input.isDefaultAction = req.isDefaultAction;
     if (req.isExternalLink !== undefined) input.isExternalLink = req.isExternalLink;
     if (req.keepAlive !== undefined) input.keepAlive = req.keepAlive;
+
+    const targetType = req.type ?? existing.type;
+    const targetIsExternalLink = req.isExternalLink ?? existing.isExternalLink;
+    const targetComponent = req.component ?? existing.component ?? undefined;
+    this.assertComponentForMenu(targetType, targetIsExternalLink, targetComponent);
 
     await this.assertPermissionCodes(req.permissionCodes, req.type ?? existing.type);
     const menu = await MenuRepository.update(id, input);
@@ -246,6 +255,30 @@ export class MenuService {
     const activeCodes = PERMISSION_CODES;
     const unknownCode = codes.find((code) => !activeCodes.has(code));
     if (unknownCode) throw new BusinessError(MenuErrorCode.MENU_INVALID_PARENT, `关联功能不存在或未启用: ${unknownCode}`);
+  }
+
+  /**
+   * 非目录/非外链菜单必须填写合法的 umi 相对路径组件（与前端 routes 约定一致）。
+   * 目录（type=0）和外链（isExternalLink=true）跳过校验。
+   */
+  private static assertComponentForMenu(
+    type: number,
+    isExternalLink: boolean,
+    component?: string,
+  ): void {
+    if (type === 0 || isExternalLink) return;
+    if (!component || !component.trim()) {
+      throw new BusinessError(
+        MenuErrorCode.MENU_INVALID_COMPONENT,
+        '菜单（非目录/非外链）必须填写前端组件路径',
+      );
+    }
+    if (!/^\.{1,2}\/[\w\-./]+$/.test(component)) {
+      throw new BusinessError(
+        MenuErrorCode.MENU_INVALID_COMPONENT,
+        `组件路径格式不合法：${component}（必须以 ./ 或 ../ 开头的相对路径，如 ./system/menu）`,
+      );
+    }
   }
 
   private static async withPermissionCodes<T extends { id: number }>(menus: T[]): Promise<Array<T & SysMenuResp>> {

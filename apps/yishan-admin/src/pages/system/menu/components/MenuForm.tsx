@@ -223,10 +223,18 @@ const MenuForm: React.FC<MenuFormProps> = ({
       />
 
       {/* 使用 ProFormDependency 联动显示 */}
-      <ProFormDependency name={['type']}>
-        {({ type }: { type?: MenuType }) => {
+      <ProFormDependency name={['type', 'isExternalLink']}>
+        {({
+          type,
+          isExternalLink,
+        }: {
+          type?: MenuType;
+          isExternalLink?: boolean;
+        }) => {
           const isDir = type === 0;
           const isMenu = type === 1;
+          // 非目录 + 非外链 时 component 必须填，且必须是 ./ 或 ../ 开头的相对路径
+          const requireComponent = isMenu && !isExternalLink;
           return (
             <>
               {(isDir || isMenu) && (
@@ -278,6 +286,21 @@ const MenuForm: React.FC<MenuFormProps> = ({
                   label="组件路径"
                   placeholder="请输入前端组件路径（如 ./system/menu）"
                   colProps={{ span: 12 }}
+                  rules={
+                    requireComponent
+                      ? [
+                          {
+                            required: true,
+                            message: '菜单（非目录/非外链）必须填写组件路径',
+                          },
+                          {
+                            pattern: /^\.{1,2}\/[\w\-./]+$/,
+                            message:
+                              '组件路径必须以 ./ 或 ../ 开头，如 ./system/menu',
+                          },
+                        ]
+                      : []
+                  }
                 />
               )}
 

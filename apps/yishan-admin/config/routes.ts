@@ -10,14 +10,12 @@
  * @param icon 配置路由的图标，取值参考 https://ant.design/components/icon-cn, 注意去除风格后缀和大小写，如想要配置图标为 <StepBackwardOutlined /> 则取值应为 stepBackward 或 StepBackward，如想要配置图标为 <ToolOutlined /> 则取值应为 tool 或者 Tool
  * @doc https://umijs.org/docs/guides/routes
  *
- * Plugin routes are no longer declared here — module discovery is driven
- * by `apps/yishan-api/src/modules/` at boot, and admin pages for modules
- * live in `apps/yishan-admin/src/pages/<feature>/` like any other page.
+ * 此处仅声明框架级路由（登录、首页容器、404、外链 redirect）。
+ * 业务页面路由由后端 sys_menu.component 字段驱动，在 src/app.tsx 的
+ * patchClientRoutes 中动态注入，无需在此重复声明。
  */
 
 export default [
-  // Menu single source of truth: backend sys_menu.
-  // Frontend routes here are only for component mounting and access guards.
   {
     path: '/user',
     layout: false,
@@ -30,76 +28,8 @@ export default [
     ],
   },
   {
-    path: '/system/user',
-    component: './system/user',
-    access: 'canDo',
-  },
-  {
-    path: '/system/role',
-    component: './system/role',
-    access: 'canDo',
-  },
-  {
-    path: '/system/menu',
-    component: './system/menu',
-    access: 'canDo',
-  },
-  {
-    path: '/system/department',
-    component: './system/department',
-    access: 'canDo',
-  },
-  {
-    path: '/system/position',
-    component: './system/position',
-    access: 'canDo',
-  },
-  {
-    path: '/system/dict',
-    component: './system/dict',
-    access: 'canDo',
-  },
-  {
-    path: '/system/site',
-    component: './system/site',
-    access: 'canDo',
-  },
-  {
-    path: '/system/storage',
-    component: './system/storage',
-    access: 'canDo',
-  },
-  {
-    path: '/system/attachments',
-    component: './system/attachments',
-    access: 'canDo',
-  },
-  {
-    path: '/system/login-log',
-    component: './system/login-log',
-    access: 'canDo',
-  },
-  {
-    path: '/system/module-control',
-    icon: 'tool',
-    component: './system/module-control',
-    access: 'canDo',
-  },
-  {
-    path: '/system/demo-documents',
-    icon: 'experiment',
-    component: './system/demo-documents',
-    access: 'canDo',
-  },
-  {
     path: '/account/api-tokens',
     redirect: '/account/center',
-  },
-  {
-    path: '/account/center',
-    name: 'account.center.title',
-    component: './account/center',
-    access: 'canDo',
   },
   {
     path: '/',
