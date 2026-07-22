@@ -131,7 +131,10 @@ export async function getInitialState(): Promise<{
       currentUser,
       dictDataMap,
       cloudStorageConfig,
-      authorizedMenuPaths: collectAuthorizedMenuPaths(extraRoutes),
+      // 数据源与 access.ts 的 canDo 完全一致（来自后端 /auth/me 的 currentUser.accessPath），
+      // 不再依赖模块级 extraRoutes —— extraRoutes 在 render() 异步填充期间可能是空，
+      // 而 account/center 等页面需要与访问控制同源的 path 白名单。
+      authorizedMenuPaths: currentUser.accessPath ?? [],
       settings: defaultSettings as Partial<LayoutSettings>,
     };
   }
@@ -146,18 +149,6 @@ export async function getInitialState(): Promise<{
 
 let extraRoutes: MenuTreeList = [];
 const clickableRoutePaths = new Set<string>();
-
-const collectAuthorizedMenuPaths = (nodes: MenuTreeList = []): string[] => {
-  const paths: string[] = [];
-  const visit = (items: MenuTreeList) => {
-    for (const item of items) {
-      if (item.path) paths.push(normalizeRoutePath(item.path));
-      if (item.children?.length) visit(item.children);
-    }
-  };
-  visit(nodes);
-  return paths;
-};
 
 const normalizeRoutePath = (path?: string) => {
   if (!path) return '';

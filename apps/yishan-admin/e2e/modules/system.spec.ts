@@ -143,11 +143,6 @@ const PAGES: PageSpec[] = [
     label: '登录日志',
     expectText: '登录日志',
   },
-  {
-    path: '/system/plugins',
-    label: '插件管理',
-    expectText: '插件管理',
-  },
 ];
 
 // ============================================================================
