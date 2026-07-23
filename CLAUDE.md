@@ -73,9 +73,9 @@ The most distinctive thing in this repo is the business-module plugin system in 
 
 ### Layout
 - Each business capability lives at `apps/yishan-api/src/modules/<id>/`
-- A module owns: `module.ts` (entry), `db/schema.ts` (Drizzle tables), `drizzle.config.ts`, `drizzle/*.sql` migrations, `repositories/`, `services/`, `schemas/`, `routes/`, `tests/`, optional `seed.ts`
+- A module owns: `module.ts` (entry), `db/schema.ts` (Drizzle tables), `drizzle.config.ts`, `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`, `repositories/`, `services/`, `schemas/`, `routes/`, `tests/`, `config/system-menu.json`, `permissions.ts`, optional `seed.ts`
 - `module.ts` exports `meta = { id, enabled? }` and a default `fastify-plugin` async function
-- `demo/` is the canonical reference module
+- Current modules: `demo` (1 table, reference), `portal` (5 tables: categories/articles/pages/templates), `shop` (8 tables: categories/attributes/products/skus/orders)
 
 ### Lifecycle
 1. **Boot scan** — `app.ts` calls `moduleLoader.scanDiskModules()`, reading `src/<id>/module.ts` (dev) or `dist/<id>/module.js` (prod)
@@ -99,7 +99,8 @@ Dev-only routes under `core/routes/_dev/` (mounted only when `NODE_ENV !== 'prod
 ## Architecture: admin / api / shared
 
 - **Admin** uses Umi Max's `plugin.ts` to register Ant Design Pro blocks. `apps/yishan-admin/config/routes.ts` is intentionally lean — menu structure is **driven by backend `sys_menu.component`** (post July 2026 refactor; see root `TODO.md`).
-- **OpenAPI sync**: `pnpm --filter yishan-admin openapi` regenerates `src/services/api/...` from `apps/yishan-api/openapi.json`. The backend also serves Swagger UI live.
+- **Admin module pages** live under `apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx`. `plugin.ts` scans this directory at build time and generates `moduleComponentsMap` (virtual path `./<id>/<page>` → `@/modules/<id>/pages/<page>`). The component field in menu JSON matches this virtual path.
+- **OpenAPI sync**: `pnpm --filter yishan-admin openapi` regenerates `src/services/generated/<module>.ts` from `apps/yishan-api/openapi.json`. The generated `typings.d.ts` (committed) provides the `API.*Params` ambient namespace. **Both files must be committed together** for fresh checkouts to compile. The backend also serves Swagger UI live at `/api/docs`.
 - **JWT secret gate**: production refuses to boot with a default/weak `JWT_SECRET` (see `core/plugins/external/jwt-secret-validator.ts`). Dev/CI only warn.
 - **Auth bypass codes**: `BYPASS_CODES` in admin allows local testing of specific routes; `auth:logout` was removed (bugfix in July 2026) — don't add it back.
 - **TipTap**: builds to `dist/` with both CJS and ESM; admin imports it as `workspace:^` and **must rebuild tiptap after tipTap source changes** before re-running admin.
@@ -123,7 +124,7 @@ Per `CONTRIBUTING.md` and CI (`.github/workflows/yishan-fullstack-ci.yml`):
 
 - **Profiles & release artifacts**: `profiles/core.yaml` / `official.yaml` / `template.yaml` drive a release pipeline that emits to `artifacts/` (gitignored). Don't commit outputs.
 - **Module naming lint**: `scripts/check-module-naming.mjs` parses each module's `db/schema.ts` with regex; runs as part of `pnpm lint`. Add new tables here and the linter will catch missing `<id>_` prefixes.
-- **Drizzle per-module**: each module ships its own `drizzle.config.ts`. To generate migrations for one module, run `drizzle-kit` pointed at that file (the demo has `apps/yishan-api/src/modules/demo/drizzle.config.ts`). Migrations are not auto-applied at boot — operators run them.
+- **Drizzle per-module**: each module ships its own `drizzle.config.ts` + `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`. To regenerate migrations after schema changes, `cd src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts`. Migrations are not auto-applied at boot — operators run them via `pnpm --filter yishan-api db:migrate`.
 - **FC deploy**: `.github/workflows/yishan-fc-migrate.yml` and `yishan-fullstack-cd-fc.yml` deploy to Alibaba Function Compute. `apps/yishan-api/deploy/` and `apps/yishan-api/dockerfile` cover the prod image build (which excludes devDeps).
 - **Cert rotation**: `yishan-cert-rotate-fc.yml` rotates FC certs.
 - **No real credentials in repo**: demo creds intentionally not committed; per README, request from the maintainer.
