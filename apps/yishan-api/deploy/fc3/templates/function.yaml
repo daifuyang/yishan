@@ -40,6 +40,10 @@ resources:
         REDIS_PORT: ${env(REDIS_PORT)}
         REDIS_PASSWORD: ${env(REDIS_PASSWORD)}
         REDIS_DB: ${env(REDIS_DB)}
+        # Admin 部署形态：admin 默认编译为 /admin/ 前缀并由同站 API 提供静态资源。
+        # 改为 "/" 即可让 admin 重新占用根路径（前提是 admin 也是用 PUBLIC_PATH=/ 构建）。
+        ADMIN_BASE_PATH: ${env(ADMIN_BASE_PATH, '/admin/')}
+        ADMIN_REDIRECT_ROOT: ${env(ADMIN_REDIRECT_ROOT, 'true')}
       customRuntimeConfig:
         command:
           - node

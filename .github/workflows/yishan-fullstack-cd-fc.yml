@@ -72,6 +72,10 @@ jobs:
         run: pnpm --filter yishan-admin exec max setup
 
       - name: Build yishan-admin
+        env:
+          # 与 API 端的 ADMIN_BASE_PATH（默认 /admin/）保持一致，让 admin 静态资源
+          # 也以 /admin/ 路径前缀打包，CDN/函数挂载在 /admin/* 时才能正确命中。
+          PUBLIC_PATH: ${{ vars.ADMIN_BASE_PATH || '/admin/' }}
         run: pnpm --filter yishan-admin build
 
       - name: Install qshell
@@ -267,6 +271,8 @@ jobs:
           FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
           FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
           FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
+          ADMIN_BASE_PATH: ${{ vars.ADMIN_BASE_PATH || '/admin/' }}
+          ADMIN_REDIRECT_ROOT: ${{ vars.ADMIN_REDIRECT_ROOT || 'true' }}
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
