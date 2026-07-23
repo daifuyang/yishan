@@ -1,5 +1,10 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "files": {
     "ignoreUnknown": true,
     "includes": [
@@ -9,15 +14,16 @@
       "!**/.umi-test",
       "!**/.umi-test-production",
       "!**/src/services",
-      "!**/src/**/*.js",
-      "!**/src/**/*.d.ts",
       "!**/mock",
       "!**/dist",
       "!**/server",
       "!**/public",
       "!**/coverage",
       "!**/node_modules",
-      "!biome.json"
+      "!biome.json",
+      "!tailwind.css",
+      "!package-lock.json",
+      "!**/.worktrees"
     ]
   },
   "formatter": {
@@ -29,9 +35,11 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noUnknownAtRules": "off"
       },
       "correctness": {
+        "useUniqueElementIds": "off",
         "useExhaustiveDependencies": "off"
       },
       "a11y": {
