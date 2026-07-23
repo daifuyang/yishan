@@ -57,10 +57,7 @@ const adminSystemModuleManagementToggle: FastifyPluginAsync = async (fastify) =>
         .where(eq(sysModule.id, id))
 
       // 清 enabled 缓存（redis + 进程内 memo），下一个请求经 gate 即时生效。
-      const loader = (fastify as unknown as {
-        moduleLoader: { invalidateEnabledCache: () => Promise<void> }
-      }).moduleLoader
-      await loader.invalidateEnabledCache()
+      await fastify.moduleLoader.invalidateEnabledCache()
 
       return ResponseUtil.success(
         reply,

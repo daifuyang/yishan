@@ -71,7 +71,7 @@ const adminSystemModuleManagementList: FastifyPluginAsync = async (fastify) => {
             .where(inArray(sysModule.id, idsOnDisk))
       const rowMap = new Map(rows.map((r) => [r.id, r]))
 
-      const loader = (fastify as unknown as { moduleLoader: { isMounted: (id: string) => boolean } }).moduleLoader
+      const loader = fastify.moduleLoader
       const items = idsOnDisk.map((id) => {
         const row = rowMap.get(id)
         return {

@@ -265,7 +265,7 @@ export class ModuleLoader {
    * toggle 调用方负责 DEL 这个 key。
    */
   async loadEnabledIds(): Promise<Set<string>> {
-    const redis = (this.fastify as unknown as { redis?: { get: (k: string) => Promise<string | null>; set: (k: string, v: string, ...rest: unknown[]) => Promise<unknown> } }).redis
+    const redis = this.fastify.redis
     if (redis) {
       try {
         const cached = await redis.get(REDIS_ENABLED_KEY)
@@ -290,7 +290,7 @@ export class ModuleLoader {
 
   async invalidateEnabledCache(): Promise<void> {
     this.enabledMemo = undefined
-    const redis = (this.fastify as unknown as { redis?: { del: (k: string) => Promise<unknown> } }).redis
+    const redis = this.fastify.redis
     if (!redis) return
     try {
       await redis.del(REDIS_ENABLED_KEY)

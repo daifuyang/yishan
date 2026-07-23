@@ -10,14 +10,6 @@ import { ModuleLoader } from './core/module-loader/module-loader.js'
 const APP_ROOT_DIST = __dirname
 const APP_ROOT_SRC = join(__dirname, '..', 'src')
 
-declare module 'fastify' {
-  interface FastifyInstance {
-    moduleLoader: ModuleLoader
-    appRootDist: string
-    appRootSrc: string
- }
-}
-
 /**
  * Section 2 安全门禁：生产环境使用默认 / 弱 JWT secret 直接拒绝启动。
  * 本地开发与 CI 环境（NODE_ENV ≠ production）只警告，不阻塞。
