@@ -39,6 +39,12 @@ fi
 
 echo "6. 拷贝 Admin 静态资源"
 mkdir -p "$FUNCTION_DIR/public"
-cp -R public/admin "$FUNCTION_DIR/public/"
+ADMIN_STATIC="$ROOT_DIR/apps/yishan-admin/dist"
+if [ -d "$ADMIN_STATIC" ]; then
+  cp -R "$ADMIN_STATIC" "$FUNCTION_DIR/public/admin"
+  echo "Admin static assets copied from $ADMIN_STATIC"
+else
+  echo "Warning: admin static dir not found at $ADMIN_STATIC (skipping)"
+fi
 
 echo "✅ Layered 函数包构建完成: $FUNCTION_DIR"
