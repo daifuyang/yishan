@@ -84,6 +84,30 @@ export const STORAGE_CONFIG = {
   uploadDir: process.env.UPLOAD_DIR || 'public/uploads',
 };
 
+/**
+ * Admin 前端在 API 同站部署时的 URL 前缀。
+ *
+ * 默认 `/admin/`，对应 admin 编译时的 PUBLIC_PATH=admin/、CDN/函数静态资源挂载在 /admin/*。
+ * 必须是 `/` 开头、`/` 结尾的形式；其他部署形态（如把 admin 单独挂在子域名）可改为 `/`。
+ *
+ * 与 admin 的 `__APP_BASE__`、`PUBLIC_PATH` 必须保持一致，否则静态资源 404 + SPA 路由错位。
+ */
+export const ADMIN_BASE_PATH = (() => {
+  const raw = process.env.ADMIN_BASE_PATH || '/admin/'
+  const trimmed = raw.replace(/^\/+|\/+$/g, '')
+  return trimmed ? `/${trimmed}/` : '/'
+})()
+
+/**
+ * Admin 部署配置：是否在生产环境把根路径 `/` 重定向到 admin 前缀。
+ *
+ * 默认开启。把 admin 编译成 `/admin/` 前缀的部署形态（fc / Nginx 子路径等）通常需要
+ * 让访问者输入根域名也能落到 admin SPA；本地调试 API 时不希望被吞掉首页请求。
+ */
+export const ADMIN_CONFIG = {
+  redirectRoot: (process.env.ADMIN_REDIRECT_ROOT ?? 'true').toLowerCase() !== 'false',
+}
+
 // 七牛云配置
 export const QINIU_CONFIG = {
   accessKey: process.env.QINIU_AK || '',
