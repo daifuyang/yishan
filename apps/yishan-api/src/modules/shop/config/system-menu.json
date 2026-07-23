@@ -12,7 +12,7 @@
         "path": "/shop/categories",
         "sortOrder": 1,
         "icon": "folder",
-        "component": "./shop/categories",
+        "component": "./modules/shop/categories",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["shop:category:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["shop:category:create"], "sortOrder": 2, "hideInMenu": 1 },
@@ -26,7 +26,7 @@
         "path": "/shop/attributes",
         "sortOrder": 2,
         "icon": "tags",
-        "component": "./shop/attributes",
+        "component": "./modules/shop/attributes",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["shop:attribute:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["shop:attribute:create"], "sortOrder": 2, "hideInMenu": 1 },
@@ -40,7 +40,7 @@
         "path": "/shop/products",
         "sortOrder": 3,
         "icon": "box",
-        "component": "./shop/products",
+        "component": "./modules/shop/products",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["shop:product:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["shop:product:create"], "sortOrder": 2, "hideInMenu": 1 },
@@ -54,7 +54,7 @@
         "path": "/shop/skus",
         "sortOrder": 4,
         "icon": "barcode",
-        "component": "./shop/skus",
+        "component": "./modules/shop/skus",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["shop:sku:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["shop:sku:create"], "sortOrder": 2, "hideInMenu": 1 },
@@ -68,7 +68,7 @@
         "path": "/shop/orders",
         "sortOrder": 5,
         "icon": "file-text",
-        "component": "./shop/orders",
+        "component": "./modules/shop/orders",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["shop:order:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["shop:order:create"], "sortOrder": 2, "hideInMenu": 1 },

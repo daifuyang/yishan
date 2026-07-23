@@ -12,7 +12,7 @@
         "path": "/portal/categories",
         "sortOrder": 1,
         "icon": "folder",
-        "component": "./portal/categories",
+        "component": "./modules/portal/categories",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["portal:category:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["portal:category:create"], "sortOrder": 2, "hideInMenu": 1 },
@@ -26,7 +26,7 @@
         "path": "/portal/articles",
         "sortOrder": 2,
         "icon": "file-text",
-        "component": "./portal/articles",
+        "component": "./modules/portal/articles",
         "children": [
           { "type": 2, "name": "查看",  "permissionCodes": ["portal:article:list"],    "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建",  "permissionCodes": ["portal:article:create"],  "sortOrder": 2, "hideInMenu": 1 },
@@ -41,7 +41,7 @@
         "path": "/portal/pages",
         "sortOrder": 3,
         "icon": "file",
-        "component": "./portal/pages",
+        "component": "./modules/portal/pages",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["portal:page:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["portal:page:create"], "sortOrder": 2, "hideInMenu": 1 },
@@ -55,7 +55,7 @@
         "path": "/portal/article-templates",
         "sortOrder": 4,
         "icon": "copy",
-        "component": "./portal/article-templates",
+        "component": "./modules/portal/article-templates",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["portal:article-template:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["portal:article-template:create"], "sortOrder": 2, "hideInMenu": 1 },
@@ -69,7 +69,7 @@
         "path": "/portal/page-templates",
         "sortOrder": 5,
         "icon": "snippets",
-        "component": "./portal/page-templates",
+        "component": "./modules/portal/page-templates",
         "children": [
           { "type": 2, "name": "查看", "permissionCodes": ["portal:page-template:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
           { "type": 2, "name": "新建", "permissionCodes": ["portal:page-template:create"], "sortOrder": 2, "hideInMenu": 1 },
