@@ -13,7 +13,6 @@ import * as sysPermissions from "./sysPermissions";
 import * as sysPositions from "./sysPositions";
 import * as sysRoles from "./sysRoles";
 import * as sysLoginLogs from "./sysLoginLogs";
-import * as moduleManagement from "./moduleManagement";
 import * as systemRegions from "./systemRegions";
 import * as storage from "./storage";
 import * as sysUsers from "./sysUsers";
@@ -26,6 +25,7 @@ import * as appMenus from "./appMenus";
 import * as appUsers from "./appUsers";
 import * as auth from "./auth";
 import * as meApiTokens from "./meApiTokens";
+import * as moduleManagement from "./moduleManagement";
 export default {
   demo,
   system,
@@ -38,7 +38,6 @@ export default {
   sysPositions,
   sysRoles,
   sysLoginLogs,
-  moduleManagement,
   systemRegions,
   storage,
   sysUsers,
@@ -51,4 +50,5 @@ export default {
   appUsers,
   auth,
   meApiTokens,
+  moduleManagement,
 };

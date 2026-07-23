@@ -44,13 +44,7 @@ build
 # generated plugin routes
 config/generated
 
-# tsc build artifacts in src (prevent compiled .js/.d.ts from being committed)
-src/**/*.js
-src/**/*.d.ts
-config/**/*.js
-config/**/*.d.ts
+# mock/ 下 tsc 会就地生成 .js/.d.ts（mock 数据源是 .ts）。
+# src/ 与 config/ 不就地落盘：typecheck 走 `tsc --noEmit`，产物走 `dist/`（/dist 已屏蔽）。
 mock/**/*.js
 mock/**/*.d.ts
-# 白名单：手写的 ambient declarations 必须入库
-!src/globals.d.ts
-!config/globals.d.ts
