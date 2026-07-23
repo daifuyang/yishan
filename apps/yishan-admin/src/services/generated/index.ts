@@ -1,7 +1,10 @@
+// @ts-ignore
 /* eslint-disable */
 // API 更新时间：
 // API 唯一标识：
 import * as demo from "./demo";
+import * as portal from "./portal";
+import * as shop from "./shop";
 import * as system from "./system";
 import * as attachments from "./attachments";
 import * as sysDepts from "./sysDepts";
@@ -27,6 +30,8 @@ import * as meApiTokens from "./meApiTokens";
 import * as moduleManagement from "./moduleManagement";
 export default {
   demo,
+  portal,
+  shop,
   system,
   attachments,
   sysDepts,
