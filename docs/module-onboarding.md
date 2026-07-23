@@ -204,7 +204,7 @@ pnpm --filter yishan-api db:reset      # 仅 dev：重建数据库
 apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx
 ```
 
-`apps/yishan-admin/plugin.ts` 编译期扫描这个目录，生成 `moduleComponentsMap`：虚拟路径 `./<id>/<page>` → 真实 import `@/modules/<id>/pages/<page>`。
+`apps/yishan-admin/plugin.ts` 编译期扫描这个目录，生成 `moduleComponentsMap`：注册 key `./modules/<id>/<page>` → 真实 import `@/modules/<id>/pages/<page>`。
 
 菜单 JSON 的 `component` 字段用虚拟路径，例如：
 
@@ -224,6 +224,7 @@ apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx
 页面写法参考 `apps/yishan-admin/src/modules/demo/pages/todos/index.tsx`：ProTable + ModalForm + Popconfirm 三件套。调用 `@/services/generated/<module>.ts` 里的 openapi 自动生成函数，类型与后端 schema 同步。
 
 **关键点**：
-- 虚拟路径 `./<id>/<page>` 不要带 `/modules/` 前缀——`modules/` 只是源码目录约定，不出现在 URL 也不出现在 component 虚拟路径里
+- 虚拟路径 `./modules/<id>/<page>` 必须带 `./modules/` 前缀（demo 已用此写法；portal/shop 早期漏了导致 404，见 commit `0023d2f` 的修复）
+- URL 路由 (`path`) 仍是 `/<id>/<page>`，不带 `./modules/`——`modules/` 只是源码目录约定 + 组件虚拟路径前缀，不出现在 URL 里
 - 新增页面后无需手动注册——`plugin.ts` 自动发现 `src/modules/<id>/pages/<page>/index.tsx`
 - 改后端 schema 后需要 `pnpm --filter yishan-admin openapi` 重新生成 services，否则页面 TS 报错
