@@ -1,6 +1,6 @@
-import { GithubOutlined } from '@ant-design/icons';
-import { DefaultFooter } from '@ant-design/pro-components';
-import React from 'react';
+import { GithubOutlined } from '@ant-design/icons'
+import { DefaultFooter } from '@ant-design/pro-components'
+import React from 'react'
 
 const Footer: React.FC = () => {
   return (
@@ -8,29 +8,30 @@ const Footer: React.FC = () => {
       style={{
         background: 'none',
       }}
-      copyright="Powered by Ant Desgin"
+      copyright={`${new Date().getFullYear()} Powered by zerocmf`}
       links={[
         {
-          key: 'Ant Design Pro',
-          title: 'Ant Design Pro',
-          href: 'https://pro.ant.design',
+          key: 'docs',
+          title: '使用文档',
+          href: '/docs',
           blankTarget: true,
         },
         {
           key: 'github',
           title: <GithubOutlined />,
-          href: 'https://github.com/ant-design/ant-design-pro',
+          href: 'https://github.com/zerocmf/yishan',
           blankTarget: true,
         },
+
         {
-          key: 'Ant Design',
-          title: 'Ant Design',
-          href: 'https://ant.design',
+          key: 'openapi',
+          title: 'OpenAPI',
+          href: '/docs/api',
           blankTarget: true,
         },
       ]}
     />
-  );
-};
+  )
+}
 
-export default Footer;
+export default Footer
