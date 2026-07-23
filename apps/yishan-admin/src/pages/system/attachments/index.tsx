@@ -27,6 +27,7 @@ import {
   Tag,
   Tooltip,
   Tree,
+  Typography,
   Upload,
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
@@ -622,7 +623,29 @@ const AttachmentsPage: React.FC = () => {
                 ? `素材（${selectedFolder?.name || '分组'}）`
                 : '素材'}
             </div>
-            <Space>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
+              {selectedAttachmentIds.length > 0 && (
+                <Typography.Text type="secondary">
+                  已选 {selectedAttachmentIds.length} 项
+                </Typography.Text>
+              )}
+              {selectedAttachmentIds.length > 0 && (
+                <a
+                  style={{
+                    pointerEvents: batchDeleteLoading ? 'none' : undefined,
+                  }}
+                  onClick={() => setSelectedAttachmentIds([])}
+                >
+                  取消选择
+                </a>
+              )}
               <Popconfirm
                 title={`确定要删除选中的 ${selectedAttachmentIds.length} 个素材吗？`}
                 onConfirm={handleBatchDeleteAttachment}
@@ -630,35 +653,27 @@ const AttachmentsPage: React.FC = () => {
                   selectedAttachmentIds.length === 0 || batchDeleteLoading
                 }
               >
-                <Button
-                  danger
-                  disabled={
-                    selectedAttachmentIds.length === 0 || batchDeleteLoading
-                  }
-                  loading={batchDeleteLoading}
+                <a
+                  style={{
+                    color:
+                      selectedAttachmentIds.length === 0 || batchDeleteLoading
+                        ? undefined
+                        : '#ff4d4f',
+                    pointerEvents:
+                      selectedAttachmentIds.length === 0 || batchDeleteLoading
+                        ? 'none'
+                        : undefined,
+                  }}
                 >
-                  <DeleteOutlined /> 批量删除
-                  {selectedAttachmentIds.length
-                    ? `（${selectedAttachmentIds.length}）`
-                    : ''}
-                </Button>
+                  批量删除
+                </a>
               </Popconfirm>
-              <Button
-                type="link"
-                className="p-0"
-                disabled={
-                  selectedAttachmentIds.length === 0 || batchDeleteLoading
-                }
-                onClick={() => setSelectedAttachmentIds([])}
-              >
-                清空选择
-              </Button>
               <Upload {...uploadProps}>
-                <Button type="primary">
-                  <UploadOutlined /> 上传
+                <Button type="primary" icon={<UploadOutlined />}>
+                  上传
                 </Button>
               </Upload>
-            </Space>
+            </div>
           </div>
 
           <div style={{ marginTop: 12 }}>

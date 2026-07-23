@@ -114,6 +114,27 @@ Per `CONTRIBUTING.md` and CI (`.github/workflows/yishan-fullstack-ci.yml`):
 3. Architecture-affecting changes must update root docs (TODO files, README, this file).
 4. Don't stage scratch/plan docs in `tmp/` — they're gitignored.
 
+## Frontend page conventions (admin / Ant Design Pro 6)
+
+These rules were hardened while iterating the `demo` module pages (`/demo/quickstart`, `/demo/health`, `/demo/todos`). New module pages should follow them by default.
+
+### `PageContainer` header
+- **Don't pass `header.breadcrumb: {}`**. `PageContainer` generates the route breadcrumb automatically; passing an empty object explicitly disables it and the page loses its breadcrumb. `system/user` is the reference — it omits `breadcrumb` entirely.
+- **Avoid `header.subTitle`** unless the page genuinely needs a subtitle under the title (e.g. a doc-style landing page). For typical list/detail pages the title alone is enough; over-explaining in the header eats vertical space.
+- Prefer placing action buttons in `ProTable.toolBarRender` (right side, consistent with `system/user`) rather than `PageContainer.extra`. Reserve `extra` for page-level actions outside any table.
+
+### `ProTable` usage
+- **Don't wrap `ProTable` in `ProCard`** when the page is fundamentally a table — `ProTable` already provides its own card chrome, header bar, search form, and toolbar. Wrapping it hides the layered structure (`headerTitle` + `search` + `toolbar` + `table`) and breaks visual parity with `system/user`.
+- Set `headerTitle` to give the table a title (e.g. `"用户列表"` / `"Todo 列表"`).
+- For status columns, prefer `valueEnum` (or `valueType: 'select'` + `fieldProps.options`) and let ProTable render the badge — don't hand-write `render: (_, r) => <Tag>...`. Hand-written renders add vertical padding and look out of place next to the system table.
+- For date/time columns use `valueType: 'dateTime'`. If a non-default format is genuinely needed, keep `width` aligned with neighbouring date columns and see "Time formatting" below.
+- Operation column: `dataIndex: 'option'`, `valueType: 'option'`, `fixed: 'right'`, `width: 160`, and wrap the action links in `<Space size={16}>` using `<a>` (not `<Button type="link">`). Match the `system/user` reference exactly.
+
+### Time formatting
+- Use `dayjs` (already in `apps/yishan-admin/package.json` dependencies, used by `system/user` and `account/center`). It's the project-standard formatter.
+- For CN-locale pages, format with `dayjs(value).format('YYYY-MM-DD HH:mm:ss')`. dayjs defaults to the runtime's local timezone, which matches the user's expectation in CN deployments. Avoid `toLocaleString()` (browser default) and the raw `Intl.DateTimeFormat` boilerplate.
+- `valueType: 'dateTime'` columns don't need any of the above — let ProTable render.
+
 ## Tracking ongoing work
 
 - `TODO.md` is the index of `TODO-*.md` files at the repo root for known follow-ups (e.g. `TODO-admin-routes-factory.md`, `TODO-attachment-select-split.md`, `TODO-architecture-doc-sync.md`).

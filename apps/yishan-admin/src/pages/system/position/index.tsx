@@ -198,7 +198,7 @@ const PositionList: React.FC = () => {
             key="create"
             trigger={
               <Button type="primary" icon={<PlusOutlined />}>
-                新建岗位
+                新建
               </Button>
             }
             title="新建岗位"
