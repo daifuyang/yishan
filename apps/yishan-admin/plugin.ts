@@ -14,7 +14,7 @@
 
 import { join, relative, sep } from 'node:path'
 import { existsSync, readdirSync, statSync } from 'node:fs'
-import type { IApi } from '@umijs/core'
+import type { IApi } from '@umijs/max'
 
 const PAGES_DIR = 'src/pages'
 const MODULES_DIR = 'src/modules'
