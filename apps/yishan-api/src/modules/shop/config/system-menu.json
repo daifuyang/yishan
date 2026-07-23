@@ -1,0 +1,81 @@
+[
+  {
+    "type": 0,
+    "name": "商城管理",
+    "path": "/shop",
+    "sortOrder": 60,
+    "icon": "shopping-cart",
+    "children": [
+      {
+        "type": 1,
+        "name": "分类管理",
+        "path": "/shop/categories",
+        "sortOrder": 1,
+        "icon": "folder",
+        "component": "./shop/categories",
+        "children": [
+          { "type": 2, "name": "查看", "permissionCodes": ["shop:category:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+          { "type": 2, "name": "新建", "permissionCodes": ["shop:category:create"], "sortOrder": 2, "hideInMenu": 1 },
+          { "type": 2, "name": "编辑", "permissionCodes": ["shop:category:update"], "sortOrder": 3, "hideInMenu": 1 },
+          { "type": 2, "name": "删除", "permissionCodes": ["shop:category:delete"], "sortOrder": 4, "hideInMenu": 1 }
+        ]
+      },
+      {
+        "type": 1,
+        "name": "属性管理",
+        "path": "/shop/attributes",
+        "sortOrder": 2,
+        "icon": "tags",
+        "component": "./shop/attributes",
+        "children": [
+          { "type": 2, "name": "查看", "permissionCodes": ["shop:attribute:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+          { "type": 2, "name": "新建", "permissionCodes": ["shop:attribute:create"], "sortOrder": 2, "hideInMenu": 1 },
+          { "type": 2, "name": "编辑", "permissionCodes": ["shop:attribute:update"], "sortOrder": 3, "hideInMenu": 1 },
+          { "type": 2, "name": "删除", "permissionCodes": ["shop:attribute:delete"], "sortOrder": 4, "hideInMenu": 1 }
+        ]
+      },
+      {
+        "type": 1,
+        "name": "商品管理",
+        "path": "/shop/products",
+        "sortOrder": 3,
+        "icon": "box",
+        "component": "./shop/products",
+        "children": [
+          { "type": 2, "name": "查看", "permissionCodes": ["shop:product:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+          { "type": 2, "name": "新建", "permissionCodes": ["shop:product:create"], "sortOrder": 2, "hideInMenu": 1 },
+          { "type": 2, "name": "编辑", "permissionCodes": ["shop:product:update"], "sortOrder": 3, "hideInMenu": 1 },
+          { "type": 2, "name": "删除", "permissionCodes": ["shop:product:delete"], "sortOrder": 4, "hideInMenu": 1 }
+        ]
+      },
+      {
+        "type": 1,
+        "name": "SKU 管理",
+        "path": "/shop/skus",
+        "sortOrder": 4,
+        "icon": "barcode",
+        "component": "./shop/skus",
+        "children": [
+          { "type": 2, "name": "查看", "permissionCodes": ["shop:sku:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+          { "type": 2, "name": "新建", "permissionCodes": ["shop:sku:create"], "sortOrder": 2, "hideInMenu": 1 },
+          { "type": 2, "name": "编辑", "permissionCodes": ["shop:sku:update"], "sortOrder": 3, "hideInMenu": 1 },
+          { "type": 2, "name": "删除", "permissionCodes": ["shop:sku:delete"], "sortOrder": 4, "hideInMenu": 1 }
+        ]
+      },
+      {
+        "type": 1,
+        "name": "订单管理",
+        "path": "/shop/orders",
+        "sortOrder": 5,
+        "icon": "file-text",
+        "component": "./shop/orders",
+        "children": [
+          { "type": 2, "name": "查看", "permissionCodes": ["shop:order:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+          { "type": 2, "name": "新建", "permissionCodes": ["shop:order:create"], "sortOrder": 2, "hideInMenu": 1 },
+          { "type": 2, "name": "编辑", "permissionCodes": ["shop:order:update"], "sortOrder": 3, "hideInMenu": 1 },
+          { "type": 2, "name": "删除", "permissionCodes": ["shop:order:delete"], "sortOrder": 4, "hideInMenu": 1 }
+        ]
+      }
+    ]
+  }
+]
