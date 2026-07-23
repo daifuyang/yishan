@@ -1,10 +1,10 @@
 /**
  * seed 模块的类型 + 运行时派生配置。
  *
- * 静态 seed 数据（菜单、字典、权限码、admin 账号、岗位、部门、portal 等）
+ * 静态 seed 数据（菜单、字典、权限码、admin 账号、岗位、部门）
  * 拆到 config/*.json，一个功能一个 JSON 文件，便于非 TS 贡献者直接修改。
  * 这里只留下：
- *   1. 类型契约 —— MenuSeedNode / DeptSeedNode / DictSeedConfig / Portal* 等，
+ *   1. 类型契约 —— MenuSeedNode / DeptSeedNode / DictSeedConfig 等，
  *      seed 流程依赖这些类型去校验 JSON 形状。
  *   2. 运行时派生配置 —— assertSeedEnvironment 守卫、admin 密码来源（env 注入，
  *      不写进 JSON）。
@@ -19,10 +19,6 @@ import dictsJson from './config/dicts.json'
 import systemMenusJson from './config/system-menus.json'
 import accountMenusJson from './config/account-menus.json'
 import sysOptionsJson from './config/sys-options.json'
-import portalCategoriesJson from './config/portal-categories.json'
-import portalPagesJson from './config/portal-pages.json'
-import portalTemplatesJson from './config/portal-templates.json'
-import portalArticlesJson from './config/portal-articles.json'
 
 // ---------------------------------------------------------------------------
 // 类型契约
@@ -69,40 +65,6 @@ export type DictSeedConfig = {
   }>;
 };
 
-export type PortalCategorySeed = {
-  name: string;
-  slug: string;
-  sortOrder: number;
-  description?: string;
-  parentSlug?: string;
-};
-
-export type PortalPageSeed = {
-  title: string;
-  path: string;
-  content: string;
-  attributes?: Record<string, any>;
-};
-
-export type PortalArticleSeed = {
-  title: string;
-  slug: string;
-  content: string;
-  categorySlugs: string[];
-  status: number;
-  isPinned: boolean;
-  tags?: string[];
-  attributes?: Record<string, any>;
-};
-
-export type PortalTemplateSeed = {
-  name: string;
-  type: 'article' | 'page';
-  description?: string;
-  schema?: Record<string, any>;
-  config?: Record<string, any>;
-};
-
 export type SysOptionSeed = {
   key: string;
   value: string;
@@ -146,10 +108,6 @@ export const seedConfig = {
   systemMenusSeed: systemMenusJson as MenuSeedNode,
   accountMenusSeed: accountMenusJson as MenuSeedNode,
   sysOptionsSeed: sysOptionsJson as SysOptionSeed[],
-  portalCategoriesSeed: portalCategoriesJson as PortalCategorySeed[],
-  portalPagesSeed: portalPagesJson as PortalPageSeed[],
-  portalTemplatesSeed: portalTemplatesJson as PortalTemplateSeed[],
-  portalArticlesSeed: portalArticlesJson as PortalArticleSeed[],
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -163,7 +121,3 @@ export const dictsSeed = seedConfig.dictsSeed;
 export const systemMenusSeed = seedConfig.systemMenusSeed;
 export const accountMenusSeed = seedConfig.accountMenusSeed;
 export const sysOptionsSeed = seedConfig.sysOptionsSeed;
-export const portalCategoriesSeed = seedConfig.portalCategoriesSeed;
-export const portalPagesSeed = seedConfig.portalPagesSeed;
-export const portalTemplatesSeed = seedConfig.portalTemplatesSeed;
-export const portalArticlesSeed = seedConfig.portalArticlesSeed;

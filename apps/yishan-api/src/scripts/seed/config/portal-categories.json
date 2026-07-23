@@ -1,5 +1,0 @@
-[
-  { "name": "新闻",     "slug": "news",   "sortOrder": 1, "description": "公司新闻" },
-  { "name": "公告",     "slug": "notice", "sortOrder": 2, "description": "系统公告" },
-  { "name": "技术博客", "slug": "blog",   "sortOrder": 3, "description": "技术分享" }
-]
