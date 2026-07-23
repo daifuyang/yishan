@@ -1,23 +1,22 @@
 /**
- * 页面模板 — 完整 CRUD 演示页。
+ * Portal 页面模板管理页面
  *
- * 通过 openapi 生成的 services 调用后端 API，类型与字段与后端 schema 同步。
- * 后端固定 type=1（页面模板）。
+ * 功能：页面模板列表查询、创建、编辑、删除
  */
+
+import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
   ModalForm,
   PageContainer,
-  ProCard,
   ProFormSelect,
   ProFormSwitch,
   ProFormText,
   ProFormTextArea,
-  ProTable,
   type ProColumns,
+  ProTable,
 } from '@ant-design/pro-components'
-import { Button, message, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd'
-import { Plus } from 'lucide-react'
+import { Button, message, Popconfirm, Tag, Tooltip } from 'antd'
 import React, { useRef, useState } from 'react'
 import {
   deletePortalV1PageTemplatesId,
@@ -25,8 +24,6 @@ import {
   patchPortalV1PageTemplatesId,
   postPortalV1PageTemplates,
 } from '@/services/generated/portal'
-
-const { Title, Paragraph } = Typography
 
 type Status = 0 | 1
 const STATUS_LABEL: Record<Status, string> = {
@@ -65,74 +62,62 @@ interface FormValues {
   isSystemDefault?: boolean
 }
 
-const PageTemplates: React.FC = () => {
+const PageTemplateList: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
-  const [editing, setEditing] = useState<Template | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [formVisible, setFormVisible] = useState(false)
+  const [editingId, setEditingId] = useState<number | undefined>(undefined)
+  const [formValues, setFormValues] = useState<Partial<FormValues>>({
+    status: 1,
+    isSystemDefault: false,
+  })
 
-  const fetchList = async (params: Record<string, unknown>) => {
-    const res = await getPortalV1PageTemplates({
-      page: Number(params.current ?? params.page ?? 1),
-      pageSize: Number(params.pageSize ?? 10),
-      keyword: (params.keyword as string) || undefined,
-      type: 1,
-      status: params.status !== undefined ? Number(params.status) : undefined,
+  const handleSuccess = () => {
+    setFormVisible(false)
+    setEditingId(undefined)
+    setFormValues({ status: 1, isSystemDefault: false })
+    actionRef.current?.reload()
+  }
+
+  const handleEdit = (record: Template) => {
+    setEditingId(record.id)
+    setFormValues({
+      name: record.name,
+      description: record.description ?? undefined,
+      status: record.status as Status,
+      isSystemDefault: record.isSystemDefault,
     })
-    const data = (res as unknown as ListResp) ?? null
-    return {
-      data: data?.items ?? [],
-      success: true,
-      total: data?.total ?? 0,
-    }
+    setFormVisible(true)
   }
 
-  const handleCreate = async (values: FormValues) => {
-    await postPortalV1PageTemplates(
-      {
-        name: values.name.trim(),
-        description: values.description?.trim() ?? '',
-        type: 1,
-        status: values.status ?? 1,
-        isSystemDefault: values.isSystemDefault ?? false,
-      },
-      {},
-    )
-    message.success('已创建')
-    setCreateOpen(false)
-    actionRef.current?.reload()
-  }
-
-  const handleUpdate = async (values: FormValues) => {
-    if (!editing) return
-    await patchPortalV1PageTemplatesId(
-      { id: editing.id },
-      {
-        name: values.name.trim(),
-        description: values.description?.trim() ?? '',
-        status: values.status ?? 1,
-        isSystemDefault: values.isSystemDefault ?? false,
-      },
-      {},
-    )
-    message.success('已更新')
-    setEditing(null)
-    actionRef.current?.reload()
-  }
-
-  const handleDelete = async (id: number) => {
+  const handleRemove = async (id: number) => {
     await deletePortalV1PageTemplatesId({ id }, {})
     message.success('已删除')
     actionRef.current?.reload()
   }
 
   const columns: ProColumns<Template>[] = [
-    { title: 'ID', dataIndex: 'id', width: 80, search: false },
-    { title: '名称', dataIndex: 'name', width: 220 },
-    { title: '描述', dataIndex: 'description', search: false, ellipsis: true },
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      search: false,
+      width: 64,
+    },
+    {
+      title: '模板名称',
+      dataIndex: 'name',
+      width: 160,
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      search: false,
+      width: 200,
+      ellipsis: true,
+    },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
+      width: 80,
       valueType: 'select',
       fieldProps: {
         options: Object.entries(STATUS_LABEL).map(([value, label]) => ({
@@ -149,22 +134,24 @@ const PageTemplates: React.FC = () => {
     {
       title: '系统默认',
       dataIndex: 'isSystemDefault',
-      width: 100,
       search: false,
+      width: 80,
       render: (_, record) =>
         record.isSystemDefault ? <Tag color="blue">是</Tag> : <Tag>否</Tag>,
     },
     {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      width: 180,
+      title: '创建时间',
+      dataIndex: 'createdAt',
       search: false,
       valueType: 'dateTime',
+      width: 160,
     },
     {
       title: '操作',
+      dataIndex: 'option',
       valueType: 'option',
-      width: 200,
+      fixed: 'right',
+      width: 140,
       render: (_, record) => {
         const deleteBtn = (
           <Button type="link" danger disabled={record.isSystemDefault}>
@@ -172,7 +159,7 @@ const PageTemplates: React.FC = () => {
           </Button>
         )
         return [
-          <Button key="edit" type="link" onClick={() => setEditing(record)}>
+          <Button key="edit" type="link" onClick={() => handleEdit(record)}>
             编辑
           </Button>,
           record.isSystemDefault ? (
@@ -185,7 +172,7 @@ const PageTemplates: React.FC = () => {
               title="确定删除该模板？"
               okText="删除"
               cancelText="取消"
-              onConfirm={() => handleDelete(record.id)}
+              onConfirm={() => handleRemove(record.id)}
             >
               {deleteBtn}
             </Popconfirm>
@@ -196,103 +183,100 @@ const PageTemplates: React.FC = () => {
   ]
 
   return (
-    <PageContainer
-      header={{
-        title: '页面模板',
-        subTitle: '页面模板管理（type=1，页面专用模板）',
-      }}
-      extra={[
-        <Button
-          key="create"
-          type="primary"
-          icon={<Plus size={16} strokeWidth={1.8} />}
-          onClick={() => setCreateOpen(true)}
-        >
-          新建页面模板
-        </Button>,
-      ]}
-    >
-      <ProCard>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Title level={4} style={{ margin: 0 }}>
-            页面模板列表
-          </Title>
-          <Paragraph type="secondary" style={{ margin: 0 }}>
-            通过 openapi 生成的 services 调用 <code>getPortalV1PageTemplates*</code> 端点；
-            类型与字段与 <code>apps/yishan-api/src/modules/portal/schemas/templates.schema.ts</code> 同步。
-          </Paragraph>
-          <ProTable<Template>
-            rowKey="id"
-            actionRef={actionRef}
-            columns={columns}
-            request={fetchList}
-            search={{ labelWidth: 'auto' }}
-            pagination={{ pageSize: 10 }}
-          />
-        </Space>
-      </ProCard>
-
-      <ModalForm<FormValues>
-        title="新建页面模板"
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onFinish={handleCreate}
-        modalProps={{ destroyOnClose: true }}
-      >
-        <ProFormText
-          name="name"
-          label="名称"
-          rules={[{ required: true, max: 100 }]}
-        />
-        <ProFormTextArea
-          name="description"
-          label="描述"
-          fieldProps={{ maxLength: 255, rows: 3 }}
-        />
-        <ProFormSelect
-          name="status"
-          label="状态"
-          initialValue={1}
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({
-            value: Number(value),
-            label,
-          }))}
-        />
-        <ProFormSwitch
-          name="isSystemDefault"
-          label="系统默认"
-          initialValue={false}
-        />
-      </ModalForm>
-
-      <ModalForm<FormValues>
-        title={editing ? `编辑页面模板 #${editing.id}` : '编辑页面模板'}
-        open={!!editing}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null)
+    <PageContainer>
+      <ProTable<Template>
+        headerTitle="页面模板列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{
+          labelWidth: 100,
+          defaultCollapsed: true,
         }}
-        onFinish={handleUpdate}
-        initialValues={
-          editing
-            ? {
-                name: editing.name,
-                description: editing.description ?? '',
-                status: editing.status as Status,
-                isSystemDefault: editing.isSystemDefault,
-              }
-            : undefined
-        }
-        modalProps={{ destroyOnClose: true }}
+        toolBarRender={() => [
+          <Button
+            key="create"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              setEditingId(undefined)
+              setFormValues({ status: 1, isSystemDefault: false })
+              setFormVisible(true)
+            }}
+          >
+            新建模板
+          </Button>,
+        ]}
+        request={async (params) => {
+          const { current, pageSize, ...restParams } = params
+          const result = await getPortalV1PageTemplates({
+            page: Number(current ?? 1),
+            pageSize: Number(pageSize ?? 10),
+            keyword: (restParams.keyword as string) || undefined,
+            type: 1,
+            status:
+              restParams.status !== undefined
+                ? Number(restParams.status)
+                : undefined,
+          })
+          const data = (result as unknown as ListResp) ?? null
+          return {
+            data: data?.items ?? [],
+            success: true,
+            total: data?.total ?? 0,
+          }
+        }}
+        columns={columns}
+        scroll={{ x: 1000 }}
+      />
+
+      <ModalForm<FormValues>
+        title={editingId ? '编辑模板' : '新建模板'}
+        open={formVisible}
+        onOpenChange={setFormVisible}
+        layout="horizontal"
+        labelCol={{ span: 4 }}
+        initialValues={formValues}
+        onFinish={async (values) => {
+          if (editingId) {
+            await patchPortalV1PageTemplatesId(
+              { id: editingId },
+              {
+                name: values.name.trim(),
+                description: values.description?.trim() ?? '',
+                type: 1,
+                status: values.status ?? 1,
+                isSystemDefault: values.isSystemDefault ?? false,
+              },
+              {},
+            )
+            message.success('已更新')
+          } else {
+            await postPortalV1PageTemplates(
+              {
+                name: values.name.trim(),
+                description: values.description?.trim() ?? '',
+                type: 1,
+                status: values.status ?? 1,
+                isSystemDefault: values.isSystemDefault ?? false,
+              },
+              {},
+            )
+            message.success('已创建')
+          }
+          handleSuccess()
+          return true
+        }}
       >
         <ProFormText
           name="name"
-          label="名称"
-          rules={[{ required: true, max: 100 }]}
+          label="模板名称"
+          placeholder="请输入模板名称"
+          rules={[{ required: true, message: '请输入模板名称' }]}
         />
         <ProFormTextArea
           name="description"
           label="描述"
-          fieldProps={{ maxLength: 255, rows: 3 }}
+          placeholder="模板描述"
         />
         <ProFormSelect
           name="status"
@@ -308,4 +292,4 @@ const PageTemplates: React.FC = () => {
   )
 }
 
-export default PageTemplates
+export default PageTemplateList

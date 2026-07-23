@@ -7,16 +7,15 @@ import {
   type ActionType,
   ModalForm,
   PageContainer,
-  ProCard,
   ProFormDigit,
-  ProFormSelect,
+  ProFormRadio,
   ProFormText,
   ProFormTextArea,
-  ProTable,
   type ProColumns,
+  ProTable,
 } from '@ant-design/pro-components'
-import { Button, message, Popconfirm, Space, Tag, Typography } from 'antd'
-import { Plus } from 'lucide-react'
+import { PlusOutlined } from '@ant-design/icons'
+import { Button, message, Popconfirm, Space } from 'antd'
 import React, { useRef, useState } from 'react'
 import {
   deletePortalV1CategoriesId,
@@ -26,16 +25,9 @@ import {
   postPortalV1Categories,
 } from '@/services/generated/portal'
 
-const { Title, Paragraph } = Typography
-
-type Status = 0 | 1
-const STATUS_LABEL: Record<Status, string> = {
-  0: '禁用',
-  1: '启用',
-}
-const STATUS_COLOR: Record<Status, string> = {
-  0: 'default',
-  1: 'success',
+const statusEnum: Record<string, { text: string; status: string }> = {
+  '0': { text: '禁用', status: 'Error' },
+  '1': { text: '启用', status: 'Success' },
 }
 
 interface Category {
@@ -63,274 +55,195 @@ interface ServiceResp<T> {
   data: T
 }
 
-interface TableParams {
-  current?: number
-  pageSize?: number
-  keyword?: string
-  parentId?: number
-  status?: Status
-}
-
 interface FormValues {
   name: string
   slug?: string
-  parentId?: number | null
-  status?: Status
+  parentId?: string | number | null
+  status?: string
   sortOrder?: number
   description?: string
 }
 
 const Categories: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
-  const [editing, setEditing] = useState<Category | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [formVisible, setFormVisible] = useState(false)
+  const [editingId, setEditingId] = useState<number | undefined>(undefined)
+  const [formValues, setFormValues] = useState<Partial<FormValues>>({
+    status: '1',
+    sortOrder: 0,
+  })
 
-  const fetchList = async (params: TableParams) => {
-    const res = await getPortalV1Categories({
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 10,
-      keyword: params.keyword?.trim() || undefined,
-      parentId: params.parentId,
-      status: params.status,
-    })
-    const data = (res as unknown as ServiceResp<ListResp>).data ?? null
-    return {
-      data: data?.items ?? [],
-      success: true,
-      total: data?.total ?? 0,
-    }
-  }
-
-  const handleCreate = async (values: FormValues) => {
-    await postPortalV1Categories(
-      {
-        name: values.name.trim(),
-        slug: values.slug?.trim(),
-        parentId: values.parentId ?? null,
-        status: values.status ?? 1,
-        sortOrder: values.sortOrder ?? 0,
-        description: values.description?.trim(),
-      },
-      {},
-    )
-    message.success('已创建')
-    setCreateOpen(false)
+  const handleSuccess = () => {
+    setFormVisible(false)
+    setEditingId(undefined)
+    setFormValues({ status: '1', sortOrder: 0 })
     actionRef.current?.reload()
   }
 
   const handleEdit = async (id: number) => {
     const res = await getPortalV1CategoriesId({ id })
     const data = (res as unknown as ServiceResp<Category>).data
-    setEditing(data)
+    if (data) {
+      setFormValues({
+        name: data.name,
+        slug: data.slug ?? undefined,
+        parentId: data.parentId ?? undefined,
+        status: String(data.status),
+        sortOrder: data.sortOrder,
+        description: data.description ?? undefined,
+      })
+      setEditingId(id)
+      setFormVisible(true)
+    } else {
+      message.error('获取分类详情失败')
+    }
   }
 
-  const handleUpdate = async (values: FormValues) => {
-    if (!editing) return
-    await patchPortalV1CategoriesId(
-      { id: editing.id },
-      {
-        name: values.name.trim(),
-        slug: values.slug?.trim(),
-        parentId: values.parentId ?? null,
-        status: values.status ?? 1,
-        sortOrder: values.sortOrder ?? 0,
-        description: values.description?.trim(),
-      },
-      {},
-    )
-    message.success('已更新')
-    setEditing(null)
-    actionRef.current?.reload()
-  }
-
-  const handleDelete = async (id: number) => {
+  const handleRemove = async (id: number) => {
     await deletePortalV1CategoriesId({ id }, {})
     message.success('已删除')
     actionRef.current?.reload()
   }
 
   const columns: ProColumns<Category>[] = [
-    { title: 'ID', dataIndex: 'id', width: 80, search: false },
+    { title: 'ID', dataIndex: 'id', search: false, width: 64 },
+    { title: '名称', dataIndex: 'name', width: 160 },
+    { title: 'URL标识', dataIndex: 'slug', search: false, width: 140 },
     {
-      title: '名称',
-      dataIndex: 'keyword',
-      width: 200,
-      render: (_, record) => record.name,
-    },
-    { title: 'Slug', dataIndex: 'slug', width: 180, search: false },
-    {
-      title: '父分类 ID',
+      title: '父级分类',
       dataIndex: 'parentId',
-      width: 120,
       search: false,
+      width: 120,
       render: (_, record) => record.parentId ?? '-',
     },
-    { title: '排序', dataIndex: 'sortOrder', width: 100, search: false },
+    { title: '排序', dataIndex: 'sortOrder', search: false, width: 64 },
+    { title: '状态', dataIndex: 'status', valueEnum: statusEnum, width: 80 },
     {
-      title: '状态',
-      dataIndex: 'status',
-      width: 100,
-      valueType: 'select',
-      fieldProps: {
-        options: Object.entries(STATUS_LABEL).map(([value, label]) => ({
-          value: Number(value),
-          label,
-        })),
-      },
-      render: (_, record) => (
-        <Tag color={STATUS_COLOR[record.status as Status]}>
-          {STATUS_LABEL[record.status as Status]}
-        </Tag>
-      ),
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      width: 180,
+      title: '创建时间',
+      dataIndex: 'createdAt',
       search: false,
       valueType: 'dateTime',
+      width: 160,
     },
     {
       title: '操作',
+      dataIndex: 'option',
       valueType: 'option',
-      width: 200,
-      render: (_, record) => [
-        <Button key="edit" type="link" onClick={() => handleEdit(record.id)}>
-          编辑
-        </Button>,
-        <Popconfirm
-          key="del"
-          title="确定删除该分类？"
-          okText="删除"
-          cancelText="取消"
-          onConfirm={() => handleDelete(record.id)}
-        >
-          <Button type="link" danger>
-            删除
-          </Button>
-        </Popconfirm>,
-      ],
+      fixed: 'right',
+      width: 140,
+      render: (_, record) => (
+        <Space size={12}>
+          <a onClick={() => handleEdit(record.id)}>编辑</a>
+          <Popconfirm title="确定要删除该分类吗？" onConfirm={() => handleRemove(record.id)}>
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ]
 
   return (
-    <PageContainer
-      header={{
-        title: '分类管理',
-        subTitle: '门户文章 / 页面分类管理',
-      }}
-      extra={[
-        <Button
-          key="create"
-          type="primary"
-          icon={<Plus size={16} strokeWidth={1.8} />}
-          onClick={() => setCreateOpen(true)}
-        >
-          新建分类
-        </Button>,
-      ]}
-    >
-      <ProCard>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Title level={4} style={{ margin: 0 }}>
-            分类列表
-          </Title>
-          <Paragraph type="secondary" style={{ margin: 0 }}>
-            通过 openapi 生成的 services 管理门户文章与页面分类。
-          </Paragraph>
-          <ProTable<Category, TableParams>
-            rowKey="id"
-            actionRef={actionRef}
-            columns={columns}
-            request={fetchList}
-            search={{ labelWidth: 'auto' }}
-            pagination={{ pageSize: 10 }}
-          />
-        </Space>
-      </ProCard>
-
-      <ModalForm<FormValues>
-        title="新建分类"
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onFinish={handleCreate}
-        modalProps={{ destroyOnClose: true }}
-      >
-        <ProFormText
-          name="name"
-          label="名称"
-          fieldProps={{ maxLength: 100 }}
-          rules={[{ required: true, whitespace: true, min: 1, max: 100 }]}
-        />
-        <ProFormText name="slug" label="Slug" fieldProps={{ maxLength: 100 }} rules={[{ max: 100 }]} />
-        <ProFormDigit name="parentId" label="父分类 ID" fieldProps={{ precision: 0 }} />
-        <ProFormDigit
-          name="sortOrder"
-          label="排序"
-          initialValue={0}
-          fieldProps={{ precision: 0 }}
-        />
-        <ProFormSelect
-          name="status"
-          label="状态"
-          initialValue={1}
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({
-            value: Number(value),
-            label,
-          }))}
-        />
-        <ProFormTextArea
-          name="description"
-          label="描述"
-          fieldProps={{ maxLength: 255, rows: 3 }}
-          rules={[{ max: 255 }]}
-        />
-      </ModalForm>
-
-      <ModalForm<FormValues>
-        title={editing ? `编辑分类 #${editing.id}` : '编辑分类'}
-        open={!!editing}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null)
+    <PageContainer>
+      <ProTable<Category>
+        headerTitle="分类列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{ labelWidth: 100, defaultCollapsed: true }}
+        toolBarRender={() => [
+          <Button
+            key="create"
+            type="primary"
+            onClick={() => {
+              setEditingId(undefined)
+              setFormValues({ status: '1', sortOrder: 0 })
+              setFormVisible(true)
+            }}
+          >
+            <PlusOutlined /> 新建分类
+          </Button>,
+        ]}
+        request={async (params) => {
+          const { current, pageSize, name, ...restParams } = params as Record<string, unknown>
+          const statusValue = restParams.status as string | undefined
+          const res = await getPortalV1Categories({
+            page: (current as number) ?? 1,
+            pageSize: (pageSize as number) ?? 10,
+            keyword: typeof name === 'string' ? name.trim() || undefined : undefined,
+            status: statusValue !== undefined ? Number(statusValue) : undefined,
+          })
+          const data = (res as unknown as ServiceResp<ListResp>).data ?? null
+          return {
+            data: data?.items ?? [],
+            success: true,
+            total: data?.total ?? 0,
+          }
         }}
-        onFinish={handleUpdate}
-        initialValues={
-          editing
-            ? {
-                name: editing.name,
-                slug: editing.slug ?? undefined,
-                parentId: editing.parentId,
-                status: editing.status as Status,
-                sortOrder: editing.sortOrder,
-                description: editing.description ?? undefined,
-              }
-            : undefined
-        }
-        modalProps={{ destroyOnClose: true }}
+        columns={columns}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+        }}
+        scroll={{ x: 1000 }}
+      />
+
+      <ModalForm<FormValues>
+        title={editingId ? '编辑分类' : '新建分类'}
+        open={formVisible}
+        onOpenChange={setFormVisible}
+        layout="horizontal"
+        labelCol={{ span: 4 }}
+        initialValues={formValues}
+        onFinish={async (values) => {
+          const parentId =
+            values.parentId !== undefined && values.parentId !== '' && values.parentId !== null
+              ? Number(values.parentId)
+              : null
+          const payload = {
+            name: values.name.trim(),
+            slug: values.slug?.trim() || undefined,
+            parentId,
+            status: values.status ? Number(values.status) : 1,
+            sortOrder: values.sortOrder ?? 0,
+            description: values.description?.trim() || undefined,
+          }
+          try {
+            if (editingId) {
+              await patchPortalV1CategoriesId({ id: editingId }, payload, {})
+            } else {
+              await postPortalV1Categories(payload, {})
+            }
+            message.success(editingId ? '已更新' : '已创建')
+            handleSuccess()
+            return true
+          } catch {
+            message.error('操作失败')
+            return false
+          }
+        }}
       >
         <ProFormText
           name="name"
-          label="名称"
-          fieldProps={{ maxLength: 100 }}
-          rules={[{ required: true, whitespace: true, min: 1, max: 100 }]}
+          label="分类名称"
+          placeholder="请输入分类名称"
+          rules={[{ required: true, message: '请输入分类名称' }]}
         />
-        <ProFormText name="slug" label="Slug" fieldProps={{ maxLength: 100 }} rules={[{ max: 100 }]} />
-        <ProFormDigit name="parentId" label="父分类 ID" fieldProps={{ precision: 0 }} />
-        <ProFormDigit name="sortOrder" label="排序" fieldProps={{ precision: 0 }} />
-        <ProFormSelect
+        <ProFormText name="slug" label="URL标识" placeholder="URL友好标识" />
+        <ProFormText
+          name="parentId"
+          label="父级分类ID"
+          placeholder="父级分类ID（可选）"
+        />
+        <ProFormDigit name="sortOrder" label="排序序号" placeholder="排序序号" min={0} />
+        <ProFormRadio.Group
           name="status"
           label="状态"
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({
-            value: Number(value),
-            label,
-          }))}
+          options={[
+            { label: '启用', value: '1' },
+            { label: '禁用', value: '0' },
+          ]}
         />
-        <ProFormTextArea
-          name="description"
-          label="描述"
-          fieldProps={{ maxLength: 255, rows: 3 }}
-          rules={[{ max: 255 }]}
-        />
+        <ProFormTextArea name="description" label="描述" placeholder="分类描述" />
       </ModalForm>
     </PageContainer>
   )

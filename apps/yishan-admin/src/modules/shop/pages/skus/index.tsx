@@ -1,39 +1,40 @@
-/**
- * 商品 SKU 管理 — 完整 CRUD 演示页（独立管理入口，区别于商品页内的 SKU 抽屉）。
- *
- * 通过 openapi 生成的 services 调用后端 API，类型与字段与后端 schema 同步。
- */
+import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
   ModalForm,
   PageContainer,
-  ProCard,
   ProFormDigit,
-  ProFormSelect,
+  ProFormRadio,
   ProFormText,
   ProTable,
   type ProColumns,
 } from '@ant-design/pro-components'
-import { Button, InputNumber, message, Popconfirm, Space, Tag, Typography } from 'antd'
-import { Plus } from 'lucide-react'
-import React, { useRef, useState } from 'react'
+import { Button, message, Popconfirm, Select, Space, Tag } from 'antd'
+import React, { useEffect, useRef, useState } from 'react'
 import {
   deleteShopV1SkusId,
+  getShopV1Products,
   getShopV1ProductsIdSkus,
   patchShopV1SkusId,
   postShopV1ProductsIdSkus,
 } from '@/services/generated/shop'
 
-const { Title, Paragraph } = Typography
-
 type Status = 0 | 1
-const STATUS_LABEL: Record<Status, string> = {
-  0: '禁用',
-  1: '启用',
+
+const STATUS_TEXT: Record<Status, string> = { 0: '禁用', 1: '启用' }
+const STATUS_COLOR: Record<Status, string> = { 0: 'error', 1: 'success' }
+const STATUS_OPTIONS = [
+  { label: '启用', value: 1 },
+  { label: '禁用', value: 0 },
+]
+
+interface Product {
+  id: number
+  name: string
 }
-const STATUS_COLOR: Record<Status, string> = {
-  0: 'default',
-  1: 'success',
+
+interface ProductListResponse {
+  items: Product[]
 }
 
 interface Sku {
@@ -54,315 +55,239 @@ interface Sku {
 interface FormValues {
   skuCode: string
   skuName: string
-  price: number | string
-  costPrice?: number | string
+  price: string
+  costPrice?: string
   stock?: number
-  weight?: number | string
+  weight?: string
   coverImage?: string
   status?: Status
 }
 
 const Skus: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
-  const [editing, setEditing] = useState<Sku | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
   const [productId, setProductId] = useState<number | null>(null)
+  const [productOptions, setProductOptions] = useState<{ label: string; value: number }[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<Sku | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadProducts = async () => {
+      setProductsLoading(true)
+      try {
+        const response = await getShopV1Products({ page: 1, pageSize: 100 }, {})
+        const data = response as unknown as ProductListResponse
+        if (!cancelled) {
+          setProductOptions(
+            (data.items ?? []).map((product) => ({
+              label: `${product.name}（ID: ${product.id}）`,
+              value: product.id,
+            })),
+          )
+        }
+      } finally {
+        if (!cancelled) setProductsLoading(false)
+      }
+    }
+
+    void loadProducts()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const reload = () => actionRef.current?.reload()
 
   const fetchList = async () => {
-    if (productId == null) {
-      return { data: [], success: true, total: 0 }
-    }
-    const res = await getShopV1ProductsIdSkus({ id: productId })
-    const items = (res as unknown as Sku[]) ?? []
-    return {
-      data: items,
-      success: true,
-      total: items.length,
-    }
+    if (productId === null) return { data: [], success: true, total: 0 }
+
+    const response = await getShopV1ProductsIdSkus({ id: productId }, {})
+    const items = (response as unknown as Sku[]) ?? []
+    return { data: items, success: true, total: items.length }
   }
 
-  const handleCreate = async (values: FormValues) => {
-    if (productId == null) {
-      message.error('请先选择商品 ID')
-      return
+  const handleSave = async (values: FormValues) => {
+    const payload = {
+      skuCode: values.skuCode.trim(),
+      skuName: values.skuName.trim(),
+      price: values.price.trim(),
+      costPrice: values.costPrice?.trim() || undefined,
+      stock: values.stock,
+      weight: values.weight?.trim() || undefined,
+      coverImage: values.coverImage?.trim() || undefined,
+      status: values.status ?? 1,
     }
-    await postShopV1ProductsIdSkus(
-      { id: productId },
-      {
-        skuCode: values.skuCode.trim(),
-        skuName: values.skuName.trim(),
-        price: String(values.price),
-        costPrice: values.costPrice != null ? String(values.costPrice) : undefined,
-        stock: values.stock,
-        weight: values.weight != null ? String(values.weight) : undefined,
-        coverImage: values.coverImage?.trim() || undefined,
-        status: values.status ?? 1,
-      },
-      {},
-    )
-    message.success('已创建')
-    setCreateOpen(false)
-    actionRef.current?.reload()
-  }
 
-  const handleUpdate = async (values: FormValues) => {
-    if (!editing) return
-    await patchShopV1SkusId(
-      { id: editing.id },
-      {
-        skuCode: values.skuCode.trim(),
-        skuName: values.skuName.trim(),
-        price: String(values.price),
-        costPrice: values.costPrice != null ? String(values.costPrice) : undefined,
-        stock: values.stock,
-        weight: values.weight != null ? String(values.weight) : undefined,
-        coverImage: values.coverImage?.trim() || undefined,
-        status: values.status ?? 1,
-      },
-      {},
-    )
-    message.success('已更新')
+    if (editing) {
+      await patchShopV1SkusId({ id: editing.id }, payload, {})
+      message.success('更新成功')
+    } else {
+      if (productId === null) {
+        message.error('请先选择商品')
+        return false
+      }
+      await postShopV1ProductsIdSkus({ id: productId }, payload, {})
+      message.success('创建成功')
+    }
+
+    setFormOpen(false)
     setEditing(null)
-    actionRef.current?.reload()
+    reload()
+    return true
   }
 
   const handleDelete = async (id: number) => {
     await deleteShopV1SkusId({ id }, {})
-    message.success('已删除')
-    actionRef.current?.reload()
+    message.success('删除成功')
+    reload()
   }
 
-  const statusOptions = Object.entries(STATUS_LABEL).map(([value, label]) => ({
-    value: Number(value),
-    label,
-  }))
-
   const columns: ProColumns<Sku>[] = [
-    { title: 'ID', dataIndex: 'id', width: 80, search: false },
-    { title: 'SKU 编码', dataIndex: 'skuCode', width: 160 },
+    { title: 'ID', dataIndex: 'id', width: 64, search: false },
+    { title: 'SKU编码', dataIndex: 'skuCode', width: 140, search: false },
     {
-      title: 'SKU 名称',
+      title: 'SKU名称',
       dataIndex: 'skuName',
       width: 240,
       ellipsis: true,
-    },
-    {
-      title: '价格',
-      dataIndex: 'price',
-      width: 120,
       search: false,
-      render: (_, record) => `¥${Number(record.price).toFixed(2)}`,
     },
-    { title: '库存', dataIndex: 'stock', width: 100, search: false },
+    { title: '价格', dataIndex: 'price', width: 80, search: false },
+    { title: '库存', dataIndex: 'stock', width: 64, search: false },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
-      valueType: 'select',
-      fieldProps: { options: statusOptions },
+      width: 80,
+      search: false,
       render: (_, record) => (
         <Tag color={STATUS_COLOR[record.status as Status]}>
-          {STATUS_LABEL[record.status as Status]}
+          {STATUS_TEXT[record.status as Status]}
         </Tag>
       ),
     },
     {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      width: 180,
-      search: false,
-      valueType: 'dateTime',
-    },
-    {
       title: '操作',
+      dataIndex: 'option',
       valueType: 'option',
-      width: 200,
-      render: (_, record) => [
-        <Button key="edit" type="link" onClick={() => setEditing(record)}>
-          编辑
-        </Button>,
-        <Popconfirm
-          key="del"
-          title="确定删除该 SKU？"
-          okText="删除"
-          cancelText="取消"
-          onConfirm={() => handleDelete(record.id)}
-        >
-          <Button type="link" danger>
-            删除
-          </Button>
-        </Popconfirm>,
-      ],
+      width: 160,
+      fixed: 'right',
+      render: (_, record) => (
+        <Space size={12}>
+          <a
+            onClick={() => {
+              setEditing(record)
+              setFormOpen(true)
+            }}
+          >
+            编辑
+          </a>
+          <Popconfirm title="确定要删除该SKU吗？" onConfirm={() => handleDelete(record.id)}>
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ]
 
   return (
-    <PageContainer
-      header={{
-        title: 'SKU 管理',
-        subTitle: '商品 SKU（多规格）',
-      }}
-      extra={[
-        <Button
-          key="create"
-          type="primary"
-          icon={<Plus size={16} strokeWidth={1.8} />}
-          disabled={productId == null}
-          onClick={() => setCreateOpen(true)}
-        >
-          新建 SKU
-        </Button>,
-      ]}
-    >
-      <ProCard>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Title level={4} style={{ margin: 0 }}>
-            SKU 列表
-          </Title>
-          <Paragraph type="secondary" style={{ margin: 0 }}>
-            通过 openapi 生成的 services 调用 <code>shop/v1/products/:id/skus</code> 与{' '}
-            <code>shop/v1/skus/:id</code> 四个端点；
-            类型与字段与 <code>apps/yishan-api/src/modules/shop/schemas/products.schema.ts</code>{' '}
-            同步。
-          </Paragraph>
+    <PageContainer>
+      <Space style={{ marginBottom: 16 }}>
+        <span>商品：</span>
+        <Select<number>
+          showSearch
+          allowClear
+          loading={productsLoading}
+          optionFilterProp="label"
+          placeholder="请选择商品"
+          options={productOptions}
+          value={productId ?? undefined}
+          style={{ width: 320 }}
+          onChange={(value) => {
+            setProductId(value ?? null)
+            setEditing(null)
+            setFormOpen(false)
+          }}
+        />
+      </Space>
 
-          <Space>
-            <span>商品 ID：</span>
-            <InputNumber
-              min={1}
-              placeholder="请输入商品 ID"
-              value={productId ?? undefined}
-              onChange={(v) => setProductId(v == null ? null : Number(v))}
-              style={{ width: 200 }}
-            />
+      {productId !== null ? (
+        <ProTable<Sku>
+          headerTitle="SKU列表"
+          actionRef={actionRef}
+          rowKey="id"
+          columns={columns}
+          params={{ productId }}
+          request={fetchList}
+          search={false}
+          pagination={false}
+          scroll={{ x: 828 }}
+          toolBarRender={() => [
             <Button
-              onClick={() => actionRef.current?.reload()}
-              disabled={productId == null}
+              key="create"
+              type="primary"
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
             >
-              查询
-            </Button>
-          </Space>
-
-          <ProTable<Sku>
-            rowKey="id"
-            actionRef={actionRef}
-            columns={columns}
-            request={fetchList}
-            search={false}
-            pagination={{ pageSize: 10 }}
-          />
-        </Space>
-      </ProCard>
+              <PlusOutlined /> 新建SKU
+            </Button>,
+          ]}
+        />
+      ) : null}
 
       <ModalForm<FormValues>
-        title="新建 SKU"
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onFinish={handleCreate}
-        modalProps={{ destroyOnClose: true }}
-      >
-        <ProFormText
-          name="skuCode"
-          label="SKU 编码"
-          rules={[{ required: true, max: 64 }]}
-        />
-        <ProFormText
-          name="skuName"
-          label="SKU 名称"
-          rules={[{ required: true, max: 500 }]}
-        />
-        <ProFormDigit
-          name="price"
-          label="价格"
-          rules={[{ required: true }]}
-          min={0}
-          fieldProps={{ precision: 2, step: 0.01, prefix: '¥' }}
-        />
-        <ProFormDigit
-          name="costPrice"
-          label="成本价"
-          min={0}
-          fieldProps={{ precision: 2, step: 0.01, prefix: '¥' }}
-        />
-        <ProFormDigit name="stock" label="库存" min={0} initialValue={0} />
-        <ProFormDigit
-          name="weight"
-          label="重量"
-          min={0}
-          fieldProps={{ precision: 2, step: 0.01 }}
-        />
-        <ProFormText
-          name="coverImage"
-          label="封面图"
-          fieldProps={{ maxLength: 500 }}
-        />
-        <ProFormSelect
-          name="status"
-          label="状态"
-          initialValue={1}
-          options={statusOptions}
-        />
-      </ModalForm>
-
-      <ModalForm<FormValues>
-        title={editing ? `编辑 SKU #${editing.id}` : '编辑 SKU'}
-        open={!!editing}
+        title={editing ? '编辑SKU' : '新建SKU'}
+        open={formOpen}
         onOpenChange={(open) => {
+          setFormOpen(open)
           if (!open) setEditing(null)
         }}
-        onFinish={handleUpdate}
+        onFinish={handleSave}
+        width={640}
+        layout="horizontal"
+        labelCol={{ span: 4 }}
         initialValues={
           editing
             ? {
                 skuCode: editing.skuCode,
                 skuName: editing.skuName,
-                price: Number(editing.price),
-                costPrice: editing.costPrice != null ? Number(editing.costPrice) : undefined,
+                price: editing.price,
+                costPrice: editing.costPrice ?? undefined,
                 stock: editing.stock,
-                weight: editing.weight != null ? Number(editing.weight) : undefined,
-                coverImage: editing.coverImage ?? '',
+                weight: editing.weight ?? undefined,
+                coverImage: editing.coverImage ?? undefined,
                 status: editing.status as Status,
               }
-            : undefined
+            : { stock: 0, status: 1 }
         }
         modalProps={{ destroyOnClose: true }}
       >
         <ProFormText
           name="skuCode"
-          label="SKU 编码"
-          rules={[{ required: true, max: 64 }]}
+          label="SKU编码"
+          placeholder="如：P001-RED-M"
+          rules={[{ required: true, message: '请输入SKU编码' }]}
         />
         <ProFormText
           name="skuName"
-          label="SKU 名称"
-          rules={[{ required: true, max: 500 }]}
-        />
-        <ProFormDigit
-          name="price"
-          label="价格"
-          rules={[{ required: true }]}
-          min={0}
-          fieldProps={{ precision: 2, step: 0.01, prefix: '¥' }}
-        />
-        <ProFormDigit
-          name="costPrice"
-          label="成本价"
-          min={0}
-          fieldProps={{ precision: 2, step: 0.01, prefix: '¥' }}
-        />
-        <ProFormDigit name="stock" label="库存" min={0} />
-        <ProFormDigit
-          name="weight"
-          label="重量"
-          min={0}
-          fieldProps={{ precision: 2, step: 0.01 }}
+          label="SKU名称"
+          placeholder="如：红色M码"
+          rules={[{ required: true, message: '请输入SKU名称' }]}
         />
         <ProFormText
-          name="coverImage"
-          label="封面图"
-          fieldProps={{ maxLength: 500 }}
+          name="price"
+          label="价格"
+          placeholder="SKU价格"
+          rules={[{ required: true, message: '请输入价格' }]}
         />
-        <ProFormSelect name="status" label="状态" options={statusOptions} />
+        <ProFormText name="costPrice" label="成本价" placeholder="成本价格" />
+        <ProFormDigit name="stock" label="库存" placeholder="库存数量" min={0} />
+        <ProFormText name="weight" label="重量" placeholder="重量（kg）" />
+        <ProFormText name="coverImage" label="封面图" placeholder="封面图片URL" />
+        <ProFormRadio.Group name="status" label="状态" options={STATUS_OPTIONS} />
       </ModalForm>
     </PageContainer>
   )

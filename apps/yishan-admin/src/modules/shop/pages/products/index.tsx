@@ -1,18 +1,23 @@
+/**
+ * Shop 商品管理页面
+ *
+ * 功能：商品列表、创建、编辑、删除、上下架切换、SKU 子资源
+ */
+
+import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
   ModalForm,
   PageContainer,
-  ProCard,
   ProFormDigit,
   ProFormSelect,
   ProFormSwitch,
   ProFormText,
   ProFormTextArea,
-  ProTable,
   type ProColumns,
+  ProTable,
 } from '@ant-design/pro-components'
-import { Button, Drawer, Image, message, Popconfirm, Space, Tag, Typography } from 'antd'
-import { Plus } from 'lucide-react'
+import { Button, Drawer, message, Popconfirm, Space, Tag } from 'antd'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   deleteShopV1ProductsId,
@@ -25,28 +30,12 @@ import {
   postShopV1ProductsIdSkus,
 } from '@/services/generated/shop'
 
-const { Title, Paragraph } = Typography
+const statusColors: Record<number, string> = { 0: 'default', 1: 'success', 2: 'warning' }
+const statusText: Record<number, string> = { 0: '下架', 1: '上架', 2: '回收站' }
 
-type Status = 0 | 1
-
-const STATUS_LABEL: Record<Status, string> = {
-  0: '禁用',
-  1: '启用',
-}
-
-const STATUS_COLOR: Record<Status, string> = {
-  0: 'default',
-  1: 'success',
-}
-
-const STATUS_OPTIONS = Object.entries(STATUS_LABEL).map(([value, label]) => ({
-  value: Number(value),
-  label,
-}))
-
-const BOOLEAN_OPTIONS = [
-  { value: true, label: '是' },
-  { value: false, label: '否' },
+const STATUS_OPTIONS = [
+  { value: 0, label: '下架' },
+  { value: 1, label: '上架' },
 ]
 
 interface Product {
@@ -94,18 +83,12 @@ interface Sku {
 interface ProductFormValues {
   categoryId: number
   name: string
-  subtitle?: string
   coverImage?: string
-  description?: string
   price: number
-  costPrice?: number
-  stock?: number
-  unit?: string
-  weight?: string
-  status?: Status
+  description?: string
+  status?: number
   isHot?: boolean
   isNew?: boolean
-  sortOrder?: number
 }
 
 interface SkuFormValues {
@@ -116,7 +99,7 @@ interface SkuFormValues {
   stock?: number
   weight?: string
   coverImage?: string
-  status?: Status
+  status?: number
 }
 
 const formatPrice = (value: string | number | null | undefined) => {
@@ -146,8 +129,9 @@ const toOptionalBoolean = (value: unknown): boolean | undefined => {
 
 const Products: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [editing, setEditing] = useState<Product | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [formVisible, setFormVisible] = useState(false)
   const [skuProduct, setSkuProduct] = useState<Product | null>(null)
   const [skus, setSkus] = useState<Sku[]>([])
   const [skusLoading, setSkusLoading] = useState(false)
@@ -164,7 +148,6 @@ const Products: React.FC = () => {
       isHot: toOptionalBoolean(params.isHot),
       isNew: toOptionalBoolean(params.isNew),
     })
-    // generated service 返回业务响应（data 字段已是列表）
     const data = (res as unknown as ProductListResp) ?? null
     return {
       data: data?.items ?? [],
@@ -173,28 +156,27 @@ const Products: React.FC = () => {
     }
   }
 
+  const closeForm = () => {
+    setFormVisible(false)
+    setEditing(null)
+  }
+
   const handleCreate = async (values: ProductFormValues) => {
     await postShopV1Products(
       {
         categoryId: Number(values.categoryId),
         name: values.name.trim(),
-        subtitle: values.subtitle?.trim() ?? '',
         coverImage: values.coverImage?.trim() ?? '',
         description: values.description?.trim() ?? '',
         price: toPriceString(values.price) ?? '0.00',
-        costPrice: toPriceString(values.costPrice),
-        stock: values.stock ?? 0,
-        unit: values.unit?.trim() ?? '',
-        weight: values.weight?.trim() ?? '',
         status: values.status ?? 1,
         isHot: values.isHot ?? false,
         isNew: values.isNew ?? false,
-        sortOrder: values.sortOrder ?? 0,
       },
       {},
     )
     message.success('已创建')
-    setCreateOpen(false)
+    closeForm()
     actionRef.current?.reload()
   }
 
@@ -205,29 +187,35 @@ const Products: React.FC = () => {
       {
         categoryId: Number(values.categoryId),
         name: values.name.trim(),
-        subtitle: values.subtitle?.trim() ?? '',
         coverImage: values.coverImage?.trim() ?? '',
         description: values.description?.trim() ?? '',
         price: toPriceString(values.price) ?? '0.00',
-        costPrice: toPriceString(values.costPrice),
-        stock: values.stock,
-        unit: values.unit?.trim() ?? '',
-        weight: values.weight?.trim() ?? '',
         status: values.status,
         isHot: values.isHot,
         isNew: values.isNew,
-        sortOrder: values.sortOrder,
       },
       {},
     )
     message.success('已更新')
-    setEditing(null)
+    closeForm()
     actionRef.current?.reload()
   }
 
   const handleDelete = async (id: number) => {
     await deleteShopV1ProductsId({ id }, {})
     message.success('已删除')
+    actionRef.current?.reload()
+  }
+
+  const handleRecycle = async (id: number) => {
+    await patchShopV1ProductsId({ id }, { status: 0 }, {})
+    message.success('已下架')
+    actionRef.current?.reload()
+  }
+
+  const handleRestore = async (id: number) => {
+    await patchShopV1ProductsId({ id }, { status: 1 }, {})
+    message.success('已上架')
     actionRef.current?.reload()
   }
 
@@ -301,138 +289,83 @@ const Products: React.FC = () => {
   }
 
   const productColumns: ProColumns<Product>[] = [
+    { title: '关键词', dataIndex: 'keyword', hideInTable: true },
+    { title: 'ID', dataIndex: 'id', search: false, width: 64 },
     {
-      title: '关键词',
-      dataIndex: 'keyword',
-      hideInTable: true,
-    },
-    { title: 'ID', dataIndex: 'id', width: 80, search: false },
-    {
-      title: '名称',
+      title: '商品名称',
       dataIndex: 'name',
-      width: 280,
+      width: 200,
+      ellipsis: true,
       search: false,
-      render: (_, record) => (
-        <Space size="small">
-          {record.coverImage ? (
-            <Image
-              src={record.coverImage}
-              alt={record.name}
-              width={40}
-              height={40}
-              preview={false}
-              style={{ objectFit: 'cover', borderRadius: 4 }}
-            />
-          ) : (
-            <span
-              style={{
-                display: 'inline-flex',
-                width: 40,
-                height: 40,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 4,
-                background: '#f5f5f5',
-                color: '#999',
-                fontSize: 12,
-              }}
-            >
-              暂无
-            </span>
-          )}
-          <span>{record.name}</span>
-        </Space>
-      ),
     },
     {
       title: '分类',
       dataIndex: 'categoryId',
-      width: 110,
-      valueType: 'digit',
-      fieldProps: { min: 0 },
+      search: false,
+      width: 100,
+      render: (_, record) => record.categoryId,
     },
     {
       title: '价格',
       dataIndex: 'price',
-      width: 120,
       search: false,
+      width: 100,
       render: (_, record) => formatPrice(record.price),
     },
-    {
-      title: '库存',
-      dataIndex: 'stock',
-      width: 100,
-      search: false,
-    },
+    { title: '库存', dataIndex: 'stock', search: false, width: 64 },
+    { title: '销量', dataIndex: 'clickCount', search: false, width: 64 },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
+      width: 80,
       valueType: 'select',
       fieldProps: { options: STATUS_OPTIONS },
       render: (_, record) => (
-        <Tag color={STATUS_COLOR[record.status as Status] ?? 'default'}>
-          {STATUS_LABEL[record.status as Status] ?? '未知'}
+        <Tag color={statusColors[record.status] ?? 'default'}>
+          {statusText[record.status] ?? '未知'}
         </Tag>
       ),
     },
     {
-      title: '热销/新品',
+      title: '推荐',
       dataIndex: 'isHot',
-      width: 140,
       search: false,
-      render: (_, record) => {
-        const tags = [
-          record.isHot ? <Tag key="hot" color="red">热销</Tag> : null,
-          record.isNew ? <Tag key="new" color="blue">新品</Tag> : null,
-        ].filter(Boolean)
-        return tags.length > 0 ? <Space size={0}>{tags}</Space> : '-'
-      },
-    },
-    {
-      title: '热销',
-      dataIndex: 'isHot',
-      hideInTable: true,
-      valueType: 'select',
-      fieldProps: { options: BOOLEAN_OPTIONS },
+      width: 64,
+      render: (_, record) => (record.isHot ? <Tag color="red">热</Tag> : null),
     },
     {
       title: '新品',
       dataIndex: 'isNew',
-      hideInTable: true,
-      valueType: 'select',
-      fieldProps: { options: BOOLEAN_OPTIONS },
+      search: false,
+      width: 64,
+      render: (_, record) => (record.isNew ? <Tag color="blue">新</Tag> : null),
     },
     {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      width: 180,
+      title: '创建时间',
+      dataIndex: 'createdAt',
       search: false,
       valueType: 'dateTime',
+      width: 160,
     },
     {
       title: '操作',
+      dataIndex: 'option',
       valueType: 'option',
-      width: 280,
-      render: (_, record) => [
-        <Button key="skus" type="link" onClick={() => setSkuProduct(record)}>
-          管理 SKU
-        </Button>,
-        <Button key="edit" type="link" onClick={() => setEditing(record)}>
-          编辑
-        </Button>,
-        <Popconfirm
-          key="del"
-          title="确定删除该商品？"
-          okText="删除"
-          cancelText="取消"
-          onConfirm={() => handleDelete(record.id)}
-        >
-          <Button type="link" danger>
-            删除
-          </Button>
-        </Popconfirm>,
-      ],
+      fixed: 'right',
+      width: 220,
+      render: (_, record) => (
+        <Space size={12}>
+          <a onClick={() => setEditing(record)}>编辑</a>
+          {record.status === 0 ? (
+            <a onClick={() => handleRestore(record.id)}>上架</a>
+          ) : (
+            <a onClick={() => handleRecycle(record.id)}>下架</a>
+          )}
+          <Popconfirm title="确定要删除该商品吗？" onConfirm={() => handleDelete(record.id)}>
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ]
 
@@ -454,8 +387,8 @@ const Products: React.FC = () => {
       width: 100,
       search: false,
       render: (_, record) => (
-        <Tag color={STATUS_COLOR[record.status as Status] ?? 'default'}>
-          {STATUS_LABEL[record.status as Status] ?? '未知'}
+        <Tag color={statusColors[record.status] ?? 'default'}>
+          {statusText[record.status] ?? '未知'}
         </Tag>
       ),
     },
@@ -483,131 +416,106 @@ const Products: React.FC = () => {
   ]
 
   return (
-    <PageContainer
-      header={{
-        title: '商品管理',
-        subTitle: '商城商品 CRUD',
-      }}
-      extra={[
-        <Button
-          key="create"
-          type="primary"
-          icon={<Plus size={16} strokeWidth={1.8} />}
-          onClick={() => setCreateOpen(true)}
-        >
-          新建商品
-        </Button>,
-      ]}
-    >
-      <ProCard>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Title level={4} style={{ margin: 0 }}>
-            商品列表
-          </Title>
-          <Paragraph type="secondary" style={{ margin: 0 }}>
-            通过 openapi 生成的 services 调用 <code>getShopV1Products*</code>、SKU 管理端点；
-            类型与字段与 <code>apps/yishan-api/src/modules/shop/schemas/products.schema.ts</code> 同步。
-          </Paragraph>
-          <ProTable<Product>
-            rowKey="id"
-            actionRef={actionRef}
-            columns={productColumns}
-            request={fetchList}
-            search={{ labelWidth: 'auto' }}
-            pagination={{ pageSize: 10 }}
-            scroll={{ x: 1300 }}
-          />
-        </Space>
-      </ProCard>
-
-      <ModalForm<ProductFormValues>
-        title="新建商品"
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onFinish={handleCreate}
-        modalProps={{ destroyOnClose: true }}
-      >
-        <ProFormDigit
-          name="categoryId"
-          label="分类 ID"
-          rules={[{ required: true, message: '请输入分类 ID' }]}
-          min={1}
-        />
-        <ProFormText name="name" label="名称" rules={[{ required: true, max: 200 }]} />
-        <ProFormText name="subtitle" label="副标题" fieldProps={{ maxLength: 500 }} />
-        <ProFormText name="coverImage" label="封面图" fieldProps={{ maxLength: 500 }} />
-        <ProFormTextArea name="description" label="描述" fieldProps={{ rows: 3 }} />
-        <ProFormDigit
-          name="price"
-          label="价格"
-          rules={[{ required: true, message: '请输入价格' }]}
-          min={0}
-          fieldProps={{ step: 0.01, precision: 2 }}
-        />
-        <ProFormDigit name="costPrice" label="成本价" min={0} fieldProps={{ step: 0.01, precision: 2 }} />
-        <ProFormDigit name="stock" label="库存" min={0} />
-        <ProFormText name="unit" label="单位" fieldProps={{ maxLength: 20 }} />
-        <ProFormText name="weight" label="重量" />
-        <ProFormSelect name="status" label="状态" initialValue={1} options={STATUS_OPTIONS} />
-        <ProFormSwitch name="isHot" label="热销" initialValue={false} />
-        <ProFormSwitch name="isNew" label="新品" initialValue={false} />
-        <ProFormDigit name="sortOrder" label="排序" min={0} initialValue={0} />
-      </ModalForm>
-
-      <ModalForm<ProductFormValues>
-        title={editing ? `编辑商品 #${editing.id}` : '编辑商品'}
-        open={!!editing}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null)
+    <PageContainer>
+      <ProTable<Product>
+        headerTitle="商品列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{
+          labelWidth: 100,
+          defaultCollapsed: true,
         }}
-        onFinish={handleUpdate}
+        toolBarRender={() => [
+          <Button
+            key="create"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setFormVisible(true)}
+          >
+            新建商品
+          </Button>,
+        ]}
+        request={fetchList}
+        columns={productColumns}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+        }}
+        scroll={{ x: 1400 }}
+      />
+
+      <ModalForm<ProductFormValues>
+        title={editing ? '编辑商品' : '新建商品'}
+        open={formVisible}
+        onOpenChange={(open) => {
+          if (!open) closeForm()
+        }}
+        width={720}
+        layout="horizontal"
+        labelCol={{ span: 4 }}
         initialValues={
           editing
             ? {
                 categoryId: editing.categoryId,
                 name: editing.name,
-                subtitle: editing.subtitle ?? '',
                 coverImage: editing.coverImage ?? '',
                 description: editing.description ?? '',
                 price: Number(editing.price),
-                costPrice: editing.costPrice == null ? undefined : Number(editing.costPrice),
-                stock: editing.stock,
-                unit: editing.unit,
-                weight: editing.weight ?? '',
-                status: editing.status as Status,
+                status: editing.status,
                 isHot: editing.isHot,
                 isNew: editing.isNew,
-                sortOrder: editing.sortOrder,
               }
-            : undefined
+            : {
+                status: 1,
+                isHot: false,
+                isNew: false,
+              }
         }
-        modalProps={{ destroyOnClose: true }}
+        onFinish={async (values) => {
+          if (editing) {
+            await handleUpdate(values)
+          } else {
+            await handleCreate(values)
+          }
+          return true
+        }}
       >
         <ProFormDigit
           name="categoryId"
-          label="分类 ID"
+          label="分类"
+          placeholder="分类 ID"
           rules={[{ required: true, message: '请输入分类 ID' }]}
           min={1}
         />
-        <ProFormText name="name" label="名称" rules={[{ required: true, max: 200 }]} />
-        <ProFormText name="subtitle" label="副标题" fieldProps={{ maxLength: 500 }} />
-        <ProFormText name="coverImage" label="封面图" fieldProps={{ maxLength: 500 }} />
-        <ProFormTextArea name="description" label="描述" fieldProps={{ rows: 3 }} />
+        <ProFormText
+          name="name"
+          label="商品名称"
+          placeholder="请输入商品名称"
+          rules={[{ required: true, max: 200 }]}
+        />
+        <ProFormText
+          name="coverImage"
+          label="封面"
+          placeholder="封面图片 URL"
+          fieldProps={{ maxLength: 500 }}
+        />
         <ProFormDigit
           name="price"
           label="价格"
+          placeholder="商品价格"
           rules={[{ required: true, message: '请输入价格' }]}
           min={0}
           fieldProps={{ step: 0.01, precision: 2 }}
         />
-        <ProFormDigit name="costPrice" label="成本价" min={0} fieldProps={{ step: 0.01, precision: 2 }} />
-        <ProFormDigit name="stock" label="库存" min={0} />
-        <ProFormText name="unit" label="单位" fieldProps={{ maxLength: 20 }} />
-        <ProFormText name="weight" label="重量" />
+        <ProFormTextArea
+          name="description"
+          label="简介"
+          placeholder="商品简介"
+          fieldProps={{ rows: 3 }}
+        />
         <ProFormSelect name="status" label="状态" options={STATUS_OPTIONS} />
-        <ProFormSwitch name="isHot" label="热销" />
+        <ProFormSwitch name="isHot" label="推荐" />
         <ProFormSwitch name="isNew" label="新品" />
-        <ProFormDigit name="sortOrder" label="排序" min={0} />
       </ModalForm>
 
       <Drawer
@@ -630,7 +538,7 @@ const Products: React.FC = () => {
             <Button
               key="create"
               type="primary"
-              icon={<Plus size={16} strokeWidth={1.8} />}
+              icon={<PlusOutlined />}
               onClick={() => setSkuCreateOpen(true)}
             >
               新建 SKU
@@ -680,7 +588,7 @@ const Products: React.FC = () => {
                 stock: skuEditing.stock,
                 weight: skuEditing.weight ?? '',
                 coverImage: skuEditing.coverImage ?? '',
-                status: skuEditing.status as Status,
+                status: skuEditing.status,
               }
             : undefined
         }

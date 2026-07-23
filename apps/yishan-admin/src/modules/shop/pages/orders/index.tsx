@@ -1,25 +1,20 @@
 /**
- * 商城订单 — 完整 CRUD 演示页。
+ * Shop 订单管理页面
  *
- * 通过 openapi 生成的 services 调用后端 API，类型与字段与后端 schema 同步。
- * 主表：orders 列表；操作列提供"查看明细"按钮，在 Drawer 中展示订单 items。
+ * 功能：订单列表、详情查看、状态更新、发货
  */
+import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
   ModalForm,
   PageContainer,
-  ProCard,
   ProFormDigit,
-  ProFormItem,
   ProFormList,
-  ProFormSelect,
   ProFormText,
-  ProFormTextArea,
   ProTable,
   type ProColumns,
 } from '@ant-design/pro-components'
-import { Button, Drawer, message, Popconfirm, Space, Table, Tag, Typography } from 'antd'
-import { Plus } from 'lucide-react'
+import { Button, Drawer, message, Popconfirm, Space, Tag } from 'antd'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   deleteShopV1OrdersId,
@@ -29,8 +24,6 @@ import {
   patchShopV1OrdersId,
   postShopV1Orders,
 } from '@/services/generated/shop'
-
-const { Title, Paragraph } = Typography
 
 type OrderStatus = 0 | 1 | 2 | 3 | 4
 const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
@@ -106,28 +99,28 @@ interface OrderItemFormValues {
   price: string
   quantity: number
   subtotal: string
-  coverImage?: string
 }
 
-interface FormValues {
+interface CreateFormValues {
   orderNo: string
   userId: number
   totalAmount: string
-  freightAmount?: string
-  discountAmount?: string
   payAmount: string
-  orderStatus?: OrderStatus
-  remark?: string
   items: OrderItemFormValues[]
 }
 
-const Orders: React.FC = () => {
+const OrderList: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
-  const [editing, setEditing] = useState<Order | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+
+  // Detail drawer
+  const [detailOpen, setDetailOpen] = useState(false)
   const [detailOrder, setDetailOrder] = useState<Order | null>(null)
   const [detailItems, setDetailItems] = useState<OrderItem[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
+
+  // Create order modal
+  const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
     if (!detailOrder) {
@@ -168,17 +161,63 @@ const Orders: React.FC = () => {
     }
   }
 
-  const handleCreate = async (values: FormValues) => {
+  const handleViewDetail = async (record: Order) => {
+    try {
+      const full = (await getShopV1OrdersId(
+        { id: record.id },
+        {},
+      )) as unknown as Order
+      setDetailOrder(full)
+      setDetailOpen(true)
+    } catch {
+      setDetailOrder(record)
+      setDetailOpen(true)
+    }
+  }
+
+  const handleProcess = async (id: number) => {
+    const res = await patchShopV1OrdersId({ id }, { orderStatus: 3 }, {})
+    if (res) {
+      message.success('已处理')
+      actionRef.current?.reload()
+    }
+  }
+
+  const handleComplete = async (id: number) => {
+    const res = await patchShopV1OrdersId({ id }, { orderStatus: 3 }, {})
+    if (res) {
+      message.success('已完成')
+      actionRef.current?.reload()
+    }
+  }
+
+  const handleCancel = async (id: number) => {
+    const res = await patchShopV1OrdersId(
+      { id },
+      { orderStatus: 4, cancelReason: '已取消' },
+      {},
+    )
+    if (res) {
+      message.success('已取消')
+      actionRef.current?.reload()
+    }
+  }
+
+  const handleRemove = async (id: number) => {
+    const res = await deleteShopV1OrdersId({ id }, {})
+    if (res) {
+      message.success('已删除')
+      actionRef.current?.reload()
+    }
+  }
+
+  const handleCreate = async (values: CreateFormValues) => {
     await postShopV1Orders(
       {
         orderNo: values.orderNo.trim(),
         userId: Number(values.userId),
         totalAmount: values.totalAmount,
-        freightAmount: values.freightAmount,
-        discountAmount: values.discountAmount,
         payAmount: values.payAmount,
-        orderStatus: values.orderStatus ?? 0,
-        remark: values.remark?.trim() ?? '',
         items: values.items.map((it) => ({
           productId: Number(it.productId),
           skuId: it.skuId != null ? Number(it.skuId) : null,
@@ -186,7 +225,6 @@ const Orders: React.FC = () => {
           price: it.price,
           quantity: Number(it.quantity),
           subtotal: it.subtotal,
-          coverImage: it.coverImage,
         })),
       },
       {},
@@ -196,83 +234,32 @@ const Orders: React.FC = () => {
     actionRef.current?.reload()
   }
 
-  const handleUpdate = async (values: FormValues) => {
-    if (!editing) return
-    await patchShopV1OrdersId(
-      { id: editing.id },
-      {
-        orderStatus: values.orderStatus,
-        remark: values.remark?.trim() ?? '',
-      },
-      {},
-    )
-    message.success('已更新')
-    setEditing(null)
-    actionRef.current?.reload()
-  }
-
-  const handleDelete = async (id: number) => {
-    await deleteShopV1OrdersId({ id }, {})
-    message.success('已删除')
-    actionRef.current?.reload()
-  }
-
-  const handleViewDetail = async (record: Order) => {
-    try {
-      const full = (await getShopV1OrdersId(
-        { id: record.id },
-        {},
-      )) as unknown as Order
-      setDetailOrder(full)
-    } catch {
-      setDetailOrder(record)
-    }
-  }
-
   const columns: ProColumns<Order>[] = [
-    { title: 'ID', dataIndex: 'id', width: 80, search: false },
+    { title: 'ID', dataIndex: 'id', width: 64, search: false },
     {
       title: '订单号',
       dataIndex: 'orderNo',
-      width: 200,
+      width: 180,
       copyable: true,
     },
-    { title: '用户 ID', dataIndex: 'userId', width: 100 },
     {
-      title: '应付金额',
-      dataIndex: 'payAmount',
-      width: 120,
+      title: '用户名',
+      dataIndex: 'userId',
       search: false,
-      render: (_, r) => `¥ ${r.payAmount}`,
+      width: 100,
+      render: (_, record) => `#${record.userId}`,
     },
     {
-      title: '订单状态',
-      dataIndex: 'orderStatus',
-      width: 110,
-      valueType: 'select',
-      fieldProps: {
-        options: Object.entries(ORDER_STATUS_LABEL).map(([value, label]) => ({
-          value: Number(value),
-          label,
-        })),
-      },
-      render: (_, record) => (
-        <Tag color={ORDER_STATUS_COLOR[record.orderStatus as OrderStatus]}>
-          {ORDER_STATUS_LABEL[record.orderStatus as OrderStatus]}
-        </Tag>
-      ),
+      title: '支付金额',
+      dataIndex: 'payAmount',
+      search: false,
+      width: 100,
+      render: (_, r) => `¥ ${r.payAmount}`,
     },
     {
       title: '支付状态',
       dataIndex: 'payStatus',
-      width: 110,
-      valueType: 'select',
-      fieldProps: {
-        options: Object.entries(PAY_STATUS_LABEL).map(([value, label]) => ({
-          value: Number(value),
-          label,
-        })),
-      },
+      width: 80,
       render: (_, record) => (
         <Tag color={PAY_STATUS_COLOR[record.payStatus as PayStatus]}>
           {PAY_STATUS_LABEL[record.payStatus as PayStatus]}
@@ -280,107 +267,158 @@ const Orders: React.FC = () => {
       ),
     },
     {
+      title: '订单状态',
+      dataIndex: 'orderStatus',
+      width: 80,
+      render: (_, record) => (
+        <Tag color={ORDER_STATUS_COLOR[record.orderStatus as OrderStatus]}>
+          {ORDER_STATUS_LABEL[record.orderStatus as OrderStatus]}
+        </Tag>
+      ),
+    },
+    {
+      title: '快递公司',
+      dataIndex: 'expressCompany',
+      search: false,
+      width: 100,
+    },
+    {
+      title: '快递单号',
+      dataIndex: 'expressNo',
+      search: false,
+      width: 140,
+    },
+    {
       title: '创建时间',
       dataIndex: 'createdAt',
-      width: 180,
       search: false,
       valueType: 'dateTime',
+      width: 160,
     },
     {
       title: '操作',
+      dataIndex: 'option',
       valueType: 'option',
-      width: 220,
-      render: (_, record) => [
-        <Button key="edit" type="link" onClick={() => setEditing(record)}>
-          编辑
-        </Button>,
-        <Button key="detail" type="link" onClick={() => handleViewDetail(record)}>
-          查看明细
-        </Button>,
-        <Popconfirm
-          key="del"
-          title="确定删除该订单？"
-          okText="删除"
-          cancelText="取消"
-          onConfirm={() => handleDelete(record.id)}
-        >
-          <Button type="link" danger>
-            删除
-          </Button>
-        </Popconfirm>,
-      ],
+      fixed: 'right',
+      width: 200,
+      render: (_, record) => (
+        <Space size={12}>
+          <a onClick={() => handleViewDetail(record)}>详情</a>
+          {record.orderStatus === 2 && (
+            <a onClick={() => handleProcess(record.id)}>处理</a>
+          )}
+          {record.orderStatus === 3 && (
+            <a onClick={() => handleComplete(record.id)}>完成</a>
+          )}
+          <a onClick={() => handleCancel(record.id)}>取消</a>
+          <Popconfirm
+            title="确定要删除该订单吗？"
+            onConfirm={() => handleRemove(record.id)}
+          >
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ]
 
-  const orderStatusOptions = Object.entries(ORDER_STATUS_LABEL).map(([value, label]) => ({
-    value: Number(value),
-    label,
-  }))
-
   return (
-    <PageContainer
-      header={{
-        title: '订单管理',
-        subTitle: '商城订单',
-      }}
-      extra={[
-        <Button
-          key="create"
-          type="primary"
-          icon={<Plus size={16} strokeWidth={1.8} />}
-          onClick={() => setCreateOpen(true)}
-        >
-          新建订单
-        </Button>,
-      ]}
-    >
-      <ProCard>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Title level={4} style={{ margin: 0 }}>
-            订单列表
-          </Title>
-          <Paragraph type="secondary" style={{ margin: 0 }}>
-            通过 openapi 生成的 services 调用 <code>getShopV1Orders*</code> 等端点；
-            类型与字段与 <code>apps/yishan-api/src/modules/shop/schemas/orders.schema.ts</code> 同步。
-          </Paragraph>
-          <ProTable<Order>
-            rowKey="id"
-            actionRef={actionRef}
-            columns={columns}
-            request={fetchList}
-            search={{ labelWidth: 'auto' }}
-            pagination={{ pageSize: 10 }}
-          />
-        </Space>
-      </ProCard>
+    <PageContainer>
+      <ProTable<Order>
+        headerTitle="订单列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{
+          labelWidth: 100,
+          defaultCollapsed: true,
+        }}
+        request={fetchList}
+        columns={columns}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+        }}
+        scroll={{ x: 1400 }}
+        toolBarRender={() => [
+          <Button
+            key="create"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setCreateOpen(true)}
+          >
+            新建订单
+          </Button>,
+        ]}
+      />
 
-      <ModalForm<FormValues>
+      {/* Detail drawer */}
+      <Drawer
+        title={detailOrder ? `订单详情：${detailOrder.orderNo}` : '订单详情'}
+        width={720}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+      >
+        {detailOrder ? (
+          <ProTable<OrderItem>
+            rowKey="id"
+            size="small"
+            loading={detailLoading}
+            dataSource={detailItems}
+            pagination={false}
+            search={false}
+            options={false}
+            headerTitle="订单商品"
+            columns={[
+              { title: '商品', dataIndex: 'productName' },
+              {
+                title: '单价',
+                dataIndex: 'price',
+                width: 100,
+                render: (_, record) => `¥ ${record.price}`,
+              },
+              { title: '数量', dataIndex: 'quantity', width: 80 },
+              {
+                title: '小计',
+                dataIndex: 'subtotal',
+                width: 120,
+                render: (_, record) => `¥ ${record.subtotal}`,
+              },
+            ]}
+          />
+        ) : null}
+      </Drawer>
+
+      {/* Create order modal — minimal */}
+      <ModalForm<CreateFormValues>
         title="新建订单"
         open={createOpen}
         onOpenChange={setCreateOpen}
+        layout="horizontal"
+        labelCol={{ span: 4 }}
+        width={720}
         onFinish={handleCreate}
-        modalProps={{ destroyOnClose: true, width: 720 }}
+        modalProps={{ destroyOnClose: true }}
       >
         <ProFormText
           name="orderNo"
           label="订单号"
           rules={[{ required: true, min: 1, max: 32 }]}
         />
-        <ProFormDigit name="userId" label="用户 ID" rules={[{ required: true }]} min={1} />
-        <ProFormText name="totalAmount" label="订单总额" rules={[{ required: true }]} />
-        <ProFormText name="freightAmount" label="运费金额" />
-        <ProFormText name="discountAmount" label="优惠金额" />
-        <ProFormText name="payAmount" label="应付金额" rules={[{ required: true }]} />
-        <ProFormSelect
-          name="orderStatus"
-          label="订单状态"
-          initialValue={0}
-          options={orderStatusOptions}
+        <ProFormDigit
+          name="userId"
+          label="用户 ID"
+          rules={[{ required: true }]}
+          min={1}
         />
-        <ProFormTextArea
-          name="remark"
-          label="备注"
-          fieldProps={{ maxLength: 500, rows: 3 }}
+        <ProFormText
+          name="totalAmount"
+          label="订单总额"
+          rules={[{ required: true }]}
+        />
+        <ProFormText
+          name="payAmount"
+          label="应付金额"
+          rules={[{ required: true }]}
         />
         <ProFormList
           name="items"
@@ -421,136 +459,10 @@ const Orders: React.FC = () => {
             min={1}
           />
           <ProFormText name="subtotal" label="小计" rules={[{ required: true }]} />
-          <ProFormText name="coverImage" label="封面图 URL" />
         </ProFormList>
       </ModalForm>
-
-      <ModalForm<FormValues>
-        title={editing ? `编辑订单 #${editing.id}` : '编辑订单'}
-        open={!!editing}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null)
-        }}
-        onFinish={handleUpdate}
-        initialValues={
-          editing
-            ? {
-                orderNo: editing.orderNo,
-                userId: editing.userId,
-                totalAmount: editing.totalAmount,
-                freightAmount: editing.freightAmount,
-                discountAmount: editing.discountAmount,
-                payAmount: editing.payAmount,
-                orderStatus: editing.orderStatus as OrderStatus,
-                remark: editing.remark ?? '',
-              }
-            : undefined
-        }
-        modalProps={{ destroyOnClose: true, width: 720 }}
-      >
-        <ProFormItem label="订单号">
-          <span>{editing?.orderNo}</span>
-        </ProFormItem>
-        <ProFormItem label="用户 ID">
-          <span>{editing?.userId}</span>
-        </ProFormItem>
-        <ProFormItem label="应付金额">
-          <span>¥ {editing?.payAmount}</span>
-        </ProFormItem>
-        <ProFormSelect
-          name="orderStatus"
-          label="订单状态"
-          options={orderStatusOptions}
-        />
-        <ProFormTextArea
-          name="remark"
-          label="备注"
-          fieldProps={{ maxLength: 500, rows: 3 }}
-        />
-      </ModalForm>
-
-      <Drawer
-        title={detailOrder ? `订单明细：${detailOrder.orderNo}` : '订单明细'}
-        open={!!detailOrder}
-        onClose={() => setDetailOrder(null)}
-        width={720}
-        destroyOnClose
-      >
-        {detailOrder ? (
-          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <ProCard title="订单信息" size="small">
-              <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                <div>订单号：{detailOrder.orderNo}</div>
-                <div>用户 ID：{detailOrder.userId}</div>
-                <div>订单总额：¥ {detailOrder.totalAmount}</div>
-                <div>运费：¥ {detailOrder.freightAmount}</div>
-                <div>优惠：¥ {detailOrder.discountAmount}</div>
-                <div>应付：¥ {detailOrder.payAmount}</div>
-                <div>
-                  订单状态：
-                  <Tag color={ORDER_STATUS_COLOR[detailOrder.orderStatus as OrderStatus]}>
-                    {ORDER_STATUS_LABEL[detailOrder.orderStatus as OrderStatus]}
-                  </Tag>
-                </div>
-                <div>
-                  支付状态：
-                  <Tag color={PAY_STATUS_COLOR[detailOrder.payStatus as PayStatus]}>
-                    {PAY_STATUS_LABEL[detailOrder.payStatus as PayStatus]}
-                  </Tag>
-                </div>
-                {detailOrder.payMethod ? <div>支付方式：{detailOrder.payMethod}</div> : null}
-                {detailOrder.payTime ? (
-                  <div>支付时间：{new Date(detailOrder.payTime).toLocaleString()}</div>
-                ) : null}
-                {detailOrder.expressCompany || detailOrder.expressNo ? (
-                  <div>
-                    物流：{detailOrder.expressCompany ?? '-'} / 运单号 {detailOrder.expressNo ?? '-'}
-                  </div>
-                ) : null}
-                {detailOrder.remark ? <div>备注：{detailOrder.remark}</div> : null}
-                <div>创建时间：{new Date(detailOrder.createdAt).toLocaleString()}</div>
-              </Space>
-            </ProCard>
-            <ProCard title="订单商品" size="small">
-              <Table<OrderItem>
-                rowKey="id"
-                size="small"
-                loading={detailLoading}
-                dataSource={detailItems}
-                pagination={false}
-                columns={[
-                  {
-                    title: '商品',
-                    dataIndex: 'productName',
-                    render: (_, r) => (
-                      <Space>
-                        {r.coverImage ? (
-                          <img
-                            src={r.coverImage}
-                            alt={r.productName}
-                            style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }}
-                          />
-                        ) : null}
-                        <div>
-                          <div>{r.productName}</div>
-                          {r.skuName ? (
-                            <div style={{ color: '#999', fontSize: 12 }}>{r.skuName}</div>
-                          ) : null}
-                        </div>
-                      </Space>
-                    ),
-                  },
-                  { title: '单价', dataIndex: 'price', width: 100, render: (v) => `¥ ${v}` },
-                  { title: '数量', dataIndex: 'quantity', width: 80 },
-                  { title: '小计', dataIndex: 'subtotal', width: 120, render: (v) => `¥ ${v}` },
-                ]}
-              />
-            </ProCard>
-          </Space>
-        ) : null}
-      </Drawer>
     </PageContainer>
   )
 }
 
-export default Orders
+export default OrderList

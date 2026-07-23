@@ -1,340 +1,345 @@
+/**
+ * Portal 文章管理页面
+ *
+ * 功能：文章列表查询、创建、编辑、删除、发布
+ */
+
+import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
   ModalForm,
   PageContainer,
-  ProCard,
   ProFormDateTimePicker,
-  ProFormDigit,
+  ProFormRadio,
   ProFormSelect,
   ProFormSwitch,
   ProFormText,
   ProFormTextArea,
-  ProTable,
   type ProColumns,
+  ProTable,
 } from '@ant-design/pro-components'
-import { Button, message, Popconfirm, Space, Tag, Typography } from 'antd'
-import { Plus } from 'lucide-react'
+import { Button, message, Popconfirm, Space, Tag } from 'antd'
 import React, { useRef, useState } from 'react'
 import {
   deletePortalV1ArticlesId,
   getPortalV1Articles,
   getPortalV1ArticlesId,
+  getPortalV1Categories,
   patchPortalV1ArticlesId,
   postPortalV1Articles,
   postPortalV1ArticlesIdPublish,
 } from '@/services/generated/portal'
 
-const { Title, Paragraph } = Typography
-
-type Status = 0 | 1
-const STATUS_LABEL: Record<Status, string> = {
-  0: '草稿',
-  1: '已发布',
-}
-const STATUS_COLOR: Record<Status, string> = {
-  0: 'default',
-  1: 'success',
-}
-
-interface Article {
+interface PortalArticle {
   id: number
   title: string
   slug: string | null
   summary: string | null
   content: string
   coverImage: string | null
-  status: number
+  status: '0' | '1'
   isPinned: boolean
   publishTime: string | null
-  templateId: number | null
   categoryIds?: number[]
   createdAt: string
-  updatedAt: string
 }
 
-interface ListResp {
-  total: number
-  items: Article[]
-}
-
-interface FormValues {
+interface CreateArticleReq {
   title: string
   slug?: string
   summary?: string
   content: string
   coverImage?: string
-  status?: Status
+  status?: '0' | '1'
   isPinned?: boolean
   publishTime?: string
-  templateId?: number
+  categoryIds?: number[]
 }
 
-interface ListParams {
-  current?: number
-  pageSize?: number
-  keyword?: string
-  status?: Status
+const statusEnum: Record<string, { text: string; status: string }> = {
+  '0': { text: '草稿', status: 'Default' },
+  '1': { text: '已发布', status: 'Success' },
 }
 
-const Articles: React.FC = () => {
+const ArticleList: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
-  const [editing, setEditing] = useState<Article | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  const [formVisible, setFormVisible] = useState(false)
+  const [editingId, setEditingId] = useState<number | undefined>(undefined)
+  const [formValues, setFormValues] = useState<Partial<CreateArticleReq>>({
+    status: '0',
+  })
 
-  const fetchList = async (params: ListParams) => {
-    const res = await getPortalV1Articles({
-      page: params.current ?? 1,
-      pageSize: params.pageSize ?? 10,
-      keyword: params.keyword,
-      status: params.status,
-    })
-    const data = (res as unknown as ListResp) ?? null
-    return {
-      data: data?.items ?? [],
-      success: true,
-      total: data?.total ?? 0,
-    }
-  }
-
-  const handleCreate = async (values: FormValues) => {
-    await postPortalV1Articles(
-      {
-        title: values.title.trim(),
-        slug: values.slug?.trim() || undefined,
-        summary: values.summary?.trim() || undefined,
-        content: values.content.trim(),
-        coverImage: values.coverImage?.trim() || undefined,
-        status: values.status ?? 0,
-        isPinned: values.isPinned ?? false,
-        publishTime: values.publishTime,
-        templateId: values.templateId,
-      },
-      {},
-    )
-    message.success('已创建')
-    setCreateOpen(false)
-    actionRef.current?.reload()
-  }
-
-  const handleUpdate = async (values: FormValues) => {
-    if (!editing) return
-    await patchPortalV1ArticlesId(
-      { id: editing.id },
-      {
-        title: values.title.trim(),
-        slug: values.slug?.trim() || undefined,
-        summary: values.summary?.trim() || undefined,
-        content: values.content.trim(),
-        coverImage: values.coverImage?.trim() || undefined,
-        status: values.status ?? 0,
-        isPinned: values.isPinned ?? false,
-        publishTime: values.publishTime,
-        templateId: values.templateId,
-      },
-      {},
-    )
-    message.success('已更新')
-    setEditing(null)
+  const handleSuccess = () => {
+    setFormVisible(false)
+    setEditingId(undefined)
+    setFormValues({ status: '0' })
     actionRef.current?.reload()
   }
 
   const handleEdit = async (id: number) => {
-    const article = await getPortalV1ArticlesId({ id })
-    setEditing(article)
+    const res = await getPortalV1ArticlesId({ id })
+    const data = res as unknown as PortalArticle & {
+      categoryIds?: number[]
+      publishTime?: string | null
+    }
+    if (data) {
+      setFormValues({
+        title: data.title,
+        slug: data.slug ?? undefined,
+        summary: data.summary ?? undefined,
+        content: data.content,
+        coverImage: data.coverImage ?? undefined,
+        status: String(data.status) as '0' | '1',
+        isPinned: data.isPinned,
+        publishTime: data.publishTime ?? undefined,
+        categoryIds: data.categoryIds,
+      })
+      setEditingId(id)
+      setFormVisible(true)
+    } else {
+      message.error('获取文章详情失败')
+    }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleRemove = async (id: number) => {
     await deletePortalV1ArticlesId({ id }, {})
-    message.success('已删除')
+    message.success('删除成功')
     actionRef.current?.reload()
   }
 
   const handlePublish = async (id: number) => {
     await postPortalV1ArticlesIdPublish({ id }, {})
-    message.success('已发布')
+    message.success('发布成功')
     actionRef.current?.reload()
   }
 
-  const columns: ProColumns<Article>[] = [
-    { title: 'ID', dataIndex: 'id', width: 80, search: false },
-    { title: '关键词', dataIndex: 'keyword', hideInTable: true },
-    { title: '标题', dataIndex: 'title', width: 220, search: false },
-    { title: '摘要', dataIndex: 'summary', search: false, ellipsis: true },
+  const columns: ProColumns<PortalArticle>[] = [
+    {
+      title: 'ID',
+      dataIndex: 'id',
+      search: false,
+      width: 64,
+    },
+    {
+      title: '标题',
+      dataIndex: 'title',
+      width: 200,
+      ellipsis: true,
+    },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
-      valueType: 'select',
-      fieldProps: {
-        options: Object.entries(STATUS_LABEL).map(([value, label]) => ({
-          value: Number(value),
-          label,
-        })),
-      },
-      render: (_, record) => (
-        <Tag color={STATUS_COLOR[record.status as Status]}>
-          {STATUS_LABEL[record.status as Status]}
-        </Tag>
-      ),
+      valueEnum: statusEnum,
+      width: 80,
     },
     {
       title: '置顶',
       dataIndex: 'isPinned',
-      width: 80,
       search: false,
-      render: (_, record) => (record.isPinned ? '是' : '否'),
+      width: 64,
+      render: (_, record) =>
+        record.isPinned ? <Tag color="red">置顶</Tag> : null,
+    },
+    {
+      title: '分类',
+      dataIndex: 'categoryIds',
+      search: false,
+      width: 120,
+      renderText: () => '-',
     },
     {
       title: '发布时间',
       dataIndex: 'publishTime',
-      width: 180,
       search: false,
       valueType: 'dateTime',
-      render: (_, record) =>
-        record.publishTime ? new Date(record.publishTime).toLocaleString() : '-',
+      width: 160,
     },
     {
-      title: '更新时间',
-      dataIndex: 'updatedAt',
-      width: 180,
+      title: '创建时间',
+      dataIndex: 'createdAt',
       search: false,
       valueType: 'dateTime',
+      width: 160,
     },
     {
       title: '操作',
+      dataIndex: 'option',
       valueType: 'option',
-      width: 240,
-      render: (_, record) => [
-        <Button key="edit" type="link" onClick={() => handleEdit(record.id)}>
-          编辑
-        </Button>,
-        ...(record.status === 0
-          ? [
-              <Button key="publish" type="link" onClick={() => handlePublish(record.id)}>
-                发布
-              </Button>,
-            ]
-          : []),
-        <Popconfirm
-          key="del"
-          title="确定删除该文章？"
-          okText="删除"
-          cancelText="取消"
-          onConfirm={() => handleDelete(record.id)}
-        >
-          <Button type="link" danger>
-            删除
-          </Button>
-        </Popconfirm>,
-      ],
+      fixed: 'right',
+      width: 180,
+      render: (_, record) => (
+        <Space size={12}>
+          <a onClick={() => handleEdit(record.id)}>编辑</a>
+          {record.status === '0' && (
+            <a onClick={() => handlePublish(record.id)}>发布</a>
+          )}
+          <Popconfirm
+            title="确定要删除该文章吗？"
+            onConfirm={() => handleRemove(record.id)}
+          >
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ]
 
   return (
-    <PageContainer
-      header={{
-        title: '文章管理',
-        subTitle: '门户文章 CRUD + 发布',
-      }}
-      extra={[
-        <Button
-          key="create"
-          type="primary"
-          icon={<Plus size={16} strokeWidth={1.8} />}
-          onClick={() => setCreateOpen(true)}
-        >
-          新建文章
-        </Button>,
-      ]}
-    >
-      <ProCard>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Title level={4} style={{ margin: 0 }}>
-            文章列表
-          </Title>
-          <Paragraph type="secondary" style={{ margin: 0 }}>
-            管理门户文章，支持新建、编辑、删除与发布。
-          </Paragraph>
-          <ProTable<Article>
-            rowKey="id"
-            actionRef={actionRef}
-            columns={columns}
-            request={fetchList}
-            search={{ labelWidth: 'auto' }}
-            pagination={{ pageSize: 10 }}
-          />
-        </Space>
-      </ProCard>
-
-      <ModalForm<FormValues>
-        title="新建文章"
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onFinish={handleCreate}
-        modalProps={{ destroyOnClose: true }}
-      >
-        <ProFormText name="title" label="标题" rules={[{ required: true, max: 200 }]} />
-        <ProFormText name="slug" label="Slug" fieldProps={{ maxLength: 200 }} />
-        <ProFormTextArea name="summary" label="摘要" fieldProps={{ maxLength: 500, rows: 3 }} />
-        <ProFormTextArea name="content" label="内容" rules={[{ required: true }]} fieldProps={{ rows: 8 }} />
-        <ProFormText name="coverImage" label="封面图片" fieldProps={{ maxLength: 500 }} />
-        <ProFormSelect
-          name="status"
-          label="状态"
-          initialValue={0}
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({
-            value: Number(value),
-            label,
-          }))}
-        />
-        <ProFormSwitch name="isPinned" label="置顶" initialValue={false} />
-        <ProFormDateTimePicker name="publishTime" label="发布时间" />
-        <ProFormDigit name="templateId" label="模板 ID" min={1} fieldProps={{ precision: 0 }} />
-      </ModalForm>
-
-      <ModalForm<FormValues>
-        title={editing ? `编辑文章 #${editing.id}` : '编辑文章'}
-        open={!!editing}
-        onOpenChange={(open) => {
-          if (!open) setEditing(null)
+    <PageContainer>
+      <ProTable<PortalArticle>
+        headerTitle="文章列表"
+        actionRef={actionRef}
+        rowKey="id"
+        search={{
+          labelWidth: 100,
+          defaultCollapsed: true,
         }}
-        onFinish={handleUpdate}
-        initialValues={
-          editing
-            ? {
-                title: editing.title,
-                slug: editing.slug,
-                summary: editing.summary,
-                content: editing.content,
-                coverImage: editing.coverImage,
-                status: editing.status as Status,
-                isPinned: editing.isPinned,
-                publishTime: editing.publishTime,
-                templateId: editing.templateId,
-              }
-            : undefined
-        }
-        modalProps={{ destroyOnClose: true }}
+        toolBarRender={() => [
+          <Button
+            key="create"
+            type="primary"
+            onClick={() => {
+              setEditingId(undefined)
+              setFormValues({ status: '0' })
+              setFormVisible(true)
+            }}
+          >
+            <PlusOutlined /> 新建文章
+          </Button>,
+        ]}
+        request={async (params) => {
+          const { current, pageSize, ...restParams } = params
+          const statusRaw = restParams.status
+          const result = await getPortalV1Articles({
+            page: current,
+            pageSize,
+            keyword: restParams.keyword as string | undefined,
+            status:
+              statusRaw === '0' || statusRaw === '1'
+                ? Number(statusRaw)
+                : undefined,
+          })
+          const payload = result as unknown as {
+            items?: PortalArticle[]
+            total?: number
+          }
+          const items: PortalArticle[] = (payload.items ?? []).map((item) => ({
+            ...item,
+            status: String(item.status) as '0' | '1',
+          }))
+          return {
+            data: items,
+            success: true,
+            total: payload.total ?? 0,
+          }
+        }}
+        columns={columns}
+        rowSelection={{
+          selectedRowKeys,
+          onChange: setSelectedRowKeys,
+        }}
+        scroll={{ x: 1200 }}
+      />
+
+      <ModalForm<CreateArticleReq>
+        title={editingId ? '编辑文章' : '新建文章'}
+        open={formVisible}
+        onOpenChange={setFormVisible}
+        width={720}
+        layout="horizontal"
+        labelCol={{ span: 4 }}
+        initialValues={formValues}
+        onFinish={async (values) => {
+          const statusValue =
+            values.status === '0' || values.status === '1'
+              ? Number(values.status)
+              : undefined
+          const payload = {
+            ...values,
+            status: statusValue,
+          }
+          if (editingId) {
+            await patchPortalV1ArticlesId(
+              { id: editingId },
+              payload as unknown as Parameters<
+                typeof patchPortalV1ArticlesId
+              >[1],
+            )
+          } else {
+            await postPortalV1Articles(
+              payload as unknown as Parameters<typeof postPortalV1Articles>[0],
+            )
+          }
+          message.success(editingId ? '更新成功' : '创建成功')
+          handleSuccess()
+          return true
+        }}
       >
-        <ProFormText name="title" label="标题" rules={[{ required: true, max: 200 }]} />
-        <ProFormText name="slug" label="Slug" fieldProps={{ maxLength: 200 }} />
-        <ProFormTextArea name="summary" label="摘要" fieldProps={{ maxLength: 500, rows: 3 }} />
-        <ProFormTextArea name="content" label="内容" rules={[{ required: true }]} fieldProps={{ rows: 8 }} />
-        <ProFormText name="coverImage" label="封面图片" fieldProps={{ maxLength: 500 }} />
-        <ProFormSelect
+        <ProFormText
+          name="title"
+          label="标题"
+          placeholder="请输入文章标题"
+          rules={[{ required: true, message: '请输入文章标题' }]}
+        />
+        <ProFormText
+          name="slug"
+          label="URL标识"
+          placeholder="URL友好标识，留空自动生成"
+        />
+        <ProFormTextArea
+          name="summary"
+          label="摘要"
+          placeholder="请输入文章摘要"
+        />
+        <ProFormTextArea
+          name="content"
+          label="正文"
+          placeholder="请输入文章正文内容"
+          fieldProps={{ rows: 6 }}
+          rules={[{ required: true, message: '请输入文章正文' }]}
+        />
+        <ProFormText
+          name="coverImage"
+          label="封面图"
+          placeholder="封面图片URL"
+        />
+        <ProFormRadio.Group
           name="status"
           label="状态"
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({
-            value: Number(value),
-            label,
-          }))}
+          options={[
+            { label: '草稿', value: '0' },
+            { label: '已发布', value: '1' },
+          ]}
         />
         <ProFormSwitch name="isPinned" label="置顶" />
-        <ProFormDateTimePicker name="publishTime" label="发布时间" />
-        <ProFormDigit name="templateId" label="模板 ID" min={1} fieldProps={{ precision: 0 }} />
+        <ProFormSelect
+          name="categoryIds"
+          label="分类"
+          placeholder="请选择分类"
+          mode="multiple"
+          request={async () => {
+            const res = await getPortalV1Categories({
+              page: 1,
+              pageSize: 100,
+            })
+            const payload = res as unknown as {
+              items?: { id: number; name: string }[]
+            }
+            return (payload.items ?? []).map((c) => ({
+              label: c.name,
+              value: c.id,
+            }))
+          }}
+        />
+        <ProFormDateTimePicker
+          name="publishTime"
+          label="发布时间"
+          placeholder="选择发布时间"
+        />
       </ModalForm>
     </PageContainer>
   )
 }
 
-export default Articles
+export default ArticleList
