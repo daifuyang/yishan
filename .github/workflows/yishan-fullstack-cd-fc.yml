@@ -69,13 +69,10 @@ jobs:
           pnpm build --filter yishan-tiptap
 
       - name: Generate Admin plugin routes
-        run: pnpm --filter yishan-admin gen:plugin-routes
-
-      - name: Admin Setup
         run: pnpm --filter yishan-admin exec max setup
 
-      - name: Build yishan-admin for FC
-        run: pnpm build:admin:fc
+      - name: Build yishan-admin
+        run: pnpm --filter yishan-admin build
 
       - name: Install qshell
         env:
