@@ -13,6 +13,7 @@ import { eq } from 'drizzle-orm'
 import { drizzleDb } from '@/db'
 import { sysMenu, sysMenuPermission, sysUser } from '@/db/schema'
 import adminMenu from './config/system-menu.json'
+import { portalArticles, portalArticleCategories, portalCategories, portalPages, portalTemplates } from './db/schema.js'
 
 export type AdminMenuNode = {
   type: 0 | 1 | 2
@@ -156,6 +157,166 @@ export default async function seedPortal(): Promise<void> {
   await upsertTree(menuTree, null, creatorId)
   const flat = flattenMenuTree(menuTree)
   await bindAllPermissions(flat, creatorId)
+
+  // ─── 示例数据（来自 commit 164dd06 的 portal-*.json）───
+  // 模块自带的 demo 数据，跟着 db:seed 一起插入；upsert 语义保证重复执行
+  // 是幂等的（同一 slug 不重复插入）。
+  await seedSampleData(creatorId)
+}
+
+/**
+ * 3 个分类 + 3 篇文章 + 3 个页面 + 2 个模板。
+ *
+ * 字段映射：
+ *   categorySlugs（旧）→ categoryIds（新）= 通过 slug 解析回 id
+ *   templates.type: 0 (article) / 1 (page)
+ *
+ * 如果某些样本数据已存在（重复跑 db:seed），upsert 不会破坏原记录。
+ */
+async function seedSampleData(creatorId: number): Promise<void> {
+  // 1. 分类
+  const categoriesData = [
+    { name: '新闻',     slug: 'news',   sortOrder: 1, description: '公司新闻' },
+    { name: '公告',     slug: 'notice', sortOrder: 2, description: '系统公告' },
+    { name: '技术博客', slug: 'blog',   sortOrder: 3, description: '技术分享' },
+  ]
+  const categoryIds = new Map<string, number>()
+  for (const c of categoriesData) {
+    const existing = await drizzleDb
+      .select({ id: portalCategories.id })
+      .from(portalCategories)
+      .where(eq(portalCategories.slug, c.slug))
+      .limit(1)
+    if (existing.length > 0) {
+      categoryIds.set(c.slug, existing[0].id)
+    } else {
+      const [inserted] = await drizzleDb
+        .insert(portalCategories)
+        .values({
+          name: c.name,
+          slug: c.slug,
+          sortOrder: c.sortOrder,
+          description: c.description,
+          status: 1,
+          creatorId,
+          updaterId: creatorId,
+        })
+        .$returningId()
+      categoryIds.set(c.slug, inserted.id)
+    }
+  }
+
+  // 2. 文章
+  const articlesData = [
+    {
+      title: '欢迎使用门户',
+      slug: 'welcome',
+      content: '这是门户的欢迎文章',
+      categorySlugs: ['news'],
+      status: 1,
+      isPinned: true,
+      tags: ['置顶', '公告'],
+      attributes: { readingTime: 3 },
+    },
+    {
+      title: '系统发布 1.0',
+      slug: 'release-1-0',
+      content: '系统 1.0 版本发布说明',
+      categorySlugs: ['notice'],
+      status: 1,
+      isPinned: false,
+      tags: ['发布'],
+      attributes: { version: '1.0.0' },
+    },
+    {
+      title: '使用指南',
+      slug: 'how-to-use',
+      content: '系统使用指南与最佳实践',
+      categorySlugs: ['blog'],
+      status: 1,
+      isPinned: false,
+      tags: ['指南'],
+      attributes: { level: 'beginner' },
+    },
+  ]
+  for (const a of articlesData) {
+    const existing = await drizzleDb
+      .select({ id: portalArticles.id })
+      .from(portalArticles)
+      .where(eq(portalArticles.slug, a.slug))
+      .limit(1)
+    if (existing.length > 0) continue
+    // 1) INSERT article
+    const [inserted] = await drizzleDb
+      .insert(portalArticles)
+      .values({
+        title: a.title,
+        slug: a.slug,
+        content: a.content,
+        status: a.status,
+        isPinned: a.isPinned,
+        tags: a.tags,
+        attributes: a.attributes,
+        creatorId,
+        updaterId: creatorId,
+      })
+      .$returningId()
+    // 2) INSERT 关联分类（多对多经 portal_article_categories 桥接）
+    const catIds = a.categorySlugs
+      .map((s) => categoryIds.get(s))
+      .filter((v): v is number => v !== undefined)
+    if (catIds.length > 0) {
+      await drizzleDb.insert(portalArticleCategories).values(
+        catIds.map((cid) => ({ articleId: inserted.id, categoryId: cid })),
+      )
+    }
+  }
+
+  // 3. 页面
+  const pagesData = [
+    { title: '首页',     path: '/home',    content: '欢迎访问门户网站',  attributes: { banner: '/assets/banner.jpg' } },
+    { title: '关于我们', path: '/about',   content: '关于我们页面内容',  attributes: { layout: 'full' } },
+    { title: '联系我们', path: '/contact', content: '联系方式与地址',     attributes: { form: true } },
+  ]
+  for (const p of pagesData) {
+    const existing = await drizzleDb
+      .select({ id: portalPages.id })
+      .from(portalPages)
+      .where(eq(portalPages.path, p.path))
+      .limit(1)
+    if (existing.length > 0) continue
+    await drizzleDb.insert(portalPages).values({
+      title: p.title,
+      path: p.path,
+      content: p.content,
+      attributes: p.attributes,
+      status: 1,
+      creatorId,
+      updaterId: creatorId,
+    })
+  }
+
+  // 4. 模板
+  const templatesData = [
+    { name: '默认详情', type: 0, description: '系统默认文章详情模板' },
+    { name: '默认页面', type: 1, description: '系统默认页面模板'   },
+  ]
+  for (const t of templatesData) {
+    const existing = await drizzleDb
+      .select({ id: portalTemplates.id })
+      .from(portalTemplates)
+      .where(eq(portalTemplates.name, t.name))
+      .limit(1)
+    if (existing.length > 0) continue
+    await drizzleDb.insert(portalTemplates).values({
+      name: t.name,
+      type: t.type,
+      description: t.description,
+      status: 1,
+      creatorId,
+      updaterId: creatorId,
+    })
+  }
 }
 
 // 模块顶层自动执行：onboard-modules.ts 通过 spawn `node seed.js` 触发
