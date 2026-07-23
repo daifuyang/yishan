@@ -88,15 +88,13 @@ export const STORAGE_CONFIG = {
  * Admin 前端在 API 同站部署时的 URL 前缀。
  *
  * 默认 `/admin`，对应 admin 编译时的 PUBLIC_PATH=admin/、CDN/函数静态资源挂载在 /admin/*。
- * 必须以 `/` 开头、不带尾斜杠（fastifyStatic 的 prefix 约定）。其他部署形态（如把 admin
- * 单独挂在子域名）可设为 `/`。
+ * `/admin` 和 `/admin/` 视为同一个值，内部统一去尾斜杠，调用方无需关心写法。
  *
  * 与 admin 的 `__APP_BASE__`、`PUBLIC_PATH` 必须保持一致，否则静态资源 404 + SPA 路由错位。
  */
 export const ADMIN_BASE_PATH = (() => {
-  const raw = (process.env.ADMIN_BASE_PATH || '/admin').trim()
-  const trimmed = raw.replace(/^\/+|\/+$/g, '')
-  return trimmed ? `/${trimmed}` : '/'
+  const trimmed = (process.env.ADMIN_BASE_PATH || '/admin').trim().replace(/\/+$/g, '')
+  return trimmed === '' ? '/' : trimmed
 })()
 
 /**
