@@ -12,7 +12,7 @@
  *   运行时通过 `import('./core/...')` 与 `import('./modules/...')` 真正加载。
  */
 
-import { join, relative, sep } from 'node:path'
+import { join } from 'node:path'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import type { IApi } from '@umijs/max'
 
@@ -20,7 +20,7 @@ const PAGES_DIR = 'src/pages'
 const MODULES_DIR = 'src/modules'
 
 /** 递归收集 `<dir>/<page>/index.tsx` 形式的页面，path 为相对项目的虚拟路径（./xxx/yyy）。 */
-function collectPages(absDir: string, projectRoot: string, prefix: string): string[] {
+function collectPages(absDir: string, prefix: string): string[] {
   if (!existsSync(absDir)) return []
   const out: string[] = []
   const walk = (cur: string, parts: string[]) => {
@@ -48,7 +48,7 @@ function genModuleComponentsFile(): string {
   const coreAbs = join(projectRoot, PAGES_DIR)
   const moduleAbs = join(projectRoot, MODULES_DIR)
 
-  const coreKeys = collectPages(coreAbs, projectRoot, './')
+  const coreKeys = collectPages(coreAbs, './')
   const moduleKeys: Array<{ key: string; moduleId: string; page: string }> = []
   if (existsSync(moduleAbs)) {
     for (const moduleId of readdirSync(moduleAbs)) {
@@ -71,7 +71,7 @@ function genModuleComponentsFile(): string {
   const entries: string[] = []
   for (const k of coreKeys) {
     // k = './system/user' → import path '@pages/system/user' (实际物理位置 src/pages/system/user/index.tsx)
-    const imp = '@/pages' + k.slice(1)
+    const imp = `@/pages${k.slice(1)}`
     entries.push(`  ${JSON.stringify(k)}: () => import(${JSON.stringify(imp)})`)
   }
   for (const m of moduleKeys) {
