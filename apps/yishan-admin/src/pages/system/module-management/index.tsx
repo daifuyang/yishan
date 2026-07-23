@@ -4,42 +4,39 @@ import {
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components'
-import {
-  Badge,
-  Button,
-  Drawer,
-  Space,
-  Switch,
-  Tag,
-  Tooltip,
-  message,
-} from 'antd'
+import { Badge, Switch, Tag, message } from 'antd'
 import { history } from '@umijs/max'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-  generateModuleManagementMigration,
   listModuleManagement,
-  migrateModuleManagement,
-  seedModuleManagement,
   toggleModuleManagement,
 } from '@/services/generated/moduleManagement'
 
-// 生产环境直接拒绝渲染：toggle 误点让模块 API 面瞬时 404,migrate/seed 误点污染数据。
-// 三层防御的最后一层 —— 后端 app.ts 不挂 _dev/ 路由、menu.service 过滤 dev-only 菜单。
-// 注：dev 下不做页面级 role gate —— 后端 API 自己用 requirePermission 拦截,
-// dev 路径只是浏览方便,不是 prod 事故面。
+// 后台模块管理页面只做启停（list + toggle）。
+// schema 生成 / migrate / seed 全部走 CLI（db:seed / npx drizzle-kit / db:reset），
+// 不暴露 HTTP，避免 dev 工具被 prod 误用或多人同时点按钮写文件冲突。
+// 三层防御：
+//   1. 后端 app.ts 在 NODE_ENV=production 时整个 _dev/ 树不挂载
+//   2. menu.service 用 devOnlyMenuIds 兜底隐藏菜单项
+//   3. 本页面 prod 直接 replace 到 /404
 if (process.env.NODE_ENV === 'production') {
   if (typeof window !== 'undefined' && window.location.pathname !== '/404') {
     window.location.replace('/404')
   }
 }
 
+interface RowItem {
+  id: string
+  name: string
+  routePrefix: string
+  tablePrefix: string
+  version: string
+  enabled: boolean
+  mounted: boolean
+}
+
 const DevModules: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
-  const [logDrawerOpen, setLogDrawerOpen] = useState(false)
-  const [logTitle, setLogTitle] = useState('')
-  const [logContent, setLogContent] = useState('')
-  const [logOk, setLogOk] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   // 兜底：prod 下 render hook 一进来就 replace 到 /404。
@@ -48,15 +45,6 @@ const DevModules: React.FC = () => {
       history.replace('/404')
     }
   }, [])
-
-  const openLog = (title: string, ok: boolean, stdout: string, stderr: string) => {
-    setLogTitle(title)
-    setLogOk(ok)
-    setLogContent(
-      [stdout, stderr].filter(Boolean).join('\n--- stderr ---\n') || '(无输出)',
-    )
-    setLogDrawerOpen(true)
-  }
 
   const handleToggle = async (id: string, enabled: boolean) => {
     setBusyId(id)
@@ -71,70 +59,6 @@ const DevModules: React.FC = () => {
     } finally {
       setBusyId(null)
     }
-  }
-
-  const handleMigrate = async (id: string) => {
-    setBusyId(id)
-    try {
-      const res = await migrateModuleManagement({ id })
-      const ok = Boolean(res.success && res.data?.success)
-      if (ok) {
-        message.success(res.message ?? '迁移完成')
-        actionRef.current?.reload()
-      } else {
-        message.error(res.message ?? '迁移失败')
-      }
-      openLog(`迁移：${id}`, ok, res.data?.stdout ?? '', res.data?.stderr ?? '')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const handleGenerate = async (id: string) => {
-    setBusyId(id)
-    try {
-      const res = await generateModuleManagementMigration({ id }, {})
-      const ok = Boolean(res.success && res.data?.success)
-      if (ok) {
-        message.success(res.message ?? '已生成迁移文件')
-        actionRef.current?.reload()
-      } else {
-        message.error(res.message ?? '生成失败')
-      }
-      openLog(`生成迁移：${id}`, ok, res.data?.stdout ?? '', res.data?.stderr ?? '')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const handleSeed = async (id: string) => {
-    setBusyId(id)
-    try {
-      const res = await seedModuleManagement({ id })
-      const ok = Boolean(res.success && res.data?.success)
-      if (ok) {
-        message.success(res.message ?? 'seed 完成')
-      } else {
-        message.error(res.message ?? 'seed 失败')
-      }
-      openLog(`seed：${id}`, ok, res.data?.stdout ?? '', res.data?.stderr ?? '')
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  interface RowItem {
-    id: string
-    name: string
-    routePrefix: string
-    tablePrefix: string
-    version: string
-    enabled: boolean
-    mounted: boolean
-    hasSchema: boolean
-    hasDrizzle: boolean
-    appliedMigrations: string[]
-    pendingMigrations: string[]
   }
 
   const columns: ProColumns<RowItem>[] = [
@@ -156,78 +80,24 @@ const DevModules: React.FC = () => {
     {
       title: '启用状态',
       dataIndex: 'enabled',
-      width: 170,
+      width: 110,
       render: (_, record) => (
-        <Space size="small">
-          <Switch
-            size="small"
-            checked={record.enabled}
-            loading={busyId === record.id}
-            onChange={(v) => handleToggle(record.id, v)}
-          />
-          <Tag color={record.enabled ? 'green' : 'default'}>
-            {record.enabled ? '已启用' : '已停用'}
-          </Tag>
-        </Space>
+        <Tag color={record.enabled ? 'green' : 'default'}>
+          {record.enabled ? '已启用' : '已停用'}
+        </Tag>
       ),
-    },
-    {
-      title: '迁移进度',
-      dataIndex: 'pendingMigrations',
-      width: 280,
-      render: (_, record) => {
-        const total = record.appliedMigrations.length + record.pendingMigrations.length
-        if (total === 0) return <span style={{ color: '#999' }}>无</span>
-        return (
-          <Space size={4}>
-            <Tag color="green">{record.appliedMigrations.length}</Tag>
-            <span style={{ color: '#999' }}>/</span>
-            <Tooltip
-              title={
-                record.pendingMigrations.length > 0
-                  ? `待执行：${record.pendingMigrations.join(', ')}`
-                  : '无待执行'
-              }
-            >
-              <Tag color={record.pendingMigrations.length > 0 ? 'red' : 'default'}>
-                {record.pendingMigrations.length}
-              </Tag>
-            </Tooltip>
-          </Space>
-        )
-      },
     },
     {
       title: '操作',
       valueType: 'option',
-      width: 280,
+      width: 100,
       render: (_, record) => (
-        <Space>
-          <Button
-            size="small"
-            type="link"
-            disabled={!record.hasSchema || !record.hasDrizzle || busyId === record.id}
-            onClick={() => handleGenerate(record.id)}
-          >
-            生成迁移
-          </Button>
-          <Button
-            size="small"
-            type="link"
-            disabled={!record.hasDrizzle || busyId === record.id}
-            onClick={() => handleMigrate(record.id)}
-          >
-            执行迁移
-          </Button>
-          <Button
-            size="small"
-            type="link"
-            disabled={busyId === record.id}
-            onClick={() => handleSeed(record.id)}
-          >
-            初始化数据
-          </Button>
-        </Space>
+        <Switch
+          size="small"
+          checked={record.enabled}
+          loading={busyId === record.id}
+          onChange={(v) => handleToggle(record.id, v)}
+        />
       ),
     },
   ]
@@ -252,31 +122,6 @@ const DevModules: React.FC = () => {
         columns={columns}
         pagination={false}
       />
-      <Drawer
-        title={logTitle}
-        open={logDrawerOpen}
-        onClose={() => setLogDrawerOpen(false)}
-        width={720}
-      >
-        <Tag color={logOk ? 'green' : 'red'} style={{ marginBottom: 12 }}>
-          {logOk ? '成功' : '失败'}
-        </Tag>
-        <pre
-          style={{
-            background: '#1e1e1e',
-            color: '#d4d4d4',
-            padding: 12,
-            borderRadius: 6,
-            fontSize: 12,
-            maxHeight: 480,
-            overflow: 'auto',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-all',
-          }}
-        >
-          {logContent}
-        </pre>
-      </Drawer>
     </PageContainer>
   )
 }

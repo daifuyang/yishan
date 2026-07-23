@@ -159,10 +159,35 @@ pnpm --filter yishan-api dev
 - ✖ 不许改 Core 表（`sys_*` 全部不许动）
 - ✖ 不许跨模块 join 别的模块的表 —— 走 HTTP / Core extension
 - ✖ 不许建 `sys_*` 表（即使模块内）
+- ✖ **schema 与数据初始化一律走 CLI，不暴露 HTTP**——参见下方「运维 / 开发工具边界」
 - ✔ 表名必须以 `<meta.id>_` 开头（`pnpm lint` 卡死）
 - ✔ `meta.id` 全局唯一（启动期 fail-fast），`prefix` 硬约定 `/api/${meta.id}` 不再声明
 - ✔ 入口只放在 `module.ts` 一个文件，业务复杂再做拆分
 - ✔ 前端菜单 `path` 用 `/<id>/...` 直挂在根下（例：`/demo/quickstart`），**禁止**再加 `/modules/` 命名空间——`modules/` 只是源码目录约定，不出现在 URL 里
+
+## 运维 / 开发工具边界
+
+模块管理后台（`/admin/system/module-management`，dev-only 页面）只做一件事：**启停**（list + toggle）。
+schema 生成、迁移、seed、reset 都不暴露 HTTP，全部走 CLI。理由：
+
+| 动作 | 入口 | 触发风险 |
+| --- | --- | --- |
+| 启停模块 | HTTP（toggle） | 低：只改 `sys_module.enabled`，即时 gate 拦截，无副作用 |
+| 生成迁移文件 | CLI（`npx drizzle-kit --config=... generate`） | 写源码，多人并发会冲突 |
+| 应用迁移 | CLI（`pnpm --filter yishan-api db:seed` 走 onboard-modules） | 改表结构，受控流程 |
+| seed 数据 | CLI（同上，onboard-modules 第二步） | 写业务数据，受控流程 |
+| DROP / 重建 | CLI（`pnpm --filter yishan-api db:reset`，仅 dev） | 毁数据，必须显式 + NODE_ENV≠production |
+
+dev-only 路由树（`core/routes/_dev/`）在 `NODE_ENV=production` 时整棵不挂载，但这一层只是兜底；
+分类标准（什么走 HTTP、什么走 CLI）必须显式遵守，不能依赖 prod 自动屏蔽作为安全护栏。
+
+CI / 部署侧用：
+
+```bash
+pnpm --filter yishan-api db:generate   # 改 schema 后生成迁移
+pnpm --filter yishan-api db:seed       # 上线首次部署：migrate + seed + sync sys_module
+pnpm --filter yishan-api db:reset      # 仅 dev：重建数据库
+```
 
 ## 完整 demo
 

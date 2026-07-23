@@ -4,7 +4,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { inArray } from 'drizzle-orm';
 import { drizzleDb } from '@/db';
-import { sysModule, sysModuleMigration } from '@/db/schema/tables';
+import { sysModule } from '@/db/schema/tables';
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
 import { moduleRoutePrefix } from '@/core/module-loader/module-loader.js';
 import { registerPermissions, type PermissionRef } from '@/core/permissions/catalog.js';
@@ -15,8 +15,6 @@ const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
 });
 registerPermissions(PERMS.LIST);
 
-interface ModuleJournalEntry { tag: string; breakpoints: boolean }
-
 const moduleItemSchema = Type.Object({
   id: Type.String(),
   name: Type.String(),
@@ -25,10 +23,6 @@ const moduleItemSchema = Type.Object({
   version: Type.String(),
   enabled: Type.Boolean(),
   mounted: Type.Boolean(),
-  hasSchema: Type.Boolean(),
-  hasDrizzle: Type.Boolean(),
-  appliedMigrations: Type.Array(Type.String()),
-  pendingMigrations: Type.Array(Type.String()),
 });
 
 const adminSystemModuleManagementList: FastifyPluginAsync = async (fastify) => {
@@ -39,7 +33,7 @@ const adminSystemModuleManagementList: FastifyPluginAsync = async (fastify) => {
       access: { permission: PERMS.LIST },
       schema: {
         summary: '模块列表',
-        description: '扫描 src/modules/ 并合并 sys_module 行；标注 enabled、是否已挂载、applied vs pending 迁移。routePrefix 由 moduleRoutePrefix() 统一生成为 /api/${id}。',
+        description: '扫描 src/modules/ 并合并 sys_module 行；标注 enabled 与是否已挂载。routePrefix 由 moduleRoutePrefix() 统一生成为 /api/${id}。',
         operationId: 'listModuleManagement',
         tags: ['moduleManagement'],
         security: [{ bearerAuth: [] }],
@@ -77,38 +71,9 @@ const adminSystemModuleManagementList: FastifyPluginAsync = async (fastify) => {
             .where(inArray(sysModule.id, idsOnDisk))
       const rowMap = new Map(rows.map((r) => [r.id, r]))
 
-      const appliedRows = idsOnDisk.length === 0
-        ? []
-        : await drizzleDb
-            .select({ moduleId: sysModuleMigration.moduleId, hash: sysModuleMigration.hash })
-            .from(sysModuleMigration)
-            .where(inArray(sysModuleMigration.moduleId, idsOnDisk))
-      const appliedMap = new Map<string, Set<string>>()
-      for (const r of appliedRows) {
-        if (!appliedMap.has(r.moduleId)) appliedMap.set(r.moduleId, new Set())
-        appliedMap.get(r.moduleId)!.add(r.hash)
-      }
-
       const loader = (fastify as unknown as { moduleLoader: { isMounted: (id: string) => boolean } }).moduleLoader
       const items = idsOnDisk.map((id) => {
         const row = rowMap.get(id)
-        const moduleDir = join(DEV_MODULES_DIR, id)
-        const drizzleDir = join(moduleDir, 'drizzle')
-        const hasDrizzle = existsSync(drizzleDir)
-        const metaJournalPath = join(drizzleDir, 'meta', '_journal.json')
-        let journalTags: string[] = []
-        if (existsSync(metaJournalPath)) {
-          try {
-            // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const journal = require(metaJournalPath) as { entries: ModuleJournalEntry[] }
-            journalTags = journal.entries.map((e) => e.tag)
-          } catch {
-            journalTags = []
-          }
-        }
-        const appliedSet = appliedMap.get(id) ?? new Set<string>()
-        const pendingMigrations = journalTags.filter((tag) => !appliedSet.has(tag))
-        const appliedMigrations = journalTags.filter((tag) => appliedSet.has(tag))
         return {
           id,
           name: row?.name ?? id,
@@ -117,10 +82,6 @@ const adminSystemModuleManagementList: FastifyPluginAsync = async (fastify) => {
           version: row?.version ?? '0.0.0',
           enabled: row ? row.enabled === 1 : false,
           mounted: loader.isMounted(id),
-          hasSchema: existsSync(join(moduleDir, 'db', 'schema.ts')),
-          hasDrizzle,
-          appliedMigrations,
-          pendingMigrations,
         }
       })
 
