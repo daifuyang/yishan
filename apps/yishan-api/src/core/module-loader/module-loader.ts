@@ -77,12 +77,25 @@ export async function scanDiskModulesPure(
       logger?.warn({ module: id }, 'module skipped: module.{js,ts} missing')
       continue
     }
-    const mod: {
+    const loadMod = async (entry: string, ts: boolean) =>
+      ts
+        ? await import(entry).catch((e: unknown) => {
+            logger?.warn({ module: id, err: String(e) }, 'failed to import src module.ts, will fall back to dist')
+            return {} as { meta?: unknown }
+          })
+        : await import(entry)
+    let mod: {
       meta?: Partial<ModuleDiskMeta & { name?: string; enabled?: boolean }>
-    } = isTs
-      ? await import(moduleEntry).catch(() => ({} as { meta?: unknown }))
-      : await import(moduleEntry)
-    const meta = mod.meta
+    } = await loadMod(moduleEntry, isTs)
+    let meta = mod.meta
+    // src/.ts 在 CJS 包(package.json 无 "type":"module")里会被 Node 当 ESM 拒绝,
+    // 拿不到 meta。即使 dist/.js 编译产物可用,这里 isTs=true 失败后仍走不到 fallback。
+    // 强制回落:meta 缺失 + 存在 dist/.js → 用编译产物再试一次。
+    if ((!meta?.id || typeof meta.id !== 'string') && existsSync(distModuleJs) && moduleEntry !== distModuleJs) {
+      logger?.warn({ module: id }, 'meta.id missing on src .ts, falling back to dist .js')
+      mod = await loadMod(distModuleJs, false)
+      meta = mod.meta
+    }
     if (!meta?.id || typeof meta.id !== 'string') {
       logger?.warn({ module: id }, 'module skipped: meta.id missing')
       continue
@@ -330,10 +343,12 @@ export class ModuleLoader {
     const distRoutesDir = join(this.distRoot, 'modules', meta.id, 'routes')
     const srcRoutesDir = join(meta.moduleDir, 'routes')
     let routesDir: string
-    if (this.preferSrc && existsSync(srcRoutesDir)) {
-      routesDir = srcRoutesDir
-    } else if (existsSync(distRoutesDir)) {
+    // 同 scanDiskModulesPure：CJS 包(package.json 无 "type":"module")下 Node 把
+    // src/**/*.ts 当 ESM 拒绝，autoload 会全军覆没。dev 模式直接走 dist 编译产物。
+    if (existsSync(distRoutesDir)) {
       routesDir = distRoutesDir
+    } else if (this.preferSrc && existsSync(srcRoutesDir)) {
+      routesDir = srcRoutesDir
     } else if (existsSync(srcRoutesDir)) {
       routesDir = srcRoutesDir
     } else {

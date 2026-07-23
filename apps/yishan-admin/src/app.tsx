@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import React, { type JSX, lazy } from "react";
 import { BookOpen, ClipboardList, ContactRound, ExternalLink, FileText, FlaskConical, Folder, Hospital, Inbox, LayoutDashboard, Package, Send, Settings, ShoppingBag, Smile, type LucideIcon, UsersRound } from "lucide-react";
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { PageLoading, SettingDrawer } from "@ant-design/pro-components";
@@ -156,33 +156,6 @@ export async function getInitialState(): Promise<{
 let extraRoutes: MenuTreeList = [];
 const clickableRoutePaths = new Set<string>();
 
-/**
- * 写死的「模块管理」菜单：和 OpenAPI 链接一样不进后端 sys_menu。
- * - dev + super_admin：渲染菜单项 + 注册路由 + 页面可访问
- * - 其余情况（含 prod / 非 super_admin）：完全不渲染
- * 配合后端 menu.service 的 collectDevOnlyMenuIds 是 prod 的纵深防御，
- * 前端这里只负责"该不该看到这个菜单"。
- */
-const moduleManagementMenuEntry: MenuTreeNode = {
-  id: -1,
-  name: '模块管理',
-  type: 1,
-  path: '/system/module-management',
-  icon: 'package',
-  component: './system/module-management',
-  parentId: undefined,
-  parentName: '系统管理',
-  status: '1',
-  sort_order: 99,
-  hideInMenu: false,
-  isDefaultAction: true,
-  isExternalLink: false,
-  permissionCodes: ['system:module-management:list'],
-  keepAlive: false,
-  createdAt: '',
-  updatedAt: '',
-}
-
 const normalizeRoutePath = (path?: string) => {
   if (!path) return '';
   if (path === '/') return '/';
@@ -273,14 +246,42 @@ export const layout: RunTimeLayoutConfig = ({
         width: "331px",
       },
     ],
-    links: isDev
-      ? [
-        <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
-          <ExternalLink size={16} strokeWidth={1.8} />
-          <span>OpenAPI 文档</span>
-        </Link>,
-      ]
-      : [],
+    links: (() => {
+      const isSuperAdmin = initialState?.currentUser?.roleCodes?.includes('super_admin')
+      const out: JSX.Element[] = []
+      // 共享的图标-文字布局：flex + 居中 + 间距 + 颜色，跟 ProLayout 默认 link 风格对齐。
+      const linkStyle: React.CSSProperties = {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        whiteSpace: 'nowrap',
+      }
+      if (isDev) {
+        // 后端 Swagger UI：dev 下走 umi proxy(/api/** → :3000)，保持同源；
+        // prod 下跟 /api 同站则继续工作，跨域需要后端 CORS 配置。
+        out.push(
+          <Link
+            key="openapi"
+            to="/api/docs/static/"
+            target="_blank"
+            rel="noreferrer"
+            style={linkStyle}
+          >
+            <ExternalLink size={16} strokeWidth={1.8} />
+            <span>OpenAPI 文档</span>
+          </Link>,
+        )
+        if (isSuperAdmin) {
+          out.push(
+            <Link key="module-management" to="/system/module-management" style={linkStyle}>
+              <Package size={16} strokeWidth={1.8} />
+              <span>模块管理</span>
+            </Link>,
+          )
+        }
+      }
+      return out
+    })(),
     menuHeaderRender: undefined,
     // 自定义 403 页面
     // unAccessible: <div>unAccessible</div>,
@@ -407,6 +408,25 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
       });
     }
 
+    // dev-only 「模块管理」：写死在 header 右上 links 区域,不进 sidebar 菜单。
+    // 路由注册不做 super_admin 判定 —— patchClientRoutes 是同步钩子,
+    // role 探测在 render() 的 async 流程里,跑 patchClientRoutes 时还没设置,
+    // 会出 race → 404。改成:dev 下始终挂路由,可见性靠 layout.links 包一层;
+    // URL 直访会被 page 内的 super_admin 校验弹到 /404。
+    if (isDev) {
+      const devPath = '/system/module-management'
+      if (!existingPaths.has(devPath)) {
+        rootRoute.children.push({
+          id: 'dev-module-management',
+          path: devPath,
+          // 跟 menuTreeToRoutes 一样用 React.createElement 包一下,
+          // 避免 umi 4 + React 19 把 lazy 函数当 Route children 渲染。
+          element: React.createElement(lazy(() => import('@/pages/system/module-management'))) as unknown as JSX.Element,
+        } as any)
+        existingPaths.add(devPath)
+      }
+    }
+
     // 把注入的动态路由也纳入面包屑可点击路径集合
     walkRoutes(rootRoute.children);
   }
@@ -423,23 +443,9 @@ export function render(oldRender: () => void) {
   }
 
   getAuthorizedMenuTree()
-    .then(async (res) => {
+    .then((res) => {
       const menus = res.data || [];
       extraRoutes = menus;
-
-      // dev + super_admin：把写死的「模块管理」单独追加在菜单最底部。
-      // 通过 menuTreeToRoutes 注入 patchClientRoutes 就能注册路由并显示菜单。
-      if (isDev) {
-        try {
-          const userRes = await getCurrentUser()
-          const isSuperAdmin = (userRes.data?.roleCodes ?? []).includes('super_admin')
-          if (isSuperAdmin) {
-            extraRoutes = [...extraRoutes, moduleManagementMenuEntry]
-          }
-        } catch {
-          // 用户态拉取失败时按"无菜单"处理,不影响主流程
-        }
-      }
       oldRender();
     })
     .catch((error: any) => {

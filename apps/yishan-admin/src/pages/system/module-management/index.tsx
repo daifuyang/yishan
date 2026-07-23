@@ -24,11 +24,11 @@ import {
   toggleModuleManagement,
 } from '@/services/generated/moduleManagement'
 
-// 生产环境直接拒绝渲染模块管理：toggle 误点会让整个模块 API 面瞬时 404，
-// migrate/seed 误点会污染生产数据。三层防御中最末一层 —— 后端 app.ts 已经不挂载
-// dev 路由、menu service 已经过滤 dev-only 菜单，这里再兜一次防止 URL 直访。
+// 生产环境直接拒绝渲染：toggle 误点让模块 API 面瞬时 404,migrate/seed 误点污染数据。
+// 三层防御的最后一层 —— 后端 app.ts 不挂 _dev/ 路由、menu.service 过滤 dev-only 菜单。
+// 注：dev 下不做页面级 role gate —— 后端 API 自己用 requirePermission 拦截,
+// dev 路径只是浏览方便,不是 prod 事故面。
 if (process.env.NODE_ENV === 'production') {
-  // 同步重定向；useEffect 不适合：要在首次渲染前就离开，否则会闪一帧 ProTable。
   if (typeof window !== 'undefined' && window.location.pathname !== '/404') {
     window.location.replace('/404')
   }
@@ -42,8 +42,7 @@ const DevModules: React.FC = () => {
   const [logOk, setLogOk] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  // 兜底：prod 下 render hook 一进来就 replace 到 /404（覆盖 SSR / 静态构建等
-  // process.env 检测不到分支的场景）。
+  // 兜底：prod 下 render hook 一进来就 replace 到 /404。
   useEffect(() => {
     if (process.env.NODE_ENV === 'production' && window.location.pathname !== '/404') {
       history.replace('/404')
