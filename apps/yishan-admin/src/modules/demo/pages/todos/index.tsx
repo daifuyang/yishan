@@ -7,7 +7,6 @@ import {
   type ActionType,
   ModalForm,
   PageContainer,
-  ProCard,
   ProFormDateTimePicker,
   ProFormSelect,
   ProFormText,
@@ -15,8 +14,8 @@ import {
   ProTable,
   type ProColumns,
 } from '@ant-design/pro-components'
-import { Button, message, Popconfirm, Space, Tag, Typography } from 'antd'
-import { Plus } from 'lucide-react'
+import { PlusOutlined } from '@ant-design/icons'
+import { Button, message, Popconfirm, Space } from 'antd'
 import React, { useRef, useState } from 'react'
 import {
   demoV1TodosCreate,
@@ -25,18 +24,11 @@ import {
   demoV1TodosUpdate,
 } from '@/services/generated/demo'
 
-const { Title, Paragraph } = Typography
-
 type Status = 0 | 1 | 2
 const STATUS_LABEL: Record<Status, string> = {
   0: '待办',
   1: '进行中',
   2: '已完成',
-}
-const STATUS_COLOR: Record<Status, string> = {
-  0: 'default',
-  1: 'processing',
-  2: 'success',
 }
 
 interface Todo {
@@ -60,6 +52,12 @@ interface FormValues {
   status?: Status
   dueAt?: string | undefined
 }
+
+/** 将日期字符串格式化为中国时区 YYYY-MM-DD HH:mm:ss */
+
+const STATUS_OPTIONS = (Object.entries(STATUS_LABEL) as [string, string][]).map(
+  ([value, label]) => ({ value: Number(value), label }),
+)
 
 const Todos: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
@@ -117,24 +115,24 @@ const Todos: React.FC = () => {
 
   const columns: ProColumns<Todo>[] = [
     { title: 'ID', dataIndex: 'id', width: 80, search: false },
-    { title: '标题', dataIndex: 'title', width: 220 },
-    { title: '描述', dataIndex: 'description', search: false, ellipsis: true },
+    {
+      title: '标题',
+      dataIndex: 'title',
+      width: 220,
+    },
+    {
+      title: '描述',
+      dataIndex: 'description',
+      search: false,
+      ellipsis: true,
+    },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 100,
+      width: 110,
       valueType: 'select',
-      fieldProps: {
-        options: Object.entries(STATUS_LABEL).map(([value, label]) => ({
-          value: Number(value),
-          label,
-        })),
-      },
-      render: (_, record) => (
-        <Tag color={STATUS_COLOR[record.status as Status]}>
-          {STATUS_LABEL[record.status as Status]}
-        </Tag>
-      ),
+      fieldProps: { options: STATUS_OPTIONS },
+      valueEnum: STATUS_LABEL,
     },
     {
       title: '截止时间',
@@ -142,7 +140,6 @@ const Todos: React.FC = () => {
       width: 180,
       search: false,
       valueType: 'dateTime',
-      render: (_, r) => (r.dueAt ? new Date(r.dueAt).toLocaleString() : '-'),
     },
     {
       title: '更新时间',
@@ -153,24 +150,23 @@ const Todos: React.FC = () => {
     },
     {
       title: '操作',
+      dataIndex: 'option',
       valueType: 'option',
-      width: 200,
-      render: (_, record) => [
-        <Button key="edit" type="link" onClick={() => setEditing(record)}>
-          编辑
-        </Button>,
-        <Popconfirm
-          key="del"
-          title="确定删除该 Todo？"
-          okText="删除"
-          cancelText="取消"
-          onConfirm={() => handleDelete(record.id)}
-        >
-          <Button type="link" danger>
-            删除
-          </Button>
-        </Popconfirm>,
-      ],
+      fixed: 'right',
+      width: 160,
+      render: (_, record) => (
+        <Space size={16}>
+          <a onClick={() => setEditing(record)}>编辑</a>
+          <Popconfirm
+            title="确定删除该 Todo？"
+            okText="删除"
+            cancelText="取消"
+            onConfirm={() => handleDelete(record.id)}
+          >
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ]
 
@@ -178,38 +174,29 @@ const Todos: React.FC = () => {
     <PageContainer
       header={{
         title: 'Todo 示例',
-        subTitle: '演示模块完整 CRUD：列表、新建、编辑、删除',
       }}
-      extra={[
-        <Button
-          key="create"
-          type="primary"
-          icon={<Plus size={16} strokeWidth={1.8} />}
-          onClick={() => setCreateOpen(true)}
-        >
-          新建 Todo
-        </Button>,
-      ]}
     >
-      <ProCard>
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <Title level={4} style={{ margin: 0 }}>
-            Todo 列表
-          </Title>
-          <Paragraph type="secondary" style={{ margin: 0 }}>
-            通过 openapi 生成的 services 调用 <code>demoV1Todos*</code> 五个端点；
-            类型与字段与 <code>apps/yishan-api/src/modules/demo/schemas/*.ts</code> 同步。
-          </Paragraph>
-          <ProTable<Todo>
-            rowKey="id"
-            actionRef={actionRef}
-            columns={columns}
-            request={fetchList}
-            search={{ labelWidth: 'auto' }}
-            pagination={{ pageSize: 10 }}
-          />
-        </Space>
-      </ProCard>
+      <ProTable<Todo>
+        headerTitle="Todo 列表"
+        rowKey="id"
+        actionRef={actionRef}
+        columns={columns}
+        request={fetchList}
+        search={{ labelWidth: 'auto' }}
+        pagination={{ pageSize: 10, showSizeChanger: true }}
+        size="middle"
+        dateFormatter="string"
+        toolBarRender={() => [
+          <Button
+            key="create"
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setCreateOpen(true)}
+          >
+            新建
+          </Button>,
+        ]}
+      />
 
       <ModalForm<FormValues>
         title="新建 Todo"
@@ -217,17 +204,19 @@ const Todos: React.FC = () => {
         onOpenChange={setCreateOpen}
         onFinish={handleCreate}
         modalProps={{ destroyOnClose: true }}
+        width={520}
       >
         <ProFormText name="title" label="标题" rules={[{ required: true, max: 200 }]} />
-        <ProFormTextArea name="description" label="描述" fieldProps={{ maxLength: 2000, rows: 3 }} />
+        <ProFormTextArea
+          name="description"
+          label="描述"
+          fieldProps={{ maxLength: 2000, rows: 3, showCount: true }}
+        />
         <ProFormSelect
           name="status"
           label="状态"
           initialValue={0}
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({
-            value: Number(value),
-            label,
-          }))}
+          options={STATUS_OPTIONS}
         />
         <ProFormDateTimePicker name="dueAt" label="截止时间" />
       </ModalForm>
@@ -250,17 +239,15 @@ const Todos: React.FC = () => {
             : undefined
         }
         modalProps={{ destroyOnClose: true }}
+        width={520}
       >
         <ProFormText name="title" label="标题" rules={[{ required: true, max: 200 }]} />
-        <ProFormTextArea name="description" label="描述" fieldProps={{ maxLength: 2000, rows: 3 }} />
-        <ProFormSelect
-          name="status"
-          label="状态"
-          options={Object.entries(STATUS_LABEL).map(([value, label]) => ({
-            value: Number(value),
-            label,
-          }))}
+        <ProFormTextArea
+          name="description"
+          label="描述"
+          fieldProps={{ maxLength: 2000, rows: 3, showCount: true }}
         />
+        <ProFormSelect name="status" label="状态" options={STATUS_OPTIONS} />
         <ProFormDateTimePicker name="dueAt" label="截止时间" />
       </ModalForm>
     </PageContainer>
