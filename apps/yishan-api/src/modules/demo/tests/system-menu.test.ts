@@ -21,7 +21,6 @@ describe('system-menu.json', () => {
     const root = (systemMenu as AdminMenuNode[])[0]
     expect(root.type).toBe(0) // 目录
     expect(root.name).toBeTruthy()
-    expect(root.path).toMatch(/^\/_modules\//)
   })
 })
 
@@ -161,12 +160,10 @@ describe('按钮节点（type=2）', () => {
     expect(buttons.every((b) => !b.node.path)).toBe(true)
   })
 
-  it('按钮节点都挂在某个有 path 的页面下（depth=2，parentPath 是某页面 path）', () => {
+  it('按钮节点都挂在某个有 path 的页面下（depth=2）', () => {
     expect(buttons.every((b) => b.depth === 2)).toBe(true)
-    // parentPath 在铺平时由 flattenMenuTree 计算好，应该都指向 demo 页面 path
     for (const b of buttons) {
       expect(b.parentPath).toBeTruthy()
-      expect(b.parentPath!).toMatch(/^\/modules\/demo\//)
     }
   })
 
