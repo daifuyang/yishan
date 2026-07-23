@@ -3,21 +3,54 @@
     "type": 0,
     "name": "门户管理",
     "path": "/portal",
-    "sortOrder": 50,
-    "icon": "book",
+    "sortOrder": 20,
+    "icon": "BookOutlined",
     "children": [
       {
         "type": 1,
         "name": "分类管理",
         "path": "/portal/categories",
         "sortOrder": 1,
-        "icon": "folder",
+        "icon": "FolderOutlined",
         "component": "./modules/portal/categories",
         "children": [
-          { "type": 2, "name": "查看", "permissionCodes": ["portal:category:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
-          { "type": 2, "name": "新建", "permissionCodes": ["portal:category:create"], "sortOrder": 2, "hideInMenu": 1 },
-          { "type": 2, "name": "编辑", "permissionCodes": ["portal:category:update"], "sortOrder": 3, "hideInMenu": 1 },
-          { "type": 2, "name": "删除", "permissionCodes": ["portal:category:delete"], "sortOrder": 4, "hideInMenu": 1 }
+          {
+            "type": 2,
+            "name": "查看",
+            "permissionCodes": [
+              "portal:category:list"
+            ],
+            "sortOrder": 1,
+            "hideInMenu": 1,
+            "isDefaultAction": 1
+          },
+          {
+            "type": 2,
+            "name": "新建",
+            "permissionCodes": [
+              "portal:category:create"
+            ],
+            "sortOrder": 2,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "编辑",
+            "permissionCodes": [
+              "portal:category:update"
+            ],
+            "sortOrder": 3,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "删除",
+            "permissionCodes": [
+              "portal:category:delete"
+            ],
+            "sortOrder": 4,
+            "hideInMenu": 1
+          }
         ]
       },
       {
@@ -25,14 +58,55 @@
         "name": "文章管理",
         "path": "/portal/articles",
         "sortOrder": 2,
-        "icon": "file-text",
+        "icon": "FileTextOutlined",
         "component": "./modules/portal/articles",
         "children": [
-          { "type": 2, "name": "查看",  "permissionCodes": ["portal:article:list"],    "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
-          { "type": 2, "name": "新建",  "permissionCodes": ["portal:article:create"],  "sortOrder": 2, "hideInMenu": 1 },
-          { "type": 2, "name": "编辑",  "permissionCodes": ["portal:article:update"],  "sortOrder": 3, "hideInMenu": 1 },
-          { "type": 2, "name": "删除",  "permissionCodes": ["portal:article:delete"],  "sortOrder": 4, "hideInMenu": 1 },
-          { "type": 2, "name": "发布",  "permissionCodes": ["portal:article:publish"], "sortOrder": 5, "hideInMenu": 1 }
+          {
+            "type": 2,
+            "name": "查看",
+            "permissionCodes": [
+              "portal:article:list"
+            ],
+            "sortOrder": 1,
+            "hideInMenu": 1,
+            "isDefaultAction": 1
+          },
+          {
+            "type": 2,
+            "name": "新建",
+            "permissionCodes": [
+              "portal:article:create"
+            ],
+            "sortOrder": 2,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "编辑",
+            "permissionCodes": [
+              "portal:article:update"
+            ],
+            "sortOrder": 3,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "删除",
+            "permissionCodes": [
+              "portal:article:delete"
+            ],
+            "sortOrder": 4,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "发布",
+            "permissionCodes": [
+              "portal:article:publish"
+            ],
+            "sortOrder": 5,
+            "hideInMenu": 1
+          }
         ]
       },
       {
@@ -40,13 +114,46 @@
         "name": "页面管理",
         "path": "/portal/pages",
         "sortOrder": 3,
-        "icon": "file",
+        "icon": "FileOutlined",
         "component": "./modules/portal/pages",
         "children": [
-          { "type": 2, "name": "查看", "permissionCodes": ["portal:page:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
-          { "type": 2, "name": "新建", "permissionCodes": ["portal:page:create"], "sortOrder": 2, "hideInMenu": 1 },
-          { "type": 2, "name": "编辑", "permissionCodes": ["portal:page:update"], "sortOrder": 3, "hideInMenu": 1 },
-          { "type": 2, "name": "删除", "permissionCodes": ["portal:page:delete"], "sortOrder": 4, "hideInMenu": 1 }
+          {
+            "type": 2,
+            "name": "查看",
+            "permissionCodes": [
+              "portal:page:list"
+            ],
+            "sortOrder": 1,
+            "hideInMenu": 1,
+            "isDefaultAction": 1
+          },
+          {
+            "type": 2,
+            "name": "新建",
+            "permissionCodes": [
+              "portal:page:create"
+            ],
+            "sortOrder": 2,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "编辑",
+            "permissionCodes": [
+              "portal:page:update"
+            ],
+            "sortOrder": 3,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "删除",
+            "permissionCodes": [
+              "portal:page:delete"
+            ],
+            "sortOrder": 4,
+            "hideInMenu": 1
+          }
         ]
       },
       {
@@ -54,13 +161,46 @@
         "name": "文章模板",
         "path": "/portal/article-templates",
         "sortOrder": 4,
-        "icon": "copy",
+        "icon": "CopyOutlined",
         "component": "./modules/portal/article-templates",
         "children": [
-          { "type": 2, "name": "查看", "permissionCodes": ["portal:article-template:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
-          { "type": 2, "name": "新建", "permissionCodes": ["portal:article-template:create"], "sortOrder": 2, "hideInMenu": 1 },
-          { "type": 2, "name": "编辑", "permissionCodes": ["portal:article-template:update"], "sortOrder": 3, "hideInMenu": 1 },
-          { "type": 2, "name": "删除", "permissionCodes": ["portal:article-template:delete"], "sortOrder": 4, "hideInMenu": 1 }
+          {
+            "type": 2,
+            "name": "查看",
+            "permissionCodes": [
+              "portal:article-template:list"
+            ],
+            "sortOrder": 1,
+            "hideInMenu": 1,
+            "isDefaultAction": 1
+          },
+          {
+            "type": 2,
+            "name": "新建",
+            "permissionCodes": [
+              "portal:article-template:create"
+            ],
+            "sortOrder": 2,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "编辑",
+            "permissionCodes": [
+              "portal:article-template:update"
+            ],
+            "sortOrder": 3,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "删除",
+            "permissionCodes": [
+              "portal:article-template:delete"
+            ],
+            "sortOrder": 4,
+            "hideInMenu": 1
+          }
         ]
       },
       {
@@ -68,13 +208,46 @@
         "name": "页面模板",
         "path": "/portal/page-templates",
         "sortOrder": 5,
-        "icon": "snippets",
+        "icon": "SnippetsOutlined",
         "component": "./modules/portal/page-templates",
         "children": [
-          { "type": 2, "name": "查看", "permissionCodes": ["portal:page-template:list"],   "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
-          { "type": 2, "name": "新建", "permissionCodes": ["portal:page-template:create"], "sortOrder": 2, "hideInMenu": 1 },
-          { "type": 2, "name": "编辑", "permissionCodes": ["portal:page-template:update"], "sortOrder": 3, "hideInMenu": 1 },
-          { "type": 2, "name": "删除", "permissionCodes": ["portal:page-template:delete"], "sortOrder": 4, "hideInMenu": 1 }
+          {
+            "type": 2,
+            "name": "查看",
+            "permissionCodes": [
+              "portal:page-template:list"
+            ],
+            "sortOrder": 1,
+            "hideInMenu": 1,
+            "isDefaultAction": 1
+          },
+          {
+            "type": 2,
+            "name": "新建",
+            "permissionCodes": [
+              "portal:page-template:create"
+            ],
+            "sortOrder": 2,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "编辑",
+            "permissionCodes": [
+              "portal:page-template:update"
+            ],
+            "sortOrder": 3,
+            "hideInMenu": 1
+          },
+          {
+            "type": 2,
+            "name": "删除",
+            "permissionCodes": [
+              "portal:page-template:delete"
+            ],
+            "sortOrder": 4,
+            "hideInMenu": 1
+          }
         ]
       }
     ]

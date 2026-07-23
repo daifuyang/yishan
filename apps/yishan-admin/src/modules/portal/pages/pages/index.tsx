@@ -2,21 +2,24 @@
  * Portal 页面管理页面
  *
  * 功能：页面列表查询、创建、编辑、删除
+ * 表单：DrawerForm + FormEditor（富文本）
  */
 
 import { PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
-  ModalForm,
+  DrawerForm,
   PageContainer,
   ProFormDateTimePicker,
+  ProFormList,
   ProFormRadio,
   ProFormText,
-  ProFormTextArea,
+  ProForm,
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space } from 'antd';
+import { FormEditor } from 'yishan-tiptap';
 import React, { useRef, useState } from 'react';
 import {
   deletePortalV1PagesId,
@@ -32,21 +35,15 @@ interface PortalPage {
   path: string;
   content: string;
   status: number;
+  attributes?: Record<string, unknown> | null;
   publishTime: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface ListResp {
   total: number;
   items: PortalPage[];
-}
-
-interface FormValues {
-  title: string;
-  path: string;
-  content: string;
-  status?: '0' | '1';
-  publishTime?: string;
 }
 
 const statusEnum: Record<string, { text: string; status: string }> = {
@@ -57,14 +54,14 @@ const statusEnum: Record<string, { text: string; status: string }> = {
 const Pages: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [formVisible, setFormVisible] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
-  const [formValues, setFormValues] = useState<Partial<FormValues>>({
+  const [formValues, setFormValues] = useState<Record<string, any>>({
     status: '1',
   });
 
   const handleSuccess = () => {
-    setFormVisible(false);
+    setDrawerOpen(false);
     setEditingId(undefined);
     setFormValues({ status: '1' });
     actionRef.current?.reload();
@@ -78,17 +75,33 @@ const Pages: React.FC = () => {
         message.error('获取页面详情失败');
         return;
       }
+      const attrs = data.attributes as Record<string, unknown> | null | undefined;
+      const attributesList = attrs
+        ? Object.entries(attrs).map(([k, v]) => ({ key: k, value: String(v) }))
+        : [];
       setFormValues({
         title: data.title,
         path: data.path,
         content: data.content,
-        status: data.status != null ? (String(data.status) as '0' | '1') : '1',
+        status: String(data.status),
         publishTime: data.publishTime ?? undefined,
+        attributesList,
       });
       setEditingId(id);
-      setFormVisible(true);
+      setDrawerOpen(true);
     } catch {
       message.error('获取页面详情失败');
+    }
+  };
+
+  const handleStatusToggle = async (record: PortalPage) => {
+    try {
+      const newStatus = record.status === 1 ? 0 : 1;
+      await patchPortalV1PagesId({ id: record.id }, { status: newStatus }, {});
+      message.success(newStatus === 1 ? '已启用' : '已禁用');
+      actionRef.current?.reload();
+    } catch {
+      message.error('操作失败');
     }
   };
 
@@ -137,14 +150,24 @@ const Pages: React.FC = () => {
       width: 160,
     },
     {
+      title: '更新时间',
+      dataIndex: 'updatedAt',
+      search: false,
+      valueType: 'dateTime',
+      width: 160,
+    },
+    {
       title: '操作',
       dataIndex: 'option',
       valueType: 'option',
       fixed: 'right',
-      width: 160,
+      width: 200,
       render: (_, record) => (
         <Space size={12}>
           <a onClick={() => handleEdit(record.id)}>编辑</a>
+          <a onClick={() => handleStatusToggle(record)}>
+            {record.status === 1 ? '禁用' : '启用'}
+          </a>
           <Popconfirm
             title="确定要删除该页面吗？"
             onConfirm={() => handleRemove(record.id)}
@@ -173,7 +196,7 @@ const Pages: React.FC = () => {
             onClick={() => {
               setEditingId(undefined);
               setFormValues({ status: '1' });
-              setFormVisible(true);
+              setDrawerOpen(true);
             }}
           >
             <PlusOutlined /> 新建页面
@@ -185,7 +208,6 @@ const Pages: React.FC = () => {
             page: current,
             pageSize,
             keyword: restParams.keyword as string | undefined,
-            status: restParams.status as number | undefined,
           });
           const data = (res as unknown as ListResp) ?? null;
           return {
@@ -202,21 +224,41 @@ const Pages: React.FC = () => {
         scroll={{ x: 1000 }}
       />
 
-      <ModalForm<FormValues>
+      <DrawerForm
         title={editingId ? '编辑页面' : '新建页面'}
-        open={formVisible}
-        onOpenChange={setFormVisible}
-        width={720}
-        layout="horizontal"
-        labelCol={{ span: 4 }}
+        open={drawerOpen}
+        onOpenChange={(open) => {
+          setDrawerOpen(open);
+          if (!open) {
+            setEditingId(undefined);
+          }
+        }}
+        grid
+        drawerProps={{
+          destroyOnClose: true,
+          maskClosable: false,
+          width: 800,
+        }}
         initialValues={formValues}
         onFinish={async (values) => {
+          const attrs: Record<string, unknown> = Array.isArray(values.attributesList)
+            ? (values.attributesList as Array<{ key: string; value: string }>)
+                .filter((a) => a.key?.trim())
+                .reduce(
+                  (acc, cur) => {
+                    acc[cur.key.trim()] = cur.value;
+                    return acc;
+                  },
+                  {} as Record<string, unknown>,
+                )
+            : {};
           const body = {
             title: values.title,
             path: values.path,
             content: values.content,
             status: values.status != null ? Number(values.status) : 1,
-            publishTime: values.publishTime,
+            publishTime: values.publishTime || undefined,
+            attributes: Object.keys(attrs).length > 0 ? attrs : undefined,
           };
           try {
             if (editingId) {
@@ -235,26 +277,22 @@ const Pages: React.FC = () => {
       >
         <ProFormText
           name="title"
-          label="标题"
+          label="页面标题"
           placeholder="请输入页面标题"
+          colProps={{ span: 12 }}
           rules={[{ required: true, message: '请输入页面标题' }]}
         />
         <ProFormText
           name="path"
-          label="路径"
-          placeholder="页面路径，如 /about"
+          label="页面路径"
+          placeholder="如 /about"
+          colProps={{ span: 12 }}
           rules={[{ required: true, message: '请输入页面路径' }]}
-        />
-        <ProFormTextArea
-          name="content"
-          label="正文"
-          placeholder="请输入页面正文"
-          fieldProps={{ rows: 6 }}
-          rules={[{ required: true, message: '请输入页面正文' }]}
         />
         <ProFormRadio.Group
           name="status"
           label="状态"
+          colProps={{ span: 12 }}
           options={[
             { label: '启用', value: '1' },
             { label: '禁用', value: '0' },
@@ -263,9 +301,44 @@ const Pages: React.FC = () => {
         <ProFormDateTimePicker
           name="publishTime"
           label="发布时间"
-          placeholder="选择发布时间"
+          colProps={{ span: 12 }}
+          fieldProps={{ style: { width: '100%' } }}
+          transform={(v: any) => {
+            if (!v) return { publishTime: undefined };
+            if (typeof v === 'string') return { publishTime: v };
+            if (v?.format) return { publishTime: v.format('YYYY-MM-DD HH:mm:ss') };
+            return { publishTime: undefined };
+          }}
         />
-      </ModalForm>
+        <ProForm.Item
+          name="content"
+          label="正文"
+          colProps={{ span: 24 }}
+          rules={[{ required: true, message: '请输入页面正文' }]}
+        >
+          <FormEditor minHeight={300} />
+        </ProForm.Item>
+        <ProFormList
+          name="attributesList"
+          label="自定义属性"
+          colProps={{ span: 24 }}
+          creatorButtonProps={{
+            position: 'bottom',
+            creatorButtonText: '新增属性',
+          }}
+        >
+          <ProFormText
+            name="key"
+            label="键"
+            colProps={{ span: 12 }}
+          />
+          <ProFormText
+            name="value"
+            label="值"
+            colProps={{ span: 12 }}
+          />
+        </ProFormList>
+      </DrawerForm>
     </PageContainer>
   );
 };

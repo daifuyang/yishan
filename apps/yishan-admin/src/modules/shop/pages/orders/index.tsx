@@ -2,11 +2,13 @@
  * Shop 订单管理页面
  *
  * 功能：订单列表、详情查看、状态更新、发货
+ * 表单：DrawerForm（新建）+ DrawerForm（详情）
  */
+
 import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
-  ModalForm,
+  DrawerForm,
   PageContainer,
   ProFormDigit,
   ProFormList,
@@ -14,7 +16,7 @@ import {
   ProTable,
   type ProColumns,
 } from '@ant-design/pro-components'
-import { Button, Drawer, message, Popconfirm, Space, Tag } from 'antd'
+import { Button, message, Popconfirm, Space, Tag } from 'antd'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   deleteShopV1OrdersId,
@@ -119,7 +121,7 @@ const OrderList: React.FC = () => {
   const [detailItems, setDetailItems] = useState<OrderItem[]>([])
   const [detailLoading, setDetailLoading] = useState(false)
 
-  // Create order modal
+  // Create order drawer
   const [createOpen, setCreateOpen] = useState(false)
 
   useEffect(() => {
@@ -176,39 +178,31 @@ const OrderList: React.FC = () => {
   }
 
   const handleProcess = async (id: number) => {
-    const res = await patchShopV1OrdersId({ id }, { orderStatus: 3 }, {})
-    if (res) {
-      message.success('已处理')
-      actionRef.current?.reload()
-    }
+    await patchShopV1OrdersId({ id }, { orderStatus: 3 }, {})
+    message.success('已处理')
+    actionRef.current?.reload()
   }
 
   const handleComplete = async (id: number) => {
-    const res = await patchShopV1OrdersId({ id }, { orderStatus: 3 }, {})
-    if (res) {
-      message.success('已完成')
-      actionRef.current?.reload()
-    }
+    await patchShopV1OrdersId({ id }, { orderStatus: 3 }, {})
+    message.success('已完成')
+    actionRef.current?.reload()
   }
 
   const handleCancel = async (id: number) => {
-    const res = await patchShopV1OrdersId(
+    await patchShopV1OrdersId(
       { id },
       { orderStatus: 4, cancelReason: '已取消' },
       {},
     )
-    if (res) {
-      message.success('已取消')
-      actionRef.current?.reload()
-    }
+    message.success('已取消')
+    actionRef.current?.reload()
   }
 
   const handleRemove = async (id: number) => {
-    const res = await deleteShopV1OrdersId({ id }, {})
-    if (res) {
-      message.success('已删除')
-      actionRef.current?.reload()
-    }
+    await deleteShopV1OrdersId({ id }, {})
+    message.success('已删除')
+    actionRef.current?.reload()
   }
 
   const handleCreate = async (values: CreateFormValues) => {
@@ -352,11 +346,12 @@ const OrderList: React.FC = () => {
       />
 
       {/* Detail drawer */}
-      <Drawer
+      <DrawerForm
         title={detailOrder ? `订单详情：${detailOrder.orderNo}` : '订单详情'}
-        width={720}
         open={detailOpen}
-        onClose={() => setDetailOpen(false)}
+        onOpenChange={setDetailOpen}
+        drawerProps={{ width: 720 }}
+        submitter={false}
       >
         {detailOrder ? (
           <ProTable<OrderItem>
@@ -386,43 +381,50 @@ const OrderList: React.FC = () => {
             ]}
           />
         ) : null}
-      </Drawer>
+      </DrawerForm>
 
-      {/* Create order modal — minimal */}
-      <ModalForm<CreateFormValues>
+      {/* Create order drawer */}
+      <DrawerForm<CreateFormValues>
         title="新建订单"
         open={createOpen}
         onOpenChange={setCreateOpen}
-        layout="horizontal"
-        labelCol={{ span: 4 }}
-        width={720}
+        grid
+        drawerProps={{
+          destroyOnClose: true,
+          maskClosable: false,
+          width: 720,
+        }}
         onFinish={handleCreate}
-        modalProps={{ destroyOnClose: true }}
       >
         <ProFormText
           name="orderNo"
           label="订单号"
+          colProps={{ span: 12 }}
           rules={[{ required: true, min: 1, max: 32 }]}
         />
         <ProFormDigit
           name="userId"
           label="用户 ID"
+          colProps={{ span: 12 }}
           rules={[{ required: true }]}
           min={1}
         />
         <ProFormText
           name="totalAmount"
           label="订单总额"
+          colProps={{ span: 12 }}
           rules={[{ required: true }]}
         />
         <ProFormText
           name="payAmount"
           label="应付金额"
+          colProps={{ span: 12 }}
           rules={[{ required: true }]}
         />
         <ProFormList
           name="items"
           label="订单明细"
+          colProps={{ span: 24 }}
           itemRender={({ listDom, action }) => (
             <div
               style={{
@@ -460,7 +462,7 @@ const OrderList: React.FC = () => {
           />
           <ProFormText name="subtotal" label="小计" rules={[{ required: true }]} />
         </ProFormList>
-      </ModalForm>
+      </DrawerForm>
     </PageContainer>
   )
 }

@@ -11,6 +11,7 @@ export const PageRespSchema = Type.Object({
   path: Type.String(),
   content: Type.String(),
   status: Type.Number(),
+  attributes: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   publishTime: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
   templateId: Type.Union([Type.Number(), Type.Null()]),
   creatorId: Type.Union([Type.Number(), Type.Null()]),
@@ -40,6 +41,7 @@ export const PageCreateReqSchema = Type.Object({
   path: Type.String({ minLength: 1, maxLength: 255 }),
   content: Type.String(),
   status: Type.Optional(Type.Integer({ minimum: 0, maximum: 1 })),
+  attributes: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
   publishTime: Type.Optional(Type.String({ format: 'date-time' })),
   templateId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
 })

@@ -2,15 +2,19 @@
  * 商城分类 — 完整 CRUD 演示页。
  *
  * 通过 openapi 生成的 services 调用后端 API，类型与字段与后端 schema 同步。
+ * 表单：DrawerForm + grid 双列布局
  */
+
 import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
-  ModalForm,
+  DrawerForm,
   PageContainer,
   ProFormDigit,
   ProFormSelect,
   ProFormText,
+  ProFormTextArea,
+  ProFormTreeSelect,
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components'
@@ -19,6 +23,7 @@ import React, { useRef, useState } from 'react'
 import {
   deleteShopV1CategoriesId,
   getShopV1Categories,
+  getShopV1CategoriesId,
   patchShopV1CategoriesId,
   postShopV1Categories,
 } from '@/services/generated/shop'
@@ -35,7 +40,6 @@ interface Category {
   sortOrder: number
   status: number
   createdAt: string
-  updatedAt: string
 }
 
 interface ListResp {
@@ -43,10 +47,11 @@ interface ListResp {
   items: Category[]
 }
 
-interface FormValues {
+interface CategoryTreeNode {
+  id: number
   name: string
-  sortOrder?: number
-  status?: Status
+  parentId: number | null
+  children?: CategoryTreeNode[]
 }
 
 const STATUS_VALUE_ENUM: Record<string, { text: string; status: string }> = {
@@ -54,11 +59,39 @@ const STATUS_VALUE_ENUM: Record<string, { text: string; status: string }> = {
   1: { text: '启用', status: 'Success' },
 }
 
+const buildTree = (list: Category[]): CategoryTreeNode[] => {
+  const nodes: Record<number, CategoryTreeNode> = {}
+  const roots: CategoryTreeNode[] = []
+  list.forEach((c) => {
+    nodes[c.id] = { id: c.id, name: c.name, parentId: c.parentId }
+  })
+  list.forEach((c) => {
+    const pid = c.parentId ?? 0
+    if (pid === 0 || !nodes[pid]) {
+      roots.push(nodes[c.id])
+    } else {
+      const p = nodes[pid]
+      if (!p.children) p.children = []
+      p.children.push(nodes[c.id])
+    }
+  })
+  return [{ id: 0, name: '顶级分类', parentId: null }, ...roots]
+}
+
 const Categories: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [editing, setEditing] = useState<Category | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [treeData, setTreeData] = useState<CategoryTreeNode[]>([])
+
+  const loadTree = async () => {
+    const res = await getShopV1Categories({})
+    const data = (res as unknown as ListResp) ?? null
+    if (data?.items) {
+      setTreeData(buildTree(data.items))
+    }
+  }
 
   const fetchList = async () => {
     const res = await getShopV1Categories({})
@@ -70,32 +103,29 @@ const Categories: React.FC = () => {
     }
   }
 
-  const handleCreate = async (values: FormValues) => {
-    await postShopV1Categories(
-      {
-        name: values.name.trim(),
-        sortOrder: values.sortOrder ?? 0,
-        status: values.status ?? 1,
-      },
-      {},
-    )
-    message.success('已创建')
-    setCreateOpen(false)
-    actionRef.current?.reload()
-  }
-
-  const handleUpdate = async (values: FormValues) => {
-    if (!editing) return
-    await patchShopV1CategoriesId(
-      { id: editing.id },
-      {
-        name: values.name.trim(),
-        sortOrder: values.sortOrder ?? 0,
-        status: values.status ?? 1,
-      },
-      {},
-    )
-    message.success('已更新')
+  const handleSave = async (values: Record<string, any>) => {
+    const parentId =
+      values.parentId !== undefined &&
+      values.parentId !== '' &&
+      values.parentId !== null &&
+      Number(values.parentId) !== 0
+        ? Number(values.parentId)
+        : null
+    const payload = {
+      name: values.name.trim(),
+      description: values.description?.trim() ?? '',
+      sortOrder: values.sortOrder ?? 0,
+      status: values.status ?? 1,
+      parentId,
+    }
+    if (editing) {
+      await patchShopV1CategoriesId({ id: editing.id }, payload, {})
+      message.success('已更新')
+    } else {
+      await postShopV1Categories(payload, {})
+      message.success('已创建')
+    }
+    setDrawerOpen(false)
     setEditing(null)
     actionRef.current?.reload()
   }
@@ -141,7 +171,15 @@ const Categories: React.FC = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size={12}>
-          <a onClick={() => setEditing(record)}>编辑</a>
+          <a
+            onClick={async () => {
+              await loadTree()
+              setEditing(record)
+              setDrawerOpen(true)
+            }}
+          >
+            编辑
+          </a>
           <Popconfirm
             title="确定要删除该分类吗？"
             onConfirm={() => handleDelete(record.id)}
@@ -172,89 +210,88 @@ const Categories: React.FC = () => {
             key="create"
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => setCreateOpen(true)}
+            onClick={async () => {
+              setEditing(null)
+              await loadTree()
+              setDrawerOpen(true)
+            }}
           >
             新建分类
           </Button>,
         ]}
       />
 
-      <ModalForm<FormValues>
-        title="新建分类"
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onFinish={handleCreate}
-        width={640}
-        layout="horizontal"
-        labelCol={{ span: 4 }}
-        modalProps={{ destroyOnClose: true }}
-      >
-        <ProFormText
-          name="name"
-          label="分类名称"
-          placeholder="请输入分类名称"
-          rules={[{ required: true, message: '请输入分类名称' }]}
-        />
-        <ProFormDigit
-          name="sortOrder"
-          label="排序"
-          placeholder="排序序号"
-          min={0}
-          initialValue={0}
-        />
-        <ProFormSelect
-          name="status"
-          label="状态"
-          initialValue={1}
-          options={[
-            { label: '启用', value: 1 },
-            { label: '禁用', value: 0 },
-          ]}
-        />
-      </ModalForm>
-
-      <ModalForm<FormValues>
-        title={editing ? `编辑分类 #${editing.id}` : '编辑分类'}
-        open={!!editing}
+      <DrawerForm
+        title={editing ? `编辑分类 #${editing.id}` : '新建分类'}
+        open={drawerOpen}
         onOpenChange={(open) => {
+          setDrawerOpen(open)
           if (!open) setEditing(null)
         }}
-        onFinish={handleUpdate}
+        grid
+        drawerProps={{
+          destroyOnClose: true,
+          maskClosable: false,
+          width: 640,
+        }}
         initialValues={
           editing
             ? {
                 name: editing.name,
                 sortOrder: editing.sortOrder,
                 status: editing.status as Status,
+                parentId: editing.parentId ?? undefined,
+                description: editing.description ?? '',
               }
-            : undefined
+            : { sortOrder: 0, status: 1 }
         }
-        width={640}
-        layout="horizontal"
-        labelCol={{ span: 4 }}
-        modalProps={{ destroyOnClose: true }}
+        onFinish={async (values) => {
+          await handleSave(values)
+          return true
+        }}
       >
+        <ProFormTreeSelect
+          name="parentId"
+          label="上级分类"
+          colProps={{ span: 24 }}
+          fieldProps={{
+            treeData,
+            fieldNames: { label: 'name', value: 'id', children: 'children' },
+            allowClear: true,
+            treeDefaultExpandAll: true,
+            style: { width: '100%' },
+            showSearch: true,
+          }}
+        />
         <ProFormText
           name="name"
           label="分类名称"
           placeholder="请输入分类名称"
+          colProps={{ span: 12 }}
           rules={[{ required: true, message: '请输入分类名称' }]}
         />
         <ProFormDigit
           name="sortOrder"
           label="排序"
-          placeholder="排序序号"
-          min={0}
+          colProps={{ span: 12 }}
+          fieldProps={{ min: 0 }}
         />
         <ProFormSelect
           name="status"
           label="状态"
+          colProps={{ span: 12 }}
           options={[
             { label: '启用', value: 1 },
             { label: '禁用', value: 0 },
           ]}
         />
-      </ModalForm>
+        <ProFormTextArea
+          name="description"
+          label="描述"
+          placeholder="分类描述"
+          colProps={{ span: 24 }}
+        />
+      </DrawerForm>
     </PageContainer>
   )
 }

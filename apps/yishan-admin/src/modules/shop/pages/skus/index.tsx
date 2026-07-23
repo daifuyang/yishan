@@ -1,7 +1,14 @@
+/**
+ * Shop SKU 管理页面
+ *
+ * 功能：按商品筛选 SKU、创建、编辑、删除
+ * 表单：DrawerForm + grid 双列布局
+ */
+
 import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
-  ModalForm,
+  DrawerForm,
   PageContainer,
   ProFormDigit,
   ProFormRadio,
@@ -52,23 +59,12 @@ interface Sku {
   updatedAt: string
 }
 
-interface FormValues {
-  skuCode: string
-  skuName: string
-  price: string
-  costPrice?: string
-  stock?: number
-  weight?: string
-  coverImage?: string
-  status?: Status
-}
-
 const Skus: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
   const [productId, setProductId] = useState<number | null>(null)
   const [productOptions, setProductOptions] = useState<{ label: string; value: number }[]>([])
   const [productsLoading, setProductsLoading] = useState(false)
-  const [formOpen, setFormOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Sku | null>(null)
 
   useEffect(() => {
@@ -108,7 +104,7 @@ const Skus: React.FC = () => {
     return { data: items, success: true, total: items.length }
   }
 
-  const handleSave = async (values: FormValues) => {
+  const handleSave = async (values: Record<string, any>) => {
     const payload = {
       skuCode: values.skuCode.trim(),
       skuName: values.skuName.trim(),
@@ -132,7 +128,7 @@ const Skus: React.FC = () => {
       message.success('创建成功')
     }
 
-    setFormOpen(false)
+    setDrawerOpen(false)
     setEditing(null)
     reload()
     return true
@@ -178,7 +174,7 @@ const Skus: React.FC = () => {
           <a
             onClick={() => {
               setEditing(record)
-              setFormOpen(true)
+              setDrawerOpen(true)
             }}
           >
             编辑
@@ -207,7 +203,7 @@ const Skus: React.FC = () => {
           onChange={(value) => {
             setProductId(value ?? null)
             setEditing(null)
-            setFormOpen(false)
+            setDrawerOpen(false)
           }}
         />
       </Space>
@@ -229,7 +225,7 @@ const Skus: React.FC = () => {
               type="primary"
               onClick={() => {
                 setEditing(null)
-                setFormOpen(true)
+                setDrawerOpen(true)
               }}
             >
               <PlusOutlined /> 新建SKU
@@ -238,17 +234,19 @@ const Skus: React.FC = () => {
         />
       ) : null}
 
-      <ModalForm<FormValues>
+      <DrawerForm
         title={editing ? '编辑SKU' : '新建SKU'}
-        open={formOpen}
+        open={drawerOpen}
         onOpenChange={(open) => {
-          setFormOpen(open)
+          setDrawerOpen(open)
           if (!open) setEditing(null)
         }}
-        onFinish={handleSave}
-        width={640}
-        layout="horizontal"
-        labelCol={{ span: 4 }}
+        grid
+        drawerProps={{
+          destroyOnClose: true,
+          maskClosable: false,
+          width: 640,
+        }}
         initialValues={
           editing
             ? {
@@ -263,32 +261,61 @@ const Skus: React.FC = () => {
               }
             : { stock: 0, status: 1 }
         }
-        modalProps={{ destroyOnClose: true }}
+        onFinish={handleSave}
       >
         <ProFormText
           name="skuCode"
           label="SKU编码"
           placeholder="如：P001-RED-M"
+          colProps={{ span: 12 }}
           rules={[{ required: true, message: '请输入SKU编码' }]}
         />
         <ProFormText
           name="skuName"
           label="SKU名称"
           placeholder="如：红色M码"
+          colProps={{ span: 12 }}
           rules={[{ required: true, message: '请输入SKU名称' }]}
         />
         <ProFormText
           name="price"
           label="价格"
           placeholder="SKU价格"
+          colProps={{ span: 12 }}
           rules={[{ required: true, message: '请输入价格' }]}
         />
-        <ProFormText name="costPrice" label="成本价" placeholder="成本价格" />
-        <ProFormDigit name="stock" label="库存" placeholder="库存数量" min={0} />
-        <ProFormText name="weight" label="重量" placeholder="重量（kg）" />
-        <ProFormText name="coverImage" label="封面图" placeholder="封面图片URL" />
-        <ProFormRadio.Group name="status" label="状态" options={STATUS_OPTIONS} />
-      </ModalForm>
+        <ProFormText
+          name="costPrice"
+          label="成本价"
+          placeholder="成本价格"
+          colProps={{ span: 12 }}
+        />
+        <ProFormDigit
+          name="stock"
+          label="库存"
+          placeholder="库存数量"
+          colProps={{ span: 12 }}
+          min={0}
+        />
+        <ProFormText
+          name="weight"
+          label="重量"
+          placeholder="重量（kg）"
+          colProps={{ span: 12 }}
+        />
+        <ProFormText
+          name="coverImage"
+          label="封面图"
+          placeholder="封面图片URL"
+          colProps={{ span: 12 }}
+        />
+        <ProFormRadio.Group
+          name="status"
+          label="状态"
+          colProps={{ span: 12 }}
+          options={STATUS_OPTIONS}
+        />
+      </DrawerForm>
     </PageContainer>
   )
 }

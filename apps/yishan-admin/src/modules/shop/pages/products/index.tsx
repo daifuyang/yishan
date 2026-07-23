@@ -2,22 +2,25 @@
  * Shop 商品管理页面
  *
  * 功能：商品列表、创建、编辑、删除、上下架切换、SKU 子资源
+ * 表单：DrawerForm + FormEditor（富文本描述）
  */
 
 import { PlusOutlined } from '@ant-design/icons'
 import {
   type ActionType,
+  DrawerForm,
   ModalForm,
   PageContainer,
   ProFormDigit,
   ProFormSelect,
   ProFormSwitch,
   ProFormText,
-  ProFormTextArea,
+  ProForm,
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components'
-import { Button, Drawer, message, Popconfirm, Space, Tag } from 'antd'
+import { Button, message, Popconfirm, Space, Tag } from 'antd'
+import { FormEditor } from 'yishan-tiptap'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   deleteShopV1ProductsId,
@@ -80,17 +83,6 @@ interface Sku {
   updatedAt: string
 }
 
-interface ProductFormValues {
-  categoryId: number
-  name: string
-  coverImage?: string
-  price: number
-  description?: string
-  status?: number
-  isHot?: boolean
-  isNew?: boolean
-}
-
 interface SkuFormValues {
   skuCode: string
   skuName: string
@@ -131,7 +123,7 @@ const Products: React.FC = () => {
   const actionRef = useRef<ActionType>(null)
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [editing, setEditing] = useState<Product | null>(null)
-  const [formVisible, setFormVisible] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const [skuProduct, setSkuProduct] = useState<Product | null>(null)
   const [skus, setSkus] = useState<Sku[]>([])
   const [skusLoading, setSkusLoading] = useState(false)
@@ -156,48 +148,30 @@ const Products: React.FC = () => {
     }
   }
 
-  const closeForm = () => {
-    setFormVisible(false)
+  const closeDrawer = () => {
+    setDrawerOpen(false)
     setEditing(null)
   }
 
-  const handleCreate = async (values: ProductFormValues) => {
-    await postShopV1Products(
-      {
-        categoryId: Number(values.categoryId),
-        name: values.name.trim(),
-        coverImage: values.coverImage?.trim() ?? '',
-        description: values.description?.trim() ?? '',
-        price: toPriceString(values.price) ?? '0.00',
-        status: values.status ?? 1,
-        isHot: values.isHot ?? false,
-        isNew: values.isNew ?? false,
-      },
-      {},
-    )
-    message.success('已创建')
-    closeForm()
-    actionRef.current?.reload()
-  }
-
-  const handleUpdate = async (values: ProductFormValues) => {
-    if (!editing) return
-    await patchShopV1ProductsId(
-      { id: editing.id },
-      {
-        categoryId: Number(values.categoryId),
-        name: values.name.trim(),
-        coverImage: values.coverImage?.trim() ?? '',
-        description: values.description?.trim() ?? '',
-        price: toPriceString(values.price) ?? '0.00',
-        status: values.status,
-        isHot: values.isHot,
-        isNew: values.isNew,
-      },
-      {},
-    )
-    message.success('已更新')
-    closeForm()
+  const handleSave = async (values: Record<string, any>) => {
+    const payload = {
+      categoryId: Number(values.categoryId),
+      name: values.name.trim(),
+      coverImage: values.coverImage?.trim() ?? '',
+      description: values.description ?? '',
+      price: toPriceString(values.price) ?? '0.00',
+      status: values.status ?? 1,
+      isHot: values.isHot ?? false,
+      isNew: values.isNew ?? false,
+    }
+    if (editing) {
+      await patchShopV1ProductsId({ id: editing.id }, payload, {})
+      message.success('已更新')
+    } else {
+      await postShopV1Products(payload, {})
+      message.success('已创建')
+    }
+    closeDrawer()
     actionRef.current?.reload()
   }
 
@@ -355,7 +329,22 @@ const Products: React.FC = () => {
       width: 220,
       render: (_, record) => (
         <Space size={12}>
-          <a onClick={() => setEditing(record)}>编辑</a>
+          <a
+            onClick={() => {
+              setEditing(record)
+              setDrawerOpen(true)
+            }}
+          >
+            编辑
+          </a>
+          <a
+            onClick={() => {
+              setSkuProduct(record)
+              setSkuEditing(null)
+            }}
+          >
+            SKU
+          </a>
           {record.status === 0 ? (
             <a onClick={() => handleRestore(record.id)}>上架</a>
           ) : (
@@ -430,7 +419,10 @@ const Products: React.FC = () => {
             key="create"
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => setFormVisible(true)}
+            onClick={() => {
+              setEditing(null)
+              setDrawerOpen(true)
+            }}
           >
             新建商品
           </Button>,
@@ -444,15 +436,18 @@ const Products: React.FC = () => {
         scroll={{ x: 1400 }}
       />
 
-      <ModalForm<ProductFormValues>
+      <DrawerForm
         title={editing ? '编辑商品' : '新建商品'}
-        open={formVisible}
+        open={drawerOpen}
         onOpenChange={(open) => {
-          if (!open) closeForm()
+          if (!open) closeDrawer()
         }}
-        width={720}
-        layout="horizontal"
-        labelCol={{ span: 4 }}
+        grid
+        drawerProps={{
+          destroyOnClose: true,
+          maskClosable: false,
+          width: 800,
+        }}
         initialValues={
           editing
             ? {
@@ -472,58 +467,70 @@ const Products: React.FC = () => {
               }
         }
         onFinish={async (values) => {
-          if (editing) {
-            await handleUpdate(values)
-          } else {
-            await handleCreate(values)
-          }
+          await handleSave(values)
           return true
         }}
       >
-        <ProFormDigit
-          name="categoryId"
-          label="分类"
-          placeholder="分类 ID"
-          rules={[{ required: true, message: '请输入分类 ID' }]}
-          min={1}
-        />
         <ProFormText
           name="name"
           label="商品名称"
           placeholder="请输入商品名称"
+          colProps={{ span: 12 }}
           rules={[{ required: true, max: 200 }]}
+        />
+        <ProFormDigit
+          name="categoryId"
+          label="分类"
+          placeholder="分类 ID"
+          colProps={{ span: 12 }}
+          rules={[{ required: true, message: '请输入分类 ID' }]}
+          min={1}
         />
         <ProFormText
           name="coverImage"
           label="封面"
           placeholder="封面图片 URL"
+          colProps={{ span: 12 }}
           fieldProps={{ maxLength: 500 }}
         />
         <ProFormDigit
           name="price"
           label="价格"
           placeholder="商品价格"
+          colProps={{ span: 12 }}
           rules={[{ required: true, message: '请输入价格' }]}
           min={0}
           fieldProps={{ step: 0.01, precision: 2 }}
         />
-        <ProFormTextArea
-          name="description"
-          label="简介"
-          placeholder="商品简介"
-          fieldProps={{ rows: 3 }}
+        <ProFormSelect
+          name="status"
+          label="状态"
+          colProps={{ span: 12 }}
+          options={STATUS_OPTIONS}
         />
-        <ProFormSelect name="status" label="状态" options={STATUS_OPTIONS} />
-        <ProFormSwitch name="isHot" label="推荐" />
-        <ProFormSwitch name="isNew" label="新品" />
-      </ModalForm>
+        <ProFormSwitch name="isHot" label="推荐" colProps={{ span: 6 }} />
+        <ProFormSwitch name="isNew" label="新品" colProps={{ span: 6 }} />
+        <ProForm.Item
+          name="description"
+          label="商品描述"
+          colProps={{ span: 24 }}
+        >
+          <FormEditor minHeight={250} />
+        </ProForm.Item>
+      </DrawerForm>
 
-      <Drawer
+      <DrawerForm
         title={skuProduct ? `SKU 管理：${skuProduct.name}` : 'SKU 管理'}
         open={!!skuProduct}
-        onClose={() => setSkuProduct(null)}
-        width={900}
-        destroyOnClose
+        onOpenChange={(open) => {
+          if (!open) setSkuProduct(null)
+        }}
+        drawerProps={{
+          destroyOnClose: true,
+          maskClosable: false,
+          width: 900,
+        }}
+        submitter={false}
       >
         <ProTable<Sku>
           rowKey="id"
@@ -546,7 +553,7 @@ const Products: React.FC = () => {
           ]}
           scroll={{ x: 900 }}
         />
-      </Drawer>
+      </DrawerForm>
 
       <ModalForm<SkuFormValues>
         title="新建 SKU"
