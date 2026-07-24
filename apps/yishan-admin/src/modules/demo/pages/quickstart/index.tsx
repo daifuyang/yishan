@@ -171,8 +171,9 @@ const Quickstart: React.FC = () => {
         ))}
         <Paragraph type="secondary" style={{ margin: 0 }}>
           完整示例参见{' '}
-          <Link href="/demo/health">健康检查</Link> 与{' '}
-          <Link href="/demo/todos">Todo 示例</Link>。
+          <Link href="/demo/health">健康检查</Link>、{' '}
+          <Link href="/demo/todos">Todo 示例</Link> 与{' '}
+          <Link href="/demo/region">省市级联示例</Link>。
         </Paragraph>
       </Space>
     </PageContainer>
