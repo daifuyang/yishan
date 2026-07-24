@@ -16,3 +16,8 @@ export const PaginationRespSchema = Type.Object({
   pageSize: Type.Number(),
   items: Type.Array(Type.Any()),
 })
+
+/** 通用「操作成功」响应（delete / 清空属性值 等无实体返回的动作）。 */
+export const OkRespSchema = Type.Object({
+  success: Type.Boolean(),
+})
