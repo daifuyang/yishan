@@ -55,6 +55,17 @@
           { "type": 2, "name": "编辑", "permissionCodes": ["demo:todos:update"], "sortOrder": 3, "hideInMenu": 1 },
           { "type": 2, "name": "删除", "permissionCodes": ["demo:todos:delete"], "sortOrder": 4, "hideInMenu": 1 }
         ]
+      },
+      {
+        "type": 1,
+        "name": "省市级联",
+        "path": "/demo/region",
+        "sortOrder": 4,
+        "icon": "EnvironmentOutlined",
+        "component": "./modules/demo/region",
+        "children": [
+          { "type": 2, "name": "查看", "permissionCodes": ["region:list", "region:tree", "region:path", "region:read"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 }
+        ]
       }
     ]
   }
