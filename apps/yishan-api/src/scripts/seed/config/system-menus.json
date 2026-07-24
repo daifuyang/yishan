@@ -5,61 +5,463 @@
   "sortOrder": 0,
   "icon": "setting",
   "children": [
-    { "type": 1, "name": "仪表盘",   "path": "/",                       "sortOrder": 0,  "component": "./index",                  "hideInMenu": true, "children": [{ "type": 2, "name": "查看", "permissionCodes": ["system:dashboard:read"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true }] },
-    { "type": 1, "name": "用户管理", "path": "/system/user",            "sortOrder": 1,  "component": "./system/user",            "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:user:list"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "新增", "permissionCodes": ["system:user:create"], "sortOrder": 2, "hideInMenu": true },
-      { "type": 2, "name": "编辑", "permissionCodes": ["system:user:update"], "sortOrder": 3, "hideInMenu": true },
-      { "type": 2, "name": "删除", "permissionCodes": ["system:user:delete"], "sortOrder": 4, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "角色管理", "path": "/system/role",            "sortOrder": 2,  "component": "./system/role",            "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:role:list"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "新增", "permissionCodes": ["system:role:create"], "sortOrder": 2, "hideInMenu": true },
-      { "type": 2, "name": "编辑", "permissionCodes": ["system:role:update"], "sortOrder": 3, "hideInMenu": true },
-      { "type": 2, "name": "删除", "permissionCodes": ["system:role:delete"], "sortOrder": 4, "hideInMenu": true },
-      { "type": 2, "name": "授权", "permissionCodes": ["system:role:grant"],  "sortOrder": 5, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "部门管理", "path": "/system/department",      "sortOrder": 3,  "component": "./system/department",      "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:department:list"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "新增", "permissionCodes": ["system:department:create"], "sortOrder": 2, "hideInMenu": true },
-      { "type": 2, "name": "编辑", "permissionCodes": ["system:department:update"], "sortOrder": 3, "hideInMenu": true },
-      { "type": 2, "name": "删除", "permissionCodes": ["system:department:delete"], "sortOrder": 4, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "岗位管理", "path": "/system/position",        "sortOrder": 4,  "component": "./system/position",        "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:position:list"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "新增", "permissionCodes": ["system:position:create"], "sortOrder": 2, "hideInMenu": true },
-      { "type": 2, "name": "编辑", "permissionCodes": ["system:position:update"], "sortOrder": 3, "hideInMenu": true },
-      { "type": 2, "name": "删除", "permissionCodes": ["system:position:delete"], "sortOrder": 4, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "菜单管理", "path": "/system/menu",            "sortOrder": 5,  "component": "./system/menu",            "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:menu:list"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "新增", "permissionCodes": ["system:menu:create"], "sortOrder": 2, "hideInMenu": true },
-      { "type": 2, "name": "编辑", "permissionCodes": ["system:menu:update"], "sortOrder": 3, "hideInMenu": true },
-      { "type": 2, "name": "删除", "permissionCodes": ["system:menu:delete"], "sortOrder": 4, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "字典管理", "path": "/system/dict",            "sortOrder": 6,  "component": "./system/dict",            "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:dict:list"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "新增", "permissionCodes": ["system:dict:create"], "sortOrder": 2, "hideInMenu": true },
-      { "type": 2, "name": "编辑", "permissionCodes": ["system:dict:update"], "sortOrder": 3, "hideInMenu": true },
-      { "type": 2, "name": "删除", "permissionCodes": ["system:dict:delete"], "sortOrder": 4, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "站点配置", "path": "/system/site",            "sortOrder": 7,  "component": "./system/site",            "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:option:list"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "编辑", "permissionCodes": ["system:option:update"], "sortOrder": 2, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "云存储",   "path": "/system/storage",         "sortOrder": 8,  "component": "./system/storage",         "children": [
-      { "type": 2, "name": "查看",     "permissionCodes": ["system:storage:list"],       "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "编辑",     "permissionCodes": ["system:storage:update"],     "sortOrder": 2, "hideInMenu": true },
-      { "type": 2, "name": "上传凭证", "permissionCodes": ["system:storage:upload-token"],"sortOrder": 3, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "媒体库",   "path": "/system/attachments",     "sortOrder": 9,  "component": "./system/attachments",     "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:attachment:list"],   "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true },
-      { "type": 2, "name": "上传", "permissionCodes": ["system:attachment:create"], "sortOrder": 2, "hideInMenu": true },
-      { "type": 2, "name": "编辑", "permissionCodes": ["system:attachment:update"], "sortOrder": 3, "hideInMenu": true },
-      { "type": 2, "name": "删除", "permissionCodes": ["system:attachment:delete"], "sortOrder": 4, "hideInMenu": true }
-    ] },
-    { "type": 1, "name": "登录日志", "path": "/system/login-log",       "sortOrder": 10, "component": "./system/login-log",       "children": [
-      { "type": 2, "name": "查看", "permissionCodes": ["system:login-log:list"], "sortOrder": 1, "hideInMenu": true, "isDefaultAction": true }
-    ] }
+    {
+      "type": 1,
+      "name": "仪表盘",
+      "path": "/",
+      "sortOrder": 0,
+      "component": "./index",
+      "hideInMenu": true,
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:dashboard:read"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "用户管理",
+      "path": "/system/user",
+      "sortOrder": 1,
+      "component": "./system/user",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:user:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "新增",
+          "permissionCodes": [
+            "system:user:create"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:user:update"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "删除",
+          "permissionCodes": [
+            "system:user:delete"
+          ],
+          "sortOrder": 4,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "角色管理",
+      "path": "/system/role",
+      "sortOrder": 2,
+      "component": "./system/role",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:role:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "新增",
+          "permissionCodes": [
+            "system:role:create"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:role:update"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "删除",
+          "permissionCodes": [
+            "system:role:delete"
+          ],
+          "sortOrder": 4,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "授权",
+          "permissionCodes": [
+            "system:role:grant"
+          ],
+          "sortOrder": 5,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "部门管理",
+      "path": "/system/department",
+      "sortOrder": 3,
+      "component": "./system/department",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:department:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "新增",
+          "permissionCodes": [
+            "system:department:create"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:department:update"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "删除",
+          "permissionCodes": [
+            "system:department:delete"
+          ],
+          "sortOrder": 4,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "岗位管理",
+      "path": "/system/position",
+      "sortOrder": 4,
+      "component": "./system/position",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:position:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "新增",
+          "permissionCodes": [
+            "system:position:create"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:position:update"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "删除",
+          "permissionCodes": [
+            "system:position:delete"
+          ],
+          "sortOrder": 4,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "菜单管理",
+      "path": "/system/menu",
+      "sortOrder": 5,
+      "component": "./system/menu",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:menu:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "新增",
+          "permissionCodes": [
+            "system:menu:create"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:menu:update"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "删除",
+          "permissionCodes": [
+            "system:menu:delete"
+          ],
+          "sortOrder": 4,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "字典管理",
+      "path": "/system/dict",
+      "sortOrder": 6,
+      "component": "./system/dict",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:dict:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "新增",
+          "permissionCodes": [
+            "system:dict:create"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:dict:update"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "删除",
+          "permissionCodes": [
+            "system:dict:delete"
+          ],
+          "sortOrder": 4,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "地区管理",
+      "path": "/system/region",
+      "sortOrder": 7,
+      "component": "./system/region",
+      "icon": "EnvironmentOutlined",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "region:list",
+            "region:tree",
+            "region:path",
+            "region:read"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "站点配置",
+      "path": "/system/site",
+      "sortOrder": 8,
+      "component": "./system/site",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:option:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:option:update"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "云存储",
+      "path": "/system/storage",
+      "sortOrder": 9,
+      "component": "./system/storage",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:storage:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:storage:update"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "上传凭证",
+          "permissionCodes": [
+            "system:storage:upload-token"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "媒体库",
+      "path": "/system/attachments",
+      "sortOrder": 10,
+      "component": "./system/attachments",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:attachment:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "上传",
+          "permissionCodes": [
+            "system:attachment:create"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:attachment:update"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "删除",
+          "permissionCodes": [
+            "system:attachment:delete"
+          ],
+          "sortOrder": 4,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "name": "登录日志",
+      "path": "/system/login-log",
+      "sortOrder": 11,
+      "component": "./system/login-log",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:login-log:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        }
+      ]
+    }
   ]
 }
