@@ -21,6 +21,7 @@ import { bindRoleMenusByDefault } from './modules/system-role-menu.js';
 import { bindRolePermissionsByDefault } from './modules/system-role-permission.js';
 import { seedDicts } from './modules/system-dict.js';
 import { seedSysOptions } from './modules/system-option.js';
+import { seedRegions } from './modules/system-region.js';
 
 /**
  * 把 `core/routes/**` 下所有已编译路由模块 import 进来，仅用于触发
@@ -63,6 +64,7 @@ async function runSeedTransaction(db: SeedDb) {
   await bindRolePermissionsByDefault(db, adminUser.id);
   await seedDicts(db, adminUser.id, dictsSeed);
   await seedSysOptions(db, adminUser.id, sysOptionsSeed);
+  await seedRegions(db);
 }
 
 const APP_ROOT = join(__dirname, '..', '..', '..')
