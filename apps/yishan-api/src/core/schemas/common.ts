@@ -51,11 +51,15 @@ const PaginationSchema = Type.Object(
 );
 
 // 通用分页请求参数
+// 注意：page / pageSize 均设置上限，防止 `?page=1e10` 这种科学计数法输入被
+// 直接解释为整数后传给 OFFSET，造成大偏移慢查询/DoS（见 FIX-api-validation-2026-07-24 N3）。
+// 兜底截断在仓库层（repositories/_pagination.ts 的 clampOffset）仍保留一道防线。
 export const PaginationQuerySchema = Type.Object(
   {
     page: Type.Optional(
       Type.Integer({
         minimum: 1,
+        maximum: 100000,
         default: 1,
         description: "页码",
       })

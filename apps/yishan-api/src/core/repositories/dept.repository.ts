@@ -18,6 +18,7 @@ import {
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysDept, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
+import { clampOffset } from "./_pagination.js";
 
 // ============================================================================
 // Internal Input Types
@@ -148,7 +149,7 @@ export class DeptRepository {
       .orderBy(dir(orderCol));
 
     const depts = pageSize > 0
-      ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+      ? await baseQuery.limit(pageSize).offset(clampOffset(page, pageSize))
       : await baseQuery;
     return depts as DeptFlatRow[];
   }

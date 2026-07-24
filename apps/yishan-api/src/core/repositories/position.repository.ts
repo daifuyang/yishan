@@ -9,6 +9,7 @@ import { aliasedTable, and, asc, desc, eq, isNull, like, or, sql, type SQL } fro
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysPost, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
+import { clampOffset } from "./_pagination.js";
 
 // ============================================================================
 // Types
@@ -147,7 +148,7 @@ export class SysPositionRepository {
       .orderBy(dir(orderCol));
 
     const [rows, totalRow] = await Promise.all([
-      pageSize > 0 ? baseQuery.limit(pageSize).offset((page - 1) * pageSize) : baseQuery,
+      pageSize > 0 ? baseQuery.limit(pageSize).offset(clampOffset(page, pageSize)) : baseQuery,
       drizzleDb.select({ c: sqlCount() }).from(sysPost).where(where),
     ]);
     return { rows, total: Number(totalRow[0]?.c ?? 0) };

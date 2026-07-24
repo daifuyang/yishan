@@ -3,7 +3,7 @@
  */
 
 import { randomBytes, createHash } from "node:crypto";
-import { and, desc, eq, getTableColumns, gt, isNull, or } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysApiToken } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
@@ -211,5 +211,58 @@ export class ApiTokenRepository {
       .update(sysApiToken)
       .set({ lastUsedAt: now, lastUsedIp: ip, updatedAt: now })
       .where(eq(sysApiToken.id, id));
+  }
+
+  /**
+   * 全局 API Token 统计（不限定 userId），用于 `/api/v1/system/token-stats`：
+   *   - total:    未软删的所有 PAT 数
+   *   - active:   未软删且未过期（expiresAt 为 NULL 或 > now）
+   *   - expired:  未软删但已过期（expiresAt <= now）
+   *   - revoked:  已被软删除（deletedAt IS NOT NULL）
+   * 四个计数互斥地覆盖 total：active + expired + revoked = total。
+   *
+   * 与 UserTokenRepository.getGlobalTokenStats 口径一致，但底层表是 sys_api_token（PAT），
+   * 不是 sys_user_token（JWT access token）。
+   */
+  static async getGlobalApiTokenStats(db: AppQueryDb = drizzleDb) {
+    const now = dateUtils.now();
+    const notDeletedCond = isNull(sysApiToken.deletedAt);
+
+    const [totalRow] = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(sysApiToken)
+      .where(notDeletedCond);
+
+    const [activeRow] = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(sysApiToken)
+      .where(
+        and(
+          notDeletedCond,
+          or(isNull(sysApiToken.expiresAt), gt(sysApiToken.expiresAt, now))!,
+        )!,
+      );
+
+    const [expiredRow] = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(sysApiToken)
+      .where(
+        and(
+          notDeletedCond,
+          lt(sysApiToken.expiresAt, now),
+        )!,
+      );
+
+    const [revokedRow] = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(sysApiToken)
+      .where(isNotNull(sysApiToken.deletedAt));
+
+    return {
+      total: Number(totalRow?.c ?? 0),
+      active: Number(activeRow?.c ?? 0),
+      expired: Number(expiredRow?.c ?? 0),
+      revoked: Number(revokedRow?.c ?? 0),
+    };
   }
 }

@@ -19,6 +19,7 @@ import {
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysMenu, sysMenuPermission, sysRoleMenu, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
+import { clampOffset } from "./_pagination.js";
 
 // ============================================================================
 // Internal Input Types
@@ -171,7 +172,7 @@ export class MenuRepository {
       .orderBy(dir(orderCol));
 
     const menus = pageSize > 0
-      ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+      ? await baseQuery.limit(pageSize).offset(clampOffset(page, pageSize))
       : await baseQuery;
     return menus as MenuListRow[];
   }

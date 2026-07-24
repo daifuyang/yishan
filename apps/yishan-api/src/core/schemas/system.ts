@@ -49,6 +49,25 @@ export const cleanupTokensResp = {
   }
 } as const;
 
+/**
+ * Token 分类统计子结构（PAT 与 JWT access token 共用同一种口径）。
+ * N6（FIX-api-validation-2026-07-24）：原 `total/active/expired/revoked` 字段
+ * 实际统计口径混在一起，现拆分为 `apiTokens`（sys_api_token，PAT）和
+ * `userTokens`（sys_user_token，JWT access token）两个子对象，每个子对象内
+ * 仍是 total/active/expired/revoked 四数。
+ */
+export const tokenCategoryStats = {
+  $id: "tokenCategoryStats",
+  type: "object",
+  properties: {
+    total: { type: "integer", description: "总数（未软删）" },
+    active: { type: "integer", description: "活跃数（未过期 / 未撤销）" },
+    expired: { type: "integer", description: "过期数（未撤销但已过期）" },
+    revoked: { type: "integer", description: "已撤销 / 已软删数" },
+  },
+  required: ["total", "active", "expired", "revoked"],
+} as const;
+
 export const tokenStatsResp = {
   $id: "tokenStatsResp",
   type: "object",
@@ -60,25 +79,41 @@ export const tokenStatsResp = {
     data: {
       type: "object",
       properties: {
+        // === 新结构（N6 之后）：按 token 类型拆分 ===
+        apiTokens: {
+          $ref: "tokenCategoryStats#",
+          description: "API Token (PAT, sys_api_token) 统计",
+        },
+        userTokens: {
+          $ref: "tokenCategoryStats#",
+          description: "用户登录 token (JWT access/refresh, sys_user_token) 统计",
+        },
+        // === 旧结构：保留以过渡（与 userTokens 同口径，但扁平）===
         totalTokens: {
           type: "integer",
-          description: "总token数量"
+          description: "@deprecated 请改用 userTokens.total；保留以兼容旧客户端",
+          deprecated: true,
         },
         activeTokens: {
           type: "integer",
-          description: "活跃token数量"
+          description: "@deprecated 请改用 userTokens.active",
+          deprecated: true,
         },
         expiredTokens: {
           type: "integer",
-          description: "过期token数量"
+          description: "@deprecated 请改用 userTokens.expired",
+          deprecated: true,
         },
         revokedTokens: {
           type: "integer",
-          description: "已撤销token数量"
-        }
-      }
-    }
-  }
+          description: "@deprecated 请改用 userTokens.revoked",
+          deprecated: true,
+        },
+      },
+      // apiTokens / userTokens 是必填（旧字段保留以兼容，因此不强制）
+      required: ["apiTokens", "userTokens"],
+    },
+  },
 } as const;
 
 // 系统参数键
@@ -360,6 +395,7 @@ export const storageConfigImportResp = {
 export default function registerSystem(fastify: any) {
   fastify.addSchema(cleanupTokensReq);
   fastify.addSchema(cleanupTokensResp);
+  fastify.addSchema(tokenCategoryStats);
   fastify.addSchema(tokenStatsResp);
   fastify.addSchema(systemOptionKey);
   fastify.addSchema(setSystemOptionReq);

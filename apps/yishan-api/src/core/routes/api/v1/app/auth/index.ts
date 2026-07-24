@@ -61,7 +61,9 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/logout",
     {
-      access: { permission: PERMS.LOGOUT },
+      // softAuth: true —— 允许请求体 `{ token }` 作为 Authorization header 的回退，
+      // 解决"鸡生蛋"场景：access token 过期时客户端仍可凭 refresh token / 当前 token 撤销。
+      access: { permission: PERMS.LOGOUT, softAuth: true },
       schema: {
         summary: "移动端登出",
         description: "撤销当前用户的访问令牌",

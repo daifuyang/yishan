@@ -6,6 +6,7 @@ import { and, asc, desc, eq, getTableColumns, gte, isNotNull, isNull, like, lte,
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysLoginLog } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
+import { clampOffset } from "./_pagination.js";
 import type { LoginLogListRow, LoginLogDetailRow } from "../mappers/login-log.mapper.js";
 
 // ============================================================================
@@ -118,7 +119,7 @@ export class LoginLogRepository {
 
     const baseQuery = drizzleDb.select(loginLogPublicColumns).from(sysLoginLog).where(where).orderBy(dir(orderCol));
     const rows = pageSize > 0
-      ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+      ? await baseQuery.limit(pageSize).offset(clampOffset(page, pageSize))
       : await baseQuery;
 
     return rows;
@@ -160,7 +161,7 @@ export class LoginLogRepository {
       .orderBy(desc(sysLoginLog.createdAt));
 
     return pageSize > 0
-      ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+      ? await baseQuery.limit(pageSize).offset(clampOffset(page, pageSize))
       : await baseQuery;
   }
 
