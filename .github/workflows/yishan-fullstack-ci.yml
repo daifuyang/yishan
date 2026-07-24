@@ -61,6 +61,9 @@ jobs:
       - name: Admin Lint
         run: pnpm --filter yishan-admin lint
 
+      - name: Main Baseline Guard
+        run: node scripts/check-main-baseline.mjs
+
       - name: Admin Build
         run: pnpm --filter yishan-admin build
 
