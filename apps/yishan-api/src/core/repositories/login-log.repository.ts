@@ -214,4 +214,28 @@ export class LoginLogRepository {
       );
     return Number(row?.c ?? 0);
   }
+
+  /**
+   * 登录失败次数（按 username），用于应用层 brute-force 防护。
+   * "失败"指 status=0（"用户名或密码错误" / "用户不存在" / "账号被禁用"等）。
+   * 不区分 userId 是否为 null——对不存在的用户名暴力穷举也计入。
+   */
+  static async countFailuresForUsernameSince(
+    username: string,
+    since: Date,
+    db: AppQueryDb = drizzleDb,
+  ): Promise<number> {
+    const [row] = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(sysLoginLog)
+      .where(
+        and(
+          eq(sysLoginLog.username, username),
+          eq(sysLoginLog.status, 0),
+          gte(sysLoginLog.createdAt, since),
+          isNull(sysLoginLog.deletedAt),
+        ),
+      );
+    return Number(row?.c ?? 0);
+  }
 }

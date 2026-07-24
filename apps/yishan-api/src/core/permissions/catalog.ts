@@ -14,30 +14,54 @@ export interface PermissionRef {
 }
 
 const REGISTRY: PermissionRef[] = [];
-const CODES: Set<string> = new Set();
+// 仅在 registerPermissions 内写入；外部通过 PERMISSION_CODES 拿到的是冻结视图。
+// 用 as ReadonlySet<string> 强转以表达"外部不可 mutate"的契约。
+let CODES_BUILDER: Set<string> = new Set();
 
 /**
  * 在启动期注册权限声明。每个 `code` 全局唯一；重复注册 throw。
  * 调用时机：本文件被 import 时，由 routes 文件模块顶层副作用触发。
+ * 第一次调用本函数后，CODES 即被冻结为只读视图——后续任何 CODES.add() 都会失败。
  */
 export const registerPermissions = (...defs: readonly PermissionRef[]): void => {
   for (const def of defs) {
     if (!def.code || !def.label || !def.group) {
       throw new Error(`permission declaration requires code, label and group: ${JSON.stringify(def)}`);
     }
-    if (CODES.has(def.code)) {
+    if (CODES_BUILDER.has(def.code)) {
       throw new Error(`duplicate permission declaration: ${def.code}`);
     }
-    CODES.add(def.code);
+    CODES_BUILDER.add(def.code);
     REGISTRY.push(def);
   }
 };
 
+let _FROZEN_CODES: ReadonlySet<string> | null = null;
+function getCodesReadonly(): ReadonlySet<string> {
+  if (!_FROZEN_CODES) {
+    // 一次性冻结视图：从此任何 CODES.add() 都不会反映进来。
+    _FROZEN_CODES = Object.freeze(new Set(CODES_BUILDER)) as ReadonlySet<string>;
+  }
+  return _FROZEN_CODES;
+}
+
 /**
- * 当前已注册的所有 code 集合 — 与 CODES 共享引用。注册后会即时反映。
- * 导出为 ReadonlySet<string>，外部不能 mutate；新增只能通过 registerPermissions。
+ * 当前已注册的所有 code 集合的只读视图。
+ * 外部代码只能 has() / for..of；不能 add() / delete()。
+ * 新增只能通过 registerPermissions（启动期）。
  */
-export const PERMISSION_CODES: ReadonlySet<string> = CODES;
+export const PERMISSION_CODES: ReadonlySet<string> = new Proxy(new Set(), {
+  has: (_t, p) => getCodesReadonly().has(p as string),
+  get: (_t, p) => {
+    const s = getCodesReadonly() as any;
+    return s[p];
+  },
+  ownKeys: () => [...getCodesReadonly().keys()],
+  getOwnPropertyDescriptor: (_t, p) => {
+    const s = getCodesReadonly() as any;
+    return s.has(p) ? { configurable: true, enumerable: true, value: s[p], writable: false } : undefined;
+  },
+});
 
 /** 启动期一次性复制为冻结数组；菜单创建、admin 后台展示使用。 */
 export const listPermissions = (): ReadonlyArray<PermissionRef> =>

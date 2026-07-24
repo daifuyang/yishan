@@ -15,6 +15,7 @@ export * from './position.js';
 export * from './menu.js';
 export * from './dict.js';
 export * from './attachment.js';
+export * from './resource.js';
 
 // 重新导出常用的业务码
 import { SUCCESS_CODE, SystemErrorCode } from './common.js';
@@ -28,6 +29,7 @@ import { PositionErrorCode } from './position.js';
 import { MenuErrorCode } from './menu.js';
 import { DictErrorCode } from './dict.js';
 import { AttachmentErrorCode } from './attachment.js';
+import { ResourceErrorCode } from './resource.js';
 
 // 合并所有错误码
 export const ErrorCode = {
@@ -42,6 +44,7 @@ export const ErrorCode = {
   ...MenuErrorCode,
   ...DictErrorCode,
   ...AttachmentErrorCode,
+  ...ResourceErrorCode,
 } as const;
 
 // 导入所有错误消息
