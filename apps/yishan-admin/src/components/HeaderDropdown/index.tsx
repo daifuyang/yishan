@@ -15,6 +15,7 @@ const useStyles = createStyles(({ token }) => {
 });
 
 export type HeaderDropdownProps = {
+  /** @deprecated antd 6 用 classNames.root 代替 */
   overlayClassName?: string;
   placement?:
     | 'bottomLeft'
@@ -32,8 +33,10 @@ const HeaderDropdown: React.FC<HeaderDropdownProps> = ({
   const { styles } = useStyles();
   return (
     <Dropdown
-      overlayClassName={classNames(styles.dropdown, cls)}
       {...restProps}
+      classNames={{
+        root: classNames(styles.dropdown, cls),
+      }}
     />
   );
 };

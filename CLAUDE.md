@@ -149,3 +149,4 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 - **FC deploy**: `.github/workflows/yishan-fc-migrate.yml` and `yishan-fullstack-cd-fc.yml` deploy to Alibaba Function Compute. `apps/yishan-api/deploy/` and `apps/yishan-api/dockerfile` cover the prod image build (which excludes devDeps).
 - **Cert rotation**: `yishan-cert-rotate-fc.yml` rotates FC certs.
 - **No real credentials in repo**: demo creds intentionally not committed; per README, request from the maintainer.
+- **sys_region seed data**: 省市区三级（~3400 条）由 `sys_region` 表承载，数据源是 modood/Administrative-divisions-of-China 的 `pca-code.json`，嵌在 `apps/yishan-api/src/scripts/seed/config/`。`pnpm --filter yishan-api db:seed` 自动跑 `system-region.ts` 把数据灌进 MySQL（INSERT ... ON DUPLICATE KEY UPDATE，幂等）。前端复用 `<ProFormRegionCascader name="area" />` 即可拿到三段级联选择器，无需另写 service。
