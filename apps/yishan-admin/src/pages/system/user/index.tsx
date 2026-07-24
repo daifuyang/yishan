@@ -13,7 +13,6 @@ import {
   getUserList,
   updateUser,
 } from '@/services/generated/sysUsers';
-import { UserStatus, userStatusEnum } from '@/utils/user-status';
 import UserForm from './components/UserForm';
 
 /**
@@ -23,18 +22,23 @@ const UserList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // 用户状态：来自后端的 number，label 走 utils/user-status.ts。
-  // 不再读 dictDataMap.user_status（字典已删除）。
+  // 获取全局字典数据
+  const { initialState } = useModel('@@initialState');
+  const dictDataMap = initialState?.dictDataMap || {};
+
+  // 获取用户状态字典
+  const userStatusDict: Array<{ label: string; value: string }> =
+    dictDataMap.user_status || [];
 
   /**
    * 处理用户状态变更
    */
-  const handleStatusChange = async (id: number, status: number) => {
+  const handleStatusChange = async (id: number, status: string) => {
     // 从启用切换到禁用，或从禁用切换到启用
-    const newStatus = status === UserStatus.ACTIVE ? UserStatus.DISABLED : UserStatus.ACTIVE;
+    const newStatus = status === '1' ? '0' : '1';
     const res = await updateUser(
       { id },
-      { status: newStatus },
+      { status: newStatus as '0' | '1' | '2' },
     );
     if (res.success) {
       message.success(res.message);
@@ -125,7 +129,21 @@ const UserList: React.FC = () => {
     {
       title: '状态',
       dataIndex: 'status',
-      valueEnum: userStatusEnum,
+      valueEnum: userStatusDict.reduce(
+        (acc: Record<string, { text: string; status: string }>, item) => {
+          acc[item.value] = {
+            text: item.label,
+            status:
+              item.value === '1'
+                ? 'Success'
+                : item.value === '2'
+                  ? 'Warning'
+                  : 'Error',
+          };
+          return acc;
+        },
+        {} as Record<string, { text: string; status: string }>,
+      ),
     },
     {
       title: '最后登录',
@@ -153,9 +171,9 @@ const UserList: React.FC = () => {
             onFinish={handleFormSuccess}
             initialValues={record}
           />
-          {record.status !== UserStatus.LOCKED && (
+          {record.status !== '2' && (
             <a onClick={() => handleStatusChange(record.id, record.status)}>
-              {record.status === UserStatus.ACTIVE ? '禁用' : '启用'}
+              {record.status === '1' ? '禁用' : '启用'}
             </a>
           )}
           <Popconfirm
@@ -163,13 +181,13 @@ const UserList: React.FC = () => {
             onConfirm={() => handleRemove(record.id)}
           >
             <a
-              aria-disabled={record.status === UserStatus.LOCKED}
+              aria-disabled={record.status === '2'}
               onClick={(event) => {
-                if (record.status === UserStatus.LOCKED) event.preventDefault();
+                if (record.status === '2') event.preventDefault();
               }}
               style={{
                 color: '#ff4d4f',
-                pointerEvents: record.status === UserStatus.LOCKED ? 'none' : undefined,
+                pointerEvents: record.status === '2' ? 'none' : undefined,
               }}
             >
               删除

@@ -993,7 +993,7 @@ const Center: React.FC = () => {
                 title={
                   <Space size={8}>
                     {user?.username}
-                    {user?.status === 1 ? (
+                    {user?.status === '1' ? (
                       <Tag color="green">
                         {intl.formatMessage({
                           id: 'account.center.statusActive',

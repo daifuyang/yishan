@@ -79,7 +79,7 @@ export default fp(async (fastify) => {
         )
       }
 
-      if (currentUser.status === 0 || currentUser.status === 2) {
+      if (currentUser.status === "0" || currentUser.status === "2") {
         throw new BusinessError(
           AuthErrorCode.API_TOKEN_REVOKED,
           'API Token 关联用户已被禁用或锁定。'
@@ -151,7 +151,7 @@ export default fp(async (fastify) => {
 
     // 检测用户的状态，是否被删除，拉黑等
     // 账号被禁用
-    if (currentUser.status === 0) {
+    if (currentUser.status === "0") {
       throw new BusinessError(
         UserErrorCode.USER_DISABLED,
         '账号已被禁用，无法访问。'
@@ -159,7 +159,7 @@ export default fp(async (fastify) => {
     }
 
     // 账号被锁定
-    if (currentUser.status === 2) {
+    if (currentUser.status === "2") {
       throw new BusinessError(
         AuthErrorCode.ACCOUNT_LOCKED,
         '账号已被锁定，请联系管理员。'

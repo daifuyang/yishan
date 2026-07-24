@@ -3,11 +3,11 @@
  */
 
 import { dateUtils } from "../../utils/date.js";
-import { getUserStatusLabel, type UserStatus } from "../constants/user-status.js";
 import type { SysUserResp } from "../schemas/user.js";
 import type { UserListRowWithRelations, UserDetailRow } from "../repositories/user.repository.js";
 
 const genderMap = { 0: "未知", 1: "男", 2: "女" };
+const statusMap = { 0: "禁用", 1: "启用", 2: "锁定" };
 
 export class UserMapper {
   static toListResp(user: UserListRowWithRelations): SysUserResp {
@@ -22,8 +22,8 @@ export class UserMapper {
       gender: user.gender.toString(),
       genderName: genderMap[user.gender as keyof typeof genderMap] || "未知",
       birthDate: dateUtils.formatDate(user.birthDate) ?? undefined,
-      status: user.status as UserStatus,
-      statusName: getUserStatusLabel(user.status as UserStatus),
+      status: user.status.toString(),
+      statusName: statusMap[user.status as keyof typeof statusMap] || "未知",
       lastLoginTime: dateUtils.formatISO(user.lastLoginTime) ?? undefined,
       lastLoginIp: user.lastLoginIp ?? undefined,
       loginCount: user.loginCount,
@@ -50,8 +50,8 @@ export class UserMapper {
       gender: user.gender.toString(),
       genderName: genderMap[user.gender as keyof typeof genderMap] || "未知",
       birthDate: dateUtils.formatDate(user.birthDate) ?? undefined,
-      status: user.status as UserStatus,
-      statusName: getUserStatusLabel(user.status as UserStatus),
+      status: user.status.toString(),
+      statusName: statusMap[user.status as keyof typeof statusMap] || "未知",
       lastLoginTime: dateUtils.formatISO(user.lastLoginTime) ?? undefined,
       lastLoginIp: user.lastLoginIp ?? undefined,
       loginCount: user.loginCount,

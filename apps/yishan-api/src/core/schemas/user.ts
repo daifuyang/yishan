@@ -33,10 +33,10 @@ const SysUserSchema = Type.Object(
         example: "2008-08-08",
       })
     ),
-    status: Type.Number({
-      enum: [0, 1, 2],
+    status: Type.String({
+      enum: ["0", "1", "2"],
       description: "状态（0-禁用，1-启用，2-锁定）",
-      example: 1,
+      example: "1",
     }),
     statusName: Type.String({ description: "状态名称", example: "启用" }),
     lastLoginTime: Type.Optional(
