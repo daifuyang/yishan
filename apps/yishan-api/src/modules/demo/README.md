@@ -78,13 +78,16 @@ npx drizzle-kit --config=apps/yishan-api/src/modules/demo/drizzle.config.ts migr
 
 | 路由 | 说明 |
 | --- | --- |
-| `GET  /api/demo/v1` | 模块版本入口 |
-| `GET  /api/demo/v1/info` | 当前进程信息（不读库） |
-| `GET  /api/demo/v1/documents` | 列出预置的 3 条演示文档 |
-| `GET  /api/demo/v1/documents/:id` | 单条文档 |
-| `POST /api/demo/v1/documents` | 新增文档（TypeBox 校验 body） |
+| `GET    /api/demo/v1/info` | 当前进程信息（不读库） |
+| `GET    /api/demo/v1/todos` | Todo 列表 |
+| `GET    /api/demo/v1/todos/:id` | 单条 Todo |
+| `POST   /api/demo/v1/todos` | 新增 Todo（TypeBox 校验 body） |
+| `PATCH  /api/demo/v1/todos/:id` | 更新 Todo |
+| `DELETE /api/demo/v1/todos/:id` | 删除 Todo |
 
-所有 demo 路由统一受 `demo:documents:list` 权限码保护（见 `routes/v1/index.ts`），通过 `createRouteRegistrar` 注入 preHandler。
+路由按资源拆分，对齐 core 约定（`@fastify/autoload` 目录即 URL）：一资源一目录一 plugin，
+每个 `routes/v1/<resource>/index.ts` 只负责自身资源，并就地声明自己的权限码（`registerPermissions`）。
+权限校验通过 `createRouteRegistrar` 注入 preHandler。
 
 ## Swagger UI
 

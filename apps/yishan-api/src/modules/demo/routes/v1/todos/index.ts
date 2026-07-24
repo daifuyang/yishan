@@ -1,23 +1,25 @@
 import { type FastifyPluginAsync } from 'fastify'
+import { Type } from '@sinclair/typebox'
 import { registerPermissions, type PermissionRef } from '@/core/permissions/catalog.js'
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
-import { getServerInfo } from '../../services/server-info.service.js'
-import { TodosService } from '../../services/todos.service.js'
+import { TodosService } from '../../../services/todos.service.js'
 import { drizzleDb } from '@/db'
 import {
   TodoCreateReqSchema,
   TodoUpdateReqSchema,
-} from '../../schemas/todos.schema.js'
+} from '../../../schemas/todos.schema.js'
 import {
   ROUTE_TAG,
-  ServerInfoRespSchema,
   TodoListRespSchema,
   TodoRespSchema,
-} from '../../schemas/routes.schema.js'
+} from '../../../schemas/routes.schema.js'
 
+/**
+ * demo Todo 资源。
+ *
+ * 目录即 URL：autoload 推导为 `/api/demo/v1/todos`，本文件只负责该资源。
+ */
 export const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  HEALTH: { code: 'demo:health:read', label: '示例插件-健康检查', group: 'demo' },
-  QUICKSTART: { code: 'demo:quickstart:read', label: '示例插件-快速入门', group: 'demo' },
   TODO_LIST: { code: 'demo:todos:list', label: '示例插件-Todo 示例-查看', group: 'demo' },
   TODO_CREATE: { code: 'demo:todos:create', label: '示例插件-Todo 示例-新建', group: 'demo' },
   TODO_UPDATE: { code: 'demo:todos:update', label: '示例插件-Todo 示例-编辑', group: 'demo' },
@@ -25,29 +27,17 @@ export const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
 })
 registerPermissions(...Object.values(PERMS))
 
+function TypeIdParams() {
+  return Type.Object({ id: Type.String() })
+}
+
 export default (async (app) => {
   const route = createRouteRegistrar(app)
   const todos = new TodosService(drizzleDb)
 
-  // 健康检查
-  route.get(
-    '/info',
-    {
-      access: { permission: PERMS.HEALTH },
-      schema: {
-        tags: [ROUTE_TAG],
-        summary: '插件健康检查',
-        description: '返回模块自身与运行环境的只读信息，用于演示 plugin 不读 db 的纯函数 service。',
-        operationId: 'demoV1Info',
-        response: { 200: ServerInfoRespSchema },
-      },
-    },
-    async () => getServerInfo(),
-  )
-
   // Todo 列表
   route.get(
-    '/todos',
+    '/',
     {
       access: { permission: PERMS.TODO_LIST },
       schema: {
@@ -62,7 +52,7 @@ export default (async (app) => {
 
   // Todo 详情
   route.get(
-    '/todos/:id',
+    '/:id',
     {
       access: { permission: PERMS.TODO_LIST },
       schema: {
@@ -81,7 +71,7 @@ export default (async (app) => {
 
   // Todo 新建
   route.post(
-    '/todos',
+    '/',
     {
       access: { permission: PERMS.TODO_CREATE },
       schema: {
@@ -97,7 +87,7 @@ export default (async (app) => {
 
   // Todo 更新
   route.patch(
-    '/todos/:id',
+    '/:id',
     {
       access: { permission: PERMS.TODO_UPDATE },
       schema: {
@@ -117,7 +107,7 @@ export default (async (app) => {
 
   // Todo 删除
   route.delete(
-    '/todos/:id',
+    '/:id',
     {
       access: { permission: PERMS.TODO_DELETE },
       schema: {
@@ -136,9 +126,3 @@ export default (async (app) => {
     },
   )
 }) as FastifyPluginAsync
-
-import { Type } from '@sinclair/typebox'
-
-function TypeIdParams() {
-  return Type.Object({ id: Type.String() })
-}
