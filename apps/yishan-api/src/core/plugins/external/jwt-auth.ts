@@ -101,7 +101,7 @@ export default fp(async (fastify) => {
    * 标准 JWT 鉴权 preHandler。强制要求 access token 类型；token 必须存在于
    * sys_user_token 中且未被撤销。挂载 currentUser。
    */
-  fastify.decorate('authenticate', async function(request: FastifyRequest, reply: FastifyReply) {
+  fastify.decorate('authenticate', async function authenticate(request: FastifyRequest, reply: FastifyReply) {
     const { token } = extractStandardToken(request)
     if (!token) {
       throw new BusinessError(
@@ -191,7 +191,7 @@ export default fp(async (fastify) => {
    * 撤销整个会话。
    * 完全无 token 时抛 AuthErrorCode.UNAUTHORIZED。
    */
-  fastify.decorate('softAuthenticate', async function(request: FastifyRequest, reply: FastifyReply) {
+  fastify.decorate('softAuthenticate', async function softAuthenticate(request: FastifyRequest, reply: FastifyReply) {
     let { token } = extractStandardToken(request)
 
     // 仅在没有任何"标准来源"（header / cookie）时，才尝试 body.token 回退。

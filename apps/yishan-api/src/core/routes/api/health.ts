@@ -48,6 +48,7 @@ const health: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           "返回服务的健康状态、版本号、当前时间和数据库连通性（Section 7）。",
         operationId: "healthCheck",
         tags: ["system"],
+        security: [],
         response: {
           200: {
             type: "object",

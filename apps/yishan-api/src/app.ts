@@ -87,7 +87,25 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
     }
   })
 
-  // 3.6 挂载模块路由（gate 已就位）。
+  // 3.6 onRoute hook：自动为鉴权路由注入 security 声明。
+  //     这个 hook 必须在挂载模块路由之前注册，并且要在 app 上下文（route 的公共祖先）
+  //     而非兄弟上下文中，才能被 module/autoload 子上下文中的路由触发。
+  //     restish 等 OpenAPI 客户端不解析全局 security 继承（OpenAPI 3.0 规范承认但
+  //     客户端实现参差不齐），因此需要每个 operation 显式声明 security。
+  //     逻辑：检查 route.preHandler 中是否存在 authenticate 或 softAuthenticate
+  //     （函数名来自 jwt-auth.ts 中 decorate 的 named function），如果存在且
+  //     schema 没有 security 字段，注入 [{ bearerAuth: [] }]。
+  fastify.addHook('onRoute', (route) => {
+    const handlers: any[] = Array.isArray(route.preHandler) ? route.preHandler : []
+    const names = handlers.map((h: any) => h?.name ?? h?.toString?.()?.slice(0, 30) ?? '?')
+    const hasAuth = names.includes('authenticate')
+    const hasSoftAuth = names.includes('softAuthenticate')
+    if ((hasAuth || hasSoftAuth) && route.schema && !route.schema.security) {
+      route.schema.security = [{ bearerAuth: [] }]
+    }
+  })
+
+  // 3.7 挂载模块路由（gate 已就位）。
   await fastify.moduleLoader.mountAllOnDisk(diskModules)
 
   // 3.7 全局 not-found handler：Fastify 默认的 notFound 绕过 global error handler，
