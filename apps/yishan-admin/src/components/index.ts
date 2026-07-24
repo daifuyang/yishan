@@ -13,6 +13,7 @@ import { AvatarDropdown, AvatarName } from "./RightContent/AvatarDropdown";
  * 部门树选择组件
  */
 import { ProFormDeptTreeSelect } from "./DeptTreeSelect";
+import { ProFormRegionCascader } from "./RegionCascader";
 import QiniuUpload from "./QiniuUpload";
 import {
   AttachmentSelect,
@@ -34,6 +35,7 @@ export {
   Question,
   SelectLang,
   ProFormDeptTreeSelect,
+  ProFormRegionCascader,
   QiniuUpload,
   AttachmentSelect,
   AttachmentSingleSelect,
