@@ -69,7 +69,12 @@ describe('System routes', () => {
 
   it('GET /token-stats 应返回统计信息', async () => {
     const app = await buildApp()
-    const stats = { totalTokens: 10, activeTokens: 8, expiredTokens: 2, revokedTokens: 1 }
+    // N6: 新结构要求 apiTokens + userTokens 子对象;旧扁平字段保留兼容
+    const stats = {
+      apiTokens: { total: 1, active: 1, expired: 0, revoked: 0 },
+      userTokens: { total: 10, active: 8, expired: 2, revoked: 1 },
+      totalTokens: 10, activeTokens: 8, expiredTokens: 2, revokedTokens: 1,
+    }
     vi.spyOn(SystemService, 'getTokenStats').mockResolvedValue(stats)
 
     const res = await app.inject({ method: 'GET', url: '/token-stats' })
@@ -93,6 +98,33 @@ describe('System routes', () => {
     const body = res.json()
     expect(body.success).toBe(false)
     expect(body.code).toBe(SystemManageErrorCode.CRON_JOB_FAILED)
+
+    await app.close()
+  })
+
+  // N6: token-stats response 拆分结构验证
+  it('GET /token-stats 应返回 apiTokens 和 userTokens 子结构(N6)', async () => {
+    const app = await buildApp()
+    const stats = {
+      apiTokens: { total: 1, active: 1, expired: 0, revoked: 0 },
+      userTokens: { total: 5, active: 4, expired: 1, revoked: 1 },
+      totalTokens: 5, activeTokens: 4, expiredTokens: 1, revokedTokens: 1, // legacy
+    }
+    vi.spyOn(SystemService, 'getTokenStats').mockResolvedValue(stats)
+
+    const res = await app.inject({ method: 'GET', url: '/token-stats' })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    // 新结构必须有 apiTokens / userTokens 子对象
+    expect(body.data).toHaveProperty('apiTokens')
+    expect(body.data).toHaveProperty('userTokens')
+    expect(body.data.apiTokens).toEqual(stats.apiTokens)
+    expect(body.data.userTokens).toEqual(stats.userTokens)
+    // 旧扁平字段仍保留(向后兼容)
+    expect(body.data).toHaveProperty('totalTokens')
+    expect(body.data).toHaveProperty('activeTokens')
+    expect(body.data).toHaveProperty('expiredTokens')
+    expect(body.data).toHaveProperty('revokedTokens')
 
     await app.close()
   })
