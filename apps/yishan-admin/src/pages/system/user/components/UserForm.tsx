@@ -11,6 +11,7 @@ import { useModel } from "@umijs/max";
 import { getRoleList } from "@/services/generated/sysRoles";
 import { getUserDetail, createUser, updateUser } from "@/services/generated/sysUsers";
 import { ProFormDeptTreeSelect } from "@/components";
+import { getUserStatusLabel, UserStatus } from "@/utils/user-status";
 
 export interface UserFormProps {
   title: string;
@@ -23,17 +24,21 @@ export interface UserFormProps {
 const UserForm: React.FC<UserFormProps> = ({
   title,
   trigger,
-  initialValues = { status: "1", gender: "0" },
+  initialValues = { status: UserStatus.ACTIVE, gender: "0" },
   onFinish,
 }) => {
   // 获取全局字典数据
   const { initialState } = useModel('@@initialState');
   const dictDataMap = initialState?.dictDataMap || {};
 
-  // 获取性别字典
+  // 性别字典保留：通用字典，不在本次清理范围
   const genderDict = dictDataMap.user_gender || [];
-  // 获取用户状态字典
-  const userStatusDict = dictDataMap.user_status || [];
+  // 用户状态不再走字典：固定 3 值，从 utils/user-status.ts 取 label
+  const userStatusOptions = [
+    { label: getUserStatusLabel(UserStatus.DISABLED), value: UserStatus.DISABLED },
+    { label: getUserStatusLabel(UserStatus.ACTIVE), value: UserStatus.ACTIVE },
+    { label: getUserStatusLabel(UserStatus.LOCKED), value: UserStatus.LOCKED },
+  ];
 
   const formRef = useRef<any>(undefined);
 
@@ -176,7 +181,7 @@ const UserForm: React.FC<UserFormProps> = ({
       <ProFormRadio.Group
         name="status"
         label="状态"
-        options={userStatusDict}
+        options={userStatusOptions}
         colProps={{ span: 12 }}
       />
 

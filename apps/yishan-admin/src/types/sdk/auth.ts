@@ -19,7 +19,7 @@ export interface CurrentUser {
   /** 出生日期 */
   birthDate?: string
   /** 状态（0-禁用，1-启用，2-锁定） */
-  status: '0' | '1' | '2'
+  status: 0 | 1 | 2
   /** 状态名称 */
   statusName: string
   /** 最后登录时间 */

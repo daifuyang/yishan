@@ -351,7 +351,7 @@ declare namespace API {
     gender?: "0" | "1" | "2";
     birthDate?: string | "";
     /** 状态（0-禁用，1-启用，2-锁定） */
-    status?: "0" | "1" | "2";
+    status?: 0 | 1 | 2;
     /** 部门ID列表 */
     deptIds?: number[];
     /** 角色ID列表 */
@@ -378,7 +378,7 @@ declare namespace API {
     /** 出生日期 */
     birthDate?: string;
     /** 状态（0-禁用，1-启用，2-锁定） */
-    status: "0" | "1" | "2";
+    status: 0 | 1 | 2;
     /** 状态名称 */
     statusName: string;
     /** 最后登录时间 */
@@ -1644,7 +1644,7 @@ declare namespace API {
     /** 出生日期 */
     birthDate?: string;
     /** 状态（0-禁用，1-启用，2-锁定） */
-    status: "0" | "1" | "2";
+    status: 0 | 1 | 2;
     /** 状态名称 */
     statusName: string;
     /** 最后登录时间 */
@@ -1863,7 +1863,7 @@ declare namespace API {
     gender?: "0" | "1" | "2";
     birthDate?: string | "";
     /** 状态（0-禁用，1-启用，2-锁定） */
-    status?: "0" | "1" | "2";
+    status?: 0 | 1 | 2;
     /** 部门ID列表 */
     deptIds?: number[];
     /** 角色ID列表 */

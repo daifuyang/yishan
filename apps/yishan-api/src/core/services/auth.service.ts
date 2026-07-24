@@ -14,6 +14,7 @@ import { BusinessError } from "../../exceptions/business-error.js";
 import { hashPassword, verifyPassword } from "../../utils/password.js";
 import { JWT_CONFIG } from "../../config/index.js";
 import { dateUtils } from "../../utils/date.js";
+import { UserStatus } from "../constants/user-status.js";
 import { LoginLogService } from "./login-log.service.js";
 
 /** 应用层 brute-force 阈值：单 username 在窗口内失败 N 次 → 锁定窗口内所有登录 */
@@ -209,11 +210,11 @@ export class AuthService {
       }
 
       // 检查用户状态
-      if (user.status === 0) {
+      if (user.status === UserStatus.DISABLED) {
         throw new BusinessError(UserErrorCode.USER_DISABLED, "账号已被禁用");
       }
 
-      if (user.status === 2) {
+      if (user.status === UserStatus.LOCKED) {
         throw new BusinessError(AuthErrorCode.ACCOUNT_LOCKED, "账号已被锁定");
       }
 
