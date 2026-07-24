@@ -158,6 +158,36 @@ describe('Auth routes (login/refresh, no real JWT)', () => {
     await app.close()
   })
 
+  // N4: login response 字段名验证
+  it('POST /api/v1/auth/login response.data 应包含 token 字段(非 accessToken)', async () => {
+    const app = await buildApp()
+    const loginData = {
+      token: 'access-token',
+      refreshToken: 'refresh-token',
+      expiresIn: 3600,
+      refreshTokenExpiresIn: 7200,
+      expiresAt: Date.now() + 3600_000,
+      refreshTokenExpiresAt: Date.now() + 7200_000,
+    }
+    vi.spyOn(AuthService, 'login').mockResolvedValue(loginData)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { username: 'admin', password: 'password', rememberMe: false }
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    // 关键断言:字段名是 token,不是 accessToken
+    expect(body.data).toHaveProperty('token')
+    expect(typeof body.data.token).toBe('string')
+    expect(body.data).not.toHaveProperty('accessToken')
+    expect(body.data).toHaveProperty('refreshToken')
+
+    await app.close()
+  })
+
   it('POST /api/v1/auth/refresh 成功返回新的令牌', async () => {
     const app = await buildApp()
     const refreshed = {
@@ -425,6 +455,86 @@ describe('Auth routes (/me + /logout, real jwt-auth plugin)', () => {
     expect(res.statusCode).toBe(401)
     // 关键断言：被拒绝的请求不会触发对任何用户 id 的 token 撤销。
     expect(findActiveSpy).not.toHaveBeenCalled()
+
+    await app.close()
+  })
+
+  // ============================================================================
+  // N5: softAuthenticate — logout 支持 body.token(无 Authorization header)
+  // ============================================================================
+
+  it('POST /api/v1/auth/logout body 带 access_token(无 Authorization)应 200', async () => {
+    const app = await buildRealAuthApp()
+    const token = signAccessToken(app)
+
+    // logout handler 需要 findActiveTokensByUserId + revoke
+    vi.spyOn(UserTokenRepository, 'findActiveTokensByUserId').mockResolvedValue([
+      { id: 100, userId: 1 } as any,
+    ])
+    vi.spyOn(UserTokenRepository, 'revoke').mockResolvedValue(undefined as any)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/logout',
+      payload: { token }, // 仅 body 带 token,无 Authorization header
+    })
+
+    // softAuthenticate 应从 body.token 回退,不必在 header 携带
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.success).toBe(true)
+
+    await app.close()
+  })
+
+  it('POST /api/v1/auth/logout body 带 refresh_token(无 Authorization)应 200', async () => {
+    const app = await buildRealAuthApp()
+    const token = app.jwt.sign(
+      { id: 1, type: 'refresh_token' },
+      { expiresIn: 600 }
+    )
+
+    // buildRealAuthApp 只 mock 了 findByAccessToken; refresh_token 需额外 mock
+    vi.spyOn(UserTokenRepository, 'findByRefreshToken').mockResolvedValue({
+      id: 1,
+      userId: 1,
+      accessToken: 'access',
+      refreshToken: token,
+      isRevoked: false,
+    } as any)
+    // logout handler 需要 findActiveTokensByUserId + revoke
+    vi.spyOn(UserTokenRepository, 'findActiveTokensByUserId').mockResolvedValue([
+      { id: 100, userId: 1 } as any,
+    ])
+    vi.spyOn(UserTokenRepository, 'revoke').mockResolvedValue(undefined as any)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/logout',
+      payload: { token },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.success).toBe(true)
+
+    await app.close()
+  })
+
+  it('POST /api/v1/auth/logout 完全无 token 仍返回 401(N5 向后兼容)', async () => {
+    const app = await buildRealAuthApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/logout',
+      payload: {}, // body 无 token,header 无 Authorization
+    })
+
+    // 完全没有 token → 仍保持原有 401 行为
+    expect(res.statusCode).toBe(401)
+    const body = res.json()
+    expect(body.success).toBe(false)
+    expect(body.code).toBe(22001) // AuthErrorCode.UNAUTHORIZED
 
     await app.close()
   })

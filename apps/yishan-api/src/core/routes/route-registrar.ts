@@ -12,7 +12,15 @@
 import type { FastifyInstance, RouteShorthandOptions } from 'fastify';
 import { isBypassCode, type PermissionRef } from '../permissions/catalog.js';
 
-export type RouteAccess = { readonly permission: PermissionRef };
+export type RouteAccess = {
+  readonly permission: PermissionRef;
+  /**
+   * 使用 softAuthenticate 替代 authenticate：允许请求体中的 token 字段作为
+   * Authorization header 的回退。仅用于"鸡生蛋"类接口（如 logout），其他路由不应设置。
+   * 当 softAuth=true 时，route-registrar 不会再注入标准 authenticate。
+   */
+  readonly softAuth?: boolean;
+};
 
 export interface ManagedRouteOptions extends Omit<RouteShorthandOptions, 'preHandler'> {
   /** 每个业务路由必须显式声明它要求的权限点。'public' / 'authenticated' 不再允许——所有路由都注入唯一的 PERMS.code，rbac 通过 BYPASS_CODES 决定是否真正拦截。 */
@@ -67,7 +75,10 @@ export function createRouteRegistrar(fastify: FastifyInstance): RouteRegistrar {
     // 不挂 authenticate，不挂 requirePermission；可选的 preHandler 仍追加。
     // 这与生产语义一致（"健康检查不需要 token"），也让 mock 友好。
     if (!isBypassCode(access.permission.code)) {
-      if (typeof (fastify as any).authenticate === 'function') {
+      if (access.softAuth && typeof (fastify as any).softAuthenticate === 'function') {
+        // softAuth: true —— 鸡生蛋接口（logout 等）：用 softAuthenticate 替代 authenticate
+        guards.push((fastify as any).softAuthenticate);
+      } else if (typeof (fastify as any).authenticate === 'function') {
         guards.push((fastify as any).authenticate);
       }
       if (typeof (fastify as any).requirePermission === 'function') {

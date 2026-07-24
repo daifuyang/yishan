@@ -118,7 +118,7 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         tags: ["app-users"],
         security: [{ bearerAuth: [] }],
         querystring: Type.Object({
-          page: Type.Optional(Type.Integer({ minimum: 1, default: 1 })),
+          page: Type.Optional(Type.Integer({ minimum: 1, maximum: 100000, default: 1 })),
           pageSize: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, default: 10 })),
         }),
         response: { 200: { $ref: "sysLoginLogListResp#" } },

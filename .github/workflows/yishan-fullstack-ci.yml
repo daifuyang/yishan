@@ -26,11 +26,11 @@ jobs:
     timeout-minutes: 45
     environment: YISHAN_API
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .tool-versions
 
@@ -39,7 +39,7 @@ jobs:
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .tool-versions
           cache: pnpm
@@ -60,6 +60,9 @@ jobs:
 
       - name: Admin Lint
         run: pnpm --filter yishan-admin lint
+
+      - name: Main Baseline Guard
+        run: node scripts/check-main-baseline.mjs
 
       - name: Admin Build
         run: pnpm --filter yishan-admin build

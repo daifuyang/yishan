@@ -17,7 +17,7 @@
     "db:generate": "pnpm --filter yishan-api db:generate",
     "db:seed": "pnpm --filter yishan-api db:seed",
     "db:reset": "pnpm --filter yishan-api db:reset",
-    "lint": "pnpm --filter yishan-admin lint && pnpm --filter yishan-docs typecheck && pnpm --filter yishan-app lint && node scripts/check-module-naming.mjs",
+    "lint": "pnpm --filter yishan-admin lint && pnpm --filter yishan-docs typecheck && pnpm --filter yishan-app lint && node scripts/check-module-naming.mjs && node scripts/check-main-baseline.mjs",
     "test": "pnpm --filter yishan-admin test && pnpm --filter yishan-api test"
   },
   "keywords": [

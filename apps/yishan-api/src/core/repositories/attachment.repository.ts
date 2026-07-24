@@ -19,6 +19,7 @@ import {
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysAttachment, sysAttachmentFolder, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
+import { clampOffset } from "./_pagination.js";
 
 // ============================================================================
 // Internal Input Types
@@ -238,7 +239,7 @@ export class AttachmentRepository {
       .orderBy(dir(orderCol));
 
     const folders = pageSize > 0
-      ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+      ? await baseQuery.limit(pageSize).offset(clampOffset(page, pageSize))
       : await baseQuery;
     return folders as FolderListRow[];
   }
@@ -386,7 +387,7 @@ export class AttachmentRepository {
       .orderBy(dir(orderCol));
 
     const attachments = pageSize > 0
-      ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+      ? await baseQuery.limit(pageSize).offset(clampOffset(page, pageSize))
       : await baseQuery;
     return attachments as AttachmentListRow[];
   }

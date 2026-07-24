@@ -2,7 +2,7 @@ import { createRouteRegistrar } from '../../../../route-registrar.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "../../../../../../utils/response.js";
-import { ValidationErrorCode } from "../../../../../../constants/business-codes/validation.js";
+import { DictErrorCode } from "../../../../../../constants/business-codes/dict.js";
 import { BusinessError } from "../../../../../../exceptions/business-error.js";
 import {
   DictDataListQuery,
@@ -64,7 +64,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     async (request: FastifyRequest<{ Params: { id: number } }>, reply: FastifyReply) => {
       const id = request.params.id;
       const d = await DictService.getDictTypeById(id);
-      if (!d) throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "字典类型不存在");
+      if (!d) throw new BusinessError(DictErrorCode.DICT_TYPE_NOT_FOUND, "字典类型不存在");
       const message = getDictMessage(DictMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, d, message);
     }
@@ -175,7 +175,7 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     async (request: FastifyRequest<{ Params: { id: number } }>, reply: FastifyReply) => {
       const id = request.params.id;
       const d = await DictService.getDictDataById(id);
-      if (!d) throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "字典数据不存在");
+      if (!d) throw new BusinessError(DictErrorCode.DICT_DATA_NOT_FOUND, "字典数据不存在");
       const message = getDictMessage(DictMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
       return ResponseUtil.success(reply, d, message);
     }

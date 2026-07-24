@@ -13,6 +13,8 @@ export const SystemManageErrorCode = {
   INSUFFICIENT_PERMISSIONS: 25003,
   /** 登录日志不存在 */
   LOGIN_LOG_NOT_FOUND: 25004,
+  /** 路由不存在（未匹配到任何已注册的 route），与模块启停 gate 的 40400 区分 */
+  ROUTE_NOT_FOUND: 25005,
 } as const;
 
 // ============= 错误消息映射 =============
@@ -21,6 +23,7 @@ export const SystemManageErrorMessages = {
   [SystemManageErrorCode.CRON_JOB_FAILED]: '定时任务执行失败',
   [SystemManageErrorCode.INSUFFICIENT_PERMISSIONS]: '权限不足',
   [SystemManageErrorCode.LOGIN_LOG_NOT_FOUND]: '登录日志不存在',
+  [SystemManageErrorCode.ROUTE_NOT_FOUND]: '路由不存在',
 } as const;
 
 // ============= HTTP状态码映射 =============
@@ -29,6 +32,7 @@ export const SystemManageHttpStatusMap = {
   [SystemManageErrorCode.CRON_JOB_FAILED]: 500,
   [SystemManageErrorCode.INSUFFICIENT_PERMISSIONS]: 403,
   [SystemManageErrorCode.LOGIN_LOG_NOT_FOUND]: 404,
+  [SystemManageErrorCode.ROUTE_NOT_FOUND]: 404,
 } as const;
 
 // ============= 类型定义 =============

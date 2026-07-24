@@ -3,6 +3,7 @@ import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysUser, sysUserDept, sysUserRole } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
 import { UserTokenRepository } from "./user-token.repository.js";
+import { clampOffset } from "./_pagination.js";
 
 type UserRow = typeof sysUser.$inferSelect;
 type PublicUserRow = Omit<UserRow, "passwordHash" | "deletedAt" | "version">;
@@ -156,7 +157,7 @@ export class UserRepository {
     const items = await drizzleDb.query.sysUser.findMany({
       ...baseQuery,
       limit: pageSize,
-      offset: (page - 1) * pageSize,
+      offset: clampOffset(page, pageSize),
     });
 
     return items;

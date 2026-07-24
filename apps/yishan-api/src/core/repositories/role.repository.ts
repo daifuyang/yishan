@@ -19,6 +19,7 @@ import {
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysRole, sysRoleMenu, sysRolePermission, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
+import { clampOffset } from "./_pagination.js";
 
 // ============================================================================
 // Internal Input Types
@@ -159,7 +160,7 @@ export class RoleRepository {
       .orderBy(dir(orderCol));
 
     const roles = pageSize > 0
-      ? await baseQuery.limit(pageSize).offset((page - 1) * pageSize)
+      ? await baseQuery.limit(pageSize).offset(clampOffset(page, pageSize))
       : await baseQuery;
     return roles as RoleListRow[];
   }

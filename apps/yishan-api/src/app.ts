@@ -4,6 +4,7 @@ import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
 import { join, sep } from 'node:path'
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
 import { ModuleLoader } from './core/module-loader/module-loader.js'
+import { SystemManageErrorCode } from './constants/business-codes/system.js'
 
 // 应用根目录（dist/）和源码根目录（src/）。dev 路由需要扫描 src/modules/ 读迁移 journal；
 // 用装饰器挂出来，避免每个 dev 路由文件自己数 '../'。
@@ -88,6 +89,20 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
 
   // 3.6 挂载模块路由（gate 已就位）。
   await fastify.moduleLoader.mountAllOnDisk(diskModules)
+
+  // 3.7 全局 not-found handler：Fastify 默认的 notFound 绕过 global error handler，
+  //     会返回 `{message, error, statusCode}` 这种非 envelope 格式。
+  //     注册一个与项目 envelope 一致的 404 处理器，并把模块启停 gate 的 `code=40400` 与
+  //     本处的 `code=25005` 区分开：前者是"模块被禁用"，后者是"路由真的不存在"。
+  fastify.setNotFoundHandler((request, reply) => {
+    reply.code(404).send({
+      success: false,
+      code: SystemManageErrorCode.ROUTE_NOT_FOUND,
+      message: `Route ${request.method}:${request.url} not found`,
+      data: null,
+      timestamp: new Date().toISOString(),
+    })
+  })
 
   // 4. Core HTTP routes — single source of truth for in-app endpoints.
   //    dev-only 工具（_dev/ 子树，如模块管理 /system/module-management）在生产不加载：
