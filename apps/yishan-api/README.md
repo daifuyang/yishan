@@ -215,32 +215,30 @@ pnpm run cli -- api attachments create --file ./test.png --kind image --name tes
 - 开发环境: http://localhost:3000/api/docs
 - OpenAPI JSON: http://localhost:3000/api/docs/json
 
-## 开发规范
+## 项目文档
 
-详细的开发规范请参考项目文档：
-- [API 规范文档](./docs/API规范文档.md)
-- [业务码使用规范](./docs/业务码使用规范.md)
-- [模块化开发规范](./docs/模块化开发规范.md)
+- [模块速览：portal / shop](./docs/modules.md) — 已落地业务模块的实体、路由、权限、sample 数据
+- [模块开发规范（4 层分层）](./docs/module-pattern.md) — 新模块写到合格要什么
+- [模块入门指南（根目录）](../../docs/module-onboarding.md) — 30 分钟新建一个模块的脚手架
 
-### 主要规范要点
+## 开发规范速记
 
-1. **路由层**: RESTful 设计，使用 TypeBox Schema 验证
-2. **服务层**: 业务逻辑处理，保持单一职责
-3. **Repository 层**: 数据库操作，使用 Drizzle ORM
-4. **响应格式**: 统一使用 `ResponseUtil` 工具类
-5. **错误处理**: 使用业务错误码，统一异常处理
+### 4 层分层（详见 [module-pattern.md](./docs/module-pattern.md)）
 
-### 模块化约定（AutoLoad）
+1. **routes/v1/index.ts**：FastifyPluginAsync + `createRouteRegistrar` + 数组驱动，**不** import drizzleDb
+2. **services/*.service.ts**：class + constructor 注入 `db`，业务编排
+3. **repositories/*.repository.ts**：静态方法 + 默认 `db = drizzleDb`，**唯一**允许 import 真实 drizzleDb 的层
+4. **db/schema.ts**：Drizzle 表定义，表名必须 `<id>_` 前缀
 
-- 模块目录：`src/plugins/modules/<module>/...`（建议包含 `routes/services/models/schemas/constants/test`）
-- 路由注册：基于目录自动注册，不手工集中挂载
-- 路由路径：推荐 `src/plugins/modules/<module>/routes/api/v1/...`
-- 模块内聚：`services/models/schemas/constants/exceptions/utils` 尽量在模块内完整实现，避免仅转发根目录导出
-- 鉴权建议：在 `routes/api/v1/admin/autohooks.ts` 统一注册 `fastify.authenticate`
-- 测试放置：模块就近放 `src/plugins/modules/<module>/test/*.test.ts`
-- 测试指南：参考 `docs/模块化开发规范.md` 的“测试用例指南”
-- 微服务演进：模块目录边界可直接作为后续服务拆分边界
-- 插件扩展：模块支持独立插件目录，统一承载缓存、限流、审计、第三方集成等横切能力
+### 其它共识
+
+- **路由登记**：`createRouteRegistrar(app)` 自动挂 `onRequest` 鉴权 hook，给 `access.permission` 即可
+- **响应格式**：写操作返回 `ResponseUtil.success(reply, data, msg)`；列表查询直接返 `{ total, items, page, pageSize }`
+- **TypeBox schema**：UpdateReqSchema 直接 `Type.Partial(CreateReqSchema)`，`ListQuerySchema` 复用 `PaginationQuerySchema`
+- **软删**：所有列表查询必须 `isNull(table.deletedAt)`；删除用 `set: { deletedAt: new Date(), updatedAt: new Date() }`
+- **权限码**：`permissions.ts` 集中冻结 + `registerPermissions(...Object.values(PERMS))`，group = `meta.id`
+- **路由 prefix**：硬约定 `/api/${meta.id}/v1`，模块不声明
+- **跨模块**：禁止 join 别的模块的表，走 HTTP / Core extension
 
 ## 部署
 

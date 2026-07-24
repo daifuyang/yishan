@@ -127,15 +127,20 @@ config/
 
 ### 添加新页面
 
-1. 在 `src/pages` 目录下创建页面组件
-2. 在 `config/routes.ts` 中配置路由
-3. 如需权限控制，在 `src/access.ts` 中配置权限
+新页面分两类，处理方式不同：
+
+- **Core 页面**（系统管理、登录等）：在 `src/pages/<area>/<page>/index.tsx` 写组件，然后在 `config/routes.ts` 加路由
+- **模块页面**（业务模块）：在 `src/modules/<id>/pages/<page>/index.tsx` 写组件，**不需要**改 `config/routes.ts` —— `plugin.ts` 编译期自动扫描。详见 [module-pages.md](./docs/module-pages.md)
+
+权限控制：模块页面对应权限码在 `[apps/yishan-api] modules/<id>/permissions.ts` 集中注册。
 
 ### 添加 API 接口
 
-1. 在 `src/services/yishan-admin` 目录下创建或生成服务文件
-2. 使用 `@umijs/max` 提供的 request 方法
-3. 配置 OpenAPI 文档自动生成类型
+1. 后端在 `apps/yishan-api/src/modules/<id>/routes/v1/index.ts` 用 `createRouteRegistrar` 数组驱动注册
+2. 跑 `pnpm --filter yishan-admin openapi` 重新生成 `src/services/generated/<module>.ts`
+3. 前端 `import { ... } from '@/services/generated/<module>'` 直接使用，类型完全同步
+
+详情见 [模块开发规范（后端）](../yishan-api/docs/module-pattern.md)。
 
 ### 自定义主题
 
@@ -160,6 +165,11 @@ config/
 4. **拼接 redirect 时优先使用当前相对路由语义**
    - 保证登录成功后回跳到原始业务页面
    - 同时避免把完整登录页 URL 再次编码写回 `redirect`
+
+## 项目文档
+
+- [模块页面注册机制](./docs/module-pages.md) — `plugin.ts` 编译期扫描 + 0 配置新增流程
+- [表单模式（DrawerForm + FormEditor）](./docs/form-pattern.md) — CRUD 页面骨架与字段约定
 
 ## 部署
 
