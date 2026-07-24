@@ -40,6 +40,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         description: "用户通过用户名/邮箱和密码进行登录认证",
         operationId: "login",
         tags: ["auth"],
+        security: [],
         body: { $ref: "loginReq#" },
         response: {
           200: { $ref: "loginResp#" },
@@ -157,6 +158,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         description: "使用刷新令牌获取新的访问令牌和刷新令牌",
         operationId: "refreshToken",
         tags: ["auth"],
+        security: [],
         body: { $ref: "refreshTokenReq#" },
         response: {
           200: { $ref: "refreshTokenResp#" },

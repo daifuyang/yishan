@@ -16,6 +16,7 @@ export default fp(async function (fastify) {
         description: 'The official Yishan API',
         version: '0.0.0'
       },
+      security: [{ bearerAuth: [] }],
       tags: [
         { name: 'auth', description: 'Authentication endpoints' },
         { name: 'sysUsers', description: 'System user management' },
@@ -56,4 +57,5 @@ export default fp(async function (fastify) {
   await fastify.register(fastifySwaggerUi, {
     routePrefix: '/api/docs'
   })
+
 })
