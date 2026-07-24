@@ -14,54 +14,36 @@ export interface PermissionRef {
 }
 
 const REGISTRY: PermissionRef[] = [];
-// 仅在 registerPermissions 内写入；外部通过 PERMISSION_CODES 拿到的是冻结视图。
-// 用 as ReadonlySet<string> 强转以表达"外部不可 mutate"的契约。
-let CODES_BUILDER: Set<string> = new Set();
+// 启动期 registerPermissions 持续写入；外部通过 PERMISSION_CODES 拿到的是同一个 Set。
+// 类型声明为 ReadonlySet<string> 让 TypeScript 卡死外部 add() / delete()，运行时不 freeze。
+// 重要：不能在 import 期 eager freeze（如 Object.freeze + 新 Set 快照），
+// 否则测试环境下 setup.ts 在 beforeAll 才 import 路由文件、caller 又在 beforeAll 之前
+// 第一次访问 PERMISSION_CODES，会冻结成空 Set，路由注册再也填不进来。
+const CODES = new Set<string>();
 
 /**
  * 在启动期注册权限声明。每个 `code` 全局唯一；重复注册 throw。
  * 调用时机：本文件被 import 时，由 routes 文件模块顶层副作用触发。
- * 第一次调用本函数后，CODES 即被冻结为只读视图——后续任何 CODES.add() 都会失败。
  */
 export const registerPermissions = (...defs: readonly PermissionRef[]): void => {
   for (const def of defs) {
     if (!def.code || !def.label || !def.group) {
       throw new Error(`permission declaration requires code, label and group: ${JSON.stringify(def)}`);
     }
-    if (CODES_BUILDER.has(def.code)) {
+    if (CODES.has(def.code)) {
       throw new Error(`duplicate permission declaration: ${def.code}`);
     }
-    CODES_BUILDER.add(def.code);
+    CODES.add(def.code);
     REGISTRY.push(def);
   }
 };
 
-let _FROZEN_CODES: ReadonlySet<string> | null = null;
-function getCodesReadonly(): ReadonlySet<string> {
-  if (!_FROZEN_CODES) {
-    // 一次性冻结视图：从此任何 CODES.add() 都不会反映进来。
-    _FROZEN_CODES = Object.freeze(new Set(CODES_BUILDER)) as ReadonlySet<string>;
-  }
-  return _FROZEN_CODES;
-}
-
 /**
  * 当前已注册的所有 code 集合的只读视图。
- * 外部代码只能 has() / for..of；不能 add() / delete()。
- * 新增只能通过 registerPermissions（启动期）。
+ * 外部代码只能 has() / for..of；add() / delete() 由 TypeScript 的 ReadonlySet
+ * 类型在编译期拦住，运行时不 freeze（见上方注释）。
  */
-export const PERMISSION_CODES: ReadonlySet<string> = new Proxy(new Set(), {
-  has: (_t, p) => getCodesReadonly().has(p as string),
-  get: (_t, p) => {
-    const s = getCodesReadonly() as any;
-    return s[p];
-  },
-  ownKeys: () => [...getCodesReadonly().keys()],
-  getOwnPropertyDescriptor: (_t, p) => {
-    const s = getCodesReadonly() as any;
-    return s.has(p) ? { configurable: true, enumerable: true, value: s[p], writable: false } : undefined;
-  },
-});
+export const PERMISSION_CODES: ReadonlySet<string> = CODES;
 
 /** 启动期一次性复制为冻结数组；菜单创建、admin 后台展示使用。 */
 export const listPermissions = (): ReadonlyArray<PermissionRef> =>
