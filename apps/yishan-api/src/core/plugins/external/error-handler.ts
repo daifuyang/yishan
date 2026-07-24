@@ -4,6 +4,23 @@ import { ResponseUtil } from '../../../utils/response.js'
 import { BusinessError } from '../../../exceptions/business-error.js'
 import { ValidationErrorCode } from '../../../constants/business-codes/validation.js'
 import { AuthErrorCode } from '../../../constants/business-codes/auth.js'
+import { ResourceErrorCode } from '../../../constants/business-codes/resource.js'
+import { SystemErrorCode } from '../../../constants/business-codes/common.js'
+
+/**
+ * 判定 error 是否来自数据库层（MySQL / Drizzle）。
+ *
+ * 依据：MySQL 错误 code 以 `ER_` 开头（`ER_PARSE_ERROR`, `ER_NO_SUCH_TABLE` 等），
+ * Drizzle 抛出的 DrizzleQueryError 也会透传上游 code。不再用 `error.message` 嗅探
+ * 关键字（mysql / Drizzle），避免被业务数据里的字面量误命中。
+ */
+function isDatabaseError(error: any): boolean {
+  const code = String(error?.code ?? '')
+  if (code.startsWith('ER_')) return true
+  if (code === 'ER_DUP_ENTRY') return true
+  if (typeof error?.name === 'string' && /Drizzle.*Error/i.test(error.name)) return true
+  return false
+}
 
 /**
  * 全局异常处理插件
@@ -57,7 +74,7 @@ export default fp(async (fastify: FastifyInstance) => {
           businessCode = AuthErrorCode.FORBIDDEN
           break
         case 404:
-          businessCode = 31001 // ResourceErrorCode.NOT_FOUND
+          businessCode = ResourceErrorCode.NOT_FOUND
           break
         case 429:
           businessCode = ValidationErrorCode.TOO_MANY_REQUESTS
@@ -66,55 +83,28 @@ export default fp(async (fastify: FastifyInstance) => {
           if (statusCode >= 400 && statusCode < 500) {
             businessCode = ValidationErrorCode.INVALID_PARAMETER
           } else {
-            businessCode = 20001 // SystemErrorCode.SYSTEM_ERROR
+            businessCode = SystemErrorCode.SYSTEM_ERROR
           }
       }
 
       return ResponseUtil.error(reply, businessCode, message)
     }
 
-    // 处理数据库相关错误
-    if (error.message.includes('database') ||
-        error.message.includes('mysql') ||
-        error.message.includes('Drizzle') ||
-        String((error as any).code ?? '').startsWith('ER_')) {
-      return ResponseUtil.error(reply, 20002, "数据库操作失败") // SystemErrorCode.DATABASE_ERROR
+    // 处理数据库相关错误（按 code 前缀判定，不用 message 嗅探）
+    if (isDatabaseError(error)) {
+      return ResponseUtil.error(reply, SystemErrorCode.DATABASE_ERROR, "数据库操作失败")
     }
 
     // 处理网络相关错误
     if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
-      return ResponseUtil.error(reply, 20003, "网络连接失败") // SystemErrorCode.NETWORK_ERROR
+      return ResponseUtil.error(reply, SystemErrorCode.NETWORK_ERROR, "网络连接失败")
     }
 
     // 默认服务器内部错误
     return ResponseUtil.error(
       reply,
-      20001, // SystemErrorCode.SYSTEM_ERROR
+      SystemErrorCode.SYSTEM_ERROR,
       process.env.NODE_ENV === 'production' ? "服务器内部错误" : error.message
     )
   })
-
-  // 添加 onRequest 钩子来包装路由处理器，自动捕获异步异常
-  fastify.addHook('onRequest', async (request, reply) => {
-    // 为每个请求添加错误处理上下文
-    request.errorContext = {
-      startTime: Date.now(),
-      requestId: request.id
-    }
-  })
-
-  // 添加 preHandler 钩子来处理参数验证
-  fastify.addHook('preHandler', async (request, reply) => {
-    // 这里可以添加通用的参数验证逻辑
-  })
 })
-
-// 扩展 FastifyRequest 类型以包含错误上下文
-declare module 'fastify' {
-  interface FastifyRequest {
-    errorContext?: {
-      startTime: number
-      requestId: string
-    }
-  }
-}

@@ -5,14 +5,20 @@
 import type { FastifyInstance } from "fastify";
 import { UserRepository, type LoginAuthInfo } from "../repositories/user.repository.js";
 import { UserTokenRepository } from "../repositories/user-token.repository.js";
+import { LoginLogRepository } from "../repositories/login-log.repository.js";
 import { LoginReq, LoginData } from "../schemas/auth.js";
 import { AuthErrorCode } from "../../constants/business-codes/auth.js";
 import { UserErrorCode } from "../../constants/business-codes/user.js";
+import { ValidationErrorCode } from "../../constants/business-codes/validation.js";
 import { BusinessError } from "../../exceptions/business-error.js";
 import { hashPassword, verifyPassword } from "../../utils/password.js";
 import { JWT_CONFIG } from "../../config/index.js";
 import { dateUtils } from "../../utils/date.js";
 import { LoginLogService } from "./login-log.service.js";
+
+/** 应用层 brute-force 阈值：单 username 在窗口内失败 N 次 → 锁定窗口内所有登录 */
+const LOGIN_FAIL_WINDOW_MS = 5 * 60 * 1000
+const LOGIN_FAIL_THRESHOLD = 5
 
 export class AuthService {
   /**
@@ -25,6 +31,18 @@ export class AuthService {
   static async login(loginReq: LoginReq, fastify: FastifyInstance, ip?: string, userAgent?: string): Promise<LoginData> {
     const { username, password, rememberMe } = loginReq;
     let user: LoginAuthInfo | null = null;
+
+    // 应用层 brute-force 防护：先查该 username 在窗口内的失败次数，
+    // 超过阈值直接 429，避免在禁用/锁定账户上继续打 bcrypt 浪费时间。
+    // 与 fastify.rateLimit("login")（IP 维度）正交，组成"按 IP + 按 username"两道闸。
+    const since = new Date(Date.now() - LOGIN_FAIL_WINDOW_MS)
+    const recentFails = await LoginLogRepository.countFailuresForUsernameSince(username, since)
+    if (recentFails >= LOGIN_FAIL_THRESHOLD) {
+      throw new BusinessError(
+        ValidationErrorCode.TOO_MANY_REQUESTS,
+        `登录失败次数过多，请 ${Math.ceil(LOGIN_FAIL_WINDOW_MS / 60000)} 分钟后再试`,
+      )
+    }
 
     try {
       user = await UserRepository.findAuthIdentityByLogin(username);

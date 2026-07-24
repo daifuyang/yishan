@@ -51,6 +51,17 @@ const adminSystemModuleManagementToggle: FastifyPluginAsync = async (fastify) =>
         return ResponseUtil.error(reply, 40000, 'enabled 字段必须是 boolean')
       }
 
+      // 先取当前状态：用于"不存在 → 404"以及审计日志的 from→to。
+      const current = await drizzleDb
+        .select({ id: sysModule.id, enabled: sysModule.enabled })
+        .from(sysModule)
+        .where(eq(sysModule.id, id))
+        .limit(1)
+      if (current.length === 0) {
+        return ResponseUtil.error(reply, 40400, `模块不存在：${id}`)
+      }
+      const previous = current[0].enabled
+
       await drizzleDb
         .update(sysModule)
         .set({ enabled: next ? 1 : 0, updatedAt: new Date() })
@@ -58,6 +69,20 @@ const adminSystemModuleManagementToggle: FastifyPluginAsync = async (fastify) =>
 
       // 清 enabled 缓存（redis + 进程内 memo），下一个请求经 gate 即时生效。
       await fastify.moduleLoader.invalidateEnabledCache()
+
+      // 审计日志：高权限操作，必须留痕
+      request.log.info(
+        {
+          action: 'module.toggle',
+          moduleId: id,
+          previous,
+          next,
+          operatorId: request.currentUser?.id,
+          operatorUsername: (request.currentUser as any)?.username,
+          ip: request.ip,
+        },
+        'module toggle',
+      )
 
       return ResponseUtil.success(
         reply,

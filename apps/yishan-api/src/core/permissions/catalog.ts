@@ -14,7 +14,12 @@ export interface PermissionRef {
 }
 
 const REGISTRY: PermissionRef[] = [];
-const CODES: Set<string> = new Set();
+// 启动期 registerPermissions 持续写入；外部通过 PERMISSION_CODES 拿到的是同一个 Set。
+// 类型声明为 ReadonlySet<string> 让 TypeScript 卡死外部 add() / delete()，运行时不 freeze。
+// 重要：不能在 import 期 eager freeze（如 Object.freeze + 新 Set 快照），
+// 否则测试环境下 setup.ts 在 beforeAll 才 import 路由文件、caller 又在 beforeAll 之前
+// 第一次访问 PERMISSION_CODES，会冻结成空 Set，路由注册再也填不进来。
+const CODES = new Set<string>();
 
 /**
  * 在启动期注册权限声明。每个 `code` 全局唯一；重复注册 throw。
@@ -34,8 +39,9 @@ export const registerPermissions = (...defs: readonly PermissionRef[]): void => 
 };
 
 /**
- * 当前已注册的所有 code 集合 — 与 CODES 共享引用。注册后会即时反映。
- * 导出为 ReadonlySet<string>，外部不能 mutate；新增只能通过 registerPermissions。
+ * 当前已注册的所有 code 集合的只读视图。
+ * 外部代码只能 has() / for..of；add() / delete() 由 TypeScript 的 ReadonlySet
+ * 类型在编译期拦住，运行时不 freeze（见上方注释）。
  */
 export const PERMISSION_CODES: ReadonlySet<string> = CODES;
 

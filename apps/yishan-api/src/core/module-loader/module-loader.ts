@@ -199,7 +199,10 @@ export class ModuleLoader {
   private dbCache: AppDb | undefined
   /** enabled 集合的进程内短 TTL 缓存,避免 gate 每请求打 redis/DB。 */
   private enabledMemo: { ids: Set<string>; at: number } | undefined
-  private readonly ENABLED_MEMO_MS = 5000
+  // 进程内 memo：仅用于吸收单实例的"toggle 之后的几毫秒内并发请求"。
+  // 多实例部署下其它实例仍走 redis（60s TTL），这里保持短 TTL 以便跨实例
+  // 收敛更快——典型场景：操作员 toggle 后 1s 内期望所有实例生效。
+  private readonly ENABLED_MEMO_MS = 1000
 
   constructor(
     fastify: FastifyInstance,
@@ -368,11 +371,12 @@ export class ModuleLoader {
 
   /**
    * boot 时挂载所有磁盘模块(不看 enabled)。运行时启停交给 gate。
+   *
+   * 各模块互不依赖（fastify.register 隔离上下文），并发起 register 不需要
+   * 串行等待——并行挂载在 20+ 模块规模下能把 boot 时间从 O(N) 砍到 O(1)。
    */
   async mountAllOnDisk(diskModules: ModuleDiskMeta[]): Promise<void> {
-    for (const meta of diskModules) {
-      await this.mountModuleRoutes(meta)
-    }
+    await Promise.all(diskModules.map((meta) => this.mountModuleRoutes(meta)))
   }
 }
 
