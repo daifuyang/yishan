@@ -18,7 +18,7 @@ import type {
   AttachmentSelectValue,
   KindTab,
   ValueType,
-} from './types';
+} from '@/components/AttachmentLibraryModal/types';
 
 const getKindFromFile = (file: File): AttachmentKind => {
   const mime = file.type || '';
