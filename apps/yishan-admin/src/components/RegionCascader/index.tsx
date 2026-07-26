@@ -68,14 +68,14 @@ function toCascaderOption(node: RegionNode): CascaderOption {
 
 export interface ProFormRegionCascaderProps {
   name: string | (string | number)[];
-  label?: React.ReactNode;
+  label?: React.ComponentProps<typeof Form.Item>['label'];
   placeholder?: string;
   allowClear?: boolean;
   disabled?: boolean;
   /** 加载策略：false（默认）= 懒加载；true = 一次拉整树 */
   loadAll?: boolean;
-  /** Form.Item 的 extra 说明文本 */
-  extra?: React.ReactNode;
+  /** Form.Item 的 extra 说明文本。 */
+  extra?: React.ComponentProps<typeof Form.Item>['extra'];
   /** cascader 自身配置（只能覆盖，不含 options/loadData/fieldNames/onChange/value） */
   fieldProps?: Omit<
     CascaderProps,
