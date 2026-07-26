@@ -10,14 +10,14 @@
  *     字段名。
  *
  * 设计：
- *   - default（loadAll=false）：首屏只拉 31 省；展开下级调 listSystemRegions({parentCode})
+ *   - default（loadAll=false）：首屏只拉 31 省；展开下级调 getSystemRegionList({parentCode})
  *   - loadAll=true：一次拉整树 ~3400 条
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { Cascader, Form, type CascaderProps } from 'antd';
 import {
   getSystemRegionTree,
-  listSystemRegions,
+  getSystemRegionList,
 } from '@/services/generated/systemRegions';
 
 /** 后端原始节点 */
@@ -108,7 +108,7 @@ export const ProFormRegionCascader: React.FC<ProFormRegionCascaderProps> = ({
       try {
         const raw = loadAll
           ? ((await getSystemRegionTree({ level: 3 })) as { data?: RegionNode[] }).data ?? []
-          : ((await listSystemRegions({ parentCode: 0 })) as { data?: RegionNode[] }).data ?? [];
+          : ((await getSystemRegionList({ parentCode: 0 })) as { data?: RegionNode[] }).data ?? [];
         if (!cancelled) setTree(raw.map(toCascaderOption));
       } catch (err) {
         if (!cancelled) {
@@ -132,7 +132,7 @@ export const ProFormRegionCascader: React.FC<ProFormRegionCascaderProps> = ({
       if (!last) return;
       void (async () => {
         try {
-          const res = (await listSystemRegions({ parentCode: last.code })) as {
+          const res = (await getSystemRegionList({ parentCode: last.code })) as {
             data?: RegionNode[];
           };
           const raw = res.data ?? [];

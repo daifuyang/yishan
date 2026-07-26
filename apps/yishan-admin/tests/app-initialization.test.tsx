@@ -20,14 +20,14 @@
 // ============================================================================
 
 interface MockHandles {
-  getCurrentUser: jest.Mock
+  authGetCurrentUser: jest.Mock
   getDictDataMap: jest.Mock
   fetchCloudStorageConfig: jest.Mock
   pathname: string
 }
 
 const mockHandles: MockHandles = {
-  getCurrentUser: jest.fn(),
+  authGetCurrentUser: jest.fn(),
   getDictDataMap: jest.fn(),
   fetchCloudStorageConfig: jest.fn(),
   pathname: '/admin/dashboard',
@@ -37,8 +37,8 @@ const mockHandles: MockHandles = {
 
 jest.mock('@/services/generated/auth', () => ({
   __esModule: true,
-  getCurrentUser: (...args: unknown[]) =>
-    (globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks.getCurrentUser(...(args as [])),
+  authGetCurrentUser: (...args: unknown[]) =>
+    (globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks.authGetCurrentUser(...(args as [])),
 }))
 
 jest.mock('@/services/generated/sysDictData', () => ({
@@ -153,7 +153,7 @@ function defer<T>(value: T): Deferred<T> {
 }
 
 beforeEach(() => {
-  mockHandles.getCurrentUser.mockReset()
+  mockHandles.authGetCurrentUser.mockReset()
   mockHandles.getDictDataMap.mockReset()
   mockHandles.fetchCloudStorageConfig.mockReset()
   mockHandles.pathname = '/admin/dashboard'
@@ -169,7 +169,7 @@ describe('getInitialState — 真实生产函数回归', () => {
 
     const state = await getInitialState()
 
-    expect(mockHandles.getCurrentUser).not.toHaveBeenCalled()
+    expect(mockHandles.authGetCurrentUser).not.toHaveBeenCalled()
     expect(mockHandles.getDictDataMap).not.toHaveBeenCalled()
     expect(mockHandles.fetchCloudStorageConfig).not.toHaveBeenCalled()
     expect(state.currentUser).toBeUndefined()
@@ -177,16 +177,16 @@ describe('getInitialState — 真实生产函数回归', () => {
     expect(state.cloudStorageConfig).toBeUndefined()
   })
 
-  it('非登录页但用户为空：仅调用用户接口；字典/存储均不调用', async () => {
-    mockHandles.pathname = '/admin/dashboard'
-    mockHandles.getCurrentUser.mockResolvedValue({
-      success: true,
-      data: undefined,
-    })
+   it('非登录页但用户为空：仅调用用户接口；字典/存储均不调用', async () => {
+     mockHandles.pathname = '/admin/dashboard'
+     mockHandles.authGetCurrentUser.mockResolvedValue({
+       success: true,
+       data: undefined,
+     })
 
-    const state = await getInitialState()
+     const state = await getInitialState()
 
-    expect(mockHandles.getCurrentUser).toHaveBeenCalledTimes(1)
+     expect(mockHandles.authGetCurrentUser).toHaveBeenCalledTimes(1)
     expect(mockHandles.getDictDataMap).not.toHaveBeenCalled()
     expect(mockHandles.fetchCloudStorageConfig).not.toHaveBeenCalled()
     expect(state.currentUser).toBeUndefined()
@@ -194,25 +194,25 @@ describe('getInitialState — 真实生产函数回归', () => {
     expect(state.cloudStorageConfig).toBeUndefined()
   })
 
-  it('已登录：字典和存储都调用，结果写入 state', async () => {
-    mockHandles.pathname = '/admin/dashboard'
-    mockHandles.getCurrentUser.mockResolvedValue({
-      success: true,
-      data: { id: 1, name: 'admin' } as unknown as API.currentUser,
-    })
-    mockHandles.getDictDataMap.mockResolvedValue({
-      success: true,
-      data: { sys_user_sex: { 1: '男' } },
-    })
-    mockHandles.fetchCloudStorageConfig.mockResolvedValue({
-      provider: 'local',
-      bucket: 'b1',
-      region: 'cn',
-    })
+   it('已登录：字典和存储都调用，结果写入 state', async () => {
+     mockHandles.pathname = '/admin/dashboard'
+     mockHandles.authGetCurrentUser.mockResolvedValue({
+       success: true,
+       data: { id: 1, name: 'admin' } as unknown as API.currentUser,
+     })
+     mockHandles.getDictDataMap.mockResolvedValue({
+       success: true,
+       data: { sys_user_sex: { 1: '男' } },
+     })
+     mockHandles.fetchCloudStorageConfig.mockResolvedValue({
+       provider: 'local',
+       bucket: 'b1',
+       region: 'cn',
+     })
 
-    const state = await getInitialState()
+     const state = await getInitialState()
 
-    expect(mockHandles.getCurrentUser).toHaveBeenCalledTimes(1)
+     expect(mockHandles.authGetCurrentUser).toHaveBeenCalledTimes(1)
     expect(mockHandles.getDictDataMap).toHaveBeenCalledTimes(1)
     expect(mockHandles.fetchCloudStorageConfig).toHaveBeenCalledTimes(1)
     expect(state.currentUser).toEqual({ id: 1, name: 'admin' })
@@ -224,9 +224,9 @@ describe('getInitialState — 真实生产函数回归', () => {
     })
   })
 
-  it('并行性：字典与存储 fetcher 在 getInitialState 内被并发启动', async () => {
-    mockHandles.pathname = '/admin/dashboard'
-    mockHandles.getCurrentUser.mockResolvedValue({
+   it('并行性：字典与存储 fetcher 在 getInitialState 内被并发启动', async () => {
+     mockHandles.pathname = '/admin/dashboard'
+     mockHandles.authGetCurrentUser.mockResolvedValue({
       success: true,
       data: { id: 1, name: 'admin' } as unknown as API.currentUser,
     })
@@ -257,9 +257,9 @@ describe('getInitialState — 真实生产函数回归', () => {
     expect(delta).toBeLessThan(50)
   })
 
-  it('已登录但字典接口抛错 → 静默退化为空对象，不阻塞 state 返回', async () => {
-    mockHandles.pathname = '/admin/dashboard'
-    mockHandles.getCurrentUser.mockResolvedValue({
+   it('已登录但字典接口抛错 → 静默退化为空对象，不阻塞 state 返回', async () => {
+     mockHandles.pathname = '/admin/dashboard'
+     mockHandles.authGetCurrentUser.mockResolvedValue({
       success: true,
       data: { id: 1, name: 'admin' } as unknown as API.currentUser,
     })

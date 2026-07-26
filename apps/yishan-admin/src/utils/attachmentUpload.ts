@@ -1,4 +1,4 @@
-import { batchGetSystemOptionByQuery, getQiniuUploadToken } from "@/services/generated/system";
+import { batchGetSystemOption, getQiniuUploadToken } from "@/services/generated/system";
 import { createCloudAttachment, uploadAttachments } from "@/services/generated/attachments";
 import type { Attachment, AttachmentKind, UploadAttachmentsResp } from "@/types/sdk";
 
@@ -21,7 +21,7 @@ export const fetchCloudStorageConfig = async (options?: { force?: boolean }): Pr
   }
 
   try {
-    const res = await batchGetSystemOptionByQuery({
+    const res = await batchGetSystemOption({
       "key[]": ["systemStorage", "qiniuConfig", "aliyunOssConfig"],
     });
     const results = res.data?.results || [];

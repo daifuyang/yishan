@@ -1,3 +1,4 @@
+// @ts-ignore
 /* eslint-disable */
 import { request } from "@umijs/max";
 
@@ -23,9 +24,9 @@ export async function healthCheck(options?: { [key: string]: any }) {
 }
 
 /** 获取系统参数 根据键获取系统参数值 GET /api/v1/admin/system/options/${param0} */
-export async function getSystemOption(
+export async function getSystemOptionDetail(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getSystemOptionParams,
+  params: API.getSystemOptionDetailParams,
   options?: { [key: string]: any }
 ) {
   const { key: param0, ...queryParams } = params;
@@ -80,9 +81,9 @@ export async function batchSetSystemOption(
 }
 
 /** 批量获取系统参数（QueryString） 通过 query 参数 ?key[]=a&key[]=b 批量获取系统参数值 GET /api/v1/admin/system/options/query */
-export async function batchGetSystemOptionByQuery(
+export async function batchGetSystemOption(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.batchGetSystemOptionByQueryParams,
+  params: API.batchGetSystemOptionParams,
   options?: { [key: string]: any }
 ) {
   return request<API.batchGetSystemOptionResp>(

@@ -38,7 +38,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       schema: {
         summary: "用户登录",
         description: "用户通过用户名/邮箱和密码进行登录认证",
-        operationId: "login",
+         operationId: "authLogin",
         tags: ["auth"],
         security: [],
         body: { $ref: "loginReq#" },
@@ -81,7 +81,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       schema: {
         summary: "用户登出",
         description: "用户登出，清除认证状态",
-        operationId: "logout",
+         operationId: "authLogout",
         tags: ["auth"],
         security: [{ bearerAuth: [] }],
         response: {
@@ -124,7 +124,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       schema: {
         summary: "获取当前用户信息",
         description: "获取当前登录用户的详细信息",
-        operationId: "getCurrentUser",
+         operationId: "authGetCurrentUser",
         tags: ["auth"],
         security: [{ bearerAuth: [] }],
         response: {
@@ -156,7 +156,7 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       schema: {
         summary: "刷新访问令牌",
         description: "使用刷新令牌获取新的访问令牌和刷新令牌",
-        operationId: "refreshToken",
+         operationId: "authRefreshToken",
         tags: ["auth"],
         security: [],
         body: { $ref: "refreshTokenReq#" },

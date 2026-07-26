@@ -8,7 +8,7 @@ import { Badge, Switch, Tag, message } from 'antd'
 import { history } from '@umijs/max'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-  listModuleManagement,
+  getModuleManagementList,
   toggleModuleManagement,
 } from '@/services/generated/moduleManagement'
 
@@ -111,7 +111,7 @@ const DevModules: React.FC = () => {
         search={false}
         options={{ reload: true, density: false }}
         request={async () => {
-          const res = await listModuleManagement()
+          const res = await getModuleManagementList()
           const items = (res.data?.items ?? []) as RowItem[]
           return {
             data: items,

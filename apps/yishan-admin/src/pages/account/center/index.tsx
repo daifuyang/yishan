@@ -43,7 +43,7 @@ import React, {
 } from 'react';
 import { AttachmentImageSelect } from '@/components/AttachmentSelect';
 import { ImageCropperModal } from '@/components';
-import { getCurrentUser } from '@/services/generated/auth';
+import { authGetCurrentUser } from '@/services/generated/auth';
 import {
   appChangeMyPassword,
   appUpdateMe,
@@ -923,7 +923,7 @@ const Center: React.FC = () => {
     let alive = true;
     (async () => {
       try {
-        const res: any = await getCurrentUser();
+        const res: any = await authGetCurrentUser();
         if (alive && res?.success) setUser(res.data);
       } finally {
         if (alive) setLoading(false);

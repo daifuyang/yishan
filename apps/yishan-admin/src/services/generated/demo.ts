@@ -1,8 +1,9 @@
+// @ts-ignore
 /* eslint-disable */
 import { request } from "@umijs/max";
 
 /** 插件健康检查 返回模块自身与运行环境的只读信息，用于演示 plugin 不读 db 的纯函数 service。 GET /api/demo/v1/info */
-export async function demoV1Info(options?: { [key: string]: any }) {
+export async function demoInfo(options?: { [key: string]: any }) {
   return request<{
     module: "demo";
     nodeVersion: string;
@@ -22,7 +23,7 @@ export async function demoV1Info(options?: { [key: string]: any }) {
 }
 
 /** Todo 列表 GET /api/demo/v1/todos */
-export async function demoV1TodosList(options?: { [key: string]: any }) {
+export async function demoTodosList(options?: { [key: string]: any }) {
   return request<{
     total: number;
     items: {
@@ -41,7 +42,7 @@ export async function demoV1TodosList(options?: { [key: string]: any }) {
 }
 
 /** Todo 新建 POST /api/demo/v1/todos */
-export async function demoV1TodosCreate(
+export async function demoTodosCreate(
   body: {
     title: string;
     description?: string;
@@ -69,9 +70,9 @@ export async function demoV1TodosCreate(
 }
 
 /** Todo 详情 GET /api/demo/v1/todos/${param0} */
-export async function demoV1TodosDetail(
+export async function demoTodosDetail(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.demoV1TodosDetailParams,
+  params: API.demoTodosDetailParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -91,9 +92,9 @@ export async function demoV1TodosDetail(
 }
 
 /** Todo 删除 DELETE /api/demo/v1/todos/${param0} */
-export async function demoV1TodosDelete(
+export async function demoTodosDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.demoV1TodosDeleteParams,
+  params: API.demoTodosDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -113,9 +114,9 @@ export async function demoV1TodosDelete(
 }
 
 /** Todo 更新 PATCH /api/demo/v1/todos/${param0} */
-export async function demoV1TodosUpdate(
+export async function demoTodosUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.demoV1TodosUpdateParams,
+  params: API.demoTodosUpdateParams,
   body: {
     title?: string;
     description?: string;

@@ -40,7 +40,7 @@ jest.mock('@/utils/token', () => ({
 }));
 
 jest.mock('@/services/generated/auth', () => ({
-  refreshToken: (...args: unknown[]) => mockRefreshToken(...args),
+  authRefreshToken: (...args: unknown[]) => mockRefreshToken(...args),
 }));
 
 jest.mock('antd', () => {

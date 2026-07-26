@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { UploadFile, UploadProps } from "antd";
 import { Upload, App, Image } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { getQiniuUploadToken, getSystemOption } from "@/services/generated/system";
+import { getQiniuUploadToken, getSystemOptionDetail } from "@/services/generated/system";
 
 interface QiniuUploadProps {
   value?: string;
@@ -22,7 +22,7 @@ const QiniuUpload: React.FC<QiniuUploadProps> = ({ value, onChange, dir = "uploa
     const fetchConfig = async () => {
       try {
         setLoadingConfig(true);
-        const res = await getSystemOption({ key: "qiniuConfig" } as any);
+        const res = await getSystemOptionDetail({ key: "qiniuConfig" } as any);
         const text = (res as any)?.data;
         if (typeof text === "string" && text.trim().length > 0) {
           try {

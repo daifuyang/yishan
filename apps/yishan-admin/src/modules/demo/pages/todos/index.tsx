@@ -18,10 +18,10 @@ import { PlusOutlined } from '@ant-design/icons'
 import { Button, message, Popconfirm, Space } from 'antd'
 import React, { useRef, useState } from 'react'
 import {
-  demoV1TodosCreate,
-  demoV1TodosDelete,
-  demoV1TodosList,
-  demoV1TodosUpdate,
+  demoTodosCreate,
+  demoTodosDelete,
+  demoTodosList,
+  demoTodosUpdate,
 } from '@/services/generated/demo'
 
 type Status = 0 | 1 | 2
@@ -65,7 +65,7 @@ const Todos: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false)
 
   const fetchList = async () => {
-    const res = await demoV1TodosList({})
+    const res = await demoTodosList({})
     // generated service 返回业务响应（data 字段已是列表）
     const data = (res as unknown as ListResp) ?? null
     return {
@@ -76,7 +76,7 @@ const Todos: React.FC = () => {
   }
 
   const handleCreate = async (values: FormValues) => {
-    await demoV1TodosCreate(
+    await demoTodosCreate(
       {
         title: values.title.trim(),
         description: values.description?.trim() ?? '',
@@ -92,7 +92,7 @@ const Todos: React.FC = () => {
 
   const handleUpdate = async (values: FormValues) => {
     if (!editing) return
-    await demoV1TodosUpdate(
+    await demoTodosUpdate(
       { id: String(editing.id) },
       {
         title: values.title.trim(),
@@ -108,7 +108,7 @@ const Todos: React.FC = () => {
   }
 
   const handleDelete = async (id: number) => {
-    await demoV1TodosDelete({ id: String(id) }, {})
+    await demoTodosDelete({ id: String(id) }, {})
     message.success('已删除')
     actionRef.current?.reload()
   }

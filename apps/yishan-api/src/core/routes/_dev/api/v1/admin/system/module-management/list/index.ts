@@ -34,7 +34,7 @@ const adminSystemModuleManagementList: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: '模块列表',
         description: '扫描 src/modules/ 并合并 sys_module 行；标注 enabled 与是否已挂载。routePrefix 由 moduleRoutePrefix() 统一生成为 /api/${id}。',
-        operationId: 'listModuleManagement',
+        operationId: 'getModuleManagementList',
         tags: ['moduleManagement'],
         security: [{ bearerAuth: [] }],
         response: {

@@ -1,10 +1,11 @@
+// @ts-ignore
 /* eslint-disable */
 import { request } from "@umijs/max";
 
 /** 地区列表 按父级行政区划代码获取下级地区列表 GET /api/v1/admin/system/regions/ */
-export async function listSystemRegions(
+export async function getSystemRegionList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.listSystemRegionsParams,
+  params: API.getSystemRegionListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -29,9 +30,9 @@ export async function listSystemRegions(
 }
 
 /** 地区详情 按行政区划代码获取地区详情 GET /api/v1/admin/system/regions/${param0} */
-export async function getSystemRegion(
+export async function getSystemRegionDetail(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getSystemRegionParams,
+  params: API.getSystemRegionDetailParams,
   options?: { [key: string]: any }
 ) {
   const { code: param0, ...queryParams } = params;

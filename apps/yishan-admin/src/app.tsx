@@ -11,7 +11,7 @@ import {
   Question,
   SelectLang,
 } from "@/components";
-import { getCurrentUser } from "@/services/generated/auth";
+import { authGetCurrentUser } from "@/services/generated/auth";
 import { App as AntdApp } from "antd";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
@@ -91,7 +91,7 @@ export async function getInitialState(): Promise<{
   ) => Promise<UploadAttachmentsResp>;
 }> {
   const fetchUserInfo = async () => {
-    const response = await getCurrentUser();
+    const response = await authGetCurrentUser();
     if (response.success && response.data) {
       return response.data;
     }

@@ -7,7 +7,7 @@ import {
   ProFormTextArea,
 } from "@ant-design/pro-components";
 import { App, Card } from "antd";
-import { batchGetSystemOptionByQuery, batchSetSystemOption } from "@/services/generated/system";
+import { batchGetSystemOption, batchSetSystemOption } from "@/services/generated/system";
 
 type BasicConfig = {
   siteName: string;
@@ -64,7 +64,7 @@ const SiteConfigPage: React.FC = () => {
     const fetchConfig = async () => {
       try {
         setLoading(true);
-        const res = await batchGetSystemOptionByQuery({ "key[]" : [BASIC_CONFIG_KEY] });
+        const res = await batchGetSystemOption({ "key[]" : [BASIC_CONFIG_KEY] });
         const value = res.data?.results?.find((i) => i.key === BASIC_CONFIG_KEY)?.value ?? null;
         const nextValues = parseJson<BasicConfig>(value, defaultBasicConfig);
         setInitialValues(nextValues);

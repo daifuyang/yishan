@@ -24,7 +24,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: "获取系统参数",
         description: "根据键获取系统参数值",
-        operationId: "getSystemOption",
+         operationId: "getSystemOptionDetail",
         tags: ["system"],
         security: [{ bearerAuth: [] }],
         params: {
@@ -55,7 +55,7 @@ const adminSystemOptions: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: "批量获取系统参数（QueryString）",
         description: "通过 query 参数 ?key[]=a&key[]=b 批量获取系统参数值",
-        operationId: "batchGetSystemOptionByQuery",
+         operationId: "batchGetSystemOption",
         tags: ["system"],
         security: [{ bearerAuth: [] }],
         querystring: {

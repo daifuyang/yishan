@@ -43,7 +43,7 @@ export default (async (app) => {
       schema: {
         tags: [ROUTE_TAG],
         summary: 'Todo 列表',
-        operationId: 'demoV1TodosList',
+         operationId: 'demoTodosList',
         response: { 200: TodoListRespSchema },
       },
     },
@@ -58,7 +58,7 @@ export default (async (app) => {
       schema: {
         tags: [ROUTE_TAG],
         summary: 'Todo 详情',
-        operationId: 'demoV1TodosDetail',
+         operationId: 'demoTodosDetail',
         params: TypeIdParams(),
         response: { 200: TodoRespSchema },
       },
@@ -77,7 +77,7 @@ export default (async (app) => {
       schema: {
         tags: [ROUTE_TAG],
         summary: 'Todo 新建',
-        operationId: 'demoV1TodosCreate',
+         operationId: 'demoTodosCreate',
         body: TodoCreateReqSchema,
         response: { 200: TodoRespSchema },
       },
@@ -93,7 +93,7 @@ export default (async (app) => {
       schema: {
         tags: [ROUTE_TAG],
         summary: 'Todo 更新',
-        operationId: 'demoV1TodosUpdate',
+         operationId: 'demoTodosUpdate',
         params: TypeIdParams(),
         body: TodoUpdateReqSchema,
         response: { 200: TodoRespSchema },
@@ -113,7 +113,7 @@ export default (async (app) => {
       schema: {
         tags: [ROUTE_TAG],
         summary: 'Todo 删除',
-        operationId: 'demoV1TodosDelete',
+         operationId: 'demoTodosDelete',
         params: TypeIdParams(),
         response: { 200: TodoRespSchema },
       },
