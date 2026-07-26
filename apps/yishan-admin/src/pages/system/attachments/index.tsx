@@ -27,195 +27,27 @@ import {
   Tag,
   Tooltip,
   Tree,
-  Typography,
   Upload,
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { AttachmentEditForm } from '@/components/AttachmentEditForm';
-import {
-  batchDeleteAttachments,
-  deleteAttachment,
-  deleteAttachmentFolder,
-  getAttachmentFolderTree,
-  getAttachmentList,
-} from '@/services/generated/attachments';
+import { deleteAttachmentFolder, uploadAttachments } from '@/services/generated/attachments';
 import { resolveAttachmentPublicUrl } from '@/utils/attachmentUpload';
+import { attachmentKindMeta } from './constants';
+import { getKindFromFile, highlightText, flattenFolders as _ff } from './utils';
+import { useAttachmentFolders } from './hooks/useAttachmentFolders';
+import { useAttachmentGridColumns } from './hooks/useAttachmentGridColumns';
 import AttachmentFolderForm from './components/AttachmentFolderForm';
 import styles from './index.module.less';
-
-const attachmentKindMeta: Record<
-  API.sysAttachment['kind'],
-  { color: string; text: string }
-> = {
-  image: { color: 'blue', text: '图片' },
-  audio: { color: 'purple', text: '音频' },
-  video: { color: 'cyan', text: '视频' },
-  other: { color: 'default', text: '其他' },
-};
-
-const formatBytes = (value?: number) => {
-  if (!value || value <= 0) return '-';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let size = value;
-  let idx = 0;
-  while (size >= 1024 && idx < units.length - 1) {
-    size /= 1024;
-    idx += 1;
-  }
-  const fixed = idx === 0 ? 0 : 2;
-  return `${size.toFixed(fixed)} ${units[idx]}`;
-};
-
-const findFolderById = (
-  nodes: API.sysAttachmentFolder[] = [],
-  id: number,
-): API.sysAttachmentFolder | undefined => {
-  for (const n of nodes) {
-    if (n.id === id) return n;
-    if (Array.isArray(n.children) && n.children.length > 0) {
-      const found = findFolderById(n.children, id);
-      if (found) return found;
-    }
-  }
-  return undefined;
-};
-
-type FolderItem = {
-  id: number;
-  name: string;
-  displayName: string;
-  kind: API.sysAttachmentFolder['kind'];
-  level: number;
-  parentIds: number[];
-};
-
-const flattenFolders = (
-  nodes: API.sysAttachmentFolder[] = [],
-  prefix: string[] = [],
-  level = 1,
-  parentIds: number[] = [],
-): FolderItem[] => {
-  const list: FolderItem[] = [];
-  for (const n of nodes) {
-    const path = [...prefix, n.name];
-    list.push({
-      id: n.id,
-      name: n.name,
-      displayName: path.join(' / '),
-      kind: n.kind || 'all',
-      level,
-      parentIds,
-    });
-    if (Array.isArray(n.children) && n.children.length > 0) {
-      list.push(
-        ...flattenFolders(n.children, path, level + 1, [...parentIds, n.id]),
-      );
-    }
-  }
-  return list;
-};
-
-const highlightText = (text: string, keyword: string) => {
-  if (!keyword) return text;
-  const lower = text.toLowerCase();
-  const k = keyword.toLowerCase();
-  const idx = lower.indexOf(k);
-  if (idx < 0) return text;
-  const before = text.slice(0, idx);
-  const hit = text.slice(idx, idx + keyword.length);
-  const after = text.slice(idx + keyword.length);
-  return (
-    <>
-      {before}
-      <span style={{ color: '#1677ff' }}>{hit}</span>
-      {after}
-    </>
-  );
-};
-
-const getKindFromFile = (file: File): API.sysAttachment['kind'] => {
-  const mime = file.type || '';
-  if (mime.startsWith('image/')) return 'image';
-  if (mime.startsWith('audio/')) return 'audio';
-  if (mime.startsWith('video/')) return 'video';
-  return 'other';
-};
 
 const AttachmentsPage: React.FC = () => {
   const { message } = App.useApp();
   const { initialState } = useModel('@@initialState');
-
-  const [folderTree, setFolderTree] = useState<API.sysAttachmentFolder[]>([]);
-  const [loadingFolders, setLoadingFolders] = useState(false);
-  const [selectedFolderId, setSelectedFolderId] = useState<number>(0);
-  const [folderSearchValue, setFolderSearchValue] = useState('');
-  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
-  const [autoExpandParent, setAutoExpandParent] = useState(true);
-
-  const [attachments, setAttachments] = useState<API.sysAttachment[]>([]);
-  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
-  const [attachmentsPage, setAttachmentsPage] = useState(1);
-  const [attachmentsPageSize, setAttachmentsPageSize] = useState(24);
-  const [attachmentsTotal, setAttachmentsTotal] = useState(0);
-  const [kindTab, setKindTab] = useState<API.sysAttachment['kind'] | 'all'>(
-    'all',
-  );
-  const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<number[]>(
-    [],
-  );
-  const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
-  const [editingAttachment, setEditingAttachment] =
-    useState<API.sysAttachment>();
-
-  const [mediaPreviewOpen, setMediaPreviewOpen] = useState(false);
-  const [mediaPreviewKind, setMediaPreviewKind] = useState<
-    'audio' | 'video' | null
-  >(null);
-  const [mediaPreviewSrc, setMediaPreviewSrc] = useState('');
-  const [mediaPreviewTitle, setMediaPreviewTitle] = useState('');
-
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
-  const [gridContainerWidth, setGridContainerWidth] = useState(0);
 
-  const selectedFolder = useMemo(() => {
-    if (!selectedFolderId) return undefined;
-    return findFolderById(folderTree, selectedFolderId);
-  }, [folderTree, selectedFolderId]);
-
-  const folderItems: FolderItem[] = useMemo(() => {
-    return [
-      {
-        id: 0,
-        name: '全部素材',
-        displayName: '全部素材',
-        kind: 'all',
-        level: 0,
-        parentIds: [],
-      },
-      ...flattenFolders(folderTree),
-    ];
-  }, [folderTree]);
-
-  const refreshFolders = async () => {
-    try {
-      setLoadingFolders(true);
-      const res = await getAttachmentFolderTree();
-      setFolderTree(res.data || []);
-    } finally {
-      setLoadingFolders(false);
-    }
-  };
-
-  useEffect(() => {
-    refreshFolders();
-  }, []);
+  const folder = useAttachmentFolders(message);
+  const { gridColumns } = useAttachmentGridColumns(gridContainerRef, true);
 
   const uploadProps: UploadProps = useMemo(
     () => ({
@@ -225,22 +57,19 @@ const AttachmentsPage: React.FC = () => {
         const { file, onSuccess, onError } = options;
         try {
           const f: File = file as File;
-
           const upload = initialState?.uploadAttachmentFile;
           if (!upload) {
             onError?.(new Error('上传能力未初始化'));
             return;
           }
-
           const res = await upload(f, {
-            folderId: selectedFolderId > 0 ? selectedFolderId : undefined,
+            folderId: folder.selectedFolderId > 0 ? folder.selectedFolderId : undefined,
             kind: getKindFromFile(f),
             dir: 'attachments',
           });
           if (res.success) {
             message.success(res.message || '上传成功');
-            setAttachmentsPage(1);
-            fetchAttachments(1, attachmentsPageSize, kindTab);
+            folder.setAttachmentsPage(1);
             onSuccess?.(res, file as any);
             return;
           }
@@ -251,438 +80,150 @@ const AttachmentsPage: React.FC = () => {
         }
       },
     }),
-    [
-      attachmentsPageSize,
-      initialState?.uploadAttachmentFile,
-      kindTab,
-      message,
-      selectedFolderId,
-    ],
+    [initialState?.uploadAttachmentFile, folder.selectedFolderId, message],
   );
-
-  const handleFolderActionSuccess = async () => {
-    await refreshFolders();
-    setAttachmentsPage(1);
-  };
-
-  const handleDeleteAttachment = async (id: number) => {
-    const res = await deleteAttachment({ id });
-    if (res.success) message.success(res.message);
-    setSelectedAttachmentIds((prev) => prev.filter((x) => x !== id));
-    setAttachmentsPage(1);
-    fetchAttachments(1, attachmentsPageSize, kindTab);
-  };
-
-  const handleBatchDeleteAttachment = async () => {
-    if (selectedAttachmentIds.length === 0) return;
-    try {
-      setBatchDeleteLoading(true);
-      const res = await batchDeleteAttachments({ ids: selectedAttachmentIds });
-      if (res.success) message.success(res.message);
-      setSelectedAttachmentIds([]);
-      setAttachmentsPage(1);
-      fetchAttachments(1, attachmentsPageSize, kindTab);
-    } finally {
-      setBatchDeleteLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    setSelectedAttachmentIds([]);
-  }, [selectedFolderId, kindTab]);
-
-  useEffect(() => {
-    if (!folderItems.length) return;
-    if (folderSearchValue) return;
-    setExpandedKeys(folderItems.map((f) => f.id));
-    setAutoExpandParent(true);
-  }, [folderItems, folderSearchValue]);
-
-  useEffect(() => {
-    const keyword = folderSearchValue.trim();
-    if (!keyword) return;
-    const keys = new Set<React.Key>();
-    for (const item of folderItems) {
-      if (item.id === 0) continue;
-      if (item.name.toLowerCase().includes(keyword.toLowerCase())) {
-        for (const id of item.parentIds) {
-          keys.add(id);
-        }
-      }
-    }
-    setExpandedKeys(Array.from(keys));
-    setAutoExpandParent(true);
-  }, [folderItems, folderSearchValue]);
-
-  useEffect(() => {
-    const el = gridContainerRef.current;
-    if (!el) return;
-
-    const update = () => {
-      const width = el.clientWidth || el.getBoundingClientRect().width || 0;
-      setGridContainerWidth(width);
-    };
-
-    update();
-
-    const RO = (window as any).ResizeObserver as
-      | typeof ResizeObserver
-      | undefined;
-    if (RO) {
-      const ro = new RO(() => update());
-      ro.observe(el);
-      return () => ro.disconnect();
-    }
-
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
-  }, []);
-
-  const gridColumns = useMemo(() => {
-    const w = gridContainerWidth || 0;
-    if (w < 576) return 2;
-    if (w < 768) return 3;
-    if (w < 992) return 4;
-    if (w < 1200) return 5;
-    if (w < 1600) return 6;
-    return 7;
-  }, [gridContainerWidth]);
 
   const stopTreeActionEvent = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation();
   }, []);
 
   const treeData: DataNode[] = useMemo(() => {
-    const build = (
-      nodes: API.sysAttachmentFolder[] = [],
-      level = 1,
-    ): DataNode[] => {
-      return nodes.map((n) => {
-        const canCreateChild = level < 3;
-        const title = (
+    const build = (nodes: API.sysAttachmentFolder[] = [], level = 1): DataNode[] =>
+      nodes.map((n) => ({
+        key: n.id,
+        title: (
           <div key={n.id} className={styles.folderItem}>
-            <span
-              style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {highlightText(n.name, folderSearchValue)}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {highlightText(n.name, folder.folderSearchValue)}
             </span>
-            <span
-              data-tree-action="1"
-              className={styles.folderActions}
-              onClick={stopTreeActionEvent}
-            >
+            <span data-tree-action="1" className={styles.folderActions} onClick={stopTreeActionEvent}>
               <AttachmentFolderForm
                 title="新建子分组"
-                trigger={
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<PlusOutlined />}
-                    disabled={!canCreateChild}
-                  />
-                }
-                initialValues={{
-                  parentId: n.id,
-                  kind: (n.kind as any) || 'all',
-                  status: '1',
-                  sort_order: 0,
-                }}
-                onFinish={handleFolderActionSuccess}
+                trigger={<Button type="text" size="small" icon={<PlusOutlined />} disabled={level >= 3} />}
+                initialValues={{ parentId: n.id, kind: n.kind || 'all', status: '1', sort_order: 0 }}
+                onFinish={folder.handleFolderActionSuccess}
               />
               <AttachmentFolderForm
                 title="编辑分组"
-                trigger={
-                  <Button type="text" size="small" icon={<EditOutlined />} />
-                }
-                initialValues={{ ...n, parentId: (n.parentId as any) ?? 0 }}
-                onFinish={handleFolderActionSuccess}
+                trigger={<Button type="text" size="small" icon={<EditOutlined />} />}
+                initialValues={{ ...n, parentId: n.parentId ?? 0 }}
+                onFinish={folder.handleFolderActionSuccess}
               />
-              <Popconfirm
-                title="确定要删除该分组吗？"
-                onConfirm={async () => {
-                  if (!n.id) return;
-                  const res = await deleteAttachmentFolder({ id: n.id });
-                  if (res.success) message.success(res.message);
-                  if (selectedFolderId === n.id) setSelectedFolderId(0);
-                  await refreshFolders();
-                }}
-              >
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  icon={<DeleteOutlined />}
-                />
+              <Popconfirm title="确定要删除该分组吗？" onConfirm={async () => {
+                if (!n.id) return;
+                const res = await deleteAttachmentFolder({ id: n.id });
+                if (res.success) message.success(res.message);
+                if (folder.selectedFolderId === n.id) folder.setSelectedFolderId(0);
+                await folder.refreshFolders();
+              }}>
+                <Button type="text" size="small" danger icon={<DeleteOutlined />} />
               </Popconfirm>
-            </span>
-          </div>
-        );
-
-        return {
-          key: n.id,
-          title,
-          children: n.children ? build(n.children, level + 1) : undefined,
-        };
-      });
-    };
-
-    return [
-      {
-        key: 0,
-        title: (
-          <div key={0} className={styles.folderItem}>
-            <span
-              style={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {highlightText('全部素材', folderSearchValue)}
-            </span>
-            <span
-              data-tree-action="1"
-              className={styles.folderActions}
-              onClick={stopTreeActionEvent}
-            >
-              <AttachmentFolderForm
-                title="新建分组"
-                trigger={
-                  <Button type="text" size="small" icon={<PlusOutlined />} />
-                }
-                initialValues={{
-                  parentId: 0,
-                  kind: 'all',
-                  status: '1',
-                  sort_order: 0,
-                }}
-                onFinish={handleFolderActionSuccess}
-              />
             </span>
           </div>
         ),
-        children: build(folderTree),
-      },
-    ];
-  }, [
-    folderSearchValue,
-    folderTree,
-    handleFolderActionSuccess,
-    message,
-    refreshFolders,
-    selectedFolderId,
-    stopTreeActionEvent,
-  ]);
+        children: n.children ? build(n.children, level + 1) : undefined,
+      }));
 
-  const fetchAttachments = async (
-    page: number,
-    pageSize: number,
-    kind: API.sysAttachment['kind'] | 'all',
-  ) => {
-    setAttachmentsLoading(true);
-    try {
-      const result = await getAttachmentList({
-        page,
-        pageSize,
-        folderId: selectedFolderId > 0 ? selectedFolderId : undefined,
-        kind: kind === 'all' ? undefined : kind,
-      });
-      setAttachments(result.data || []);
-      setAttachmentsTotal(result.pagination.total);
-    } finally {
-      setAttachmentsLoading(false);
-    }
-  };
+    return [{
+      key: 0,
+      title: (
+        <div key={0} className={styles.folderItem}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {highlightText('全部素材', folder.folderSearchValue)}
+          </span>
+          <span data-tree-action="1" className={styles.folderActions} onClick={stopTreeActionEvent}>
+            <AttachmentFolderForm
+              title="新建分组"
+              trigger={<Button type="text" size="small" icon={<PlusOutlined />} />}
+              initialValues={{ parentId: 0, kind: 'all', status: '1', sort_order: 0 }}
+              onFinish={folder.handleFolderActionSuccess}
+            />
+          </span>
+        </div>
+      ),
+      children: build(folder.folderTree),
+    }];
+  }, [folder.folderSearchValue, folder.folderTree, folder.handleFolderActionSuccess,
+      folder.selectedFolderId, folder.refreshFolders, message, stopTreeActionEvent]);
 
-  useEffect(() => {
-    fetchAttachments(attachmentsPage, attachmentsPageSize, kindTab);
-  }, [attachmentsPage, attachmentsPageSize, kindTab, selectedFolderId]);
-
-  const openMediaPreview = (record: API.sysAttachment) => {
-    if (record.kind !== 'audio' && record.kind !== 'video') return;
-    const src = resolveAttachmentPublicUrl(
-      record,
-      initialState?.cloudStorageConfig,
-    );
-    if (!src) {
-      message.warning('暂无可预览地址');
-      return;
-    }
-    setMediaPreviewKind(record.kind);
-    setMediaPreviewSrc(src);
-    setMediaPreviewTitle(
-      record.name || (record.kind === 'audio' ? '音频预览' : '视频预览'),
-    );
-    setMediaPreviewOpen(true);
-  };
-
-  const getAttachmentCover = (record: API.sysAttachment) => {
-    const src = resolveAttachmentPublicUrl(
-      record,
-      initialState?.cloudStorageConfig,
-    );
-    if (record.kind === 'image' && src) {
-      return (
-        <Image
-          src={src}
-          preview={{ src }}
-          style={{
-            width: '100%',
-            height: 120,
-            objectFit: 'cover',
-            display: 'block',
-          }}
-        />
-      );
-    }
-    const icon =
-      record.kind === 'audio' ? (
-        <CustomerServiceOutlined />
-      ) : record.kind === 'video' ? (
-        <VideoCameraOutlined />
-      ) : (
-        <FileOutlined />
-      );
-    const canPreview =
-      (record.kind === 'audio' || record.kind === 'video') && !!src;
-    return (
-      <div
-        onClick={canPreview ? () => openMediaPreview(record) : undefined}
-        style={{
-          height: 120,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'rgba(0,0,0,0.02)',
-          fontSize: 44,
-          color: 'rgba(0,0,0,0.45)',
-          cursor: canPreview ? 'pointer' : 'default',
-        }}
-      >
-        {canPreview ? <Tooltip title="预览">{icon}</Tooltip> : icon}
-      </div>
-    );
-  };
+  const folderName = folder.selectedFolder
+    ? folder.selectedFolder.name
+    : folder.folderSearchValue.trim()
+      ? `搜索: ${folder.folderSearchValue}`
+      : '全部素材';
 
   return (
-    <PageContainer>
-      <div
-        className={styles.attachmentsPage}
-        style={{ display: 'flex', gap: 12 }}
-      >
-        <Card
-          className={styles.attachmentsTree}
-          title="分组"
-          style={{ width: 280, flex: '0 0 280px' }}
-          loading={loadingFolders}
-        >
-          <Input.Search
-            placeholder="搜索分组"
-            allowClear
-            value={folderSearchValue}
-            onChange={(e) => setFolderSearchValue(e.target.value)}
-            style={{ marginBottom: 12 }}
-          />
-          <Tree
-            selectedKeys={[selectedFolderId]}
-            treeData={treeData}
-            expandedKeys={expandedKeys}
-            autoExpandParent={autoExpandParent}
-            onExpand={(keys) => {
-              setExpandedKeys(keys);
-              setAutoExpandParent(false);
-            }}
-            onSelect={(keys, info: any) => {
-              const target = info?.nativeEvent?.target as HTMLElement | null;
-              if (target?.closest?.('[data-tree-action="1"]')) return;
-              const key = Number(keys[0] ?? 0);
-              setSelectedFolderId(key);
-              setAttachmentsPage(1);
-            }}
-            defaultExpandAll
-            blockNode
-            showIcon={false}
-          />
+    <PageContainer
+      header={{
+        title: '素材管理',
+        breadcrumb: {},
+      }}
+    >
+      <div style={{ display: 'flex', gap: 16, height: 'calc(100vh - 200px)' }}>
+        {/* Left sidebar - folder tree */}
+        <Card style={{ width: 260, flexShrink: 0 }} bodyStyle={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ padding: 16, borderBottom: '1px solid #f0f0f0' }}>
+            <Input.Search
+              placeholder="搜索分组"
+              value={folder.folderSearchValue}
+              onChange={(e) => folder.setFolderSearchValue(e.target.value)}
+            />
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+            <Spin spinning={folder.loadingFolders}>
+              <Tree
+                blockNode
+                showIcon={false}
+                selectedKeys={[folder.selectedFolderId]}
+                expandedKeys={folder.expandedKeys}
+                autoExpandParent={folder.autoExpandParent}
+                treeData={treeData}
+                onExpand={(keys) => {
+                  folder.setExpandedKeys(keys);
+                  folder.setAutoExpandParent(false);
+                }}
+                onSelect={(keys) => {
+                  const id = Number(keys?.[0] || 0);
+                  folder.setSelectedFolderId(Number.isFinite(id) ? id : 0);
+                  folder.setAttachmentsPage(1);
+                }}
+                style={{ background: 'transparent' }}
+              />
+            </Spin>
+          </div>
         </Card>
 
-        <Card style={{ flex: 1 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}
-          >
-            <div style={{ fontWeight: 500 }}>
-              {selectedFolderId > 0
-                ? `素材（${selectedFolder?.name || '分组'}）`
-                : '素材'}
+        {/* Right content */}
+        <Card style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}
+          bodyStyle={{ padding: 0, display: 'flex', flexDirection: 'column', flex: 1 }}>
+          {/* Toolbar */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontWeight: 500, fontSize: 15 }}>{folderName}</span>
+              {folder.selectedAttachmentIds.length > 0 && (
+                <>
+                  <span style={{ color: 'rgba(0,0,0,0.45)' }}>已选 {folder.selectedAttachmentIds.length} 项</span>
+                  <Button size="small" onClick={() => folder.setSelectedAttachmentIds([])}>取消选择</Button>
+                  <Popconfirm title={`确定要删除选中的 ${folder.selectedAttachmentIds.length} 个素材吗？`}
+                    onConfirm={folder.handleBatchDeleteAttachment}>
+                    <Button size="small" danger loading={folder.batchDeleteLoading}
+                      icon={<DeleteOutlined />}>批量删除</Button>
+                  </Popconfirm>
+                </>
+              )}
             </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                flexWrap: 'wrap',
-              }}
-            >
-              {selectedAttachmentIds.length > 0 && (
-                <Typography.Text type="secondary">
-                  已选 {selectedAttachmentIds.length} 项
-                </Typography.Text>
-              )}
-              {selectedAttachmentIds.length > 0 && (
-                <a
-                  style={{
-                    pointerEvents: batchDeleteLoading ? 'none' : undefined,
-                  }}
-                  onClick={() => setSelectedAttachmentIds([])}
-                >
-                  取消选择
-                </a>
-              )}
-              <Popconfirm
-                title={`确定要删除选中的 ${selectedAttachmentIds.length} 个素材吗？`}
-                onConfirm={handleBatchDeleteAttachment}
-                disabled={
-                  selectedAttachmentIds.length === 0 || batchDeleteLoading
-                }
-              >
-                <a
-                  style={{
-                    color:
-                      selectedAttachmentIds.length === 0 || batchDeleteLoading
-                        ? undefined
-                        : '#ff4d4f',
-                    pointerEvents:
-                      selectedAttachmentIds.length === 0 || batchDeleteLoading
-                        ? 'none'
-                        : undefined,
-                  }}
-                >
-                  批量删除
-                </a>
-              </Popconfirm>
+            <Space>
               <Upload {...uploadProps}>
-                <Button type="primary" icon={<UploadOutlined />}>
-                  上传
-                </Button>
+                <Button type="primary" icon={<UploadOutlined />}>上传</Button>
               </Upload>
-            </div>
+            </Space>
           </div>
 
-          <div style={{ marginTop: 12 }}>
+          {/* Tabs */}
+          <div style={{ padding: '0 16px', borderBottom: '1px solid #f0f0f0' }}>
             <Tabs
-              activeKey={kindTab}
-              onChange={(k) => {
-                setKindTab(k as API.sysAttachment['kind'] | 'all');
-                setAttachmentsPage(1);
-              }}
+              activeKey={folder.kindTab}
+              onChange={(k) => { folder.setKindTab(k as any); folder.setAttachmentsPage(1); }}
               items={[
                 { key: 'all', label: '全部' },
                 { key: 'image', label: '图片' },
@@ -691,204 +232,112 @@ const AttachmentsPage: React.FC = () => {
                 { key: 'other', label: '其他' },
               ]}
             />
+          </div>
 
-            <div ref={gridContainerRef}>
-              <div style={{ minHeight: 400 }}>
-                {attachmentsLoading ? (
-                  <div
-                    style={{
-                      minHeight: 400,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Spin />
-                  </div>
-                ) : attachments.length ? (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
-                      gap: 12,
-                    }}
-                  >
-                    {attachments.map((item) => {
-                      const kind =
-                        attachmentKindMeta[item.kind] ||
-                        attachmentKindMeta.other;
-                      const checked = selectedAttachmentIds.includes(item.id);
-                      return (
-                        <div key={item.id} style={{ width: '100%' }}>
-                          <div style={{ position: 'relative', width: '100%' }}>
-                            <Checkbox
-                              checked={checked}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                const next = e.target.checked;
-                                setSelectedAttachmentIds((prev) => {
-                                  if (next)
-                                    return prev.includes(item.id)
-                                      ? prev
-                                      : [...prev, item.id];
-                                  return prev.filter((x) => x !== item.id);
-                                });
-                              }}
-                              style={{
-                                position: 'absolute',
-                                top: 8,
-                                right: 8,
-                                zIndex: 2,
-                                background: 'rgba(255,255,255,0.9)',
-                                padding: '2px 6px',
-                                borderRadius: 4,
-                              }}
-                            />
-                            <Card
-                              size="small"
-                              style={{ height: '100%' }}
-                              cover={getAttachmentCover(item)}
-                              actions={[
-                                <Button
-                                  key="edit"
-                                  type="text"
-                                  icon={<EditOutlined />}
-                                  onClick={() => setEditingAttachment(item)}
-                                />,
-                                <Popconfirm
-                                  key="delete"
-                                  title="确定要删除该素材吗？"
-                                  onConfirm={() =>
-                                    handleDeleteAttachment(item.id)
-                                  }
-                                >
-                                  <Button
-                                    type="text"
-                                    danger
-                                    icon={<DeleteOutlined />}
-                                  />
-                                </Popconfirm>,
-                              ]}
-                            >
-                              <Tooltip title={item.filename || '-'}>
-                                <div
-                                  style={{
-                                    fontSize: 13,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                >
-                                  {item.name ||
-                                    item.originalName ||
-                                    item.filename ||
-                                    '-'}
-                                </div>
-                              </Tooltip>
-                              <div
-                                style={{
-                                  marginTop: 6,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'space-between',
-                                  gap: 8,
-                                }}
-                              >
-                                <Tag color={kind.color}>{kind.text}</Tag>
-                                <span
-                                  style={{
-                                    fontSize: 12,
-                                    color: 'rgba(0,0,0,0.45)',
-                                  }}
-                                >
-                                  {formatBytes(item.size)}
-                                </span>
-                              </div>
-                            </Card>
+          {/* Grid */}
+          <div ref={gridContainerRef} style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+            {folder.attachmentsLoading ? (
+              <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
+            ) : folder.attachments.length === 0 ? (
+              <Empty description="暂无素材" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${gridColumns}, 1fr)`, gap: 12 }}>
+                {folder.attachments.map((item) => {
+                  const checked = folder.selectedAttachmentIds.includes(item.id);
+                  const publicUrl = resolveAttachmentPublicUrl(item, initialState?.cloudStorageConfig);
+                  return (
+                    <Card
+                      key={item.id}
+                      size="small"
+                      hoverable
+                      style={{ borderColor: checked ? '#1677ff' : undefined }}
+                      bodyStyle={{ padding: 0 }}
+                      onClick={() => {
+                        folder.setSelectedAttachmentIds((prev) =>
+                          prev.includes(item.id) ? prev.filter((x) => x !== item.id) : [...prev, item.id]
+                        );
+                      }}
+                    >
+                      <div style={{ position: 'relative', aspectRatio: '1', background: '#fafafa' }}>
+                        {item.kind === 'image' && publicUrl ? (
+                          <Image src={publicUrl} preview={false} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 36, color: 'rgba(0,0,0,0.25)' }}>
+                            {item.kind === 'audio' ? <CustomerServiceOutlined /> : item.kind === 'video' ? <VideoCameraOutlined /> : <FileOutlined />}
                           </div>
+                        )}
+                        {checked && (
+                          <div style={{ position: 'absolute', top: 4, right: 4, zIndex: 1 }}>
+                            <Checkbox checked />
+                          </div>
+                        )}
+                        {publicUrl && (item.kind === 'audio' || item.kind === 'video') && (
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onClick={(e) => { e.stopPropagation();
+                              folder.setMediaPreviewKind(item.kind as any);
+                              folder.setMediaPreviewSrc(publicUrl);
+                              folder.setMediaPreviewTitle(item.name || item.originalName || '');
+                              folder.setMediaPreviewOpen(true);
+                            }}>
+                            <Button type="primary" shape="circle" icon={item.kind === 'audio' ? <CustomerServiceOutlined /> : <VideoCameraOutlined />} />
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding: '6px 8px', fontSize: 12 }}>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.name || item.originalName}>
+                          {item.name || item.originalName}
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <Empty style={{ padding: '48px 0' }} />
-                )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                          <Tag color={attachmentKindMeta[item.kind]?.color} style={{ margin: 0, fontSize: 11 }}>
+                            {attachmentKindMeta[item.kind]?.text || item.kind}
+                          </Tag>
+                          <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 11 }}>{(item.size ? `${(item.size / 1024).toFixed(1)} KB` : '-')}</span>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
+            )}
+          </div>
 
-              <div
-                style={{
-                  marginTop: 12,
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                <Pagination
-                  current={attachmentsPage}
-                  pageSize={attachmentsPageSize}
-                  total={attachmentsTotal}
-                  showSizeChanger
-                  onChange={(page, pageSize) => {
-                    setAttachmentsPage(page);
-                    setAttachmentsPageSize(pageSize);
-                  }}
-                />
-              </div>
-            </div>
+          {/* Pagination */}
+          <div style={{ padding: '8px 16px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end' }}>
+            <Pagination
+              size="small"
+              current={folder.attachmentsPage}
+              pageSize={folder.attachmentsPageSize}
+              total={folder.attachmentsTotal}
+              onChange={(p, ps) => { folder.setAttachmentsPage(p); folder.setAttachmentsPageSize(ps); }}
+              showTotal={(t) => `共 ${t} 项`}
+            />
           </div>
         </Card>
       </div>
+
+      {/* Media preview modal */}
       <Modal
-        open={mediaPreviewOpen}
-        title={mediaPreviewTitle}
+        title={folder.mediaPreviewTitle}
+        open={folder.mediaPreviewOpen}
         footer={null}
         destroyOnHidden
-        onCancel={() => {
-          setMediaPreviewOpen(false);
-          setMediaPreviewKind(null);
-          setMediaPreviewSrc('');
-          setMediaPreviewTitle('');
-        }}
+        onCancel={() => folder.setMediaPreviewOpen(false)}
+        width={640}
       >
-        {mediaPreviewKind === 'audio' ? (
-          <audio
-            style={{ width: '100%' }}
-            controls
-            autoPlay
-            src={mediaPreviewSrc}
-          >
-            <track
-              kind="captions"
-              src="data:text/vtt,WEBVTT%0A%0A"
-              srcLang="zh"
-              label="captions"
-              default
-            />
-          </audio>
-        ) : mediaPreviewKind === 'video' ? (
-          <video
-            style={{ width: '100%' }}
-            controls
-            autoPlay
-            src={mediaPreviewSrc}
-          >
-            <track
-              kind="captions"
-              src="data:text/vtt,WEBVTT%0A%0A"
-              srcLang="zh"
-              label="captions"
-              default
-            />
-          </video>
+        {folder.mediaPreviewKind === 'audio' ? (
+          <audio src={folder.mediaPreviewSrc} controls autoPlay style={{ width: '100%' }} />
+        ) : folder.mediaPreviewKind === 'video' ? (
+          <video src={folder.mediaPreviewSrc} controls autoPlay style={{ width: '100%', maxHeight: '60vh' }} />
         ) : null}
       </Modal>
+
+      {/* Attachment edit form */}
       <AttachmentEditForm
-        open={Boolean(editingAttachment)}
-        initialValues={editingAttachment}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) setEditingAttachment(undefined);
-        }}
+        open={Boolean(folder.editingAttachment)}
+        initialValues={folder.editingAttachment}
+        onOpenChange={(next) => { if (!next) folder.setEditingAttachment(undefined); }}
         onFinish={async () => {
-          await fetchAttachments(attachmentsPage, attachmentsPageSize, kindTab);
+          folder.setAttachmentsPage(1);
         }}
       />
     </PageContainer>
