@@ -63,6 +63,51 @@ interface ResponseStructure {
 }
 
 /**
+ * 后端信封（`{ success, code, message, data, timestamp }`）在 HTTP 4xx/5xx 上
+ * 同样会返回。此时 umi 的 errorThrower 不会被触发（响应走 axios 的 reject 分支），
+ * 错误处理只能拿到 error.response。若一律按 HTTP status 套固定文案，后端已经写
+ * 清楚的业务提示（如「password:长度不能少于 6 位」）就被「请求参数错误」覆盖掉。
+ *
+ * 下面两个纯函数分别负责：
+ *   1. 判断响应体是否是可信的失败信封（对象 + success === false + 非空 message）；
+ *   2. 按业务码区间决定提示等级，而不是特判某个具体码。
+ */
+
+/** 业务码区间：参数/校验类错误。与后端 constants/business-codes/validation.ts 的 21xxx 对齐。 */
+const VALIDATION_CODE_MIN = 21000;
+const VALIDATION_CODE_MAX = 22000;
+
+/**
+ * 从 axios 错误响应体里取出可信的业务 message。
+ *
+ * 只信任「对象形态 + success === false + message 是非空字符串」的响应；
+ * 其余（HTML 错误页、网关纯文本、字段缺失的畸形 JSON）一律返回 null，
+ * 由调用方回退到按 HTTP status 的既有文案。
+ */
+export function pickEnvelopeMessage(body: unknown): string | null {
+  if (typeof body !== "object" || body === null) return null;
+  const envelope = body as { success?: unknown; message?: unknown };
+  if (envelope.success !== false) return null;
+  if (typeof envelope.message !== "string") return null;
+  const trimmed = envelope.message.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * 决定提示等级。
+ *
+ * 规则按业务码区间划分，不针对单个码特判：
+ *   - 21xxx（参数/校验类，用户改一下输入就能过）→ warning，不用红色打断；
+ *   - 其余（系统错误、认证、业务冲突、码缺失或非法）→ error。
+ */
+export function resolveMessageLevel(code: unknown): "warning" | "error" {
+  if (typeof code !== "number" || !Number.isFinite(code)) return "error";
+  return code >= VALIDATION_CODE_MIN && code < VALIDATION_CODE_MAX
+    ? "warning"
+    : "error";
+}
+
+/**
  * @name 错误处理
  * pro 自带的错误处理， 可以在这里做自己的改动
  * @doc https://umijs.org/docs/max/request#配置
@@ -203,31 +248,40 @@ export const errorConfig: RequestConfig = {
           }
         }
       } else if (error.response) {
-        // Axios 的错误
+        // Axios 的错误。
+        // 后端在 4xx/5xx 上仍返回统一信封，errorThrower 拿不到它（走 reject 分支），
+        // 所以这里优先展示信封里的业务 message，取不到才回退按 status 的固定文案。
         const status = error.response.status;
-        let errorMessage = `请求错误 ${status}`;
+        const envelopeMessage = pickEnvelopeMessage(error.response.data);
+        let errorMessage = envelopeMessage ?? `请求错误 ${status}`;
 
-        switch (status) {
-          case 400:
-            errorMessage = "请求参数错误";
-            break;
-          case 404:
-            errorMessage = "请求的资源不存在";
-            break;
-          case 500:
-            errorMessage = "服务器内部错误";
-            break;
-          case 502:
-            errorMessage = "网关错误";
-            break;
-          case 503:
-            errorMessage = "服务暂时不可用";
-            break;
-          default:
-            errorMessage = `请求错误 ${status}`;
+        if (!envelopeMessage) {
+          switch (status) {
+            case 400:
+              errorMessage = "请求参数错误";
+              break;
+            case 404:
+              errorMessage = "请求的资源不存在";
+              break;
+            case 500:
+              errorMessage = "服务器内部错误";
+              break;
+            case 502:
+              errorMessage = "网关错误";
+              break;
+            case 503:
+              errorMessage = "服务暂时不可用";
+              break;
+            default:
+              errorMessage = `请求错误 ${status}`;
+          }
         }
 
-        message.error(errorMessage);
+        // 只有信封可信时才按业务码分级；回退文案一律 error，保持既有行为。
+        const level = envelopeMessage
+          ? resolveMessageLevel((error.response.data as { code?: unknown })?.code)
+          : "error";
+        message[level](errorMessage);
       } else if (error.request) {
         // 网络错误
         message.error("网络错误，请检查网络连接");
