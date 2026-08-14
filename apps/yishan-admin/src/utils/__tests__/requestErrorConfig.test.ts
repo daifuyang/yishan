@@ -23,6 +23,7 @@ const mockRefreshToken = jest.fn();
 const mockGetAuthorizationHeader = jest.fn();
 const mockMessageSuccess = jest.fn();
 const mockMessageError = jest.fn();
+const mockMessageWarning = jest.fn();
 
 jest.mock('@umijs/max', () => ({
   __esModule: true,
@@ -50,7 +51,7 @@ jest.mock('antd', () => {
     message: {
       success: (...args: unknown[]) => mockMessageSuccess(...args),
       error: (...args: unknown[]) => mockMessageError(...args),
-      warning: jest.fn(),
+      warning: (...args: unknown[]) => mockMessageWarning(...args),
       info: jest.fn(),
     },
     notification: { open: jest.fn() },
@@ -60,7 +61,11 @@ jest.mock('antd', () => {
 // 在 jest.mock 之后再导入被测模块，避免 hoist 把真实模块也拉起。
 // __APP_BASE__ 由 jest.config.ts 的 globals 注入（jest 在 import 前就
 // 把变量挂到 globalThis），无需在本文件再赋值。
-import { errorConfig } from '@/requestErrorConfig';
+import {
+  errorConfig,
+  pickEnvelopeMessage,
+  resolveMessageLevel,
+} from '@/requestErrorConfig';
 
 const handler = (errorConfig.errorConfig as any).errorHandler as (
   error: any,
@@ -243,5 +248,211 @@ describe('requestErrorConfig.errorHandler —— 401 refresh 流程', () => {
 
     expect(mockRefreshToken).not.toHaveBeenCalled();
     expect(mockLogout).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * 后端在 4xx/5xx 上仍返回统一信封 `{success,code,message,...}`，但此时 umi 的
+ * errorThrower 不会触发（走 axios reject 分支），错误处理只能看到 error.response。
+ * 这里验证：可信信封优先展示后端 message，不可信则回退到既有的按 status 固定文案。
+ */
+describe('pickEnvelopeMessage —— 只信任可信的失败信封', () => {
+  it('success === false 且 message 非空时取出 message', () => {
+    expect(
+      pickEnvelopeMessage({
+        success: false,
+        code: 21006,
+        message: 'password:长度不能少于 6 位',
+      }),
+    ).toBe('password:长度不能少于 6 位');
+  });
+
+  it('message 前后有空白时 trim', () => {
+    expect(
+      pickEnvelopeMessage({ success: false, code: 21001, message: '  参数错误  ' }),
+    ).toBe('参数错误');
+  });
+
+  it('success 不是 false 时不取（避免误读成功信封）', () => {
+    expect(pickEnvelopeMessage({ success: true, message: 'ok' })).toBeNull();
+    expect(pickEnvelopeMessage({ message: '没有 success 字段' })).toBeNull();
+  });
+
+  it('message 缺失、空串、纯空白、非字符串时不取', () => {
+    expect(pickEnvelopeMessage({ success: false, code: 21001 })).toBeNull();
+    expect(pickEnvelopeMessage({ success: false, message: '' })).toBeNull();
+    expect(pickEnvelopeMessage({ success: false, message: '   ' })).toBeNull();
+    expect(pickEnvelopeMessage({ success: false, message: 123 })).toBeNull();
+  });
+
+  it('非对象响应体（HTML 错误页 / 网关纯文本 / null）不取', () => {
+    expect(pickEnvelopeMessage('<html>502 Bad Gateway</html>')).toBeNull();
+    expect(pickEnvelopeMessage(null)).toBeNull();
+    expect(pickEnvelopeMessage(undefined)).toBeNull();
+  });
+});
+describe('resolveMessageLevel —— 按业务码区间分级，不特判单个码', () => {
+  it('21xxx 参数/校验类整段都是 warning', () => {
+    // 断言的是「整个 21xxx 段」而不是某个魔法码
+    expect(resolveMessageLevel(21000)).toBe('warning');
+    expect(resolveMessageLevel(21001)).toBe('warning');
+    expect(resolveMessageLevel(21006)).toBe('warning');
+    expect(resolveMessageLevel(21999)).toBe('warning');
+  });
+
+  it('区间外的业务码是 error', () => {
+    expect(resolveMessageLevel(20000)).toBe('error'); // 系统错误
+    expect(resolveMessageLevel(22000)).toBe('error'); // 上边界为开区间
+    expect(resolveMessageLevel(22001)).toBe('error'); // 认证
+    expect(resolveMessageLevel(30001)).toBe('error'); // 业务
+  });
+
+  it('码缺失或非法时保守用 error', () => {
+    expect(resolveMessageLevel(undefined)).toBe('error');
+    expect(resolveMessageLevel(null)).toBe('error');
+    expect(resolveMessageLevel('21001')).toBe('error');
+    expect(resolveMessageLevel(Number.NaN)).toBe('error');
+  });
+});
+describe('requestErrorConfig.errorHandler —— HTTP 错误分支的文案与等级', () => {
+  it('400 带有效信封：展示后端 message，21xxx 用 warning', async () => {
+    await handler(
+      {
+        response: {
+          status: 400,
+          data: {
+            success: false,
+            code: 21006,
+            message: 'password:长度不能少于 6 位',
+          },
+        },
+      },
+      { url: '/api/v1/admin/users', method: 'POST' },
+    );
+
+    expect(mockMessageWarning).toHaveBeenCalledWith('password:长度不能少于 6 位');
+    expect(mockMessageError).not.toHaveBeenCalled();
+  });
+
+  it('400 带有效信封但业务码在 21xxx 之外：仍展示 message，等级为 error', async () => {
+    await handler(
+      {
+        response: {
+          status: 400,
+          data: { success: false, code: 30001, message: '该用户已存在' },
+        },
+      },
+      { url: '/api/v1/admin/users', method: 'POST' },
+    );
+
+    expect(mockMessageError).toHaveBeenCalledWith('该用户已存在');
+    expect(mockMessageWarning).not.toHaveBeenCalled();
+  });
+
+  it('400 无信封：保持既有固定文案且用 error', async () => {
+    await handler(
+      { response: { status: 400, data: '<html>Bad Request</html>' } },
+      { url: '/api/v1/admin/users', method: 'POST' },
+    );
+
+    expect(mockMessageError).toHaveBeenCalledWith('请求参数错误');
+    expect(mockMessageWarning).not.toHaveBeenCalled();
+  });
+
+  it('500 带信封：展示后端 message（系统码走 error）', async () => {
+    await handler(
+      {
+        response: {
+          status: 500,
+          data: { success: false, code: 20001, message: '数据库连接失败' },
+        },
+      },
+      { url: '/api/v1/admin/users', method: 'GET' },
+    );
+
+    expect(mockMessageError).toHaveBeenCalledWith('数据库连接失败');
+  });
+
+  it('500 无信封：回退到「服务器内部错误」', async () => {
+    await handler(
+      { response: { status: 500, data: undefined } },
+      { url: '/api/v1/admin/users', method: 'GET' },
+    );
+
+    expect(mockMessageError).toHaveBeenCalledWith('服务器内部错误');
+  });
+
+  it('404 无信封：回退到「请求的资源不存在」', async () => {
+    await handler(
+      { response: { status: 404, data: null } },
+      { url: '/x', method: 'GET' },
+    );
+
+    expect(mockMessageError).toHaveBeenCalledWith('请求的资源不存在');
+  });
+
+  it('502 / 503 / 未枚举 status 的回退文案不变', async () => {
+    await handler(
+      { response: { status: 502, data: null } },
+      { url: '/x', method: 'GET' },
+    );
+    expect(mockMessageError).toHaveBeenCalledWith('网关错误');
+
+    mockMessageError.mockClear();
+    await handler(
+      { response: { status: 503, data: null } },
+      { url: '/x', method: 'GET' },
+    );
+    expect(mockMessageError).toHaveBeenCalledWith('服务暂时不可用');
+
+    mockMessageError.mockClear();
+    await handler(
+      { response: { status: 418, data: null } },
+      { url: '/x', method: 'GET' },
+    );
+    expect(mockMessageError).toHaveBeenCalledWith('请求错误 418');
+  });
+
+  it('网络错误（有 request 无 response）不受信封逻辑影响', async () => {
+    await handler(
+      { request: {} },
+      { url: '/api/v1/admin/users', method: 'GET' },
+    );
+
+    expect(mockMessageError).toHaveBeenCalledWith('网络错误，请检查网络连接');
+    expect(mockMessageWarning).not.toHaveBeenCalled();
+  });
+
+  it('既无 response 也无 request 时走最后兜底', async () => {
+    await handler({}, { url: '/api/v1/admin/users', method: 'GET' });
+
+    expect(mockMessageError).toHaveBeenCalledWith('请求错误，请重试');
+  });
+
+  it('403 仍由专门分支处理，不进入信封逻辑', async () => {
+    await handler(
+      {
+        response: {
+          status: 403,
+          data: { success: false, code: 22003, message: '后端说没权限' },
+        },
+      },
+      { url: '/api/v1/admin/users', method: 'GET' },
+    );
+
+    // 403 分支在信封逻辑之前 return，保持既有行为
+    expect(mockMessageError).toHaveBeenCalledWith('权限不足，无法访问此资源');
+  });
+
+  it('BizError（errorThrower 抛出的）分支不受影响', async () => {
+    await handler(
+      {
+        name: 'BizError',
+        info: { errorCode: 21001, errorMessage: '业务校验失败', showType: 2 },
+      },
+      { url: '/api/v1/admin/users', method: 'POST' },
+    );
+
+    expect(mockMessageError).toHaveBeenCalledWith('业务校验失败');
   });
 });
