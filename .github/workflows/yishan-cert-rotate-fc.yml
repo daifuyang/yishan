@@ -209,7 +209,11 @@ jobs:
         working-directory: apps/yishan-api
         run: |
           set -euo pipefail
+          # domain.yaml template 通过 ${env(...)} 引用以下变量，必须显式导出
           export CUSTOM_DOMAIN="$DOMAIN"
+          export FUNCTION_REGION="$FC_REGION"
+          export FUNCTION_NAME="$FUNCTION_NAME"
+          export CERT_NAME="$CERT_NAME"
           s deploy -y -t deploy/fc3/templates/domain.yaml -a enterprise
 
       - name: Verify cert after deploy
