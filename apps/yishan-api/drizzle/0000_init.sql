@@ -243,9 +243,6 @@ CREATE TABLE `sys_menu` (
 	`is_default_action` boolean NOT NULL DEFAULT false,
 	`is_external_link` boolean NOT NULL DEFAULT false,
 	`keep_alive` boolean NOT NULL DEFAULT false,
-	`source` varchar(20) NOT NULL DEFAULT 'custom',
-	`plugin_name` varchar(100),
-	`plugin_menu_key` varchar(255),
 	`creator_id` int,
 	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
 	`updater_id` int,
@@ -254,8 +251,7 @@ CREATE TABLE `sys_menu` (
 	`version` int NOT NULL DEFAULT 1,
 	CONSTRAINT `sys_menu_id` PRIMARY KEY(`id`),
 	CONSTRAINT `sys_menu_path_key` UNIQUE(`path`),
-	CONSTRAINT `uniq_menu_parent_name` UNIQUE(`parent_id`,`name`),
-	CONSTRAINT `uniq_plugin_menu_key` UNIQUE(`plugin_menu_key`)
+	CONSTRAINT `uniq_menu_parent_name` UNIQUE(`parent_id`,`name`)
 );
 --> statement-breakpoint
 CREATE TABLE `sys_menu_permission` (
@@ -265,6 +261,26 @@ CREATE TABLE `sys_menu_permission` (
 	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
 	CONSTRAINT `sys_menu_permission_id` PRIMARY KEY(`id`),
 	CONSTRAINT `uniq_menu_permission` UNIQUE(`menu_id`,`permission_code`)
+);
+--> statement-breakpoint
+CREATE TABLE `sys_module` (
+	`id` varchar(64) NOT NULL,
+	`name` varchar(128) NOT NULL,
+	`table_prefix` varchar(32) NOT NULL,
+	`version` varchar(32) NOT NULL DEFAULT '0.0.0',
+	`enabled` tinyint NOT NULL DEFAULT 1,
+	`installed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `sys_module_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
+CREATE TABLE `sys_module_migration` (
+	`id` bigint AUTO_INCREMENT NOT NULL,
+	`module_id` varchar(64) NOT NULL,
+	`hash` varchar(64) NOT NULL,
+	`applied_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT `sys_module_migration_id` PRIMARY KEY(`id`),
+	CONSTRAINT `uniq_sys_module_migration_module_hash` UNIQUE(`module_id`,`hash`)
 );
 --> statement-breakpoint
 CREATE TABLE `sys_option` (
@@ -579,10 +595,10 @@ CREATE INDEX `idx_menu_parent_id` ON `sys_menu` (`parent_id`);--> statement-brea
 CREATE INDEX `idx_menu_sort_order` ON `sys_menu` (`sort_order`);--> statement-breakpoint
 CREATE INDEX `sys_menu_updater_id_idx` ON `sys_menu` (`updater_id`);--> statement-breakpoint
 CREATE INDEX `sys_menu_creator_id_idx` ON `sys_menu` (`creator_id`);--> statement-breakpoint
-CREATE INDEX `idx_menu_plugin_name` ON `sys_menu` (`plugin_name`);--> statement-breakpoint
-CREATE INDEX `idx_menu_source` ON `sys_menu` (`source`);--> statement-breakpoint
 CREATE INDEX `idx_menu_permission_menu_id` ON `sys_menu_permission` (`menu_id`);--> statement-breakpoint
 CREATE INDEX `idx_menu_permission_code` ON `sys_menu_permission` (`permission_code`);--> statement-breakpoint
+CREATE INDEX `idx_sys_module_enabled` ON `sys_module` (`enabled`);--> statement-breakpoint
+CREATE INDEX `idx_sys_module_migration_module_id` ON `sys_module_migration` (`module_id`);--> statement-breakpoint
 CREATE INDEX `idx_option_key` ON `sys_option` (`key`);--> statement-breakpoint
 CREATE INDEX `idx_option_status` ON `sys_option` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_option_deleted_at` ON `sys_option` (`deleted_at`);--> statement-breakpoint
