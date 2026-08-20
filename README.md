@@ -4,7 +4,7 @@
 
 ## 相关链接
 
-- 演示站点：https://admin.zerocmf.com
+- 演示站点：https://yishan.zerocmf.com
   测试账号请联系维护者按需申请，避免公开固定凭证
 - GitHub 仓库：https://github.com/zerocmf/yishan
 

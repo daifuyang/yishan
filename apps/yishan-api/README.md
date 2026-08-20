@@ -120,14 +120,15 @@ s config add --AccessKeyID <FC_ACCESS_KEY_ID> --AccessKeySecret <FC_ACCESS_KEY_S
 s config add --AccessKeyID <DNS_ACCESS_KEY_ID> --AccessKeySecret <DNS_ACCESS_KEY_SECRET> --AccountID <ACCOUNT_ID> --alias dns
 ```
 
-2. 使用 DNS 验证签发证书（示例域名：`example.zerocmf.com`）：
+2. 使用 DNS 验证签发证书（示例域名：`your-domain.zerocmf.com`，请替换为实际部署域名）：
 ```bash
 export Ali_Key=<DNS_ACCESS_KEY_ID>
 export Ali_Secret=<DNS_ACCESS_KEY_SECRET>
-~/.acme.sh/acme.sh --issue --dns dns_ali -d example.zerocmf.com --keylength 2048
-~/.acme.sh/acme.sh --install-cert -d example.zerocmf.com \
-  --fullchain-file /mnt/c/Workspace/Frontend/yishan/apps/yishan-api/deploy/fc3/certs/fullchain.cer \
-  --key-file /mnt/c/Workspace/Frontend/yishan/apps/yishan-api/deploy/fc3/certs/private.key
+export DOMAIN="your-domain.zerocmf.com"
+~/.acme.sh/acme.sh --issue --dns dns_ali -d "$DOMAIN" --keylength 2048
+~/.acme.sh/acme.sh --install-cert -d "$DOMAIN" \
+  --fullchain-file "$PWD/deploy/fc3/certs/fullchain.cer" \
+  --key-file "$PWD/deploy/fc3/certs/private.key"
 ```
 
 3. 构建并打包运行文件（包含前端）：
@@ -139,7 +140,7 @@ export Ali_Secret=<DNS_ACCESS_KEY_SECRET>
 ```bash
 s deploy -y
 s info
-curl -I https://example.zerocmf.com/admin/user/login/index.html
+curl -I "https://$DOMAIN/admin/user/login/index.html"
 ```
 
 安全要求：不要提交 `AccessKey`、证书私钥与 `.env`，并保持 `deploy/fc3/certs` 在 `.gitignore` 中。
