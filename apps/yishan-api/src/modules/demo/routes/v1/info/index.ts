@@ -27,7 +27,7 @@ export default (async (app) => {
         tags: [ROUTE_TAG],
         summary: '插件健康检查',
         description: '返回模块自身与运行环境的只读信息，用于演示 plugin 不读 db 的纯函数 service。',
-        operationId: 'demoV1Info',
+         operationId: 'demoInfo',
         response: { 200: ServerInfoRespSchema },
       },
     },

@@ -41,7 +41,8 @@ export function moduleRoutePrefix(id: string): string {
 }
 
 /**
- * 纯函数版 scanDiskModules:扫描 src/modules/<id>/,根据 preferSrc 决定入口文件。
+ * 纯函数版 scanDiskModules:优先扫描 src/modules/<id>/；源码未打包时扫描
+ * dist/modules/<id>/，再根据 preferSrc 决定入口文件。
  *
  *   - preferSrc=true:优先 src/<id>/module.ts,回退 dist/<id>/module.js(适用于 dev / tsx 模式)
  *   - preferSrc=false:优先 dist/<id>/module.js,回退 src/<id>/module.ts(适用于 prod)
@@ -55,11 +56,16 @@ export async function scanDiskModulesPure(
   logger?: FastifyBaseLogger,
 ): Promise<ModuleDiskMeta[]> {
   const srcModulesDir = join(srcRoot, 'modules')
-  if (!existsSync(srcModulesDir)) return []
+  const distModulesDir = join(distRoot, 'modules')
+  // 生产函数包通常只携带 dist；源码目录缺失时仍应从可执行产物发现模块。
+  const scanModulesDir = existsSync(srcModulesDir) ? srcModulesDir : distModulesDir
+  if (!existsSync(scanModulesDir)) return []
   const out: ModuleDiskMeta[] = []
-  for (const id of readdirSync(srcModulesDir)) {
+  for (const id of readdirSync(scanModulesDir)) {
     const srcModuleDir = join(srcModulesDir, id)
-    if (!statSync(srcModuleDir).isDirectory()) continue
+    const distModuleDir = join(distModulesDir, id)
+    const scanModuleDir = join(scanModulesDir, id)
+    if (!statSync(scanModuleDir).isDirectory()) continue
     const distModuleJs = join(distRoot, 'modules', id, 'module.js')
     const srcModuleTs = join(srcModuleDir, 'module.ts')
     let moduleEntry: string | undefined
@@ -110,7 +116,7 @@ export async function scanDiskModulesPure(
       version: typeof meta.version === 'string' && meta.version.length > 0
         ? meta.version
         : '0.0.0',
-      moduleDir: srcModuleDir,
+      moduleDir: existsSync(srcModuleDir) ? srcModuleDir : distModuleDir,
     })
   }
   out.sort((a, b) => a.id.localeCompare(b.id))

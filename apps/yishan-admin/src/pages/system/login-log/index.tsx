@@ -1,6 +1,7 @@
 import { PageContainer, type ActionType, type ProColumns, ProTable } from "@ant-design/pro-components";
 import React, { useRef } from "react";
 import { getLoginLogList } from "@/services/generated/sysLoginLogs";
+import { createProTableRequest } from "@/utils/proTable";
 import { Tag } from "antd";
 
 const statusEnum = {
@@ -41,16 +42,11 @@ const LoginLogList: React.FC = () => {
         search={{ labelWidth: 120 }}
         request={async (params) => {
           const { current, pageSize, ...restParams } = params as any;
-          const result = await getLoginLogList({
+          return createProTableRequest(getLoginLogList)({
             page: current,
             pageSize,
             ...restParams,
           });
-          return {
-            data: result.data || [],
-            success: result.success,
-            total: result.pagination?.total || 0,
-          };
         }}
         columns={columns}
         scroll={{ x: 1300 }}

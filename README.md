@@ -1,157 +1,313 @@
 # 移山通用管理系统 (Yishan Universal Management System)
 
-一个基于 React/Ant Design Pro 前端、Fastify 后端与 Docusaurus 文档的 monorepo 项目，为 zerocmf.com 打造的通用管理基座。
+> 为 zerocmf.com 打造的通用管理基座 —— React 19 + Ant Design Pro 6 前端 · Fastify 5 + Drizzle 后端 · 微信小程序 · Docusaurus 文档
 
-## 相关链接
+[![MIT License](https://img.shields.io/github/license/daifuyang/yishan?style=flat-square)](./LICENSE)
+[![Demo](https://img.shields.io/badge/demo-yishan.zerocmf.com-1677FF?style=flat-square)](https://yishan.zerocmf.com)
+[![Node](https://img.shields.io/badge/node-22.22.1-339933?style=flat-square&logo=node.js)](.tool-versions)
+[![pnpm](https://img.shields.io/badge/pnpm-8.15.9-F69220?style=flat-square&logo=pnpm)](package.json)
+[![TypeScript](https://img.shields.io/badge/typescript-strict-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 
-- 演示站点：https://admin.zerocmf.com
-  测试账号请联系维护者按需申请，避免公开固定凭证
-- GitHub 仓库：https://github.com/zerocmf/yishan
+## ✨ 它是什么
 
-## 项目结构
+Yishan（移山）是一个开箱即用的中后台管理系统基座，提供：
+
+- 🧩 **可插拔业务模块** —— `apps/yishan-api/src/modules/<id>/` 自包含的 Fastify 插件，`meta.enabled` 控制运行时启停，无需重新部署
+- 🎨 **现代化前端** —— React 19 + UmiJS 4（@umijs/max）+ Ant Design 6 + ProTable，从 OpenAPI 自动生成 API 客户端
+- 🗄️ **类型安全后端** —— Fastify 5 + TypeBox（运行时校验）+ Drizzle ORM + JWT，强类型贯穿请求/响应全链路
+- 📱 **多端覆盖** —— Web 管理后台、微信小程序（[Taro 4](https://docs.taro.zone/)）、H5 共享同一套后端 API
+- 🚀 **云原生部署** —— 阿里云 Function Compute（FC3）+ 七牛 CDN，自动 HTTPS 证书（Let's Encrypt）
+- 📚 **完整文档站** —— Docusaurus 3，包含模块开发指南、API 参考、最佳实践
+
+> 📖 **架构与约定**：核心架构决策、模块边界、目录组织详见 [`docs/module-onboarding.md`](docs/module-onboarding.md)（原 `ARCHITECTURE.md` / `AGENTS.md` 内容已合并至此）。贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，安全策略见 [`SECURITY.md`](SECURITY.md)。
+
+## 🔗 相关链接
+
+| 链接 | 地址 |
+|---|---|
+| 🎯 演示站点 | <https://yishan.zerocmf.com> |
+| 📘 文档站 | <https://docs.zerocmf.com> |
+| 🐙 仓库 | <https://github.com/daifuyang/yishan> |
+| 🐛 Issue 反馈 | <https://github.com/daifuyang/yishan/issues> |
+| ✉️ 安全报告 | <security@zerocmf.com> |
+| 🔑 测试账号 | 请联系维护者按需申请，避免公开固定凭证 |
+
+## 🏗️ 架构
+
+```mermaid
+graph TB
+    subgraph Client["客户端"]
+        Admin["yishan-admin<br/>React 19 + Umi 4 + antd-pro"]
+        App["yishan-app<br/>Taro 4 微信小程序 / H5"]
+    end
+
+    subgraph CDN["CDN / 反代"]
+        Qiniu["七牛 CDN<br/>static / cdn / mp-cdn"]
+    end
+
+    subgraph FC3["阿里云 FC3 (cn-shanghai)"]
+        Func["yishan-demo-layered<br/>Fastify 5 + TypeBox"]
+        Domain["自定义域名<br/>yishan.zerocmf.com<br/>(自动 Let's Encrypt)"]
+    end
+
+    subgraph Backend["后端模块系统"]
+        Core["Core<br/>auth / users / menus<br/>departments / regions"]
+        Demo["module: demo"]
+        Portal["module: portal<br/>articles / pages"]
+        Shop["module: shop<br/>products / orders"]
+    end
+
+    subgraph Data["数据层"]
+        MySQL["MySQL 8<br/>(Drizzle ORM)"]
+        Redis["Redis<br/>(缓存 / 限流)"]
+    end
+
+    Admin -->|HTTPS| Domain
+    App -->|HTTPS| Domain
+    Qiniu -->|静态资源| Admin
+    Domain --> Func
+    Func --> Core
+    Func --> Demo
+    Func --> Portal
+    Func --> Shop
+    Core --> MySQL
+    Demo --> MySQL
+    Portal --> MySQL
+    Shop --> MySQL
+    Core --> Redis
+
+    style Func fill:#1677FF,color:#fff
+    style Domain fill:#52c41a,color:#fff
+    style Core fill:#722ed1,color:#fff
+```
+
+**核心设计原则**：
+
+1. **Core 与 Module 完全隔离** —— Core 永不 import 模块源码，模块之间互不依赖；跨模块读只能走 HTTP 或 Core 扩展
+2. **运行时模块启停** —— 通过 `sys_module.enabled` 数据库字段控制（带 Redis 缓存），无需重新部署
+3. **路由前缀约定** —— 模块路径硬编码为 `/api/<id>`，菜单路径为 `/<id>/...`（前端不带 `/modules/` 前缀）
+4. **OpenAPI 单一真相源** —— 后端 Swagger 描述 → 前端 `pnpm openapi` 自动生成类型与服务
+
+## 📦 项目结构
 
 ```
 yishan/
 ├── apps/
-│   ├── yishan-admin/                 # 管理后台前端（Ant Design Pro + Umi 4）
-│   ├── yishan-api/                   # 后端服务（Fastify + Drizzle + TypeBox + JWT）
-│   ├── yishan-docs/                  # 文档站点（Docusaurus 3）
+│   ├── yishan-admin/                  # 管理后台前端（React 19 + Ant Design Pro 6 + Umi 4）
+│   ├── yishan-api/                    # 后端服务（Fastify 5 + Drizzle + TypeBox + JWT）
+│   ├── yishan-app/                    # 微信小程序 + H5（Taro 4 + React 18）
+│   ├── yishan-docs/                   # 文档站点（Docusaurus 3）
 │   └── yishan-components/
-│       └── yishan-tiptap/            # TipTap React 组件库（Rollup）
+│       └── yishan-tiptap/             # TipTap 3 React 组件库（Rollup, CJS/ESM/types/css）
 ├── package.json
 ├── pnpm-workspace.yaml
+├── .tool-versions                     # Node / pnpm 版本固定
+├── LICENSE                            # MIT
+├── CONTRIBUTING.md                    # 贡献流程
+├── SECURITY.md                        # 安全策略
+├── docs/                              # 开发文档（架构、模块开发指南）
 └── README.md
 ```
 
-## 环境要求
+## ⚙️ 环境要求
 
-- Node 与 pnpm 版本以 `.tool-versions` 和根 `package.json#packageManager` 为准
-- 建议使用 asdf / mise / fnm 等工具读取 `.tool-versions` 自动切换
+| 工具 | 版本 | 说明 |
+|---|---|---|
+| Node.js | 22.22.1 | 见 `.tool-versions` |
+| pnpm | 8.15.9 | 见根 `package.json#packageManager` |
+| MySQL | 8.0+ | 后端数据库 |
+| Redis | 6.0+ | 缓存 / 限流（可选） |
 
-## 五分钟启动
+推荐使用 [asdf](https://asdf-vm.com/) / [mise](https://mise.jdx.dev/) / [fnm](https://github.com/Schniz/fnm) 等工具读取 `.tool-versions` 自动切换 Node 版本。
+
+## 🚀 五分钟启动
 
 ```bash
 # 1. 安装所有依赖（在仓库根目录）
 pnpm install
 
-# 2. 先构建共享组件库（admin 的依赖）
+# 2. 先构建共享组件库（admin 依赖它）
 pnpm --filter yishan-tiptap build
 
-# 3. 启动管理后台（Umi 开发服务器）
-pnpm --filter yishan-admin dev
-
-# 4. 启动后端（TypeScript watch + Fastify）
+# 3. 启动后端（默认 :3000，先启动以便 admin proxy 能命中）
 pnpm --filter yishan-api dev
 
-# 5. 启动文档站点（Docusaurus 开发模式）
+# 4. 启动管理后台（默认 :8000）
+pnpm --filter yishan-admin dev
+
+# 5. （可选）启动文档站
 pnpm --filter yishan-docs start
+
+# 6. （可选）启动微信小程序（先 cd 到 apps/yishan-app，参考该子项目 README）
 ```
 
-## 模块发现
+启动后访问 <http://localhost:8000> 即可看到管理后台。
 
-Yishan 通过 `apps/yishan-api/src/modules/<id>/` 装载业务能力。`module.ts` 同时导出 `meta`（id / enabled）和一个默认 Fastify 插件；Core 在 boot 时用 `@fastify/autoload` 扫描并挂载。运行时启停由 `sys_module.enabled` 控制——首次 sync 该模块时若行不存在则用 `meta.enabled`（缺省 `true`）INSERT，已有行的 `enabled` 永不覆盖。
+## 🧩 业务模块系统
 
-模块形态、依赖方向、生成物约束见 `ARCHITECTURE.md` §5 与 `AGENTS.md` §3。
+Yishan 的核心特色是**模块化业务能力**。每个业务模块自包含于 `apps/yishan-api/src/modules/<id>/`：
 
-## 常用脚本
+```
+modules/<id>/
+├── module.ts                  # 入口：导出 meta { id, enabled? } 和 Fastify 插件
+├── db/schema.ts               # Drizzle 表定义（表名必须以 <id>_ 开头）
+├── drizzle.config.ts
+├── drizzle/0000_init.sql      # 初始迁移
+├── repositories/              # 唯一允许 import Drizzle 表的层
+├── services/                  # 业务编排
+├── schemas/                   # TypeBox 类型定义
+├── routes/                    # Fastify 路由
+├── tests/
+├── config/system-menu.json    # 模块菜单声明
+└── permissions.ts             # 权限点定义
+```
+
+**生命周期**：
+
+1. **Boot 扫描** —— `app.ts` 调用 `moduleLoader.scanDiskModules()` 读取每个模块
+2. **DB 同步** —— upsert 到 `sys_module` 表（`enabled` 字段首次用 `meta.enabled`，之后永不覆盖）
+3. **挂载** —— `@fastify/autoload` 把每个模块的 `routes/` 注册到 `/api/<id>` 前缀
+4. **Gate** —— 根实例的 `onRequest` hook 检查 `sys_module.enabled`（Redis 缓存 + 5s 进程内 memo），disabled 模块返回 404
+
+当前内置模块：`demo`（参考实现）、`portal`（文章/页面/模板）、`shop`（商品/订单/SKU）。完整开发指南见 [`docs/module-onboarding.md`](docs/module-onboarding.md)。
+
+## 📜 常用脚本
+
+### 根级别（Monorepo 统一）
 
 ```bash
-# 管理后台
-pnpm --filter yishan-admin build         # 生产构建
-pnpm --filter yishan-admin preview       # 本地预览（构建后）
-pnpm --filter yishan-admin test          # 前端单元测试
-pnpm --filter yishan-admin lint          # 代码检查（Biome + TS）
-
-# 后端服务
-pnpm --filter yishan-api start           # 生产启动（含编译）
-pnpm --filter yishan-api test            # 后端测试（Vitest）
-pnpm --filter yishan-api db:generate     # 生成 Drizzle schema
-pnpm --filter yishan-api db:init         # 初始化迁移
-pnpm --filter yishan-api db:seed         # 运行种子数据
-
-# 文档站点
-pnpm --filter yishan-docs build          # 文档构建
-pnpm --filter yishan-docs serve          # 本地预览
-
-# 组件库（TipTap）
-pnpm --filter yishan-tiptap build        # Rollup 构建
-pnpm --filter yishan-tiptap dev          # 开发模式（watch）
+pnpm build        # tiptap → admin → docs 顺序构建
+pnpm lint         # admin (Biome + tsc) + docs (typecheck) + app + 模块命名检查
+pnpm test         # admin (Jest) + api (Vitest)
 ```
 
-## 技术栈
+### `apps/yishan-admin`
 
-### 前端（yishan-admin）
-- 框架：React 19 + TypeScript
-- 构建：UmiJS 4（@umijs/max）
-- UI：Ant Design 6
-- 样式：Less + antd-style
-- 代码规范：Biome
-- 测试：Jest（含覆盖率）、Playwright（部分模块）
-- OpenAPI：通过 `max openapi` 生成 API 类型与服务
-
-### 后端（yishan-api）
-- 框架：Fastify 5
-- 类型与校验：TypeBox（JSON Schema）
-- ORM：Drizzle
-- 认证：JWT
-- 缓存：Redis（可选）
-- 文档：Swagger + Swagger UI
-- 测试：Vitest
-
-### 文档（yishan-docs）
-- 框架：Docusaurus 3（React 19）
-- 类型检查：TypeScript
-
-### 组件库（yishan-tiptap）
-- 编辑器：TipTap 3
-- UI：Radix UI、Floating UI
-- 构建：Rollup（CJS/ESM/types/css 输出）
-
-## 目录概览
-
-### apps/yishan-admin
-```
-config/                   # Umi 配置（routes、proxy、defaultSettings）
-mock/                     # 本地 mock 数据
-public/                   # 静态资源（含 manifest）
-src/                      # 业务代码（pages、components、services、locales、hooks、types）
+```bash
+pnpm dev          # Umi 开发服务器（:8000）
+pnpm build        # 生产构建
+pnpm preview      # 构建后本地预览（:8000）
+pnpm openapi      # 从后端 OpenAPI 重新生成前端 API 客户端
+pnpm test         # Jest 单元测试
+pnpm test:update  # 更新快照
+pnpm lint         # max setup + Biome + tsc
 ```
 
-### apps/yishan-api
-```
-src/app.ts                # Fastify 应用入口
-src/server.ts             # 启动脚本
-src/core/routes/          # 核心 API 路由（auth、users、roles、menus、departments 等）
-src/core/schemas/         # TypeBox 模式定义
-src/core/services/        # 核心业务服务层
-src/core/repositories/    # Drizzle 访问封装
-src/core/mappers/         # DTO 映射
-src/plugins-runtime/      # 插件运行时（发现、生命周期、持久化）
-drizzle/                  # Drizzle SQL 迁移（DDL 唯一来源）
-```
+### `apps/yishan-api`
 
-### apps/yishan-docs
-```
-docs/                     # 文档内容
-blog/                     # 博客
-src/                      # 自定义页面与组件
-docusaurus.config.ts      # 配置文件
+```bash
+pnpm dev          # TS watch + fastify-cli watch
+pnpm build:ts     # 构建 TypeScript 产物
+pnpm start        # 生产启动
+pnpm test         # Vitest
+pnpm db:generate  # 从 schema 生成 Drizzle 迁移
+pnpm db:migrate   # 应用迁移
+pnpm db:seed      # 灌种子数据（含 sys_region 省市区）
+pnpm db:reset     # 重建数据库
 ```
 
-### apps/yishan-components/yishan-tiptap（构建 admin 前需先构建）
+### `apps/yishan-app`
+
+```bash
+pnpm dev:h5       # H5 开发模式
+pnpm dev:weapp    # 微信小程序开发模式（产物在 dist/，用微信开发者工具打开）
+pnpm build:h5     # H5 生产构建
+pnpm build:weapp  # 微信小程序生产构建
 ```
-src/                      # 组件源码
-rollup.config.js          # 构建配置
-dist/                     # 构建产物（cjs、esm、d.ts、css）
+
+### `apps/yishan-docs` / `apps/yishan-components/yishan-tiptap`
+
+```bash
+pnpm --filter yishan-docs start          # Docusaurus dev
+pnpm --filter yishan-docs build          # Docusaurus build
+pnpm --filter yishan-tiptap build        # Rollup 构建（CJS/ESM/types/css）
+pnpm --filter yishan-tiptap dev          # watch 模式
 ```
 
-## 贡献流程
+## 🛠️ 技术栈
 
-1. Fork 后从 `main` 创建特性分支。
-2. 修改前阅读 `AGENTS.md`、`ARCHITECTURE.md`。
-3. 提交前按 `AGENTS.md` §7 跑完对应改动范围的 app `lint/test/build`。
-4. 遵循 `CONTRIBUTING.md` 中的提交信息与 PR 规范。
+### 前端（`apps/yishan-admin`）
 
-## 许可证
+- **框架**：React 19 + TypeScript（严格模式）
+- **构建**：UmiJS 4（@umijs/max）
+- **UI**：Ant Design 6 + Ant Design Pro（ProTable / ProForm / ProLayout）
+- **样式**：Less + antd-style
+- **代码规范**：Biome
+- **测试**：Jest（单元） + Playwright（部分模块 E2E）
+- **API 客户端**：通过 `pnpm openapi` 从后端 OpenAPI 自动生成（类型与服务）
 
-MIT License
+### 后端（`apps/yishan-api`）
+
+- **框架**：Fastify 5
+- **类型与校验**：TypeBox（JSON Schema 运行时校验）
+- **ORM**：Drizzle + MySQL 8
+- **认证**：JWT（Fastify JWT 插件）
+- **缓存**：Redis（可选）
+- **API 文档**：Swagger / OpenAPI（Swagger UI 实时挂载于 `/api/docs`）
+- **测试**：Vitest
+
+### 微信小程序（`apps/yishan-app`）
+
+- **框架**：Taro 4 + React 18
+- **多端**：微信小程序 + H5（共享业务代码）
+- **设计**：钉钉/飞书 ToB 风格
+
+### 文档（`apps/yishan-docs`）
+
+- **框架**：Docusaurus 3（React 19）
+- **类型检查**：TypeScript
+
+### 组件库（`apps/yishan-components/yishan-tiptap`）
+
+- **编辑器**：TipTap 3
+- **UI 基座**：Radix UI、Floating UI
+- **构建**：Rollup（CJS / ESM / d.ts / css 多产物）
+
+## 🚢 部署
+
+### 阿里云 Function Compute（生产）
+
+CI/CD 通过 GitHub Actions 自动化（`.github/workflows/yishan-fullstack-cd-fc.yml`）：
+
+1. **构建**：根目录 `pnpm install` → `tiptap` build → `admin` build → 后端 TS 编译
+2. **打包**：`apps/yishan-api/deploy/fc3/scripts/` 下的 `pre-deploy-layered.sh` 把 admin 静态产物打进函数包
+3. **部署**：`s deploy -t deploy/fc3/templates/function.yaml` 推送到 FC3 函数 `yishan-demo-layered`
+4. **HTTPS**：`yishan-cert-rotate-fc.yml` 每天 UTC 19:15 检查证书，到期自动通过 `acme.sh --dns dns_ali` 签发并 `s deploy -t domain.yaml` 更新 FC3 自定义域名
+
+### 必需的环境 / 仓库变量
+
+| 类型 | 名称 | 用途 |
+|---|---|---|
+| 仓库 Variable | `CUSTOM_DOMAIN` | 证书工作流目标域名 |
+| 仓库 Variable | `ALIBABA_CLOUD_ACCOUNT_ID` | DNS CNAME 校验 |
+| Environment `YISHAN_API` Variable | `FUNCTION_REGION` | FC3 区域（默认 `cn-shanghai`） |
+| Environment `YISHAN_API` Variable | `FUNCTION_NAME` | 部署目标函数名 |
+| Environment `YISHAN_API` Variable | `CERT_NAME` | 阿里云 SSL 证书名 |
+| Environment `YISHAN_API` Variable | `ACME_MODE` | `staging` / `production` |
+| GitHub Secret | `ALIBABA_CLOUD_ACCESS_KEY_ID/SECRET` | FC3 + DNS API 凭据 |
+| GitHub Secret | `ALI_DNS_ACCESS_KEY_ID/SECRET` | acme.sh dns_ali 凭据 |
+| GitHub Secret | `ACME_ACCOUNT_EMAIL` | Let's Encrypt 注册邮箱 |
+| GitHub Secret | `QINIU_ACCESS_KEY/SECRET` | CDN 缓存刷新 |
+
+完整部署指南参见 [`apps/yishan-api/deploy/fc3/README.md`](apps/yishan-api/deploy/fc3/README.md) 与 [`docs/environment-variables.md`](apps/yishan-api/deploy/fc3/docs/environment-variables.md)。
+
+## 🤝 贡献流程
+
+1. Fork 仓库后从 `main` 创建特性分支（建议前缀：`feat/`、`fix/`、`docs/`、`refactor/`、`chore/`）
+2. 修改前阅读 [`docs/module-onboarding.md`](docs/module-onboarding.md) 与 [`CONTRIBUTING.md`](CONTRIBUTING.md)
+3. 提交前跑完改动范围的 `lint` / `test` / `build`（CI 必跑）
+4. 遵循 Conventional Commits 提交规范；Husky + lint-staged 已配置（`apps/yishan-admin`）
+5. 架构级改动需同步更新根目录文档（本 README / `docs/` / `TODO-*.md`）
+6. 不要把 `tmp/` 下的草稿 / 计划文档提交（已 gitignore）
+
+CI 检查清单见 [`CONTRIBUTING.md`](CONTRIBUTING.md) 与 `.github/workflows/yishan-fullstack-ci.yml`。
+
+## 📄 许可证
+
+[MIT License](./LICENSE) · Copyright (c) 2025 zerocmf
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://zerocmf.com">zerocmf.com</a>
+</p>

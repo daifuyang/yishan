@@ -10,14 +10,14 @@ export default fp(async function (fastify) {
    */
   await fastify.register(fastifySwagger, {
     hideUntagged: true,
-    openapi: {
-      info: {
-        title: 'Yishan API',
-        description: 'The official Yishan API',
-        version: '0.0.0'
-      },
-      security: [{ bearerAuth: [] }],
-      tags: [
+   openapi: {
+       info: {
+         title: 'Yishan API',
+         description: 'The official Yishan API',
+         version: '0.0.0'
+       },
+       security: [{ bearerAuth: [] }],
+       tags: [
         { name: 'auth', description: 'Authentication endpoints' },
         { name: 'sysUsers', description: 'System user management' },
         { name: 'sysRoles', description: 'System role management' },

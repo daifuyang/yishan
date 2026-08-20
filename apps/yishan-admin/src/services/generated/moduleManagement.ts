@@ -3,7 +3,9 @@
 import { request } from "@umijs/max";
 
 /** 模块列表 扫描 src/modules/ 并合并 sys_module 行；标注 enabled 与是否已挂载。routePrefix 由 moduleRoutePrefix() 统一生成为 /api/${id}。 GET /api/v1/admin/system/module-management/list/ */
-export async function listModuleManagement(options?: { [key: string]: any }) {
+export async function getModuleManagementList(options?: {
+  [key: string]: any;
+}) {
   return request<{
     success: boolean;
     code: number;

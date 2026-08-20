@@ -13,6 +13,7 @@ import {
   getPositionList,
   updatePosition,
 } from '@/services/generated/sysPositions';
+import { createProTableRequest } from '@/utils/proTable';
 import PositionForm from './components/PositionForm';
 
 const PositionStatus = {
@@ -207,16 +208,11 @@ const PositionList: React.FC = () => {
         ]}
         request={async (params) => {
           const { current, pageSize, ...rest } = params;
-          const result = await getPositionList({
+          return createProTableRequest(getPositionList)({
             page: current || 1,
             pageSize: pageSize || 10,
             ...rest,
           });
-          return {
-            data: result.data || [],
-            success: result.success,
-            total: result.pagination?.total || 0,
-          };
         }}
         columns={columns}
         rowSelection={{

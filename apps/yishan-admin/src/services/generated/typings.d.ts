@@ -231,7 +231,7 @@ declare namespace API {
     timestamp: string;
   };
 
-  type batchGetSystemOptionByQueryParams = {
+  type batchGetSystemOptionParams = {
     /** 通过数组语法传参：?key[]=a&key[]=b */
     "key[]": systemOptionKey[];
   };
@@ -492,15 +492,15 @@ declare namespace API {
     id: number;
   };
 
-  type demoV1TodosDeleteParams = {
+  type demoTodosDeleteParams = {
     id: string;
   };
 
-  type demoV1TodosDetailParams = {
+  type demoTodosDetailParams = {
     id: string;
   };
 
-  type demoV1TodosUpdateParams = {
+  type demoTodosUpdateParams = {
     id: string;
   };
 
@@ -1000,7 +1000,7 @@ declare namespace API {
     data?: storageConfigSchema;
   };
 
-  type getSystemOptionParams = {
+  type getSystemOptionDetailParams = {
     key: systemOptionKey;
   };
 
@@ -1012,8 +1012,12 @@ declare namespace API {
     data?: string | null;
   };
 
-  type getSystemRegionParams = {
+  type getSystemRegionDetailParams = {
     code: number;
+  };
+
+  type getSystemRegionListParams = {
+    parentCode?: number;
   };
 
   type getSystemRegionPathParams = {
@@ -1052,10 +1056,6 @@ declare namespace API {
     /** 图片链接，单次最多导入 20 个 */
     urls: string[];
     folderId?: number | null;
-  };
-
-  type listSystemRegionsParams = {
-    parentCode?: number;
   };
 
   type loginData = {

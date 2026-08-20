@@ -3,7 +3,7 @@
 import { request } from "@umijs/max";
 
 /** 用户登录 用户通过用户名/邮箱和密码进行登录认证 POST /api/v1/auth/login */
-export async function login(
+export async function authLogin(
   body: API.loginReq,
   options?: { [key: string]: any }
 ) {
@@ -18,7 +18,7 @@ export async function login(
 }
 
 /** 用户登出 用户登出，清除认证状态 POST /api/v1/auth/logout */
-export async function logout(options?: { [key: string]: any }) {
+export async function authLogout(options?: { [key: string]: any }) {
   return request<{
     success?: boolean;
     code?: number;
@@ -31,7 +31,7 @@ export async function logout(options?: { [key: string]: any }) {
 }
 
 /** 获取当前用户信息 获取当前登录用户的详细信息 GET /api/v1/auth/me */
-export async function getCurrentUser(options?: { [key: string]: any }) {
+export async function authGetCurrentUser(options?: { [key: string]: any }) {
   return request<API.currentUserResp>("/api/v1/auth/me", {
     method: "GET",
     ...(options || {}),
@@ -39,7 +39,7 @@ export async function getCurrentUser(options?: { [key: string]: any }) {
 }
 
 /** 刷新访问令牌 使用刷新令牌获取新的访问令牌和刷新令牌 POST /api/v1/auth/refresh */
-export async function refreshToken(
+export async function authRefreshToken(
   body: API.refreshTokenReq,
   options?: { [key: string]: any }
 ) {

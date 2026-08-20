@@ -19,7 +19,7 @@ import {
 } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
 import dayjs from 'dayjs'
-import { demoV1Info } from '@/services/generated/demo'
+import { demoInfo } from '@/services/generated/demo'
 
 const { useToken } = theme
 
@@ -74,7 +74,7 @@ const Health: React.FC = () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await demoV1Info({})
+      const res = await demoInfo({})
       const data = (res as unknown as ServerInfo) ?? null
       if (data) {
         setInfo(data)

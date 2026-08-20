@@ -5,43 +5,49 @@
 /**
  * 布局组件
  */
-import Footer from "./Footer";
-import { Question, SelectLang } from "./RightContent";
-import { AvatarDropdown, AvatarName } from "./RightContent/AvatarDropdown";
 
+import { AttachmentLibraryModal } from './AttachmentLibraryModal';
+import {
+  AttachmentAudioSelect,
+  AttachmentFileSelect,
+  AttachmentImageSelect,
+  AttachmentMultiSelect,
+  AttachmentSelect,
+  AttachmentSingleSelect,
+  AttachmentVideoSelect,
+} from './AttachmentSelect';
 /**
  * 部门树选择组件
  */
-import { ProFormDeptTreeSelect } from "./DeptTreeSelect";
-import { ProFormRegionCascader } from "./RegionCascader";
-import QiniuUpload from "./QiniuUpload";
-import {
-  AttachmentSelect,
-  AttachmentSingleSelect,
-  AttachmentMultiSelect,
-  AttachmentImageSelect,
-  AttachmentAudioSelect,
-  AttachmentVideoSelect,
-  AttachmentFileSelect,
-} from "./AttachmentSelect";
+import { ProFormDeptTreeSelect } from './DeptTreeSelect';
+import Footer from './Footer';
+import QiniuUpload from './QiniuUpload';
+import { ProFormRegionCascader } from './RegionCascader';
+import { Question, SelectLang } from './RightContent';
+import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 
-export { default as ImageCropperModal } from "./ImageCropperModal";
-export type { ImageCropperShape, ImageCropperModalProps } from "./ImageCropperModal";
+export type { AttachmentLibraryModalProps } from './AttachmentLibraryModal/types';
+export type {
+  ImageCropperModalProps,
+  ImageCropperShape,
+} from './ImageCropperModal';
+export { default as ImageCropperModal } from './ImageCropperModal';
 
 export {
+  AttachmentAudioSelect,
+  AttachmentFileSelect,
+  AttachmentImageSelect,
+  AttachmentLibraryModal,
+  AttachmentMultiSelect,
+  AttachmentSelect,
+  AttachmentSingleSelect,
+  AttachmentVideoSelect,
   AvatarDropdown,
   AvatarName,
   Footer,
-  Question,
-  SelectLang,
   ProFormDeptTreeSelect,
   ProFormRegionCascader,
   QiniuUpload,
-  AttachmentSelect,
-  AttachmentSingleSelect,
-  AttachmentMultiSelect,
-  AttachmentImageSelect,
-  AttachmentAudioSelect,
-  AttachmentVideoSelect,
-  AttachmentFileSelect,
+  Question,
+  SelectLang,
 };

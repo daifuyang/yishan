@@ -30,7 +30,7 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: '地区列表',
         description: '按父级行政区划代码获取下级地区列表',
-        operationId: 'listSystemRegions',
+         operationId: 'getSystemRegionList',
         tags: ['systemRegions'],
         security: [{ bearerAuth: [] }],
         querystring: Type.Object({
@@ -102,7 +102,7 @@ const adminSystemRegions: FastifyPluginAsync = async (fastify) => {
       schema: {
         summary: '地区详情',
         description: '按行政区划代码获取地区详情',
-        operationId: 'getSystemRegion',
+         operationId: 'getSystemRegionDetail',
         tags: ['systemRegions'],
         security: [{ bearerAuth: [] }],
         params: Type.Object({

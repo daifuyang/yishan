@@ -4,7 +4,7 @@ import { Alert, App, Button, Checkbox, Form, Input } from "antd";
 import { createStyles } from "antd-style";
 import React, { useState } from "react";
 import { flushSync } from "react-dom";
-import { login as userLogin, getCurrentUser } from "@/services/generated/auth";
+import { authLogin as userLogin, authGetCurrentUser } from "@/services/generated/auth";
 import { saveTokens } from "@/utils/token";
 import loginBgImage from "@public/images/login-bg.png";
 import loginBrandImage from "@public/images/login-brand.png";
@@ -200,7 +200,7 @@ const Login: React.FC = () => {
       }
 
       // 标准流程：通过用户信息接口获取
-      const response = await getCurrentUser();
+      const response = await authGetCurrentUser();
       if (response.success && response.data) {
         flushSync(() => {
           setInitialState((s) => ({

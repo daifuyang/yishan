@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 90
     environment: YISHAN_API
     env:
-      DOMAIN: ${{ vars.CUSTOM_DOMAIN || 'fastify.zerocmf.com' }}
+      DOMAIN: ${{ vars.CUSTOM_DOMAIN || 'yishan.zerocmf.com' }}
       CERT_MIN_AGE_DAYS: '30'
       ACME_MODE: ${{ vars.ACME_MODE || 'staging' }}
       ACME_CA: ${{ vars.ACME_CA || 'letsencrypt' }}
@@ -209,7 +209,11 @@ jobs:
         working-directory: apps/yishan-api
         run: |
           set -euo pipefail
+          # domain.yaml template 通过 ${env(...)} 引用以下变量，必须显式导出
           export CUSTOM_DOMAIN="$DOMAIN"
+          export FUNCTION_REGION="$FC_REGION"
+          export FUNCTION_NAME="$FUNCTION_NAME"
+          export CERT_NAME="$CERT_NAME"
           s deploy -y -t deploy/fc3/templates/domain.yaml -a enterprise
 
       - name: Verify cert after deploy
