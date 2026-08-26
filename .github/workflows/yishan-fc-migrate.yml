@@ -1,5 +1,22 @@
 name: yishan-fc-migrate
 
+# 独立迁移 workflow：SSH tunnel + 本地 drizzle-kit migrate（与 console-codecloud / opcos 一致）。
+#
+# 统一采用 SSH tunnel 模式（不用 FC migration runner function）：
+#   1) 更简单：不需要维护 src/infrastructure/migrations/server.js 入口，也不占 FC 资源
+#   2) 同样安全：迁移权限由 dbi 受限账号（无 DROP）+ ecs-deployer 受限 shell（白名单命令）双重兜底，
+#      SSH tunnel 本身不会"越权"——tunnel 只是端口转发，账号权限不随传输方式提升
+#   3) console/opcos 已验证，行为同构
+#
+# - 仅 workflow_dispatch 触发（不自动跑）
+# - 三个 mode：dry-run / apply / reset-and-seed
+# - apply / reset-and-seed 需要二次 confirm（输入 APPLY / RESET_AND_SEED）
+# - 通过 SSH tunnel (ecs-deployer + tunnel-dsh) 跳到 ECS 内部 127.0.0.1:3306
+# - 跑 drizzle-kit migrate 直接连 yishan 库（dbi 账号）
+#
+# 注意：reset-and-seed 需要 DROP，而 dbi 迁移账号无 DROP 权限（安全账号原则），
+#       因此该 mode 暂不支持（需 root/dfy 或专门的 reset 账号）。
+
 on:
   workflow_dispatch:
     inputs:
@@ -24,31 +41,14 @@ concurrency:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     environment: YISHAN_API
     permissions:
       contents: read
-      id-token: write   # 必需：允许 actions 拿 OIDC token
-    env:
-      FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
-      FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
-      FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
-      FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
-      FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
-      DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Validate deployment variables
-        run: |
-          set -euo pipefail
-          : "${FUNCTION_NAME:?Missing MIGRATION_RUNNER_NAME}"
-          : "${FUNCTION_DESCRIPTION:?Missing MIGRATION_RUNNER_DESCRIPTION}"
-          : "${FUNCTION_VPC_ID:?Missing FUNCTION_VPC_ID}"
-          : "${FUNCTION_VSWITCH_ID:?Missing FUNCTION_VSWITCH_ID}"
-          : "${FUNCTION_SECURITY_GROUP:?Missing FUNCTION_SECURITY_GROUP}"
 
       - name: Require explicit apply confirmation
         env:
@@ -83,97 +83,57 @@ jobs:
         run: |
           pnpm install --no-frozen-lockfile
 
-      - name: Build migration runner package
-        working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/scripts/prepare-migration-runner.sh
-
-      - name: Install and configure Serverless Devs
+      - name: Setup SSH tunnel to ECS internal MySQL
         env:
-          ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
+          ECS_DEPLOYER_SSH_KEY: ${{ secrets.ECS_DEPLOYER_SSH_KEY }}
         run: |
           set -euo pipefail
-          npm i -g @serverless-devs/s
-          curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" -o /tmp/aliyun.tgz
-          tar -xzf /tmp/aliyun.tgz -C /tmp
-          if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
-          aliyun --version
-          mkdir -p ~/.aliyun
-          cat >~/.aliyun/config.json <<'CFG'
-          {"current":"fcdeploy","profiles":[{"name":"fcdeploy","mode":"AK","access_key_id":"placeholder","access_key_secret":"placeholder","sts_token":"","ram_role_name":"","ram_role_arn":"","private_key":"","key_pairs_cmd":"","key_pairs_dir":"","language":"en","site":"","retry_timeout":0,"retry_count":0,"process_command":"","credentials_uri":"","oidc_provider_arn":"","oidc_token_file":"","external_id":"","using_oidc":false,"oidc_token_endpoint":"","ram_role_session_name":"","expiration":"","region_id":"cn-shanghai","output_format":"json","timeout":0,"insecure":false,"ssl_verify":true}],"meta_path":""}
-          CFG
-          chmod 600 ~/.aliyun/config.json
-          TOKEN=$(curl -fsS \
-            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=github-actions" \
-            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
-          RESP=$(aliyun sts AssumeRoleWithOIDC \
-            --region cn-hangzhou \
-            --RoleArn "$ROLE_ARN" \
-            --OIDCProviderArn 'acs:ram::1650595695532785:oidc-provider/github-actions' \
-            --OIDCToken "$TOKEN" \
-            --RoleSessionName "gha-${{ github.run_id }}" \
-            --DurationSeconds 3600)
-          AK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeyId'])")
-          SK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeySecret'])")
-          ST=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecurityToken'])")
-          mkdir -p ~/.s
-          cat >~/.s/access.yaml <<SSHA
-          default:
-            AccessKeyID: ${AK}
-            AccessKeySecret: ${SK}
-            SecurityToken: ${ST}
-            type: sts
-            AccountID: '1650595695532785'
-            __provider: Alibaba Cloud
-          SSHA
-          chmod 600 ~/.s/access.yaml
-          echo "  STS issued OK, expires in 1h"
+          if [ -z "${ECS_DEPLOYER_SSH_KEY:-}" ]; then
+            echo "::error::Missing secret ECS_DEPLOYER_SSH_KEY (copy from ~/.ssh/ecs-deployer.pem)"
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "$ECS_DEPLOYER_SSH_KEY" > ~/.ssh/ecs-deployer.pem
+          chmod 600 ~/.ssh/ecs-deployer.pem
+          # 跳到 ECS 内部，把 ECS 内的 127.0.0.1:3306 (MySQL) 转到本地 13306
+          # tunnel-dsh 是 ecs-deployer 受限 shell 提供的 SSH forward 子命令
+          ssh -fN -o StrictHostKeyChecking=accept-new -o ExitOnForwardFailure=yes \
+              -i ~/.ssh/ecs-deployer.pem \
+              -L 13306:127.0.0.1:3306 \
+              ecs-deployer@139.196.89.64 tunnel-dsh
+          for i in 1 2 3 4 5; do
+            nc -z 127.0.0.1 13306 && break || sleep 1
+          done
+          echo "Tunnel up"
 
-      - name: Deploy and invoke internal migration runner
+      - name: Run drizzle-kit migrate via tunnel
         working-directory: apps/yishan-api
         env:
-          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
-          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
-          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
-          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
-          ALLOW_PRODUCTION_SEED: ${{ inputs.mode == 'reset-and-seed' && 'true' || 'false' }}
-          SEED_ADMIN_PASSWORD: ${{ secrets.YISHAN_API_SEED_ADMIN_PASSWORD }}
+          # 直接传 DATABASE_URL，避开 drizzle.config.ts 自己拼 URL（不 URL-encode 密码）
+          # password 含 '%' 等特殊字符时必须 encodeURIComponent
+          DATABASE_URL: 'mysql://${{ secrets.YISHAN_API_DATABASE_USER }}:${{ secrets.YISHAN_API_DATABASE_PASSWORD }}@127.0.0.1:13306/${{ secrets.YISHAN_API_DATABASE_NAME }}'
           MIGRATION_MODE: ${{ inputs.mode }}
-          FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
-          FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
-          FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
-          FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
-          FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
-          FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
         run: |
           set -euo pipefail
-          export DATABASE_PORT="${DATABASE_PORT:-3306}"
-          s deploy -t deploy/fc3/templates/runner.yaml -y
-          s invoke -t deploy/fc3/templates/runner.yaml --event "{\"mode\":\"${MIGRATION_MODE}\"}" | tee /tmp/migration_invoke.log
-          if grep -q '"error"' /tmp/migration_invoke.log; then
-            echo "Migration runner returned an error" >&2
+          PASSWORD_ENCODED=$(node -e "console.log(encodeURIComponent(process.env.PASSWORD_RAW))" PASSWORD_RAW="${{ secrets.YISHAN_API_DATABASE_PASSWORD }}")
+          USER="${{ secrets.YISHAN_API_DATABASE_USER }}"
+          DB="${{ secrets.YISHAN_API_DATABASE_NAME }}"
+          export DATABASE_URL="mysql://${USER}:${PASSWORD_ENCODED}@127.0.0.1:13306/${DB}"
+          echo "DATABASE_URL user=$(echo $DATABASE_URL | cut -d: -f1-2 | head -c 30)..."
+          if [ "$MIGRATION_MODE" = "dry-run" ]; then
+            echo "Dry-run: printing pending migrations"
+            pnpm db:generate
+            ls drizzle/*.sql
+          elif [ "$MIGRATION_MODE" = "apply" ]; then
+            echo "Applying migrations..."
+            pnpm db:migrate
+            echo "✅ Migrations applied"
+          elif [ "$MIGRATION_MODE" = "reset-and-seed" ]; then
+            echo "Reset + seed not yet supported (would need drop + apply + seed)"
             exit 1
           fi
 
-      - name: Remove temporary migration runner after success
-        if: success()
-        working-directory: apps/yishan-api
-        env:
-          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
-          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
-          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
-          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
-          ALLOW_PRODUCTION_SEED: 'false'
-          SEED_ADMIN_PASSWORD: unused
-          FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
-          FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
-          FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
-          FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
-          FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
-          FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
+      - name: Cleanup SSH tunnel
+        if: always()
         run: |
-          set -euo pipefail
-          export DATABASE_PORT="${DATABASE_PORT:-3306}"
-          s remove -t deploy/fc3/templates/runner.yaml -y
+          pkill -f 'ssh.*13306.*ecs-deployer.*tunnel-dsh' || true
