@@ -10,12 +10,28 @@ export default fp(async (fastify) => {
     : `/${uploadDirNormalized}`
   const prefix = `${urlBase.replace(/\/+$/g, '')}/`
   const adminDistPath = join(process.cwd(), 'public', 'admin')
+  const uploadsRoot = join(process.cwd(), uploadDirNormalized)
 
-  await fastify.register(fastifyStatic, {
-    root: join(process.cwd(), uploadDirNormalized),
-    prefix,
-    decorateReply: false
-  })
+  // Fastify-static 在 register 时会 stat 验证 root 是否存在。在 FC custom runtime
+  // 里 /code 是只读 mount，public/uploads 不一定存在（取决于本次构建是否
+  // 把上传目录一起打包）。如果不存在，让函数 boot 失败会暴露一个"用户上传
+  // 文件之前函数就起不来"的脆弱耦合，违背"上层资源不影响下层可用"原则。
+  //
+  // 修复：try/catch 包住，root 不存在时降级：跳过 upload 路由的 serve，只保留
+  // admin SPA 的 mount。后续真有用户上传需求时，业务代码（attachment.service.ts）
+  // 再按 UPLOAD_DIR 显式 mkdir + write（write 不依赖 fastifyStatic 注册）。
+  try {
+    await fastify.register(fastifyStatic, {
+      root: uploadsRoot,
+      prefix,
+      decorateReply: false
+    })
+  } catch (err) {
+    fastify.log.warn(
+      { err: (err as Error).message, uploadsRoot },
+      'uploads root missing, fastify-static upload routes disabled (admin SPA still mounted)'
+    )
+  }
 
   await fastify.register(async (adminScope) => {
     await adminScope.register(fastifyStatic, {
