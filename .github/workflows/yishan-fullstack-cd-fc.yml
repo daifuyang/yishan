@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: YISHAN_API
+    permissions:
+      contents: read
+      id-token: write   # 必需：允许 actions 拿 OIDC token
     env:
       FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
       FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
@@ -180,36 +183,46 @@ jobs:
       - name: Install Serverless Devs
         run: npm i -g @serverless-devs/s
 
-      - name: Configure Serverless Devs Access
+      - name: Assume FC deploy role via OIDC (inline)
         env:
-          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
-          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
-          ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
+          ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
         run: |
-          if [ -z "${ALIBABA_CLOUD_ACCESS_KEY_ID:-}" ]; then
-            echo "Missing secret: ALIBABA_CLOUD_ACCESS_KEY_ID"
-            exit 1
-          fi
-          if [ -z "${ALIBABA_CLOUD_ACCESS_KEY_SECRET:-}" ]; then
-            echo "Missing secret: ALIBABA_CLOUD_ACCESS_KEY_SECRET"
-            exit 1
-          fi
-          ACCOUNT_ID_CLEAN="$(echo "${ALIBABA_CLOUD_ACCOUNT_ID:-}" | tr -d '[:space:]')"
-          if [ -n "${ACCOUNT_ID_CLEAN}" ] && echo "${ACCOUNT_ID_CLEAN}" | grep -Eq '^[0-9]{16,32}$'; then
-            s config add \
-              --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
-              --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
-              --AccountID "$ACCOUNT_ID_CLEAN" \
-              -a enterprise \
-              -f
-          else
-            echo "ALIBABA_CLOUD_ACCOUNT_ID missing or invalid, try non-AccountID mode"
-            s config add \
-              --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
-              --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
-              -a enterprise \
-              -f
-          fi
+          set -euo pipefail
+          curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" -o /tmp/aliyun.tgz
+          tar -xzf /tmp/aliyun.tgz -C /tmp
+          if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
+          aliyun --version
+          mkdir -p ~/.aliyun
+          cat >~/.aliyun/config.json <<'CFG'
+          {"current":"fcdeploy","profiles":[{"name":"fcdeploy","mode":"AK","access_key_id":"placeholder","access_key_secret":"placeholder","sts_token":"","ram_role_name":"","ram_role_arn":"","private_key":"","key_pairs_cmd":"","key_pairs_dir":"","language":"en","site":"","retry_timeout":0,"retry_count":0,"process_command":"","credentials_uri":"","oidc_provider_arn":"","oidc_token_file":"","external_id":"","using_oidc":false,"oidc_token_endpoint":"","ram_role_session_name":"","expiration":"","region_id":"cn-shanghai","output_format":"json","timeout":0,"insecure":false,"ssl_verify":true}],"meta_path":""}
+          CFG
+          chmod 600 ~/.aliyun/config.json
+          TOKEN=$(curl -fsS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=github-actions" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
+          RESP=$(aliyun sts AssumeRoleWithOIDC \
+            --region cn-hangzhou \
+            --RoleArn "$ROLE_ARN" \
+            --OIDCProviderArn 'acs:ram::1650595695532785:oidc-provider/github-actions' \
+            --OIDCToken "$TOKEN" \
+            --RoleSessionName "gha-${{ github.run_id }}" \
+            --DurationSeconds 3600)
+          AK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeyId'])")
+          SK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeySecret'])")
+          ST=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecurityToken'])")
+          mkdir -p ~/.s
+          cat >~/.s/access.yaml <<SSHA
+          default:
+            AccessKeyID: ${AK}
+            AccessKeySecret: ${SK}
+            SecurityToken: ${ST}
+            type: sts
+            AccountID: '1650595695532785'
+            __provider: Alibaba Cloud
+          SSHA
+          chmod 600 ~/.s/access.yaml
+          echo "  STS issued OK, expires in 1h"
 
       - name: Restore layer lock
         uses: actions/cache@v4
@@ -229,8 +242,8 @@ jobs:
         env:
           YISHAN_FC_REGION: ${{ vars.FUNCTION_REGION || 'cn-shanghai' }}
           YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
-          YISHAN_FC_ACCESS_ALIAS: enterprise
-          ALIBABA_CLOUD_ACCOUNT_ID: ${{ vars.ALIBABA_CLOUD_ACCOUNT_ID }}
+          YISHAN_FC_ACCESS_ALIAS: default   # 与 OIDC 步骤写入的 ~/.s/access.yaml default profile 对齐
+          ALIBABA_CLOUD_ACCOUNT_ID: '1650595695532785'
         run: |
           set -euo pipefail
           bash ./deploy/fc3/scripts/publish-runtime-layer.sh | tee /tmp/publish_layer.log

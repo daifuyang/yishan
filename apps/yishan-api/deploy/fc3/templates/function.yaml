@@ -1,6 +1,6 @@
 edition: 3.0.0
 name: yishan-function
-access: "enterprise"
+access: "default"   # OIDC STS profile name; yishan-fullstack-cd-fc uses "enterprise" (long-lived AK)
 vars:
   region: ${env(FUNCTION_REGION)}
   functionName: ${env(FUNCTION_NAME)}
