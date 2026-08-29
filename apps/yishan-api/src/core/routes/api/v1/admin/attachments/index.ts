@@ -7,7 +7,7 @@ import { Transform } from "stream";
 import { createWriteStream, promises as fs } from "fs";
 import { extname, join } from "path";
 import { createHash, randomUUID } from "crypto";
-import { STORAGE_CONFIG } from "../../../../../../config/index.js";
+import { STORAGE } from "../../../../../../config/storage.js";
 import {
   AttachmentFolderListQuery,
   AttachmentListQuery,
@@ -445,13 +445,7 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
       }
     },
     async (request: FastifyRequest<{ Querystring: { folderId?: number; kind?: "image" | "audio" | "video" | "other"; name?: string } }>, reply: FastifyReply) => {
-      const uploadRoot = join(process.cwd(), STORAGE_CONFIG.uploadDir);
-      await fs.mkdir(uploadRoot, { recursive: true });
-
-      const uploadDirNormalized = STORAGE_CONFIG.uploadDir.replace(/\\/g, "/").replace(/^\/+/, "");
-      const urlBase = uploadDirNormalized.startsWith("public/")
-        ? `/${uploadDirNormalized.slice("public/".length)}`
-        : `/${uploadDirNormalized}`;
+      await fs.mkdir(STORAGE.diskRoot, { recursive: true });
 
       const results: Array<{ id?: number; filename: string; originalName: string; mimeType: string; size: number; path: string; kind?: string; url?: string }> = [];
 
@@ -461,7 +455,7 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
         const originalName: string = part.filename || "file";
         const ext = extname(originalName) || "";
         const filename = `${randomUUID().replace(/-/g, "")}${ext}`;
-        const filepath = join(uploadRoot, filename);
+        const filepath = join(STORAGE.diskRoot, filename);
 
         const hash = createHash("md5");
         const hashTap = new Transform({
@@ -491,7 +485,7 @@ const adminAttachments: FastifyPluginAsync = async (fastify, opts): Promise<void
           continue;
         }
 
-        const urlPath = `${urlBase}/${filename}`.replace(/\/+/g, "/");
+        const urlPath = `${STORAGE.urlPrefix}${filename}`.replace(/\/+/g, "/");
         try {
           const created = await AttachmentService.createLocalAttachment(
             {

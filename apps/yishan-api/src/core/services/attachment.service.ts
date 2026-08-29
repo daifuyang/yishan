@@ -24,7 +24,7 @@ import { lookup } from "dns/promises";
 import { promises as fs } from "fs";
 import { extname, join } from "path";
 import { isIP } from "net";
-import { STORAGE_CONFIG } from "../../config/index.js";
+import { STORAGE } from "../../config/storage.js";
 
 const REMOTE_IMAGE_MAX_SIZE = 10 * 1024 * 1024;
 const REMOTE_IMAGE_TIMEOUT = 15_000;
@@ -486,16 +486,11 @@ export class AttachmentService {
     const ext = extname(sourceName) || this.getImageExtension(mimeType);
     const originalName = `${sourceName.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/\.[^.]*$/, "") || "image"}${ext}`;
     const filename = `${randomUUID().replace(/-/g, "")}${ext}`;
-    const uploadRoot = join(process.cwd(), STORAGE_CONFIG.uploadDir);
-    await fs.mkdir(uploadRoot, { recursive: true });
-    const filepath = join(uploadRoot, filename);
+    await fs.mkdir(STORAGE.diskRoot, { recursive: true });
+    const filepath = join(STORAGE.diskRoot, filename);
     await fs.writeFile(filepath, content);
 
-    const uploadDirNormalized = STORAGE_CONFIG.uploadDir.replace(/\\/g, "/").replace(/^\/+/, "");
-    const urlBase = uploadDirNormalized.startsWith("public/")
-      ? `/${uploadDirNormalized.slice("public/".length)}`
-      : `/${uploadDirNormalized}`;
-    const urlPath = `${urlBase}/${filename}`.replace(/\/+/g, "/");
+    const urlPath = `${STORAGE.urlPrefix}${filename}`.replace(/\/+/g, "/");
 
     try {
       return await this.createLocalAttachment(

@@ -1,61 +1,67 @@
+import { access } from 'node:fs/promises'
+import { constants as fsConstants } from 'node:fs'
 import fp from 'fastify-plugin'
 import fastifyStatic from '@fastify/static'
-import { join } from 'node:path'
-import { ADMIN_BASE_PATH, ADMIN_CONFIG, STORAGE_CONFIG } from '../../../config/index.js'
+import { ADMIN } from '../../../config/admin.js'
+import { STORAGE } from '../../../config/storage.js'
 
+/**
+ * 静态资源 + Admin SPA 装配。
+ *
+ * 设计要点（按第一性原理）：
+ * 1) 启动期 fs.access 探测 uploads 目录是否可读 → 决定是否挂静态路由；
+ *    插件本身不做"边 register 边 try/catch"的混合职责。
+ * 2) 路径规整、URL prefix、admin mount 模式全部由 config 边界层产出；
+ *    插件只读字段，不做字符串推断。
+ * 3) SPA fallback 只在 admin prefix 范围内生效（嵌套 register），
+ *    不动全局 setNotFoundHandler，避免覆盖 app.ts 的 envelope 404 handler。
+ */
 export default fp(async (fastify) => {
-  const uploadDirNormalized = STORAGE_CONFIG.uploadDir.replace(/\\/g, '/').replace(/^\/+/, '')
-  const urlBase = uploadDirNormalized.startsWith('public/')
-    ? `/${uploadDirNormalized.slice('public/'.length)}`
-    : `/${uploadDirNormalized}`
-  const prefix = `${urlBase.replace(/\/+$/g, '')}/`
-  const adminDistPath = join(process.cwd(), 'public', 'admin')
-  const uploadsRoot = join(process.cwd(), uploadDirNormalized)
-
-  // Fastify-static 在 register 时会 stat 验证 root 是否存在。在 FC custom runtime
-  // 里 /code 是只读 mount，public/uploads 不一定存在（取决于本次构建是否
-  // 把上传目录一起打包）。如果不存在，让函数 boot 失败会暴露一个"用户上传
-  // 文件之前函数就起不来"的脆弱耦合，违背"上层资源不影响下层可用"原则。
-  //
-  // 修复：try/catch 包住，root 不存在时降级：跳过 upload 路由的 serve，只保留
-  // admin SPA 的 mount。后续真有用户上传需求时，业务代码（attachment.service.ts）
-  // 再按 UPLOAD_DIR 显式 mkdir + write（write 不依赖 fastifyStatic 注册）。
-  try {
-    await fastify.register(fastifyStatic, {
-      root: uploadsRoot,
-      prefix,
-      decorateReply: false
-    })
-  } catch (err) {
-    fastify.log.warn(
-      { err: (err as Error).message, uploadsRoot },
-      'uploads root missing, fastify-static upload routes disabled (admin SPA still mounted)'
-    )
+  // ─── 1. uploads 静态资源（可选挂载；目录缺失则降级） ───────────
+  if (STORAGE.isPublic) {
+    const canServe = await canReadDir(STORAGE.diskRoot)
+    if (canServe) {
+      await fastify.register(fastifyStatic, {
+        root: STORAGE.diskRoot,
+        prefix: STORAGE.urlPrefix,
+        decorateReply: false,
+      })
+    } else {
+      fastify.log.warn(
+        { root: STORAGE.diskRoot },
+        'uploads dir missing or unreadable; static route skipped (writes still work via attachment.service)'
+      )
+    }
   }
 
+  // ─── 2. admin SPA（必挂；静态资源 + prefix 范围内的 SPA fallback） ─
+  const adminPrefix = ADMIN.mount.mode === 'root' ? '/' : ADMIN.mount.path
   await fastify.register(async (adminScope) => {
     await adminScope.register(fastifyStatic, {
-      root: adminDistPath,
+      root: ADMIN.diskPath,
       prefix: '/',
-      index: false
-    })
-    adminScope.get('/', async (_request, reply) => {
-      return reply.sendFile('index.html')
+      index: false,
+      decorateReply: false,
     })
     adminScope.setNotFoundHandler(async (_request, reply) => {
-      return reply.sendFile('index.html')
+      return reply.sendFile('index.html', ADMIN.diskPath)
     })
-  }, {
-    prefix: ADMIN_BASE_PATH
-  })
+  }, { prefix: adminPrefix })
 
-  // 生产环境根路径进入 Admin SPA；开发态保留根路径，避免调试 API 时被重定向。
-  // 部署到 fc + CDN 时通常会把 admin 编译成 /admin/ 前缀，需要把根路径重定向过去；
-  // 通过 ADMIN_BASE_PATH 与 ADMIN_REDIRECT_ROOT 一起控制（默认 /admin、默认开启重定向）。
-  if (process.env.NODE_ENV === 'production' && ADMIN_CONFIG.redirectRoot) {
-    const target = ADMIN_BASE_PATH === '/' ? '/admin/' : `${ADMIN_BASE_PATH}/`
+  // ─── 3. 生产环境根路径 301 重定向到 admin 入口（仅 subpath 模式） ─
+  if (process.env.NODE_ENV === 'production' && ADMIN.mount.mode === 'subpath' && ADMIN.redirectRoot) {
+    const target = ADMIN.mount.path.endsWith('/') ? ADMIN.mount.path : `${ADMIN.mount.path}/`
     fastify.get('/', (_request, reply) => reply.redirect(target, 301))
   }
 }, {
-  name: 'static'
+  name: 'static',
 })
+
+async function canReadDir(path: string): Promise<boolean> {
+  try {
+    await access(path, fsConstants.R_OK)
+    return true
+  } catch {
+    return false
+  }
+}

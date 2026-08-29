@@ -79,33 +79,11 @@ export const CACHE_CONFIG = {
   defaultTTLSeconds: parseInt(process.env.CACHE_TTL_DEFAULT || '86400'),
 };
 
-// 存储与上传配置
-export const STORAGE_CONFIG = {
-  uploadDir: process.env.UPLOAD_DIR || 'public/uploads',
-};
+// 存储与上传配置见 `./storage.ts`：结构化对象，含 diskRoot / urlPrefix / isPublic
+export { STORAGE } from './storage.js'
 
-/**
- * Admin 前端在 API 同站部署时的 URL 前缀。
- *
- * 默认 `/admin`，对应 admin 编译时的 PUBLIC_PATH=admin/、CDN/函数静态资源挂载在 /admin/*。
- * `/admin` 和 `/admin/` 视为同一个值，内部统一去尾斜杠，调用方无需关心写法。
- *
- * 与 admin 的 `__APP_BASE__`、`PUBLIC_PATH` 必须保持一致，否则静态资源 404 + SPA 路由错位。
- */
-export const ADMIN_BASE_PATH = (() => {
-  const trimmed = (process.env.ADMIN_BASE_PATH || '/admin').trim().replace(/\/+$/g, '')
-  return trimmed === '' ? '/' : trimmed
-})()
-
-/**
- * Admin 部署配置：是否在生产环境把根路径 `/` 重定向到 admin 前缀。
- *
- * 默认开启。把 admin 编译成 `/admin/` 前缀的部署形态（fc / Nginx 子路径等）通常需要
- * 让访问者输入根域名也能落到 admin SPA；本地调试 API 时不希望被吞掉首页请求。
- */
-export const ADMIN_CONFIG = {
-  redirectRoot: (process.env.ADMIN_REDIRECT_ROOT ?? 'true').toLowerCase() !== 'false',
-}
+// Admin 部署配置见 `./admin.ts`：结构化对象，含 mount.mode / diskPath / redirectRoot
+export { ADMIN } from './admin.js'
 
 // 七牛云配置
 export const QINIU_CONFIG = {
