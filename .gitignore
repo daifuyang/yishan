@@ -36,6 +36,9 @@ yarn-error.log*
 apps/yishan-app/.swc/
 tmp/
 
+# Local memory database (DSH meow-memory) — per-workspace, never commit.
+.dsh-meow/
+
 # Generated artifacts (release output, plugin catalog from profiles/*.yaml)
 artifacts/
 apps/yishan-api/openapi.json

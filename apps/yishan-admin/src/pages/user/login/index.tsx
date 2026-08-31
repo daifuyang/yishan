@@ -1,92 +1,95 @@
-import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { useIntl, useModel, FormattedMessage } from "@umijs/max";
-import { Alert, App, Button, Checkbox, Form, Input } from "antd";
-import { createStyles } from "antd-style";
-import React, { useState } from "react";
-import { flushSync } from "react-dom";
-import { authLogin as userLogin, authGetCurrentUser } from "@/services/generated/auth";
-import { saveTokens } from "@/utils/token";
-import loginBgImage from "@public/images/login-bg.png";
-import loginBrandImage from "@public/images/login-brand.png";
+import { LockOutlined, UserOutlined } from '@ant-design/icons';
+import loginBgImage from '@public/images/login-bg.png';
+import loginBrandImage from '@public/images/login-brand.png';
+import { FormattedMessage, useIntl, useModel } from '@umijs/max';
+import { Alert, App, Button, Checkbox, Form, Input } from 'antd';
+import { createStyles } from 'antd-style';
+import React, { useState } from 'react';
+import { flushSync } from 'react-dom';
+import {
+  authGetCurrentUser,
+  authLogin as userLogin,
+} from '@/services/generated/auth';
+import { saveTokens } from '@/utils/token';
 
 const useStyles = createStyles(({ css }) => {
   return {
     root: {
-      display: "flex",
+      display: 'flex',
       backgroundImage: `url('${loginBgImage}')`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-      width: "100%",
-      height: "100vh",
-      "@media (max-width: 992px)": {
-        padding: "20px",
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      width: '100%',
+      height: '100vh',
+      '@media (max-width: 992px)': {
+        padding: '20px',
       },
-      "@media (max-width: 768px)": {
-        padding: "16px",
-        alignItems: "center",
-        justifyContent: "center",
+      '@media (max-width: 768px)': {
+        padding: '16px',
+        alignItems: 'center',
+        justifyContent: 'center',
       },
     },
     brand: {
       backgroundImage: `url('${loginBrandImage}')`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
-      width: "56.67%",
-      height: "100%",
-      "@media (max-width: 1200px)": {
-        width: "50%",
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      width: '56.67%',
+      height: '100%',
+      '@media (max-width: 1200px)': {
+        width: '50%',
       },
-      "@media (max-width: 992px)": {
-        display: "none",
+      '@media (max-width: 992px)': {
+        display: 'none',
       },
     },
     loginWrap: {
       flex: 1,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     loginCard: {
-      width: "min(481px, 100%)",
-      backgroundColor: "#fff",
-      padding: "56px 48px 88px 48px",
-      borderRadius: "20px",
+      width: 'min(481px, 100%)',
+      backgroundColor: '#fff',
+      padding: '56px 48px 88px 48px',
+      borderRadius: '20px',
       boxShadow:
-        " 0px 0px 0px  rgba(0, 0, 0, 0.1), 0px 17px 36px  rgba(23, 57, 222, 0.25)",
-      "@media (max-height: 720px)": {
-        padding: "40px 40px 56px",
+        ' 0px 0px 0px  rgba(0, 0, 0, 0.1), 0px 17px 36px  rgba(23, 57, 222, 0.25)',
+      '@media (max-height: 720px)': {
+        padding: '40px 40px 56px',
       },
-      "@media (max-width: 768px)": {
-        padding: "28px 20px 32px",
-        borderRadius: "16px",
+      '@media (max-width: 768px)': {
+        padding: '28px 20px 32px',
+        borderRadius: '16px',
       },
     },
     loginTitle: {
-      fontFamily: "Noto Sans SC",
-      textAlign: "center",
-      fontSize: "clamp(28px, 4.5vw, 36px)",
+      fontFamily: 'Noto Sans SC',
+      textAlign: 'center',
+      fontSize: 'clamp(28px, 4.5vw, 36px)',
       fontWeight: 700,
-      color: "#000",
+      color: '#000',
       margin: 0,
     },
     loginSubTitle: {
-      fontFamily: "Noto Sans SC",
-      textAlign: "center",
-      marginTop: "12px",
-      fontSize: "clamp(14px, 3.5vw, 16px)",
+      fontFamily: 'Noto Sans SC',
+      textAlign: 'center',
+      marginTop: '12px',
+      fontSize: 'clamp(14px, 3.5vw, 16px)',
       fontWeight: 400,
-      color: "#000",
+      color: '#000',
       margin: 0,
     },
     loginForm: {
-      marginTop: "40px",
-      "@media (max-height: 720px)": {
-        marginTop: "28px",
+      marginTop: '40px',
+      '@media (max-height: 720px)': {
+        marginTop: '28px',
       },
-      "@media (max-width: 768px)": {
-        marginTop: "28px",
+      '@media (max-width: 768px)': {
+        marginTop: '28px',
       },
     },
     loginFormItem: css`
@@ -106,10 +109,10 @@ const useStyles = createStyles(({ css }) => {
       }
     `,
     loginItemIcon: {
-      fontSize: "24px",
-      color: "rgba(28, 53, 145, 0.6)",
-      "@media (max-width: 768px)": {
-        fontSize: "20px",
+      fontSize: '24px',
+      color: 'rgba(28, 53, 145, 0.6)',
+      '@media (max-width: 768px)': {
+        fontSize: '20px',
       },
     },
     loginFormCheckBox: css`
@@ -170,9 +173,9 @@ const LoginMessage: React.FC<{
 };
 
 const Login: React.FC = () => {
-  const [loginError, setLoginError] = useState<string>("");
+  const [loginError, setLoginError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const { setInitialState } = useModel("@@initialState");
+  const { setInitialState } = useModel('@@initialState');
   const { styles } = useStyles();
   const { message } = App.useApp();
   const intl = useIntl();
@@ -180,7 +183,7 @@ const Login: React.FC = () => {
   const fetchUserInfo = async () => {
     try {
       // 检查是否已经通过登录接口获取了用户信息
-      const cachedUserInfo = localStorage.getItem("currentUser");
+      const cachedUserInfo = localStorage.getItem('currentUser');
       if (cachedUserInfo) {
         try {
           const userData = JSON.parse(cachedUserInfo);
@@ -191,11 +194,11 @@ const Login: React.FC = () => {
             }));
           });
           // 清理缓存的用户信息
-          localStorage.removeItem("currentUser");
+          localStorage.removeItem('currentUser');
           return userData;
         } catch (error) {
-          console.warn("解析缓存用户信息失败:", error);
-          localStorage.removeItem("currentUser");
+          console.warn('解析缓存用户信息失败:', error);
+          localStorage.removeItem('currentUser');
         }
       }
 
@@ -217,16 +220,17 @@ const Login: React.FC = () => {
   };
 
   const resolveRedirectAfterLogin = () => {
-    const redirect = new URL(window.location.href).searchParams.get("redirect");
+    const redirect = new URL(window.location.href).searchParams.get('redirect');
     if (!redirect) return '/';
     try {
       const target = new URL(redirect, window.location.origin);
       let normalizedPath = target.pathname;
-      const basePrefix = __APP_BASE__ === '/' ? '' : __APP_BASE__.replace(/\/+$/, '');
+      const basePrefix =
+        __APP_BASE__ === '/' ? '' : __APP_BASE__.replace(/\/+$/, '');
       if (basePrefix && normalizedPath.startsWith(basePrefix)) {
         normalizedPath = normalizedPath.slice(basePrefix.length) || '/';
       }
-      if (normalizedPath === "/user/login" || normalizedPath === "/") {
+      if (normalizedPath === '/user/login' || normalizedPath === '/') {
         return '/';
       }
       return `${normalizedPath}${target.search}${target.hash}`;
@@ -236,13 +240,14 @@ const Login: React.FC = () => {
   };
 
   const hardRedirectAfterLogin = (targetPath: string) => {
-    const basePrefix = __APP_BASE__ === '/' ? '' : __APP_BASE__.replace(/\/+$/, '');
+    const basePrefix =
+      __APP_BASE__ === '/' ? '' : __APP_BASE__.replace(/\/+$/, '');
     window.location.href = `${basePrefix}${targetPath}`;
   };
 
   const handleSubmit = async (values: API.loginReq) => {
     setLoading(true);
-    setLoginError("");
+    setLoginError('');
 
     try {
       // 登录
@@ -251,8 +256,8 @@ const Login: React.FC = () => {
       // 完全依赖API返回的success字段判断成功或失败
       if (msg.success) {
         const defaultLoginSuccessMessage = intl.formatMessage({
-          id: "pages.login.success",
-          defaultMessage: "登录成功！",
+          id: 'pages.login.success',
+          defaultMessage: '登录成功！',
         });
         message.success(msg.message || defaultLoginSuccessMessage);
 
@@ -261,7 +266,7 @@ const Login: React.FC = () => {
           // 统一使用 OpenAPI 返回的字段名：token、expiresIn、refreshToken、refreshTokenExpiresIn
           saveTokens({
             accessToken: msg.data.token,
-            refreshToken: msg.data.refreshToken || "",
+            refreshToken: msg.data.refreshToken || '',
             accessTokenExpiresIn: msg.data.expiresIn,
             refreshTokenExpiresIn: msg.data.refreshTokenExpiresIn,
           });
@@ -272,17 +277,31 @@ const Login: React.FC = () => {
         return;
       }
 
-      // 登录失败，直接使用API返回的错误信息
-      const errorMessage = msg.message || "登录失败，请重试";
-      message.error(errorMessage);
+      // 登录失败：仅在表单内展示红色 Alert，不再额外弹全局 toast 重复打扰用户。
+      const errorMessage = msg.message || '登录失败，请稍后再试';
       setLoginError(errorMessage);
-    } catch (_error: any) {
-      const defaultLoginFailureMessage = intl.formatMessage({
-        id: "pages.login.failure",
-        defaultMessage: "登录失败，请重试！",
-      });
-      message.error(defaultLoginFailureMessage);
-      setLoginError(defaultLoginFailureMessage);
+    } catch (error: any) {
+      // 优先取后端在 4xx/5xx 上带回的信封 message（用户名或密码错误 / 账号被禁用等）。
+      // 顺序：response.data.message → error.message → 默认兜底。
+      // 注意：response.data 可能是 HTML（网关错误页）或字符串，避免直接当对象读。
+      // 全局 errorHandler 已经放过 message.error 了，这里只在表单内再展示一次，
+      // 避免登录页同时弹 toast + Alert 重复打扰。
+      const data = error?.response?.data;
+      const envelopeMessage =
+        data &&
+        typeof data === 'object' &&
+        typeof data.message === 'string' &&
+        data.message.trim()
+          ? data.message.trim()
+          : null;
+      const errorMessage =
+        envelopeMessage ||
+        (typeof error?.message === 'string' && error.message.trim()) ||
+        intl.formatMessage({
+          id: 'pages.login.failure',
+          defaultMessage: '登录失败，请稍后再试',
+        });
+      setLoginError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -290,9 +309,9 @@ const Login: React.FC = () => {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "上午好";
-    if (hour < 18) return "下午好";
-    return "晚上好";
+    if (hour < 12) return '上午好';
+    if (hour < 18) return '下午好';
+    return '晚上好';
   };
 
   const greeting = getGreeting();
@@ -307,7 +326,11 @@ const Login: React.FC = () => {
           <Form
             onFinish={async (values: any) => {
               const { username, password, remember } = values || {};
-              await handleSubmit({ username, password, rememberMe: !!remember });
+              await handleSubmit({
+                username,
+                password,
+                rememberMe: !!remember,
+              });
             }}
             className={styles.loginForm}
             name="basic"
@@ -319,18 +342,18 @@ const Login: React.FC = () => {
                 {
                   required: true,
                   message: intl.formatMessage({
-                    id: "pages.login.username.required",
-                    defaultMessage: "请输入用户名",
+                    id: 'pages.login.username.required',
+                    defaultMessage: '请输入用户名',
                   }),
                 },
                 {
                   validator: (_, value) => {
                     if (!value) {
-                      return Promise.reject(new Error("请输入用户名"));
+                      return Promise.reject(new Error('请输入用户名'));
                     }
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (value.length < 3 && !emailRegex.test(value)) {
-                      return Promise.reject(new Error("用户名至少需要3个字符"));
+                      return Promise.reject(new Error('用户名至少需要3个字符'));
                     }
                     return Promise.resolve();
                   },
@@ -341,8 +364,8 @@ const Login: React.FC = () => {
                 className={styles.loginFormItem}
                 variant="filled"
                 placeholder={intl.formatMessage({
-                  id: "pages.login.username.placeholder",
-                  defaultMessage: "用户名",
+                  id: 'pages.login.username.placeholder',
+                  defaultMessage: '用户名',
                 })}
                 prefix={<UserOutlined className={styles.loginItemIcon} />}
               />
@@ -353,8 +376,8 @@ const Login: React.FC = () => {
                 {
                   required: true,
                   message: intl.formatMessage({
-                    id: "pages.login.password.required",
-                    defaultMessage: "请输入密码！",
+                    id: 'pages.login.password.required',
+                    defaultMessage: '请输入密码！',
                   }),
                 },
               ]}
@@ -363,19 +386,32 @@ const Login: React.FC = () => {
                 className={styles.loginFormItem}
                 variant="filled"
                 placeholder={intl.formatMessage({
-                  id: "pages.login.password.placeholder",
-                  defaultMessage: "密码",
+                  id: 'pages.login.password.placeholder',
+                  defaultMessage: '密码',
                 })}
                 prefix={<LockOutlined className={styles.loginItemIcon} />}
               />
             </Form.Item>
-            <Form.Item name="remember" valuePropName="checked" className={styles.rememberItem}>
+            <Form.Item
+              name="remember"
+              valuePropName="checked"
+              className={styles.rememberItem}
+            >
               <Checkbox className={styles.loginFormCheckBox}>
-                <FormattedMessage id="pages.login.rememberMe" defaultMessage="自动登录" />
+                <FormattedMessage
+                  id="pages.login.rememberMe"
+                  defaultMessage="自动登录"
+                />
               </Checkbox>
             </Form.Item>
             <Form.Item className={styles.submitItem}>
-              <Button className={styles.loginFormBtn} type="primary" htmlType="submit" block loading={loading}>
+              <Button
+                className={styles.loginFormBtn}
+                type="primary"
+                htmlType="submit"
+                block
+                loading={loading}
+              >
                 立即登录
               </Button>
             </Form.Item>

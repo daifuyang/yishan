@@ -1,20 +1,15 @@
-import type { RequestOptions } from "@@/plugin-request/request";
-import type { RequestConfig } from "@umijs/max";
-import { request } from "@umijs/max";
-import { message, notification } from "antd";
-import { logout, setCurrentUser } from "@/utils/auth";
-import {
-  getAuthorizationHeader,
-  clearTokens,
-} from "@/utils/token";
-import { authRefreshToken as apiRefreshToken } from "@/services/generated/auth";
+import type { RequestOptions } from '@@/plugin-request/request';
+import type { RequestConfig } from '@umijs/max';
+import { request } from '@umijs/max';
+import { message, notification } from 'antd';
+import { authRefreshToken as apiRefreshToken } from '@/services/generated/auth';
+import { logout, setCurrentUser } from '@/utils/auth';
+import { clearTokens, getAuthorizationHeader } from '@/utils/token';
 
 // 401 refresh 单飞锁：多个并发 401 共享同一次 /auth/refresh 调用。
 // 当前为 CSR 模块级单实例，足够覆盖单页签内的并发刷新。
 // refreshToken 现由 HttpOnly cookie（yishan_rt）自动携带，前端无需读取/传入。
-type RefreshResult =
-  | { ok: true; data: any }
-  | { ok: false; error: unknown };
+type RefreshResult = { ok: true; data: any } | { ok: false; error: unknown };
 
 let refreshInFlight: Promise<RefreshResult> | null = null;
 
@@ -28,7 +23,10 @@ async function refreshOnce(): Promise<RefreshResult> {
         if (resp?.success === true && resp.data) {
           return { ok: true as const, data: resp.data };
         }
-        return { ok: false as const, error: new Error("refresh response not success") };
+        return {
+          ok: false as const,
+          error: new Error('refresh response not success'),
+        };
       } catch (err) {
         return { ok: false as const, error: err };
       } finally {
@@ -41,6 +39,73 @@ async function refreshOnce(): Promise<RefreshResult> {
     })();
   }
   return refreshInFlight;
+}
+
+/**
+ * 登录类接口的路径白名单。这些端点返回的 401 是**业务级 401**
+ * （用户名/密码错误、账号被禁用/锁定等），必须走 envelope 展示
+ * 后端 message，不能误走 refresh token 流程。
+ *
+ * 注意：保持精确匹配（路径段相等），避免将来出现含 `/auth/login` 子串的
+ * 路径（例如 `/api/v1/admin/auth/login-logs`）被误判。
+ */
+const AUTH_LOGIN_PATHS: ReadonlySet<string> = new Set([
+  '/api/v1/auth/login',
+  '/api/v1/app/auth/login',
+]);
+
+function isAuthLoginEndpoint(requestPath: string): boolean {
+  return AUTH_LOGIN_PATHS.has(requestPath);
+}
+
+/**
+ * 业务 401 的兜底处理：access token 过期时尝试用 refresh token 续命。
+ *
+ * 仅当请求不是登录类接口时调用（登录 401 在 caller 里被 isAuthLoginEndpoint 短路）。
+ * refresh 成功后：
+ *   - 用新 cookie 静默重放原请求，让服务端审计/读路径拿到最新数据；
+ *   - /auth/me 路径额外把最新用户回写到 localStorage。
+ * refresh 失败/抛异常：清本地 token + 强制登出。
+ */
+async function handleUnauthorizedRefresh(opts: any): Promise<void> {
+  try {
+    const result = await refreshOnce();
+
+    if (result.ok) {
+      message.success('登录状态已刷新');
+
+      try {
+        const retryResp = await request(opts.url, {
+          ...opts,
+          skipErrorHandler: true,
+        });
+        if (
+          typeof opts?.url === 'string' &&
+          opts.url.includes('/auth/me') &&
+          (retryResp as any)?.success &&
+          (retryResp as any)?.data
+        ) {
+          try {
+            // 走 setCurrentUser 统一封装，避免直接操作 localStorage；
+            // logout() 也通过同一个 key 清理，保证状态同步。
+            setCurrentUser((retryResp as any).data);
+          } catch {
+            // localStorage 写入失败不影响会话保留
+          }
+        }
+      } catch {
+        // 重放失败不再做兜底登出；用户下一次主动操作会用新 cookie 成功
+      }
+    } else {
+      console.error('Token刷新失败:', result.error);
+      clearTokens();
+      await logout();
+    }
+  } catch (refreshError) {
+    console.error('Token刷新失败:', refreshError);
+    clearTokens();
+    await logout();
+  }
 }
 
 // 错误处理方案： 错误类型
@@ -85,10 +150,10 @@ const VALIDATION_CODE_MAX = 22000;
  * 由调用方回退到按 HTTP status 的既有文案。
  */
 export function pickEnvelopeMessage(body: unknown): string | null {
-  if (typeof body !== "object" || body === null) return null;
+  if (typeof body !== 'object' || body === null) return null;
   const envelope = body as { success?: unknown; message?: unknown };
   if (envelope.success !== false) return null;
-  if (typeof envelope.message !== "string") return null;
+  if (typeof envelope.message !== 'string') return null;
   const trimmed = envelope.message.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
@@ -100,11 +165,11 @@ export function pickEnvelopeMessage(body: unknown): string | null {
  *   - 21xxx（参数/校验类，用户改一下输入就能过）→ warning，不用红色打断；
  *   - 其余（系统错误、认证、业务冲突、码缺失或非法）→ error。
  */
-export function resolveMessageLevel(code: unknown): "warning" | "error" {
-  if (typeof code !== "number" || !Number.isFinite(code)) return "error";
+export function resolveMessageLevel(code: unknown): 'warning' | 'error' {
+  if (typeof code !== 'number' || !Number.isFinite(code)) return 'error';
   return code >= VALIDATION_CODE_MIN && code < VALIDATION_CODE_MAX
-    ? "warning"
-    : "error";
+    ? 'warning'
+    : 'error';
 }
 
 /**
@@ -133,8 +198,8 @@ export const errorConfig: RequestConfig = {
       const isSuccess = success === true;
 
       if (!isSuccess) {
-        const error: any = new Error(responseMessage || "业务处理失败");
-        error.name = "BizError";
+        const error: any = new Error(responseMessage || '业务处理失败');
+        error.name = 'BizError';
         error.info = {
           errorCode: responseCode,
           errorMessage: responseMessage,
@@ -150,77 +215,39 @@ export const errorConfig: RequestConfig = {
 
       // 处理401未授权错误 - 尝试自动刷新token
       if (error.response?.status === 401) {
-        // 跳过刷新token的请求，避免无限循环。
-        // 注意：用 URL 路径段匹配而非 includes，避免未来出现路径中含
-        // "/auth/refresh" 子串的端点被误判。
-        const requestPath = (opts?.url ?? "").split("?")[0];
-        if (requestPath === "/api/v1/auth/refresh") {
+        // 用 URL 路径段匹配，避免未来出现路径中含 "/auth/refresh" 子串的
+        // 端点被误判。query string 在 .split('?')[0] 时已经去掉。
+        const requestPath = (opts?.url ?? '').split('?')[0];
+        if (requestPath === '/api/v1/auth/refresh') {
+          // refresh 端点本身 401（refresh token 也过期/无效）：强制登出，
+          // 不会再走 refresh 流程造成递归。
           await logout();
           return;
         }
 
-        try {
-          // 尝试刷新 token —— refreshToken 由 HttpOnly cookie 自动携带，
-          // 刷新成功后后端会通过 Set-Cookie 写入新的令牌。
-          const result = await refreshOnce();
-
-          if (result.ok) {
-            message.success("登录状态已刷新");
-
-            // 刷新成功 ≠ 登出。新 cookie 已由后端 Set-Cookie 写入，浏览器会
-            // 自动带上。我们重新发起原请求作为副作用——既能让服务端读路径/审计
-            // 拿到最新数据，也能在 /auth/me 这种路径上把最新用户信息同步到
-            // localStorage，让 utils/auth:getCurrentUser() 读到的不是过期值。
-            //
-            // 架构约束：@umijs/max 的 request 插件在 apps/yishan-admin/src/.umi/
-            // plugin-request/request.ts 的 .catch 分支里始终对原 Promise reject，
-            // 因此 errorHandler 的返回值无法回填给原 caller，原 Promise 仍然 401。
-            // 这是 umi-request 老版与新版 request 插件的契约差异，本期不做插件替换，
-            // 接受原 caller 收到 401，但确保会话保留 + 重放副作用 + 不再跳登录页。
-            try {
-              const retryResp = await request(opts.url, {
-                ...opts,
-                skipErrorHandler: true,
-              });
-              if (
-                typeof opts?.url === "string" &&
-                opts.url.includes("/auth/me") &&
-                (retryResp as any)?.success &&
-                (retryResp as any)?.data
-              ) {
-                try {
-                  // 走 setCurrentUser 统一封装，避免直接操作 localStorage；
-                  // logout() 也通过同一个 key 清理，保证状态同步。
-                  setCurrentUser((retryResp as any).data);
-                } catch {
-                  // localStorage 写入失败不影响会话保留
-                }
-              }
-            } catch {
-              // 重放失败不再做兜底登出；用户下一次主动操作会用新 cookie 成功
-            }
-          } else {
-            console.error("Token刷新失败:", result.error);
-            // 刷新失败，清除本地残留并登出
-            clearTokens();
-            await logout();
-          }
-        } catch (refreshError) {
-          console.error("Token刷新失败:", refreshError);
-          clearTokens();
-          await logout();
+        // 登录类接口（用户名/邮箱 + 密码登录）返回的 401 是**业务级 401**，
+        // 后端会带统一信封 `{success:false, code:22007/..., message:'用户名或密码错误'}`。
+        // 这种 401 **绝对不能** 走 refresh token 流程：
+        //   1. 调 /auth/refresh 也会 401，又会触发上面的 logout 守卫把未登录会话清掉；
+        //   2. 后端写的友好 message（"用户名或密码错误" / "账号已被禁用"等）会被吞掉，
+        //      用户只能看到兜底文案，体感像是"系统坏了"。
+        // 因此登录接口的 401 直接跳出 401 块，由下方 envelope 逻辑展示后端 message。
+        if (isAuthLoginEndpoint(requestPath)) {
+          // fallthrough 到下方的 envelope / 403 / BizError 分支
+        } else {
+          await handleUnauthorizedRefresh(opts);
+          return;
         }
-        return;
       }
 
       // 处理403权限错误
       if (error.response?.status === 403) {
-        message.error("权限不足，无法访问此资源");
+        message.error('权限不足，无法访问此资源');
         return;
       }
 
       // 我们的 errorThrower 抛出的错误。
-      if (error.name === "BizError") {
+      if (error.name === 'BizError') {
         const errorInfo: ResponseStructure | undefined = error.info;
         if (errorInfo) {
           const { errorMessage, errorCode } = errorInfo;
@@ -251,43 +278,49 @@ export const errorConfig: RequestConfig = {
         // Axios 的错误。
         // 后端在 4xx/5xx 上仍返回统一信封，errorThrower 拿不到它（走 reject 分支），
         // 所以这里优先展示信封里的业务 message，取不到才回退按 status 的固定文案。
+        // 文案原则：
+        //   1. 避免「异常」「请求错误」这种生硬措辞；
+        //   2. 系统级错误（5xx）提示「暂时无法访问，请稍后再试」，把细节留给日志。
         const status = error.response.status;
         const envelopeMessage = pickEnvelopeMessage(error.response.data);
-        let errorMessage = envelopeMessage ?? `请求错误 ${status}`;
+        let errorMessage =
+          envelopeMessage ?? `操作失败，请稍后再试（${status}）`;
 
         if (!envelopeMessage) {
           switch (status) {
             case 400:
-              errorMessage = "请求参数错误";
+              errorMessage = '提交的内容有误，请检查后重试';
               break;
             case 404:
-              errorMessage = "请求的资源不存在";
+              errorMessage = '找不到相关内容，可能已被删除';
               break;
             case 500:
-              errorMessage = "服务器内部错误";
+              errorMessage = '服务暂时无法处理，请稍后再试';
               break;
             case 502:
-              errorMessage = "网关错误";
+              errorMessage = '服务暂时无法连接，请稍后再试';
               break;
             case 503:
-              errorMessage = "服务暂时不可用";
+              errorMessage = '服务正在维护中，请稍后再试';
               break;
             default:
-              errorMessage = `请求错误 ${status}`;
+              errorMessage = `操作失败，请稍后再试（${status}）`;
           }
         }
 
         // 只有信封可信时才按业务码分级；回退文案一律 error，保持既有行为。
         const level = envelopeMessage
-          ? resolveMessageLevel((error.response.data as { code?: unknown })?.code)
-          : "error";
+          ? resolveMessageLevel(
+              (error.response.data as { code?: unknown })?.code,
+            )
+          : 'error';
         message[level](errorMessage);
       } else if (error.request) {
-        // 网络错误
-        message.error("网络错误，请检查网络连接");
+        // 网络层失败（请求发出去但没收到响应）
+        message.error('网络好像不太通畅，请检查连接后重试');
       } else {
-        // 发送请求时出了点问题
-        message.error("请求错误，请重试");
+        // 发送请求前就出错（请求还没真正发出去）
+        message.error('操作没成功，请稍后再试');
       }
     },
   },
@@ -310,7 +343,7 @@ export const errorConfig: RequestConfig = {
         }
       } catch (error) {
         // 忽略token获取错误，继续请求
-        console.warn("获取授权头失败:", error);
+        console.warn('获取授权头失败:', error);
       }
       return config;
     },
