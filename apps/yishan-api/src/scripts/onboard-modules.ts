@@ -31,6 +31,11 @@ const MODULES_SRC = join(APP_ROOT_SRC, 'modules')
 const MODULES_DIST = join(APP_ROOT_DIST, 'modules')
 const DRIZZLE_KIT = join(APP_ROOT_DIST, '..', 'node_modules', '.bin', 'drizzle-kit')
 
+// Windows 上 .bin/drizzle-kit 是 shell wrapper，没有 .exe 后缀。
+// Node spawn 不直接执行 .cmd/.bat，需显式走 shell。
+const DRIZZLE_KIT_CMD = process.platform === 'win32' ? `${DRIZZLE_KIT}.CMD` : DRIZZLE_KIT
+const SPAWN_OPTS = { cwd: undefined as string | undefined, env: process.env, shell: process.platform === 'win32' }
+
 interface StepOutcome {
   ok: boolean
   message: string
@@ -63,7 +68,7 @@ async function runDrizzleKit(
   args: string[],
 ): Promise<StepOutcome> {
   return new Promise((resolve) => {
-    const child = spawn(DRIZZLE_KIT, [configFlag, ...args], { cwd, env: process.env })
+    const child = spawn(DRIZZLE_KIT_CMD, [configFlag, ...args], { cwd, env: process.env, shell: process.platform === 'win32' })
     let stdout = ''
     let stderr = ''
     child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString() })
