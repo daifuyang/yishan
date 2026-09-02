@@ -8,21 +8,27 @@
  * https://pro.ant.design/docs/deploy
  *
  * @doc https://umijs.org/docs/guides/proxy
+ *
+ * 端口可通过环境变量覆盖，不写死：
+ *   YISHAN_API_TARGET  后端 base url（默认 http://localhost:3000）
+ *   PORT               前端 dev 端口（默认 8000，传给 max dev 的 dev server）
  */
+const apiTarget = process.env.YISHAN_API_TARGET || 'http://localhost:3000';
+
 export default {
   // 本地开发代理配置
   dev: {
-    // localhost:8000/api/** -> http://localhost:3000/api/**
+    // localhost:${PORT || 8000}/api/** -> ${apiTarget}/api/**
     '/api/': {
       // 要代理的地址
-      target: 'http://localhost:3000',
+      target: apiTarget,
       // 配置了这个可以从 http 代理到 https
       // 依赖 origin 的功能可能需要这个，比如 cookie
       changeOrigin: true,
     },
     '/uploads/': {
       // 要代理的地址
-      target: 'http://localhost:3000',
+      target: apiTarget,
       // 配置了这个可以从 http 代理到 https
       // 依赖 origin 的功能可能需要这个，比如 cookie
       changeOrigin: true,
