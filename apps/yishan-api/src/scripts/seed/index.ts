@@ -98,8 +98,17 @@ export async function runSeed() {
   console.log('========== yishan seed 编排开始 ==========');
   console.log('Step 1/2: core migrate + seed');
 
-  console.log('[seed] drizzle-kit migrate');
-  execSync('npx drizzle-kit migrate', { stdio: 'inherit' });
+  // drizzle-kit migrate 在 Windows 上有两个已知问题：
+  //   1) meta 缺失时静默 exit 1
+  //   2) mysql2 + drizzle-kit 0.31.x 偶发不可见失败
+  // 本地开发可通过 SKIP_DRIZZLE_MIGRATE=1 跳过该步（SQL 已直接灌入）；
+  // 生产环境默认仍按原样调 drizzle-kit migrate。
+  if (process.env.SKIP_DRIZZLE_MIGRATE === '1') {
+    console.log('[seed] drizzle-kit migrate (skipped: SKIP_DRIZZLE_MIGRATE=1, tables pre-applied)');
+  } else {
+    console.log('[seed] drizzle-kit migrate');
+    execSync('npx drizzle-kit migrate', { stdio: 'inherit' });
+  }
   console.log('[seed] core migrate 完成');
 
   await drizzleDb.transaction(async (tx) => {

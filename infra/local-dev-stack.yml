@@ -1,0 +1,95 @@
+# =============================================================================
+# 通用本地开发基础设施（infra 层）
+# =============================================================================
+# 这个 compose 维护本机共享的本地基础设施容器，**与具体业务项目无关**。
+# 任何项目都可以通过 `docker exec mysql-local ...` 或连接 127.0.0.1:3306 使用。
+#
+# 约定：
+#   - 容器名固定为 `mysql-local` / `redis-local` / `postgres-local`，
+#     方便跨项目复用，不带项目前缀。
+#   - 端口统一在 127.0.0.1 上监听：
+#       mysql-local    -> 127.0.0.1:3306  (root/dev-root-only-do-not-use-in-prod)
+#       redis-local    -> 127.0.0.1:6379  (无密码，仅绑定 loopback)
+#       postgres-local -> 127.0.0.1:5432  (postgres/dev-postgres-only)
+#   - 密码统一用 `dev-<role>-only-do-not-use-in-prod` 形式，明示用途。
+#   - 每个项目用**独立的 database / user / redis db 编号**实现隔离：
+#       yishan-api 数据库 -> yishan，redis db 0
+#       其他项目各自建自己的库/user 与 redis db 编号。
+#
+# 启停：
+#   docker compose -f infra/local-dev-stack.yml up -d
+#   docker compose -f infra/local-dev-stack.yml down        # 不删 volume
+#   docker compose -f infra/local-dev-stack.yml down -v     # 清空数据
+# =============================================================================
+
+name: infra-local-dev
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: mysql-local
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: dev-root-only-do-not-use-in-prod
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+      - --max_connections=200
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-local-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pdev-root-only-do-not-use-in-prod"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis-local
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-local-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-h", "127.0.0.1", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: dev-postgres-only
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-local-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mysql-local-data:
+    name: mysql-local-data
+  redis-local-data:
+    name: redis-local-data
+  postgres-local-data:
+    name: postgres-local-data
