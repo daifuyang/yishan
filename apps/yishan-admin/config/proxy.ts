@@ -12,17 +12,17 @@
 export default {
   // 本地开发代理配置
   dev: {
-    // localhost:8000/api/** -> http://localhost:3000/api/**
+    // localhost:8100/api/** -> http://localhost:3100/api/**
     '/api/': {
       // 要代理的地址
-      target: 'http://localhost:3000',
+      target: 'http://localhost:3100',
       // 配置了这个可以从 http 代理到 https
       // 依赖 origin 的功能可能需要这个，比如 cookie
       changeOrigin: true,
     },
     '/uploads/': {
       // 要代理的地址
-      target: 'http://localhost:3000',
+      target: 'http://localhost:3100',
       // 配置了这个可以从 http 代理到 https
       // 依赖 origin 的功能可能需要这个，比如 cookie
       changeOrigin: true,
