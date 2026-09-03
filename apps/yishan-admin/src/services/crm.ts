@@ -37,7 +37,7 @@ export type CustomerType = 'enterprise' | 'individual'
 export type PoolStatus = 'owned' | 'public'
 export type CustomerListView = 'all' | 'mine' | 'collaborating' | 'pending' | 'stale7d' | 'pool'
 export type CustomerSortOrder = 'asc' | 'desc'
-export type CustomerSortField = 'updatedAt' | 'nextFollowUpAt' | 'lastFollowUpAt' | 'createdAt'
+export type CustomerSortField = 'updatedAt' | 'nextFollowUpAt' | 'lastFollowUpAt' | 'createdAt' | 'name' | 'level'
 
 export interface CustomerRow {
   id: number

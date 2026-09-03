@@ -31,3 +31,8 @@ TDD evidence:
 - Red: focused codec tests failed for leaked UI mapping names and for `pageSize=201` plus invalid enum/date/keyword URL values.
 - Green: `pnpm --filter yishan-admin exec jest customerWorkspaceQuery.test.ts --runInBand` passed, 5 tests.
 - Focused Biome lint and `git diff --check` passed.
+
+## Review follow-up 2
+
+- Red: focused parser tests rejected the valid server sort fields `name` and `level`.
+- Green: after adding both fields to the shared API sort contract and parser allowlist, `pnpm --filter yishan-admin exec jest customerWorkspaceQuery.test.ts --runInBand` passed, 7 tests.

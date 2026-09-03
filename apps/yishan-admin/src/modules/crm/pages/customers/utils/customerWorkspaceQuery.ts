@@ -20,7 +20,7 @@ const DEFAULT_QUERY: Pick<CustomerWorkspaceQuery, 'view' | 'page' | 'pageSize'> 
 const CUSTOMER_VIEWS: CustomerViewId[] = ['all', 'mine', 'pending', 'important', 'pool']
 const CUSTOMER_TYPES: CustomerType[] = ['enterprise', 'individual']
 const POOL_STATUSES: PoolStatus[] = ['owned', 'public']
-const CUSTOMER_SORT_FIELDS: CustomerSortField[] = ['updatedAt', 'nextFollowUpAt', 'lastFollowUpAt', 'createdAt']
+const CUSTOMER_SORT_FIELDS: CustomerSortField[] = ['updatedAt', 'nextFollowUpAt', 'lastFollowUpAt', 'createdAt', 'name', 'level']
 const CUSTOMER_SORT_ORDERS: CustomerSortOrder[] = ['asc', 'desc']
 const MAX_KEYWORD_LENGTH = 100
 const MAX_PAGE_SIZE = 200

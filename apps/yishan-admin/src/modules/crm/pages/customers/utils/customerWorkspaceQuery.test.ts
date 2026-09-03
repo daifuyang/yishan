@@ -71,4 +71,8 @@ describe('customer workspace query codec', () => {
 
     expect(state).toEqual({ view: 'all', page: 1, pageSize: 10 })
   })
+
+  it.each(['name', 'level'] as const)('preserves the supported %s server sort field', (sortBy) => {
+    expect(parseCustomerWorkspaceQuery(`?sortBy=${sortBy}`)).toMatchObject({ sortBy })
+  })
 })
