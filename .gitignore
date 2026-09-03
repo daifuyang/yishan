@@ -35,6 +35,7 @@ yarn-error.log*
 .playwright-cli/
 apps/yishan-app/.swc/
 tmp/
+.worktrees/
 
 # Local memory database (DSH meow-memory) — per-workspace, never commit.
 .dsh-meow/
