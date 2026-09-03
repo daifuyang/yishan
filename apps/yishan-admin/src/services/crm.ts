@@ -35,6 +35,8 @@ export interface PageQuery {
 
 export type CustomerType = 'enterprise' | 'individual'
 export type PoolStatus = 'owned' | 'public'
+export type CustomerListView = 'all' | 'mine' | 'collaborating' | 'pending' | 'stale7d' | 'pool'
+export type CustomerSortOrder = 'asc' | 'desc'
 
 export interface CustomerRow {
   id: number
@@ -92,12 +94,24 @@ export interface CustomerCreateInput {
 export interface CustomerUpdateInput extends Partial<CustomerCreateInput> {}
 
 export interface CustomerListQuery extends PageQuery {
+  view?: CustomerListView
   statusId?: number
   sourceId?: number
   level?: string
   type?: string
+  industry?: string
   ownerUserId?: number
+  collaboratorUserId?: number
+  tagId?: number
   poolStatus?: PoolStatus
+  createdAtFrom?: string
+  createdAtTo?: string
+  lastFollowUpAtFrom?: string
+  lastFollowUpAtTo?: string
+  nextFollowUpAtFrom?: string
+  nextFollowUpAtTo?: string
+  sortBy?: string
+  sortOrder?: CustomerSortOrder
 }
 
 /* ─── 联系人 ────────────────────────────────────────── */
