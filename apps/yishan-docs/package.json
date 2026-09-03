@@ -5,7 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start --port 4000",
-    "build": "CI=true BROWSERSLIST_IGNORE_OLD_DATA=1 NODE_OPTIONS=\"--require ./scripts/silence-build-warnings.cjs\" docusaurus build",
+    "build": "cross-env CI=true BROWSERSLIST_IGNORE_OLD_DATA=1 NODE_OPTIONS=\"--require ./scripts/silence-build-warnings.cjs\" docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
@@ -27,6 +27,7 @@
     "@docusaurus/module-type-aliases": "3.9.2",
     "@docusaurus/tsconfig": "3.9.2",
     "@docusaurus/types": "3.9.2",
+    "cross-env": "^10.1.0",
     "@types/body-parser": "^1.19.6",
     "@types/bonjour": "^3.5.13",
     "@types/connect": "^3.4.38",
