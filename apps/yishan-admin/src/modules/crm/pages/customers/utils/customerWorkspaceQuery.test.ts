@@ -32,4 +32,43 @@ describe('customer workspace query codec', () => {
       toCustomerListQuery({ view: 'important', page: 1, pageSize: 10 }),
     ).toMatchObject({ view: 'all', level: 'important' })
   })
+
+  it('maps each UI-only filter to the customer API query names', () => {
+    expect(
+      toCustomerListQuery({
+        view: 'all',
+        page: 2,
+        pageSize: 20,
+        collaboratorUserId: 9,
+        tagId: 12,
+        createdAtFrom: '2026-09-01T00:00:00.000Z',
+        createdAtTo: '2026-09-02T00:00:00.000Z',
+        lastFollowUpAtFrom: '2026-09-03T00:00:00.000Z',
+        lastFollowUpAtTo: '2026-09-04T00:00:00.000Z',
+        nextFollowUpAtFrom: '2026-09-05T00:00:00.000Z',
+        nextFollowUpAtTo: '2026-09-06T00:00:00.000Z',
+      }),
+    ).toEqual({
+      view: 'all',
+      page: 2,
+      pageSize: 20,
+      collaboratorId: 9,
+      tagIds: [12],
+      createdFrom: '2026-09-01T00:00:00.000Z',
+      createdTo: '2026-09-02T00:00:00.000Z',
+      lastFollowUpFrom: '2026-09-03T00:00:00.000Z',
+      lastFollowUpTo: '2026-09-04T00:00:00.000Z',
+      nextFollowUpFrom: '2026-09-05T00:00:00.000Z',
+      nextFollowUpTo: '2026-09-06T00:00:00.000Z',
+    })
+  })
+
+  it('omits URL values that would violate the customer API schema', () => {
+    const tooLongKeyword = 'k'.repeat(101)
+    const state = parseCustomerWorkspaceQuery(
+      `?pageSize=201&keyword=${tooLongKeyword}&sortBy=id&sortOrder=sideways&type=partner&poolStatus=shared&createdAtFrom=not-a-date&createdAtTo=2026-15-99T00:00:00.000Z&lastFollowUpAtFrom=yesterday&lastFollowUpAtTo=2026-09-31T00:00:00.000Z&nextFollowUpAtFrom=tomorrow&nextFollowUpAtTo=invalid`,
+    )
+
+    expect(state).toEqual({ view: 'all', page: 1, pageSize: 10 })
+  })
 })

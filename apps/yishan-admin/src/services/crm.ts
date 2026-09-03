@@ -37,6 +37,7 @@ export type CustomerType = 'enterprise' | 'individual'
 export type PoolStatus = 'owned' | 'public'
 export type CustomerListView = 'all' | 'mine' | 'collaborating' | 'pending' | 'stale7d' | 'pool'
 export type CustomerSortOrder = 'asc' | 'desc'
+export type CustomerSortField = 'updatedAt' | 'nextFollowUpAt' | 'lastFollowUpAt' | 'createdAt'
 
 export interface CustomerRow {
   id: number
@@ -98,19 +99,19 @@ export interface CustomerListQuery extends PageQuery {
   statusId?: number
   sourceId?: number
   level?: string
-  type?: string
+  type?: CustomerType
   industry?: string
   ownerUserId?: number
-  collaboratorUserId?: number
-  tagId?: number
+  collaboratorId?: number
+  tagIds?: number[]
   poolStatus?: PoolStatus
-  createdAtFrom?: string
-  createdAtTo?: string
-  lastFollowUpAtFrom?: string
-  lastFollowUpAtTo?: string
-  nextFollowUpAtFrom?: string
-  nextFollowUpAtTo?: string
-  sortBy?: string
+  createdFrom?: string
+  createdTo?: string
+  lastFollowUpFrom?: string
+  lastFollowUpTo?: string
+  nextFollowUpFrom?: string
+  nextFollowUpTo?: string
+  sortBy?: CustomerSortField
   sortOrder?: CustomerSortOrder
 }
 

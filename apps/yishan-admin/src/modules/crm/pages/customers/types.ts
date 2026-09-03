@@ -1,4 +1,4 @@
-import type { CustomerType, PoolStatus } from '@/services/crm'
+import type { CustomerSortField, CustomerType, PoolStatus } from '@/services/crm'
 
 export type CustomerViewId = 'all' | 'mine' | 'pending' | 'important' | 'pool'
 
@@ -19,7 +19,7 @@ export interface CustomerWorkspaceFilters {
   lastFollowUpAtTo?: string
   nextFollowUpAtFrom?: string
   nextFollowUpAtTo?: string
-  sortBy?: string
+  sortBy?: CustomerSortField
   sortOrder?: 'asc' | 'desc'
 }
 
