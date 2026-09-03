@@ -1,5 +1,8 @@
 packages:
   - 'apps/**'
   - 'packages/**'
+  # 排除各 app 下的 example/ 子项目：它们是 gitignored 的本地组件演示项目，
+  # 不参与 monorepo 的依赖图。在 Windows 上同时会触发 pnpm 创建 junction 时的 EBUSY。
+  - '!**/example/**'
   - '!**/dist/**'
   - '!**/build/**'
