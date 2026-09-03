@@ -35,6 +35,7 @@ yarn-error.log*
 .playwright-cli/
 apps/yishan-app/.swc/
 tmp/
+.worktrees/
 
 # Generated artifacts (release output, plugin catalog from profiles/*.yaml)
 artifacts/
