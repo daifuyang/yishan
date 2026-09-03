@@ -15,9 +15,9 @@ import {
   ProTable,
   type ProColumns,
 } from '@ant-design/pro-components'
-import { Button, message, Modal, Popconfirm, Space, Tag } from 'antd'
-import React, { useRef, useState } from 'react'
-import { history } from '@umijs/max'
+import { message, Modal, Popconfirm, Space, Tag } from 'antd'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { history, useLocation } from '@umijs/max'
 import {
   createCustomer,
   deleteCustomer,
@@ -30,6 +30,17 @@ import {
   type CustomerRow,
   type CustomerUpdateInput,
 } from '@/services/crm'
+import CustomerAdvancedFilterDrawer from './components/CustomerAdvancedFilterDrawer'
+import CustomerFilterBar from './components/CustomerFilterBar'
+import CustomerPageHeader from './components/CustomerPageHeader'
+import CustomerViewTabs from './components/CustomerViewTabs'
+import styles from './components/customerWorkspace.module.less'
+import type { CustomerWorkspaceQuery } from './types'
+import {
+  parseCustomerWorkspaceQuery,
+  serializeCustomerWorkspaceQuery,
+  toCustomerListQuery,
+} from './utils/customerWorkspaceQuery'
 
 const TYPE_OPTIONS = [
   { value: 'enterprise', label: '企业客户' },
@@ -37,6 +48,7 @@ const TYPE_OPTIONS = [
 ]
 
 const Customers: React.FC = () => {
+  const location = useLocation()
   const actionRef = useRef<ActionType>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<CustomerDetail | null>(null)
@@ -44,6 +56,20 @@ const Customers: React.FC = () => {
   const [transferTarget, setTransferTarget] = useState<{ id: number; name: string } | null>(null)
   const [releaseOpen, setReleaseOpen] = useState(false)
   const [releaseTarget, setReleaseTarget] = useState<{ id: number; name: string } | null>(null)
+  const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false)
+  const query = useMemo(() => parseCustomerWorkspaceQuery(location.search), [location.search])
+
+  useEffect(() => {
+    actionRef.current?.reload()
+  }, [query])
+
+  const updateQuery = (next: Partial<CustomerWorkspaceQuery>) => {
+    const updated = { ...query, ...next }
+    history.replace({
+      pathname: location.pathname,
+      search: `?${serializeCustomerWorkspaceQuery(updated)}`,
+    })
+  }
 
   const handleOpenCreate = () => {
     setEditing(null)
@@ -223,39 +249,41 @@ const Customers: React.FC = () => {
   ]
 
   return (
-    <PageContainer
-      header={{
-        title: '客户管理',
-        subTitle: '统一维护、分配和持续跟进客户资源。',
-      }}
-    >
+    <PageContainer className={styles.workspace}>
+      <CustomerPageHeader onCreate={handleOpenCreate} />
+      <CustomerViewTabs value={query.view} onChange={(view) => updateQuery({ view, page: 1 })} />
+      <CustomerFilterBar
+        query={query}
+        onChange={(filters) => updateQuery({ ...filters, page: 1 })}
+        onOpenAdvanced={() => setAdvancedFilterOpen(true)}
+      />
       <ProTable<CustomerRow>
-        headerTitle="我的客户"
         actionRef={actionRef}
         rowKey="id"
         columns={columns}
-        search={{ labelWidth: 'auto', defaultCollapsed: false }}
-        pagination={{ pageSize: 10, showSizeChanger: true }}
-        request={async (params) => {
-          const { current, pageSize, ...rest } = params as Record<string, unknown>
-          const res = await listCustomers({
-            page: (current as number) ?? 1,
-            pageSize: (pageSize as number) ?? 10,
-            keyword: (rest.keyword as string) ?? '',
-            statusId: rest.statusId ? Number(rest.statusId) : undefined,
-            sourceId: rest.sourceId ? Number(rest.sourceId) : undefined,
-          })
+        search={false}
+        pagination={{
+          current: query.page,
+          pageSize: query.pageSize,
+          showSizeChanger: true,
+          onChange: (page, pageSize) => updateQuery({ page, pageSize }),
+        }}
+        request={async () => {
+          const res = await listCustomers(toCustomerListQuery(query))
           return {
             data: res.data,
             success: true,
             total: res.total,
           }
         }}
-        toolBarRender={() => [
-          <Button key="create" type="primary" onClick={handleOpenCreate}>
-            新建客户
-          </Button>,
-        ]}
+        options={{ density: true, reload: true, setting: true }}
+      />
+
+      <CustomerAdvancedFilterDrawer
+        open={advancedFilterOpen}
+        value={query}
+        onClose={() => setAdvancedFilterOpen(false)}
+        onApply={(filters) => updateQuery({ ...filters, page: 1 })}
       />
 
       <DrawerForm<CustomerCreateInput & { id?: number }>
@@ -387,7 +415,7 @@ const Customers: React.FC = () => {
         }}
       >
         <div style={{ marginBottom: 12 }}>
-          <label>目标用户 ID</label>
+          <label htmlFor="crm-transfer-target">目标用户 ID</label>
           <input
             id="crm-transfer-target"
             type="number"
@@ -396,7 +424,7 @@ const Customers: React.FC = () => {
           />
         </div>
         <div>
-          <label>转交原因（可选）</label>
+          <label htmlFor="crm-transfer-reason">转交原因（可选）</label>
           <textarea
             id="crm-transfer-reason"
             placeholder="区域调整 / 客户类型变更..."
