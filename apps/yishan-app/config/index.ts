@@ -1,4 +1,5 @@
 import { defineConfig, type UserConfigExport } from '@tarojs/cli'
+import { API_TARGET } from '@yishan/shared-config'
 import path from 'node:path'
 
 import devConfig from './dev'
@@ -76,7 +77,7 @@ export default defineConfig(async (merge, _env) => {
         proxy: [
           {
             context: ['/api'],
-            target: process.env.YISHAN_API_TARGET || 'http://127.0.0.1:3000',
+            target: API_TARGET,
             changeOrigin: true,
             secure: false,
           },

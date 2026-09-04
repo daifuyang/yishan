@@ -9,11 +9,14 @@
  *
  * @doc https://umijs.org/docs/guides/proxy
  *
- * 端口可通过环境变量覆盖，不写死：
- *   YISHAN_API_TARGET  后端 base url（默认 http://localhost:3000）
- *   PORT               前端 dev 端口（默认 8000，传给 max dev 的 dev server）
+ * 后端 base URL 统一从 @yishan/shared-config 的 API_TARGET 读（默认
+ * http://localhost:3100，与 apps/yishan-api/.env 的 PORT 对齐）。可通过
+ * 环境变量 YISHAN_API_TARGET / YISHAN_API_PORT 覆盖。dev 端口由 PORT 控
+ * 制，传给 max dev 的 dev server。
  */
-const apiTarget = process.env.YISHAN_API_TARGET || 'http://localhost:3000';
+import { API_TARGET } from '@yishan/shared-config';
+
+const apiTarget = API_TARGET;
 
 export default {
   // 本地开发代理配置

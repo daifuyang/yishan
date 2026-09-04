@@ -37,7 +37,8 @@
     "@tarojs/taro": "^4.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "@yishan/shared-config": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
