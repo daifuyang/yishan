@@ -15,11 +15,9 @@
  *   - fastify 插件树 boot 后不可变：不做运行时 register/unregister;启停走 gate 拦截。
  *   - syncModulesFromDisk 不允许覆盖 enabled;运维显式停用的模块,重启后必须保持停用。
  *
- * 入口策略(由 NODE_ENV + 入口路径共同决定):
- *   - prod (NODE_ENV === 'production'):优先读 dist/<id>/module.js(线上必须用编译产物)
- *   - dev + 入口在 dist/ 下(如 fastify start -P dist/app.js):走 dist,避免 Node 没法
- *     import .ts 时刷"Failed to load the ES module"警告
- *   - dev + 入口在 src/ 下(如未来 tsx src/app.ts):优先读 src/<id>/module.ts(热更友好)
+ * 入口策略：模块入口固定从编译产物 dist/<id>/module.js 加载（项目
+ * package.json 是 "type": "commonjs",Node 无法直接 import .ts);dist 缺失时
+ * 退回 src/<id>/module.ts 作为兜底,方便 source-only 检出场景。
  */
 import { eq, inArray } from 'drizzle-orm'
 import { existsSync, readdirSync, statSync } from 'node:fs'
@@ -32,16 +30,6 @@ import { sysModule } from '@/db/schema/tables'
 const REDIS_ENABLED_KEY = 'yishan:modules:enabled'
 const REDIS_CACHE_TTL_SECONDS = 60
 
-/** dev/prod 公用：判断本进程是否应该优先读 src 而非 dist。 */
-export function shouldPreferSrc(): boolean {
-  if (process.env.NODE_ENV === 'production') return false
-  // 默认走 dist：项目 package.json 是 "type": "commonjs"，Node 无法直接 import .ts
-  // 或带 `export` 语法的 .js；当前 dev 流程（fastify start -P dist/app.js）也是
-  // 从 dist 编译产物启动，src 模式只在显式设置 MODULE_LOADER_SRC=1 时启用
-  // （未来若切到 tsx / ts-node 加载器，置此 env 即可恢复 src 优先策略）。
-  return process.env.MODULE_LOADER_SRC === '1' || process.env.MODULE_LOADER_SRC === 'true'
-}
-
 /** 模块路由 prefix 硬约定;不再由模块 meta 声明。 */
 export function moduleRoutePrefix(id: string): string {
   return `/api/${id}`
@@ -49,17 +37,14 @@ export function moduleRoutePrefix(id: string): string {
 
 /**
  * 纯函数版 scanDiskModules:优先扫描 src/modules/<id>/；源码未打包时扫描
- * dist/modules/<id>/，再根据 preferSrc 决定入口文件。
- *
- *   - preferSrc=true:优先 src/<id>/module.ts,回退 dist/<id>/module.js(适用于 dev / tsx 模式)
- *   - preferSrc=false:优先 dist/<id>/module.js,回退 src/<id>/module.ts(适用于 prod)
+ * dist/modules/<id>/。模块入口固定从 dist/<id>/module.js 加载；dist 缺失时
+ * 退回 src/<id>/module.ts 作为兜底,方便 source-only 检出场景。
  *
  * 返回 ModuleDiskMeta[] 供 syncModulesFromDiskPure 等下游使用。
  */
 export async function scanDiskModulesPure(
   srcRoot: string,
   distRoot: string,
-  preferSrc: boolean,
   logger?: FastifyBaseLogger,
 ): Promise<ModuleDiskMeta[]> {
   const srcModulesDir = join(srcRoot, 'modules')
@@ -77,10 +62,7 @@ export async function scanDiskModulesPure(
     const srcModuleTs = join(srcModuleDir, 'module.ts')
     let moduleEntry: string | undefined
     let isTs: boolean
-    if (preferSrc && existsSync(srcModuleTs)) {
-      moduleEntry = srcModuleTs
-      isTs = true
-    } else if (existsSync(distModuleJs)) {
+    if (existsSync(distModuleJs)) {
       moduleEntry = distModuleJs
       isTs = false
     } else if (existsSync(srcModuleTs)) {
@@ -93,7 +75,7 @@ export async function scanDiskModulesPure(
     const loadMod = async (entry: string, ts: boolean) =>
       ts
         ? await import(entry).catch((e: unknown) => {
-            logger?.warn({ module: id, err: String(e) }, 'failed to import src module.ts, will fall back to dist')
+            logger?.warn({ module: id, err: String(e) }, 'failed to import src module.ts')
             return {} as { meta?: unknown }
           })
         : await import(entry)
@@ -101,14 +83,6 @@ export async function scanDiskModulesPure(
       meta?: Partial<ModuleDiskMeta & { name?: string; enabled?: boolean }>
     } = await loadMod(moduleEntry, isTs)
     let meta = mod.meta
-    // src/.ts 在 CJS 包(package.json 无 "type":"module")里会被 Node 当 ESM 拒绝,
-    // 拿不到 meta。即使 dist/.js 编译产物可用,这里 isTs=true 失败后仍走不到 fallback。
-    // 强制回落:meta 缺失 + 存在 dist/.js → 用编译产物再试一次。
-    if ((!meta?.id || typeof meta.id !== 'string') && existsSync(distModuleJs) && moduleEntry !== distModuleJs) {
-      logger?.warn({ module: id }, 'meta.id missing on src .ts, falling back to dist .js')
-      mod = await loadMod(distModuleJs, false)
-      meta = mod.meta
-    }
     if (!meta?.id || typeof meta.id !== 'string') {
       logger?.warn({ module: id }, 'module skipped: meta.id missing')
       continue
@@ -203,11 +177,6 @@ export class ModuleLoader {
   private readonly srcRoot: string
   /** 编译产物根(绝对路径),用于 `import('module.js')`。 */
   private readonly distRoot: string
-  /**
-   * 是否优先读 src/<id>/module.ts。
-   * 默认由 NODE_ENV 决定(shouldPreferSrc);调用方也可显式覆盖(单测/特殊部署)。
-   */
-  private readonly preferSrc: boolean
   private mounted = new Set<string>()
   private dbCache: AppDb | undefined
   /** enabled 集合的进程内短 TTL 缓存,避免 gate 每请求打 redis/DB。 */
@@ -221,12 +190,10 @@ export class ModuleLoader {
     fastify: FastifyInstance,
     srcRoot: string,
     distRoot: string,
-    options?: { preferSrc?: boolean },
   ) {
     this.fastify = fastify
     this.srcRoot = srcRoot
     this.distRoot = distRoot
-    this.preferSrc = options?.preferSrc ?? shouldPreferSrc()
   }
 
   private get db(): AppDb {
@@ -239,15 +206,11 @@ export class ModuleLoader {
   // -------------------------------------------------------------------------
 
   /**
-   * 扫 src/modules/<id>/ 收集 disk meta。
-   * 入口策略由 `preferSrc` 决定：
-   *   - preferSrc=true(dev)→ 优先 src/<id>/module.ts,回退 dist/<id>/module.js
-   *   - preferSrc=false(prod)→ 优先 dist/<id>/module.js,回退 src/<id>/module.ts
-   *
-   * 同步到 sys_module 的兜底值与 meta.name 来自读到的入口。
+   * 扫 src/modules/<id>/ 收集 disk meta。入口固定从 dist 加载（见
+   * `scanDiskModulesPure` 文档），本方法只是包一层 fastify.log。
    */
   async scanDiskModules(): Promise<ModuleDiskMeta[]> {
-    return scanDiskModulesPure(this.srcRoot, this.distRoot, this.preferSrc, this.fastify.log)
+    return scanDiskModulesPure(this.srcRoot, this.distRoot, this.fastify.log)
   }
 
   // -------------------------------------------------------------------------
@@ -352,19 +315,15 @@ export class ModuleLoader {
 
   /**
    * 用标准 @fastify/autoload 挂载单个模块的 routes/ 目录,prefix 硬约定 /api/<id>。
-   * 入口策略与 scanDiskModulesPure 一致：preferSrc 时优先 src,否则优先 dist。
+   * 与 scanDiskModulesPure 入口策略一致:dist 优先,src 兜底。
    */
   private async mountModuleRoutes(meta: ModuleDiskMeta): Promise<void> {
     if (this.mounted.has(meta.id)) return
     const distRoutesDir = join(this.distRoot, 'modules', meta.id, 'routes')
     const srcRoutesDir = join(meta.moduleDir, 'routes')
     let routesDir: string
-    // 同 scanDiskModulesPure：CJS 包(package.json 无 "type":"module")下 Node 把
-    // src/**/*.ts 当 ESM 拒绝，autoload 会全军覆没。dev 模式直接走 dist 编译产物。
     if (existsSync(distRoutesDir)) {
       routesDir = distRoutesDir
-    } else if (this.preferSrc && existsSync(srcRoutesDir)) {
-      routesDir = srcRoutesDir
     } else if (existsSync(srcRoutesDir)) {
       routesDir = srcRoutesDir
     } else {
