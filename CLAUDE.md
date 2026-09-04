@@ -156,7 +156,6 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 
 `packages/shared-config` 导出 `API_TARGET`（后端 base URL），admin 的 `config/proxy.ts`、app 的 `config/dev.ts` 和 `config/index.ts` 统一从这里 import。默认 `http://localhost:3100`，与 `apps/yishan-api/.env` 的 `PORT` 对齐。
 
-- 改后端端口：同步 `apps/yishan-api/.env` 的 `PORT` 和 `packages/shared-config/src/index.ts` 的 `DEFAULT_API_PORT`
-- 跨域/容器/外网部署：设 `YISHAN_API_TARGET=http://api.example.com`
-- 只改端口不改 host：设 `YISHAN_API_PORT=4000`
-- **禁止** 在 admin/app 的 config 里再次硬编码默认 port——统一走 `API_TARGET`
+- 改后端端口：同步 `apps/yishan-api/.env` 的 `PORT` 和 `packages/shared-config/src/index.ts` 的 `DEFAULT_API_TARGET`
+- 需要指向非默认 host/port：设 `YISHAN_API_TARGET=http://host:port`（完整 URL 最高优先级）
+- **禁止** 在 admin/app 的 config 里再次硬编码默认 URL——统一走 `API_TARGET`
