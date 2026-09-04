@@ -11,6 +11,7 @@ Yishan (移山通用管理系统) is a pnpm monorepo for a generic admin baselin
 - `apps/yishan-app` — WeChat mini-program (Taro/uni-app style, see `apps/yishan-app/`)
 - `apps/yishan-docs` — Docusaurus 3 docs site
 - `apps/yishan-components/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
+- `packages/shared-config` — monorepo-shared config constants (e.g. `API_TARGET`); source-only workspace package, no build step
 
 Toolchain pinned in `.tool-versions` / root `package.json#packageManager`: Node 22.22.1, pnpm 8.15.9. Use asdf / mise / fnm to honor `.tool-versions` automatically.
 
@@ -150,3 +151,12 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 - **Cert rotation**: `yishan-cert-rotate-fc.yml` rotates FC certs.
 - **No real credentials in repo**: demo creds intentionally not committed; per README, request from the maintainer.
 - **sys_region seed data**: 省市区三级（~3400 条）由 `sys_region` 表承载，数据源是 modood/Administrative-divisions-of-China 的 `pca-code.json`，嵌在 `apps/yishan-api/src/scripts/seed/config/`。`pnpm --filter yishan-api db:seed` 自动跑 `system-region.ts` 把数据灌进 MySQL（INSERT ... ON DUPLICATE KEY UPDATE，幂等）。前端复用 `<ProFormRegionCascader name="area" />` 即可拿到三段级联选择器，无需另写 service。
+
+## Cross-app config: `API_TARGET`
+
+`packages/shared-config` 导出 `API_TARGET`（后端 base URL），admin 的 `config/proxy.ts`、app 的 `config/dev.ts` 和 `config/index.ts` 统一从这里 import。默认 `http://localhost:3100`，与 `apps/yishan-api/.env` 的 `PORT` 对齐。
+
+- 改后端端口：同步 `apps/yishan-api/.env` 的 `PORT` 和 `packages/shared-config/src/index.ts` 的 `DEFAULT_API_PORT`
+- 跨域/容器/外网部署：设 `YISHAN_API_TARGET=http://api.example.com`
+- 只改端口不改 host：设 `YISHAN_API_PORT=4000`
+- **禁止** 在 admin/app 的 config 里再次硬编码默认 port——统一走 `API_TARGET`
