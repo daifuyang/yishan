@@ -15,9 +15,11 @@
  *   - fastify 插件树 boot 后不可变：不做运行时 register/unregister;启停走 gate 拦截。
  *   - syncModulesFromDisk 不允许覆盖 enabled;运维显式停用的模块,重启后必须保持停用。
  *
- * 入口策略(由 NODE_ENV 决定):
- *   - dev (NODE_ENV !== 'production'):优先读 src/<id>/module.ts(开发热更友好)
- *   - prod:优先读 dist/<id>/module.js(线上必须用编译产物)
+ * 入口策略(由 NODE_ENV + 入口路径共同决定):
+ *   - prod (NODE_ENV === 'production'):优先读 dist/<id>/module.js(线上必须用编译产物)
+ *   - dev + 入口在 dist/ 下(如 fastify start -P dist/app.js):走 dist,避免 Node 没法
+ *     import .ts 时刷"Failed to load the ES module"警告
+ *   - dev + 入口在 src/ 下(如未来 tsx src/app.ts):优先读 src/<id>/module.ts(热更友好)
  */
 import { eq, inArray } from 'drizzle-orm'
 import { existsSync, readdirSync, statSync } from 'node:fs'
@@ -32,7 +34,12 @@ const REDIS_CACHE_TTL_SECONDS = 60
 
 /** dev/prod 公用：判断本进程是否应该优先读 src 而非 dist。 */
 export function shouldPreferSrc(): boolean {
-  return process.env.NODE_ENV !== 'production'
+  if (process.env.NODE_ENV === 'production') return false
+  // 默认走 dist：项目 package.json 是 "type": "commonjs"，Node 无法直接 import .ts
+  // 或带 `export` 语法的 .js；当前 dev 流程（fastify start -P dist/app.js）也是
+  // 从 dist 编译产物启动，src 模式只在显式设置 MODULE_LOADER_SRC=1 时启用
+  // （未来若切到 tsx / ts-node 加载器，置此 env 即可恢复 src 优先策略）。
+  return process.env.MODULE_LOADER_SRC === '1' || process.env.MODULE_LOADER_SRC === 'true'
 }
 
 /** 模块路由 prefix 硬约定;不再由模块 meta 声明。 */
