@@ -5,18 +5,20 @@
  * 后续可与 contact / customer 关联聚合。
  */
 
-import { PageContainer } from '@ant-design/pro-components'
-import { Empty } from 'antd'
-import React, { useEffect, useState } from 'react'
-import { history } from '@umijs/max'
-import { getDashboard, type DashboardData } from '@/services/crm'
+import { PageContainer } from '@ant-design/pro-components';
+import { history } from '@umijs/max';
+import { Empty } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { type DashboardData, getDashboard } from '@/services/crm';
 
 const Activities: React.FC = () => {
-  const [data, setData] = useState<DashboardData | null>(null)
+  const [data, setData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
-    getDashboard().then(setData).catch(() => undefined)
-  }, [])
+    getDashboard()
+      .then(setData)
+      .catch(() => undefined);
+  }, []);
 
   return (
     <PageContainer header={{ title: '跟进记录' }}>
@@ -27,8 +29,14 @@ const Activities: React.FC = () => {
           {(data?.recentActivities ?? []).map((a) => (
             <div
               key={a.id}
-              style={{ padding: '12px 0', borderBottom: '1px solid #f0f0f0', cursor: 'pointer' }}
-              onClick={() => history.push(`/crm/customer-detail?id=${a.customerId}`)}
+              style={{
+                padding: '12px 0',
+                borderBottom: '1px solid #f0f0f0',
+                cursor: 'pointer',
+              }}
+              onClick={() =>
+                history.push(`/crm/customer-detail?id=${a.customerId}`)
+              }
             >
               <div>
                 <strong>{a.operatorUserName ?? `用户`}</strong>
@@ -45,7 +53,7 @@ const Activities: React.FC = () => {
         </div>
       )}
     </PageContainer>
-  )
-}
+  );
+};
 
-export default Activities
+export default Activities;

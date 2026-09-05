@@ -1,4 +1,19 @@
-import { and, asc, count, desc, eq, inArray, isNull, like, or, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  lte,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@/db'
 import { sysUser } from '@/db/schema'
 import {
@@ -8,6 +23,7 @@ import {
   crmCustomerTag,
   crmContact,
 } from '../db/schema.js'
+import { collaboratorExists } from './member.repository.js'
 import type { POOL_STATUS } from '../schemas/customer.schema.js'
 
 /**
@@ -99,7 +115,39 @@ export interface UpdateCustomerInput {
   updaterId: number
 }
 
+/**
+ * 客户列表的快速视图。语义在 `buildViewConds` 里集中定义，
+ * 路由 / 前端只传 view 名字，不各自拼条件，避免"我的客户"在两个页面口径不一致。
+ */
+export const CUSTOMER_VIEWS = [
+  'all',
+  'important',
+  'mine',
+  'collaborating',
+  'pending',
+  'stale7d',
+  'pool',
+] as const
+export type CustomerView = (typeof CUSTOMER_VIEWS)[number]
+
+/**
+ * 允许排序的字段白名单。
+ * 只有这张表里的 key 能进 ORDER BY —— 任何用户传入的字符串都不会拼进 SQL。
+ */
+const SORTABLE_COLUMNS = {
+  name: crmCustomer.name,
+  createdAt: crmCustomer.createdAt,
+  updatedAt: crmCustomer.updatedAt,
+  lastFollowUpAt: crmCustomer.lastFollowUpAt,
+  nextFollowUpAt: crmCustomer.nextFollowUpAt,
+  level: crmCustomer.level,
+} as const
+export type CustomerSortBy = keyof typeof SORTABLE_COLUMNS
+export const CUSTOMER_SORT_FIELDS = Object.keys(SORTABLE_COLUMNS) as CustomerSortBy[]
+
 export interface CustomerListQuery {
+  /** Internal domain constraint, set by the service (never from querystring). */
+  requireOwner?: boolean
   page?: number
   pageSize?: number
   keyword?: string
@@ -109,9 +157,30 @@ export interface CustomerListQuery {
   type?: string
   ownerUserId?: number
   poolStatus?: CustomerPoolStatus
+  /** 快速视图；与其它筛选条件是 AND 关系。 */
+  view?: CustomerView
+  industry?: string
+  /** 命中任意一个标签即算命中（OR 语义）。 */
+  tagIds?: number[]
+  /** 高级筛选：指定用户是该客户的协同人。 */
+  collaboratorId?: number
+  createdFrom?: Date
+  createdTo?: Date
+  lastFollowUpFrom?: Date
+  lastFollowUpTo?: Date
+  nextFollowUpFrom?: Date
+  nextFollowUpTo?: Date
+  sortBy?: CustomerSortBy
+  sortOrder?: 'asc' | 'desc'
+  /** true 时只查已软删的客户（回收站）；默认只查未删除的。 */
+  onlyDeleted?: boolean
   /** 数据范围过滤条件：把"我能看到的客户"用 where 表达出来。 */
   ownerUserIds?: number[] | null
   ownerDepartmentIds?: number[] | null
+  /** 数据范围：非 null 时"我协同的客户"也可见。 */
+  collaboratorUserId?: number | null
+  /** view=mine / collaborating 需要知道"我"是谁。 */
+  currentUserId?: number
 }
 
 const customerPublicColumns = {
@@ -140,23 +209,93 @@ const customerPublicColumns = {
   updatedAt: crmCustomer.updatedAt,
 }
 
-function buildListWhere(opts: CustomerListQuery): SQL | undefined {
-  const conds: SQL[] = [isNull(crmCustomer.deletedAt)]
+/** 今天 00:00:00（本地时区），"待跟进" / "7天未跟进" 的基准点。 */
+function startOfToday(now: Date): Date {
+  const d = new Date(now)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+/**
+ * 快速视图 → where 条件。
+ *
+ * "待跟进" / "7天未跟进" 只针对有主的客户：公海客户没有负责人，
+ * 把它算成"某人逾期未跟进"没有意义，只会污染销售的待办列表。
+ */
+function buildViewConds(view: CustomerView, currentUserId: number | undefined, now: Date): SQL[] {
+  switch (view) {
+    case 'all':
+      return []
+    case 'important':
+      return [eq(crmCustomer.level, 'A')]
+    case 'mine':
+      // currentUserId 缺失时用 eq(id, -1) 兜底：宁可查不到，也不要退化成"看到全部"
+      return [eq(crmCustomer.ownerUserId, currentUserId ?? -1)]
+    case 'collaborating':
+      return [collaboratorExists(currentUserId ?? -1)]
+    case 'pending':
+      return [
+        eq(crmCustomer.poolStatus, 'owned'),
+        isNotNull(crmCustomer.nextFollowUpAt),
+        lte(crmCustomer.nextFollowUpAt, now),
+      ]
+    case 'stale7d': {
+      const threshold = new Date(startOfToday(now).getTime() - 7 * 24 * 60 * 60 * 1000)
+      return [
+        eq(crmCustomer.poolStatus, 'owned'),
+        // 从未跟进过的客户（last_follow_up_at IS NULL）同样算"久未跟进"，
+        // 否则新建后一直没人碰的客户会永远从这个视图里消失。
+        or(isNull(crmCustomer.lastFollowUpAt), lte(crmCustomer.lastFollowUpAt, threshold))!,
+      ]
+    }
+    case 'pool':
+      return [eq(crmCustomer.poolStatus, 'public')]
+  }
+}
+
+export function buildListWhere(opts: CustomerListQuery, now: Date = new Date()): SQL | undefined {
+  const conds: SQL[] = [
+    opts.onlyDeleted ? isNotNull(crmCustomer.deletedAt) : isNull(crmCustomer.deletedAt),
+  ]
+  if (opts.requireOwner) conds.push(isNotNull(crmCustomer.ownerUserId))
   if (opts.keyword) {
     const k = `%${opts.keyword}%`
+    // 联系人字段用 EXISTS 子查询命中，而不是 join 后去重 —— join 会让
+    // "一个客户多个联系人都命中" 变成重复行，还要额外 DISTINCT。
+    const contactMatch = sql`EXISTS (SELECT 1 FROM ${crmContact} WHERE ${crmContact.customerId} = ${crmCustomer.id} AND ${crmContact.deletedAt} IS NULL AND (${crmContact.name} LIKE ${k} OR ${crmContact.mobile} LIKE ${k} OR ${crmContact.phone} LIKE ${k}))`
     conds.push(
-      or(like(crmCustomer.name, k), like(crmCustomer.phone, k), like(crmCustomer.code, k))!,
+      or(
+        like(crmCustomer.name, k),
+        like(crmCustomer.phone, k),
+        like(crmCustomer.code, k),
+        like(crmCustomer.website, k),
+        contactMatch,
+      )!,
     )
   }
+  if (opts.view) conds.push(...buildViewConds(opts.view, opts.currentUserId, now))
   if (opts.statusId !== undefined) conds.push(eq(crmCustomer.statusId, opts.statusId))
   if (opts.sourceId !== undefined) conds.push(eq(crmCustomer.sourceId, opts.sourceId))
   if (opts.level) conds.push(eq(crmCustomer.level, opts.level))
   if (opts.type) conds.push(eq(crmCustomer.type, opts.type))
+  if (opts.industry) conds.push(eq(crmCustomer.industry, opts.industry))
   if (opts.ownerUserId !== undefined) conds.push(eq(crmCustomer.ownerUserId, opts.ownerUserId))
   if (opts.poolStatus) conds.push(eq(crmCustomer.poolStatus, opts.poolStatus))
+  if (opts.collaboratorId !== undefined) conds.push(collaboratorExists(opts.collaboratorId))
+  if (opts.tagIds && opts.tagIds.length > 0) {
+    conds.push(
+      sql`EXISTS (SELECT 1 FROM ${crmCustomerTag} WHERE ${crmCustomerTag.customerId} = ${crmCustomer.id} AND ${inArray(crmCustomerTag.tagId, opts.tagIds)})`,
+    )
+  }
+  if (opts.createdFrom) conds.push(gte(crmCustomer.createdAt, opts.createdFrom))
+  if (opts.createdTo) conds.push(lte(crmCustomer.createdAt, opts.createdTo))
+  if (opts.lastFollowUpFrom) conds.push(gte(crmCustomer.lastFollowUpAt, opts.lastFollowUpFrom))
+  if (opts.lastFollowUpTo) conds.push(lte(crmCustomer.lastFollowUpAt, opts.lastFollowUpTo))
+  if (opts.nextFollowUpFrom) conds.push(gte(crmCustomer.nextFollowUpAt, opts.nextFollowUpFrom))
+  if (opts.nextFollowUpTo) conds.push(lte(crmCustomer.nextFollowUpAt, opts.nextFollowUpTo))
 
-  // 数据范围：在 SERVICE 层把 ownerUserIds / ownerDepartmentIds / poolStatus 算好后传入。
-  // 这里只表达"我能看到的客户 = 我的 / 我部门的 / 公海的"这一组 IN/OR 条件。
+  // 数据范围：在 SERVICE 层把 ownerUserIds / ownerDepartmentIds / collaboratorUserId
+  // 算好后传入。这里只表达"我能看到的客户 = 我的 / 我部门的 / 我协同的 / 公海的"。
   // null 表示"无限制"（super_admin）；不传 / undefined 表示"不套用数据范围"。
   if (opts.ownerUserIds !== undefined || opts.ownerDepartmentIds !== undefined) {
     const sub: SQL[] = []
@@ -169,6 +308,7 @@ function buildListWhere(opts: CustomerListQuery): SQL | undefined {
     if (sub.length === 0) {
       // super_admin：不过滤
     } else {
+      if (opts.collaboratorUserId != null) sub.push(collaboratorExists(opts.collaboratorUserId))
       sub.push(eq(crmCustomer.poolStatus, 'public'))
       conds.push(or(...sub)!)
     }
@@ -178,6 +318,14 @@ function buildListWhere(opts: CustomerListQuery): SQL | undefined {
 }
 
 export class CustomerRepository {
+  /** Owner choices from the same scoped private-customer query, not the system user directory. */
+  static async findVisibleOwners(opts: CustomerListQuery, db: AppQueryDb = drizzleDb): Promise<Array<{ id: number; name: string }>> {
+    return db.selectDistinct({ id: sysUser.id, name: sql<string>`COALESCE(NULLIF(${sysUser.realName}, ''), ${sysUser.username})` })
+      .from(crmCustomer)
+      .innerJoin(sysUser, eq(crmCustomer.ownerUserId, sysUser.id))
+      .where(buildListWhere({ ...opts, poolStatus: 'owned', requireOwner: true, onlyDeleted: false }))
+      .orderBy(asc(sysUser.id))
+  }
   /**
    * 查重：企业客户按 name 精确查重，phone 辅助查重；
    * 个人客户按 phone 查重；同名 / 同号即视为重复。
@@ -223,12 +371,17 @@ export class CustomerRepository {
     const pageSize = query.pageSize ?? 10
     const where = buildListWhere(query)
 
+    // sortBy 只能是 SORTABLE_COLUMNS 的 key（schema 层已用 enum 挡过一次），
+    // 这里再兜一次底：查不到就退回 updatedAt，绝不把用户输入拼进 ORDER BY。
+    const sortColumn = SORTABLE_COLUMNS[query.sortBy as CustomerSortBy] ?? crmCustomer.updatedAt
+    const orderBy = query.sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
+
     const [rows, totalRow] = await Promise.all([
       db
         .select(customerPublicColumns)
         .from(crmCustomer)
         .where(where)
-        .orderBy(desc(crmCustomer.updatedAt))
+        .orderBy(orderBy, desc(crmCustomer.id))
         .limit(pageSize)
         .offset((page - 1) * pageSize),
       db.select({ c: count() }).from(crmCustomer).where(where),
@@ -409,6 +562,46 @@ export class CustomerRepository {
       .update(crmCustomer)
       .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(eq(crmCustomer.id, id))
+  }
+
+  /** 回收站：按 id 读一条**已软删**的客户。findById 会过滤掉它们。 */
+  static async findDeletedById(
+    id: number,
+    db: AppQueryDb = drizzleDb,
+  ): Promise<CustomerRow | null> {
+    const [row] = await db
+      .select(customerPublicColumns)
+      .from(crmCustomer)
+      .where(and(eq(crmCustomer.id, id), isNotNull(crmCustomer.deletedAt)))
+      .limit(1)
+    return (row as CustomerRow | undefined) ?? null
+  }
+
+  /**
+   * 回收站恢复。带 `deleted_at IS NOT NULL` 的 CAS 守卫：
+   * 并发恢复时只有一条 UPDATE 命中行，返回 0 表示已被别人恢复。
+   */
+  static async restore(
+    id: number,
+    updaterId: number,
+    db: AppQueryDb = drizzleDb,
+  ): Promise<number> {
+    const result = await db
+      .update(crmCustomer)
+      .set({ deletedAt: null, updaterId, updatedAt: new Date() })
+      .where(and(eq(crmCustomer.id, id), isNotNull(crmCustomer.deletedAt)))
+    const ok = (result as unknown as [{ affectedRows?: number } | undefined, unknown])[0]
+    return ok?.affectedRows ?? 0
+  }
+
+  /**
+   * 永久删除。只允许删已在回收站里的客户，避免"跳过软删直接抹掉"。
+   * 关联的 tag 桥接 / 协同人由调用方在同一事务里清理。
+   */
+  static async hardDelete(id: number, db: AppQueryDb): Promise<void> {
+    await db
+      .delete(crmCustomer)
+      .where(and(eq(crmCustomer.id, id), isNotNull(crmCustomer.deletedAt)))
   }
 
   /* ─── 客户 ↔ 标签 桥接 ───────────────── */

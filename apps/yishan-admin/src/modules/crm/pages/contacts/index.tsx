@@ -6,52 +6,52 @@ import {
   type ActionType,
   DrawerForm,
   PageContainer,
+  type ProColumns,
   ProFormDigit,
   ProFormSelect,
   ProFormText,
   ProTable,
-  type ProColumns,
-} from '@ant-design/pro-components'
-import { Button, message, Popconfirm, Space } from 'antd'
-import React, { useRef, useState } from 'react'
+} from '@ant-design/pro-components';
+import { Button, message, Popconfirm, Space } from 'antd';
+import React, { useRef, useState } from 'react';
 import {
+  type ContactCreateInput,
+  type ContactRow,
   createContact,
   deleteContact,
   listContacts,
   updateContact,
-  type ContactCreateInput,
-  type ContactRow,
-} from '@/services/crm'
+} from '@/services/crm';
 
 const Contacts: React.FC = () => {
-  const actionRef = useRef<ActionType>(null)
-  const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState<ContactRow | null>(null)
+  const actionRef = useRef<ActionType>(null);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<ContactRow | null>(null);
 
   const handleSubmit = async (values: any) => {
     try {
       if (editing) {
-        await updateContact(editing.id, values)
-        message.success('已更新')
+        await updateContact(editing.id, values);
+        message.success('已更新');
       } else {
-        await createContact(values)
-        message.success('已创建')
+        await createContact(values);
+        message.success('已创建');
       }
-      setOpen(false)
-      setEditing(null)
-      actionRef.current?.reload()
-      return true
+      setOpen(false);
+      setEditing(null);
+      actionRef.current?.reload();
+      return true;
     } catch (err: any) {
-      message.error(err?.message ?? '操作失败')
-      return false
+      message.error(err?.message ?? '操作失败');
+      return false;
     }
-  }
+  };
 
   const handleDelete = async (id: number) => {
-    await deleteContact(id)
-    message.success('已删除')
-    actionRef.current?.reload()
-  }
+    await deleteContact(id);
+    message.success('已删除');
+    actionRef.current?.reload();
+  };
 
   const columns: ProColumns<ContactRow>[] = [
     { title: '姓名', dataIndex: 'name', width: 140 },
@@ -92,7 +92,14 @@ const Contacts: React.FC = () => {
       width: 160,
       render: (_, record) => (
         <Space size={16}>
-          <a onClick={() => { setEditing(record); setOpen(true) }}>编辑</a>
+          <a
+            onClick={() => {
+              setEditing(record);
+              setOpen(true);
+            }}
+          >
+            编辑
+          </a>
           <Popconfirm
             title={`确认删除「${record.name}」？`}
             okText="删除"
@@ -104,7 +111,7 @@ const Contacts: React.FC = () => {
         </Space>
       ),
     },
-  ]
+  ];
 
   return (
     <PageContainer header={{ title: '联系人' }}>
@@ -116,26 +123,29 @@ const Contacts: React.FC = () => {
         search={{ labelWidth: 'auto' }}
         pagination={{ pageSize: 10, showSizeChanger: true }}
         request={async (params) => {
-          const { current, pageSize, ...rest } = params as Record<string, unknown>
+          const { current, pageSize, ...rest } = params as Record<
+            string,
+            unknown
+          >;
           const res = await listContacts({
             page: (current as number) ?? 1,
             pageSize: (pageSize as number) ?? 10,
             keyword: (rest.keyword as string) ?? '',
             customerId: rest.customerId ? Number(rest.customerId) : undefined,
-          })
+          });
           return {
             data: res.data,
             success: true,
             total: res.total,
-          }
+          };
         }}
         toolBarRender={() => [
           <Button
             key="create"
             type="primary"
             onClick={() => {
-              setEditing(null)
-              setOpen(true)
+              setEditing(null);
+              setOpen(true);
             }}
           >
             新建联系人
@@ -147,8 +157,8 @@ const Contacts: React.FC = () => {
         title={editing ? '编辑联系人' : '新建联系人'}
         open={open}
         onOpenChange={(o) => {
-          setOpen(o)
-          if (!o) setEditing(null)
+          setOpen(o);
+          if (!o) setEditing(null);
         }}
         onFinish={handleSubmit}
         initialValues={
@@ -168,8 +178,17 @@ const Contacts: React.FC = () => {
         }
         drawerProps={{ destroyOnClose: true, width: 520 }}
       >
-        <ProFormDigit name="customerId" label="客户 ID" rules={[{ required: true }]} fieldProps={{ precision: 0 }} />
-        <ProFormText name="name" label="姓名" rules={[{ required: true, max: 100 }]} />
+        <ProFormDigit
+          name="customerId"
+          label="客户 ID"
+          rules={[{ required: true }]}
+          fieldProps={{ precision: 0 }}
+        />
+        <ProFormText
+          name="name"
+          label="姓名"
+          rules={[{ required: true, max: 100 }]}
+        />
         <ProFormSelect
           name="gender"
           label="性别"
@@ -194,7 +213,7 @@ const Contacts: React.FC = () => {
         />
       </DrawerForm>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default Contacts
+export default Contacts;

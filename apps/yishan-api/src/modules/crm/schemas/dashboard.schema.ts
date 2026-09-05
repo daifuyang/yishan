@@ -7,6 +7,7 @@ import { Type, type Static } from '@sinclair/typebox'
 export const DashboardCountersSchema = Type.Object({
   myCustomers: Type.Number(),
   pendingFollowUp: Type.Number(),
+  overdueFollowUp: Type.Number(),
   todayNew: Type.Number(),
   publicPool: Type.Number(),
   weekFollowUps: Type.Number(),

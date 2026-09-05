@@ -62,6 +62,12 @@ describe('ActivityService.create', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     })
+    // service 现在通过 ActivityRepository.computeFollowUpState 算"应该写成什么时间"，
+    // 单测里不需要再走真实 SQL，直接给一个固定值，避免对 dbManager 里的 mock tx 产生依赖。
+    vi.spyOn(ActivityRepository, 'computeFollowUpState').mockResolvedValue({
+      lastFollowUpAt: new Date('2026-01-01T10:00:00Z'),
+      nextFollowUpAt: null,
+    })
     const updateSpy = vi
       .spyOn(CustomerRepository, 'update')
       .mockResolvedValue(ownedCustomer)

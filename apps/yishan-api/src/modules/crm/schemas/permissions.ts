@@ -18,6 +18,15 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   CUSTOMER_CLAIM: { code: 'crm:customer:claim', label: 'CRM-客户-认领', group: 'crm' },
   CUSTOMER_RELEASE: { code: 'crm:customer:release', label: 'CRM-客户-释放', group: 'crm' },
   CUSTOMER_TRANSFER: { code: 'crm:customer:transfer', label: 'CRM-客户-转交', group: 'crm' },
+  CUSTOMER_MEMBER_MANAGE: {
+    code: 'crm:customer:member',
+    label: 'CRM-客户-协同人管理',
+    group: 'crm',
+  },
+  CUSTOMER_TRASH: { code: 'crm:customer:trash', label: 'CRM-客户-回收站', group: 'crm' },
+  CUSTOMER_RESTORE: { code: 'crm:customer:restore', label: 'CRM-客户-恢复', group: 'crm' },
+  // 永久删除单独一个权限码：不复用 delete，避免"能软删的人顺手就能抹掉数据"
+  CUSTOMER_PURGE: { code: 'crm:customer:purge', label: 'CRM-客户-永久删除', group: 'crm' },
 
   CONTACT_LIST: { code: 'crm:contact:list', label: 'CRM-联系人-查看', group: 'crm' },
   CONTACT_CREATE: { code: 'crm:contact:create', label: 'CRM-联系人-新建', group: 'crm' },
@@ -26,6 +35,8 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
 
   ACTIVITY_LIST: { code: 'crm:activity:list', label: 'CRM-跟进-查看', group: 'crm' },
   ACTIVITY_CREATE: { code: 'crm:activity:create', label: 'CRM-跟进-新建', group: 'crm' },
+  ACTIVITY_UPDATE: { code: 'crm:activity:update', label: 'CRM-跟进-编辑', group: 'crm' },
+  ACTIVITY_DELETE: { code: 'crm:activity:delete', label: 'CRM-跟进-删除', group: 'crm' },
 
   POOL_LIST: { code: 'crm:pool:list', label: 'CRM-公海-查看', group: 'crm' },
 

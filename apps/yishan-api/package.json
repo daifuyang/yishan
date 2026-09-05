@@ -17,7 +17,8 @@
     "db:generate": "drizzle-kit generate --name=init",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "pnpm run build:ts && node dist/scripts/seed/index.js",
-    "db:reset": "pnpm run build:ts && node dist/scripts/reset.js"
+    "db:reset": "pnpm run build:ts && node dist/scripts/reset.js",
+    "openapi:dump": "node scripts/dump-openapi.mjs"
   },
   "keywords": [],
   "author": "",

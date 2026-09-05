@@ -8,23 +8,28 @@
 import {
   type ActionType,
   PageContainer,
-  ProTable,
   type ProColumns,
-} from '@ant-design/pro-components'
-import { Button, message, Space, Tag } from 'antd'
-import React, { useRef } from 'react'
-import { history } from '@umijs/max'
-import { claimCustomer, listPool, maskPhone, type CustomerRow } from '@/services/crm'
+  ProTable,
+} from '@ant-design/pro-components';
+import { history } from '@umijs/max';
+import { Button, message, Space, Tag } from 'antd';
+import React, { useRef } from 'react';
+import {
+  type CustomerRow,
+  claimCustomer,
+  listPool,
+  maskPhone,
+} from '@/services/crm';
 
 const Pool: React.FC = () => {
-  const actionRef = useRef<ActionType>(null)
+  const actionRef = useRef<ActionType>(null);
 
   const handleClaim = async (id: number) => {
-    await claimCustomer(id)
-    message.success('已认领')
-    actionRef.current?.reload()
-    history.push(`/crm/customer-detail?id=${id}`)
-  }
+    await claimCustomer(id);
+    message.success('已认领');
+    actionRef.current?.reload();
+    history.push(`/crm/customer-detail?id=${id}`);
+  };
 
   const columns: ProColumns<CustomerRow>[] = [
     {
@@ -32,7 +37,9 @@ const Pool: React.FC = () => {
       dataIndex: 'name',
       width: 200,
       render: (_, r) => (
-        <a onClick={() => history.push(`/crm/customer-detail?id=${r.id}`)}>{r.name}</a>
+        <a onClick={() => history.push(`/crm/customer-detail?id=${r.id}`)}>
+          {r.name}
+        </a>
       ),
     },
     {
@@ -48,7 +55,9 @@ const Pool: React.FC = () => {
       title: '电话',
       dataIndex: 'phone',
       width: 160,
-      render: (_, r) => <span style={{ color: '#999' }}>{maskPhone(r.phone)}</span>,
+      render: (_, r) => (
+        <span style={{ color: '#999' }}>{maskPhone(r.phone)}</span>
+      ),
     },
     { title: '行业', dataIndex: 'industry', width: 120 },
     {
@@ -72,7 +81,11 @@ const Pool: React.FC = () => {
       width: 160,
       render: (_, record) => (
         <Space size={16}>
-          <a onClick={() => history.push(`/crm/customer-detail?id=${record.id}`)}>查看</a>
+          <a
+            onClick={() => history.push(`/crm/customer-detail?id=${record.id}`)}
+          >
+            查看
+          </a>
           <a onClick={() => handleClaim(record.id)}>
             <Button type="link" size="small">
               认领
@@ -81,7 +94,7 @@ const Pool: React.FC = () => {
         </Space>
       ),
     },
-  ]
+  ];
 
   return (
     <PageContainer
@@ -98,21 +111,24 @@ const Pool: React.FC = () => {
         search={{ labelWidth: 'auto' }}
         pagination={{ pageSize: 10, showSizeChanger: true }}
         request={async (params) => {
-          const { current, pageSize, ...rest } = params as Record<string, unknown>
+          const { current, pageSize, ...rest } = params as Record<
+            string,
+            unknown
+          >;
           const res = await listPool({
             page: (current as number) ?? 1,
             pageSize: (pageSize as number) ?? 10,
             keyword: (rest.keyword as string) ?? '',
-          })
+          });
           return {
             data: res.data,
             success: true,
             total: res.total,
-          }
+          };
         }}
       />
     </PageContainer>
-  )
-}
+  );
+};
 
-export default Pool
+export default Pool;

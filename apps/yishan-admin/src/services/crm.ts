@@ -37,6 +37,10 @@ export type CustomerType = 'enterprise' | 'individual'
 export type PoolStatus = 'owned' | 'public'
 
 export interface CustomerRow {
+  ownerUserName?: string | null
+  primaryContactId?: number | null
+  primaryContactName?: string | null
+  primaryContactMobile?: string | null
   id: number
   code: string | null
   name: string
@@ -92,12 +96,26 @@ export interface CustomerCreateInput {
 export interface CustomerUpdateInput extends Partial<CustomerCreateInput> {}
 
 export interface CustomerListQuery extends PageQuery {
+  view?: 'all' | 'important' | 'mine' | 'collaborating' | 'pending' | 'stale7d' | 'pool'
   statusId?: number
   sourceId?: number
   level?: string
   type?: string
+  industry?: string
+  province?: string
+  city?: string
   ownerUserId?: number
   poolStatus?: PoolStatus
+  collaboratorId?: number
+  tagIds?: number[]
+  createdFrom?: string
+  createdTo?: string
+  lastFollowUpFrom?: string
+  lastFollowUpTo?: string
+  nextFollowUpFrom?: string
+  nextFollowUpTo?: string
+  sortBy?: 'name' | 'createdAt' | 'updatedAt' | 'lastFollowUpAt' | 'nextFollowUpAt' | 'level'
+  sortOrder?: 'asc' | 'desc'
 }
 
 /* ─── 联系人 ────────────────────────────────────────── */
@@ -220,6 +238,7 @@ export interface DashboardData {
   counters: {
     myCustomers: number
     pendingFollowUp: number
+    overdueFollowUp: number
     todayNew: number
     publicPool: number
     weekFollowUps: number
@@ -255,6 +274,16 @@ export async function listCustomers(query: CustomerListQuery): Promise<{ data: C
     params: query as any,
   })
   return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export interface CustomerListOptions {
+  canFilterOwners: boolean
+  owners: Array<{ id: number; name: string }>
+}
+
+export async function getCustomerListOptions(): Promise<CustomerListOptions> {
+  const r = await request<ApiResp<CustomerListOptions>>('/api/crm/v1/customers/options', { method: 'GET' })
+  return unwrap(r)
 }
 
 export async function getCustomer(id: number): Promise<CustomerDetail> {
@@ -332,6 +361,25 @@ export async function listTransfers(customerId: number): Promise<TransferLogRow[
     method: 'GET',
   })
   return unwrap(r)
+}
+
+/* Customer Members（协同人） */
+
+export interface CustomerMemberRow {
+  id: number
+  customerId: number
+  userId: number
+  role: string
+  createdAt: string
+  userName: string | null
+}
+
+export async function listMembers(customerId: number): Promise<CustomerMemberRow[]> {
+  const r = await request<ApiResp<{ items: CustomerMemberRow[] }>>(
+    `/api/crm/v1/customers/${customerId}/members`,
+    { method: 'GET' },
+  )
+  return unwrap(r).items ?? []
 }
 
 /* Contact */

@@ -13,6 +13,7 @@ import { crmActivity, crmCustomer, crmCustomerStatus } from '../db/schema.js'
 export interface DashboardCounters {
   myCustomers: number
   pendingFollowUp: number
+  overdueFollowUp: number
   todayNew: number
   publicPool: number
   weekFollowUps: number

@@ -99,7 +99,7 @@ export class ContactService {
   }
 
   async create(
-    input: Omit<CreateContactInput, 'creatorId' | 'updaterId'>,
+    input: Omit<CreateContactInput, 'creatorId' | 'updaterId' | 'birthday'> & { birthday?: string | Date | null },
     currentUser: DataScopeUser,
   ): Promise<ContactRow> {
     const customer = await CustomerRepository.findById(input.customerId, this.deps.db)
@@ -125,6 +125,7 @@ export class ContactService {
       const created = await ContactRepository.create(
         {
           ...input,
+          birthday: typeof input.birthday === 'string' ? new Date(input.birthday) : input.birthday,
           creatorId: currentUser.id,
           updaterId: currentUser.id,
         },
@@ -139,7 +140,7 @@ export class ContactService {
 
   async update(
     id: number,
-    input: UpdateContactInput,
+    input: Omit<UpdateContactInput, 'birthday' | 'updaterId'> & { birthday?: string | Date | null },
     currentUser: DataScopeUser,
   ): Promise<ContactRow> {
     const existing = await ContactRepository.findById(id, this.deps.db)
@@ -164,7 +165,11 @@ export class ContactService {
 
     const isPrimary = input.isPrimary
     return dbManager.transaction(async (tx) => {
-      const updated = await ContactRepository.update(id, { ...input, updaterId: currentUser.id }, tx)
+      const updated = await ContactRepository.update(id, {
+        ...input,
+        birthday: typeof input.birthday === 'string' ? new Date(input.birthday) : input.birthday,
+        updaterId: currentUser.id,
+      }, tx)
       if (!updated) throw new BusinessError(CrmErrorCode.CRM_CONTACT_NOT_FOUND, '联系人不存在')
       if (isPrimary === 1) {
         await ContactRepository.setPrimaryInTx(id, existing.customerId, tx)

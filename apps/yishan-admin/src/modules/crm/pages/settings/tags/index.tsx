@@ -2,18 +2,23 @@
  * CRM 客户标签设置。
  */
 
-import { PageContainer, ProFormDigit, ProFormText, type ProColumns } from '@ant-design/pro-components'
-import { Popconfirm, Space, Switch, message } from 'antd'
-import React from 'react'
+import {
+  PageContainer,
+  type ProColumns,
+  ProFormDigit,
+  ProFormText,
+} from '@ant-design/pro-components';
+import { message, Popconfirm, Space, Switch } from 'antd';
+import React from 'react';
 import {
   createTag,
   deleteTag,
   listTags,
-  updateTag,
   type TagInput,
   type TagRow,
-} from '@/services/crm'
-import { makeSettingsPage } from '../_shared'
+  updateTag,
+} from '@/services/crm';
+import { makeSettingsPage } from '../_shared';
 
 const Page = makeSettingsPage<TagRow, TagInput>({
   title: '客户标签',
@@ -32,7 +37,13 @@ const Page = makeSettingsPage<TagRow, TagInput>({
         width: 100,
         render: (_, r) =>
           r.color ? (
-            <span style={{ background: r.color, padding: '2px 8px', borderRadius: 4 }}>
+            <span
+              style={{
+                background: r.color,
+                padding: '2px 8px',
+                borderRadius: 4,
+              }}
+            >
               {r.color}
             </span>
           ) : (
@@ -48,10 +59,10 @@ const Page = makeSettingsPage<TagRow, TagInput>({
             checked={r.enabled === 1}
             onChange={async (v) => {
               try {
-                await updateTag(r.id, { enabled: v ? 1 : 0 })
-                message.success('已更新')
+                await updateTag(r.id, { enabled: v ? 1 : 0 });
+                message.success('已更新');
               } catch (err: any) {
-                message.error(err?.message ?? '更新失败')
+                message.error(err?.message ?? '更新失败');
               }
             }}
           />
@@ -86,23 +97,32 @@ const Page = makeSettingsPage<TagRow, TagInput>({
           </Space>
         ),
       },
-    ]
-    return cols
+    ];
+    return cols;
   },
   formFields: () => (
     <>
-      <ProFormText name="name" label="标签名称" rules={[{ required: true, max: 50 }]} />
-      <ProFormDigit name="enabled" label="启用" fieldProps={{ precision: 0 }} initialValue={1} />
+      <ProFormText
+        name="name"
+        label="标签名称"
+        rules={[{ required: true, max: 50 }]}
+      />
+      <ProFormDigit
+        name="enabled"
+        label="启用"
+        fieldProps={{ precision: 0 }}
+        initialValue={1}
+      />
     </>
   ),
-})
+});
 
 const TagsPage: React.FC = () => {
   return (
     <PageContainer header={{ title: '客户标签' }}>
       <Page canCreate canEdit canDelete />
     </PageContainer>
-  )
-}
+  );
+};
 
-export default TagsPage
+export default TagsPage;

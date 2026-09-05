@@ -7,6 +7,7 @@
  *   - crm_customer ↔ crm_contact：一对多（customerId）
  *   - crm_customer ↔ crm_activity：一对多（customerId）
  *   - crm_customer ↔ crm_tag：多对多（crm_customer_tag 桥接）
+ *   - crm_customer ↔ crm_customer_member：一对多（协同人；owner 仍以 crm_customer.owner_user_id 为唯一真相）
  *   - crm_customer_transfer：客户流转日志（一对多 from crm_customer）
  *
  * 客户负责人直接引用 sys_user.id；客户部门直接引用 sys_dept.id。
@@ -111,12 +112,37 @@ export const crmActivity = mysqlTable(
     operatorUserId: int('operator_user_id').notNull(),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
     updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    deletedAt: datetime('deleted_at'),
   },
   (t) => ({
     idxCustomer: index('idx_crm_activity_customer_id').on(t.customerId),
     idxOperator: index('idx_crm_activity_operator_user_id').on(t.operatorUserId),
     idxOccurredAt: index('idx_crm_activity_occurred_at').on(t.occurredAt),
     idxCustomerOccurred: index('idx_crm_activity_customer_occurred').on(t.customerId, t.occurredAt),
+    idxDeletedAt: index('idx_crm_activity_deleted_at').on(t.deletedAt),
+  }),
+)
+
+/**
+ * 客户协同人。
+ *
+ * 负责人（owner）的唯一真相始终是 `crm_customer.owner_user_id`；本表只承载协同人
+ * （collaborator），不重复存 owner，避免出现两个数据源导致 owner 不一致。
+ * `role` 目前恒为 'collaborator'，保留字段是为了将来扩展只读/协作等细分角色。
+ */
+export const crmCustomerMember = mysqlTable(
+  'crm_customer_member',
+  {
+    id: int().primaryKey().autoincrement().notNull(),
+    customerId: int('customer_id').notNull(),
+    userId: int('user_id').notNull(),
+    role: varchar({ length: 16 }).notNull().default('collaborator'),
+    creatorId: int('creator_id'),
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  },
+  (t) => ({
+    uniqCustomerUser: uniqueIndex('uniq_crm_customer_member').on(t.customerId, t.userId),
+    idxUser: index('idx_crm_customer_member_user_id').on(t.userId),
   }),
 )
 

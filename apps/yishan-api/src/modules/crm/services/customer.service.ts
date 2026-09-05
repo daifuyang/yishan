@@ -12,6 +12,10 @@ import {
 } from '../repositories/customer.repository.js'
 import { StatusRepository } from '../repositories/status.repository.js'
 import { SourceRepository } from '../repositories/source.repository.js'
+import {
+  CustomerMemberRepository,
+  type CustomerMemberWithUser,
+} from '../repositories/member.repository.js'
 
 /**
  * CustomerService —— 客户业务编排。
@@ -59,24 +63,66 @@ export interface CustomerServiceDeps {
 export class CustomerService {
   constructor(private readonly deps: CustomerServiceDeps = {}) {}
 
-  /** 列表：自动套上当前用户的数据范围。 */
-  async list({
+  /** My customers: private ownership intersected with the existing CRM data scope. */
+  async list(args: ListCustomersArgs) {
+    return this.listInDomain(args, 'private')
+  }
+
+  async listPool(args: ListCustomersArgs) {
+    return this.listInDomain(args, 'pool')
+  }
+
+  async listOptions(currentUser: DataScopeUser) {
+    const scope = computeDataScope(currentUser)
+    const owners = await CustomerRepository.findVisibleOwners(scope, this.deps.db)
+    return {
+      canFilterOwners: scope.ownerUserIds === null || Boolean(scope.ownerDepartmentIds?.length) || owners.some(owner => owner.id !== currentUser.id),
+      owners,
+    }
+  }
+
+  private async listInDomain({
     query,
     currentUser,
-  }: ListCustomersArgs): Promise<{ total: number; items: CustomerRow[]; page: number; pageSize: number }> {
+  }: ListCustomersArgs, domain: 'private' | 'pool' | 'trash'): Promise<{ total: number; items: CustomerRow[]; page: number; pageSize: number }> {
     const scope = computeDataScope(currentUser)
     const merged: CustomerListQuery = {
       ...query,
+      poolStatus: domain === 'private' ? 'owned' : domain === 'pool' ? 'public' : query.poolStatus,
+      requireOwner: domain === 'private',
+      onlyDeleted: domain === 'trash',
       ownerUserIds: scope.ownerUserIds,
       ownerDepartmentIds: scope.ownerDepartmentIds,
+      collaboratorUserId: scope.collaboratorUserId,
+      // view=mine / collaborating 的"我"永远取自登录态，不接受前端传 userId，
+      // 否则任何人都能拿别人的 id 当 view 参数来窥探数据范围边界。
+      currentUserId: currentUser.id,
     }
     const { rows, total } = await CustomerRepository.list(merged, this.deps.db)
+    const [contacts, owners] = await Promise.all([
+      CustomerRepository.findPrimaryContactsByCustomerIds(rows.map(row => row.id), this.deps.db),
+      CustomerRepository.findOwnerNamesByUserIds([...new Set(rows.flatMap(row => row.ownerUserId == null ? [] : [row.ownerUserId]))], this.deps.db),
+    ])
     return {
       total,
-      items: rows,
+      items: rows.map(row => ({
+        ...row,
+        ownerUserName: row.ownerUserId == null ? null : owners.get(row.ownerUserId) ?? null,
+        primaryContactId: contacts.get(row.id)?.id ?? null,
+        primaryContactName: contacts.get(row.id)?.name ?? null,
+        primaryContactMobile: contacts.get(row.id)?.mobile ?? null,
+      })),
       page: query.page ?? 1,
       pageSize: query.pageSize ?? 10,
     }
+  }
+
+  /** 回收站列表：只看已软删的客户，同样套数据范围。 */
+  async listTrash({
+    query,
+    currentUser,
+  }: ListCustomersArgs): Promise<{ total: number; items: CustomerRow[]; page: number; pageSize: number }> {
+    return this.listInDomain({ query: { ...query, onlyDeleted: true }, currentUser }, 'trash')
   }
 
   async detail(id: number, currentUser: DataScopeUser): Promise<CustomerDetailRow> {
@@ -93,7 +139,17 @@ export class CustomerService {
       const inDeptScope =
         row.ownerDepartmentId !== null && allowedDeptIds.includes(row.ownerDepartmentId)
       const inPool = row.poolStatus === 'public'
-      if (!inUserScope && !inDeptScope && !inPool) {
+      const isCollaborator =
+        !inUserScope &&
+        !inDeptScope &&
+        !inPool &&
+        scope.collaboratorUserId != null &&
+        (await CustomerMemberRepository.isCollaborator(
+          id,
+          scope.collaboratorUserId,
+          this.deps.db,
+        ))
+      if (!inUserScope && !inDeptScope && !inPool && !isCollaborator) {
         // 复用 NOT_FOUND 错误，避免泄漏存在性
         throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在或已删除')
       }
@@ -273,11 +329,110 @@ export class CustomerService {
     })
   }
 
+  /* ─── 回收站 ─────────────────────────── */
+
+  /**
+   * 从回收站恢复客户。
+   *
+   * 权限沿用 delete 的判定（能删的人才能恢复）。用 CAS UPDATE 保证并发恢复只有一次生效。
+   */
+  async restore(id: number, currentUser: DataScopeUser): Promise<CustomerRow> {
+    const existing = await CustomerRepository.findDeletedById(id, this.deps.db)
+    if (!existing) {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不在回收站中')
+    }
+    await this.assertCanOperate(existing, currentUser, 'delete')
+
+    const affected = await CustomerRepository.restore(id, currentUser.id, this.deps.db)
+    if (affected === 0) {
+      // 并发：别人抢先恢复了。这不是错误状态，直接返回当前值即可。
+      const current = await CustomerRepository.findById(id, this.deps.db)
+      if (current) return current
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在')
+    }
+    const restored = await CustomerRepository.findById(id, this.deps.db)
+    if (!restored) throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在')
+    return restored
+  }
+
+  /**
+   * 永久删除。只能删回收站里的客户；关联的标签桥接和协同人在同一事务里一并清掉，
+   * 否则会留下指向不存在客户的孤儿行。
+   *
+   * 跟进记录 / 流转日志**保留**：它们是审计痕迹，不随客户消失。
+   */
+  async purge(id: number, currentUser: DataScopeUser): Promise<void> {
+    const existing = await CustomerRepository.findDeletedById(id, this.deps.db)
+    if (!existing) {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不在回收站中')
+    }
+    await this.assertCanOperate(existing, currentUser, 'delete')
+
+    await dbManager.transaction(async (tx) => {
+      await CustomerRepository.setCustomerTags(id, [], tx)
+      await CustomerMemberRepository.removeAllByCustomerId(id, tx)
+      await CustomerRepository.hardDelete(id, tx)
+    })
+  }
+
+  /* ─── 协同人 ─────────────────────────── */
+
+  async listMembers(
+    customerId: number,
+    currentUser: DataScopeUser,
+  ): Promise<CustomerMemberWithUser[]> {
+    // 复用 detail 的可见性判定：能看到客户才能看到它的协同人
+    await this.detail(customerId, currentUser)
+    return CustomerMemberRepository.listByCustomerId(customerId, this.deps.db)
+  }
+
+  /**
+   * 添加协同人。
+   *
+   * 负责人不进协同人表 —— owner 的唯一真相是 crm_customer.owner_user_id，
+   * 把 owner 同时写成 collaborator 会让"协同客户"视图把自己的客户也算进去。
+   */
+  async addMember(
+    customerId: number,
+    userId: number,
+    currentUser: DataScopeUser,
+  ): Promise<CustomerMemberWithUser[]> {
+    const existing = await CustomerRepository.findById(customerId, this.deps.db)
+    if (!existing) {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在或已删除')
+    }
+    await this.assertCanOperate(existing, currentUser, 'update')
+
+    if (existing.ownerUserId === userId) {
+      throw new BusinessError(
+        CrmErrorCode.CRM_CUSTOMER_MEMBER_IS_OWNER,
+        '该用户已是客户负责人，无需添加为协同人',
+      )
+    }
+
+    await CustomerMemberRepository.add(customerId, userId, currentUser.id, this.deps.db)
+    return CustomerMemberRepository.listByCustomerId(customerId, this.deps.db)
+  }
+
+  async removeMember(
+    customerId: number,
+    userId: number,
+    currentUser: DataScopeUser,
+  ): Promise<CustomerMemberWithUser[]> {
+    const existing = await CustomerRepository.findById(customerId, this.deps.db)
+    if (!existing) {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在或已删除')
+    }
+    await this.assertCanOperate(existing, currentUser, 'update')
+    await CustomerMemberRepository.remove(customerId, userId, this.deps.db)
+    return CustomerMemberRepository.listByCustomerId(customerId, this.deps.db)
+  }
+
   /**
    * 检查当前用户是否有权操作指定客户：
-   *   - update：owner 必须在数据范围内；公海客户（public）任何人都能 update 基础字段；
-   *     严格策略：公海客户只允许 claim，不允许 update。
-   *   - delete：仅 owner 在数据范围内可删除（不暴露公海删除）。
+   *   - update：owner / 部门 / 协同人在数据范围内；公海客户只允许 claim，不允许 update。
+   *   - delete：owner / 部门 在数据范围内可删除。协同人**不能删客户** ——
+   *     协同是"一起跟进"，不是"共同处置"。
    */
   private async assertCanOperate(
     row: CustomerRow,
@@ -304,7 +459,15 @@ export class CustomerService {
           '公海客户不能直接编辑，请先认领',
         )
       }
-      if (!inUserScope && !inDeptScope) {
+      if (inUserScope || inDeptScope) return
+      const isCollaborator =
+        scope.collaboratorUserId != null &&
+        (await CustomerMemberRepository.isCollaborator(
+          row.id,
+          scope.collaboratorUserId,
+          this.deps.db,
+        ))
+      if (!isCollaborator) {
         throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_TRANSFER_FORBIDDEN, '无权操作该客户')
       }
       return

@@ -12,11 +12,25 @@ import {
   ProFormSelect,
   ProFormText,
   ProFormTextArea,
-} from '@ant-design/pro-components'
-import { Button, Descriptions, message, Modal, Popconfirm, Space, Tag, Timeline } from 'antd'
-import React, { useEffect, useState } from 'react'
-import { history, useLocation } from '@umijs/max'
+} from '@ant-design/pro-components';
+import { history, useLocation } from '@umijs/max';
 import {
+  Button,
+  Descriptions,
+  Modal,
+  message,
+  Popconfirm,
+  Space,
+  Tag,
+  Timeline,
+} from 'antd';
+import React, { useEffect, useState } from 'react';
+import {
+  type ActivityCreateInput,
+  type ActivityRow,
+  type ContactCreateInput,
+  type ContactRow,
+  type CustomerDetail,
   claimCustomer,
   createActivity,
   createContactForCustomer,
@@ -27,16 +41,11 @@ import {
   listContactsByCustomer,
   listTransfers,
   releaseCustomer,
+  type TransferLogRow,
   transferCustomer,
   updateContact,
   updateCustomer,
-  type ActivityCreateInput,
-  type ActivityRow,
-  type ContactCreateInput,
-  type ContactRow,
-  type CustomerDetail,
-  type TransferLogRow,
-} from '@/services/crm'
+} from '@/services/crm';
 
 const ACTIVITY_OPTIONS = [
   { value: 'phone', label: '电话' },
@@ -45,59 +54,59 @@ const ACTIVITY_OPTIONS = [
   { value: 'meeting', label: '会议' },
   { value: 'email', label: '邮件' },
   { value: 'other', label: '其他' },
-]
+];
 
 function useQueryParam(name: string): string | undefined {
-  const location = useLocation()
-  const search = new URLSearchParams(location.search)
-  return search.get(name) ?? undefined
+  const location = useLocation();
+  const search = new URLSearchParams(location.search);
+  return search.get(name) ?? undefined;
 }
 
 const CustomerDetailPage: React.FC = () => {
-  const idStr = useQueryParam('id')
-  const id = idStr ? Number(idStr) : 0
-  const [customer, setCustomer] = useState<CustomerDetail | null>(null)
-  const [contacts, setContacts] = useState<ContactRow[]>([])
-  const [activities, setActivities] = useState<ActivityRow[]>([])
-  const [transfers, setTransfers] = useState<TransferLogRow[]>([])
-  const [editOpen, setEditOpen] = useState(false)
-  const [activityOpen, setActivityOpen] = useState(false)
-  const [contactOpen, setContactOpen] = useState(false)
-  const [editingContact, setEditingContact] = useState<ContactRow | null>(null)
-  const [loading, setLoading] = useState(false)
+  const idStr = useQueryParam('id');
+  const id = idStr ? Number(idStr) : 0;
+  const [customer, setCustomer] = useState<CustomerDetail | null>(null);
+  const [contacts, setContacts] = useState<ContactRow[]>([]);
+  const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const [transfers, setTransfers] = useState<TransferLogRow[]>([]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [contactOpen, setContactOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<ContactRow | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const load = async () => {
-    if (!id) return
-    setLoading(true)
+    if (!id) return;
+    setLoading(true);
     try {
       const [c, ct, ac, tr] = await Promise.all([
         getCustomer(id),
         listContactsByCustomer(id),
         listActivitiesByCustomer(id),
         listTransfers(id),
-      ])
-      setCustomer(c)
-      setContacts(ct)
-      setActivities(ac.items ?? [])
-      setTransfers(tr)
+      ]);
+      setCustomer(c);
+      setContacts(ct);
+      setActivities(ac.items ?? []);
+      setTransfers(tr);
     } catch (err: any) {
-      message.error(err?.message ?? '加载客户详情失败')
+      message.error(err?.message ?? '加载客户详情失败');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    load()
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  }, [id]);
 
   if (!id) {
     return (
       <PageContainer>
         <div>请指定客户 ID（如 /crm/customer-detail?id=1）</div>
       </PageContainer>
-    )
+    );
   }
 
   if (!customer) {
@@ -105,43 +114,43 @@ const CustomerDetailPage: React.FC = () => {
       <PageContainer loading={loading}>
         <div>{loading ? '加载中…' : '客户不存在或已删除'}</div>
       </PageContainer>
-    )
+    );
   }
 
   const handleEdit = async (values: any) => {
-    await updateCustomer(id, values)
-    message.success('已更新')
-    setEditOpen(false)
-    load()
-  }
+    await updateCustomer(id, values);
+    message.success('已更新');
+    setEditOpen(false);
+    load();
+  };
 
   const handleClaim = async () => {
-    await claimCustomer(id)
-    message.success('已认领')
-    load()
-  }
+    await claimCustomer(id);
+    message.success('已认领');
+    load();
+  };
 
   const handleRelease = async () => {
-    const reason = window.prompt('释放原因（可选）')
-    if (reason === null) return
-    await releaseCustomer(id, reason || undefined)
-    message.success('已释放到公海')
-    load()
-  }
+    const reason = window.prompt('释放原因（可选）');
+    if (reason === null) return;
+    await releaseCustomer(id, reason || undefined);
+    message.success('已释放到公海');
+    load();
+  };
 
   const handleTransfer = async () => {
-    const input = window.prompt('目标用户 ID')
-    if (!input) return
-    const targetUserId = Number(input)
+    const input = window.prompt('目标用户 ID');
+    if (!input) return;
+    const targetUserId = Number(input);
     if (!targetUserId || Number.isNaN(targetUserId)) {
-      message.error('目标用户 ID 不合法')
-      return
+      message.error('目标用户 ID 不合法');
+      return;
     }
-    const reason = window.prompt('转交原因（可选）') ?? undefined
-    await transferCustomer(id, targetUserId, reason)
-    message.success('已转交')
-    load()
-  }
+    const reason = window.prompt('转交原因（可选）') ?? undefined;
+    await transferCustomer(id, targetUserId, reason);
+    message.success('已转交');
+    load();
+  };
 
   const handleDelete = async () => {
     Modal.confirm({
@@ -150,42 +159,45 @@ const CustomerDetailPage: React.FC = () => {
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: async () => {
-        await deleteCustomer(id)
-        message.success('已删除')
-        history.push('/crm/customers')
+        await deleteCustomer(id);
+        message.success('已删除');
+        history.push('/crm/customers');
       },
-    })
-  }
+    });
+  };
 
   const handleWriteActivity = async (values: ActivityCreateInput) => {
-    await createActivity(id, values)
-    message.success('跟进已记录')
-    setActivityOpen(false)
-    load()
-  }
+    await createActivity(id, values);
+    message.success('跟进已记录');
+    setActivityOpen(false);
+    load();
+  };
 
   const handleCreateContact = async (values: Record<string, unknown>) => {
-    await createContactForCustomer(id, values as Omit<ContactCreateInput, 'customerId'>)
-    message.success('联系人已添加')
-    setContactOpen(false)
-    setEditingContact(null)
-    load()
-  }
+    await createContactForCustomer(
+      id,
+      values as Omit<ContactCreateInput, 'customerId'>,
+    );
+    message.success('联系人已添加');
+    setContactOpen(false);
+    setEditingContact(null);
+    load();
+  };
 
   const handleUpdateContact = async (values: Partial<ContactCreateInput>) => {
-    if (!editingContact) return
-    await updateContact(editingContact.id, values)
-    message.success('联系人已更新')
-    setContactOpen(false)
-    setEditingContact(null)
-    load()
-  }
+    if (!editingContact) return;
+    await updateContact(editingContact.id, values);
+    message.success('联系人已更新');
+    setContactOpen(false);
+    setEditingContact(null);
+    load();
+  };
 
   const handleDeleteContact = async (contactId: number) => {
-    await deleteContact(contactId)
-    message.success('联系人已删除')
-    load()
-  }
+    await deleteContact(contactId);
+    message.success('联系人已删除');
+    load();
+  };
 
   return (
     <PageContainer
@@ -205,7 +217,11 @@ const CustomerDetailPage: React.FC = () => {
         breadcrumb: {},
       }}
       extra={[
-        <Button key="activity" type="primary" onClick={() => setActivityOpen(true)}>
+        <Button
+          key="activity"
+          type="primary"
+          onClick={() => setActivityOpen(true)}
+        >
           写跟进
         </Button>,
         <Button key="edit" onClick={() => setEditOpen(true)}>
@@ -233,7 +249,9 @@ const CustomerDetailPage: React.FC = () => {
     >
       <div style={{ display: 'flex', gap: 16 }}>
         {/* 左侧：最近跟进时间线 */}
-        <div style={{ flex: 2, background: '#fff', padding: 16, borderRadius: 8 }}>
+        <div
+          style={{ flex: 2, background: '#fff', padding: 16, borderRadius: 8 }}
+        >
           <h3 style={{ marginTop: 0 }}>最近跟进</h3>
           {activities.length === 0 ? (
             <div style={{ color: '#999' }}>暂无跟进记录</div>
@@ -244,7 +262,9 @@ const CustomerDetailPage: React.FC = () => {
                   <div>
                     <div>
                       <Tag color="blue">{a.type}</Tag>
-                      <strong>{a.operatorUserName ?? `用户${a.operatorUserId}`}</strong>
+                      <strong>
+                        {a.operatorUserName ?? `用户${a.operatorUserId}`}
+                      </strong>
                       <span style={{ color: '#999', marginLeft: 8 }}>
                         {new Date(a.occurredAt).toLocaleString()}
                       </span>
@@ -263,7 +283,9 @@ const CustomerDetailPage: React.FC = () => {
         </div>
 
         {/* 右侧：客户信息摘要 */}
-        <div style={{ flex: 1, background: '#fff', padding: 16, borderRadius: 8 }}>
+        <div
+          style={{ flex: 1, background: '#fff', padding: 16, borderRadius: 8 }}
+        >
           <h3 style={{ marginTop: 0 }}>客户信息</h3>
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="负责人">
@@ -299,17 +321,38 @@ const CustomerDetailPage: React.FC = () => {
       </div>
 
       {/* 联系人 Tab */}
-      <div style={{ marginTop: 16, background: '#fff', padding: 16, borderRadius: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        style={{
+          marginTop: 16,
+          background: '#fff',
+          padding: 16,
+          borderRadius: 8,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <h3 style={{ margin: 0 }}>联系人</h3>
-          <Button type="primary" onClick={() => { setEditingContact(null); setContactOpen(true) }}>
+          <Button
+            type="primary"
+            onClick={() => {
+              setEditingContact(null);
+              setContactOpen(true);
+            }}
+          >
             新建联系人
           </Button>
         </div>
         {contacts.length === 0 ? (
           <div style={{ color: '#999', marginTop: 12 }}>暂无联系人</div>
         ) : (
-          <table style={{ width: '100%', marginTop: 12, borderCollapse: 'collapse' }}>
+          <table
+            style={{ width: '100%', marginTop: 12, borderCollapse: 'collapse' }}
+          >
             <thead>
               <tr style={{ background: '#fafafa', textAlign: 'left' }}>
                 <th style={{ padding: 8 }}>姓名</th>
@@ -325,16 +368,27 @@ const CustomerDetailPage: React.FC = () => {
               {contacts.map((c) => (
                 <tr key={c.id} style={{ borderTop: '1px solid #f0f0f0' }}>
                   <td style={{ padding: 8 }}>{c.name}</td>
-                  <td style={{ padding: 8 }}>{c.gender === 1 ? '男' : c.gender === 2 ? '女' : '—'}</td>
+                  <td style={{ padding: 8 }}>
+                    {c.gender === 1 ? '男' : c.gender === 2 ? '女' : '—'}
+                  </td>
                   <td style={{ padding: 8 }}>{c.mobile ?? '—'}</td>
                   <td style={{ padding: 8 }}>{c.email ?? '—'}</td>
                   <td style={{ padding: 8 }}>
                     {c.department ?? '—'} / {c.position ?? '—'}
                   </td>
-                  <td style={{ padding: 8 }}>{c.isPrimary === 1 ? <Tag color="blue">主联系人</Tag> : '—'}</td>
+                  <td style={{ padding: 8 }}>
+                    {c.isPrimary === 1 ? <Tag color="blue">主联系人</Tag> : '—'}
+                  </td>
                   <td style={{ padding: 8 }}>
                     <Space size={12}>
-                      <a onClick={() => { setEditingContact(c); setContactOpen(true) }}>编辑</a>
+                      <a
+                        onClick={() => {
+                          setEditingContact(c);
+                          setContactOpen(true);
+                        }}
+                      >
+                        编辑
+                      </a>
                       <Popconfirm
                         title={`确认删除「${c.name}」？`}
                         okText="删除"
@@ -353,8 +407,21 @@ const CustomerDetailPage: React.FC = () => {
       </div>
 
       {/* 跟进记录 */}
-      <div style={{ marginTop: 16, background: '#fff', padding: 16, borderRadius: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div
+        style={{
+          marginTop: 16,
+          background: '#fff',
+          padding: 16,
+          borderRadius: 8,
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <h3 style={{ margin: 0 }}>跟进记录</h3>
           <Button type="primary" onClick={() => setActivityOpen(true)}>
             写跟进
@@ -370,7 +437,9 @@ const CustomerDetailPage: React.FC = () => {
                 <div>
                   <div>
                     <Tag color="blue">{a.type}</Tag>
-                    <strong>{a.operatorUserName ?? `用户${a.operatorUserId}`}</strong>
+                    <strong>
+                      {a.operatorUserName ?? `用户${a.operatorUserId}`}
+                    </strong>
                     <span style={{ color: '#999', marginLeft: 8 }}>
                       {new Date(a.occurredAt).toLocaleString()}
                     </span>
@@ -389,7 +458,14 @@ const CustomerDetailPage: React.FC = () => {
       </div>
 
       {/* 流转记录 */}
-      <div style={{ marginTop: 16, background: '#fff', padding: 16, borderRadius: 8 }}>
+      <div
+        style={{
+          marginTop: 16,
+          background: '#fff',
+          padding: 16,
+          borderRadius: 8,
+        }}
+      >
         <h3 style={{ marginTop: 0 }}>流转记录</h3>
         {transfers.length === 0 ? (
           <div style={{ color: '#999' }}>暂无流转记录</div>
@@ -401,7 +477,7 @@ const CustomerDetailPage: React.FC = () => {
                 transfer: '转交',
                 claim: '认领',
                 release: '释放',
-              }
+              };
               return {
                 children: (
                   <div>
@@ -418,16 +494,23 @@ const CustomerDetailPage: React.FC = () => {
                       {t.type === 'release' && t.fromUserName && (
                         <>{t.fromUserName} 释放了该客户</>
                       )}
-                      {t.type === 'transfer' && t.fromUserName && t.toUserName && (
-                        <>{t.fromUserName} → {t.toUserName}（操作人：{t.operatorUserName ?? '—'}）</>
-                      )}
+                      {t.type === 'transfer' &&
+                        t.fromUserName &&
+                        t.toUserName && (
+                          <>
+                            {t.fromUserName} → {t.toUserName}（操作人：
+                            {t.operatorUserName ?? '—'}）
+                          </>
+                        )}
                       {t.reason && (
-                        <span style={{ color: '#666', marginLeft: 8 }}>原因：{t.reason}</span>
+                        <span style={{ color: '#666', marginLeft: 8 }}>
+                          原因：{t.reason}
+                        </span>
                       )}
                     </div>
                   </div>
                 ),
-              }
+              };
             })}
           />
         )}
@@ -439,8 +522,8 @@ const CustomerDetailPage: React.FC = () => {
         open={activityOpen}
         onOpenChange={(open) => setActivityOpen(open)}
         onFinish={async (values: ActivityCreateInput) => {
-          await handleWriteActivity(values)
-          return true
+          await handleWriteActivity(values);
+          return true;
         }}
         drawerProps={{ destroyOnClose: true, width: 520 }}
         initialValues={{ type: 'phone' }}
@@ -472,19 +555,21 @@ const CustomerDetailPage: React.FC = () => {
 
       {/* 新建/编辑联系人 Drawer */}
       <DrawerForm
-        title={editingContact ? `编辑联系人「${editingContact.name}」` : '新建联系人'}
+        title={
+          editingContact ? `编辑联系人「${editingContact.name}」` : '新建联系人'
+        }
         open={contactOpen}
         onOpenChange={(open) => {
-          setContactOpen(open)
-          if (!open) setEditingContact(null)
+          setContactOpen(open);
+          if (!open) setEditingContact(null);
         }}
         onFinish={async (values) => {
           if (editingContact) {
-            await handleUpdateContact(values)
+            await handleUpdateContact(values);
           } else {
-            await handleCreateContact(values)
+            await handleCreateContact(values);
           }
-          return true
+          return true;
         }}
         initialValues={
           editingContact
@@ -502,7 +587,11 @@ const CustomerDetailPage: React.FC = () => {
         }
         drawerProps={{ destroyOnClose: true, width: 520 }}
       >
-        <ProFormText name="name" label="姓名" rules={[{ required: true, max: 100 }]} />
+        <ProFormText
+          name="name"
+          label="姓名"
+          rules={[{ required: true, max: 100 }]}
+        />
         <ProFormSelect
           name="gender"
           label="性别"
@@ -533,8 +622,8 @@ const CustomerDetailPage: React.FC = () => {
         open={editOpen}
         onOpenChange={(open) => setEditOpen(open)}
         onFinish={async (values) => {
-          await handleEdit(values)
-          return true
+          await handleEdit(values);
+          return true;
         }}
         initialValues={{
           name: customer.name,
@@ -552,7 +641,11 @@ const CustomerDetailPage: React.FC = () => {
         }}
         drawerProps={{ destroyOnClose: true, width: 720 }}
       >
-        <ProFormText name="name" label="客户名称" rules={[{ required: true, max: 200 }]} />
+        <ProFormText
+          name="name"
+          label="客户名称"
+          rules={[{ required: true, max: 200 }]}
+        />
         <ProFormSelect
           name="type"
           label="客户类型"
@@ -571,7 +664,7 @@ const CustomerDetailPage: React.FC = () => {
         <ProFormTextArea name="remark" label="备注" fieldProps={{ rows: 3 }} />
       </DrawerForm>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default CustomerDetailPage
+export default CustomerDetailPage;

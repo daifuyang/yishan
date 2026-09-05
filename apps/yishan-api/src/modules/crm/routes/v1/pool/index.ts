@@ -2,7 +2,7 @@ import { type FastifyPluginAsync } from 'fastify'
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
 import { ResponseUtil } from '@/utils/response.js'
 import { CustomerService } from '../../../services/customer.service.js'
-import { CustomerListQuerySchema, CustomerRespSchema } from '../../../schemas/customer.schema.js'
+import { CustomerListQuerySchema, CustomerListItemRespSchema } from '../../../schemas/customer.schema.js'
 import { ROUTE_TAG, PaginatedEnvelopeSchema } from '../../../schemas/routes.schema.js'
 import { CrmPermissions as PERMS } from '../../../schemas/permissions.js'
 
@@ -25,11 +25,11 @@ export default (async (app) => {
         summary: '客户公海',
         operationId: 'crmPoolList',
         querystring: CustomerListQuerySchema,
-        response: { 200: PaginatedEnvelopeSchema(CustomerRespSchema) },
+        response: { 200: PaginatedEnvelopeSchema(CustomerListItemRespSchema) },
       },
     },
     async (request: any, reply: any) => {
-      const result = await service.list({
+      const result = await service.listPool({
         query: { ...request.query, poolStatus: 'public' },
         currentUser: request.currentUser,
       })

@@ -5,11 +5,11 @@
  * 待跟进客户 / 最近动态 两个列表。
  */
 
-import { PageContainer } from '@ant-design/pro-components'
-import { Card, Col, Empty, Row, Space, Statistic, Tag, Timeline } from 'antd'
-import React, { useEffect, useState } from 'react'
-import { history } from '@umijs/max'
-import { getDashboard, type DashboardData } from '@/services/crm'
+import { PageContainer } from '@ant-design/pro-components';
+import { history } from '@umijs/max';
+import { Card, Col, Empty, Row, Space, Statistic, Tag, Timeline } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { type DashboardData, getDashboard } from '@/services/crm';
 
 const TYPE_LABEL: Record<string, string> = {
   phone: '电话',
@@ -18,22 +18,22 @@ const TYPE_LABEL: Record<string, string> = {
   meeting: '会议',
   email: '邮件',
   other: '其他',
-}
+};
 
 const Dashboard: React.FC = () => {
-  const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let alive = true
-    setLoading(true)
+    let alive = true;
+    setLoading(true);
     getDashboard()
       .then((d) => alive && setData(d))
-      .finally(() => alive && setLoading(false))
+      .finally(() => alive && setLoading(false));
     return () => {
-      alive = false
-    }
-  }, [])
+      alive = false;
+    };
+  }, []);
 
   return (
     <PageContainer
@@ -46,7 +46,10 @@ const Dashboard: React.FC = () => {
       <Row gutter={16}>
         <Col span={4}>
           <Card>
-            <Statistic title="我的客户" value={data?.counters.myCustomers ?? 0} />
+            <Statistic
+              title="我的客户"
+              value={data?.counters.myCustomers ?? 0}
+            />
           </Card>
         </Col>
         <Col span={4}>
@@ -65,12 +68,18 @@ const Dashboard: React.FC = () => {
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="公海客户" value={data?.counters.publicPool ?? 0} />
+            <Statistic
+              title="公海客户"
+              value={data?.counters.publicPool ?? 0}
+            />
           </Card>
         </Col>
         <Col span={4}>
           <Card>
-            <Statistic title="本周跟进" value={data?.counters.weekFollowUps ?? 0} />
+            <Statistic
+              title="本周跟进"
+              value={data?.counters.weekFollowUps ?? 0}
+            />
           </Card>
         </Col>
         <Col span={4}>
@@ -90,7 +99,11 @@ const Dashboard: React.FC = () => {
                 items={(data?.pendingFollowUps ?? []).map((p) => ({
                   children: (
                     <div>
-                      <a onClick={() => history.push(`/crm/customer-detail?id=${p.id}`)}>
+                      <a
+                        onClick={() =>
+                          history.push(`/crm/customer-detail?id=${p.id}`)
+                        }
+                      >
                         {p.name}
                       </a>
                       <span style={{ color: '#999', marginLeft: 8 }}>
@@ -98,7 +111,8 @@ const Dashboard: React.FC = () => {
                       </span>
                       {p.nextFollowUpAt && (
                         <div style={{ color: '#1890ff', marginTop: 4 }}>
-                          计划跟进：{new Date(p.nextFollowUpAt).toLocaleString()}
+                          计划跟进：
+                          {new Date(p.nextFollowUpAt).toLocaleString()}
                         </div>
                       )}
                       {p.statusName && (
@@ -125,7 +139,13 @@ const Dashboard: React.FC = () => {
                       <Space>
                         <Tag color="blue">{TYPE_LABEL[a.type] ?? a.type}</Tag>
                         <strong>{a.operatorUserName ?? `用户`}</strong>
-                        <a onClick={() => history.push(`/crm/customer-detail?id=${a.customerId}`)}>
+                        <a
+                          onClick={() =>
+                            history.push(
+                              `/crm/customer-detail?id=${a.customerId}`,
+                            )
+                          }
+                        >
                           {a.customerName}
                         </a>
                       </Space>
@@ -142,7 +162,7 @@ const Dashboard: React.FC = () => {
         </Col>
       </Row>
     </PageContainer>
-  )
-}
+  );
+};
 
-export default Dashboard
+export default Dashboard;

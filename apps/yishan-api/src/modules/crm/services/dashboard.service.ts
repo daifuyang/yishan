@@ -67,7 +67,17 @@ export class DashboardService {
     const isSuper = scope.ownerUserIds === null
     void isSuper
 
-    const [myCustomers, pendingFollowUp, todayNew, publicPool, weekFollowUps, monthNew] = await Promise.all([
+    const now = new Date()
+
+    const [
+      myCustomers,
+      pendingFollowUp,
+      overdueFollowUp,
+      todayNew,
+      publicPool,
+      weekFollowUps,
+      monthNew,
+    ] = await Promise.all([
       // 我的客户（owner_user_id = me 且 owned）
       DashboardRepository.countWhere(
         [eq(crmCustomer.poolStatus, 'owned'), eq(crmCustomer.ownerUserId, user.id)],
@@ -76,6 +86,16 @@ export class DashboardService {
       // 待跟进：owner = me 且 next_follow_up_at 非空
       DashboardRepository.countWhere(
         [eq(crmCustomer.ownerUserId, user.id), sql`${crmCustomer.nextFollowUpAt} IS NOT NULL`],
+        this.deps.db,
+      ),
+      // 逾期未跟进：owner = me 且 next_follow_up_at < now（已过期但还没动）
+      DashboardRepository.countWhere(
+        [
+          eq(crmCustomer.poolStatus, 'owned'),
+          eq(crmCustomer.ownerUserId, user.id),
+          sql`${crmCustomer.nextFollowUpAt} IS NOT NULL`,
+          sql`${crmCustomer.nextFollowUpAt} < ${now}`,
+        ],
         this.deps.db,
       ),
       // 今日新增：created_at >= today
@@ -91,6 +111,7 @@ export class DashboardService {
     return {
       myCustomers,
       pendingFollowUp,
+      overdueFollowUp,
       todayNew,
       publicPool,
       weekFollowUps,

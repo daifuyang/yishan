@@ -12,8 +12,11 @@ import {
   CustomerCreateRespSchema,
   CustomerDetailRespSchema,
   CustomerListQuerySchema,
+  CustomerMemberAddReqSchema,
+  CustomerMemberListRespSchema,
   CustomerReleaseReqSchema,
   CustomerRespSchema,
+  CustomerListItemRespSchema,
   CustomerTransferReqSchema,
   CustomerUpdateReqSchema,
 } from '../../../schemas/customer.schema.js'
@@ -54,12 +57,56 @@ const TransferLogRespSchema = Type.Object({
   operatorUserName: Type.Union([Type.String(), Type.Null()]),
 })
 
+const MemberUserIdParamsSchema = Type.Object({
+  id: Type.Integer({ minimum: 1 }),
+  userId: Type.Integer({ minimum: 1 }),
+})
+
+/** 无效日期不静默变成 Invalid Date（它会让 SQL 比较全部失真），直接当没传。 */
+function toDate(value: unknown): Date | undefined {
+  if (typeof value !== 'string' || value.length === 0) return undefined
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? undefined : d
+}
+
+/**
+ * querystring（全是字符串 / 字符串数组）→ service 的 CustomerListQuery。
+ * 这是协议层的活，所以留在 route 里；service 只接受已经规整好的类型。
+ */
+function normalizeListQuery(q: Record<string, unknown>) {
+  return {
+    ...q,
+    tagIds: Array.isArray(q.tagIds)
+      ? (q.tagIds as unknown[]).map(Number).filter((n) => Number.isInteger(n))
+      : undefined,
+    createdFrom: toDate(q.createdFrom),
+    createdTo: toDate(q.createdTo),
+    lastFollowUpFrom: toDate(q.lastFollowUpFrom),
+    lastFollowUpTo: toDate(q.lastFollowUpTo),
+    nextFollowUpFrom: toDate(q.nextFollowUpFrom),
+    nextFollowUpTo: toDate(q.nextFollowUpTo),
+  }
+}
+
 export default (async (app) => {
   const route = createRouteRegistrar(app)
   const service = new CustomerService()
   const flow = new CustomerFlowService()
   const activityService = new ActivityService()
   const contactService = new ContactService()
+
+  route.get('/options', {
+    access: { permission: PERMS.CUSTOMER_LIST },
+    schema: {
+      tags: [ROUTE_TAG],
+      summary: '私域客户列表筛选能力及可见负责人',
+      operationId: 'crmCustomersOptions',
+      response: { 200: EnvelopeSchema(Type.Object({
+        canFilterOwners: Type.Boolean(),
+        owners: Type.Array(Type.Object({ id: Type.Number(), name: Type.String() })),
+      })) },
+    },
+  }, async (request, reply) => ResponseUtil.success(reply, await service.listOptions(request.currentUser)))
 
   // 列表
   route.get(
@@ -71,12 +118,35 @@ export default (async (app) => {
         summary: '客户列表',
         operationId: 'crmCustomersList',
         querystring: CustomerListQuerySchema,
-        response: { 200: PaginatedEnvelopeSchema(CustomerRespSchema) },
+        response: { 200: PaginatedEnvelopeSchema(CustomerListItemRespSchema) },
       },
     },
     async (request: any, reply: any) => {
       const result = await service.list({
-        query: request.query,
+        query: normalizeListQuery(request.query) as any,
+        currentUser: request.currentUser,
+      })
+      return ResponseUtil.paginated(reply, result.items, result.page, result.pageSize, result.total)
+    },
+  )
+
+  // 回收站列表。注册在 `/:id` 之前，且 `/trash` 是静态段，radix 路由优先匹配静态段，
+  // 不会被 `/:id` 抢走。
+  route.get(
+    '/trash',
+    {
+      access: { permission: PERMS.CUSTOMER_TRASH },
+      schema: {
+        tags: [ROUTE_TAG],
+        summary: '客户回收站列表',
+        operationId: 'crmCustomersTrashList',
+        querystring: CustomerListQuerySchema,
+        response: { 200: PaginatedEnvelopeSchema(CustomerListItemRespSchema) },
+      },
+    },
+    async (request: any, reply: any) => {
+      const result = await service.listTrash({
+        query: normalizeListQuery(request.query) as any,
         currentUser: request.currentUser,
       })
       return ResponseUtil.paginated(reply, result.items, result.page, result.pageSize, result.total)
@@ -257,6 +327,107 @@ export default (async (app) => {
         currentUser: request.currentUser,
       })
       return ResponseUtil.success(reply, updated, '客户转交成功')
+    },
+  )
+
+  // ─── 回收站 Action：恢复 / 永久删除 ───────────────────────
+  route.post(
+    '/:id/restore',
+    {
+      access: { permission: PERMS.CUSTOMER_RESTORE },
+      schema: {
+        tags: [ROUTE_TAG],
+        summary: '从回收站恢复客户',
+        operationId: 'crmCustomersRestore',
+        params: CustomerIdParamsSchema,
+        response: { 200: EnvelopeSchema(CustomerRespSchema) },
+      },
+    },
+    async (request: any, reply: any) => {
+      const restored = await service.restore(Number(request.params.id), request.currentUser)
+      return ResponseUtil.success(reply, restored, '客户已恢复')
+    },
+  )
+
+  route.delete(
+    '/:id/purge',
+    {
+      access: { permission: PERMS.CUSTOMER_PURGE },
+      schema: {
+        tags: [ROUTE_TAG],
+        summary: '永久删除客户（仅回收站内）',
+        operationId: 'crmCustomersPurge',
+        params: CustomerIdParamsSchema,
+        response: { 200: OkEnvelopeSchema },
+      },
+    },
+    async (request: any, reply: any) => {
+      await service.purge(Number(request.params.id), request.currentUser)
+      return ResponseUtil.success(reply, null, '客户已永久删除')
+    },
+  )
+
+  // ─── 协同人 ─────────────────────────────────────────────
+  route.get(
+    '/:id/members',
+    {
+      access: { permission: PERMS.CUSTOMER_DETAIL },
+      schema: {
+        tags: [ROUTE_TAG],
+        summary: '客户协同人列表',
+        operationId: 'crmCustomerMembersList',
+        params: CustomerIdParamsSchema,
+        response: { 200: EnvelopeSchema(CustomerMemberListRespSchema) },
+      },
+    },
+    async (request: any, reply: any) => {
+      const items = await service.listMembers(Number(request.params.id), request.currentUser)
+      return ResponseUtil.success(reply, { items })
+    },
+  )
+
+  route.post(
+    '/:id/members',
+    {
+      access: { permission: PERMS.CUSTOMER_MEMBER_MANAGE },
+      schema: {
+        tags: [ROUTE_TAG],
+        summary: '添加客户协同人',
+        operationId: 'crmCustomerMembersAdd',
+        params: CustomerIdParamsSchema,
+        body: CustomerMemberAddReqSchema,
+        response: { 200: EnvelopeSchema(CustomerMemberListRespSchema) },
+      },
+    },
+    async (request: any, reply: any) => {
+      const items = await service.addMember(
+        Number(request.params.id),
+        Number(request.body.userId),
+        request.currentUser,
+      )
+      return ResponseUtil.success(reply, { items }, '协同人已添加')
+    },
+  )
+
+  route.delete(
+    '/:id/members/:userId',
+    {
+      access: { permission: PERMS.CUSTOMER_MEMBER_MANAGE },
+      schema: {
+        tags: [ROUTE_TAG],
+        summary: '移除客户协同人',
+        operationId: 'crmCustomerMembersRemove',
+        params: MemberUserIdParamsSchema,
+        response: { 200: EnvelopeSchema(CustomerMemberListRespSchema) },
+      },
+    },
+    async (request: any, reply: any) => {
+      const items = await service.removeMember(
+        Number(request.params.id),
+        Number(request.params.userId),
+        request.currentUser,
+      )
+      return ResponseUtil.success(reply, { items }, '协同人已移除')
     },
   )
 

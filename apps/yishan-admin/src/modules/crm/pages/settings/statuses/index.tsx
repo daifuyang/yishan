@@ -4,18 +4,23 @@
  * 系统预置（is_system=1）不允许删除；所有 status 仅允许修改 name/sort/enabled。
  */
 
-import { PageContainer, ProFormDigit, ProFormText, type ProColumns } from '@ant-design/pro-components'
-import { Popconfirm, Space, Switch, Tag, message } from 'antd'
-import React from 'react'
+import {
+  PageContainer,
+  type ProColumns,
+  ProFormDigit,
+  ProFormText,
+} from '@ant-design/pro-components';
+import { message, Popconfirm, Space, Switch, Tag } from 'antd';
+import React from 'react';
 import {
   createStatus,
   deleteStatus,
   listStatuses,
-  updateStatus,
   type StatusInput,
   type StatusRow,
-} from '@/services/crm'
-import { makeSettingsPage } from '../_shared'
+  updateStatus,
+} from '@/services/crm';
+import { makeSettingsPage } from '../_shared';
 
 const Page = makeSettingsPage<StatusRow, StatusInput>({
   title: '客户状态',
@@ -25,9 +30,9 @@ const Page = makeSettingsPage<StatusRow, StatusInput>({
   update: (id, input) => updateStatus(id, input),
   remove: async (id) => {
     try {
-      await deleteStatus(id)
+      await deleteStatus(id);
     } catch (err: any) {
-      message.error(err?.message ?? '删除失败')
+      message.error(err?.message ?? '删除失败');
     }
   },
   columns: ({ canEdit, canDelete, onEdit, onDelete }) => {
@@ -38,14 +43,23 @@ const Page = makeSettingsPage<StatusRow, StatusInput>({
         title: '类型',
         dataIndex: 'type',
         width: 100,
-        render: (_, r) => <Tag color={r.type === 'won' ? 'green' : r.type === 'lost' ? 'red' : 'blue'}>{r.type}</Tag>,
+        render: (_, r) => (
+          <Tag
+            color={
+              r.type === 'won' ? 'green' : r.type === 'lost' ? 'red' : 'blue'
+            }
+          >
+            {r.type}
+          </Tag>
+        ),
       },
       { title: '排序', dataIndex: 'sort', width: 100 },
       {
         title: '系统',
         dataIndex: 'isSystem',
         width: 80,
-        render: (_, r) => (r.isSystem === 1 ? <Tag color="gold">系统</Tag> : '—'),
+        render: (_, r) =>
+          r.isSystem === 1 ? <Tag color="gold">系统</Tag> : '—',
       },
       {
         title: '启用',
@@ -56,10 +70,10 @@ const Page = makeSettingsPage<StatusRow, StatusInput>({
             checked={r.enabled === 1}
             onChange={async (v) => {
               try {
-                await updateStatus(r.id, { enabled: v ? 1 : 0 })
-                message.success('已更新')
+                await updateStatus(r.id, { enabled: v ? 1 : 0 });
+                message.success('已更新');
               } catch (err: any) {
-                message.error(err?.message ?? '更新失败')
+                message.error(err?.message ?? '更新失败');
               }
             }}
           />
@@ -96,24 +110,38 @@ const Page = makeSettingsPage<StatusRow, StatusInput>({
           </Space>
         ),
       },
-    ]
-    return cols
+    ];
+    return cols;
   },
   formFields: () => (
     <>
-      <ProFormText name="name" label="状态名称" rules={[{ required: true, max: 50 }]} />
-      <ProFormDigit name="sort" label="排序" fieldProps={{ precision: 0 }} initialValue={0} />
-      <ProFormDigit name="enabled" label="启用" fieldProps={{ precision: 0 }} initialValue={1} />
+      <ProFormText
+        name="name"
+        label="状态名称"
+        rules={[{ required: true, max: 50 }]}
+      />
+      <ProFormDigit
+        name="sort"
+        label="排序"
+        fieldProps={{ precision: 0 }}
+        initialValue={0}
+      />
+      <ProFormDigit
+        name="enabled"
+        label="启用"
+        fieldProps={{ precision: 0 }}
+        initialValue={1}
+      />
     </>
   ),
-})
+});
 
 const StatusesPage: React.FC = () => {
   return (
     <PageContainer header={{ title: '客户状态' }}>
       <Page canCreate canEdit canDelete />
     </PageContainer>
-  )
-}
+  );
+};
 
-export default StatusesPage
+export default StatusesPage;

@@ -32,6 +32,21 @@ describe('computeDataScope', () => {
     expect(scope.ownerDepartmentIds).toBeNull()
   })
 
+  it('super_admin 不带 collaboratorUserId（让它本来就不过滤，再加 EXISTS 只会拖慢查询）', () => {
+    const scope = computeDataScope({ id: 1, roleCodes: ['super_admin'] })
+    expect(scope.collaboratorUserId).toBeNull()
+  })
+
+  it('普通销售 → collaboratorUserId = me（自己协同的客户也可见）', () => {
+    const scope = computeDataScope({ id: 7, roleCodes: ['sales'] })
+    expect(scope.collaboratorUserId).toBe(7)
+  })
+
+  it('销售主管 → collaboratorUserId = me（部门内所有客户 + 自己协同的客户）', () => {
+    const scope = computeDataScope({ id: 7, roleCodes: ['sales_lead'], deptIds: [10] })
+    expect(scope.collaboratorUserId).toBe(7)
+  })
+
   it('缺省 roleCodes / deptIds → SELF', () => {
     const scope = computeDataScope({ id: 7 })
     expect(scope.ownerUserIds).toEqual([7])

@@ -8,6 +8,13 @@
       "when": 1788181797346,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1788418325943,
+      "tag": "0001_collaborator_and_activity_soft_delete",
+      "breakpoints": true
     }
   ]
 }
