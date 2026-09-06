@@ -44,7 +44,9 @@
               { "type": 2, "name": "领取", "permissionCodes": ["crm:lead:claim"], "sortOrder": 3, "hideInMenu": 1 },
               { "type": 2, "name": "分配", "permissionCodes": ["crm:lead:assign"], "sortOrder": 4, "hideInMenu": 1 },
               { "type": 2, "name": "判为有效", "permissionCodes": ["crm:lead:qualify"], "sortOrder": 5, "hideInMenu": 1 },
-              { "type": 2, "name": "作废", "permissionCodes": ["crm:lead:disqualify"], "sortOrder": 6, "hideInMenu": 1 }
+              { "type": 2, "name": "作废", "permissionCodes": ["crm:lead:disqualify"], "sortOrder": 6, "hideInMenu": 1 },
+              { "type": 2, "name": "重新激活", "permissionCodes": ["crm:lead:reactivate"], "sortOrder": 7, "hideInMenu": 1 },
+              { "type": 2, "name": "转为客户", "permissionCodes": ["crm:lead:convert"], "sortOrder": 8, "hideInMenu": 1 }
             ]
           },
           {

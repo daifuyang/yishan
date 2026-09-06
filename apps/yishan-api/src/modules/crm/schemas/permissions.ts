@@ -35,6 +35,8 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   LEAD_RETURN_TO_POOL: { code: 'crm:lead:return', label: 'CRM-线索-退回公海', group: 'crm' },
   LEAD_QUALIFY: { code: 'crm:lead:qualify', label: 'CRM-线索-判定', group: 'crm' },
   LEAD_DISQUALIFY: { code: 'crm:lead:disqualify', label: 'CRM-线索-作废', group: 'crm' },
+  LEAD_REACTIVATE: { code: 'crm:lead:reactivate', label: 'CRM-线索-重新激活', group: 'crm' },
+  LEAD_CONVERT: { code: 'crm:lead:convert', label: 'CRM-线索-转为客户', group: 'crm' },
 
   POOL_LIST: { code: 'crm:pool:list', label: 'CRM-公海-查看', group: 'crm' },
 

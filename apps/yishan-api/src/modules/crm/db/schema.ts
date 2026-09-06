@@ -98,6 +98,8 @@ export const crmLead = mysqlTable(
     lastFollowUpAt: datetime('last_follow_up_at'),
     nextFollowUpAt: datetime('next_follow_up_at'),
     disqualifyReason: varchar('disqualify_reason', { length: 500 }),
+    /** 标准化作废原因代码：duplicate / not_target / no_demand / unreachable / invalid_contact / rejected / other */
+    disqualifyCode: varchar('disqualify_code', { length: 32 }),
     convertedCustomerId: int('converted_customer_id'),
     convertedContactId: int('converted_contact_id'),
     convertedAt: datetime('converted_at'),
@@ -115,6 +117,7 @@ export const crmLead = mysqlTable(
     idxEmail: index('idx_crm_lead_email').on(t.email),
     idxNextFollowUp: index('idx_crm_lead_next_follow_up_at').on(t.nextFollowUpAt),
     idxDeletedAt: index('idx_crm_lead_deleted_at').on(t.deletedAt),
+    idxDisqualifyCode: index('idx_crm_lead_disqualify_code').on(t.disqualifyCode),
   }),
 )
 
