@@ -12,6 +12,8 @@ import {
   LeadDisqualifyReqSchema,
   LeadIdParamSchema,
   LeadListQuerySchema,
+  LeadQualificationReqSchema,
+  LeadReactivateReqSchema,
   LeadRespSchema,
   LeadUpdateReqSchema,
 } from '../../../schemas/lead.schema.js'
@@ -54,12 +56,16 @@ export default (async (app) => {
     const row = await service.claim({ leadId: request.params.id, currentUser: request.currentUser })
     return ResponseUtil.success(reply, row, '线索领取成功')
   })
-  route.post('/:id/qualify', { access: { permission: PERMS.LEAD_QUALIFY }, schema: { tags: [ROUTE_TAG], summary: '判为有效', operationId: 'crmLeadsQualify', params: LeadIdParamSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
-    const row = await service.qualify({ leadId: request.params.id, currentUser: request.currentUser })
+  route.post('/:id/qualify', { access: { permission: PERMS.LEAD_QUALIFY }, schema: { tags: [ROUTE_TAG], summary: '判为有效', operationId: 'crmLeadsQualify', params: LeadIdParamSchema, body: LeadQualificationReqSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
+    const row = await service.qualify({ leadId: request.params.id, evidence: request.body.evidence, nextAction: request.body.nextAction, currentUser: request.currentUser })
     return ResponseUtil.success(reply, row, '线索已判为有效')
   })
   route.post('/:id/disqualify', { access: { permission: PERMS.LEAD_DISQUALIFY }, schema: { tags: [ROUTE_TAG], summary: '作废线索', operationId: 'crmLeadsDisqualify', params: LeadIdParamSchema, body: LeadDisqualifyReqSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
-    const row = await service.disqualify({ leadId: request.params.id, reason: request.body.reason, currentUser: request.currentUser })
+    const row = await service.disqualify({ leadId: request.params.id, code: request.body.code, reason: request.body.reason, currentUser: request.currentUser })
     return ResponseUtil.success(reply, row, '线索已作废')
+  })
+  route.post('/:id/reactivate', { access: { permission: PERMS.LEAD_REACTIVATE }, schema: { tags: [ROUTE_TAG], summary: '重新激活线索', operationId: 'crmLeadsReactivate', params: LeadIdParamSchema, body: LeadReactivateReqSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
+    const row = await service.reactivate({ leadId: request.params.id, reason: request.body.reason, currentUser: request.currentUser })
+    return ResponseUtil.success(reply, row, '线索已重新激活')
   })
 }) as FastifyPluginAsync

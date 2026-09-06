@@ -2,11 +2,15 @@ import { BusinessError } from '@/exceptions/business-error.js'
 import { dbManager } from '@/db'
 import type { DataScopeUser } from '../schemas/data-scope.js'
 import { CrmErrorCode } from '../schemas/error-codes.js'
+import {
+  LEAD_DISQUALIFY_CODE_LABELS,
+  type LeadDisqualifyCode,
+} from '../schemas/lead.schema.js'
 import { LeadRepository, type LeadListQuery, type LeadRow } from '../repositories/lead.repository.js'
 import { LeadActivityRepository } from '../repositories/lead-activity.repository.js'
 import { computeDataScope } from '../schemas/data-scope.js'
 
-const statusLabels: Record<string, string> = {
+const STATUS_LABELS: Record<string, string> = {
   new: '待处理', processing: '跟进中', qualified: '有效',
   disqualified: '无效', converted: '已转化',
 }
@@ -36,9 +40,9 @@ export interface CreateLeadArgs {
  *
  * 不允许在此出现的字段（必须走专门业务接口）：
  *   - ownerUserId / ownerDepartmentId / poolStatus → assign / returnToPool
- *   - status                                    → qualify / disqualify
+ *   - status                                    → qualify / disqualify / reactivate
  *   - convertedCustomerId / convertedAt          → convert
- *   - disqualifyReason                          → disqualify
+ *   - disqualifyReason / disqualifyCode         → disqualify
  *
  * 字段变化以 diff 形式写入 crm_lead_activity，type='profile_edit'，
  * Activity Timeline UI 会过滤该类型，普通编辑不会污染业务动态。
@@ -82,6 +86,16 @@ function diffValue(prev: unknown, next: unknown): string {
   return `${a} → ${b}`
 }
 
+/** 任一联系方式非空即视为"可联系"。 */
+function hasUsableContactChannel(lead: LeadRow): boolean {
+  return Boolean(
+    (lead.mobile && lead.mobile.trim()) ||
+    (lead.phone && lead.phone.trim()) ||
+    (lead.email && lead.email.trim()) ||
+    (lead.wechat && lead.wechat.trim()),
+  )
+}
+
 /**
  * Lead business rules. Persistence and lifecycle operations are added in the
  * following slices; this first boundary prevents un-actionable records from
@@ -116,18 +130,46 @@ export class LeadService {
     })
   }
 
-  async disqualify({ leadId, reason, currentUser }: { leadId: number; reason: string; currentUser: DataScopeUser }): Promise<LeadRow> {
-    if (!reason.trim()) {
+  /**
+   * 作废线索。允许：new / processing / qualified → disqualified。
+   * 必须给标准化 code + 解释；不允许处理 converted 线索。
+   */
+  async disqualify({
+    leadId,
+    code,
+    reason,
+    currentUser,
+  }: {
+    leadId: number
+    code: LeadDisqualifyCode
+    reason: string
+    currentUser: DataScopeUser
+  }): Promise<LeadRow> {
+    const trimmedReason = reason.trim()
+    if (!trimmedReason) {
       throw new BusinessError(CrmErrorCode.CRM_LEAD_DISQUALIFY_REASON_REQUIRED, '请填写作废原因')
     }
-    const lead = await this.getAccessibleLead(leadId, currentUser)
-    if (lead.status === 'converted' || lead.status === 'disqualified') {
-      throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能作废线索')
-    }
-    const updated = await LeadRepository.update(leadId, { status: 'disqualified', disqualifyReason: reason.trim(), updaterId: currentUser.id })
-    if (!updated) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
-    await this.recordSystemEvent(leadId, 'status_change', `${statusLabels[lead.status]} → ${statusLabels.disqualified}`, currentUser.id)
-    return updated
+    return dbManager.transaction(async (tx) => {
+      const lead = await this.getAccessibleLead(leadId, currentUser, tx)
+      if (lead.status === 'converted' || lead.status === 'disqualified') {
+        throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能作废线索')
+      }
+      const updated = await LeadRepository.update(leadId, {
+        status: 'disqualified',
+        disqualifyReason: trimmedReason,
+        disqualifyCode: code,
+        updaterId: currentUser.id,
+      }, tx)
+      if (!updated) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
+      const codeLabel = LEAD_DISQUALIFY_CODE_LABELS[code] ?? code
+      await LeadActivityRepository.create({
+        leadId,
+        type: 'status_change',
+        content: `${STATUS_LABELS[lead.status]} → ${STATUS_LABELS.disqualified}（${codeLabel}）：${trimmedReason}`,
+        operatorUserId: currentUser.id,
+      }, tx)
+      return updated
+    })
   }
 
   /**
@@ -187,13 +229,97 @@ export class LeadService {
     return updated
   }
 
-  async qualify({ leadId, currentUser }: { leadId: number; currentUser: DataScopeUser }): Promise<LeadRow> {
-    const lead = await this.getAccessibleLead(leadId, currentUser)
-    if (lead.status === 'converted' || lead.status === 'disqualified') throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能判为有效')
-    const updated = await LeadRepository.update(leadId, { status: 'qualified', updaterId: currentUser.id })
-    if (!updated) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
-    await this.recordSystemEvent(leadId, 'status_change', `${statusLabels[lead.status]} → ${statusLabels.qualified}`, currentUser.id)
-    return updated
+  /**
+   * 判为有效（qualified）。要求：
+   *   - 终态（converted / disqualified）拒绝。
+   *   - 必须有可联系通道。
+   *   - evidence + nextAction 必须 trim 后非空。
+   */
+  async qualify({
+    leadId,
+    evidence,
+    nextAction,
+    currentUser,
+  }: {
+    leadId: number
+    evidence: string
+    nextAction: string
+    currentUser: DataScopeUser
+  }): Promise<LeadRow> {
+    const trimmedEvidence = evidence.trim()
+    const trimmedNextAction = nextAction.trim()
+    if (!trimmedEvidence || !trimmedNextAction) {
+      throw new BusinessError(CrmErrorCode.CRM_LEAD_QUALIFICATION_REQUIRED, '请填写资格证据和下一步')
+    }
+    return dbManager.transaction(async (tx) => {
+      const lead = await this.getAccessibleLead(leadId, currentUser, tx)
+      if (lead.status === 'converted' || lead.status === 'disqualified') {
+        throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能判为有效')
+      }
+      if (!hasUsableContactChannel(lead)) {
+        throw new BusinessError(
+          CrmErrorCode.CRM_LEAD_QUALIFICATION_REQUIRED,
+          '请先补全至少一个可联系的渠道（手机/电话/邮箱/微信）',
+        )
+      }
+      const updated = await LeadRepository.update(leadId, {
+        status: 'qualified',
+        updaterId: currentUser.id,
+      }, tx)
+      if (!updated) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
+      await LeadActivityRepository.create({
+        leadId,
+        type: 'status_change',
+        content: [
+          `${STATUS_LABELS[lead.status]} → ${STATUS_LABELS.qualified}`,
+          `资格证据：${trimmedEvidence}`,
+          `下一步：${trimmedNextAction}`,
+        ].join('\n'),
+        operatorUserId: currentUser.id,
+      }, tx)
+      return updated
+    })
+  }
+
+  /**
+   * 重新激活（disqualified → processing）。是受权限控制的纠正动作：
+   *   - 仅 disqualified 状态允许；其他任何状态（含 converted）一律拒绝。
+   *   - 必须给出原因；清空历史 disqualifyCode / disqualifyReason。
+   *   - 写一条 status_change 审计事件，说明"重新激活 + 原因"。
+   */
+  async reactivate({
+    leadId,
+    reason,
+    currentUser,
+  }: {
+    leadId: number
+    reason: string
+    currentUser: DataScopeUser
+  }): Promise<LeadRow> {
+    const trimmedReason = reason.trim()
+    if (!trimmedReason) {
+      throw new BusinessError(CrmErrorCode.CRM_LEAD_REACTIVATE_REASON_REQUIRED, '请填写重新激活原因')
+    }
+    return dbManager.transaction(async (tx) => {
+      const lead = await this.getAccessibleLead(leadId, currentUser, tx)
+      if (lead.status !== 'disqualified') {
+        throw new BusinessError(CrmErrorCode.CRM_LEAD_REACTIVATE_INVALID_STATE, '仅无效线索可重新激活')
+      }
+      const updated = await LeadRepository.update(leadId, {
+        status: 'processing',
+        disqualifyReason: null,
+        disqualifyCode: null,
+        updaterId: currentUser.id,
+      }, tx)
+      if (!updated) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
+      await LeadActivityRepository.create({
+        leadId,
+        type: 'status_change',
+        content: `${STATUS_LABELS.disqualified} → ${STATUS_LABELS.processing}（重新激活）：${trimmedReason}`,
+        operatorUserId: currentUser.id,
+      }, tx)
+      return updated
+    })
   }
 
   async assign({ leadId, targetUserId, currentUser }: { leadId: number; targetUserId: number | null; currentUser: DataScopeUser }): Promise<LeadRow> {
@@ -239,8 +365,12 @@ export class LeadService {
     })
   }
 
-  private async getAccessibleLead(leadId: number, currentUser: DataScopeUser): Promise<LeadRow> {
-    const lead = await LeadRepository.findById(leadId)
+  private async getAccessibleLead(
+    leadId: number,
+    currentUser: DataScopeUser,
+    db?: Parameters<typeof LeadRepository.findById>[1],
+  ): Promise<LeadRow> {
+    const lead = await LeadRepository.findById(leadId, db)
     if (!lead) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
     const scope = computeDataScope(currentUser)
     // 公海线索（poolStatus='public'）按显式归属状态判断可见，不依赖 ownerUserId。

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LeadService } from '../services/lead.service.js'
 import { CrmErrorCode } from '../schemas/error-codes.js'
-import { LeadRepository, type LeadStatus } from '../repositories/lead.repository.js'
+import { LeadRepository, type LeadRow } from '../repositories/lead.repository.js'
 import { LeadActivityRepository } from '../repositories/lead-activity.repository.js'
 import { dbManager } from '@/db'
 
@@ -137,8 +137,132 @@ describe('LeadService.list', () => {
 describe('LeadService.disqualify', () => {
   it('requires a reason before a lead can be marked invalid', async () => {
     await expect(
-      new LeadService().disqualify({ leadId: 1, reason: ' ', currentUser: salesperson }),
+      new LeadService().disqualify({ leadId: 1, code: 'no_demand', reason: ' ', currentUser: salesperson }),
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_DISQUALIFY_REASON_REQUIRED })
+  })
+
+  it('stores code and explanation when disqualifying and writes a readable audit event', async () => {
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue({
+      ...buildLead({ status: 'disqualified' }),
+      disqualifyCode: 'no_demand',
+      disqualifyReason: '本年度无采购计划',
+    })
+    const activity = vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({
+      id: 99, leadId: 1, type: 'status_change', content: '', occurredAt: new Date(), nextFollowUpAt: null,
+      operatorUserId: salesperson.id, createdAt: new Date(), updatedAt: new Date(),
+    })
+
+    const result = await new LeadService().disqualify({
+      leadId: 1,
+      code: 'no_demand',
+      reason: '本年度无采购计划',
+      currentUser: salesperson,
+    })
+
+    expect(update).toHaveBeenCalledWith(1, expect.objectContaining({
+      status: 'disqualified',
+      disqualifyCode: 'no_demand',
+      disqualifyReason: '本年度无采购计划',
+    }), expect.anything())
+    expect(result.disqualifyCode).toBe('no_demand')
+    expect(activity).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'status_change',
+      content: expect.stringContaining('无需求'),
+    }), expect.anything())
+  })
+})
+
+describe('LeadService.qualify', () => {
+  it('refuses qualification without a usable contact channel', async () => {
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({
+      status: 'new',
+      mobile: null,
+      phone: null,
+      email: null,
+      wechat: null,
+    }))
+
+    await expect(
+      new LeadService().qualify({
+        leadId: 1,
+        evidence: '预算已确认',
+        nextAction: '安排演示',
+        currentUser: salesperson,
+      }),
+    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_QUALIFICATION_REQUIRED })
+  })
+
+  it('stores evidence + next action and writes the 跟进中 → 有效 audit event', async () => {
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'qualified' }))
+    const activity = vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({
+      id: 101, leadId: 1, type: 'status_change', content: '', occurredAt: new Date(), nextFollowUpAt: null,
+      operatorUserId: salesperson.id, createdAt: new Date(), updatedAt: new Date(),
+    })
+
+    await new LeadService().qualify({
+      leadId: 1,
+      evidence: '  预算已确认  ',
+      nextAction: '  安排演示  ',
+      currentUser: salesperson,
+    })
+
+    expect(activity).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'status_change',
+      content: expect.stringMatching(/跟进中 → 有效[\s\S]*预算已确认[\s\S]*安排演示/),
+    }), expect.anything())
+  })
+})
+
+describe('LeadService.reactivate', () => {
+  it('allows only a disqualified lead to reactivate to processing', async () => {
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(LeadRepository, 'findById')
+      .mockResolvedValueOnce(buildLead({ status: 'disqualified' }))
+      .mockResolvedValueOnce(buildLead({ status: 'processing' }))
+    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'processing' }))
+    const activity = vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({
+      id: 110, leadId: 1, type: 'status_change', content: '', occurredAt: new Date(), nextFollowUpAt: null,
+      operatorUserId: salesperson.id, createdAt: new Date(), updatedAt: new Date(),
+    })
+
+    await new LeadService().reactivate({
+      leadId: 1,
+      reason: '客户已重新接洽',
+      currentUser: salesperson,
+    })
+
+    expect(update).toHaveBeenCalledWith(1, expect.objectContaining({
+      status: 'processing',
+      disqualifyCode: null,
+      disqualifyReason: null,
+    }), expect.anything())
+    expect(activity).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'status_change',
+      content: expect.stringContaining('重新激活'),
+    }), expect.anything())
+  })
+
+  it('rejects reactivate from a non-disqualified lead', async () => {
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'qualified' }))
+
+    await expect(
+      new LeadService().reactivate({ leadId: 1, reason: '再次尝试', currentUser: salesperson }),
+    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_REACTIVATE_INVALID_STATE })
+  })
+
+  it('rejects reactivate from a converted lead', async () => {
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'converted' }))
+
+    await expect(
+      new LeadService().reactivate({ leadId: 1, reason: '再次尝试', currentUser: salesperson }),
+    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_REACTIVATE_INVALID_STATE })
   })
 })
 
@@ -189,7 +313,7 @@ describe('LeadService.claim', () => {
   })
 })
 
-function buildLead(overrides: Partial<{ status: LeadStatus; id: number }>) {
+function buildLead(overrides: Partial<LeadRow> = {}) {
     return {
       id: 1,
       name: '王经理',
@@ -234,7 +358,12 @@ describe('LeadService 终态守卫（已转化/无效）', () => {
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'disqualified' }))
 
     await expect(
-      new LeadService().qualify({ leadId: 1, currentUser: salesperson }),
+      new LeadService().qualify({
+        leadId: 1,
+        evidence: '预算已确认',
+        nextAction: '安排演示',
+        currentUser: salesperson,
+      }),
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_STATUS_INVALID })
   })
 
@@ -242,7 +371,7 @@ describe('LeadService 终态守卫（已转化/无效）', () => {
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'converted' }))
 
     await expect(
-      new LeadService().disqualify({ leadId: 1, reason: '误判', currentUser: salesperson }),
+      new LeadService().disqualify({ leadId: 1, code: 'rejected', reason: '误判', currentUser: salesperson }),
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_STATUS_INVALID })
   })
 })
