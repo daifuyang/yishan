@@ -25,10 +25,47 @@
         ]
       },
       {
+        "type": 0,
+        "name": "市场管理",
+        "path": "/crm/market",
+        "sortOrder": 2,
+        "icon": "AppstoreOutlined",
+        "children": [
+          {
+            "type": 1,
+            "name": "线索",
+            "path": "/crm/leads",
+            "sortOrder": 1,
+            "icon": "InboxOutlined",
+            "component": "./modules/crm/leads",
+            "children": [
+              { "type": 2, "name": "查看", "permissionCodes": ["crm:lead:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+              { "type": 2, "name": "新增", "permissionCodes": ["crm:lead:create"], "sortOrder": 2, "hideInMenu": 1 },
+              { "type": 2, "name": "领取", "permissionCodes": ["crm:lead:claim"], "sortOrder": 3, "hideInMenu": 1 },
+              { "type": 2, "name": "分配", "permissionCodes": ["crm:lead:assign"], "sortOrder": 4, "hideInMenu": 1 },
+              { "type": 2, "name": "判为有效", "permissionCodes": ["crm:lead:qualify"], "sortOrder": 5, "hideInMenu": 1 },
+              { "type": 2, "name": "作废", "permissionCodes": ["crm:lead:disqualify"], "sortOrder": 6, "hideInMenu": 1 }
+            ]
+          },
+          {
+            "type": 1,
+            "name": "线索池",
+            "path": "/crm/lead-pool",
+            "sortOrder": 2,
+            "icon": "PoolOutlined",
+            "component": "./modules/crm/lead-pool",
+            "children": [
+              { "type": 2, "name": "查看", "permissionCodes": ["crm:lead:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+              { "type": 2, "name": "领取", "permissionCodes": ["crm:lead:claim"], "sortOrder": 2, "hideInMenu": 1 }
+            ]
+          }
+        ]
+      },
+      {
         "type": 1,
         "name": "我的客户",
         "path": "/crm/customers",
-        "sortOrder": 2,
+        "sortOrder": 3,
         "icon": "UserOutlined",
         "component": "./modules/crm/customers",
         "children": [
@@ -50,28 +87,9 @@
       },
       {
         "type": 1,
-        "name": "客户详情",
-        "path": "/crm/customer-detail",
-        "sortOrder": 3,
-        "icon": "ProfileOutlined",
-        "component": "./modules/crm/customer-detail",
-        "hideInMenu": 1,
-        "children": [
-          {
-            "type": 2,
-            "name": "查看",
-            "permissionCodes": ["crm:customer:detail"],
-            "sortOrder": 1,
-            "hideInMenu": 1,
-            "isDefaultAction": 1
-          }
-        ]
-      },
-      {
-        "type": 1,
         "name": "客户公海",
         "path": "/crm/pool",
-        "sortOrder": 4,
+        "sortOrder": 5,
         "icon": "PoolOutlined",
         "component": "./modules/crm/pool",
         "children": [
@@ -88,9 +106,28 @@
       },
       {
         "type": 1,
+        "name": "客户详情",
+        "path": "/crm/customer-detail",
+        "sortOrder": 5,
+        "icon": "ProfileOutlined",
+        "component": "./modules/crm/customer-detail",
+        "hideInMenu": 1,
+        "children": [
+          {
+            "type": 2,
+            "name": "查看",
+            "permissionCodes": ["crm:customer:detail"],
+            "sortOrder": 1,
+            "hideInMenu": 1,
+            "isDefaultAction": 1
+          }
+        ]
+      },
+      {
+        "type": 1,
         "name": "联系人",
         "path": "/crm/contacts",
-        "sortOrder": 5,
+        "sortOrder": 6,
         "icon": "ContactsOutlined",
         "component": "./modules/crm/contacts",
         "children": [

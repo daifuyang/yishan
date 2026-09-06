@@ -70,6 +70,75 @@ export const crmCustomer = mysqlTable(
   }),
 )
 
+/** 尚未验证、尚未转化为客户的获客信息。 */
+export const crmLead = mysqlTable(
+  'crm_lead',
+  {
+    id: int().primaryKey().autoincrement().notNull(),
+    name: varchar({ length: 100 }),
+    companyName: varchar('company_name', { length: 200 }),
+    mobile: varchar({ length: 32 }),
+    phone: varchar({ length: 32 }),
+    email: varchar({ length: 100 }),
+    wechat: varchar({ length: 64 }),
+    qq: varchar({ length: 32 }),
+    sourceId: int('source_id'),
+    intention: varchar({ length: 2000 }),
+    status: varchar({ length: 16 }).notNull().default('new'),
+    ownerUserId: int('owner_user_id'),
+    ownerDepartmentId: int('owner_department_id'),
+    /**
+     * 显式线索池状态，与 ownerUserId 解耦：
+     *   - owned     已有明确负责人
+     *   - public    已进入公海（ownerUserId 必须为 null）
+     *   - unassigned 待分配（未来扩展）
+     * 新建线索默认 owned，不要再用 ownerUserId IS NULL 推断 public。
+     */
+    poolStatus: varchar('pool_status', { length: 16 }).notNull().default('owned'),
+    lastFollowUpAt: datetime('last_follow_up_at'),
+    nextFollowUpAt: datetime('next_follow_up_at'),
+    disqualifyReason: varchar('disqualify_reason', { length: 500 }),
+    convertedCustomerId: int('converted_customer_id'),
+    convertedContactId: int('converted_contact_id'),
+    convertedAt: datetime('converted_at'),
+    creatorId: int('creator_id'),
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    updaterId: int('updater_id'),
+    updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    deletedAt: datetime('deleted_at'),
+  },
+  (t) => ({
+    idxStatus: index('idx_crm_lead_status').on(t.status),
+    idxOwner: index('idx_crm_lead_owner').on(t.ownerUserId, t.ownerDepartmentId),
+    idxPoolStatus: index('idx_crm_lead_pool_status').on(t.poolStatus),
+    idxMobile: index('idx_crm_lead_mobile').on(t.mobile),
+    idxEmail: index('idx_crm_lead_email').on(t.email),
+    idxNextFollowUp: index('idx_crm_lead_next_follow_up_at').on(t.nextFollowUpAt),
+    idxDeletedAt: index('idx_crm_lead_deleted_at').on(t.deletedAt),
+  }),
+)
+
+/** 线索的人工跟进记录。与客户活动分表，避免改变客户查询和数据契约。 */
+export const crmLeadActivity = mysqlTable(
+  'crm_lead_activity',
+  {
+    id: int().primaryKey().autoincrement().notNull(),
+    leadId: int('lead_id').notNull(),
+    type: varchar({ length: 16 }).notNull(),
+    content: varchar({ length: 2000 }).notNull().default(''),
+    occurredAt: datetime('occurred_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    nextFollowUpAt: datetime('next_follow_up_at'),
+    operatorUserId: int('operator_user_id').notNull(),
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  },
+  (t) => ({
+    idxLead: index('idx_crm_lead_activity_lead_id').on(t.leadId),
+    idxOperator: index('idx_crm_lead_activity_operator_user_id').on(t.operatorUserId),
+    idxLeadOccurred: index('idx_crm_lead_activity_lead_occurred').on(t.leadId, t.occurredAt),
+  }),
+)
+
 export const crmContact = mysqlTable(
   'crm_contact',
   {

@@ -8,6 +8,34 @@
       "when": 1788181797346,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1788655499670,
+      "tag": "0001_add-leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1788741000000,
+      "tag": "0002_add-lead-activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1788827400000,
+      "tag": "0003_add-lead-wechat",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1788913800000,
+      "tag": "0004_add-lead-pool-status",
+      "breakpoints": true
     }
   ]
 }
