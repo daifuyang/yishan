@@ -25,6 +25,7 @@ const lead = {
   lastFollowUpAt: '2026-09-05T10:00:00.000Z',
   nextFollowUpAt: '2026-09-10T10:00:00.000Z',
   disqualifyReason: null,
+  disqualifyCode: null,
   convertedCustomerId: null,
   convertedContactId: null,
   convertedAt: null,
@@ -105,5 +106,39 @@ describe('线索动态', () => {
         '2026-09-06T23:59:59.999Z',
       ]).map((event) => event.id),
     ).toEqual(['followup-1']);
+  });
+
+  it('把 conversion / reactivation / status_change 系统事件归类为 status 类，颜色一致', () => {
+    const events = buildLeadTimeline(lead, [
+      {
+        id: 11,
+        leadId: lead.id,
+        type: 'status_change',
+        content: '无效 → 跟进中（重新激活）：官网留资',
+        occurredAt: '2026-09-06T08:00:00.000Z',
+        nextFollowUpAt: null,
+        operatorUserId: 7,
+        operatorUserName: '李四',
+        createdAt: '2026-09-06T08:00:00.000Z',
+        updatedAt: '2026-09-06T08:00:00.000Z',
+      },
+      {
+        id: 12,
+        leadId: lead.id,
+        type: 'conversion',
+        content: '有效 → 已转化：关联客户 上海示例',
+        occurredAt: '2026-09-06T09:00:00.000Z',
+        nextFollowUpAt: null,
+        operatorUserId: 7,
+        operatorUserName: '李四',
+        createdAt: '2026-09-06T09:00:00.000Z',
+        updatedAt: '2026-09-06T09:00:00.000Z',
+      },
+    ]);
+
+    // 来自 activities 的事件必须全部归类为 status（不包括"新建线索"这种 system 事件）。
+    const activityEvents = events.filter((event) => event.id.startsWith('followup-'));
+    expect(activityEvents.every((event) => event.category === 'status')).toBe(true);
+    expect(activityEvents.every((event) => event.color === 'blue')).toBe(true);
   });
 });

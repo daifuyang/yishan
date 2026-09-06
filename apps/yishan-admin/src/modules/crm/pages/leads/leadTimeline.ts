@@ -28,6 +28,13 @@ const activityLabels: Record<string, string> = {
   other: '其他跟进',
 };
 
+/** 全部"状态变更"语义的活动类型 —— 都归类为 status 类别。 */
+const STATUS_ACTIVITY_TYPES = new Set([
+  'status_change',
+  'conversion',
+  'reactivation',
+]);
+
 export const buildLeadTimeline = (
   lead: LeadRow,
   activities: LeadActivityRow[] = [],
@@ -36,31 +43,32 @@ export const buildLeadTimeline = (
     ...activities
       // 普通资料编辑走操作日志，不进入 Activity Timeline
       .filter((activity) => activity.type !== 'profile_edit')
-      .map((activity) => ({
-        id: `followup-${activity.id}`,
-        category:
-          activity.type === 'status_change'
+      .map((activity) => {
+        const isStatus = STATUS_ACTIVITY_TYPES.has(activity.type);
+        const title = isStatus
+          ? '状态变更'
+          : activity.type === 'owner_change'
+            ? '负责人变更'
+            : (activityLabels[activity.type] ?? '跟进记录');
+        return {
+          id: `followup-${activity.id}`,
+          category: isStatus
             ? ('status' as const)
             : activity.type === 'owner_change'
               ? ('system' as const)
               : ('followup' as const),
-        time: activity.occurredAt,
-        title:
-          activity.type === 'status_change'
-            ? '状态变更'
-            : activity.type === 'owner_change'
-              ? '负责人变更'
-              : (activityLabels[activity.type] ?? '跟进记录'),
-        detail: activity.content,
-        operator: activity.operatorUserName,
-        nextFollowUpAt: activity.nextFollowUpAt,
-        color:
-          activity.type === 'status_change'
+          time: activity.occurredAt,
+          title,
+          detail: activity.content,
+          operator: activity.operatorUserName,
+          nextFollowUpAt: activity.nextFollowUpAt,
+          color: isStatus
             ? ('blue' as const)
             : activity.type === 'owner_change'
               ? ('gray' as const)
               : ('green' as const),
-      })),
+        };
+      }),
     {
       id: `created-${lead.id}`,
       category: 'system' as const,
@@ -100,3 +108,4 @@ export const filterLeadTimelineByDateRange = (
     return eventAt >= startAt && eventAt <= endAt;
   });
 };
+

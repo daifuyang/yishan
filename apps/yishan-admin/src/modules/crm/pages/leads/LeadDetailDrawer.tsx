@@ -92,6 +92,8 @@ interface LeadDetailDrawerProps {
   onReturnToPool: (lead: LeadRow) => void;
   /** 「编辑」入口：把抽屉内的编辑触发到外部 EditLeadDialog，避免抽屉内再嵌套表单 */
   onEditLead?: (lead: LeadRow) => void;
+  /** 当 LeadActivityRail 内部写出新 lead 时（首条跟进触发 new → processing），把最新 row 抛给外层。 */
+  onLeadChanged?: (next: LeadRow) => void;
 }
 
 export default function LeadDetailDrawer({
@@ -101,6 +103,7 @@ export default function LeadDetailDrawer({
   onTransfer,
   onReturnToPool,
   onEditLead,
+  onLeadChanged,
 }: LeadDetailDrawerProps) {
   const screens = Grid.useBreakpoint();
   const [size, setSize] = useState(() =>
@@ -294,7 +297,7 @@ export default function LeadDetailDrawer({
             paddingLeft: workspaceLayout.activityPaddingLeft,
           }}
         >
-          <LeadActivityRail lead={lead} />
+          <LeadActivityRail lead={lead} onLeadChanged={onLeadChanged} />
         </div>
       </div>
     );

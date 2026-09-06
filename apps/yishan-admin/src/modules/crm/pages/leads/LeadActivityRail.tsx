@@ -58,7 +58,7 @@ const dateLabel = (date: string) => {
   return value.format('YYYY年MM月DD日');
 };
 
-export default function LeadActivityRail({ lead }: { lead: LeadRow }) {
+export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRow; onLeadChanged?: (next: LeadRow) => void }) {
   const [activities, setActivities] = useState<LeadActivityRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<ActivityFilter>('all');
@@ -126,11 +126,15 @@ export default function LeadActivityRail({ lead }: { lead: LeadRow }) {
         initialValues={{ type: 'phone' }}
         modalProps={{ destroyOnHidden: true }}
         onFinish={async (values) => {
-          const item = await createLeadActivity(
+          const result = await createLeadActivity(
             lead.id,
             toLeadActivityInput(values),
           );
-          setActivities((current) => [item, ...current]);
+          // 服务端会在首次跟进时返回最新 lead；UI 在这里做兼容：仅当 lead.id 一致时刷新抽屉状态。
+          setActivities((current) => [result.activity, ...current]);
+          if (result.lead.id === lead.id) {
+            onLeadChanged?.(result.lead);
+          }
           message.success('跟进已保存');
           return true;
         }}
