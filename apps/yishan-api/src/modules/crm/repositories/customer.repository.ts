@@ -516,4 +516,39 @@ export class CustomerRepository {
     }
     return map
   }
+
+  /**
+   * 转化预览：基于线索字段的查重候选。
+   *
+   * - enterprise: 同 name 视为候选；phone 命中（且 phone 非空）则视为强匹配。
+   * - individual: phone 优先；phone 为空时按 name 匹配。
+   *
+   * 仅返回 ID/name/type/ownerUserId/name；用于弹窗提示，不作为链路强制选择。
+   * 候选列表不能跨越 actor 的数据范围：在 service 层做可见性再校验。
+   */
+  static async findConversionCandidates(
+    input: { name: string | null; phone: string | null; type: 'enterprise' | 'individual' },
+    db: AppQueryDb = drizzleDb,
+  ): Promise<Array<Pick<CustomerRow, 'id' | 'name' | 'type' | 'ownerUserId'>>> {
+    const conds: SQL[] = [isNull(crmCustomer.deletedAt)]
+    if (input.type === 'enterprise') {
+      if (input.name) conds.push(eq(crmCustomer.name, input.name))
+      else return []
+    } else {
+      if (input.phone) conds.push(eq(crmCustomer.phone, input.phone))
+      else if (input.name) conds.push(eq(crmCustomer.name, input.name))
+      else return []
+    }
+    const rows = await db
+      .select({
+        id: crmCustomer.id,
+        name: crmCustomer.name,
+        type: crmCustomer.type,
+        ownerUserId: crmCustomer.ownerUserId,
+      })
+      .from(crmCustomer)
+      .where(and(...conds))
+      .limit(20)
+    return rows
+  }
 }

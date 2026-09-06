@@ -3,11 +3,15 @@ import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
 import { ResponseUtil } from '@/utils/response.js'
 import { LeadService } from '../../../services/lead.service.js'
 import { LeadActivityService } from '../../../services/lead-activity.service.js'
+import { LeadConversionService } from '../../../services/lead-conversion.service.js'
 import {
   LeadActivityCreateReqSchema,
   LeadActivityCreateRespSchema,
   LeadActivityListRespSchema,
   LeadAssignReqSchema,
+  LeadConvertReqSchema,
+  LeadConversionPreviewSchema,
+  LeadConversionResultSchema,
   LeadCreateReqSchema,
   LeadDisqualifyReqSchema,
   LeadIdParamSchema,
@@ -67,5 +71,14 @@ export default (async (app) => {
   route.post('/:id/reactivate', { access: { permission: PERMS.LEAD_REACTIVATE }, schema: { tags: [ROUTE_TAG], summary: '重新激活线索', operationId: 'crmLeadsReactivate', params: LeadIdParamSchema, body: LeadReactivateReqSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
     const row = await service.reactivate({ leadId: request.params.id, reason: request.body.reason, currentUser: request.currentUser })
     return ResponseUtil.success(reply, row, '线索已重新激活')
+  })
+  const conversionService = new LeadConversionService()
+  route.get('/:id/conversion-preview', { access: { permission: PERMS.LEAD_CONVERT }, schema: { tags: [ROUTE_TAG], summary: '线索转化预览', operationId: 'crmLeadsConversionPreview', params: LeadIdParamSchema, response: { 200: EnvelopeSchema(LeadConversionPreviewSchema) } } }, async (request: any, reply: any) => {
+    const preview = await conversionService.preview(request.params.id, request.currentUser)
+    return ResponseUtil.success(reply, preview, '获取转化预览成功')
+  })
+  route.post('/:id/convert', { access: { permission: PERMS.LEAD_CONVERT }, schema: { tags: [ROUTE_TAG], summary: '转为客户', operationId: 'crmLeadsConvert', params: LeadIdParamSchema, body: LeadConvertReqSchema, response: { 200: EnvelopeSchema(LeadConversionResultSchema) } } }, async (request: any, reply: any) => {
+    const result = await conversionService.convert(request.params.id, request.body, request.currentUser)
+    return ResponseUtil.success(reply, result, '线索已转为客户')
   })
 }) as FastifyPluginAsync
