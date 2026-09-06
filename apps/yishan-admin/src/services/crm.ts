@@ -91,6 +91,31 @@ export interface CustomerCreateInput {
 
 export interface CustomerUpdateInput extends Partial<CustomerCreateInput> {}
 
+export interface LeadRow {
+  id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; intention: string | null; status: string; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; poolStatus: 'owned' | 'public' | 'unassigned'; createdBy: number | null; lastFollowUpAt: string | null; nextFollowUpAt: string | null; disqualifyReason: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: string | null; createdAt: string; updatedAt: string
+}
+/**
+ * 创建请求不传 ownerUserId/ownerDepartmentId/poolStatus：
+ * 服务端按当前认证用户自动写入 createdBy=ownerUserId=currentUser.id、poolStatus='owned'。
+ */
+export interface LeadCreateInput { name?: string; companyName?: string; mobile?: string; phone?: string; email?: string; wechat?: string; qq?: string; sourceId?: number | null; intention?: string }
+/**
+ * PATCH /leads/:id 资料字段：仅白名单生效。
+ * ownerUserId/status/poolStatus/converted* 等业务字段必须走专门接口。
+ */
+export interface LeadUpdateInput { name?: string; companyName?: string; mobile?: string; phone?: string; email?: string; wechat?: string; qq?: string; sourceId?: number | null; intention?: string }
+export async function listLeads(query: PageQuery & { status?: string; ownerUserId?: number; pool?: boolean }): Promise<{ data: LeadRow[]; total: number }> { const r = await request<ApiResp<LeadRow[]>>('/api/crm/v1/leads', { method: 'GET', params: query as any }); return { data: unwrap(r), total: r.pagination?.total ?? 0 } }
+export async function createLead(input: LeadCreateInput): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>('/api/crm/v1/leads', { method: 'POST', data: input }); return unwrap(r) }
+export async function updateLead(id: number, input: LeadUpdateInput): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}`, { method: 'PATCH', data: input }); return unwrap(r) }
+export async function assignLead(id: number, targetUserId: number | null): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/assign`, { method: 'POST', data: { targetUserId } }); return unwrap(r) }
+export async function claimLead(id: number): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/claim`, { method: 'POST' }); return unwrap(r) }
+export async function qualifyLead(id: number): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/qualify`, { method: 'POST' }); return unwrap(r) }
+export async function disqualifyLead(id: number, reason: string): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/disqualify`, { method: 'POST', data: { reason } }); return unwrap(r) }
+export interface LeadActivityRow { id: number; leadId: number; type: string; content: string; occurredAt: string; nextFollowUpAt: string | null; operatorUserId: number; operatorUserName: string | null; createdAt: string; updatedAt: string }
+export interface LeadActivityCreateInput { type: ActivityType; content: string; occurredAt?: string; nextFollowUpAt?: string | null }
+export async function listLeadActivities(id: number): Promise<{ total: number; items: LeadActivityRow[] }> { const r = await request<ApiResp<{ total: number; items: LeadActivityRow[] }>>(`/api/crm/v1/leads/${id}/activities`, { method: 'GET' }); return unwrap(r) }
+export async function createLeadActivity(id: number, input: LeadActivityCreateInput): Promise<LeadActivityRow> { const r = await request<ApiResp<LeadActivityRow>>(`/api/crm/v1/leads/${id}/activities`, { method: 'POST', data: input }); return unwrap(r) }
+
 export interface CustomerListQuery extends PageQuery {
   statusId?: number
   sourceId?: number
