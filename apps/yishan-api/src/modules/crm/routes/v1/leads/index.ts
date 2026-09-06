@@ -5,8 +5,8 @@ import { LeadService } from '../../../services/lead.service.js'
 import { LeadActivityService } from '../../../services/lead-activity.service.js'
 import {
   LeadActivityCreateReqSchema,
+  LeadActivityCreateRespSchema,
   LeadActivityListRespSchema,
-  LeadActivityRespSchema,
   LeadAssignReqSchema,
   LeadCreateReqSchema,
   LeadDisqualifyReqSchema,
@@ -42,9 +42,9 @@ export default (async (app) => {
     const result = await activityService.listByLeadId(request.params.id, request.currentUser)
     return ResponseUtil.success(reply, result)
   })
-  route.post('/:id/activities', { access: { permission: PERMS.LEAD_CREATE }, schema: { tags: [ROUTE_TAG], summary: '新增线索跟进', operationId: 'crmLeadActivitiesCreate', params: LeadIdParamSchema, body: LeadActivityCreateReqSchema, response: { 200: EnvelopeSchema(LeadActivityRespSchema) } } }, async (request: any, reply: any) => {
-    const row = await activityService.create(request.params.id, request.body, request.currentUser)
-    return ResponseUtil.success(reply, row, '跟进记录已保存')
+  route.post('/:id/activities', { access: { permission: PERMS.LEAD_CREATE }, schema: { tags: [ROUTE_TAG], summary: '新增线索跟进', operationId: 'crmLeadActivitiesCreate', params: LeadIdParamSchema, body: LeadActivityCreateReqSchema, response: { 200: EnvelopeSchema(LeadActivityCreateRespSchema) } } }, async (request: any, reply: any) => {
+    const result = await activityService.create(request.params.id, request.body, request.currentUser)
+    return ResponseUtil.success(reply, result, '跟进记录已保存')
   })
   route.post('/:id/assign', { access: { permission: PERMS.LEAD_ASSIGN }, schema: { tags: [ROUTE_TAG], summary: '转移线索', operationId: 'crmLeadsAssign', params: LeadIdParamSchema, body: LeadAssignReqSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
     const row = await service.assign({ leadId: request.params.id, targetUserId: request.body.targetUserId, currentUser: request.currentUser })

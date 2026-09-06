@@ -43,6 +43,7 @@ describe('LeadService.create', () => {
       lastFollowUpAt: null,
       nextFollowUpAt: null,
       disqualifyReason: null,
+      disqualifyCode: null,
       convertedCustomerId: null,
       convertedContactId: null,
       convertedAt: null,
@@ -89,6 +90,7 @@ describe('LeadService.create', () => {
       lastFollowUpAt: null,
       nextFollowUpAt: null,
       disqualifyReason: null,
+      disqualifyCode: null,
       convertedCustomerId: null,
       convertedContactId: null,
       convertedAt: null,
@@ -152,7 +154,7 @@ describe('LeadService.claim', () => {
       id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, intention: null,
       status: 'new', ownerUserId: salesperson.id, ownerUserName: '销售', ownerDepartmentId: 10,
       poolStatus: 'public', createdBy: null, lastFollowUpAt: null, nextFollowUpAt: null,
-      disqualifyReason: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
+      disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
     })
 
     await new LeadService().claim({ leadId: 1, currentUser: salesperson })
@@ -168,7 +170,7 @@ describe('LeadService.claim', () => {
       id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, intention: null,
       status: 'processing', ownerUserId: 999, ownerUserName: '其它销售', ownerDepartmentId: 10,
       poolStatus: 'owned', createdBy: salesperson.id, lastFollowUpAt: null, nextFollowUpAt: null,
-      disqualifyReason: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
+      disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
     })
 
     await expect(
@@ -208,6 +210,7 @@ function buildLead(overrides: Partial<{ status: LeadStatus; id: number }>) {
       lastFollowUpAt: null,
       nextFollowUpAt: null,
       disqualifyReason: null,
+      disqualifyCode: null,
       convertedCustomerId: null,
       convertedContactId: null,
       convertedAt: null,
