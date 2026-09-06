@@ -24,6 +24,7 @@ const lead = {
   lastFollowUpAt: null,
   nextFollowUpAt: null,
   disqualifyReason: null,
+  disqualifyCode: null,
   convertedCustomerId: null,
   convertedContactId: null,
   convertedAt: null,

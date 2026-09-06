@@ -111,41 +111,18 @@ export default function LeadDetailDrawer({
       typeof window === 'undefined' ? 1366 : window.innerWidth,
     ),
   );
-  const moreItems: MenuProps['items'] = [
-    { key: 'print', label: '打印' },
-    { key: 'lock', label: '锁定' },
-    { type: 'divider' },
-    { key: 'delete', label: '删除', danger: true },
-  ];
-
   const renderHeaderActions = () => {
     if (!lead) return null;
+    // 转换入口：仅在 qualified 状态显示，避免错误地把"任何状态"指向 /convert。
+    const showConvert = lead.status === 'qualified';
+    // 转移入口：终态（已转化 / 已无效）禁用，保持归属变更不会反向改变 lifecycle。
+    const transferDisabled =
+      lead.status === 'converted' || lead.status === 'disqualified';
     return (
       <Space>
-        <Dropdown
-          menu={{
-            items: [
-              { key: 'convertNew', label: '转为新客户' },
-              { key: 'associateCustomer', label: '关联已有客户' },
-            ],
-            onClick: ({ key }) => {
-              if (key === 'convertNew') {
-                onConvert(lead);
-              } else {
-                message.info('关联已有客户功能待接口接入后启用');
-              }
-            },
-          }}
-        >
-          <Button
-            type="primary"
-            disabled={
-              lead.status === 'converted' || lead.status === 'disqualified'
-            }
-          >
-            转换 <DownOutlined />
-          </Button>
-        </Dropdown>
+        <Button type="primary" disabled={!showConvert} onClick={() => onConvert(lead)}>
+          转为客户
+        </Button>
         <Dropdown
           menu={{
             items: [
@@ -157,6 +134,7 @@ export default function LeadDetailDrawer({
               else onReturnToPool(lead);
             },
           }}
+          disabled={transferDisabled}
         >
           <Button>
             转移 <DownOutlined />
@@ -167,19 +145,6 @@ export default function LeadDetailDrawer({
         >
           编辑
         </Button>
-        <Dropdown
-          menu={{
-            items: moreItems,
-            onClick: ({ key }) =>
-              message.info(
-                `${key === 'delete' ? '删除' : key === 'lock' ? '锁定' : '打印'}功能暂未接入`,
-              ),
-          }}
-        >
-          <Button>
-            更多 <DownOutlined />
-          </Button>
-        </Dropdown>
         <Button
           type="text"
           icon={<CloseOutlined />}
@@ -270,8 +235,32 @@ export default function LeadDetailDrawer({
                   }
                 />
                 <DetailField
+                  label="联系人"
+                  value={
+                    lead.convertedContactId
+                      ? `联系人 #${lead.convertedContactId}`
+                      : '—'
+                  }
+                />
+                <DetailField
                   label="转化时间"
                   value={formatDateTime(lead.convertedAt)}
+                />
+              </DetailSection>
+            </>
+          )}
+          {lead.status === 'disqualified' && (
+            <>
+              <Divider style={{ margin: '32px 0' }} />
+              <DetailSection title="作废信息">
+                <DetailField
+                  label="作废原因"
+                  value={valueOrDash(lead.disqualifyCode)}
+                />
+                <DetailField
+                  label="解释说明"
+                  value={valueOrDash(lead.disqualifyReason)}
+                  span={2}
                 />
               </DetailSection>
             </>
