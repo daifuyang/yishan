@@ -131,13 +131,13 @@ export type LeadConvertInput = {
     | { mode: 'existing'; contactId: number }
     | { mode: 'create'; name: string; mobile?: string | null; phone?: string | null; email?: string | null }
 }
-export interface LeadConversionResult { lead: LeadRow; customer: LeadRow; contact: LeadConversionPreviewContact }
-export async function convertLead(id: number, input: LeadConvertInput): Promise<LeadConversionResult> { const r = await request<ApiResp<Omit<LeadConversionResult, 'lead' | 'customer'> & { lead: Omit<LeadRow, 'isConverted'>; customer: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/convert`, { method: 'POST', data: input }); const result = unwrap(r); return { ...result, lead: withLeadConversionState(result.lead), customer: withLeadConversionState(result.customer) } }
+export interface LeadConversionResult { lead: LeadRow; customer: CustomerRow; contact: LeadConversionPreviewContact }
+export async function convertLead(id: number, input: LeadConvertInput): Promise<LeadConversionResult> { const r = await request<ApiResp<Omit<LeadConversionResult, 'lead'> & { lead: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/convert`, { method: 'POST', data: input }); const result = unwrap(r); return { ...result, lead: withLeadConversionState(result.lead) } }
 export interface LeadActivityRow { id: number; leadId: number; type: string; content: string; occurredAt: string; nextFollowUpAt: string | null; operatorUserId: number; operatorUserName: string | null; createdAt: string; updatedAt: string }
 export interface LeadActivityCreateInput { type: ActivityType; content: string; occurredAt?: string; nextFollowUpAt?: string | null }
 /**
  * 写跟进成功响应：activity + 最新 lead。客户端必须在写完一次跟进后用 lead 替换本地状态，
- * 这样首次跟进触发的 new → processing 才能立刻反映在 UI 上。
+ * 这样每次跟进返回的显式 followUpStatus 都能立刻反映在 UI 上。
  */
 export interface LeadActivityCreateResponse { activity: LeadActivityRow; lead: LeadRow }
 export async function listLeadActivities(id: number): Promise<{ total: number; items: LeadActivityRow[] }> { const r = await request<ApiResp<{ total: number; items: LeadActivityRow[] }>>(`/api/crm/v1/leads/${id}/activities`, { method: 'GET' }); return unwrap(r) }

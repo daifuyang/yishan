@@ -10,9 +10,9 @@ import { LeadRepository, type LeadListQuery, type LeadRow } from '../repositorie
 import { LeadActivityRepository } from '../repositories/lead-activity.repository.js'
 import { computeDataScope } from '../schemas/data-scope.js'
 
-const STATUS_LABELS: Record<string, string> = {
-  new: '待处理', processing: '跟进中', qualified: '有效',
-  disqualified: '无效', converted: '已转化',
+const STATUS_LABELS: Record<LeadRow['status'], string> = {
+  pending: '未处理', contact_valid: '联系方式有效',
+  contact_invalid: '联系方式无效', closed: '已关闭',
 }
 
 /**
@@ -151,11 +151,11 @@ export class LeadService {
     }
     return dbManager.transaction(async (tx) => {
       const lead = await this.getAccessibleLead(leadId, currentUser, tx)
-      if (lead.status === 'converted' || lead.status === 'disqualified') {
+      if (lead.convertedCustomerId !== null || lead.status === 'contact_invalid') {
         throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能作废线索')
       }
       const updated = await LeadRepository.update(leadId, {
-        status: 'disqualified',
+        status: 'contact_invalid',
         disqualifyReason: trimmedReason,
         disqualifyCode: code,
         updaterId: currentUser.id,
@@ -165,7 +165,7 @@ export class LeadService {
       await LeadActivityRepository.create({
         leadId,
         type: 'status_change',
-        content: `${STATUS_LABELS[lead.status]} → ${STATUS_LABELS.disqualified}（${codeLabel}）：${trimmedReason}`,
+        content: `${STATUS_LABELS[lead.status]} → ${STATUS_LABELS.contact_invalid}（${codeLabel}）：${trimmedReason}`,
         operatorUserId: currentUser.id,
       }, tx)
       return updated
@@ -184,7 +184,7 @@ export class LeadService {
    */
   async update({ leadId, input, currentUser }: UpdateLeadArgs): Promise<LeadRow> {
     const lead = await this.getAccessibleLead(leadId, currentUser)
-    if (lead.status === 'converted' || lead.status === 'disqualified') {
+    if (lead.convertedCustomerId !== null || lead.status === 'contact_invalid') {
       throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '已转化或无效线索不可编辑')
     }
     const patch: Partial<Record<EditableProfileField, unknown>> = {}
@@ -253,7 +253,7 @@ export class LeadService {
     }
     return dbManager.transaction(async (tx) => {
       const lead = await this.getAccessibleLead(leadId, currentUser, tx)
-      if (lead.status === 'converted' || lead.status === 'disqualified') {
+      if (lead.convertedCustomerId !== null || lead.status === 'contact_invalid') {
         throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能判为有效')
       }
       if (!hasUsableContactChannel(lead)) {
@@ -263,7 +263,7 @@ export class LeadService {
         )
       }
       const updated = await LeadRepository.update(leadId, {
-        status: 'qualified',
+        status: 'contact_valid',
         updaterId: currentUser.id,
       }, tx)
       if (!updated) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
@@ -271,7 +271,7 @@ export class LeadService {
         leadId,
         type: 'status_change',
         content: [
-          `${STATUS_LABELS[lead.status]} → ${STATUS_LABELS.qualified}`,
+          `${STATUS_LABELS[lead.status]} → ${STATUS_LABELS.contact_valid}`,
           `资格证据：${trimmedEvidence}`,
           `下一步：${trimmedNextAction}`,
         ].join('\n'),
@@ -302,11 +302,11 @@ export class LeadService {
     }
     return dbManager.transaction(async (tx) => {
       const lead = await this.getAccessibleLead(leadId, currentUser, tx)
-      if (lead.status !== 'disqualified') {
+      if (lead.status !== 'contact_invalid') {
         throw new BusinessError(CrmErrorCode.CRM_LEAD_REACTIVATE_INVALID_STATE, '仅无效线索可重新激活')
       }
       const updated = await LeadRepository.update(leadId, {
-        status: 'processing',
+        status: 'pending',
         disqualifyReason: null,
         disqualifyCode: null,
         updaterId: currentUser.id,
@@ -315,7 +315,7 @@ export class LeadService {
       await LeadActivityRepository.create({
         leadId,
         type: 'status_change',
-        content: `${STATUS_LABELS.disqualified} → ${STATUS_LABELS.processing}（重新激活）：${trimmedReason}`,
+        content: `${STATUS_LABELS.contact_invalid} → ${STATUS_LABELS.pending}（重新激活）：${trimmedReason}`,
         operatorUserId: currentUser.id,
       }, tx)
       return updated
@@ -324,7 +324,7 @@ export class LeadService {
 
   async assign({ leadId, targetUserId, currentUser }: { leadId: number; targetUserId: number | null; currentUser: DataScopeUser }): Promise<LeadRow> {
     const lead = await this.getAccessibleLead(leadId, currentUser)
-    if (lead.status === 'converted' || lead.status === 'disqualified') throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能分配线索')
+    if (lead.convertedCustomerId !== null || lead.status === 'contact_invalid') throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能分配线索')
     // 进入公海 ownerUserId 必须置 null，同时显式标注 poolStatus='public'
     const nextOwner = targetUserId
     const updated = await LeadRepository.update(leadId, {

@@ -43,10 +43,10 @@ export interface LeadConversionResult {
 }
 
 /**
- * LeadConversionService —— 把一条"有效（qualified）"线索安全转为客户+联系人。
+ * LeadConversionService —— 把一条联系方式有效的线索安全转为客户+联系人。
  *
  * 关键约束（来自 spec）：
- *   - 仅 qualified 状态可转换。
+ *   - 兼容旧入口：仅 contact_valid 状态可转换；后续流程会放宽此限制。
  *   - 单一事务：客户/联系人 create + 线索 update + status_change activity 全部 commit/rollback。
  *   - 客户/联系人的"关联现有"必须满足可见性 / 归属关系。
  *   - 不会改写现有客户的 owner / source / poolStatus；只在新创建时按线索的归属复制。
@@ -63,7 +63,7 @@ export class LeadConversionService {
    */
   async preview(leadId: number, currentUser: DataScopeUser): Promise<LeadConversionPreview> {
     const lead = await this.getAccessibleLead(leadId, currentUser)
-    if (lead.status !== 'qualified') {
+    if (lead.status !== 'contact_valid') {
       throw new BusinessError(CrmErrorCode.CRM_LEAD_CONVERSION_NOT_QUALIFIED, '仅有效线索可预览转化')
     }
     const candidates = await CustomerRepository.findConversionCandidates(
@@ -83,11 +83,11 @@ export class LeadConversionService {
 
   /**
    * 执行转化。事务内：
-   *   1. 锁行 + 校验 status='qualified'
+   *   1. 锁行 + 校验 status='contact_valid'
    *   2. 校验 customer / contact 可见性
    *   3. create customer / contact（如需）
    *   4. 把联系人设为该客户的主联系人
-   *   5. update lead → status='converted'，写引用 + convertedAt
+   *   5. update lead 仅写转换引用 + convertedAt，保留 follow-up status
    *   6. 写 status_change 审计活动
    */
   async convert(leadId: number, input: LeadConvertInput, currentUser: DataScopeUser): Promise<LeadConversionResult> {
@@ -160,7 +160,6 @@ export class LeadConversionService {
       // 4) 锁定线索 → converted
       const convertedAt = new Date()
       const updatedLead = await LeadRepository.update(leadId, {
-        status: 'converted',
         convertedCustomerId: customer.id,
         convertedContactId: contact.id,
         convertedAt,
@@ -174,7 +173,7 @@ export class LeadConversionService {
       await LeadActivityRepository.create({
         leadId,
         type: 'status_change',
-        content: `有效 → 已转化：关联客户 ${customer.name}`,
+        content: `关联客户：${customer.name}`,
         operatorUserId: currentUser.id,
       }, tx)
 
@@ -185,10 +184,10 @@ export class LeadConversionService {
   private async getAccessibleLead(leadId: number, currentUser: DataScopeUser): Promise<LeadRow> {
     const lead = await LeadRepository.findById(leadId, this.deps.db)
     if (!lead) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
-    if (lead.status === 'converted') {
+    if (lead.convertedCustomerId !== null) {
       throw new BusinessError(CrmErrorCode.CRM_LEAD_CONVERSION_NOT_QUALIFIED, '线索已被转化')
     }
-    if (lead.status !== 'qualified') {
+    if (lead.status !== 'contact_valid') {
       throw new BusinessError(CrmErrorCode.CRM_LEAD_CONVERSION_NOT_QUALIFIED, '仅有效线索可转为客户')
     }
     const scope = computeDataScope(currentUser)

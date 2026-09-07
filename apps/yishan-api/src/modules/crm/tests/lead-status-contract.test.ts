@@ -10,5 +10,8 @@ describe('lead follow-up status contract', () => {
     expect(Value.Check(LeadActivityCreateReqSchema, {
       type: 'phone', content: '已联系', followUpStatus: 'processing',
     })).toBe(false)
+    expect(Value.Check(LeadActivityCreateReqSchema, {
+      type: 'phone', content: '已联系',
+    })).toBe(false)
   })
 })

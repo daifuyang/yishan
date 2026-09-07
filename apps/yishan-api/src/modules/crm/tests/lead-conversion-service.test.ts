@@ -21,7 +21,7 @@ function buildLead(overrides: Partial<LeadRow> = {}): LeadRow {
     qq: null,
     sourceId: 11,
     intention: '需要 CRM 方案',
-    status: 'qualified',
+    status: 'contact_valid',
     ownerUserId: salesperson.id,
     ownerUserName: '销售',
     ownerDepartmentId: 10,
@@ -96,17 +96,16 @@ afterEach(() => {
 })
 
 describe('LeadConversionService.convert', () => {
-  it('creates a customer and primary contact, then marks the qualified lead converted in one transaction', async () => {
+  it('creates a customer and primary contact while preserving the selected follow-up status', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead())
-    // SELECT ... FOR UPDATE 返回 qualified 行；后续链路按计划执行
+    // SELECT ... FOR UPDATE 返回 contact_valid 行；后续链路按计划执行
     const lockSpy = vi.spyOn(LeadRepository as any, 'lockQualifiedForConversionInTx').mockResolvedValue(buildLead())
     const customerCreate = vi.spyOn(CustomerRepository, 'create').mockResolvedValue(buildCustomer({ id: 100 }))
     const contactCreate = vi.spyOn(ContactRepository, 'create').mockResolvedValue(buildContact({ id: 200, customerId: 100 }))
     vi.spyOn(ContactRepository, 'setPrimaryInTx').mockResolvedValue(undefined)
     const leadUpdate = vi.spyOn(LeadRepository, 'update').mockResolvedValue({
       ...buildLead(),
-      status: 'converted',
       convertedCustomerId: 100,
       convertedContactId: 200,
       convertedAt: new Date(),
@@ -138,12 +137,11 @@ describe('LeadConversionService.convert', () => {
       isPrimary: 1,
     }), expect.anything())
     expect(leadUpdate).toHaveBeenCalledWith(42, expect.objectContaining({
-      status: 'converted',
       convertedCustomerId: 100,
       convertedContactId: 200,
       convertedAt: expect.any(Date),
     }), expect.anything())
-    expect(result.lead).toMatchObject({ status: 'converted', convertedCustomerId: 100, convertedContactId: 200 })
+    expect(result.lead).toMatchObject({ status: 'contact_valid', convertedCustomerId: 100, convertedContactId: 200 })
     expect(result.customer.id).toBe(100)
     expect(result.contact.id).toBe(200)
   })
@@ -199,7 +197,7 @@ describe('LeadConversionService.convert', () => {
   it('returns a conflict when a second converter arrives after the first locks and converts', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead())
-    // 锁内发现已不是 qualified → 返回 null
+    // 锁内发现已不是 contact_valid → 返回 null
     vi.spyOn(LeadRepository as any, 'lockQualifiedForConversionInTx').mockResolvedValue(null)
 
     await expect(
@@ -210,8 +208,8 @@ describe('LeadConversionService.convert', () => {
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_CONVERSION_CONFLICT })
   })
 
-  it('rejects conversion from a non-qualified lead', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+  it('rejects conversion from a non-contact-valid lead', async () => {
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'pending' }))
 
     await expect(
       new LeadConversionService().convert(42, {
