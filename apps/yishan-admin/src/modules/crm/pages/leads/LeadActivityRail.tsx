@@ -67,6 +67,8 @@ const dateLabel = (date: string) => {
 };
 
 export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRow; onLeadChanged?: (next: LeadRow) => void }) {
+  // 无负责人即在线索池。池内线索尚未归属，不能产生任何销售跟进记录。
+  const canWriteFollowUp = lead.ownerUserId !== null;
   const [activities, setActivities] = useState<LeadActivityRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<ActivityFilter>('all');
@@ -119,16 +121,18 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
         <Typography.Text strong style={{ fontSize: 14 }}>
           动态
         </Typography.Text>
-        <Button
-          type="primary"
-          size="small"
-          icon={<PlusOutlined />}
-          onClick={() => setFollowUpModalOpen(true)}
-        >
-          写跟进
-        </Button>
+        {canWriteFollowUp && (
+          <Button
+            type="primary"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={() => setFollowUpModalOpen(true)}
+          >
+            写跟进
+          </Button>
+        )}
       </div>
-      <ModalForm<LeadFollowUpFormValues>
+      {canWriteFollowUp && <ModalForm<LeadFollowUpFormValues>
         open={followUpModalOpen}
         onOpenChange={setFollowUpModalOpen}
         title="写跟进"
@@ -194,7 +198,7 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
           placeholder="请选择下次跟进时间"
           width="md"
         />
-      </ModalForm>
+      </ModalForm>}
       <div
         style={{
           display: 'flex',
