@@ -2,6 +2,7 @@ import Fastify from 'fastify'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import leadRoutes from '../routes/v1/leads/index.js'
 import { LeadActivityService } from '../services/lead-activity.service.js'
+import type { LeadRow } from '../repositories/lead.repository.js'
 
 const activity = {
   id: 1, leadId: 12, type: 'phone', content: '已联系',
@@ -9,7 +10,7 @@ const activity = {
   operatorUserId: 7, operatorUserName: null,
   createdAt: new Date('2026-09-07T00:00:00.000Z'), updatedAt: new Date('2026-09-07T00:00:00.000Z'),
 }
-const lead = {
+const lead: LeadRow = {
   id: 12, name: '李伟', companyName: null, mobile: null, phone: null, email: null, wechat: null, qq: null,
   sourceId: null, intention: null, status: 'contact_valid', ownerUserId: 7, ownerUserName: '王伟', ownerDepartmentId: 10,
   poolStatus: 'owned', createdBy: 7, lastFollowUpAt: null, nextFollowUpAt: null, disqualifyReason: null, disqualifyCode: null,

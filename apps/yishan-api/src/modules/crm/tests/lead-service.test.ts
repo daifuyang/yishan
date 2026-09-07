@@ -34,7 +34,7 @@ describe('LeadService.create', () => {
       qq: null,
       sourceId: null,
       intention: null,
-      status: 'new',
+      status: 'pending',
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
@@ -81,7 +81,7 @@ describe('LeadService.create', () => {
       qq: null,
       sourceId: null,
       intention: null,
-      status: 'new',
+      status: 'pending',
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
@@ -143,9 +143,9 @@ describe('LeadService.disqualify', () => {
 
   it('stores code and explanation when disqualifying and writes a readable audit event', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue({
-      ...buildLead({ status: 'disqualified' }),
+      ...buildLead({ status: 'contact_invalid' }),
       disqualifyCode: 'no_demand',
       disqualifyReason: '本年度无采购计划',
     })
@@ -162,7 +162,7 @@ describe('LeadService.disqualify', () => {
     })
 
     expect(update).toHaveBeenCalledWith(1, expect.objectContaining({
-      status: 'disqualified',
+      status: 'contact_invalid',
       disqualifyCode: 'no_demand',
       disqualifyReason: '本年度无采购计划',
     }), expect.anything())
@@ -178,7 +178,7 @@ describe('LeadService.qualify', () => {
   it('refuses qualification without a usable contact channel', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({
-      status: 'new',
+      status: 'pending',
       mobile: null,
       phone: null,
       email: null,
@@ -195,10 +195,10 @@ describe('LeadService.qualify', () => {
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_QUALIFICATION_REQUIRED })
   })
 
-  it('stores evidence + next action and writes the 跟进中 → 有效 audit event', async () => {
+  it('stores evidence + next action and writes the 联系方式有效 audit event', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
-    vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'qualified' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'pending' }))
+    vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const activity = vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({
       id: 101, leadId: 1, type: 'status_change', content: '', occurredAt: new Date(), nextFollowUpAt: null,
       operatorUserId: salesperson.id, createdAt: new Date(), updatedAt: new Date(),
@@ -213,18 +213,18 @@ describe('LeadService.qualify', () => {
 
     expect(activity).toHaveBeenCalledWith(expect.objectContaining({
       type: 'status_change',
-      content: expect.stringMatching(/跟进中 → 有效[\s\S]*预算已确认[\s\S]*安排演示/),
+      content: expect.stringMatching(/未处理 → 联系方式有效[\s\S]*预算已确认[\s\S]*安排演示/),
     }), expect.anything())
   })
 })
 
 describe('LeadService.reactivate', () => {
-  it('allows only a disqualified lead to reactivate to processing', async () => {
+  it('allows only a contact-invalid lead to reactivate to pending', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(LeadRepository, 'findById')
-      .mockResolvedValueOnce(buildLead({ status: 'disqualified' }))
-      .mockResolvedValueOnce(buildLead({ status: 'processing' }))
-    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'processing' }))
+      .mockResolvedValueOnce(buildLead({ status: 'contact_invalid' }))
+      .mockResolvedValueOnce(buildLead({ status: 'pending' }))
+    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'pending' }))
     const activity = vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({
       id: 110, leadId: 1, type: 'status_change', content: '', occurredAt: new Date(), nextFollowUpAt: null,
       operatorUserId: salesperson.id, createdAt: new Date(), updatedAt: new Date(),
@@ -237,7 +237,7 @@ describe('LeadService.reactivate', () => {
     })
 
     expect(update).toHaveBeenCalledWith(1, expect.objectContaining({
-      status: 'processing',
+      status: 'pending',
       disqualifyCode: null,
       disqualifyReason: null,
     }), expect.anything())
@@ -247,18 +247,18 @@ describe('LeadService.reactivate', () => {
     }), expect.anything())
   })
 
-  it('rejects reactivate from a non-disqualified lead', async () => {
+  it('rejects reactivate from a non-invalid lead', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'qualified' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
 
     await expect(
       new LeadService().reactivate({ leadId: 1, reason: '再次尝试', currentUser: salesperson }),
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_REACTIVATE_INVALID_STATE })
   })
 
-  it('rejects reactivate from a converted lead', async () => {
+  it('rejects reactivate from a closed lead', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'converted' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'closed' }))
 
     await expect(
       new LeadService().reactivate({ leadId: 1, reason: '再次尝试', currentUser: salesperson }),
@@ -276,7 +276,7 @@ describe('LeadService.claim', () => {
     })
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue({
       id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, intention: null,
-      status: 'new', ownerUserId: salesperson.id, ownerUserName: '销售', ownerDepartmentId: 10,
+      status: 'pending', ownerUserId: salesperson.id, ownerUserName: '销售', ownerDepartmentId: 10,
       poolStatus: 'public', createdBy: null, lastFollowUpAt: null, nextFollowUpAt: null,
       disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
     })
@@ -292,7 +292,7 @@ describe('LeadService.claim', () => {
     // 已经有人领取，但 lead 仍存在
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue({
       id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, intention: null,
-      status: 'processing', ownerUserId: 999, ownerUserName: '其它销售', ownerDepartmentId: 10,
+      status: 'contact_valid', ownerUserId: 999, ownerUserName: '其它销售', ownerDepartmentId: 10,
       poolStatus: 'owned', createdBy: salesperson.id, lastFollowUpAt: null, nextFollowUpAt: null,
       disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
     })
@@ -325,7 +325,7 @@ function buildLead(overrides: Partial<LeadRow> = {}) {
       qq: null,
       sourceId: null,
       intention: null,
-      status: 'new' as const,
+      status: 'pending' as const,
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
@@ -347,7 +347,7 @@ function buildLead(overrides: Partial<LeadRow> = {}) {
 describe('LeadService 终态守卫（已转化/无效）', () => {
 
   it('assign 拒绝在已转化线索上执行', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'converted' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ convertedCustomerId: 99 }))
 
     await expect(
       new LeadService().assign({ leadId: 1, targetUserId: 8, currentUser: salesperson }),
@@ -355,7 +355,7 @@ describe('LeadService 终态守卫（已转化/无效）', () => {
   })
 
   it('qualify 拒绝在已无效线索上执行', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'disqualified' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_invalid' }))
 
     await expect(
       new LeadService().qualify({
@@ -368,7 +368,7 @@ describe('LeadService 终态守卫（已转化/无效）', () => {
   })
 
   it('disqualify 拒绝在已转化线索上执行', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'converted' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ convertedCustomerId: 99 }))
 
     await expect(
       new LeadService().disqualify({ leadId: 1, code: 'rejected', reason: '误判', currentUser: salesperson }),
@@ -386,9 +386,9 @@ describe('LeadService.assign 状态机', () => {
   })
 
   it('把线索退回公海：ownerUserId=null, poolStatus=public', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue({
-      ...buildLead({ status: 'processing' }),
+      ...buildLead({ status: 'contact_valid' }),
       ownerUserId: null,
       poolStatus: 'public',
     })
@@ -402,9 +402,9 @@ describe('LeadService.assign 状态机', () => {
   })
 
   it('把线索分配给同事：ownerUserId=target, poolStatus=owned', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue({
-      ...buildLead({ status: 'processing' }),
+      ...buildLead({ status: 'contact_valid' }),
       ownerUserId: 8,
     })
 
@@ -417,8 +417,8 @@ describe('LeadService.assign 状态机', () => {
   })
 
   it('自指分配（同一人）不写 activity，避免噪音', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
-    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
+    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const activity = vi.spyOn(LeadActivityRepository, 'create')
 
     await new LeadService().assign({ leadId: 1, targetUserId: salesperson.id, currentUser: salesperson })
@@ -440,14 +440,14 @@ describe('LeadService.update（编辑资料）', () => {
   })
 
   it('白名单字段写入，ownerUserId/status/poolStatus/converted* 等被忽略', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
-    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
+    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'contact_valid' }))
 
     // 用类型断言模拟客户端提交越权字段，服务端应忽略
     const maliciousInput = {
       companyName: '上海拓维信息技术有限公司',
       ownerUserId: 999,
-      status: 'qualified',
+      status: 'contact_valid',
       poolStatus: 'public',
     } as unknown as Parameters<typeof LeadService.prototype.update>[0]['input']
 
@@ -467,7 +467,7 @@ describe('LeadService.update（编辑资料）', () => {
   })
 
   it('联系人为空字符串时拒绝', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update')
 
     await expect(
@@ -481,8 +481,8 @@ describe('LeadService.update（编辑资料）', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
-  it('终态线索（已转化 / 已无效）不可编辑', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'converted' }))
+  it('已转化或联系方式无效的线索不可编辑', async () => {
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ convertedCustomerId: 99 }))
 
     await expect(
       new LeadService().update({
@@ -494,7 +494,7 @@ describe('LeadService.update（编辑资料）', () => {
   })
 
   it('无字段变化时直接返回，不写库、不写审计', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update')
     const activity = vi.spyOn(LeadActivityRepository, 'create')
 
@@ -514,9 +514,9 @@ describe('LeadService.update（编辑资料）', () => {
   })
 
   it('字段实际变化时写入并产生 diff 审计', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'processing' }))
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue({
-      ...buildLead({ status: 'processing' }),
+      ...buildLead({ status: 'contact_valid' }),
       companyName: '上海拓维信息技术有限公司',
       mobile: '13900000000',
     })
