@@ -36,6 +36,13 @@
       "when": 1788913800000,
       "tag": "0004_add-lead-pool-status",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1788742230485,
+      "tag": "0005_lead-lifecycle-reasons",
+      "breakpoints": true
     }
   ]
 }
