@@ -58,6 +58,17 @@ describe('LeadActivityService.create', () => {
     expect(LeadRepository.update).toHaveBeenCalledWith(1, expect.objectContaining({ status: 'contact_valid' }), expect.anything())
   })
 
+  it('uses pending as the audit label for a legacy empty status', async () => {
+    mockTransactionLead(undefined as unknown as LeadRow['status'], 'pending')
+    const create = vi.spyOn(LeadActivityRepository, 'create')
+      .mockResolvedValue({ id: 25, leadId: 1, type: 'phone', content: '补录跟进', occurredAt, nextFollowUpAt, operatorUserId: salesperson.id, createdAt: occurredAt, updatedAt: occurredAt })
+    vi.spyOn(LeadActivityRepository, 'listByLeadId').mockResolvedValue([])
+
+    await new LeadActivityService().create(1, { type: 'phone', content: '补录跟进', followUpStatus: 'pending', occurredAt, nextFollowUpAt }, salesperson)
+
+    expect(create).toHaveBeenCalledTimes(1)
+  })
+
   it.each(['contact_invalid', 'closed'] as const)('allows a %s lead to record a follow-up', async (status) => {
     mockTransactionLead(status)
     vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({ id: 23, leadId: 1, type: 'phone', content: '继续跟进', occurredAt, nextFollowUpAt, operatorUserId: salesperson.id, createdAt: occurredAt, updatedAt: occurredAt })

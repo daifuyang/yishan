@@ -16,7 +16,12 @@ const STATUS_LABELS: Record<LeadRow['status'], string> = {
   pending: '未处理',
   contact_valid: '联系方式有效',
   contact_invalid: '联系方式无效',
-  closed: '已关闭',
+  closed: '关闭',
+}
+
+/** 兼容尚未迁移完成的历史空值，不能把技术值暴露到动态中。 */
+function statusLabel(status: string | null | undefined): string {
+  return STATUS_LABELS[status as LeadRow['status']] ?? STATUS_LABELS.pending
 }
 
 /**
@@ -76,11 +81,12 @@ export class LeadActivityService {
       }
       await LeadRepository.update(leadId, updatePayload, tx)
 
-      if (locked.status !== input.followUpStatus) {
+      // 旧记录的空 status 语义等同于“未处理”，避免补录跟进时产生“未处理 → 未处理”。
+      if ((locked.status ?? 'pending') !== input.followUpStatus) {
         await LeadActivityRepository.create({
           leadId,
           type: 'status_change',
-          content: `跟进状态由「${STATUS_LABELS[locked.status]}」变为「${STATUS_LABELS[input.followUpStatus]}」`,
+          content: `跟进状态由「${statusLabel(locked.status)}」变为「${statusLabel(input.followUpStatus)}」`,
           occurredAt,
           operatorUserId: currentUser.id,
         }, tx)
