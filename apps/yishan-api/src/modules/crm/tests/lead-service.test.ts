@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LeadService } from '../services/lead.service.js'
 import { CrmErrorCode } from '../schemas/error-codes.js'
-import { LeadRepository, type LeadRow } from '../repositories/lead.repository.js'
+import { LeadRepository, buildLeadListWhere, type LeadRow } from '../repositories/lead.repository.js'
 import { LeadActivityRepository } from '../repositories/lead-activity.repository.js'
 import { dbManager } from '@/db'
+import { MySqlDialect } from 'drizzle-orm/mysql-core'
+import { LeadRespSchema } from '../schemas/lead.schema.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
@@ -22,7 +24,7 @@ describe('LeadService.create', () => {
     })
   })
 
-  it('binds creator as default owner and never writes poolStatus=public', async () => {
+  it('binds creator as the default owner', async () => {
     const create = vi.spyOn(LeadRepository, 'create').mockResolvedValue({
       id: 99,
       name: '王经理',
@@ -38,7 +40,6 @@ describe('LeadService.create', () => {
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
-      poolStatus: 'owned',
       createdBy: salesperson.id,
       lastFollowUpAt: null,
       nextFollowUpAt: null,
@@ -64,12 +65,11 @@ describe('LeadService.create', () => {
         createdBy: salesperson.id,
         creatorId: salesperson.id,
         updaterId: salesperson.id,
-        poolStatus: 'owned',
       }),
     )
   })
 
-  it('ignores ownerUserId / poolStatus submitted by the client', async () => {
+  it('ignores ownerUserId submitted by the client', async () => {
     const create = vi.spyOn(LeadRepository, 'create').mockResolvedValue({
       id: 100,
       name: '王经理',
@@ -85,7 +85,6 @@ describe('LeadService.create', () => {
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
-      poolStatus: 'owned',
       createdBy: salesperson.id,
       lastFollowUpAt: null,
       nextFollowUpAt: null,
@@ -111,18 +110,17 @@ describe('LeadService.create', () => {
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         ownerUserId: salesperson.id,
-        poolStatus: 'owned',
         createdBy: salesperson.id,
       }),
     )
-    // 显式确认「public」从未被写入
+    // 归属只由 ownerUserId 决定。
     const args = create.mock.calls[0]?.[0] as unknown as Record<string, unknown> | undefined
-    expect(args?.poolStatus).not.toBe('public')
+    expect(args).not.toHaveProperty('poolStatus')
   })
 })
 
 describe('LeadService.list', () => {
-  it('limits a salesperson to their own leads and the public pool', async () => {
+  it('limits a salesperson to their own leads without auto-including the pool', async () => {
     const list = vi.spyOn(LeadRepository, 'list').mockResolvedValue({ rows: [], total: 0 })
 
     await new LeadService().list({}, salesperson)
@@ -131,6 +129,41 @@ describe('LeadService.list', () => {
       ownerUserIds: [salesperson.id],
       ownerDepartmentIds: null,
     }))
+  })
+})
+
+describe('lead pool ownership query', () => {
+  const dialect = new MySqlDialect()
+
+  it('lists every owner-null lead in the pool', () => {
+    const where = buildLeadListWhere({
+      pool: true,
+      ownerUserIds: [salesperson.id],
+      ownerDepartmentIds: null,
+    })
+    expect(where).toBeDefined()
+    const query = dialect.sqlToQuery(where!)
+
+    expect(query.sql).toMatch(/owner_user_id`?\s+is\s+null/i)
+    expect(query.sql).not.toMatch(/pool_status/i)
+    expect(query.sql).not.toMatch(/owner_user_id\s+in/i)
+  })
+
+  it('does not auto-include owner-null leads in a scoped main list', () => {
+    const where = buildLeadListWhere({
+      ownerUserIds: [salesperson.id],
+      ownerDepartmentIds: null,
+    })
+    expect(where).toBeDefined()
+    const query = dialect.sqlToQuery(where!)
+
+    expect(query.sql).toMatch(/owner_user_id`?\s+in/i)
+    expect(query.sql).not.toMatch(/pool_status/i)
+    expect(query.sql).not.toMatch(/owner_user_id`?\s+is\s+null/i)
+  })
+
+  it('does not expose a second pool-state field in lead responses', () => {
+    expect(LeadRespSchema.properties).not.toHaveProperty('poolStatus')
   })
 })
 
@@ -277,7 +310,7 @@ describe('LeadService.claim', () => {
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue({
       id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, intention: null,
       status: 'pending', ownerUserId: salesperson.id, ownerUserName: '销售', ownerDepartmentId: 10,
-      poolStatus: 'public', createdBy: null, lastFollowUpAt: null, nextFollowUpAt: null,
+      createdBy: null, lastFollowUpAt: null, nextFollowUpAt: null,
       disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
     })
 
@@ -293,7 +326,7 @@ describe('LeadService.claim', () => {
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue({
       id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, intention: null,
       status: 'contact_valid', ownerUserId: 999, ownerUserName: '其它销售', ownerDepartmentId: 10,
-      poolStatus: 'owned', createdBy: salesperson.id, lastFollowUpAt: null, nextFollowUpAt: null,
+      createdBy: salesperson.id, lastFollowUpAt: null, nextFollowUpAt: null,
       disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
     })
 
@@ -329,7 +362,6 @@ function buildLead(overrides: Partial<LeadRow> = {}) {
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
-      poolStatus: 'owned' as const,
       createdBy: salesperson.id,
       lastFollowUpAt: null,
       nextFollowUpAt: null,
@@ -385,23 +417,21 @@ describe('LeadService.assign 状态机', () => {
     })
   })
 
-  it('把线索退回公海：ownerUserId=null, poolStatus=public', async () => {
+  it('把线索退回公海：ownerUserId=null', async () => {
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue({
       ...buildLead({ status: 'contact_valid' }),
       ownerUserId: null,
-      poolStatus: 'public',
     })
 
     await new LeadService().assign({ leadId: 1, targetUserId: null, currentUser: salesperson })
 
     expect(update).toHaveBeenCalledWith(1, expect.objectContaining({
       ownerUserId: null,
-      poolStatus: 'public',
     }))
   })
 
-  it('把线索分配给同事：ownerUserId=target, poolStatus=owned', async () => {
+  it('把线索分配给同事：ownerUserId=target', async () => {
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue({
       ...buildLead({ status: 'contact_valid' }),
@@ -412,7 +442,6 @@ describe('LeadService.assign 状态机', () => {
 
     expect(update).toHaveBeenCalledWith(1, expect.objectContaining({
       ownerUserId: 8,
-      poolStatus: 'owned',
     }))
   })
 
@@ -425,9 +454,34 @@ describe('LeadService.assign 状态机', () => {
 
     expect(update).toHaveBeenCalledWith(1, expect.objectContaining({
       ownerUserId: salesperson.id,
-      poolStatus: 'owned',
     }))
     expect(activity).not.toHaveBeenCalled()
+  })
+
+  it('allows a supervisor to allocate an owner-null lead from the pool', async () => {
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({
+      ownerUserId: null,
+      ownerDepartmentId: null,
+    }))
+    const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ ownerUserId: 8 }))
+
+    await new LeadService().assign({ leadId: 1, targetUserId: 8, currentUser: salesperson })
+
+    expect(update).toHaveBeenCalledWith(1, expect.objectContaining({ ownerUserId: 8 }))
+  })
+
+  it('does not expose an owned lead outside the salesperson scope', async () => {
+    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({
+      ownerUserId: 999,
+      ownerDepartmentId: 999,
+    }))
+    const update = vi.spyOn(LeadRepository, 'update')
+
+    await expect(
+      new LeadService().assign({ leadId: 1, targetUserId: null, currentUser: salesperson }),
+    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_NOT_FOUND })
+
+    expect(update).not.toHaveBeenCalled()
   })
 })
 
@@ -439,7 +493,7 @@ describe('LeadService.update（编辑资料）', () => {
     })
   })
 
-  it('白名单字段写入，ownerUserId/status/poolStatus/converted* 等被忽略', async () => {
+  it('白名单字段写入，ownerUserId/status/converted* 等被忽略', async () => {
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'contact_valid' }))
     const update = vi.spyOn(LeadRepository, 'update').mockResolvedValue(buildLead({ status: 'contact_valid' }))
 
@@ -448,7 +502,6 @@ describe('LeadService.update（编辑资料）', () => {
       companyName: '上海拓维信息技术有限公司',
       ownerUserId: 999,
       status: 'contact_valid',
-      poolStatus: 'public',
     } as unknown as Parameters<typeof LeadService.prototype.update>[0]['input']
 
     await new LeadService().update({
@@ -462,7 +515,6 @@ describe('LeadService.update（编辑资料）', () => {
     expect(written?.companyName).toBe('上海拓维信息技术有限公司')
     expect(written).not.toHaveProperty('ownerUserId')
     expect(written).not.toHaveProperty('status')
-    expect(written).not.toHaveProperty('poolStatus')
     expect(written).not.toHaveProperty('convertedCustomerId')
   })
 

@@ -87,14 +87,6 @@ export const crmLead = mysqlTable(
     status: varchar({ length: 16 }).notNull().default('pending'),
     ownerUserId: int('owner_user_id'),
     ownerDepartmentId: int('owner_department_id'),
-    /**
-     * 显式线索池状态，与 ownerUserId 解耦：
-     *   - owned     已有明确负责人
-     *   - public    已进入公海（ownerUserId 必须为 null）
-     *   - unassigned 待分配（未来扩展）
-     * 新建线索默认 owned，不要再用 ownerUserId IS NULL 推断 public。
-     */
-    poolStatus: varchar('pool_status', { length: 16 }).notNull().default('owned'),
     lastFollowUpAt: datetime('last_follow_up_at'),
     nextFollowUpAt: datetime('next_follow_up_at'),
     disqualifyReason: varchar('disqualify_reason', { length: 500 }),
@@ -112,7 +104,6 @@ export const crmLead = mysqlTable(
   (t) => ({
     idxStatus: index('idx_crm_lead_status').on(t.status),
     idxOwner: index('idx_crm_lead_owner').on(t.ownerUserId, t.ownerDepartmentId),
-    idxPoolStatus: index('idx_crm_lead_pool_status').on(t.poolStatus),
     idxMobile: index('idx_crm_lead_mobile').on(t.mobile),
     idxEmail: index('idx_crm_lead_email').on(t.email),
     idxNextFollowUp: index('idx_crm_lead_next_follow_up_at').on(t.nextFollowUpAt),

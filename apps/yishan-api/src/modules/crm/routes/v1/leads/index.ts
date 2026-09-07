@@ -38,7 +38,7 @@ export default (async (app) => {
   })
   /**
    * 编辑线索普通资料：仅白名单字段生效。
-   * ownerUserId/status/poolStatus/convertedCustomerId 等业务字段被接口层拒绝。
+   * ownerUserId/status/convertedCustomerId 等业务字段被接口层拒绝。
    */
   route.patch('/:id', { access: { permission: PERMS.LEAD_UPDATE }, schema: { tags: [ROUTE_TAG], summary: '编辑线索资料', operationId: 'crmLeadsUpdate', params: LeadIdParamSchema, body: LeadUpdateReqSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
     const row = await service.update({ leadId: request.params.id, input: request.body, currentUser: request.currentUser })

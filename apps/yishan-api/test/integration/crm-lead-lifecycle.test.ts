@@ -141,14 +141,14 @@ describe.runIf(!ctx.skip)('integration: crm lead lifecycle', () => {
       currentUser: salesperson,
     })
 
-    // 退回公海 → owner 变 null，poolStatus=public，status 仍为 qualified
+    // 退回公海 → owner 变 null，status 仍为 qualified
     const returned = await services.leadService.assign({
       leadId: lead.id,
       targetUserId: null,
       currentUser: salesperson,
     })
     expect(returned.status).toBe('qualified')
-    expect(returned.poolStatus).toBe('public')
+    expect(returned.ownerUserId).toBeNull()
 
     // 另一名销售领取 → ownerUserId 更新，status 仍 qualified
     const claimed = await services.leadService.claim({ leadId: lead.id, currentUser: other })

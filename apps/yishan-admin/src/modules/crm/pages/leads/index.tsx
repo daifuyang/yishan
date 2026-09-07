@@ -297,7 +297,6 @@ export default function LeadPage() {
                       ...current,
                       ownerUserId: null,
                       ownerUserName: null,
-                      poolStatus: 'public',
                     }
                   : current,
               );

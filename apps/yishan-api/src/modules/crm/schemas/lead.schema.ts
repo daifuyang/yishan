@@ -2,7 +2,6 @@ import { Type, type Static } from '@sinclair/typebox'
 import { PaginationQuerySchema } from './common.schema.js'
 import { ACTIVITY_TYPES } from './activity.schema.js'
 export const LEAD_FOLLOW_UP_STATUS = ['pending', 'contact_valid', 'contact_invalid', 'closed'] as const
-export const LEAD_POOL_STATUS = ['owned', 'public', 'unassigned'] as const
 
 /**
  * 标准化作废原因码：除了代码本身的语义价值，禁止自由文本替代 code。
@@ -45,7 +44,6 @@ export const LeadRespSchema = Type.Object({
   ownerUserId: Type.Union([Type.Number(), Type.Null()]),
   ownerUserName: Type.Union([Type.String(), Type.Null()]),
   ownerDepartmentId: Type.Union([Type.Number(), Type.Null()]),
-  poolStatus: Type.String({ enum: [...LEAD_POOL_STATUS] }),
   createdBy: Type.Union([Type.Number(), Type.Null()]),
   lastFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
   nextFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
@@ -69,8 +67,8 @@ export const LeadListQuerySchema = Type.Composite([
 ])
 
 /**
- * 创建请求：不接受 ownerUserId/ownerDepartmentId/poolStatus。
- * 服务层按当前认证用户绑定 createdBy/ownerUserId/poolStatus='owned'。
+ * 创建请求：不接受 ownerUserId/ownerDepartmentId。
+ * 服务层按当前认证用户绑定 createdBy/ownerUserId。
  */
 export const LeadCreateReqSchema = Type.Object({
   name: Type.Optional(Type.String({ maxLength: 100 })),
@@ -88,7 +86,7 @@ export const LeadCreateReqSchema = Type.Object({
  * PATCH /leads/:id 白名单字段：仅普通资料字段。
  *
  * 严禁在此接收：
- *   - ownerUserId / ownerDepartmentId / poolStatus → 走 assign / returnToPool
+ *   - ownerUserId / ownerDepartmentId → 走 assign / returnToPool
  *   - status                                    → 走 qualify / disqualify
  *   - convertedCustomerId / convertedAt          → 走 convert
  *   - disqualifyReason                          → 走 disqualify

@@ -93,19 +93,19 @@ export interface CustomerCreateInput {
 export interface CustomerUpdateInput extends Partial<CustomerCreateInput> {}
 
 export interface LeadRow {
-  id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; intention: string | null; status: LeadStatus; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; poolStatus: 'owned' | 'public' | 'unassigned'; createdBy: number | null; lastFollowUpAt: string | null; nextFollowUpAt: string | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: string | null; isConverted: boolean; createdAt: string; updatedAt: string
+  id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; intention: string | null; status: LeadStatus; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; createdBy: number | null; lastFollowUpAt: string | null; nextFollowUpAt: string | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: string | null; isConverted: boolean; createdAt: string; updatedAt: string
 }
 function withLeadConversionState(lead: Omit<LeadRow, 'isConverted'>): LeadRow {
   return { ...lead, isConverted: lead.convertedCustomerId !== null }
 }
 /**
- * 创建请求不传 ownerUserId/ownerDepartmentId/poolStatus：
- * 服务端按当前认证用户自动写入 createdBy=ownerUserId=currentUser.id、poolStatus='owned'。
+ * 创建请求不传 ownerUserId/ownerDepartmentId：
+ * 服务端按当前认证用户自动写入 createdBy=ownerUserId=currentUser.id。
  */
 export interface LeadCreateInput { name?: string; companyName?: string; mobile?: string; phone?: string; email?: string; wechat?: string; qq?: string; sourceId?: number | null; intention?: string }
 /**
  * PATCH /leads/:id 资料字段：仅白名单生效。
- * ownerUserId/status/poolStatus/converted* 等业务字段必须走专门接口。
+ * ownerUserId/status/converted* 等业务字段必须走专门接口。
  */
 export interface LeadUpdateInput { name?: string; companyName?: string; mobile?: string; phone?: string; email?: string; wechat?: string; qq?: string; sourceId?: number | null; intention?: string }
 export async function listLeads(query: PageQuery & { status?: LeadStatus; ownerUserId?: number; pool?: boolean }): Promise<{ data: LeadRow[]; total: number }> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>[]>>('/api/crm/v1/leads', { method: 'GET', params: query as any }); return { data: unwrap(r).map(withLeadConversionState), total: r.pagination?.total ?? 0 } }

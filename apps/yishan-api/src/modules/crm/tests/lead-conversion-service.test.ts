@@ -25,7 +25,6 @@ function buildLead(overrides: Partial<LeadRow> = {}): LeadRow {
     ownerUserId: salesperson.id,
     ownerUserName: '销售',
     ownerDepartmentId: 10,
-    poolStatus: 'owned',
     createdBy: salesperson.id,
     lastFollowUpAt: new Date(),
     nextFollowUpAt: new Date(),
@@ -127,7 +126,6 @@ describe('LeadConversionService.convert', () => {
       phone: '13800000000',
       sourceId: 11,
       ownerUserId: salesperson.id,
-      poolStatus: 'owned',
       creatorId: salesperson.id,
     }), expect.anything())
     expect(contactCreate).toHaveBeenCalledWith(expect.objectContaining({

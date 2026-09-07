@@ -4,15 +4,12 @@ import { sysUser } from '@/db/schema'
 import { crmLead } from '../db/schema.js'
 
 export type LeadStatus = 'pending' | 'contact_valid' | 'contact_invalid' | 'closed'
-/** 线索显式归属状态，与 ownerUserId 解耦。 */
-export type LeadPoolStatus = 'owned' | 'public' | 'unassigned'
-export const LEAD_POOL_STATUS_PUBLIC: LeadPoolStatus = 'public'
-export interface LeadRow { id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; intention: string | null; status: LeadStatus; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; poolStatus: LeadPoolStatus; createdBy: number | null; lastFollowUpAt: Date | null; nextFollowUpAt: Date | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: Date | null; createdAt: Date; updatedAt: Date }
+export interface LeadRow { id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; intention: string | null; status: LeadStatus; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; createdBy: number | null; lastFollowUpAt: Date | null; nextFollowUpAt: Date | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: Date | null; createdAt: Date; updatedAt: Date }
 export interface LeadListQuery { page?: number; pageSize?: number; keyword?: string; status?: LeadStatus; ownerUserId?: number; pool?: boolean; ownerUserIds?: number[] | null; ownerDepartmentIds?: number[] | null }
-export interface CreateLeadInput { name?: string | null; companyName?: string | null; mobile?: string | null; phone?: string | null; email?: string | null; wechat?: string | null; qq?: string | null; sourceId?: number | null; intention?: string | null; ownerUserId?: number | null; ownerDepartmentId?: number | null; poolStatus?: LeadPoolStatus; creatorId: number; createdBy?: number | null; updaterId: number }
-export interface UpdateLeadInput { status?: LeadStatus; ownerUserId?: number | null; ownerDepartmentId?: number | null; poolStatus?: LeadPoolStatus; lastFollowUpAt?: Date | null; nextFollowUpAt?: Date | null; disqualifyReason?: string | null; disqualifyCode?: string | null; convertedCustomerId?: number | null; convertedContactId?: number | null; convertedAt?: Date | null; updaterId: number }
-const columns = { id: crmLead.id, name: crmLead.name, companyName: crmLead.companyName, mobile: crmLead.mobile, phone: crmLead.phone, email: crmLead.email, wechat: crmLead.wechat, qq: crmLead.qq, sourceId: crmLead.sourceId, intention: crmLead.intention, status: crmLead.status, ownerUserId: crmLead.ownerUserId, ownerUserName: sysUser.realName, ownerDepartmentId: crmLead.ownerDepartmentId, poolStatus: crmLead.poolStatus, createdBy: crmLead.creatorId, lastFollowUpAt: crmLead.lastFollowUpAt, nextFollowUpAt: crmLead.nextFollowUpAt, disqualifyReason: crmLead.disqualifyReason, disqualifyCode: crmLead.disqualifyCode, convertedCustomerId: crmLead.convertedCustomerId, convertedContactId: crmLead.convertedContactId, convertedAt: crmLead.convertedAt, createdAt: crmLead.createdAt, updatedAt: crmLead.updatedAt }
-function whereFor(q: LeadListQuery): SQL | undefined {
+export interface CreateLeadInput { name?: string | null; companyName?: string | null; mobile?: string | null; phone?: string | null; email?: string | null; wechat?: string | null; qq?: string | null; sourceId?: number | null; intention?: string | null; ownerUserId?: number | null; ownerDepartmentId?: number | null; creatorId: number; createdBy?: number | null; updaterId: number }
+export interface UpdateLeadInput { status?: LeadStatus; ownerUserId?: number | null; ownerDepartmentId?: number | null; lastFollowUpAt?: Date | null; nextFollowUpAt?: Date | null; disqualifyReason?: string | null; disqualifyCode?: string | null; convertedCustomerId?: number | null; convertedContactId?: number | null; convertedAt?: Date | null; updaterId: number }
+const columns = { id: crmLead.id, name: crmLead.name, companyName: crmLead.companyName, mobile: crmLead.mobile, phone: crmLead.phone, email: crmLead.email, wechat: crmLead.wechat, qq: crmLead.qq, sourceId: crmLead.sourceId, intention: crmLead.intention, status: crmLead.status, ownerUserId: crmLead.ownerUserId, ownerUserName: sysUser.realName, ownerDepartmentId: crmLead.ownerDepartmentId, createdBy: crmLead.creatorId, lastFollowUpAt: crmLead.lastFollowUpAt, nextFollowUpAt: crmLead.nextFollowUpAt, disqualifyReason: crmLead.disqualifyReason, disqualifyCode: crmLead.disqualifyCode, convertedCustomerId: crmLead.convertedCustomerId, convertedContactId: crmLead.convertedContactId, convertedAt: crmLead.convertedAt, createdAt: crmLead.createdAt, updatedAt: crmLead.updatedAt }
+export function buildLeadListWhere(q: LeadListQuery): SQL | undefined {
   const c: SQL[] = [isNull(crmLead.deletedAt)]
   if (q.keyword) {
     const v = `%${q.keyword}%`
@@ -20,13 +17,12 @@ function whereFor(q: LeadListQuery): SQL | undefined {
   }
   if (q.status) c.push(eq(crmLead.status, q.status))
   if (q.ownerUserId !== undefined) c.push(eq(crmLead.ownerUserId, q.ownerUserId))
-  // 公海判定走显式 poolStatus，不再用 ownerUserId IS NULL 推导
-  if (q.pool) c.push(eq(crmLead.poolStatus, LEAD_POOL_STATUS_PUBLIC))
-  if (q.ownerUserIds !== null || q.ownerDepartmentIds !== null) {
-    const visible: SQL[] = [eq(crmLead.poolStatus, LEAD_POOL_STATUS_PUBLIC)]
+  if (q.pool) c.push(isNull(crmLead.ownerUserId))
+  if (!q.pool && (q.ownerUserIds !== null || q.ownerDepartmentIds !== null)) {
+    const visible: SQL[] = []
     if (q.ownerUserIds?.length) visible.push(inArray(crmLead.ownerUserId, q.ownerUserIds))
     if (q.ownerDepartmentIds?.length) visible.push(inArray(crmLead.ownerDepartmentId, q.ownerDepartmentIds))
-    c.push(or(...visible)!)
+    if (visible.length) c.push(or(...visible)!)
   }
   return and(...c)
 }
@@ -34,7 +30,7 @@ export class LeadRepository {
   static async list(q: LeadListQuery, db: AppQueryDb = drizzleDb): Promise<{ rows: LeadRow[]; total: number }> {
     const page = q.page ?? 1
     const pageSize = q.pageSize ?? 10
-    const where = whereFor(q)
+    const where = buildLeadListWhere(q)
     const [rows, total] = await Promise.all([
       db.select(columns).from(crmLead).leftJoin(sysUser, eq(sysUser.id, crmLead.ownerUserId)).where(where).orderBy(desc(crmLead.updatedAt)).limit(pageSize).offset((page - 1) * pageSize),
       db.select({ c: count() }).from(crmLead).where(where),
@@ -79,15 +75,14 @@ export class LeadRepository {
     return row && row.convertedCustomerId === null ? row : null
   }
   /**
-   * 认领公海线索：要求 poolStatus='public'，且状态允许认领。
-   * 成功后置 owned，与 createdBy 解耦——createdBy 始终指向最初创建人。
+   * 认领公海线索：只有未分配 owner 的记录可认领。
    */
   static async claimInTx(id: number, ownerUserId: number, ownerDepartmentId: number | null, updaterId: number, db: AppQueryDb): Promise<number> {
     const result = await db.update(crmLead)
-      .set({ ownerUserId, ownerDepartmentId, poolStatus: 'owned', updaterId, updatedAt: new Date() })
+      .set({ ownerUserId, ownerDepartmentId, updaterId, updatedAt: new Date() })
       .where(and(
         eq(crmLead.id, id),
-        eq(crmLead.poolStatus, LEAD_POOL_STATUS_PUBLIC),
+        isNull(crmLead.ownerUserId),
         isNull(crmLead.deletedAt),
         or(eq(crmLead.status, 'pending'), eq(crmLead.status, 'contact_valid'))!,
       ))

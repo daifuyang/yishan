@@ -11,7 +11,7 @@
 - 联系人 CRUD
 - 跟进记录（activity）—— 写跟进同步更新 `last_follow_up_at` / `next_follow_up_at`，同一事务
 - 客户标签 / 客户状态 / 客户来源（字典类 CRUD）
-- 公海（poolStatus = public）+ 认领 / 释放 / 转交（action）
+- 线索池（ownerUserId = null）+ 认领 / 释放 / 转交（action）
 - 工作台：我的客户 / 待跟进 / 今日新增 / 公海 / 本周跟进 / 本月新增 + 最近动态
 
 **MVP 不包含：**
@@ -103,7 +103,7 @@ modules/crm/
   - `sales_lead`（role.code 含此 code）→ DEPARTMENT（ownerDepartmentId ∈ currentUser.deptIds）
   - 默认 → SELF（ownerUserId = currentUser.id）
 
-- **认领并发**：claim 用 SQL `WHERE pool_status = 'public'` CAS 守卫，并发情况下只有一条 UPDATE 能命中行；业务层根据 affectedRows 区分"被抢" / "非公海"。
+- **认领并发**：claim 用 SQL `WHERE owner_user_id IS NULL` CAS 守卫，并发情况下只有一条 UPDATE 能命中行；业务层根据 affectedRows 区分"被抢" / "非公海"。
 
 - **写跟进事务**：`crm_activity` INSERT + `crm_customer.last_follow_up_at` / `next_follow_up_at` UPDATE 在同一事务，失败整体回滚。
 

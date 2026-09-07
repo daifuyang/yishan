@@ -16,7 +16,6 @@ const lead = {
   ownerUserId: 7,
   ownerUserName: '李四',
   ownerDepartmentId: 3,
-  poolStatus: 'owned' as const,
   createdBy: 7,
   lastFollowUpAt: null,
   nextFollowUpAt: null,

@@ -3,7 +3,7 @@
  *
  * 薄包装：固定 mode='create'、标题、提交流程。
  * 业务字段（负责人 / 状态 / 转化 / 公海）一律不在此入口暴露，
- * 由服务端根据当前登录用户自动绑定 createdBy/ownerUserId/poolStatus='owned'。
+ * 由服务端根据当前登录用户自动绑定 createdBy/ownerUserId。
  */
 
 import { message } from 'antd';

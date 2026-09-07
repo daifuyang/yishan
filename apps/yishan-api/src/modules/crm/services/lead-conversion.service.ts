@@ -185,7 +185,7 @@ export class LeadConversionService {
       throw new BusinessError(CrmErrorCode.CRM_LEAD_CONVERSION_NOT_QUALIFIED, '线索已被转化')
     }
     const scope = computeDataScope(currentUser)
-    const inPublicPool = lead.poolStatus === 'public'
+    const inPublicPool = lead.ownerUserId === null
     const permitted = scope.ownerUserIds === null
       || inPublicPool
       || scope.ownerUserIds?.includes(lead.ownerUserId ?? -1)

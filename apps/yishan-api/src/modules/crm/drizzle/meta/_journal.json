@@ -50,6 +50,13 @@
       "when": 1788742231000,
       "tag": "0006_lead-conversion-links",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1788796800000,
+      "tag": "0007_drop-lead-pool-status",
+      "breakpoints": true
     }
   ]
 }

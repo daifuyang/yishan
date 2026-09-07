@@ -171,7 +171,7 @@ export default function LeadDetailDrawer({
     if (lead.phone) contactFields.push({ label: '电话', value: lead.phone });
 
     const ownerValue =
-      lead.poolStatus === 'public'
+      lead.ownerUserId === null
         ? '线索公海'
         : lead.ownerUserName?.trim() ||
           (lead.ownerUserId ? `用户 #${lead.ownerUserId}` : '暂未分配');
@@ -351,7 +351,7 @@ export default function LeadDetailDrawer({
               </Typography.Text>
               <Typography.Text type="secondary">
                 负责人：
-                {lead.poolStatus === 'public'
+                {lead.ownerUserId === null
                   ? '线索公海'
                   : lead.ownerUserName?.trim() || '暂未分配'}
               </Typography.Text>

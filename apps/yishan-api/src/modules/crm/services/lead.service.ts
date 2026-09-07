@@ -16,8 +16,8 @@ const STATUS_LABELS: Record<LeadRow['status'], string> = {
 }
 
 /**
- * 「创建」输入：不含 ownerUserId/ownerDepartmentId/poolStatus。
- * 服务层根据当前认证用户自动绑定 createdBy/ownerUserId/poolStatus，
+ * 「创建」输入：不含 ownerUserId/ownerDepartmentId。
+ * 服务层根据当前认证用户自动绑定 createdBy/ownerUserId，
  * 避免前端伪造归属。createdBy 与 ownerUserId 是两个独立概念。
  */
 export interface CreateLeadArgs {
@@ -39,7 +39,7 @@ export interface CreateLeadArgs {
  * 「编辑资料」输入：仅允许白名单字段。
  *
  * 不允许在此出现的字段（必须走专门业务接口）：
- *   - ownerUserId / ownerDepartmentId / poolStatus → assign / returnToPool
+ *   - ownerUserId / ownerDepartmentId → assign / returnToPool
  *   - status                                    → qualify / disqualify / reactivate
  *   - convertedCustomerId / convertedAt          → convert
  *   - disqualifyReason / disqualifyCode         → disqualify
@@ -120,13 +120,12 @@ export class LeadService {
     return LeadRepository.create({
       ...input,
       name,
-      // 创建人即默认负责人：createdBy/ownerUserId 一致，poolStatus='owned'
+      // 创建人即默认负责人：createdBy/ownerUserId 一致。
       ownerUserId: currentUser.id,
       ownerDepartmentId: departmentId,
       createdBy: currentUser.id,
       creatorId: currentUser.id,
       updaterId: currentUser.id,
-      poolStatus: 'owned',
     })
   }
 
@@ -325,12 +324,11 @@ export class LeadService {
   async assign({ leadId, targetUserId, currentUser }: { leadId: number; targetUserId: number | null; currentUser: DataScopeUser }): Promise<LeadRow> {
     const lead = await this.getAccessibleLead(leadId, currentUser)
     if (lead.convertedCustomerId !== null || lead.status === 'contact_invalid') throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能分配线索')
-    // 进入公海 ownerUserId 必须置 null，同时显式标注 poolStatus='public'
+    // 进入线索池只需清空负责人。
     const nextOwner = targetUserId
     const updated = await LeadRepository.update(leadId, {
       ownerUserId: nextOwner,
       ownerDepartmentId: nextOwner === null ? null : lead.ownerDepartmentId,
-      poolStatus: nextOwner === null ? 'public' : 'owned',
       updaterId: currentUser.id,
     })
     if (!updated) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
@@ -373,8 +371,7 @@ export class LeadService {
     const lead = await LeadRepository.findById(leadId, db)
     if (!lead) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
     const scope = computeDataScope(currentUser)
-    // 公海线索（poolStatus='public'）按显式归属状态判断可见，不依赖 ownerUserId。
-    const inPublicPool = lead.poolStatus === 'public'
+    const inPublicPool = lead.ownerUserId === null
     const permitted = scope.ownerUserIds === null || inPublicPool || scope.ownerUserIds?.includes(lead.ownerUserId ?? -1) || scope.ownerDepartmentIds?.includes(lead.ownerDepartmentId ?? -1)
     if (!permitted) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
     return lead

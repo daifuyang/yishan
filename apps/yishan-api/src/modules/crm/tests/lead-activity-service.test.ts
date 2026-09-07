@@ -14,7 +14,7 @@ function buildLead(overrides: Partial<LeadRow> = {}): LeadRow {
   return {
     id: 1, name: '李伟', companyName: '上海拓维信息技术有限公司', mobile: '13800001002', phone: null, email: null,
     wechat: null, qq: null, sourceId: null, intention: null, status: 'pending', ownerUserId: salesperson.id, ownerUserName: '王伟', ownerDepartmentId: 10,
-    poolStatus: 'owned', createdBy: salesperson.id, lastFollowUpAt: null, nextFollowUpAt: null, disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null,
+    createdBy: salesperson.id, lastFollowUpAt: null, nextFollowUpAt: null, disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null,
     convertedAt: null, createdAt: occurredAt, updatedAt: occurredAt,
     ...overrides,
   }
