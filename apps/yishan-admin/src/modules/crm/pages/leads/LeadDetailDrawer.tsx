@@ -1,5 +1,4 @@
 import { CloseOutlined, DownOutlined } from '@ant-design/icons';
-import type { MenuProps } from 'antd';
 import {
   Button,
   Divider,
@@ -24,11 +23,10 @@ import {
 import { getLeadWorkspaceLayout } from './leadWorkspaceLayout';
 
 const statusLabels: Record<string, string> = {
-  new: '待处理',
-  processing: '跟进中',
-  qualified: '有效',
-  disqualified: '无效',
-  converted: '已转化',
+  pending: '未处理',
+  contact_valid: '联系方式有效',
+  contact_invalid: '联系方式无效',
+  closed: '关闭',
 };
 
 const valueOrDash = (value: string | number | null | undefined) => value || '—';
@@ -88,6 +86,7 @@ interface LeadDetailDrawerProps {
   lead: LeadRow | null;
   onClose: () => void;
   onConvert: (lead: LeadRow) => void;
+  onOpenCustomer: (lead: LeadRow) => void;
   onTransfer: (lead: LeadRow) => void;
   onReturnToPool: (lead: LeadRow) => void;
   /** 「编辑」入口：把抽屉内的编辑触发到外部 EditLeadDialog，避免抽屉内再嵌套表单 */
@@ -100,6 +99,7 @@ export default function LeadDetailDrawer({
   lead,
   onClose,
   onConvert,
+  onOpenCustomer,
   onTransfer,
   onReturnToPool,
   onEditLead,
@@ -113,15 +113,14 @@ export default function LeadDetailDrawer({
   );
   const renderHeaderActions = () => {
     if (!lead) return null;
-    // 转换入口：仅在 qualified 状态显示，避免错误地把"任何状态"指向 /convert。
-    const showConvert = lead.status === 'qualified';
-    // 转移入口：终态（已转化 / 已无效）禁用，保持归属变更不会反向改变 lifecycle。
-    const transferDisabled =
-      lead.status === 'converted' || lead.status === 'disqualified';
+    const isConverted = lead.convertedCustomerId !== null;
     return (
       <Space>
-        <Button type="primary" disabled={!showConvert} onClick={() => onConvert(lead)}>
-          转为客户
+        <Button
+          type="primary"
+          onClick={() => (isConverted ? onOpenCustomer(lead) : onConvert(lead))}
+        >
+          {isConverted ? '查看客户详情' : '转为客户'}
         </Button>
         <Dropdown
           menu={{
@@ -134,14 +133,15 @@ export default function LeadDetailDrawer({
               else onReturnToPool(lead);
             },
           }}
-          disabled={transferDisabled}
         >
           <Button>
             转移 <DownOutlined />
           </Button>
         </Dropdown>
         <Button
-          onClick={() => (onEditLead ? onEditLead(lead) : message.info('编辑功能未接入'))}
+          onClick={() =>
+            onEditLead ? onEditLead(lead) : message.info('编辑功能未接入')
+          }
         >
           编辑
         </Button>
@@ -222,7 +222,7 @@ export default function LeadDetailDrawer({
               span={2}
             />
           </DetailSection>
-          {lead.status === 'converted' && (
+          {lead.convertedCustomerId !== null && (
             <>
               <Divider style={{ margin: '32px 0' }} />
               <DetailSection title="转化信息">
@@ -245,22 +245,6 @@ export default function LeadDetailDrawer({
                 <DetailField
                   label="转化时间"
                   value={formatDateTime(lead.convertedAt)}
-                />
-              </DetailSection>
-            </>
-          )}
-          {lead.status === 'disqualified' && (
-            <>
-              <Divider style={{ margin: '32px 0' }} />
-              <DetailSection title="作废信息">
-                <DetailField
-                  label="作废原因"
-                  value={valueOrDash(lead.disqualifyCode)}
-                />
-                <DetailField
-                  label="解释说明"
-                  value={valueOrDash(lead.disqualifyReason)}
-                  span={2}
                 />
               </DetailSection>
             </>
@@ -303,7 +287,7 @@ export default function LeadDetailDrawer({
       // 视觉宽度停在 size 上，体感就是"拖不动"。
       resizable={{
         onResize: (next) => setSize(clampLeadDrawerSize(next)),
-        onResizeEnd: (next) => setSize(clampLeadDrawerSize(next)),
+        onResizeEnd: () => undefined,
       }}
       destroyOnClose
       closable={false}
@@ -344,11 +328,13 @@ export default function LeadDetailDrawer({
                   lineHeight: '22px',
                 }}
                 color={
-                  lead.status === 'disqualified'
+                  lead.status === 'contact_invalid'
                     ? 'error'
-                    : lead.status === 'qualified' || lead.status === 'converted'
+                    : lead.status === 'contact_valid'
                       ? 'success'
-                      : 'processing'
+                      : lead.status === 'closed'
+                        ? 'default'
+                        : 'processing'
                 }
               >
                 {statusLabels[lead.status] ?? lead.status}

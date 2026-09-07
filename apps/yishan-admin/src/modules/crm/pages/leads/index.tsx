@@ -1,15 +1,13 @@
 /**
  * 线索列表页。
  *
- * 操作列按状态展示：每个状态都有自己允许的 action 集合，由 leadActions.ts 统一管控。
+ * 跟进状态与转化状态独立：所有跟进状态均可写跟进，是否已转化只由
+ * convertedCustomerId 决定，由 leadActions.ts 统一管控。
  *
  * 弹窗分工：
  *   - CreateLeadDialog         新建线索
  *   - EditLeadDialog           编辑资料
  *   - TransferLeadDialog       转移负责人
- *   - QualifyLeadDialog        判为有效（受 crm:lead:qualify 控制）
- *   - DisqualifyLeadDialog     作废（受 crm:lead:disqualify 控制）
- *   - ReactivateLeadDialog     重新激活（受 crm:lead:reactivate 控制）
  *   - ConvertLeadDialog        转为客户（受 crm:lead:convert 控制）
  *   - LeadDetailDrawer         详情 + 上述动作的入口
  *
@@ -29,30 +27,27 @@ import { useRef, useState } from 'react';
 import {
   assignLead,
   type LeadRow,
+  type LeadStatus,
   listLeads,
 } from '@/services/crm';
 import { formatDateTime, isOverdue } from '@/utils/formatDate';
+import ConvertLeadDialog from './ConvertLeadDialog';
 import CreateLeadDialog from './CreateLeadDialog';
 import EditLeadDialog from './EditLeadDialog';
 import LeadDetailDrawer from './LeadDetailDrawer';
+import { getLeadActions, type LeadActionKey } from './leadActions';
 import {
   closeLeadDetail,
-  openLeadDetail,
   type LeadDetailState,
+  openLeadDetail,
 } from './leadDetailState';
 import TransferLeadDialog from './TransferLeadDialog';
-import { getLeadActions, type LeadActionKey } from './leadActions';
-import QualifyLeadDialog from './QualifyLeadDialog';
-import DisqualifyLeadDialog from './DisqualifyLeadDialog';
-import ReactivateLeadDialog from './ReactivateLeadDialog';
-import ConvertLeadDialog from './ConvertLeadDialog';
 
 const STATUS_VALUE_ENUM = {
-  new: { text: '待处理', status: 'Default' },
-  processing: { text: '跟进中', status: 'Processing' },
-  qualified: { text: '有效', status: 'Success' },
-  disqualified: { text: '无效', status: 'Error' },
-  converted: { text: '已转化', status: 'Success' },
+  pending: { text: '未处理', status: 'Default' },
+  contact_valid: { text: '联系方式有效', status: 'Success' },
+  contact_invalid: { text: '联系方式无效', status: 'Error' },
+  closed: { text: '关闭', status: 'Default' },
 } as const;
 
 export default function LeadPage() {
@@ -61,9 +56,6 @@ export default function LeadPage() {
   const [editTarget, setEditTarget] = useState<LeadDetailState>(null);
   const [transferTarget, setTransferTarget] = useState<LeadDetailState>(null);
   const [detailLead, setDetailLead] = useState<LeadDetailState>(null);
-  const [qualifyTarget, setQualifyTarget] = useState<LeadDetailState>(null);
-  const [disqualifyTarget, setDisqualifyTarget] = useState<LeadDetailState>(null);
-  const [reactivateTarget, setReactivateTarget] = useState<LeadDetailState>(null);
   const [convertTarget, setConvertTarget] = useState<LeadDetailState>(null);
 
   const reload = () => actionRef.current?.reload();
@@ -108,21 +100,15 @@ export default function LeadPage() {
       case 'transfer':
         setTransferTarget(openLeadDetail(record));
         return;
-      case 'qualify':
-        setQualifyTarget(openLeadDetail(record));
-        return;
-      case 'disqualify':
-        setDisqualifyTarget(openLeadDetail(record));
-        return;
-      case 'reactivate':
-        setReactivateTarget(openLeadDetail(record));
-        return;
       case 'convert':
         setConvertTarget(openLeadDetail(record));
         return;
       case 'openCustomer':
         if (record.convertedCustomerId) {
-          window.open(`/crm/customer-detail?id=${record.convertedCustomerId}`, '_self');
+          window.open(
+            `/crm/customer-detail?id=${record.convertedCustomerId}`,
+            '_self',
+          );
         } else {
           message.info('未找到关联客户');
         }
@@ -215,9 +201,9 @@ export default function LeadPage() {
   const applyLeadUpdate = (updated: LeadRow) => {
     setDetailLead((current) =>
       current && current.id === updated.id ? updated : current,
-    )
-    reload()
-  }
+    );
+    reload();
+  };
 
   return (
     <PageContainer header={{ title: '线索' }}>
@@ -238,7 +224,7 @@ export default function LeadPage() {
             page: (current as number) ?? 1,
             pageSize: (pageSize as number) ?? 10,
             keyword: (rest.keyword as string) ?? '',
-            status: rest.status as string | undefined,
+            status: rest.status as LeadStatus | undefined,
           });
           return { data: result.data, success: true, total: result.total };
         }}
@@ -285,56 +271,20 @@ export default function LeadPage() {
         }}
       />
 
-      <QualifyLeadDialog
-        open={Boolean(qualifyTarget)}
-        onOpenChange={(open) => {
-          if (!open) setQualifyTarget(closeLeadDetail());
-        }}
-        lead={qualifyTarget}
-        onUpdated={applyLeadUpdate}
-      />
-
-      <DisqualifyLeadDialog
-        open={Boolean(disqualifyTarget)}
-        onOpenChange={(open) => {
-          if (!open) setDisqualifyTarget(closeLeadDetail());
-        }}
-        lead={disqualifyTarget}
-        onUpdated={applyLeadUpdate}
-      />
-
-      <ReactivateLeadDialog
-        open={Boolean(reactivateTarget)}
-        onOpenChange={(open) => {
-          if (!open) setReactivateTarget(closeLeadDetail());
-        }}
-        lead={reactivateTarget}
-        onUpdated={applyLeadUpdate}
-      />
-
       <ConvertLeadDialog
         open={Boolean(convertTarget)}
         onOpenChange={(open) => {
           if (!open) setConvertTarget(closeLeadDetail());
         }}
         lead={convertTarget}
-        onConverted={({ lead: converted, customerId, contactId }) => {
-          setDetailLead((current) =>
-            current && current.id === converted.id ? converted : current,
-          );
-          reload();
-          // 客户/联系人 ID 暂未在抽屉直接暴露，由 CRM 详情页跳转时复用。
-          // 这里仅记录以便后续集成。
-          if (customerId && contactId) {
-            message.success('已转为客户，可在客户详情查看');
-          }
-        }}
+        onConverted={({ lead: converted }) => applyLeadUpdate(converted)}
       />
 
       <LeadDetailDrawer
         lead={detailLead}
         onClose={() => setDetailLead(closeLeadDetail())}
         onConvert={(lead) => handleActionClick('convert', lead)}
+        onOpenCustomer={(lead) => handleActionClick('openCustomer', lead)}
         onTransfer={(lead) => handleActionClick('transfer', lead)}
         onReturnToPool={(lead) =>
           assignLead(lead.id, null)
@@ -343,14 +293,21 @@ export default function LeadPage() {
               reload();
               setDetailLead((current) =>
                 current && current.id === lead.id
-                  ? { ...current, ownerUserId: null, ownerUserName: null, poolStatus: 'public' }
+                  ? {
+                      ...current,
+                      ownerUserId: null,
+                      ownerUserName: null,
+                      poolStatus: 'public',
+                    }
                   : current,
               );
             })
-            .catch((err: any) => message.error(err?.message ?? '退回线索池失败'))
+            .catch((err: any) =>
+              message.error(err?.message ?? '退回线索池失败'),
+            )
         }
         onEditLead={(lead) => handleActionClick('edit', lead)}
-        onLeadChanged={(next) => setDetailLead(next)}
+        onLeadChanged={applyLeadUpdate}
       />
     </PageContainer>
   );

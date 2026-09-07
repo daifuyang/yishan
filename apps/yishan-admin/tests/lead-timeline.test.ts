@@ -16,7 +16,7 @@ const lead = {
   qq: null,
   sourceId: 1,
   intention: '需要 CRM 方案',
-  status: 'qualified',
+  status: 'contact_valid',
   ownerUserId: 7,
   ownerUserName: '李四',
   ownerDepartmentId: 3,
@@ -29,6 +29,7 @@ const lead = {
   convertedCustomerId: null,
   convertedContactId: null,
   convertedAt: null,
+  isConverted: false,
   createdAt: '2026-09-01T09:00:00.000Z',
   updatedAt: '2026-09-06T09:00:00.000Z',
 } satisfies LeadRow;
@@ -137,8 +138,49 @@ describe('线索动态', () => {
     ]);
 
     // 来自 activities 的事件必须全部归类为 status（不包括"新建线索"这种 system 事件）。
-    const activityEvents = events.filter((event) => event.id.startsWith('followup-'));
-    expect(activityEvents.every((event) => event.category === 'status')).toBe(true);
+    const activityEvents = events.filter((event) =>
+      event.id.startsWith('followup-'),
+    );
+    expect(activityEvents.every((event) => event.category === 'status')).toBe(
+      true,
+    );
     expect(activityEvents.every((event) => event.color === 'blue')).toBe(true);
+  });
+
+  it('同一时刻的首次跟进先于其自动触发的状态变更展示', () => {
+    const events = buildLeadTimeline(lead, [
+      {
+        id: 21,
+        leadId: lead.id,
+        type: 'status_change',
+        content: '因首次跟进，系统自动将状态从「待处理」更新为「跟进中」',
+        occurredAt: '2026-09-06T10:00:00.000Z',
+        nextFollowUpAt: null,
+        operatorUserId: 7,
+        operatorUserName: '李四',
+        createdAt: '2026-09-06T10:00:00.000Z',
+        updatedAt: '2026-09-06T10:00:00.000Z',
+      },
+      {
+        id: 20,
+        leadId: lead.id,
+        type: 'phone',
+        content: '确认试用',
+        occurredAt: '2026-09-06T10:00:00.000Z',
+        nextFollowUpAt: '2026-09-08T01:00:00.000Z',
+        operatorUserId: 7,
+        operatorUserName: '李四',
+        createdAt: '2026-09-06T10:00:00.000Z',
+        updatedAt: '2026-09-06T10:00:00.000Z',
+      },
+    ]);
+
+    expect(events.slice(0, 2).map((event) => event.title)).toEqual([
+      '电话跟进',
+      '状态变更',
+    ]);
+    expect(events[1]?.detail).toBe(
+      '因首次跟进，系统自动将状态从「待处理」更新为「跟进中」',
+    );
   });
 });

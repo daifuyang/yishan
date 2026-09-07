@@ -79,7 +79,19 @@ export const buildLeadTimeline = (
         `线索 #${lead.id}`,
       color: 'blue' as const,
     },
-  ].sort((a, b) => dayjs(b.time).valueOf() - dayjs(a.time).valueOf());
+  ].sort((a, b) => {
+    const timeDifference = dayjs(b.time).valueOf() - dayjs(a.time).valueOf();
+    if (timeDifference !== 0) return timeDifference;
+
+    // 首次跟进和自动状态变更共用 occurredAt。时间相同时，先展示用户的
+    // 跟进动作，后展示由该动作触发的系统状态变更，保证因果顺序清晰。
+    const categoryOrder: Record<LeadTimelineCategory, number> = {
+      followup: 0,
+      status: 1,
+      system: 2,
+    };
+    return categoryOrder[a.category] - categoryOrder[b.category];
+  });
 
 export const groupLeadTimelineByDate = (
   events: LeadTimelineEvent[],
@@ -108,4 +120,3 @@ export const filterLeadTimelineByDateRange = (
     return eventAt >= startAt && eventAt <= endAt;
   });
 };
-
