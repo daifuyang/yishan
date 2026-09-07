@@ -29,7 +29,7 @@ type ContactMode = 'existing' | 'create';
  * 转为客户弹窗。
  *
  * 流程：
- *   1. 打开时拉取 /conversion-preview（要求 lead.status='qualified'）。
+ *   1. 打开时拉取 /conversion-preview（任何未转化线索均可）。
  *   2. 用户在「客户 / 联系人」各选一个明确 decision：
  *      - 客户：现有候选 or 新建（含 enterprise/individual 切换）
  *      - 联系人：现有（必须属于所选客户）or 新建主联系人

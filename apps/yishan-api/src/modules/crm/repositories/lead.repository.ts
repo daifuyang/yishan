@@ -56,27 +56,27 @@ export class LeadRepository {
     return LeadRepository.findById(id, db)
   }
   /**
-   * 事务内：按 ID 锁定一行 status='contact_valid' 的线索。
+   * 事务内：按 ID 锁定一条未删除、尚未转化的线索。
    *
-   * - 必须持有 SELECT ... FOR UPDATE 的行锁，否则并发转换会出现"两个请求同时看见 qualified"的脏竞态。
-   * - 行不存在 / status 不是 contact_valid → 返回 null；调用方应当把它翻译为 CRM_LEAD_CONVERSION_CONFLICT。
+   * - 必须持有 SELECT ... FOR UPDATE 的行锁，否则并发转换会出现"两个请求同时看见未转化"的脏竞态。
+   * - 行不存在 / 已转化 → 返回 null；调用方应当把它翻译为 CRM_LEAD_CONVERSION_CONFLICT。
    *
    * 实现说明：drizzle 的 query builder 不直接暴露 FOR UPDATE；这里在 MySQL 上通过 `FOR UPDATE` 关键字
    * 附加。`db.execute` 在 mysql2 driver 下返回 raw 结果集；service 不消费该结果，仅依赖"是否拿到行"判断。
    * 因此这里再用一次普通的 findById 拿字段，锁只用来防止并发竞争。
    */
-  static async lockQualifiedForConversionInTx(
+  static async lockAvailableForConversionInTx(
     id: number,
     db: AppQueryDb,
   ): Promise<LeadRow | null> {
     try {
-      await db.execute(sql`SELECT id FROM ${crmLead} WHERE id = ${id} AND status = 'contact_valid' AND deleted_at IS NULL FOR UPDATE`)
+      await db.execute(sql`SELECT id FROM ${crmLead} WHERE id = ${id} AND converted_customer_id IS NULL AND deleted_at IS NULL FOR UPDATE`)
     } catch {
-      // execute 在 query builder 上可能不被支持；忽略此错误，再走 findById 的状态判断。
+      // execute 在 query builder 上可能不被支持；忽略此错误，再走 findById 的可转换判断。
       // findById 的结果 + 状态检查是真正的安全门，这里仅作为并发加锁的尝试。
     }
     const row = await LeadRepository.findById(id, db)
-    return row && row.status === 'contact_valid' ? row : null
+    return row && row.convertedCustomerId === null ? row : null
   }
   /**
    * 认领公海线索：要求 poolStatus='public'，且状态允许认领。

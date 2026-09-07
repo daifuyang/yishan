@@ -43,10 +43,10 @@ export interface LeadConversionResult {
 }
 
 /**
- * LeadConversionService —— 把一条联系方式有效的线索安全转为客户+联系人。
+ * LeadConversionService —— 把一条未转化线索安全转为客户+联系人。
  *
  * 关键约束（来自 spec）：
- *   - 兼容旧入口：仅 contact_valid 状态可转换；后续流程会放宽此限制。
+ *   - 所有 follow-up status 均可转换；已转化线索不可重复转换。
  *   - 单一事务：客户/联系人 create + 线索 update + status_change activity 全部 commit/rollback。
  *   - 客户/联系人的"关联现有"必须满足可见性 / 归属关系。
  *   - 不会改写现有客户的 owner / source / poolStatus；只在新创建时按线索的归属复制。
@@ -63,9 +63,6 @@ export class LeadConversionService {
    */
   async preview(leadId: number, currentUser: DataScopeUser): Promise<LeadConversionPreview> {
     const lead = await this.getAccessibleLead(leadId, currentUser)
-    if (lead.status !== 'contact_valid') {
-      throw new BusinessError(CrmErrorCode.CRM_LEAD_CONVERSION_NOT_QUALIFIED, '仅有效线索可预览转化')
-    }
     const candidates = await CustomerRepository.findConversionCandidates(
       { name: lead.companyName, phone: lead.phone ?? lead.mobile, type: 'enterprise' },
       this.deps.db,
@@ -83,7 +80,7 @@ export class LeadConversionService {
 
   /**
    * 执行转化。事务内：
-   *   1. 锁行 + 校验 status='contact_valid'
+   *   1. 锁行 + 校验尚未转化
    *   2. 校验 customer / contact 可见性
    *   3. create customer / contact（如需）
    *   4. 把联系人设为该客户的主联系人
@@ -91,16 +88,16 @@ export class LeadConversionService {
    *   6. 写 status_change 审计活动
    */
   async convert(leadId: number, input: LeadConvertInput, currentUser: DataScopeUser): Promise<LeadConversionResult> {
-    // 事务外做一次访问校验 + 状态门
+    // 事务外做一次访问校验 + 重复转化守卫
     await this.getAccessibleLead(leadId, currentUser)
 
     return dbManager.transaction(async (tx) => {
-      // 1) 行锁 + 状态守卫
-      const locked = await LeadRepository.lockQualifiedForConversionInTx(leadId, tx)
+      // 1) 行锁 + 重复转化守卫
+      const locked = await LeadRepository.lockAvailableForConversionInTx(leadId, tx)
       if (!locked) {
         throw new BusinessError(
           CrmErrorCode.CRM_LEAD_CONVERSION_CONFLICT,
-          '该线索已被其他用户转化或状态已变更',
+          '该线索已被其他用户转化',
         )
       }
 
@@ -186,9 +183,6 @@ export class LeadConversionService {
     if (!lead) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
     if (lead.convertedCustomerId !== null) {
       throw new BusinessError(CrmErrorCode.CRM_LEAD_CONVERSION_NOT_QUALIFIED, '线索已被转化')
-    }
-    if (lead.status !== 'contact_valid') {
-      throw new BusinessError(CrmErrorCode.CRM_LEAD_CONVERSION_NOT_QUALIFIED, '仅有效线索可转为客户')
     }
     const scope = computeDataScope(currentUser)
     const inPublicPool = lead.poolStatus === 'public'

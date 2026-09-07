@@ -99,8 +99,8 @@ describe('LeadConversionService.convert', () => {
   it('creates a customer and primary contact while preserving the selected follow-up status', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead())
-    // SELECT ... FOR UPDATE 返回 contact_valid 行；后续链路按计划执行
-    const lockSpy = vi.spyOn(LeadRepository as any, 'lockQualifiedForConversionInTx').mockResolvedValue(buildLead())
+    // SELECT ... FOR UPDATE 返回未转化行；后续链路按计划执行
+    const lockSpy = vi.spyOn(LeadRepository as any, 'lockAvailableForConversionInTx').mockResolvedValue(buildLead())
     const customerCreate = vi.spyOn(CustomerRepository, 'create').mockResolvedValue(buildCustomer({ id: 100 }))
     const contactCreate = vi.spyOn(ContactRepository, 'create').mockResolvedValue(buildContact({ id: 200, customerId: 100 }))
     vi.spyOn(ContactRepository, 'setPrimaryInTx').mockResolvedValue(undefined)
@@ -149,7 +149,7 @@ describe('LeadConversionService.convert', () => {
   it('allows an existing contact only when it belongs to the chosen customer', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead())
-    vi.spyOn(LeadRepository as any, 'lockQualifiedForConversionInTx').mockResolvedValue(buildLead())
+    vi.spyOn(LeadRepository as any, 'lockAvailableForConversionInTx').mockResolvedValue(buildLead())
     vi.spyOn(CustomerRepository, 'create').mockResolvedValue(buildCustomer({ id: 100 }))
     vi.spyOn(ContactRepository, 'create').mockResolvedValue(buildContact({ id: 200, customerId: 100 }))
     vi.spyOn(ContactRepository, 'setPrimaryInTx').mockResolvedValue(undefined)
@@ -173,7 +173,7 @@ describe('LeadConversionService.convert', () => {
       }
     })
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead())
-    vi.spyOn(LeadRepository as any, 'lockQualifiedForConversionInTx').mockResolvedValue(buildLead())
+    vi.spyOn(LeadRepository as any, 'lockAvailableForConversionInTx').mockResolvedValue(buildLead())
     vi.spyOn(CustomerRepository, 'create').mockResolvedValue(buildCustomer({ id: 100 }))
     vi.spyOn(ContactRepository, 'create').mockResolvedValue(buildContact({ id: 200, customerId: 100 }))
     vi.spyOn(ContactRepository, 'setPrimaryInTx').mockResolvedValue(undefined)
@@ -194,11 +194,13 @@ describe('LeadConversionService.convert', () => {
     ).rejects.toThrow(/boom/)
   })
 
-  it('returns a conflict when a second converter arrives after the first locks and converts', async () => {
+  it('prevents a duplicate conversion from creating another customer or contact', async () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead())
-    // 锁内发现已不是 contact_valid → 返回 null
-    vi.spyOn(LeadRepository as any, 'lockQualifiedForConversionInTx').mockResolvedValue(null)
+    // 锁内发现已被转化 → 返回 null
+    vi.spyOn(LeadRepository as any, 'lockAvailableForConversionInTx').mockResolvedValue(null)
+    const customerCreate = vi.spyOn(CustomerRepository, 'create')
+    const contactCreate = vi.spyOn(ContactRepository, 'create')
 
     await expect(
       new LeadConversionService().convert(42, {
@@ -206,16 +208,54 @@ describe('LeadConversionService.convert', () => {
         contact: { mode: 'create', name: '王经理', mobile: '13800000000' },
       }, salesperson),
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_CONVERSION_CONFLICT })
+    expect(customerCreate).not.toHaveBeenCalled()
+    expect(contactCreate).not.toHaveBeenCalled()
   })
 
-  it('rejects conversion from a non-contact-valid lead', async () => {
-    vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status: 'pending' }))
+  it.each(['pending', 'contact_valid', 'contact_invalid', 'closed'] as const)(
+    'converts an unconverted %s lead without changing its follow-up status',
+    async (status) => {
+      const lead = buildLead({ status })
+      vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+      vi.spyOn(LeadRepository, 'findById').mockResolvedValue(lead)
+      vi.spyOn(LeadRepository as any, 'lockAvailableForConversionInTx').mockResolvedValue(lead)
+      vi.spyOn(CustomerRepository, 'create').mockResolvedValue(buildCustomer({ id: 100 }))
+      vi.spyOn(ContactRepository, 'create').mockResolvedValue(buildContact({ id: 200, customerId: 100 }))
+      vi.spyOn(LeadRepository, 'update').mockResolvedValue({
+        ...lead,
+        convertedCustomerId: 100,
+        convertedContactId: 200,
+        convertedAt: new Date(),
+      })
+      vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({
+        id: 999, leadId: 42, type: 'status_change', content: '', occurredAt: new Date(), nextFollowUpAt: null,
+        operatorUserId: salesperson.id, createdAt: new Date(), updatedAt: new Date(),
+      })
 
-    await expect(
-      new LeadConversionService().convert(42, {
+      const result = await new LeadConversionService().convert(42, {
         customer: { mode: 'create', name: '上海示例有限公司', type: 'enterprise' },
         contact: { mode: 'create', name: '王经理' },
-      }, salesperson),
-    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_LEAD_CONVERSION_NOT_QUALIFIED })
-  })
+      }, salesperson)
+
+      expect(result.lead).toMatchObject({ status, convertedCustomerId: 100, convertedContactId: 200 })
+      expect(LeadRepository.update).toHaveBeenCalledWith(42, expect.not.objectContaining({ status: expect.anything() }), expect.anything())
+    },
+  )
+})
+
+describe('LeadConversionService.preview', () => {
+  it.each(['pending', 'contact_valid', 'contact_invalid', 'closed'] as const)(
+    'returns a conversion preview for an unconverted %s lead',
+    async (status) => {
+      vi.spyOn(LeadRepository, 'findById').mockResolvedValue(buildLead({ status }))
+      vi.spyOn(CustomerRepository, 'findConversionCandidates').mockResolvedValue([])
+      vi.spyOn(ContactRepository, 'findConversionCandidates').mockResolvedValue([])
+
+      const preview = await new LeadConversionService().preview(42, salesperson)
+
+      expect(preview.lead.status).toBe(status)
+      expect(preview.customers).toEqual([])
+      expect(preview.contacts).toEqual([])
+    },
+  )
 })
