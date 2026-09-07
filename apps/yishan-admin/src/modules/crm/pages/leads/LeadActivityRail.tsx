@@ -147,14 +147,17 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
               lead.id,
               toLeadActivityInput(values),
             );
-            // 状态改变时服务端会追加一条审计。重新加载完整时间线，确保用户
-            // 跟进和状态变更都会显示，且沿用统一的同秒排序规则。
-            const refreshedActivities = await listLeadActivities(lead.id);
-            setActivities(refreshedActivities.items);
             if (result.lead.id === lead.id) {
               onLeadChanged?.(result.lead);
             }
+            setActivities((current) => [result.activity, ...current]);
+            setFollowUpModalOpen(false);
             message.success('跟进已保存');
+            // 状态改变时服务端会追加一条审计。保存已经成功后再异步刷新完整
+            // 时间线；刷新失败不能把已提交的表单误报为失败或诱导重复提交。
+            void listLeadActivities(lead.id)
+              .then((refreshedActivities) => setActivities(refreshedActivities.items))
+              .catch(() => message.warning('跟进已保存，但动态刷新失败，请稍后刷新页面'));
             return true;
           } catch (err: any) {
             message.error(err?.message ?? '跟进保存失败');
