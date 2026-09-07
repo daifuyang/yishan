@@ -84,7 +84,7 @@ export const crmLead = mysqlTable(
     qq: varchar({ length: 32 }),
     sourceId: int('source_id'),
     intention: varchar({ length: 2000 }),
-    status: varchar({ length: 16 }).notNull().default('new'),
+    status: varchar({ length: 16 }).notNull().default('pending'),
     ownerUserId: int('owner_user_id'),
     ownerDepartmentId: int('owner_department_id'),
     /**

@@ -1,7 +1,7 @@
 import { Type, type Static } from '@sinclair/typebox'
 import { PaginationQuerySchema } from './common.schema.js'
 import { ACTIVITY_TYPES } from './activity.schema.js'
-export const LEAD_STATUS = ['new', 'processing', 'qualified', 'disqualified', 'converted'] as const
+export const LEAD_FOLLOW_UP_STATUS = ['pending', 'contact_valid', 'contact_invalid', 'closed'] as const
 export const LEAD_POOL_STATUS = ['owned', 'public', 'unassigned'] as const
 
 /**
@@ -41,7 +41,7 @@ export const LeadRespSchema = Type.Object({
   qq: Type.Union([Type.String(), Type.Null()]),
   sourceId: Type.Union([Type.Number(), Type.Null()]),
   intention: Type.Union([Type.String(), Type.Null()]),
-  status: Type.String(),
+  status: Type.String({ enum: [...LEAD_FOLLOW_UP_STATUS] }),
   ownerUserId: Type.Union([Type.Number(), Type.Null()]),
   ownerUserName: Type.Union([Type.String(), Type.Null()]),
   ownerDepartmentId: Type.Union([Type.Number(), Type.Null()]),
@@ -62,7 +62,7 @@ export const LeadListQuerySchema = Type.Composite([
   PaginationQuerySchema,
   Type.Object({
     keyword: Type.Optional(Type.String({ maxLength: 200 })),
-    status: Type.Optional(Type.String({ enum: [...LEAD_STATUS] })),
+    status: Type.Optional(Type.String({ enum: [...LEAD_FOLLOW_UP_STATUS] })),
     ownerUserId: Type.Optional(Type.Integer()),
     pool: Type.Optional(Type.Boolean()),
   }),
@@ -240,6 +240,7 @@ export const LeadActivityListRespSchema = Type.Object({
 export const LeadActivityCreateReqSchema = Type.Object({
   type: Type.String({ enum: [...ACTIVITY_TYPES] }),
   content: Type.String({ minLength: 1, maxLength: 2000 }),
+  followUpStatus: Type.Union(LEAD_FOLLOW_UP_STATUS.map((status) => Type.Literal(status))),
   occurredAt: Type.Optional(Type.String({ format: 'date-time' })),
   nextFollowUpAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
 })

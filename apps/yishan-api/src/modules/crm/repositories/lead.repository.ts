@@ -3,7 +3,7 @@ import { drizzleDb, type AppQueryDb } from '@/db'
 import { sysUser } from '@/db/schema'
 import { crmLead } from '../db/schema.js'
 
-export type LeadStatus = 'new' | 'processing' | 'qualified' | 'disqualified' | 'converted'
+export type LeadStatus = 'pending' | 'contact_valid' | 'contact_invalid' | 'closed'
 /** 线索显式归属状态，与 ownerUserId 解耦。 */
 export type LeadPoolStatus = 'owned' | 'public' | 'unassigned'
 export const LEAD_POOL_STATUS_PUBLIC: LeadPoolStatus = 'public'
@@ -46,7 +46,7 @@ export class LeadRepository {
     return row ? row as LeadRow : null
   }
   static async create(input: CreateLeadInput, db: AppQueryDb = drizzleDb): Promise<LeadRow> {
-    const [inserted] = await db.insert(crmLead).values({ ...input, status: 'new' }).$returningId()
+    const [inserted] = await db.insert(crmLead).values({ ...input, status: 'pending' }).$returningId()
     const row = await LeadRepository.findById(inserted.id, db)
     if (!row) throw new Error('Failed to read back created CRM lead')
     return row
@@ -89,7 +89,7 @@ export class LeadRepository {
         eq(crmLead.id, id),
         eq(crmLead.poolStatus, LEAD_POOL_STATUS_PUBLIC),
         isNull(crmLead.deletedAt),
-        or(eq(crmLead.status, 'new'), eq(crmLead.status, 'processing'))!,
+        or(eq(crmLead.status, 'pending'), eq(crmLead.status, 'contact_valid'))!,
       ))
     return ((result as unknown as [{ affectedRows?: number } | undefined])[0])?.affectedRows ?? 0
   }

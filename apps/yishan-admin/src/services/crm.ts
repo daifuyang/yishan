@@ -35,6 +35,7 @@ export interface PageQuery {
 
 export type CustomerType = 'enterprise' | 'individual'
 export type PoolStatus = 'owned' | 'public'
+export type LeadStatus = 'pending' | 'contact_valid' | 'contact_invalid' | 'closed'
 
 export interface CustomerRow {
   id: number
@@ -92,7 +93,10 @@ export interface CustomerCreateInput {
 export interface CustomerUpdateInput extends Partial<CustomerCreateInput> {}
 
 export interface LeadRow {
-  id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; intention: string | null; status: string; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; poolStatus: 'owned' | 'public' | 'unassigned'; createdBy: number | null; lastFollowUpAt: string | null; nextFollowUpAt: string | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: string | null; createdAt: string; updatedAt: string
+  id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; intention: string | null; status: LeadStatus; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; poolStatus: 'owned' | 'public' | 'unassigned'; createdBy: number | null; lastFollowUpAt: string | null; nextFollowUpAt: string | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: string | null; isConverted: boolean; createdAt: string; updatedAt: string
+}
+function withLeadConversionState(lead: Omit<LeadRow, 'isConverted'>): LeadRow {
+  return { ...lead, isConverted: lead.convertedCustomerId !== null }
 }
 /**
  * 创建请求不传 ownerUserId/ownerDepartmentId/poolStatus：
@@ -104,21 +108,21 @@ export interface LeadCreateInput { name?: string; companyName?: string; mobile?:
  * ownerUserId/status/poolStatus/converted* 等业务字段必须走专门接口。
  */
 export interface LeadUpdateInput { name?: string; companyName?: string; mobile?: string; phone?: string; email?: string; wechat?: string; qq?: string; sourceId?: number | null; intention?: string }
-export async function listLeads(query: PageQuery & { status?: string; ownerUserId?: number; pool?: boolean }): Promise<{ data: LeadRow[]; total: number }> { const r = await request<ApiResp<LeadRow[]>>('/api/crm/v1/leads', { method: 'GET', params: query as any }); return { data: unwrap(r), total: r.pagination?.total ?? 0 } }
-export async function createLead(input: LeadCreateInput): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>('/api/crm/v1/leads', { method: 'POST', data: input }); return unwrap(r) }
-export async function updateLead(id: number, input: LeadUpdateInput): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}`, { method: 'PATCH', data: input }); return unwrap(r) }
-export async function assignLead(id: number, targetUserId: number | null): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/assign`, { method: 'POST', data: { targetUserId } }); return unwrap(r) }
-export async function claimLead(id: number): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/claim`, { method: 'POST' }); return unwrap(r) }
+export async function listLeads(query: PageQuery & { status?: LeadStatus; ownerUserId?: number; pool?: boolean }): Promise<{ data: LeadRow[]; total: number }> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>[]>>('/api/crm/v1/leads', { method: 'GET', params: query as any }); return { data: unwrap(r).map(withLeadConversionState), total: r.pagination?.total ?? 0 } }
+export async function createLead(input: LeadCreateInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>('/api/crm/v1/leads', { method: 'POST', data: input }); return withLeadConversionState(unwrap(r)) }
+export async function updateLead(id: number, input: LeadUpdateInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}`, { method: 'PATCH', data: input }); return withLeadConversionState(unwrap(r)) }
+export async function assignLead(id: number, targetUserId: number | null): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/assign`, { method: 'POST', data: { targetUserId } }); return withLeadConversionState(unwrap(r)) }
+export async function claimLead(id: number): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/claim`, { method: 'POST' }); return withLeadConversionState(unwrap(r)) }
 export interface LeadQualifyInput { evidence: string; nextAction: string }
-export async function qualifyLead(id: number, input: LeadQualifyInput): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/qualify`, { method: 'POST', data: input }); return unwrap(r) }
+export async function qualifyLead(id: number, input: LeadQualifyInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/qualify`, { method: 'POST', data: input }); return withLeadConversionState(unwrap(r)) }
 export type DisqualifyCode = 'duplicate' | 'not_target' | 'no_demand' | 'unreachable' | 'invalid_contact' | 'rejected' | 'other'
 export interface LeadDisqualifyInput { code: DisqualifyCode; reason: string }
-export async function disqualifyLead(id: number, input: LeadDisqualifyInput): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/disqualify`, { method: 'POST', data: input }); return unwrap(r) }
-export async function reactivateLead(id: number, reason: string): Promise<LeadRow> { const r = await request<ApiResp<LeadRow>>(`/api/crm/v1/leads/${id}/reactivate`, { method: 'POST', data: { reason } }); return unwrap(r) }
+export async function disqualifyLead(id: number, input: LeadDisqualifyInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/disqualify`, { method: 'POST', data: input }); return withLeadConversionState(unwrap(r)) }
+export async function reactivateLead(id: number, reason: string): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/reactivate`, { method: 'POST', data: { reason } }); return withLeadConversionState(unwrap(r)) }
 export interface LeadConversionPreviewCustomer { id: number; name: string; type: 'enterprise' | 'individual'; ownerUserId: number | null; ownerUserName: string | null }
 export interface LeadConversionPreviewContact { id: number; customerId: number; name: string; mobile: string | null; email: string | null }
 export interface LeadConversionPreview { lead: LeadRow; customers: LeadConversionPreviewCustomer[]; contacts: LeadConversionPreviewContact[] }
-export async function getLeadConversionPreview(id: number): Promise<LeadConversionPreview> { const r = await request<ApiResp<LeadConversionPreview>>(`/api/crm/v1/leads/${id}/conversion-preview`, { method: 'GET' }); return unwrap(r) }
+export async function getLeadConversionPreview(id: number): Promise<LeadConversionPreview> { const r = await request<ApiResp<Omit<LeadConversionPreview, 'lead'> & { lead: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/conversion-preview`, { method: 'GET' }); const preview = unwrap(r); return { ...preview, lead: withLeadConversionState(preview.lead) } }
 export type LeadConvertInput = {
   customer:
     | { mode: 'existing'; customerId: number }
@@ -128,7 +132,7 @@ export type LeadConvertInput = {
     | { mode: 'create'; name: string; mobile?: string | null; phone?: string | null; email?: string | null }
 }
 export interface LeadConversionResult { lead: LeadRow; customer: LeadRow; contact: LeadConversionPreviewContact }
-export async function convertLead(id: number, input: LeadConvertInput): Promise<LeadConversionResult> { const r = await request<ApiResp<LeadConversionResult>>(`/api/crm/v1/leads/${id}/convert`, { method: 'POST', data: input }); return unwrap(r) }
+export async function convertLead(id: number, input: LeadConvertInput): Promise<LeadConversionResult> { const r = await request<ApiResp<Omit<LeadConversionResult, 'lead' | 'customer'> & { lead: Omit<LeadRow, 'isConverted'>; customer: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/convert`, { method: 'POST', data: input }); const result = unwrap(r); return { ...result, lead: withLeadConversionState(result.lead), customer: withLeadConversionState(result.customer) } }
 export interface LeadActivityRow { id: number; leadId: number; type: string; content: string; occurredAt: string; nextFollowUpAt: string | null; operatorUserId: number; operatorUserName: string | null; createdAt: string; updatedAt: string }
 export interface LeadActivityCreateInput { type: ActivityType; content: string; occurredAt?: string; nextFollowUpAt?: string | null }
 /**
@@ -137,7 +141,7 @@ export interface LeadActivityCreateInput { type: ActivityType; content: string; 
  */
 export interface LeadActivityCreateResponse { activity: LeadActivityRow; lead: LeadRow }
 export async function listLeadActivities(id: number): Promise<{ total: number; items: LeadActivityRow[] }> { const r = await request<ApiResp<{ total: number; items: LeadActivityRow[] }>>(`/api/crm/v1/leads/${id}/activities`, { method: 'GET' }); return unwrap(r) }
-export async function createLeadActivity(id: number, input: LeadActivityCreateInput): Promise<LeadActivityCreateResponse> { const r = await request<ApiResp<LeadActivityCreateResponse>>(`/api/crm/v1/leads/${id}/activities`, { method: 'POST', data: input }); return unwrap(r) }
+export async function createLeadActivity(id: number, input: LeadActivityCreateInput): Promise<LeadActivityCreateResponse> { const r = await request<ApiResp<Omit<LeadActivityCreateResponse, 'lead'> & { lead: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/activities`, { method: 'POST', data: input }); const result = unwrap(r); return { ...result, lead: withLeadConversionState(result.lead) } }
 
 export interface CustomerListQuery extends PageQuery {
   statusId?: number
