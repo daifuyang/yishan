@@ -170,7 +170,7 @@ export class LeadConversionService {
       await LeadActivityRepository.create({
         leadId,
         type: 'status_change',
-        content: `关联客户：${customer.name}`,
+        content: `关联客户：${customer.name}；联系人：${contact.name}`,
         operatorUserId: currentUser.id,
       }, tx)
 

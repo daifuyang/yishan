@@ -110,7 +110,7 @@ describe('LeadConversionService.convert', () => {
       convertedContactId: 200,
       convertedAt: new Date(),
     })
-    vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({
+    const activityCreate = vi.spyOn(LeadActivityRepository, 'create').mockResolvedValue({
       id: 999, leadId: 42, type: 'status_change', content: '', occurredAt: new Date(), nextFollowUpAt: null,
       operatorUserId: salesperson.id, createdAt: new Date(), updatedAt: new Date(),
     })
@@ -144,6 +144,9 @@ describe('LeadConversionService.convert', () => {
     expect(result.lead).toMatchObject({ status: 'contact_valid', convertedCustomerId: 100, convertedContactId: 200 })
     expect(result.customer.id).toBe(100)
     expect(result.contact.id).toBe(200)
+    expect(activityCreate).toHaveBeenCalledWith(expect.objectContaining({
+      content: '关联客户：上海示例有限公司；联系人：王经理',
+    }), expect.anything())
   })
 
   it('allows an existing contact only when it belongs to the chosen customer', async () => {
