@@ -83,11 +83,11 @@ export const buildLeadTimeline = (
     const timeDifference = dayjs(b.time).valueOf() - dayjs(a.time).valueOf();
     if (timeDifference !== 0) return timeDifference;
 
-    // 首次跟进和自动状态变更共用 occurredAt。时间相同时，先展示用户的
-    // 跟进动作，后展示由该动作触发的系统状态变更，保证因果顺序清晰。
+    // 时间轴整体按倒序展示。同一时刻的状态变更发生在跟进之后，因此在
+    // 倒序列表中要排在跟进上方；从下往上阅读就是“跟进 → 状态变更”。
     const categoryOrder: Record<LeadTimelineCategory, number> = {
-      followup: 0,
-      status: 1,
+      status: 0,
+      followup: 1,
       system: 2,
     };
     return categoryOrder[a.category] - categoryOrder[b.category];

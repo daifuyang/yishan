@@ -147,7 +147,7 @@ describe('线索动态', () => {
     expect(activityEvents.every((event) => event.color === 'blue')).toBe(true);
   });
 
-  it('同一时刻的首次跟进先于其自动触发的状态变更展示', () => {
+  it('倒序时间轴中，同一时刻的状态变更排在触发它的跟进上方', () => {
     const events = buildLeadTimeline(lead, [
       {
         id: 21,
@@ -176,10 +176,10 @@ describe('线索动态', () => {
     ]);
 
     expect(events.slice(0, 2).map((event) => event.title)).toEqual([
-      '电话跟进',
       '状态变更',
+      '电话跟进',
     ]);
-    expect(events[1]?.detail).toBe(
+    expect(events[0]?.detail).toBe(
       '因首次跟进，系统自动将状态从「待处理」更新为「跟进中」',
     );
   });
