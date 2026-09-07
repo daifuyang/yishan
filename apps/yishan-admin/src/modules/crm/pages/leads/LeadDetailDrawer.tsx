@@ -93,6 +93,8 @@ interface LeadDetailDrawerProps {
   onEditLead?: (lead: LeadRow) => void;
   /** 当 LeadActivityRail 内部写出新 lead 时（首条跟进触发 new → processing），把最新 row 抛给外层。 */
   onLeadChanged?: (next: LeadRow) => void;
+  /** 公海详情只读展示，避免在未认领前暴露线索工作流操作。 */
+  showActions?: boolean;
 }
 
 export default function LeadDetailDrawer({
@@ -104,6 +106,7 @@ export default function LeadDetailDrawer({
   onReturnToPool,
   onEditLead,
   onLeadChanged,
+  showActions = true,
 }: LeadDetailDrawerProps) {
   const screens = Grid.useBreakpoint();
   const [size, setSize] = useState(() =>
@@ -112,7 +115,7 @@ export default function LeadDetailDrawer({
     ),
   );
   const renderHeaderActions = () => {
-    if (!lead) return null;
+    if (!lead || !showActions) return null;
     const isConverted = lead.convertedCustomerId !== null;
     return (
       <Space>
