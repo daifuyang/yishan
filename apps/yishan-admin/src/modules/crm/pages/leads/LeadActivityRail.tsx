@@ -18,7 +18,7 @@ import {
 } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useEffect, useMemo, useState } from 'react';
-import type { LeadActivityRow, LeadRow } from '@/services/crm';
+import type { LeadActivityRow, LeadRow, LeadStatus } from '@/services/crm';
 import { createLeadActivity, listLeadActivities } from '@/services/crm';
 import { formatDateTime } from '@/utils/formatDate';
 import {
@@ -31,6 +31,7 @@ import {
   groupLeadTimelineByDate,
   type LeadTimelineCategory,
 } from './leadTimeline';
+import { LEAD_DIALOG_Z_INDEX } from './leadWorkspaceLayout';
 
 type ActivityFilter = 'all' | LeadTimelineCategory;
 
@@ -50,6 +51,13 @@ const typeOptions = [
   { value: 'other', label: '其他' },
 ];
 
+const followUpStatusOptions: Array<{ value: LeadStatus; label: string }> = [
+  { value: 'pending', label: '未处理' },
+  { value: 'contact_valid', label: '联系方式有效' },
+  { value: 'contact_invalid', label: '联系方式无效' },
+  { value: 'closed', label: '已关闭' },
+];
+
 const dateLabel = (date: string) => {
   const value = dayjs(date);
   if (value.isSame(dayjs(), 'day')) return `今天 · ${value.format('MM月DD日')}`;
@@ -67,6 +75,7 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
     null,
   );
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
+  const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -123,20 +132,36 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
         open={followUpModalOpen}
         onOpenChange={setFollowUpModalOpen}
         title="写跟进"
-        initialValues={{ type: 'phone' }}
-        modalProps={{ destroyOnHidden: true }}
+        initialValues={{ type: 'phone', followUpStatus: lead.status ?? 'pending' }}
+        modalProps={{
+          destroyOnHidden: true,
+          okButtonProps: { loading: followUpSubmitting },
+          // 写跟进弹窗在抽屉里打开（LeadActivityRail 渲染在抽屉 children 里），
+          // 同样要走 LEAD_DIALOG_Z_INDEX，保证 Modal 浮在抽屉内容之上。
+          zIndex: LEAD_DIALOG_Z_INDEX,
+        }}
         onFinish={async (values) => {
-          const result = await createLeadActivity(
-            lead.id,
-            toLeadActivityInput(values),
-          );
-          // 服务端会在首次跟进时返回最新 lead；UI 在这里做兼容：仅当 lead.id 一致时刷新抽屉状态。
-          setActivities((current) => [result.activity, ...current]);
-          if (result.lead.id === lead.id) {
-            onLeadChanged?.(result.lead);
+          setFollowUpSubmitting(true);
+          try {
+            const result = await createLeadActivity(
+              lead.id,
+              toLeadActivityInput(values),
+            );
+            // 状态改变时服务端会追加一条审计。重新加载完整时间线，确保用户
+            // 跟进和状态变更都会显示，且沿用统一的同秒排序规则。
+            const refreshedActivities = await listLeadActivities(lead.id);
+            setActivities(refreshedActivities.items);
+            if (result.lead.id === lead.id) {
+              onLeadChanged?.(result.lead);
+            }
+            message.success('跟进已保存');
+            return true;
+          } catch (err: any) {
+            message.error(err?.message ?? '跟进保存失败');
+            return false;
+          } finally {
+            setFollowUpSubmitting(false);
           }
-          message.success('跟进已保存');
-          return true;
         }}
       >
         <ProFormSelect
@@ -153,6 +178,12 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
           rules={[
             { required: true, whitespace: true, message: '请填写本次跟进内容' },
           ]}
+        />
+        <ProFormSelect
+          name="followUpStatus"
+          label="跟进状态"
+          options={followUpStatusOptions}
+          rules={[{ required: true, message: '请选择跟进状态' }]}
         />
         <ProFormDateTimePicker
           name="nextFollowUpAt"

@@ -134,7 +134,7 @@ export type LeadConvertInput = {
 export interface LeadConversionResult { lead: LeadRow; customer: CustomerRow; contact: LeadConversionPreviewContact }
 export async function convertLead(id: number, input: LeadConvertInput): Promise<LeadConversionResult> { const r = await request<ApiResp<Omit<LeadConversionResult, 'lead'> & { lead: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/convert`, { method: 'POST', data: input }); const result = unwrap(r); return { ...result, lead: withLeadConversionState(result.lead) } }
 export interface LeadActivityRow { id: number; leadId: number; type: string; content: string; occurredAt: string; nextFollowUpAt: string | null; operatorUserId: number; operatorUserName: string | null; createdAt: string; updatedAt: string }
-export interface LeadActivityCreateInput { type: ActivityType; content: string; occurredAt?: string; nextFollowUpAt?: string | null }
+export interface LeadActivityCreateInput { type: ActivityType; content: string; followUpStatus: LeadStatus; occurredAt?: string; nextFollowUpAt?: string | null }
 /**
  * 写跟进成功响应：activity + 最新 lead。客户端必须在写完一次跟进后用 lead 替换本地状态，
  * 这样每次跟进返回的显式 followUpStatus 都能立刻反映在 UI 上。

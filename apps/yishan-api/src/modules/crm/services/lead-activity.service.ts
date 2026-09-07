@@ -13,19 +13,16 @@ import { LeadRepository, type LeadRow } from '../repositories/lead.repository.js
 
 /** 状态本地化标签（与前端 lifecycle 标签一致）。 */
 const STATUS_LABELS: Record<LeadRow['status'], string> = {
-  new: '待处理',
-  processing: '跟进中',
-  qualified: '有效',
-  disqualified: '无效',
-  converted: '已转化',
+  pending: '未处理',
+  contact_valid: '联系方式有效',
+  contact_invalid: '联系方式无效',
+  closed: '已关闭',
 }
 
 /**
  * 写跟进响应：activity + 最新 lead。
  *
- * 在 first follow-up（status='new' → 'processing'）场景下，lead 状态会变，
  * 必须返回最新 lead 让前端可以原地刷新标签和操作按钮。
- * 终态线索（converted / disqualified）不得进入跟进流程。
  */
 export interface LeadActivityCreateServiceResult {
   activity: LeadActivityRowWithOperator
@@ -43,32 +40,25 @@ export class LeadActivityService {
 
   async create(
     leadId: number,
-    input: Omit<CreateLeadActivityInput, 'leadId' | 'operatorUserId'>,
+    input: Omit<CreateLeadActivityInput, 'leadId' | 'operatorUserId'> & { followUpStatus: LeadRow['status'] },
     currentUser: DataScopeUser,
   ): Promise<LeadActivityCreateServiceResult> {
-    const initial = await this.getAccessibleLead(leadId, currentUser)
+    await this.getAccessibleLead(leadId, currentUser)
     if (!(ACTIVITY_TYPES as readonly string[]).includes(input.type)) {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_TYPE_INVALID, '跟进方式不合法')
     }
     if (!input.content.trim()) {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_CONTENT_REQUIRED, '请填写跟进内容')
     }
-    // 终态守卫：无效 / 已转化线索不允许新增跟进。
-    if (initial.status === 'converted' || initial.status === 'disqualified') {
-      throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能新增跟进')
-    }
-
-    const occurredAt = input.occurredAt ?? new Date()
-    const nextFollowUpAt = input.nextFollowUpAt ?? null
+    // HTTP 入参是 ISO 字符串，仓储 / Drizzle 要求 Date 对象。
+    // 在这里统一收口，避免字符串被传给 datetime 列时 Drizzle 内部调 toISOString 失败。
+    const occurredAt = input.occurredAt ? new Date(input.occurredAt) : new Date()
+    const nextFollowUpAt = input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null
     return dbManager.transaction(async (tx) => {
       // 重新读取当前 lead，确保 status / owner 等字段在事务内是最新值；
       // 避免访问校验通过后、并发请求之间漏过转换状态变更。
       const locked = await LeadRepository.findById(leadId, tx)
       if (!locked) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
-      if (locked.status === 'converted' || locked.status === 'disqualified') {
-        throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '当前状态不能新增跟进')
-      }
-
       const humanActivity = await LeadActivityRepository.create({
         leadId,
         type: input.type,
@@ -78,33 +68,33 @@ export class LeadActivityService {
         operatorUserId: currentUser.id,
       }, tx)
 
-      // 决定是否同时推进状态：仅在"new → processing"这一次写首次跟进时推进。
-      const shouldAdvanceToProcessing = locked.status === 'new'
       const updatePayload: Parameters<typeof LeadRepository.update>[1] = {
+        status: input.followUpStatus,
         lastFollowUpAt: occurredAt,
         nextFollowUpAt,
         updaterId: currentUser.id,
       }
-      if (shouldAdvanceToProcessing) {
-        updatePayload.status = 'processing'
-      }
       await LeadRepository.update(leadId, updatePayload, tx)
 
-      let transitionActivity: Awaited<ReturnType<typeof LeadActivityRepository.create>> | null = null
-      if (shouldAdvanceToProcessing) {
-        transitionActivity = await LeadActivityRepository.create({
+      if (locked.status !== input.followUpStatus) {
+        await LeadActivityRepository.create({
           leadId,
           type: 'status_change',
-          content: `${STATUS_LABELS.new} → ${STATUS_LABELS.processing}`,
+          content: `跟进状态由「${STATUS_LABELS[locked.status]}」变为「${STATUS_LABELS[input.followUpStatus]}」`,
           occurredAt,
           operatorUserId: currentUser.id,
         }, tx)
       }
 
-      const [withOperator] = await LeadActivityRepository.listByLeadId(leadId, { limit: 1 }, tx)
+      // 同一首次跟进会紧接着插入一条 status_change，二者 occurredAt 相同。
+      // 不能用“最新一条”作为响应，否则前端会把状态审计误当作用户刚写的跟进。
+      const recentActivities = await LeadActivityRepository.listByLeadId(leadId, { limit: 100 }, tx)
+      const humanActivityWithOperator = recentActivities.find(
+        (activity) => activity.id === humanActivity.id,
+      )
       const refreshed = await LeadRepository.findById(leadId, tx)
       return {
-        activity: withOperator ?? { ...(transitionActivity ?? humanActivity), operatorUserName: null },
+        activity: humanActivityWithOperator ?? { ...humanActivity, operatorUserName: null },
         lead: refreshed ?? locked,
       }
     })
