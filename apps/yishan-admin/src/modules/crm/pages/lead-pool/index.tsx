@@ -11,7 +11,7 @@ import { type ActionType, PageContainer, ProTable, type ProColumns } from '@ant-
 import { message, Popconfirm, Space, Tag } from 'antd'
 import { useModel } from '@umijs/max'
 import React, { useRef, useState } from 'react'
-import { claimLead, listLeads, type LeadRow } from '@/services/crm'
+import { claimLead, deleteLead, listLeads, type LeadRow } from '@/services/crm'
 import { formatDateTime, isOverdue } from '@/utils/formatDate'
 import LeadDetailDrawer from '../leads/LeadDetailDrawer'
 import { type LeadDetailState, closeLeadDetail, openLeadDetail } from '../leads/leadDetailState'
@@ -36,7 +36,14 @@ const columns: ProColumns<LeadRow>[] = [
   { title: '联系人', dataIndex: 'name', width: 120, renderText: (v) => v || '—' },
   { title: '公司名称', dataIndex: 'companyName', width: 180, renderText: (v) => v || '—' },
   { title: '手机号', dataIndex: 'mobile', width: 130, search: false, renderText: (v) => v || '—' },
-  { title: '线索来源', dataIndex: 'sourceId', width: 100, search: false, renderText: (v) => v || '—' },
+  {
+    title: '线索来源',
+    dataIndex: 'sourceName',
+    width: 120,
+    search: false,
+    renderText: (v: string | null, record: LeadRow) =>
+      v || (record.sourceId ? `来源 #${record.sourceId}` : '—'),
+  },
   {
     title: '下次跟进',
     dataIndex: 'nextFollowUpAt',
@@ -62,6 +69,16 @@ export default function LeadPoolPage() {
       actionRef.current?.reload()
     } catch (err: any) {
       message.error(err?.message ?? '领取失败')
+    }
+  }
+  const handleDelete = async (row: LeadRow) => {
+    try {
+      await deleteLead(row.id)
+      message.success('线索已删除')
+      setDetailLead(closeLeadDetail())
+      actionRef.current?.reload()
+    } catch (err: any) {
+      message.error(err?.message ?? '删除失败')
     }
   }
   const poolColumns: ProColumns<LeadRow>[] = [
@@ -139,11 +156,11 @@ export default function LeadPoolPage() {
       <LeadDetailDrawer
         lead={detailLead}
         onClose={() => setDetailLead(closeLeadDetail())}
-        onConvert={() => undefined}
-        onOpenCustomer={() => undefined}
-        onTransfer={() => undefined}
-        onReturnToPool={() => undefined}
-        showActions={false}
+        onClaim={(row) => handleClaim(row)}
+        onAssign={(row) => setAssignmentTarget(openLeadDetail(row))}
+        onEditLead={(row) => message.info('公海线索需先领取再编辑')}
+        onPrint={() => message.info('打印功能未接入')}
+        onDelete={(row) => handleDelete(row)}
       />
     </PageContainer>
   )

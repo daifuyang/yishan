@@ -71,6 +71,7 @@ export default function TransferLeadDialog({
       onOpenChange={onOpenChange}
       title={lead ? `${copy.title}：${lead.name || lead.companyName || `线索 #${lead.id}`}` : copy.title}
       width={520}
+      modalProps={{ zIndex: LEAD_DIALOG_Z_INDEX }}
       submitter={{
         searchConfig: { submitText: copy.submitText, resetText: '取消' },
         submitButtonProps: { loading: submitting },

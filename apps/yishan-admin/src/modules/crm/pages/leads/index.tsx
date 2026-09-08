@@ -158,6 +158,14 @@ export default function LeadPage() {
       valueEnum: STATUS_VALUE_ENUM,
     },
     {
+      title: '线索来源',
+      dataIndex: 'sourceName',
+      width: 120,
+      search: false,
+      renderText: (v, record) =>
+        (v as string | null) || (record.sourceId ? `来源 #${record.sourceId}` : '—'),
+    },
+    {
       title: '负责人',
       dataIndex: 'ownerUserName',
       width: 96,

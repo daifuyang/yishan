@@ -1,4 +1,5 @@
 import { type FastifyPluginAsync } from 'fastify'
+import { Type } from '@sinclair/typebox'
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
 import { ResponseUtil } from '@/utils/response.js'
 import { LeadService } from '../../../services/lead.service.js'
@@ -43,6 +44,10 @@ export default (async (app) => {
   route.patch('/:id', { access: { permission: PERMS.LEAD_UPDATE }, schema: { tags: [ROUTE_TAG], summary: '编辑线索资料', operationId: 'crmLeadsUpdate', params: LeadIdParamSchema, body: LeadUpdateReqSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
     const row = await service.update({ leadId: request.params.id, input: request.body, currentUser: request.currentUser })
     return ResponseUtil.success(reply, row, '线索已更新')
+  })
+  route.delete('/:id', { access: { permission: PERMS.LEAD_DELETE }, schema: { tags: [ROUTE_TAG], summary: '删除线索', operationId: 'crmLeadsDelete', params: LeadIdParamSchema, response: { 200: EnvelopeSchema(Type.Object({ id: Type.Number() })) } } }, async (request: any, reply: any) => {
+    await service.delete({ leadId: request.params.id, currentUser: request.currentUser })
+    return ResponseUtil.success(reply, { id: request.params.id }, '线索已删除')
   })
   route.get('/:id/activities', { access: { permission: PERMS.LEAD_LIST }, schema: { tags: [ROUTE_TAG], summary: '线索跟进记录', operationId: 'crmLeadActivitiesList', params: LeadIdParamSchema, response: { 200: EnvelopeSchema(LeadActivityListRespSchema) } } }, async (request: any, reply: any) => {
     const result = await activityService.listByLeadId(request.params.id, request.currentUser)

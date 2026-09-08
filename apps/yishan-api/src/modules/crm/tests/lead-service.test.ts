@@ -35,12 +35,14 @@ describe('LeadService.create', () => {
       wechat: null,
       qq: null,
       sourceId: null,
+      sourceName: null,
       intention: null,
       status: 'pending',
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
       createdBy: salesperson.id,
+      createdByUserName: '销售',
       lastFollowUpAt: null,
       nextFollowUpAt: null,
       disqualifyReason: null,
@@ -80,12 +82,14 @@ describe('LeadService.create', () => {
       wechat: null,
       qq: null,
       sourceId: null,
+      sourceName: null,
       intention: null,
       status: 'pending',
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
       createdBy: salesperson.id,
+      createdByUserName: '销售',
       lastFollowUpAt: null,
       nextFollowUpAt: null,
       disqualifyReason: null,
@@ -308,9 +312,9 @@ describe('LeadService.claim', () => {
       operatorUserId: salesperson.id, createdAt: new Date(), updatedAt: new Date(),
     })
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue({
-      id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, intention: null,
+      id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, sourceName: null, intention: null,
       status: 'pending', ownerUserId: salesperson.id, ownerUserName: '销售', ownerDepartmentId: 10,
-      createdBy: null, lastFollowUpAt: null, nextFollowUpAt: null,
+      createdBy: null, createdByUserName: null, lastFollowUpAt: null, nextFollowUpAt: null,
       disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
     })
 
@@ -324,9 +328,9 @@ describe('LeadService.claim', () => {
     vi.spyOn(LeadRepository, 'claimInTx').mockResolvedValue(0)
     // 已经有人领取，但 lead 仍存在
     vi.spyOn(LeadRepository, 'findById').mockResolvedValue({
-      id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, intention: null,
+      id: 1, name: '王经理', companyName: '示例公司', mobile: '13800000000', phone: null, email: null, wechat: null, qq: null, sourceId: null, sourceName: null, intention: null,
       status: 'contact_valid', ownerUserId: 999, ownerUserName: '其它销售', ownerDepartmentId: 10,
-      createdBy: salesperson.id, lastFollowUpAt: null, nextFollowUpAt: null,
+      createdBy: salesperson.id, createdByUserName: '销售', lastFollowUpAt: null, nextFollowUpAt: null,
       disqualifyReason: null, disqualifyCode: null, convertedCustomerId: null, convertedContactId: null, convertedAt: null, createdAt: new Date(), updatedAt: new Date(),
     })
 
@@ -357,12 +361,14 @@ function buildLead(overrides: Partial<LeadRow> = {}) {
       wechat: null,
       qq: null,
       sourceId: null,
+      sourceName: null,
       intention: null,
       status: 'pending' as const,
       ownerUserId: salesperson.id,
       ownerUserName: '销售',
       ownerDepartmentId: 10,
       createdBy: salesperson.id,
+      createdByUserName: '销售',
       lastFollowUpAt: null,
       nextFollowUpAt: null,
       disqualifyReason: null,

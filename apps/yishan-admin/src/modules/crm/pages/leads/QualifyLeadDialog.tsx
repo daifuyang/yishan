@@ -3,6 +3,7 @@ import { message } from 'antd';
 import { useState } from 'react';
 import { qualifyLead } from '@/services/crm';
 import type { LeadRow } from '@/services/crm';
+import { LEAD_DIALOG_Z_INDEX } from './leadWorkspaceLayout';
 
 interface QualifyLeadDialogProps {
   open: boolean;
@@ -32,7 +33,7 @@ export default function QualifyLeadDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="判为有效"
-      modalProps={{ destroyOnHidden: true, okButtonProps: { loading: submitting } }}
+      modalProps={{ destroyOnHidden: true, okButtonProps: { loading: submitting }, zIndex: LEAD_DIALOG_Z_INDEX }}
       initialValues={{
         evidence: '',
         nextAction: '',

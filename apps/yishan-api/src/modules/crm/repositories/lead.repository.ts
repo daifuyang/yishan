@@ -1,14 +1,52 @@
-import { and, count, desc, eq, inArray, isNull, like, or, sql, type SQL } from 'drizzle-orm'
+import { aliasedTable, and, count, desc, eq, inArray, isNull, like, or, sql, type SQL } from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@/db'
 import { sysUser } from '@/db/schema'
-import { crmLead } from '../db/schema.js'
+import { crmCustomerSource, crmLead } from '../db/schema.js'
 
 export type LeadStatus = 'pending' | 'contact_valid' | 'contact_invalid' | 'closed'
-export interface LeadRow { id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; intention: string | null; status: LeadStatus; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; createdBy: number | null; lastFollowUpAt: Date | null; nextFollowUpAt: Date | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: Date | null; createdAt: Date; updatedAt: Date }
+export interface LeadRow { id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; sourceName: string | null; intention: string | null; status: LeadStatus; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; createdBy: number | null; createdByUserName: string | null; lastFollowUpAt: Date | null; nextFollowUpAt: Date | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: Date | null; createdAt: Date; updatedAt: Date }
 export interface LeadListQuery { page?: number; pageSize?: number; keyword?: string; status?: LeadStatus; ownerUserId?: number; pool?: boolean; ownerUserIds?: number[] | null; ownerDepartmentIds?: number[] | null }
 export interface CreateLeadInput { name?: string | null; companyName?: string | null; mobile?: string | null; phone?: string | null; email?: string | null; wechat?: string | null; qq?: string | null; sourceId?: number | null; intention?: string | null; ownerUserId?: number | null; ownerDepartmentId?: number | null; creatorId: number; createdBy?: number | null; updaterId: number }
 export interface UpdateLeadInput { status?: LeadStatus; ownerUserId?: number | null; ownerDepartmentId?: number | null; lastFollowUpAt?: Date | null; nextFollowUpAt?: Date | null; disqualifyReason?: string | null; disqualifyCode?: string | null; convertedCustomerId?: number | null; convertedContactId?: number | null; convertedAt?: Date | null; updaterId: number }
-const columns = { id: crmLead.id, name: crmLead.name, companyName: crmLead.companyName, mobile: crmLead.mobile, phone: crmLead.phone, email: crmLead.email, wechat: crmLead.wechat, qq: crmLead.qq, sourceId: crmLead.sourceId, intention: crmLead.intention, status: crmLead.status, ownerUserId: crmLead.ownerUserId, ownerUserName: sysUser.realName, ownerDepartmentId: crmLead.ownerDepartmentId, createdBy: crmLead.creatorId, lastFollowUpAt: crmLead.lastFollowUpAt, nextFollowUpAt: crmLead.nextFollowUpAt, disqualifyReason: crmLead.disqualifyReason, disqualifyCode: crmLead.disqualifyCode, convertedCustomerId: crmLead.convertedCustomerId, convertedContactId: crmLead.convertedContactId, convertedAt: crmLead.convertedAt, createdAt: crmLead.createdAt, updatedAt: crmLead.updatedAt }
+/**
+ * 列表/详情共用的列：基础字段 + 负责人名 + 创建人名 + 来源名。
+ *
+ * - ownerUserName：leftJoin sys_user（crm_lead.owner_user_id）。
+ * - createdByUserName：再 aliased 一份 sys_user 用于 join crm_lead.creator_id，
+ *   同一物理表 join 两次，drizzle 通过 aliasedTable 区分。
+ * - sourceName：leftJoin crm_customer_source（crm_lead.source_id）；删除的来源过滤掉。
+ */
+const ownerUser = sysUser
+const creatorUser = aliasedTable(sysUser, 'creator_user')
+const leadSource = aliasedTable(crmCustomerSource, 'lead_source')
+const columns = {
+  id: crmLead.id,
+  name: crmLead.name,
+  companyName: crmLead.companyName,
+  mobile: crmLead.mobile,
+  phone: crmLead.phone,
+  email: crmLead.email,
+  wechat: crmLead.wechat,
+  qq: crmLead.qq,
+  sourceId: crmLead.sourceId,
+  sourceName: leadSource.name,
+  intention: crmLead.intention,
+  status: crmLead.status,
+  ownerUserId: crmLead.ownerUserId,
+  ownerUserName: ownerUser.realName,
+  ownerDepartmentId: crmLead.ownerDepartmentId,
+  createdBy: crmLead.creatorId,
+  createdByUserName: creatorUser.realName,
+  lastFollowUpAt: crmLead.lastFollowUpAt,
+  nextFollowUpAt: crmLead.nextFollowUpAt,
+  disqualifyReason: crmLead.disqualifyReason,
+  disqualifyCode: crmLead.disqualifyCode,
+  convertedCustomerId: crmLead.convertedCustomerId,
+  convertedContactId: crmLead.convertedContactId,
+  convertedAt: crmLead.convertedAt,
+  createdAt: crmLead.createdAt,
+  updatedAt: crmLead.updatedAt,
+}
 export function buildLeadListWhere(q: LeadListQuery): SQL | undefined {
   const c: SQL[] = [isNull(crmLead.deletedAt)]
   if (q.keyword) {
@@ -32,13 +70,27 @@ export class LeadRepository {
     const pageSize = q.pageSize ?? 10
     const where = buildLeadListWhere(q)
     const [rows, total] = await Promise.all([
-      db.select(columns).from(crmLead).leftJoin(sysUser, eq(sysUser.id, crmLead.ownerUserId)).where(where).orderBy(desc(crmLead.updatedAt)).limit(pageSize).offset((page - 1) * pageSize),
+      db.select(columns)
+        .from(crmLead)
+        .leftJoin(ownerUser, eq(ownerUser.id, crmLead.ownerUserId))
+        .leftJoin(creatorUser, eq(creatorUser.id, crmLead.creatorId))
+        .leftJoin(leadSource, and(eq(leadSource.id, crmLead.sourceId), isNull(leadSource.deletedAt)))
+        .where(where)
+        .orderBy(desc(crmLead.updatedAt))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
       db.select({ c: count() }).from(crmLead).where(where),
     ])
     return { rows: rows as LeadRow[], total: Number(total[0]?.c ?? 0) }
   }
   static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<LeadRow | null> {
-    const [row] = await db.select(columns).from(crmLead).leftJoin(sysUser, eq(sysUser.id, crmLead.ownerUserId)).where(and(eq(crmLead.id, id), isNull(crmLead.deletedAt))).limit(1)
+    const [row] = await db.select(columns)
+      .from(crmLead)
+      .leftJoin(ownerUser, eq(ownerUser.id, crmLead.ownerUserId))
+      .leftJoin(creatorUser, eq(creatorUser.id, crmLead.creatorId))
+      .leftJoin(leadSource, and(eq(leadSource.id, crmLead.sourceId), isNull(leadSource.deletedAt)))
+      .where(and(eq(crmLead.id, id), isNull(crmLead.deletedAt)))
+      .limit(1)
     return row ? row as LeadRow : null
   }
   static async create(input: CreateLeadInput, db: AppQueryDb = drizzleDb): Promise<LeadRow> {
@@ -85,6 +137,21 @@ export class LeadRepository {
         isNull(crmLead.ownerUserId),
         isNull(crmLead.deletedAt),
         or(eq(crmLead.status, 'pending'), eq(crmLead.status, 'contact_valid'))!,
+      ))
+    return ((result as unknown as [{ affectedRows?: number } | undefined])[0])?.affectedRows ?? 0
+  }
+
+  /**
+   * 软删除线索：写 deleted_at = now()。已转化的线索不允许删除，避免破坏链路。
+   * 返回受影响的行数：0 表示不存在/已删除/已转化。
+   */
+  static async softDelete(id: number, db: AppQueryDb = drizzleDb): Promise<number> {
+    const result = await db.update(crmLead)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(crmLead.id, id),
+        isNull(crmLead.deletedAt),
+        isNull(crmLead.convertedCustomerId),
       ))
     return ((result as unknown as [{ affectedRows?: number } | undefined])[0])?.affectedRows ?? 0
   }

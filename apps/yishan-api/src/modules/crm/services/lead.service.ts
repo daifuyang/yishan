@@ -363,6 +363,29 @@ export class LeadService {
     })
   }
 
+  /**
+   * 删除线索（软删除）。
+   *
+   * 业务约束：
+   *   - 仅软删除（deletedAt），不物理删除，保留审计与活动轨迹。
+   *   - 已转化的线索不允许删除，避免破坏 lead ↔ customer/contact 链路。
+   *   - 受数据范围限制：无权查看的线索返回「不存在」。
+   */
+  async delete({ leadId, currentUser }: { leadId: number; currentUser: DataScopeUser }): Promise<void> {
+    await this.getAccessibleLead(leadId, currentUser)
+    return dbManager.transaction(async (tx) => {
+      const lead = await LeadRepository.findById(leadId, tx)
+      if (!lead) throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
+      if (lead.convertedCustomerId !== null) {
+        throw new BusinessError(CrmErrorCode.CRM_LEAD_STATUS_INVALID, '已转化的线索不能删除')
+      }
+      const affected = await LeadRepository.softDelete(leadId, tx)
+      if (affected === 0) {
+        throw new BusinessError(CrmErrorCode.CRM_LEAD_NOT_FOUND, '线索不存在或已删除')
+      }
+    })
+  }
+
   private async getAccessibleLead(
     leadId: number,
     currentUser: DataScopeUser,

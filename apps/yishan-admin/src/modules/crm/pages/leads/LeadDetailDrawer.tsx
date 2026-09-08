@@ -1,4 +1,4 @@
-import { CloseOutlined, DownOutlined } from '@ant-design/icons';
+import { CloseOutlined, DownOutlined, MoreOutlined, PrinterOutlined } from '@ant-design/icons';
 import {
   Button,
   Divider,
@@ -7,6 +7,7 @@ import {
   Empty,
   Grid,
   message,
+  Popconfirm,
   Space,
   Tabs,
   Tag,
@@ -85,28 +86,48 @@ const DetailSection = ({
 interface LeadDetailDrawerProps {
   lead: LeadRow | null;
   onClose: () => void;
-  onConvert: (lead: LeadRow) => void;
-  onOpenCustomer: (lead: LeadRow) => void;
-  onTransfer: (lead: LeadRow) => void;
-  onReturnToPool: (lead: LeadRow) => void;
-  /** 「编辑」入口：把抽屉内的编辑触发到外部 EditLeadDialog，避免抽屉内再嵌套表单 */
+  /** 公海：主操作「领取」 */
+  onClaim?: (lead: LeadRow) => void;
+  /** 公海：「分配给他人」 */
+  onAssign?: (lead: LeadRow) => void;
+  /** 私海：主操作「编辑资料」 */
   onEditLead?: (lead: LeadRow) => void;
-  /** 当 LeadActivityRail 内部写出新 lead 时（首条跟进触发 new → processing），把最新 row 抛给外层。 */
+  /** 私海：主操作「转为客户」 */
+  onConvert?: (lead: LeadRow) => void;
+  /** 私海已转化：「查看客户详情」 */
+  onOpenCustomer?: (lead: LeadRow) => void;
+  /** 私海：「转移给他人」 */
+  onTransfer?: (lead: LeadRow) => void;
+  /** 私海：「退回线索池」 */
+  onReturnToPool?: (lead: LeadRow) => void;
+  /** 公海：更多 → 打印（占位，未传则仅显示「打印」文案并 message.info） */
+  onPrint?: (lead: LeadRow) => void;
+  /** 公海：更多 → 删除（带 Popconfirm 二次确认） */
+  onDelete?: (lead: LeadRow) => void;
+  /** 当 LeadActivityRail 内部写出新 lead 时（首条跟进触发状态变更），把最新 row 抛给外层。 */
   onLeadChanged?: (next: LeadRow) => void;
-  /** 公海详情只读展示，避免在未认领前暴露线索工作流操作。 */
-  showActions?: boolean;
 }
 
+/**
+ * 线索详情抽屉。Actions 完全由 props 决定：
+ *   - 公海页（lead-pool）传入 onClaim / onAssign / onEditLead / onPrint / onDelete
+ *   - 私海页（leads）   传入 onConvert / onOpenCustomer / onTransfer / onReturnToPool / onEditLead
+ *
+ * 关闭 icon 始终渲染；不传任何 actions 时不显示右侧操作区。
+ */
 export default function LeadDetailDrawer({
   lead,
   onClose,
+  onClaim,
+  onAssign,
+  onEditLead,
   onConvert,
   onOpenCustomer,
   onTransfer,
   onReturnToPool,
-  onEditLead,
+  onPrint,
+  onDelete,
   onLeadChanged,
-  showActions = true,
 }: LeadDetailDrawerProps) {
   const screens = Grid.useBreakpoint();
   const [size, setSize] = useState(() =>
@@ -114,40 +135,111 @@ export default function LeadDetailDrawer({
       typeof window === 'undefined' ? 1366 : window.innerWidth,
     ),
   );
+
   const renderHeaderActions = () => {
-    if (!lead || !showActions) return null;
+    if (!lead) return null;
     const isConverted = lead.convertedCustomerId !== null;
+    // 公海「更多」菜单：打印 + 删除。
+    // 私海走 onTransfer / onReturnToPool，不渲染「更多」按钮。
+    const moreItems: Array<{ key: string; label: React.ReactNode; icon?: React.ReactNode }> = [];
+    if (onPrint) {
+      moreItems.push({
+        key: 'print',
+        label: '打印',
+        icon: <PrinterOutlined />,
+      });
+    }
+    if (onDelete) {
+      moreItems.push({
+        key: 'delete',
+        label: (
+          <Popconfirm
+            title={
+              <span>
+                删除
+                <strong style={{ marginLeft: 4 }}>
+                  {lead.name || lead.companyName || `线索 #${lead.id}`}
+                </strong>
+                ？
+              </span>
+            }
+            description="删除后线索将不可见，且无法恢复。"
+            okText="删除"
+            okButtonProps={{ danger: true }}
+            cancelText="取消"
+            onConfirm={() => onDelete(lead)}
+          >
+            <span style={{ color: '#d4380d' }}>删除</span>
+          </Popconfirm>
+        ),
+      });
+    }
+    const handleMoreClick: import('antd').MenuProps['onClick'] = ({ key, domEvent }) => {
+      if (key === 'print') {
+        if (onPrint) onPrint(lead);
+        else message.info('打印功能未接入');
+      }
+      // delete 由 Popconfirm 处理；阻止冒泡避免点两次
+      if (key === 'delete') domEvent.stopPropagation();
+    };
+
     return (
       <Space>
-        <Button
-          type="primary"
-          onClick={() => (isConverted ? onOpenCustomer(lead) : onConvert(lead))}
-        >
-          {isConverted ? '查看客户详情' : '转为客户'}
-        </Button>
-        <Dropdown
-          menu={{
-            items: [
-              { key: 'transferToUser', label: '转移给他人' },
-              { key: 'returnToPool', label: '退回线索池' },
-            ],
-            onClick: ({ key }) => {
-              if (key === 'transferToUser') onTransfer(lead);
-              else onReturnToPool(lead);
-            },
-          }}
-        >
-          <Button>
-            转移 <DownOutlined />
+        {onClaim && (
+          <Button type="primary" onClick={() => onClaim(lead)}>
+            领取
           </Button>
-        </Dropdown>
-        <Button
-          onClick={() =>
-            onEditLead ? onEditLead(lead) : message.info('编辑功能未接入')
-          }
-        >
-          编辑
-        </Button>
+        )}
+        {onAssign && (
+          <Button onClick={() => onAssign(lead)}>分配</Button>
+        )}
+        {(onConvert || (onOpenCustomer && isConverted)) && (
+          <Button
+            type="primary"
+            onClick={() =>
+              isConverted && onOpenCustomer
+                ? onOpenCustomer(lead)
+                : onConvert?.(lead)
+            }
+          >
+            {isConverted ? '查看客户详情' : '转为客户'}
+          </Button>
+        )}
+        {(onTransfer || onReturnToPool) && (
+          <Dropdown
+            menu={{
+              items: [
+                onTransfer
+                  ? { key: 'transfer', label: '转移给他人' }
+                  : null,
+                onReturnToPool
+                  ? { key: 'returnToPool', label: '退回线索池' }
+                  : null,
+              ].filter(Boolean) as Array<{ key: string; label: string }>,
+              onClick: ({ key }) => {
+                if (key === 'transfer') onTransfer?.(lead);
+                else if (key === 'returnToPool') onReturnToPool?.(lead);
+              },
+            }}
+          >
+            <Button>
+              转移 <DownOutlined />
+            </Button>
+          </Dropdown>
+        )}
+        {onEditLead && (
+          <Button onClick={() => onEditLead(lead)}>编辑</Button>
+        )}
+        {moreItems.length > 0 && (
+          <Dropdown
+            menu={{ items: moreItems, onClick: handleMoreClick }}
+            trigger={['click']}
+          >
+            <Button icon={<MoreOutlined />} aria-label="更多操作">
+              更多
+            </Button>
+          </Dropdown>
+        )}
         <Button
           type="text"
           icon={<CloseOutlined />}
@@ -210,7 +302,10 @@ export default function LeadDetailDrawer({
           <Divider style={{ margin: '32px 0' }} />
           <DetailSection title="业务信息">
             <DetailField label="负责人" value={ownerValue} />
-            <DetailField label="来源" value={valueOrDash(lead.sourceId)} />
+            <DetailField
+              label="来源"
+              value={valueOrDash(lead.sourceName ?? lead.sourceId)}
+            />
             <DetailField
               label="最近跟进"
               value={formatDateTime(lead.lastFollowUpAt)}
@@ -261,7 +356,11 @@ export default function LeadDetailDrawer({
               color: '#98a2b3',
             }}
           >
-            创建于 {formatDateTime(lead.createdAt)}
+            创建人：
+            {lead.createdByUserName?.trim() ||
+              (lead.createdBy ? `用户 #${lead.createdBy}` : '—')}
+            {' · 创建于 '}
+            {formatDateTime(lead.createdAt)}
           </Typography.Text>
         </main>
         <div

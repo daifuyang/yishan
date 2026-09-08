@@ -12,8 +12,8 @@ const activity = {
 }
 const lead: LeadRow = {
   id: 12, name: '李伟', companyName: null, mobile: null, phone: null, email: null, wechat: null, qq: null,
-  sourceId: null, intention: null, status: 'contact_valid', ownerUserId: 7, ownerUserName: '王伟', ownerDepartmentId: 10,
-  createdBy: 7, lastFollowUpAt: null, nextFollowUpAt: null, disqualifyReason: null, disqualifyCode: null,
+  sourceId: null, sourceName: null, intention: null, status: 'contact_valid', ownerUserId: 7, ownerUserName: '王伟', ownerDepartmentId: 10,
+  createdBy: 7, createdByUserName: '王伟', lastFollowUpAt: null, nextFollowUpAt: null, disqualifyReason: null, disqualifyCode: null,
   convertedCustomerId: null, convertedContactId: null, convertedAt: null,
   createdAt: new Date('2026-09-07T00:00:00.000Z'), updatedAt: new Date('2026-09-07T00:00:00.000Z'),
 }

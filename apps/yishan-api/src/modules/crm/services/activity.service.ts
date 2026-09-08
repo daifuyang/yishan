@@ -76,8 +76,10 @@ export class ActivityService {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_TYPE_INVALID, '跟进方式不合法')
     }
 
-    const occurredAt = input.occurredAt ?? new Date()
-    const nextFollowUpAt = input.nextFollowUpAt ?? null
+    // HTTP 入参是 ISO 字符串，仓储 / Drizzle 要求 Date 对象。
+    // 在这里统一收口，避免字符串被传给 datetime 列时 Drizzle 内部调 toISOString 失败。
+    const occurredAt = input.occurredAt ? new Date(input.occurredAt) : new Date()
+    const nextFollowUpAt = input.nextFollowUpAt ? new Date(input.nextFollowUpAt) : null
 
     return dbManager.transaction(async (tx) => {
       const activity = await ActivityRepository.create(

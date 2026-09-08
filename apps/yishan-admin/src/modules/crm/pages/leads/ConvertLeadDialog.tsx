@@ -14,6 +14,7 @@ import {
   type LeadConvertInput,
   type LeadRow,
 } from '@/services/crm';
+import { LEAD_DIALOG_Z_INDEX } from './leadWorkspaceLayout';
 
 interface ConvertLeadDialogProps {
   open: boolean;
@@ -104,7 +105,7 @@ export default function ConvertLeadDialog({
       onOpenChange={onOpenChange}
       title="转为客户"
       width={640}
-      modalProps={{ destroyOnHidden: true, okButtonProps: { loading: submitting } }}
+      modalProps={{ destroyOnHidden: true, okButtonProps: { loading: submitting }, zIndex: LEAD_DIALOG_Z_INDEX }}
       form={form}
       onFinish={async (values) => {
         const currentLead = lead
