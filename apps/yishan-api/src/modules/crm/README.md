@@ -31,10 +31,10 @@ CRM 是 Yishan 的"标杆业务模块"：覆盖一个最小可用销售系统所
 
 **不包含（留给后续版本）：**
 
-- 线索（Leads）/ 商机（Opportunity）/ 合同 / 订单 / 报价 / 发票。
+- 商机（Opportunity）/ 合同 / 订单 / 报价 / 发票。
 - 复杂审批、工作流引擎、营销自动化。
 - 自定义字段平台、页面设计器、状态机 DSL。
-- 客户合并 / 拆分、批量导入导出。
+- 客户合并 / 拆分，以及客户等其他业务对象的批量导入导出。
 
 ---
 
@@ -544,12 +544,12 @@ npx vitest run src/modules/crm/tests
   待 Core 给出 `sys_oper_log` 后对齐接入。
 - **领域事件**：Core 无 EventBus / 发布订阅基建，CRM 不自建事件总线。
   Service 层留有清晰的"业务动作 → 状态变更"入口，将来加事件适配器只需在 service 内插桩。
-- **导入 / 导出**：Core 无 Excel 通用能力，CRM 暂不做批量导入导出。
+- **导入 / 导出**：线索池已支持 Excel / CSV 批量导入；其他业务对象暂未提供批量导入导出。
 - **工作台计数器的数据范围**：`myCustomers` / `pendingFollowUp` / `publicPool` / `monthNew` 当前直接按 `crm_customer` 全表聚合（不按角色过滤）；`sales_lead` / `sales` 看到的是"全公司口径"。后续按角色过滤需要重写 `DashboardRepository.countWhere`。
 - **转交后的部门归属**：当前 `transfer` 时 `owner_department_id` 留空，依赖后续"完善 User 信息"动作补齐；严谨实现应查 `UserService.getUserById().deptIds[0]`，但 CRM 不跨模块 join，留待 Core 给出稳定 API。
 - **主联系人唯一性**：当前靠前端约束；DB 未限制 `is_primary=1` 在同一客户下唯一。
 - **客户类型与查重**：当前企业按 `name` 精确、个人按 `phone`；尚未做模糊匹配与归一化（去空格、统一格式）。
-- **未实现**：线索 / 商机 / 合同 / 订单、审批 / 工作流、营销自动化、自定义字段。
+- **未实现**：商机 / 合同 / 订单、审批 / 工作流、营销自动化、自定义字段。
 
 ---
 

@@ -49,6 +49,7 @@ import avatarFallback from "@public/icons/avatar.png";
 import queryString from "query-string";
 import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPath";
 import { menuTreeToRoutes } from "@/utils/menuRoutes";
+import { flattenPathlessDirectories } from "@/utils/dynamicRoutes";
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
@@ -439,19 +440,12 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
     const existingPaths = new Set(
       rootRoute.children.map((c: any) => c?.path).filter(Boolean),
     );
-    for (const r of dynamicRoutes) {
-      if (r.path && !existingPaths.has(r.path)) {
-        rootRoute.children.push(r);
-        existingPaths.add(r.path);
-      } else if (!r.path && r.routes?.length) {
-        // 目录节点没有 path：把它的 children 平铺到上一层
-        for (const child of r.routes) {
-          if (child.path && !existingPaths.has(child.path)) {
-            rootRoute.children.push(child);
-            existingPaths.add(child.path);
-          }
-        }
-      }
+    // dynamicRoutes 中可能存在多层 pathless 目录嵌套（CRM → 市场管理 →
+    // 线索），递归展开所有 path 叶子后追加到 rootRoute.children。helper
+    // 内部按 path 去重，并与上述 existingPaths 联合去重。path-bearing 节
+    // 点视为叶子（不递归下钻 routes），以保留 umi 的 layout route 嵌套语义。
+    for (const r of flattenPathlessDirectories(dynamicRoutes, existingPaths)) {
+      rootRoute.children.push(r);
     }
 
     const firstPath = resolveFirstPath(extraRoutes || []);

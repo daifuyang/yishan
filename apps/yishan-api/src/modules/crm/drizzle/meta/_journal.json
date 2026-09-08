@@ -15,6 +15,55 @@
       "when": 1788418325943,
       "tag": "0001_collaborator_and_activity_soft_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1788655499670,
+      "tag": "0001_add-leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1788741000000,
+      "tag": "0002_add-lead-activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1788827400000,
+      "tag": "0003_add-lead-wechat",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1788913800000,
+      "tag": "0004_add-lead-pool-status",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1788742230485,
+      "tag": "0005_lead-lifecycle-reasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1788742231000,
+      "tag": "0006_lead-conversion-links",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1788796800000,
+      "tag": "0007_drop-lead-pool-status",
+      "breakpoints": true
     }
   ]
 }

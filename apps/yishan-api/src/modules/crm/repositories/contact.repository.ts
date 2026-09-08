@@ -239,4 +239,32 @@ export class ContactRepository {
       .where(and(inArray(crmContact.id, ids), isNull(crmContact.deletedAt)))
     return new Set(rows.map((r) => r.id))
   }
+
+  /**
+   * 转化预览：基于线索 mobile / email 命中联系人候选。
+   * 仅按精确字段匹配；与候选客户解耦，是独立的提示列表。
+   */
+  static async findConversionCandidates(
+    input: { mobile: string | null; email: string | null },
+    db: AppQueryDb = drizzleDb,
+  ): Promise<Array<Pick<ContactRow, 'id' | 'customerId' | 'name' | 'mobile' | 'email'>>> {
+    const conds: SQL[] = [isNull(crmContact.deletedAt)]
+    const fragments: SQL[] = []
+    if (input.mobile && input.mobile.trim()) fragments.push(eq(crmContact.mobile, input.mobile))
+    if (input.email && input.email.trim()) fragments.push(eq(crmContact.email, input.email))
+    if (fragments.length === 0) return []
+    conds.push(or(...fragments)!)
+    const rows = await db
+      .select({
+        id: crmContact.id,
+        customerId: crmContact.customerId,
+        name: crmContact.name,
+        mobile: crmContact.mobile,
+        email: crmContact.email,
+      })
+      .from(crmContact)
+      .where(and(...conds))
+      .limit(20)
+    return rows
+  }
 }
