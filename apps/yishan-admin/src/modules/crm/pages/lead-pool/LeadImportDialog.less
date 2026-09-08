@@ -1,0 +1,125 @@
+.lead-import-dialog {
+  .ant-modal-close {
+    top: 26px;
+    inset-inline-end: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--lead-import-text-tertiary);
+    border-radius: 8px;
+    transition: background-color 160ms ease, color 160ms ease;
+
+    .anticon {
+      font-size: 20px;
+    }
+
+    &:hover {
+      color: var(--lead-import-text-secondary);
+      background: var(--lead-import-fill);
+    }
+  }
+
+  &__title {
+    display: block;
+    color: var(--lead-import-text);
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+  }
+
+  &__dragger.ant-upload-wrapper .ant-upload-drag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    overflow: hidden;
+    border-color: var(--lead-import-border);
+    border-radius: 10px;
+    background: #fafbfc;
+    transition: border-color 160ms ease, background-color 160ms ease;
+
+    &:hover,
+    &.ant-upload-drag-hover {
+      border-color: var(--lead-import-primary);
+      background: var(--lead-import-primary-bg);
+    }
+  }
+
+  &__upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  &__upload-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    color: var(--lead-import-primary);
+    font-size: 28px;
+    background: var(--lead-import-primary-bg);
+    border-radius: 12px;
+  }
+
+  &__upload-title {
+    color: var(--lead-import-text);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+  }
+
+  &__upload-hint {
+    margin-top: 8px;
+    color: var(--lead-import-text-tertiary);
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  &__help {
+    margin-top: 16px;
+  }
+
+  &__help-text {
+    color: var(--lead-import-text-secondary);
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  &__template-button.ant-btn {
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 4px;
+    margin-top: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 22px;
+    border-radius: 6px;
+  }
+
+  &__template-button .anticon {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 575px) {
+  .lead-import-dialog {
+    .ant-modal-body {
+      padding: 16px 0 0 !important;
+    }
+
+    .ant-modal-close {
+      top: 22px;
+      inset-inline-end: 16px;
+    }
+
+    &__dragger.ant-upload-wrapper .ant-upload-drag {
+      height: 200px;
+    }
+  }
+}

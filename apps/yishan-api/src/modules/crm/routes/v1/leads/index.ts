@@ -37,6 +37,10 @@ export default (async (app) => {
     const row = await service.create({ input: request.body, currentUser: request.currentUser })
     return ResponseUtil.success(reply, row, '线索创建成功')
   })
+  route.post('/pool', { access: { permission: PERMS.LEAD_CREATE }, schema: { tags: [ROUTE_TAG], summary: '新建公海线索', operationId: 'crmLeadsCreateInPool', body: LeadCreateReqSchema, response: { 200: EnvelopeSchema(LeadRespSchema) } } }, async (request: any, reply: any) => {
+    const row = await service.createInPool({ input: request.body, currentUser: request.currentUser })
+    return ResponseUtil.success(reply, row, '线索已加入线索池')
+  })
   /**
    * 编辑线索普通资料：仅白名单字段生效。
    * ownerUserId/status/convertedCustomerId 等业务字段被接口层拒绝。

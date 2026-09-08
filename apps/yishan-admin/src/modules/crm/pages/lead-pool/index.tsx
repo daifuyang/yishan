@@ -8,15 +8,19 @@
  */
 
 import { type ActionType, PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components'
-import { message, Popconfirm, Space, Tag } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
+import { Button, message, Modal, Popconfirm, Space, Tag } from 'antd'
 import { useModel } from '@umijs/max'
 import React, { useRef, useState } from 'react'
-import { claimLead, deleteLead, listLeads, type LeadRow } from '@/services/crm'
+import { claimLead, createPoolLead, deleteLead, listLeads, type LeadRow } from '@/services/crm'
 import { formatDateTime, isOverdue } from '@/utils/formatDate'
 import LeadDetailDrawer from '../leads/LeadDetailDrawer'
 import { type LeadDetailState, closeLeadDetail, openLeadDetail } from '../leads/leadDetailState'
 import TransferLeadDialog from '../leads/TransferLeadDialog'
 import { canAssignPoolLead } from './leadPoolAccess'
+import CreatePoolLeadDialog from './CreatePoolLeadDialog'
+import LeadImportDialog from './LeadImportDialog'
+import { parseLeadImportFile } from './leadImport'
 
 const renderNextFollowUp = (value: LeadRow['nextFollowUpAt']) => {
   const text = formatDateTime(value)
@@ -59,6 +63,9 @@ export default function LeadPoolPage() {
   const { initialState } = useModel('@@initialState')
   const [detailLead, setDetailLead] = useState<LeadDetailState>(null)
   const [assignmentTarget, setAssignmentTarget] = useState<LeadDetailState>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importing, setImporting] = useState(false)
   const canAssign = canAssignPoolLead(initialState?.currentUser?.roleCodes)
 
   const handleClaim = async (row: LeadRow) => {
@@ -80,6 +87,38 @@ export default function LeadPoolPage() {
     } catch (err: any) {
       message.error(err?.message ?? '删除失败')
     }
+  }
+  const handleImport = async (file: File) => {
+    setImporting(true)
+    try {
+      const parsed = await parseLeadImportFile(file)
+      const failures = [...parsed.errors.map((item) => `第 ${item.row} 行：${item.message}`)]
+      let succeeded = 0
+      for (const item of parsed.rows) {
+        try {
+          await createPoolLead(item)
+          succeeded += 1
+        } catch (error: any) {
+          failures.push(`${item.name || item.companyName || '未命名线索'}：${error?.message ?? '加入线索池失败'}`)
+        }
+      }
+      if (succeeded) {
+        message.success(`已导入 ${succeeded} 条线索到线索池`)
+        actionRef.current?.reload()
+        setImportOpen(false)
+      }
+      if (failures.length) {
+        Modal.warning({
+          title: succeeded ? '部分线索未导入' : '线索导入失败',
+          content: <div>{failures.slice(0, 10).map((item) => <div key={item}>{item}</div>)}{failures.length > 10 && <div>其余 {failures.length - 10} 条请修正后重新导入。</div>}</div>,
+        })
+      }
+    } catch (error: any) {
+      message.error(error?.message ?? '读取导入文件失败')
+    } finally {
+      setImporting(false)
+    }
+    return false
   }
   const poolColumns: ProColumns<LeadRow>[] = [
     ...columns,
@@ -127,6 +166,10 @@ export default function LeadPoolPage() {
         columns={poolColumns}
         search={{ labelWidth: 'auto', defaultCollapsed: false }}
         pagination={{ pageSize: 10, showSizeChanger: true }}
+        toolBarRender={() => [
+          <Button key="import" onClick={() => setImportOpen(true)}>批量导入</Button>,
+          <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>新增线索</Button>,
+        ]}
         request={async (params) => {
           const { current, pageSize, ...rest } = params as Record<string, unknown>
           const result = await listLeads({
@@ -137,6 +180,19 @@ export default function LeadPoolPage() {
           })
           return { data: result.data, success: true, total: result.total }
         }}
+      />
+
+      <CreatePoolLeadDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={() => actionRef.current?.reload()}
+      />
+
+      <LeadImportDialog
+        open={importOpen}
+        importing={importing}
+        onOpenChange={setImportOpen}
+        onImport={handleImport}
       />
 
       <TransferLeadDialog

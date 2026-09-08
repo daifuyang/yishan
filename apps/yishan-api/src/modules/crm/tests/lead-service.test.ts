@@ -121,6 +121,51 @@ describe('LeadService.create', () => {
     const args = create.mock.calls[0]?.[0] as unknown as Record<string, unknown> | undefined
     expect(args).not.toHaveProperty('poolStatus')
   })
+
+  it('creates an operator-entered lead directly in the pool', async () => {
+    const create = vi.spyOn(LeadRepository, 'create').mockResolvedValue({
+      id: 101,
+      name: '李女士',
+      companyName: '示例公司',
+      mobile: null,
+      phone: null,
+      email: null,
+      wechat: null,
+      qq: null,
+      sourceId: null,
+      sourceName: null,
+      intention: null,
+      status: 'pending',
+      ownerUserId: null,
+      ownerUserName: null,
+      ownerDepartmentId: null,
+      createdBy: salesperson.id,
+      createdByUserName: '销售',
+      lastFollowUpAt: null,
+      nextFollowUpAt: null,
+      disqualifyReason: null,
+      disqualifyCode: null,
+      convertedCustomerId: null,
+      convertedContactId: null,
+      convertedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    await new LeadService().createInPool({
+      input: { name: '李女士', companyName: '示例公司' },
+      currentUser: salesperson,
+    })
+
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      name: '李女士',
+      ownerUserId: null,
+      ownerDepartmentId: null,
+      createdBy: salesperson.id,
+      creatorId: salesperson.id,
+      updaterId: salesperson.id,
+    }))
+  })
 })
 
 describe('LeadService.list', () => {

@@ -44,6 +44,8 @@ const TITLES: Record<LeadFormMode, string> = {
 
 export interface LeadFormProps {
   mode: LeadFormMode
+  title?: string
+  submitText?: string
   initialValues?: Partial<LeadFormValues>
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -161,6 +163,8 @@ const TwoColumn = ({
 
 export default function LeadForm({
   mode,
+  title,
+  submitText,
   initialValues,
   open,
   onOpenChange,
@@ -189,7 +193,7 @@ export default function LeadForm({
     <ModalForm<LeadFormValues>
       open={open}
       onOpenChange={onOpenChange}
-      title={TITLES[mode]}
+      title={title ?? TITLES[mode]}
       width={640}
       layout="vertical"
       initialValues={initialValues}
@@ -210,7 +214,7 @@ export default function LeadForm({
       }}
       submitter={{
         searchConfig: {
-          submitText: SUBMIT_LABELS[mode],
+          submitText: submitText ?? SUBMIT_LABELS[mode],
           resetText: '取消',
         },
       }}

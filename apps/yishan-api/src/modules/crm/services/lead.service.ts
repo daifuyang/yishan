@@ -129,6 +129,26 @@ export class LeadService {
     })
   }
 
+  /** 运营或专员录入的线索不分配负责人，直接进入线索池。 */
+  async createInPool({ input, currentUser }: CreateLeadArgs): Promise<LeadRow> {
+    const name = input.name?.trim() ?? ''
+    if (!name) {
+      throw new BusinessError(
+        CrmErrorCode.CRM_LEAD_CONTACT_REQUIRED,
+        '请输入联系人姓名',
+      )
+    }
+    return LeadRepository.create({
+      ...input,
+      name,
+      ownerUserId: null,
+      ownerDepartmentId: null,
+      createdBy: currentUser.id,
+      creatorId: currentUser.id,
+      updaterId: currentUser.id,
+    })
+  }
+
   /**
    * 作废线索。允许：new / processing / qualified → disqualified。
    * 必须给标准化 code + 解释；不允许处理 converted 线索。
