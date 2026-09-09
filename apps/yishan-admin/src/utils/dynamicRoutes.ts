@@ -21,12 +21,18 @@ export interface FlattenableDynamicRoute {
   [key: string]: unknown
 }
 
-export function flattenPathlessDirectories(
-  nodes: FlattenableDynamicRoute[] | undefined,
-  existingPaths: Set<string>,
-): FlattenableDynamicRoute[] {
-  const out: FlattenableDynamicRoute[] = []
-  const visit = (list: FlattenableDynamicRoute[] | undefined): void => {
+/**
+ * 接受任意带 path? / routes? 的对象数组（含 UmiRouteFromMenu 等结构兼容的
+ * 路由类型）。返回与输入同构的展开列表。
+ */
+export function flattenPathlessDirectories<
+  T extends { path?: string; routes?: readonly unknown[] },
+>(
+  nodes: readonly T[] | undefined,
+  existingPaths: Set<unknown>,
+): T[] {
+  const out: T[] = []
+  const visit = (list: readonly T[] | undefined): void => {
     if (!list) return
     for (const node of list) {
       if (node.path) {
@@ -39,7 +45,7 @@ export function flattenPathlessDirectories(
         continue
       }
       if (node.routes?.length) {
-        visit(node.routes)
+        visit(node.routes as readonly T[])
       }
     }
   }
