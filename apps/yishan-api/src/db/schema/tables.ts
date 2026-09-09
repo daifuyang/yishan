@@ -795,3 +795,35 @@ export const sysModuleMigration = mysqlTable(
   })
 )
 
+// ---------------------------------------------------------------------------
+// `sys_enum` —— 业务枚举通用表。
+//
+// 用途：代替各业务模块自建的 *status / *source / *type / *level / *stage 等枚举小表。
+// 全部字段：业务 id / type(type-key) / code / name(展示名) / sort / enabled。
+//
+// 唯一键：(type, code)。
+// 业务侧引用：业务表用 `xxx_code varchar(32)` 列存 code，由 service 层校验存在。
+// ---------------------------------------------------------------------------
+export const sysEnum = mysqlTable(
+  'sys_enum',
+  {
+    id: int('id').primaryKey().autoincrement().notNull(),
+    type: varchar('type', { length: 64 }).notNull(),
+    code: varchar('code', { length: 64 }).notNull(),
+    name: varchar('name', { length: 64 }).notNull(),
+    sort: int('sort').notNull().default(0),
+    enabled: tinyint('enabled').notNull().default(1),
+    remark: varchar('remark', { length: 255 }),
+    creatorId: int('creator_id'),
+    createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    updaterId: int('updater_id'),
+    updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    deletedAt: datetime('deleted_at', { mode: 'date' }),
+  },
+  (t) => ({
+    uniqSysEnumTypeCode: uniqueIndex('uniq_sys_enum_type_code').on(t.type, t.code),
+    idxSysEnumTypeEnabledSort: index('idx_sys_enum_type_enabled_sort').on(t.type, t.enabled, t.sort),
+    idxSysEnumDeletedAt: index('idx_sys_enum_deleted_at').on(t.deletedAt),
+  })
+)
+

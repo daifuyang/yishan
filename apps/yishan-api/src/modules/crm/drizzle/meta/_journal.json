@@ -64,6 +64,34 @@
       "when": 1788796800000,
       "tag": "0007_drop-lead-pool-status",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1788881198103,
+      "tag": "0009_simple_ma_gnuci",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1788881649323,
+      "tag": "0010_sleepy_metal_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1788881770062,
+      "tag": "0011_lowly_giant_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1788881947479,
+      "tag": "0012_green_metal_master",
+      "breakpoints": true
     }
   ]
 }

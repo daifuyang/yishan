@@ -64,10 +64,17 @@
         ]
       },
       {
+        "type": 0,
+        "name": "客户管理",
+        "path": "/crm/customer-management",
+        "sortOrder": 3,
+        "icon": "TeamOutlined",
+        "children": [
+          {
         "type": 1,
         "name": "我的客户",
         "path": "/crm/customers",
-        "sortOrder": 3,
+        "sortOrder": 1,
         "icon": "UserOutlined",
         "component": "./modules/crm/customers",
         "children": [
@@ -91,7 +98,7 @@
         "type": 1,
         "name": "客户公海",
         "path": "/crm/pool",
-        "sortOrder": 5,
+        "sortOrder": 2,
         "icon": "PoolOutlined",
         "component": "./modules/crm/pool",
         "children": [
@@ -110,7 +117,7 @@
         "type": 1,
         "name": "客户详情",
         "path": "/crm/customer-detail",
-        "sortOrder": 5,
+        "sortOrder": 3,
         "icon": "ProfileOutlined",
         "component": "./modules/crm/customer-detail",
         "hideInMenu": 1,
@@ -129,7 +136,7 @@
         "type": 1,
         "name": "联系人",
         "path": "/crm/contacts",
-        "sortOrder": 6,
+        "sortOrder": 4,
         "icon": "ContactsOutlined",
         "component": "./modules/crm/contacts",
         "children": [
@@ -138,12 +145,21 @@
           { "type": 2, "name": "编辑", "permissionCodes": ["crm:contact:update"], "sortOrder": 3, "hideInMenu": 1 },
           { "type": 2, "name": "删除", "permissionCodes": ["crm:contact:delete"], "sortOrder": 4, "hideInMenu": 1 }
         ]
+          }
+        ]
       },
       {
+        "type": 0,
+        "name": "服务与拜访",
+        "path": "/crm/service",
+        "sortOrder": 4,
+        "icon": "CalendarOutlined",
+        "children": [
+          {
         "type": 1,
         "name": "跟进记录",
         "path": "/crm/activities",
-        "sortOrder": 6,
+        "sortOrder": 1,
         "icon": "ScheduleOutlined",
         "component": "./modules/crm/activities",
         "hideInMenu": 1,
@@ -153,10 +169,23 @@
         ]
       },
       {
+        "type": 1,
+        "name": "拜访",
+        "path": "/crm/visits",
+        "sortOrder": 2,
+        "icon": "EnvironmentOutlined",
+        "component": "./modules/crm/visits",
+        "children": [
+          { "type": 2, "name": "查看", "permissionCodes": ["crm:activity:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 }
+        ]
+          }
+        ]
+      },
+      {
         "type": 0,
         "name": "CRM 设置",
         "path": "/crm/settings",
-        "sortOrder": 7,
+        "sortOrder": 5,
         "icon": "SettingOutlined",
         "children": [
           {
@@ -190,6 +219,18 @@
             "sortOrder": 3,
             "icon": "NodeIndexOutlined",
             "component": "./modules/crm/settings/sources",
+            "children": [
+              { "type": 2, "name": "查看", "permissionCodes": ["crm:settings:view"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+              { "type": 2, "name": "编辑", "permissionCodes": ["crm:settings:update"], "sortOrder": 2, "hideInMenu": 1 }
+            ]
+          },
+          {
+            "type": 1,
+            "name": "枚举中心",
+            "path": "/crm/settings/enums",
+            "sortOrder": 4,
+            "icon": "DatabaseOutlined",
+            "component": "./modules/crm/settings/enums",
             "children": [
               { "type": 2, "name": "查看", "permissionCodes": ["crm:settings:view"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
               { "type": 2, "name": "编辑", "permissionCodes": ["crm:settings:update"], "sortOrder": 2, "hideInMenu": 1 }

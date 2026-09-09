@@ -18,6 +18,10 @@ const ownedCustomer = {
   sourceId: null,
   level: null,
   industry: null,
+  statusCode: null,
+  sourceCode: null,
+  levelCode: null,
+  industryCode: null,
   phone: null,
   website: null,
   province: null,
@@ -26,6 +30,7 @@ const ownedCustomer = {
   ownerUserId: 7,
   ownerDepartmentId: 10,
   poolStatus: 'owned',
+  poolEnteredAt: null,
   lastFollowUpAt: null,
   nextFollowUpAt: null,
   remark: null,
@@ -54,10 +59,18 @@ describe('ActivityService.create', () => {
       id: 100,
       customerId: 1,
       contactId: null,
+      entityType: 'customer',
+      entityId: 1,
+      entityRefType: 'customer',
       type: 'phone',
       content: '通话 5 分钟',
       occurredAt: new Date('2026-01-01T10:00:00Z'),
       nextFollowUpAt: null,
+      plannedAt: null,
+      location: null,
+      participants: null,
+      visitResultCode: null,
+      summary: null,
       operatorUserId: 7,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -76,10 +89,18 @@ describe('ActivityService.create', () => {
         id: 100,
         customerId: 1,
         contactId: null,
+        entityType: 'customer',
+        entityId: 1,
+        entityRefType: 'customer',
         type: 'phone',
         content: '通话 5 分钟',
         occurredAt: new Date(),
         nextFollowUpAt: null,
+        plannedAt: null,
+        location: null,
+        participants: null,
+        visitResultCode: null,
+        summary: null,
         operatorUserId: 7,
         operatorUserName: 'sales',
         createdAt: new Date(),
@@ -138,5 +159,16 @@ describe('ActivityService.create', () => {
     await expect(
       service.create(1, { type: 'phone', content: 'x' }, currentUser),
     ).rejects.toThrow()
+  })
+})
+
+describe('ActivityService.listByCustomerId', () => {
+  it('converts the public limit option to the repository pageSize option', async () => {
+    vi.spyOn(CustomerRepository, 'findById').mockResolvedValue(ownedCustomer)
+    const list = vi.spyOn(ActivityRepository, 'list').mockResolvedValue({ rows: [], total: 0 })
+
+    await new ActivityService().listByCustomerId(1, currentUser, { limit: 20 })
+
+    expect(list).toHaveBeenCalledWith({ customerId: 1, pageSize: 20 }, undefined)
   })
 })

@@ -52,7 +52,52 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
 
   POOL_LIST: { code: 'crm:pool:list', label: 'CRM-公海-查看', group: 'crm' },
 
+  /* ─── Product Catalog (Phase 2) ─────── */
+  PRODUCT_LIST: { code: 'crm:product:list', label: 'CRM-产品-查看', group: 'crm' },
+  PRODUCT_CREATE: { code: 'crm:product:create', label: 'CRM-产品-新建', group: 'crm' },
+  PRODUCT_UPDATE: { code: 'crm:product:update', label: 'CRM-产品-编辑', group: 'crm' },
+  PRODUCT_DELETE: { code: 'crm:product:delete', label: 'CRM-产品-删除', group: 'crm' },
+  PRODUCT_ENABLE: { code: 'crm:product:enable', label: 'CRM-产品-启停', group: 'crm' },
+  PRODUCT_CATEGORY_MANAGE: {
+    code: 'crm:product:category',
+    label: 'CRM-产品-分类管理',
+    group: 'crm',
+  },
+  PRODUCT_UNIT_MANAGE: {
+    code: 'crm:product:unit',
+    label: 'CRM-产品-单位管理',
+    group: 'crm',
+  },
+
   SETTINGS_VIEW: { code: 'crm:settings:view', label: 'CRM-设置-查看', group: 'crm' },
   SETTINGS_UPDATE: { code: 'crm:settings:update', label: 'CRM-设置-编辑', group: 'crm' },
+
+  /* ─── Quotation (Phase 2) ───────────────── */
+  QUOTATION_LIST: { code: 'crm:quotation:list', label: 'CRM-报价-查看', group: 'crm' },
+  QUOTATION_CREATE: { code: 'crm:quotation:create', label: 'CRM-报价-新建', group: 'crm' },
+  QUOTATION_UPDATE: { code: 'crm:quotation:update', label: 'CRM-报价-编辑', group: 'crm' },
+  QUOTATION_DELETE: { code: 'crm:quotation:delete', label: 'CRM-报价-删除', group: 'crm' },
+  QUOTATION_SEND: { code: 'crm:quotation:send', label: 'CRM-报价-发送', group: 'crm' },
+  QUOTATION_ACCEPT: { code: 'crm:quotation:accept', label: 'CRM-报价-接受', group: 'crm' },
+  QUOTATION_REJECT: { code: 'crm:quotation:reject', label: 'CRM-报价-拒绝', group: 'crm' },
+  QUOTATION_VOID: { code: 'crm:quotation:void', label: 'CRM-报价-作废', group: 'crm' },
+
+  /* ─── Opportunity (Phase 2) ─────────────── */
+  OPPORTUNITY_LIST: { code: 'crm:opportunity:list', label: 'CRM-商机-查看', group: 'crm' },
+  OPPORTUNITY_CREATE: { code: 'crm:opportunity:create', label: 'CRM-商机-新建', group: 'crm' },
+  OPPORTUNITY_UPDATE: { code: 'crm:opportunity:update', label: 'CRM-商机-编辑', group: 'crm' },
+  OPPORTUNITY_DELETE: { code: 'crm:opportunity:delete', label: 'CRM-商机-删除', group: 'crm' },
+  OPPORTUNITY_STAGE: { code: 'crm:opportunity:stage', label: 'CRM-商机-阶段推进', group: 'crm' },
+  OPPORTUNITY_WON: { code: 'crm:opportunity:won', label: 'CRM-商机-赢单', group: 'crm' },
+  OPPORTUNITY_LOST: { code: 'crm:opportunity:lost', label: 'CRM-商机-丢单', group: 'crm' },
+  OPPORTUNITY_TRANSFER: { code: 'crm:opportunity:transfer', label: 'CRM-商机-转移', group: 'crm' },
+
+  /* ─── Contract (Phase 3) ────────────────── */
+  CONTRACT_LIST: { code: 'crm:contract:list', label: 'CRM-合同-查看', group: 'crm' },
+  CONTRACT_CREATE: { code: 'crm:contract:create', label: 'CRM-合同-新建', group: 'crm' },
+  CONTRACT_UPDATE: { code: 'crm:contract:update', label: 'CRM-合同-编辑', group: 'crm' },
+  CONTRACT_DELETE: { code: 'crm:contract:delete', label: 'CRM-合同-删除', group: 'crm' },
+  CONTRACT_PAYMENT_VIEW: { code: 'crm:contract:payment', label: 'CRM-合同-回款查看', group: 'crm' },
+  CONTRACT_PAYMENT_MANAGE: { code: 'crm:contract:payment-manage', label: 'CRM-合同-回款登记', group: 'crm' },
 })
 registerPermissions(...Object.values(CrmPermissions))

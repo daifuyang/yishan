@@ -1,6 +1,6 @@
 // Generated from drizzle/*.sql. Do not edit manually.
 import { relations } from 'drizzle-orm'
-import { sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysFormData, sysFormField, sysLoginLog, sysMenu, sysMenuPermission, sysModule, sysModuleMigration, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysRolePermission, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
+import { sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysEnum, sysFormData, sysFormField, sysLoginLog, sysMenu, sysMenuPermission, sysModule, sysModuleMigration, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysRolePermission, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
 
 export const sysAppRelations = relations(sysApp, ({ one, many }) => ({
   creator: one(sysUser, { fields: [sysApp.creatorId], references: [sysUser.id], relationName: 'sysApp_creatorId' }),
@@ -213,4 +213,8 @@ export const sysModuleRelations = relations(sysModule, ({ many }) => ({
 export const sysModuleMigrationRelations = relations(sysModuleMigration, ({ one }) => ({
   moduleId: one(sysModule, { fields: [sysModuleMigration.moduleId], references: [sysModule.id], relationName: 'sysModuleMigration_moduleId' })
 }))
+
+// `sysEnum` 不与其他 sys_* 表存在外键关系（业务侧存 *_code varchar 列做软关联），
+// 单独占一个空 relations 导出位，仅为使 Drizzle 关系 API 编译一致。
+export const sysEnumRelations = relations(sysEnum, () => ({}))
 

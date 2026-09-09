@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { dbManager } from '@/db'
 import { LeadRepository, type LeadRow } from '../repositories/lead.repository.js'
 import { LeadActivityRepository } from '../repositories/lead-activity.repository.js'
+import { ActivityRepository } from '../repositories/activity.repository.js'
 import { LeadActivityService } from '../services/lead-activity.service.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
@@ -27,6 +28,27 @@ function mockTransactionLead(status: LeadRow['status'], refreshed = status) {
     .mockResolvedValueOnce(buildLead({ status: refreshed, lastFollowUpAt: occurredAt, nextFollowUpAt }))
   vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
   vi.spyOn(LeadRepository, 'update').mockResolvedValue(null)
+  // Phase 1：双写到 crm_activity 必须被 mock，否则 tx={}.insert 不存在会炸
+  vi.spyOn(ActivityRepository, 'create').mockResolvedValue({
+    id: 0,
+    customerId: null,
+    contactId: null,
+    entityType: 'lead',
+    entityId: 1,
+    entityRefType: 'lead',
+    type: 'lead_followup',
+    content: '',
+    occurredAt,
+    nextFollowUpAt: null,
+    plannedAt: null,
+    location: null,
+    participants: null,
+    visitResultCode: null,
+    summary: null,
+    operatorUserId: salesperson.id,
+    createdAt: occurredAt,
+    updatedAt: occurredAt,
+  })
 }
 
 describe('LeadActivityService.create', () => {

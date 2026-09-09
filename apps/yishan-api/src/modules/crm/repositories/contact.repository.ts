@@ -19,6 +19,16 @@ export interface ContactRow {
   department: string | null
   position: string | null
   isPrimary: number
+  /**
+   * Phase 1：决策角色（最终决策人/影响者/使用者/普通联系人）。
+   * 外键引用 sys_enum(type='crm_contact_role')。
+   */
+  roleCode: string | null
+  /**
+   * Phase 1：联系人状态（在职/暂时联系不上/已离职）。
+   * 外键引用 sys_enum(type='crm_contact_status')，默认 'active'。
+   */
+  statusCode: string
   birthday: Date | null
   remark: string | null
   creatorId: number | null
@@ -37,6 +47,8 @@ export interface CreateContactInput {
   department?: string | null
   position?: string | null
   isPrimary?: number
+  roleCode?: string | null
+  statusCode?: string
   birthday?: Date | null
   remark?: string | null
   creatorId: number
@@ -52,6 +64,8 @@ export interface UpdateContactInput {
   department?: string | null
   position?: string | null
   isPrimary?: number
+  roleCode?: string | null
+  statusCode?: string
   birthday?: Date | null
   remark?: string | null
   updaterId: number
@@ -63,6 +77,8 @@ export interface ContactListQuery {
   keyword?: string
   customerId?: number
   isPrimary?: number
+  statusCode?: string
+  roleCode?: string
 }
 
 const contactPublicColumns = {
@@ -76,6 +92,8 @@ const contactPublicColumns = {
   department: crmContact.department,
   position: crmContact.position,
   isPrimary: crmContact.isPrimary,
+  roleCode: crmContact.roleCode,
+  statusCode: crmContact.statusCode,
   birthday: crmContact.birthday,
   remark: crmContact.remark,
   creatorId: crmContact.creatorId,
@@ -99,6 +117,8 @@ function buildListWhere(opts: ContactListQuery): SQL | undefined {
   }
   if (opts.customerId !== undefined) conds.push(eq(crmContact.customerId, opts.customerId))
   if (opts.isPrimary !== undefined) conds.push(eq(crmContact.isPrimary, opts.isPrimary))
+  if (opts.statusCode) conds.push(eq(crmContact.statusCode, opts.statusCode))
+  if (opts.roleCode) conds.push(eq(crmContact.roleCode, opts.roleCode))
   return and(...conds)
 }
 
@@ -165,6 +185,8 @@ export class ContactRepository {
         department: input.department ?? null,
         position: input.position ?? null,
         isPrimary: input.isPrimary ?? 0,
+        roleCode: input.roleCode ?? null,
+        statusCode: input.statusCode ?? 'active',
         birthday: input.birthday ?? null,
         remark: input.remark ?? null,
         creatorId: input.creatorId,
@@ -190,6 +212,8 @@ export class ContactRepository {
     if (input.department !== undefined) patch.department = input.department
     if (input.position !== undefined) patch.position = input.position
     if (input.isPrimary !== undefined) patch.isPrimary = input.isPrimary
+    if (input.roleCode !== undefined) patch.roleCode = input.roleCode
+    if (input.statusCode !== undefined) patch.statusCode = input.statusCode
     if (input.birthday !== undefined) patch.birthday = input.birthday
     if (input.remark !== undefined) patch.remark = input.remark
     await db.update(crmContact).set(patch).where(eq(crmContact.id, id))

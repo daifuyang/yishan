@@ -28,6 +28,12 @@ import { CustomerMemberRepository } from '../repositories/member.repository.js'
 export class ActivityService {
   constructor(private readonly deps: { db?: AppQueryDb } = {}) {}
 
+  private static customerIdOf(activity: ActivityRow): number {
+    if (activity.customerId !== null) return activity.customerId
+    if (activity.entityType === 'customer' && activity.entityId !== null) return activity.entityId
+    throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_NOT_FOUND, '跟进记录不存在')
+  }
+
   /**
    * 读可见性：owner / 部门 / 协同人 / super_admin，公海客户所有人可读。
    * 越权一律报 CUSTOMER_NOT_FOUND，不泄漏客户是否存在。
@@ -121,7 +127,7 @@ export class ActivityService {
     opts: { limit?: number } = {},
   ): Promise<{ total: number; items: ActivityRowWithOperator[] }> {
     await this.assertCanRead(customerId, currentUser)
-    const r = await ActivityRepository.list({ customerId, limit: opts.limit }, this.deps.db)
+    const r = await ActivityRepository.list({ customerId, pageSize: opts.limit }, this.deps.db)
     return { total: r.total, items: r.rows }
   }
 
@@ -130,13 +136,13 @@ export class ActivityService {
     if (!activity) {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_NOT_FOUND, '跟进记录不存在')
     }
-    await this.assertCanRead(activity.customerId, currentUser)
+    await this.assertCanRead(ActivityService.customerIdOf(activity), currentUser)
     return activity
   }
 
   async create(
     customerId: number,
-    input: Omit<CreateActivityInput, 'customerId' | 'operatorUserId' | 'occurredAt' | 'nextFollowUpAt'> & { occurredAt?: Date | string; nextFollowUpAt?: Date | string | null },
+    input: Omit<CreateActivityInput, 'entityType' | 'entityId' | 'customerId' | 'operatorUserId' | 'occurredAt' | 'nextFollowUpAt'> & { occurredAt?: Date | string; nextFollowUpAt?: Date | string | null },
     currentUser: DataScopeUser,
   ): Promise<ActivityRowWithOperator> {
     await this.assertCanWrite(customerId, currentUser)
@@ -148,12 +154,19 @@ export class ActivityService {
     return dbManager.transaction(async (tx) => {
       const activity = await ActivityRepository.create(
         {
-          customerId,
+          entityType: 'customer',
+          entityId: customerId,
+          entityRefType: 'customer',
           contactId: input.contactId ?? null,
           type: input.type,
           content: input.content,
           occurredAt: typeof input.occurredAt === 'string' ? new Date(input.occurredAt) : input.occurredAt ?? new Date(),
           nextFollowUpAt: typeof input.nextFollowUpAt === 'string' ? new Date(input.nextFollowUpAt) : input.nextFollowUpAt ?? null,
+          plannedAt: input.plannedAt ?? null,
+          location: input.location ?? null,
+          participants: input.participants ?? null,
+          visitResultCode: input.visitResultCode ?? null,
+          summary: input.summary ?? null,
           operatorUserId: currentUser.id,
         },
         tx,
@@ -179,7 +192,8 @@ export class ActivityService {
     if (!activity) {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_NOT_FOUND, '跟进记录不存在')
     }
-    await this.assertCanWrite(activity.customerId, currentUser)
+    const customerId = ActivityService.customerIdOf(activity)
+    await this.assertCanWrite(customerId, currentUser)
 
     if (input.type !== undefined && !(ACTIVITY_TYPES as readonly string[]).includes(input.type)) {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_TYPE_INVALID, '跟进方式不合法')
@@ -194,7 +208,7 @@ export class ActivityService {
       if (!updated) {
         throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_NOT_FOUND, '跟进记录不存在')
       }
-      await ActivityService.syncCustomerFollowUp(activity.customerId, currentUser.id, tx)
+      await ActivityService.syncCustomerFollowUp(customerId, currentUser.id, tx)
       return updated
     })
   }
@@ -208,11 +222,32 @@ export class ActivityService {
     if (!activity) {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_NOT_FOUND, '跟进记录不存在')
     }
-    await this.assertCanWrite(activity.customerId, currentUser)
+    const customerId = ActivityService.customerIdOf(activity)
+    await this.assertCanWrite(customerId, currentUser)
 
     await dbManager.transaction(async (tx) => {
       await ActivityRepository.softDelete(id, tx)
-      await ActivityService.syncCustomerFollowUp(activity.customerId, currentUser.id, tx)
+      await ActivityService.syncCustomerFollowUp(customerId, currentUser.id, tx)
     })
+  }
+
+  /**
+   * Phase 4：拜访独立列表（按 planned_at 排序）。
+   * 不做数据范围限制：拜访属于日程，任何登录用户都能看到。
+   */
+  async listVisits(
+    query: { customerId?: number; plannedFrom?: Date | string; plannedTo?: Date | string; page?: number; pageSize?: number },
+    _currentUser: DataScopeUser,
+  ): Promise<{ total: number; items: ActivityRowWithOperator[] }> {
+    const fromDate = typeof query.plannedFrom === 'string' ? new Date(query.plannedFrom) : query.plannedFrom
+    const toDate = typeof query.plannedTo === 'string' ? new Date(query.plannedTo) : query.plannedTo
+    const result = await ActivityRepository.listVisits({
+      customerId: query.customerId,
+      plannedFrom: fromDate,
+      plannedTo: toDate,
+      page: query.page,
+      pageSize: query.pageSize,
+    }, this.deps.db)
+    return { total: result.total, items: result.rows }
   }
 }

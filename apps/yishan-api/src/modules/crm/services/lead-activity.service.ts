@@ -10,6 +10,7 @@ import {
   type LeadActivityRowWithOperator,
 } from '../repositories/lead-activity.repository.js'
 import { LeadRepository, type LeadRow } from '../repositories/lead.repository.js'
+import { ActivityRepository } from '../repositories/activity.repository.js'
 
 /** 状态本地化标签（与前端 lifecycle 标签一致）。 */
 const STATUS_LABELS: Record<LeadRow['status'], string> = {
@@ -73,6 +74,19 @@ export class LeadActivityService {
         operatorUserId: currentUser.id,
       }, tx)
 
+      // Phase 1：双写到 crm_activity(type='lead_followup')，polymorphic 化。
+      // 旧 crm_lead_activity 表保留只读，由最后一刻 drop。
+      await ActivityRepository.create({
+        entityType: 'lead',
+        entityId: leadId,
+        entityRefType: 'lead',
+        type: 'lead_followup',
+        content: input.content.trim(),
+        occurredAt,
+        nextFollowUpAt,
+        operatorUserId: currentUser.id,
+      }, tx)
+
       const updatePayload: Parameters<typeof LeadRepository.update>[1] = {
         status: input.followUpStatus,
         lastFollowUpAt: occurredAt,
@@ -85,6 +99,16 @@ export class LeadActivityService {
       if ((locked.status ?? 'pending') !== input.followUpStatus) {
         await LeadActivityRepository.create({
           leadId,
+          type: 'status_change',
+          content: `跟进状态由「${statusLabel(locked.status)}」变为「${statusLabel(input.followUpStatus)}」`,
+          occurredAt,
+          operatorUserId: currentUser.id,
+        }, tx)
+        // 同样的 status_change 也双写到 crm_activity(type='status_change')
+        await ActivityRepository.create({
+          entityType: 'lead',
+          entityId: leadId,
+          entityRefType: 'lead',
           type: 'status_change',
           content: `跟进状态由「${statusLabel(locked.status)}」变为「${statusLabel(input.followUpStatus)}」`,
           occurredAt,

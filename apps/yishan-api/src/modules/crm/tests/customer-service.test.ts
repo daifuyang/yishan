@@ -23,6 +23,10 @@ const baseCustomer = {
   sourceId: null,
   level: null,
   industry: null,
+  statusCode: null,
+  sourceCode: null,
+  levelCode: null,
+  industryCode: null,
   phone: null,
   website: null,
   province: null,
@@ -31,6 +35,7 @@ const baseCustomer = {
   ownerUserId: null,
   ownerDepartmentId: null,
   poolStatus: 'public',
+  poolEnteredAt: null,
   lastFollowUpAt: null,
   nextFollowUpAt: null,
   remark: null,
@@ -205,6 +210,13 @@ describe('CustomerFlowService.claim', () => {
       ownerDepartmentId: 10,
     })
     vi.spyOn(TransferRepository, 'create').mockResolvedValue({} as any)
+    // Phase 1：claim 成功后还会做一次 update 清空 pool_entered_at
+    vi.spyOn(CustomerRepository, 'update').mockResolvedValue({
+      ...baseCustomer,
+      poolStatus: 'owned',
+      ownerUserId: 7,
+      ownerDepartmentId: 10,
+    } as any)
 
     const flow = new CustomerFlowService()
 
