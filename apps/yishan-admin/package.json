@@ -53,7 +53,7 @@
     "react-easy-crop": "^6.2.2",
     "swagger-ui-dist": "^5.32.5",
     "xlsx": "^0.18.5",
-    "yishan-tiptap": "workspace:^"
+    "@zerocmf/yishan-tiptap": "workspace:^"
   },
   "devDependencies": {
     "@ant-design/pro-cli": "^3.3.0",

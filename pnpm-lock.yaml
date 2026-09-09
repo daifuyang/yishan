@@ -29,6 +29,9 @@ importers:
       '@yishan/shared-config':
         specifier: workspace:*
         version: link:../../packages/shared-config
+      '@zerocmf/yishan-tiptap':
+        specifier: workspace:^
+        version: link:../yishan-components/yishan-tiptap
       antd:
         specifier: ^6.4.3
         version: 6.4.3(react-dom@19.2.7)(react@19.2.7)
@@ -65,9 +68,6 @@ importers:
       xlsx:
         specifier: ^0.18.5
         version: 0.18.5
-      yishan-tiptap:
-        specifier: workspace:^
-        version: link:../yishan-components/yishan-tiptap
     devDependencies:
       '@ant-design/pro-cli':
         specifier: ^3.3.0

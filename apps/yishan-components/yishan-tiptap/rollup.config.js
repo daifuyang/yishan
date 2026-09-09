@@ -36,12 +36,12 @@ export default [
       {
         file: packageJson.main,
         format: "cjs",
-        sourcemap: true,
+        sourcemap: false,
       },
       {
         file: packageJson.module,
         format: "esm",
-        sourcemap: true,
+        sourcemap: false,
       },
     ],
     plugins: [
@@ -63,8 +63,8 @@ export default [
         extract: "index.css",
         // 使用 sass
         use: ["sass"],
-        // 开启 sourcemap
-        sourceMap: true,
+        // 发布包不携带 source map，避免将源码与大体积映射文件一并上传。
+        sourceMap: false,
       }),
     ],
     external: ["react", "react-dom"],

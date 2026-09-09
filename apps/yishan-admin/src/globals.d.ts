@@ -57,7 +57,7 @@ declare module '*.module.css' {
 
 // yishan-tiptap 是 monorepo workspace package，package.json 的 `exports`
 // 含 "./index.css" 但未附带 .d.ts；TS2882 在 strict 下要求显式声明。
-declare module 'yishan-tiptap/index.css';
+declare module '@zerocmf/yishan-tiptap/index.css';
 
 // mockjs 未安装 @types/mockjs。dev 模式 MOCK=none 不实际加载，仅类型 stub。
 declare module 'mockjs';
