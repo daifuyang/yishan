@@ -1,121 +1,157 @@
 /**
- * 客户 Drawer 顶部 Header。
+ * 客户 Drawer Header。
  *
- * 结构：
- *   - 左：标题 + tag chips + 负责人
- *   - 中：[跟进] [新建联系人] [编辑] [更多▼]
- *   - 右：[↗ 新窗口] [× 关闭]
+ * 结构（与 LeadDetailDrawer 对齐）：
+ *   - 左：[客户名 + DrawerStatusTag] + DrawerMetaRow（负责人/最近跟进/下次跟进/客户等级/当前状态）
+ *   - 右 actions：[新增▼] [转移▼] [编辑] [更多▼] [↗ 新窗口] [× 关闭]
  *
- * 交互：
- *   - 跟进 → setActiveTab('followup') + 通知父级 focus 表单
- *   - 新建联系人 → onCreateContact()
- *   - 编辑 → window.open 客户详情页（Phase 4 把编辑搬进来后再换）
- *   - 更多菜单 → 转交 / 释放 / 修改负责人 / 归档 / 删除（部分暂用 message 占位）
- *   - [↗] → window.open 详情页
- *   - [×] → onClose()
+ * 行为：
+ *   - 新增 ▼：联系人 / 商机 / 合同 / 费用 / 报价单 / 回款记录 / 开票记录
+ *     · 后端未接入前都走 toast 占位
+ *   - 转移 ▼：转移给同事 / 转移至公海
+ *     · 公海客户不渲染"转移给同事"；owned 客户不渲染"转移至公海"
+ *   - 编辑 → 全屏编辑（暂占位，Phase 3 接入）
+ *   - 更多 ▼：打印 / 锁定 / 删除
+ *     · 删除内嵌 DrawerDeletePopconfirm
  *
- * 按权限码显隐；无权限按钮不渲染（不 disabled 假装）。
+ * 权限：所有按钮按 crm:customer:* 权限码显隐；无权限不渲染（不 disabled 假装）。
  */
 
-import {
-  CloseOutlined,
-  DownOutlined,
-  ExportOutlined,
-  UserAddOutlined,
-} from '@ant-design/icons';
+import { DownOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Button, Dropdown, Space, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, message, Space, Tooltip, Typography } from 'antd';
 import React from 'react';
 import type { CustomerDetail } from '@/services/crm';
 import { usePermission } from '@/utils/permission';
+import DrawerCloseButton from './_shared/DrawerCloseButton';
+import DrawerDeletePopconfirm from './_shared/DrawerDeletePopconfirm';
+import DrawerMetaRow from './_shared/DrawerMetaRow';
+import DrawerNewWindowButton from './_shared/DrawerNewWindowButton';
+import DrawerStatusTag from './_shared/DrawerStatusTag';
+import { formatDateTime } from '@/utils/formatDate';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
-const LEVEL_COLOR: Record<string, string> = {
-  A: 'blue',
-  B: 'geekblue',
-  C: 'default',
-  D: 'default',
+const POOL_STATUS_LABEL: Record<string, string> = {
+  owned: '已分配',
+  public: '公海',
 };
 
 export interface CustomerDrawerHeaderProps {
   customer: CustomerDetail;
   onClose: () => void;
-  onFollowUp: () => void;
-  onCreateContact: () => void;
-  /** Phase 4 会接入；现在仅占位。 */
+  /** 全屏编辑 / 新建（暂占位）。 */
   onEdit?: () => void;
+  /** 新增 ▼ 子菜单回调：entity = 联系人/商机/合同/费用/报价单/回款记录/开票记录 */
+  onCreateEntity?: (entity: CreateEntityKey) => void;
+  /** 转交给同事 */
   onTransfer?: () => void;
+  /** 转移至公海 */
   onRelease?: () => void;
-  onChangeOwner?: () => void;
-  onArchive?: () => void;
+  /** 打印（占位） */
+  onPrint?: () => void;
+  /** 锁定（占位） */
+  onLock?: () => void;
+  /** 删除 */
   onDelete?: () => void;
 }
+
+export type CreateEntityKey =
+  | 'contact'
+  | 'opportunity'
+  | 'contract'
+  | 'expense'
+  | 'quotation'
+  | 'payment'
+  | 'invoice';
+
+const CREATE_LABELS: Array<{ key: CreateEntityKey; label: string }> = [
+  { key: 'contact', label: '联系人' },
+  { key: 'opportunity', label: '商机' },
+  { key: 'contract', label: '合同' },
+  { key: 'expense', label: '费用' },
+  { key: 'quotation', label: '报价单' },
+  { key: 'payment', label: '回款记录' },
+  { key: 'invoice', label: '开票记录' },
+];
 
 const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
   customer,
   onClose,
-  onFollowUp,
-  onCreateContact,
   onEdit,
+  onCreateEntity,
   onTransfer,
   onRelease,
-  onChangeOwner,
-  onArchive,
+  onPrint,
+  onLock,
   onDelete,
 }) => {
   const can = usePermission();
 
-  const handleOpenDetail = () => {
-    if (typeof window === 'undefined') return;
-    window.open(`/crm/customer-detail?id=${customer.id}`, '_blank');
+  const canCreate = can('crm:customer:update') || can('crm:contact:create');
+  const canTransfer =
+    can('crm:customer:transfer') && customer.poolStatus === 'owned';
+  const canRelease =
+    can('crm:customer:release') && customer.poolStatus === 'owned';
+  const canUpdate = can('crm:customer:update');
+  const canDelete = can('crm:customer:delete');
+
+  const handleCreateMenuClick: MenuProps['onClick'] = ({ key }) => {
+    onCreateEntity?.(key as CreateEntityKey);
   };
 
-  const moreItems: MenuProps['items'] = [];
-  if (can('crm:customer:transfer') && customer.poolStatus === 'owned') {
-    moreItems.push({ key: 'transfer', label: '转交' });
-  }
-  if (can('crm:customer:release') && customer.poolStatus === 'owned') {
-    moreItems.push({ key: 'release', label: '释放到公海' });
-  }
-  if (can('crm:customer:update')) {
-    moreItems.push({ key: 'changeOwner', label: '修改负责人' });
-  }
-  if (can('crm:customer:update')) {
-    moreItems.push({ key: 'archive', label: '归档' });
-  }
-  if (can('crm:customer:delete')) {
-    moreItems.push({ key: 'divider', type: 'divider' });
-    moreItems.push({ key: 'delete', label: '删除客户', danger: true });
-  }
+  const handleTransferMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'transfer') {
+      onTransfer?.();
+    } else if (key === 'release') {
+      onRelease?.();
+    }
+  };
 
-  const handleMoreClick: MenuProps['onClick'] = ({ key, domEvent }) => {
-    domEvent?.stopPropagation?.();
+  const handleMoreMenuClick: MenuProps['onClick'] = ({ key, domEvent }) => {
+    // delete 由 Popconfirm 处理，避免点两次
+    if (key === 'delete') {
+      domEvent?.stopPropagation?.();
+      return;
+    }
     switch (key) {
-      case 'transfer':
-        onTransfer?.();
+      case 'print':
+        if (onPrint) onPrint();
+        else message.info('打印功能开发中');
         break;
-      case 'release':
-        onRelease?.();
-        break;
-      case 'changeOwner':
-        onChangeOwner?.();
-        break;
-      case 'archive':
-        onArchive?.();
-        break;
-      case 'delete':
-        onDelete?.();
+      case 'lock':
+        if (onLock) onLock();
+        else message.info('锁定功能开发中');
         break;
       default:
         break;
     }
   };
 
+  const metaItems = [
+    {
+      label: '负责人：',
+      value:
+        customer.poolStatus === 'public'
+          ? '客户公海'
+          : customer.ownerUserName?.trim() || '暂未分配',
+    },
+    {
+      label: '最近跟进：',
+      value: formatDateTime(customer.lastFollowUpAt),
+    },
+    {
+      label: '下次跟进：',
+      value: formatDateTime(customer.nextFollowUpAt),
+    },
+    { label: '客户等级：', value: customer.level ?? '—' },
+    { label: '当前状态：', value: customer.statusName ?? '—' },
+  ];
+
   return (
     <div
       style={{
-        padding: '16px 20px 12px',
+        padding: '16px 20px',
         borderBottom: '1px solid #f0f0f0',
         background: '#fff',
       }}
@@ -128,74 +164,101 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
           gap: 16,
         }}
       >
-        {/* 左侧：标题 + tag + 负责人 */}
+        {/* 左：标题 + status tag + meta row */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <Title
-            level={4}
-            style={{
-              margin: 0,
-              fontSize: 20,
-              lineHeight: 1.3,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-            title={customer.name}
-          >
-            {customer.name}
-          </Title>
           <div
             style={{
-              marginTop: 8,
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              flexWrap: 'wrap',
+              gap: 8,
+              minWidth: 0,
+              height: 28,
             }}
           >
-            <Tag color={customer.poolStatus === 'public' ? 'default' : 'blue'}>
-              {customer.poolStatus === 'public' ? '公海' : '已分配'}
-            </Tag>
+            <Text
+              strong
+              style={{ fontSize: 18, lineHeight: '28px' }}
+              ellipsis={{ tooltip: customer.name }}
+            >
+              {customer.name}
+            </Text>
+            <DrawerStatusTag
+              status={customer.poolStatus}
+              label={POOL_STATUS_LABEL[customer.poolStatus] ?? customer.poolStatus}
+            />
             {customer.statusName && (
-              <Tag color="blue">{customer.statusName}</Tag>
-            )}
-            {customer.level && (
-              <Tag color={LEVEL_COLOR[customer.level] ?? 'default'}>
-                {customer.level}
-              </Tag>
-            )}
-            {customer.industry && (
-              <Tag color="default">{customer.industry}</Tag>
-            )}
-            {customer.sourceName && (
-              <Tag color="purple">{customer.sourceName}</Tag>
+              <DrawerStatusTag status={customer.statusName} />
             )}
           </div>
-          <div style={{ marginTop: 8, fontSize: 13 }}>
-            <Text type="secondary">负责人：</Text>
-            <Text>{customer.ownerUserName ?? '—'}</Text>
-          </div>
+          <DrawerMetaRow items={metaItems} />
         </div>
 
-        {/* 中间：主操作按钮 */}
+        {/* 右：主操作 + 图标 */}
         <Space size={8} wrap>
-          {can('crm:customer:update') && (
-            <Button type="primary" onClick={onFollowUp}>
-              跟进
-            </Button>
-          )}
-          {can('crm:contact:create') && (
-            <Button icon={<UserAddOutlined />} onClick={onCreateContact}>
-              新建联系人
-            </Button>
-          )}
-          {can('crm:customer:update') && (
-            <Button onClick={onEdit}>编辑</Button>
-          )}
-          {moreItems.length > 0 && (
+          {canCreate && onCreateEntity && (
             <Dropdown
               trigger={['click']}
-              menu={{ items: moreItems, onClick: handleMoreClick }}
+              menu={{
+                items: CREATE_LABELS.map((c) => ({
+                  key: c.key,
+                  label: c.label,
+                })),
+                onClick: handleCreateMenuClick,
+              }}
+            >
+              <Button type="primary">
+                新增
+                <DownOutlined style={{ fontSize: 10, marginLeft: 2 }} />
+              </Button>
+            </Dropdown>
+          )}
+          {(canTransfer || canRelease) && (
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  canTransfer && onTransfer
+                    ? { key: 'transfer', label: '转移给同事' }
+                    : null,
+                  canRelease && onRelease
+                    ? { key: 'release', label: '转移至公海' }
+                    : null,
+                ].filter(Boolean) as Array<{ key: string; label: string }>,
+                onClick: handleTransferMenuClick,
+              }}
+            >
+              <Button>
+                转移
+                <DownOutlined style={{ fontSize: 10, marginLeft: 2 }} />
+              </Button>
+            </Dropdown>
+          )}
+          {canUpdate && onEdit && (
+            <Button onClick={onEdit}>编辑</Button>
+          )}
+          {(canDelete || onPrint || onLock) && (
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                items: [
+                  { key: 'print', label: '打印' },
+                  { key: 'lock', label: '锁定' },
+                  canDelete && onDelete
+                    ? {
+                        key: 'delete',
+                        label: (
+                          <DrawerDeletePopconfirm
+                            targetName={customer.name}
+                            onConfirm={() => onDelete()}
+                          >
+                            <span style={{ color: '#d4380d' }}>删除</span>
+                          </DrawerDeletePopconfirm>
+                        ),
+                      }
+                    : null,
+                ].filter(Boolean) as MenuProps['items'],
+                onClick: handleMoreMenuClick,
+              }}
             >
               <Button>
                 更多
@@ -203,26 +266,10 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
               </Button>
             </Dropdown>
           )}
-        </Space>
-
-        {/* 右上角图标 */}
-        <Space size={4} style={{ marginLeft: 8 }}>
-          <Tooltip title="在新窗口打开完整详情">
-            <Button
-              type="text"
-              icon={<ExportOutlined />}
-              onClick={handleOpenDetail}
-              aria-label="新窗口打开"
-            />
+          <Tooltip title="新窗口打开完整详情">
+            <DrawerNewWindowButton onOpen={() => message.info('全屏模式开发中')} />
           </Tooltip>
-          <Tooltip title="关闭">
-            <Button
-              type="text"
-              icon={<CloseOutlined />}
-              onClick={onClose}
-              aria-label="关闭"
-            />
-          </Tooltip>
+          <DrawerCloseButton onClose={onClose} tooltip="关闭客户详情" />
         </Space>
       </div>
     </div>

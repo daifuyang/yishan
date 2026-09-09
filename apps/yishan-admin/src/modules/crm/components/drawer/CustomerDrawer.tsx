@@ -1,59 +1,79 @@
 /**
- * 客户 Drawer 主壳（Phase 2）。
+ * 客户 Drawer 主壳（对齐线索 Drawer 风格的 Workspace 重构版）。
  *
  * 职责：
- * - 宽度由 useResponsiveDrawerWidth() 决定（1100 / 900 / '80vw'）
- * - open / customerId 由父组件传入；onClose 时清掉 URL 上的 customerId 由 hook 负责
- * - 内部管理活动 tab + 详情/活动/联系人/流转的数据拉取
- *   · 客户详情 + 流转记录：customerId 变化即全量拉
- *   · 联系人：ContactsTab 首次激活时拉
- *   · 活动：FollowUpTab / MoreTab 首次激活时拉；保存跟进后强制刷新
+ *   - 宽度由 useResizableDrawer 维护（≥1100px），可拖拽右边沿
+ *   - open / customerId 由父组件传入；onClose 时清掉 URL 上的 customerId 由 hook 负责
+ *   - 顶部 Header：CustomerDrawerHeader
+ *   - 11 个 Tab：基本信息（分段详情 + 活动 rail）/ 联系人 / 线索 / 商机 / 报价单 /
+ *     合同 / 费用 / 已成交产品 / 任务 / 附件 / 操作日志
  *
  * 出错处理：
- * - 404 → 提示 "客户不存在或已被删除"
- * - 403 → 静默忽略（permission-denied silent）
- * - 其他错误 → antd message.error
+ *   - 404 → 提示 "客户不存在或已被删除"
+ *   - 403 → 静默忽略（permission-denied silent）
+ *   - 其他错误 → antd message.error
  */
 
-import { Button, Drawer, Modal, Skeleton, Tabs, message } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, Skeleton, Tabs, message as antdMessage } from 'antd';
+import React, { useEffect, useState } from 'react';
 import {
-  type ActivityRow,
   type ContactRow,
   type CustomerDetail,
   type StatusRow,
-  type TagRow,
-  type TransferLogRow,
-  createActivity,
+  deleteCustomer,
   getCustomer,
-  listActivitiesByCustomer,
   listContactsByCustomer,
-  listTransfers,
 } from '@/services/crm';
-import { useResponsiveDrawerWidth } from '../../hooks/useResponsiveDrawerWidth';
-import CustomerDrawerHeader from './CustomerDrawerHeader';
-import CustomerDrawerSummary from './CustomerDrawerSummary';
-import CustomerStagePipeline from './CustomerStagePipeline';
+import DrawerChrome from './_shared/DrawerChrome';
+import { useResizableDrawer } from './_shared/useResizableDrawer';
+import CustomerDrawerHeader, {
+  type CreateEntityKey,
+} from './CustomerDrawerHeader';
+import BasicInfoTab from './tabs/BasicInfoTab';
 import ContactsTab from './tabs/ContactsTab';
-import FollowUpTab, { type FollowUpFormValues } from './tabs/FollowUpTab';
-import MoreTab from './tabs/MoreTab';
 import OpportunitiesTab from './tabs/OpportunitiesTab';
-import OverviewTab from './tabs/OverviewTab';
+import PlaceholderTab from './tabs/PlaceholderTab';
 
 export type CustomerDrawerTabKey =
-  | 'overview'
-  | 'followup'
+  | 'basic'
   | 'contacts'
+  | 'leads'
   | 'opportunities'
-  | 'more';
+  | 'quotations'
+  | 'contracts'
+  | 'expenses'
+  | 'products'
+  | 'tasks'
+  | 'attachments'
+  | 'activityLog';
 
 const TAB_LABELS: Array<{ key: CustomerDrawerTabKey; label: string }> = [
-  { key: 'overview', label: '概览' },
-  { key: 'followup', label: '跟进' },
+  { key: 'basic', label: '基本信息' },
   { key: 'contacts', label: '联系人' },
+  { key: 'leads', label: '线索' },
   { key: 'opportunities', label: '商机' },
-  { key: 'more', label: '更多' },
+  { key: 'quotations', label: '报价单' },
+  { key: 'contracts', label: '合同' },
+  { key: 'expenses', label: '费用' },
+  { key: 'products', label: '已成交产品' },
+  { key: 'tasks', label: '任务' },
+  { key: 'attachments', label: '附件' },
+  { key: 'activityLog', label: '操作日志' },
+];
+
+const PLACEHOLDER_TABS: Array<{
+  key: CustomerDrawerTabKey;
+  entity: string;
+}> = [
+  { key: 'leads', entity: '线索' },
+  { key: 'opportunities', entity: '商机' },
+  { key: 'quotations', entity: '报价单' },
+  { key: 'contracts', entity: '合同' },
+  { key: 'expenses', entity: '费用' },
+  { key: 'products', entity: '已成交产品' },
+  { key: 'tasks', entity: '任务' },
+  { key: 'attachments', entity: '附件' },
+  { key: 'activityLog', entity: '操作日志' },
 ];
 
 export interface CustomerDrawerProps {
@@ -64,72 +84,51 @@ export interface CustomerDrawerProps {
   /** 任意数据被变更后通知上层 reload 列表/计数。 */
   onChanged?: () => void;
   statuses: StatusRow[];
-  /** 当前未使用，预留给 DrawerHeader "更多" 菜单的标签过滤。 */
-  tags?: TagRow[];
+  /** Drawer 右上"新增"子菜单回调映射；undefined 时该子项仍渲染但走 toast 占位。 */
+  onCreateEntity?: (entity: CreateEntityKey) => void;
+  /** Drawer 右上"转移"按钮回调；undefined 时走 toast 占位。 */
+  onTransfer?: (customer: CustomerDetail) => void;
+  onRelease?: (customer: CustomerDetail) => void;
 }
 
 const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   open,
   customerId,
-  initialTab = 'overview',
+  initialTab = 'basic',
   onClose,
   onChanged,
   statuses,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  tags: _tags,
+  onCreateEntity,
+  onTransfer,
+  onRelease,
 }) => {
-  const width = useResponsiveDrawerWidth();
+  const [size, setSize] = useResizableDrawer();
   const [activeTab, setActiveTab] =
     useState<CustomerDrawerTabKey>(initialTab);
-  const [requestFollowUpFocus, setRequestFollowUpFocus] = useState(false);
 
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
 
-  const [contacts, setContacts] = useState<ContactRow[]>([]);
-  const [contactsLoaded, setContactsLoaded] = useState(false);
-  const [contactsLoading, setContactsLoading] = useState(false);
-
-  const [activities, setActivities] = useState<ActivityRow[]>([]);
-  const [activitiesLoaded, setActivitiesLoaded] = useState(false);
-  const [activitiesLoading, setActivitiesLoading] = useState(false);
-
-  const [_transfers, setTransfers] = useState<TransferLogRow[]>([]);
-
-  // 用于 tab 内"操作后"局部刷新（比如保存跟进）—— 用 ref 避免重置初始 fetch
-  const customerRef = useRef<CustomerDetail | null>(null);
-  customerRef.current = customer;
-
-  // ---- 详情 / 流转：customerId 变化时拉
+  // customerId / open 变化时拉详情
   useEffect(() => {
     if (!open || !customerId) {
       setCustomer(null);
       setCustomerError(null);
       setCustomerLoading(false);
-      setTransfers([]);
       return;
     }
     let cancelled = false;
     setCustomerLoading(true);
     setCustomerError(null);
     setCustomer(null);
-    setContacts([]);
-    setContactsLoaded(false);
-    setActivities([]);
-    setActivitiesLoaded(false);
     setActiveTab(initialTab);
-    setRequestFollowUpFocus(initialTab === 'followup');
 
     const run = async () => {
       try {
-        const [c, tr] = await Promise.all([
-          getCustomer(customerId),
-          listTransfers(customerId).catch(() => [] as TransferLogRow[]),
-        ]);
+        const c = await getCustomer(customerId);
         if (cancelled) return;
         setCustomer(c);
-        setTransfers(tr);
       } catch (err: unknown) {
         if (cancelled) return;
         const e = err as { name?: string; response?: { status?: number } };
@@ -141,7 +140,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
         } else {
           const msg = (err as Error)?.message ?? '客户详情加载失败';
           setCustomerError(msg);
-          message.error(msg);
+          antdMessage.error(msg);
         }
       } finally {
         if (!cancelled) setCustomerLoading(false);
@@ -153,127 +152,49 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     };
   }, [open, customerId, initialTab]);
 
-  // ---- 联系人：ContactsTab 首次激活时拉
-  const ensureContacts = useCallback(async () => {
-    if (!customerId || contactsLoaded || contactsLoading) return;
-    setContactsLoading(true);
-    try {
-      const rows = await listContactsByCustomer(customerId);
-      setContacts(rows);
-      setContactsLoaded(true);
-    } catch (err: unknown) {
-      message.error((err as Error)?.message ?? '联系人加载失败');
-    } finally {
-      setContactsLoading(false);
-    }
-  }, [customerId, contactsLoaded, contactsLoading]);
-
-  // ---- 活动：FollowUp / More 首次激活时拉
-  const ensureActivities = useCallback(async () => {
-    if (!customerId || activitiesLoaded || activitiesLoading) return;
-    setActivitiesLoading(true);
-    try {
-      const res = await listActivitiesByCustomer(customerId);
-      setActivities(res.items ?? []);
-      setActivitiesLoaded(true);
-    } catch (err: unknown) {
-      message.error((err as Error)?.message ?? '跟进记录加载失败');
-    } finally {
-      setActivitiesLoading(false);
-    }
-  }, [customerId, activitiesLoaded, activitiesLoading]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (activeTab === 'contacts') {
-      void ensureContacts();
-    } else if (
-      activeTab === 'followup' ||
-      activeTab === 'more'
-    ) {
-      void ensureActivities();
-    }
-  }, [open, activeTab, ensureContacts, ensureActivities]);
-
-  // ---- 操作回调 ----
-  const handleFollowUpClick = () => {
-    setActiveTab('followup');
-    setRequestFollowUpFocus(true);
-    void ensureActivities();
-  };
-
-  const handleFollowUpSubmit = async (values: FollowUpFormValues) => {
+  const handleFollowUpSaved = () => {
+    // 跟进写完后，可能改了 statusId；主动重拉详情同步头部 MetaRow 与 status tag
     if (!customerId) return;
-    try {
-      await createActivity(customerId, {
-        type: values.type,
-        content: values.content,
-        occurredAt: new Date().toISOString(),
-        nextFollowUpAt: values.nextFollowUpAt
-          ? values.nextFollowUpAt.toISOString()
-          : undefined,
-      });
-      // 阶段变化：父级 reload 详情即可（CRM 实体可能需要专门接口，Phase 3 完善）
-      if (values.statusId && customerRef.current?.statusId !== values.statusId) {
-        try {
-          const { updateCustomer } = await import('@/services/crm');
-          await updateCustomer(customerId, { statusId: values.statusId });
-        } catch {
-          /* statusId 同步失败不影响跟进保存 */
-        }
-      }
-      message.success('跟进已记录');
-      // 刷新活动 + 客户（statusId 可能已变）
-      setActivitiesLoaded(false);
-      void ensureActivities();
-      try {
-        const c = await getCustomer(customerId);
-        setCustomer(c);
-      } catch {
-        /* ignore */
-      }
-      setRequestFollowUpFocus(false);
-      onChanged?.();
-    } catch (err: unknown) {
-      message.error((err as Error)?.message ?? '保存跟进失败');
-      throw err;
+    getCustomer(customerId)
+      .then((c) => setCustomer(c))
+      .catch(() => undefined);
+    onChanged?.();
+  };
+
+  const handleCreateEntity = (entity: CreateEntityKey) => {
+    if (onCreateEntity) {
+      onCreateEntity(entity);
+    } else {
+      const label =
+        CREATE_ENTITY_TOAST[entity] ?? `${entity}功能开发中`;
+      antdMessage.info(label);
     }
   };
 
-  const handleCreateContact = () => {
-    message.info('新建联系人请到 FollowUp / 顶部 [+ 新建联系人]（Phase 3 接入表单）');
-  };
-
-  const handleEditCustomer = () => {
-    if (!customerId) return;
-    if (typeof window !== 'undefined') {
-      window.open(`/crm/customer-detail?id=${customerId}&edit=1`, '_blank');
-    }
-  };
-
-  const handleDeleteCustomer = () => {
+  const handleTransfer = () => {
     if (!customer) return;
-    Modal.confirm({
-      title: `确认删除「${customer.name}」？`,
-      icon: <ExclamationCircleOutlined />,
-      okText: '删除',
-      okButtonProps: { danger: true },
-      cancelText: '取消',
-      onOk: async () => {
-        try {
-          const { deleteCustomer } = await import('@/services/crm');
-          await deleteCustomer(customer.id);
-          message.success('已删除');
-          onChanged?.();
-          onClose();
-        } catch (err: unknown) {
-          message.error((err as Error)?.message ?? '删除失败');
-        }
-      },
-    });
+    if (onTransfer) onTransfer(customer);
+    else antdMessage.info('转交（Phase 3 接入弹窗）');
   };
 
-  // ---- 渲染 ----
+  const handleRelease = () => {
+    if (!customer) return;
+    if (onRelease) onRelease(customer);
+    else antdMessage.info('释放到公海（Phase 3 接入弹窗）');
+  };
+
+  const handleDelete = async () => {
+    if (!customer) return;
+    try {
+      await deleteCustomer(customer.id);
+      antdMessage.success('已删除');
+      onChanged?.();
+      onClose();
+    } catch (err: unknown) {
+      antdMessage.error((err as Error)?.message ?? '删除失败');
+    }
+  };
+
   const renderBody = () => {
     if (customerLoading && !customer) {
       return (
@@ -313,137 +234,132 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     }
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {/* 阶段管道 */}
-        <div style={{ padding: '12px 20px 0' }}>
-          <CustomerStagePipeline
-            statuses={statuses}
-            currentStatusId={customer.statusId ?? null}
-            currentStatusCode={null}
-            currentStatusName={customer.statusName ?? null}
-            stageEnteredAt={customer.lastFollowUpAt ?? null}
-            createdAt={customer.createdAt ?? null}
-          />
-        </div>
-
-        {/* 5 列摘要条 */}
-        <div style={{ padding: '0 20px' }}>
-          <CustomerDrawerSummary
-            ownerName={customer.ownerUserName ?? null}
-            lastFollowUpAt={customer.lastFollowUpAt ?? null}
-            nextFollowUpAt={customer.nextFollowUpAt ?? null}
-            level={customer.level ?? null}
-            statusName={customer.statusName ?? null}
-          />
-        </div>
-
-        {/* Tab 区 */}
-        <div style={{ padding: '0 20px 20px' }}>
-          <Tabs
-            activeKey={activeTab}
-            onChange={(k) => setActiveTab(k as CustomerDrawerTabKey)}
-            destroyInactiveTabPane={false}
-            items={TAB_LABELS.map((t) => ({
-              key: t.key,
-              label: t.label,
-              children: renderTab(t.key),
-            }))}
-          />
-        </div>
-      </div>
+      <Tabs
+        activeKey={activeTab}
+        onChange={(k) => setActiveTab(k as CustomerDrawerTabKey)}
+        destroyInactiveTabPane={false}
+        style={{ padding: '0 20px' }}
+        items={TAB_LABELS.map((t) => ({
+          key: t.key,
+          label: t.label,
+          children: renderTab(t.key, customer),
+        }))}
+      />
     );
   };
 
-  const renderTab = (key: CustomerDrawerTabKey) => {
-    if (!customer) return null;
+  const renderTab = (key: CustomerDrawerTabKey, current: CustomerDetail) => {
     switch (key) {
-      case 'overview':
+      case 'basic':
         return (
-          <OverviewTab
-            customer={customer}
-            activities={activities}
-            activitiesLoading={activitiesLoading}
-            contacts={contacts}
-            contactsLoading={contactsLoading}
-            onJumpToContacts={() => {
-              setActiveTab('contacts');
-              void ensureContacts();
-            }}
-            onAdjustNextFollowUp={handleFollowUpClick}
-          />
-        );
-      case 'followup':
-        return (
-          <FollowUpTab
-            customer={customer}
+          <BasicInfoTab
+            customer={current}
             statuses={statuses}
-            activities={activities}
-            loading={activitiesLoading}
-            requestFocus={requestFollowUpFocus}
-            onSubmit={handleFollowUpSubmit}
+            onFollowUpSaved={handleFollowUpSaved}
           />
         );
       case 'contacts':
-        return (
-          <ContactsTab
-            contacts={contacts}
-            loading={contactsLoading}
-            onCreate={handleCreateContact}
-            onEdit={(c) =>
-              message.info(`编辑联系人「${c.name}」（Phase 3 接入表单）`)
-            }
-            onDelete={(c) =>
-              message.info(`删除联系人「${c.name}」（Phase 3 接入接口）`)
-            }
-          />
-        );
+        return <ContactsTabStandalone customerId={current.id} />;
       case 'opportunities':
         return <OpportunitiesTab />;
-      case 'more':
-        return (
-          <MoreTab
-            customer={customer}
-            activities={activities}
-            activitiesLoading={activitiesLoading}
-          />
-        );
-      default:
+      default: {
+        const placeholder = PLACEHOLDER_TABS.find((p) => p.key === key);
+        if (placeholder) {
+          return <PlaceholderTab entity={placeholder.entity} />;
+        }
         return null;
+      }
     }
   };
 
   return (
-    <Drawer
+    <DrawerChrome
       open={open}
       onClose={onClose}
-      width={width}
-      destroyOnClose
-      closable={false}
+      size={size}
+      setSize={setSize}
       maskClosable
       styles={{
-        body: { padding: 0, background: '#f5f7fa' },
-        header: { display: 'none' },
+        header: { padding: 0 },
+        body: {
+          padding: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+        },
       }}
-      title={null}
-      footer={null}
     >
       {customer && (
         <CustomerDrawerHeader
           customer={customer}
           onClose={onClose}
-          onFollowUp={handleFollowUpClick}
-          onCreateContact={handleCreateContact}
-          onEdit={handleEditCustomer}
-          onTransfer={() => message.info('转交（Phase 3 接入弹窗）')}
-          onRelease={() => message.info('释放到公海（Phase 3 接入弹窗）')}
-          onChangeOwner={() => message.info('修改负责人（Phase 3 接入弹窗）')}
-          onArchive={() => message.info('归档（Phase 3 接入）')}
-          onDelete={handleDeleteCustomer}
+          onEdit={() => antdMessage.info('全屏编辑模式开发中；当前请在 Drawer 内操作')}
+          onCreateEntity={handleCreateEntity}
+          onTransfer={handleTransfer}
+          onRelease={handleRelease}
+          onDelete={handleDelete}
         />
       )}
-      <div style={{ background: '#f5f7fa' }}>{renderBody()}</div>
-    </Drawer>
+      {renderBody()}
+    </DrawerChrome>
   );
 };
 
 export default CustomerDrawer;
+
+const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
+  contact: '新建联系人请到基本信息 tab 的联系人入口（Phase 3 接入表单）',
+  opportunity: '新建商机功能开发中（Phase 3）',
+  contract: '新建合同功能开发中（Phase 3）',
+  expense: '新建费用功能开发中（Phase 3）',
+  quotation: '新建报价单功能开发中（Phase 3）',
+  payment: '新建回款记录功能开发中（Phase 3）',
+  invoice: '新建开票记录功能开发中（Phase 3）',
+};
+
+/**
+ * ContactsTab 的 standalone 包装：自己拉 listContactsByCustomer，
+ * 因为 ContactsTab 设计是父级传 contacts 进来。
+ *
+ * 写操作（create/edit/delete）目前都走 toast 占位。
+ */
+const ContactsTabStandalone: React.FC<{ customerId: number }> = ({
+  customerId,
+}) => {
+  const [contacts, setContacts] = useState<ContactRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    listContactsByCustomer(customerId)
+      .then((rows) => {
+        if (!cancelled) setContacts(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setContacts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
+
+  return (
+    <ContactsTab
+      contacts={contacts}
+      loading={loading}
+      onCreate={() =>
+        antdMessage.info('新建联系人（Phase 3 接入表单）')
+      }
+      onEdit={(c) =>
+        antdMessage.info(`编辑联系人「${c.name}」（Phase 3 接入表单）`)
+      }
+      onDelete={(c) =>
+        antdMessage.info(`删除联系人「${c.name}」（Phase 3 接入接口）`)
+      }
+    />
+  );
+};

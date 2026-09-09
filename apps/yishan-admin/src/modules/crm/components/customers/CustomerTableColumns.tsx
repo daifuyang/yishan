@@ -36,8 +36,6 @@ export interface CustomerTableColumnsOptions {
   ownerNameMap: Map<number, string>;
   onOpenDetail: (id: number) => void;
   onChanged: () => void;
-  /** Phase 3：行内"跟进"点击触发；当前未传则按 navigate 行为。 */
-  onOpenFollowupDrawer?: (id: number) => void;
 }
 
 export function buildCustomerTableColumns(
@@ -53,7 +51,6 @@ export function buildCustomerTableColumns(
     ownerNameMap,
     onOpenDetail,
     onChanged,
-    onOpenFollowupDrawer,
   } = opts;
 
   const statusNameMap = new Map<number, string>();
@@ -254,7 +251,7 @@ export function buildCustomerTableColumns(
         <CustomerActionDropdown
           record={record}
           onChanged={onChanged}
-          onOpenFollowupDrawer={onOpenFollowupDrawer}
+          onOpenDetail={onOpenDetail}
         />
       ),
     },

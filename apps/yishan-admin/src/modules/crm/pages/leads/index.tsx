@@ -84,7 +84,32 @@ export default function LeadPage() {
   };
 
   /**
+   * 退回线索池：assignLead(id, null) 把 owner 清空，服务端会写一条
+   * 「负责人变更 → 公海」Activity。无需弹窗（与详情抽屉内的 onReturnToPool 行为一致）。
+   */
+  const returnToPool = async (record: LeadRow) => {
+    try {
+      await assignLead(record.id, null);
+      message.success('线索已退回线索池');
+      reload();
+      setDetailLead((current) =>
+        current && current.id === record.id
+          ? {
+              ...current,
+              ownerUserId: null,
+              ownerUserName: null,
+            }
+          : current,
+      );
+    } catch (err: unknown) {
+      message.error((err as Error)?.message ?? '退回线索池失败');
+    }
+  };
+
+  /**
    * 操作列点击派发：key 与 leadActions.ts 中定义的 LeadActionKey 完全对齐。
+   *
+   * 「写跟进」由详情抽屉内的 ActivityRail 承担，更多菜单里不再暴露。
    */
   const handleActionClick = (key: string, record: LeadRow) => {
     switch (key as LeadActionKey) {
@@ -94,19 +119,20 @@ export default function LeadPage() {
       case 'edit':
         setEditTarget(openLeadDetail(record));
         return;
-      case 'followUp':
-        setDetailLead(openLeadDetail(record));
-        return;
       case 'transfer':
         setTransferTarget(openLeadDetail(record));
+        return;
+      case 'returnToPool':
+        void returnToPool(record);
         return;
       case 'convert':
         setConvertTarget(openLeadDetail(record));
         return;
       case 'openCustomer':
         if (record.convertedCustomerId) {
+          // 跨页打开客户 Drawer：跳到客户列表，URL 带上 customerId。
           window.open(
-            `/crm/customer-detail?id=${record.convertedCustomerId}`,
+            `/crm/customers?customerId=${record.convertedCustomerId}`,
             '_self',
           );
         } else {

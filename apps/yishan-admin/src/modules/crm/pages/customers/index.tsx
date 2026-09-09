@@ -20,7 +20,7 @@
 import { DownOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ProTableProps } from '@ant-design/pro-components';
 import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { history, useModel } from '@umijs/max';
+import { useModel } from '@umijs/max';
 import { Button, Dropdown, message } from 'antd';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -36,7 +36,6 @@ import {
   type TagRow,
 } from '@/services/crm';
 import { usePermission } from '@/utils/permission';
-import CustomerActionDropdown from '../../components/customers/CustomerActionDropdown';
 import {
   buildCustomerTableColumns,
   type CustomerTableColumnsOptions,
@@ -154,9 +153,9 @@ const Customers: React.FC = () => {
   const [ownerNameMap] = useState<Map<number, string>>(new Map());
 
   const handleCreate = () => {
-    // 简化：与原 page 一致，点击新建直接跳到详情页带 edit=1。
-    // 后续 Phase 2 把"新建"也搬进 Drawer 时再换。
-    history.push('/crm/customer-detail?create=1');
+    // Drawer 暂不支持创建模式（只编辑已有客户）。
+    // Phase 3 在 Drawer 内接入新建表单后改回 drawer.openDrawer(0, 'create')。
+    message.info('新增客户（全屏表单）开发中；当前请到客户列表使用导入');
   };
 
   const handleOpenDetail = (id: number) => {
@@ -176,7 +175,6 @@ const Customers: React.FC = () => {
       ownerNameMap,
       onOpenDetail: handleOpenDetail,
       onChanged: reloadAll,
-      onOpenFollowupDrawer: (id: number) => drawer.openDrawer(id, 'followup'),
     }),
     [
       statuses,
@@ -236,12 +234,17 @@ const Customers: React.FC = () => {
           setting: { draggable: true, checkable: true },
           fullScreen: false,
         }}
-        toolBarRender={() => {
+        toolBarRender={(_action, _rows) => {
+          void _action;
+          void _rows;
           const moreItems = [
             { key: 'export', label: '导出' },
             { key: 'dedup', label: '查重' },
             { key: 'recycle', label: '回收站' },
           ];
+          // React 18.3 的 ReactNode 含 bigint，与 antd 6 的 ReactNode 类型不严格相等；
+          // 列表项运行时等价，cast 到 antd 的 ReactNode[] 即可。
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return [
             can('crm:customer:create') ? (
               <Button
@@ -250,7 +253,7 @@ const Customers: React.FC = () => {
                 icon={<PlusOutlined />}
                 onClick={handleCreate}
               >
-                新建客户
+                新增客户
               </Button>
             ) : null,
             can('crm:customer:create') ? (
@@ -282,7 +285,7 @@ const Customers: React.FC = () => {
                 <DownOutlined />
               </Button>
             </Dropdown>,
-          ].filter(Boolean) as React.ReactNode[];
+          ].filter(Boolean) as any;
         }}
       />
 
@@ -293,16 +296,7 @@ const Customers: React.FC = () => {
         onClose={drawer.closeDrawer}
         onChanged={reloadAll}
         statuses={statuses}
-        tags={tags}
       />
-
-      {/* 行操作菜单由 CustomerActionDropdown 内部自带 Modal；这里保留引用避免 tree-shake 误删。 */}
-      {false && (
-        <CustomerActionDropdown
-          record={{} as CustomerRow}
-          onChanged={() => undefined}
-        />
-      )}
     </PageContainer>
   );
 };

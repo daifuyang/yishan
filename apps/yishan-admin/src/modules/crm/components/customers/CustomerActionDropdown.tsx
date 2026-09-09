@@ -1,18 +1,16 @@
 /**
- * 行操作列：[跟进] [···]
+ * 行操作列：[查看] [编辑] [···]
  *
  * ··· 菜单按权限码控制可见性，不可见就不渲染（不 disabled）。
  * 删除单独放最底 + danger + 二次确认。
  */
 
 import { DownOutlined } from '@ant-design/icons';
-import { useModel, useNavigate } from '@umijs/max';
 import type { MenuProps } from 'antd';
-import { Dropdown, Modal, message, Space } from 'antd';
+import { Dropdown, Modal, Space, message } from 'antd';
 import React, { useState } from 'react';
+import type { CustomerRow } from '@/services/crm';
 import {
-  type CustomerRow,
-  claimCustomer,
   deleteCustomer,
   releaseCustomer,
   transferCustomer,
@@ -22,34 +20,22 @@ import { usePermission } from '@/utils/permission';
 export interface CustomerActionDropdownProps {
   record: CustomerRow;
   onChanged: () => void;
-  /**
-   * Phase 3 用：传入时点击 "跟进" 会调用此回调打开 Drawer 并跳到 followup tab；
-   * 未传时退回原有 navigate 到详情页的行为。
-   */
-  onOpenFollowupDrawer?: (id: number) => void;
+  /** 点击"查看/编辑"时调用（打开抽屉）。 */
+  onOpenDetail: (id: number) => void;
 }
 
 const CustomerActionDropdown: React.FC<CustomerActionDropdownProps> = ({
   record,
   onChanged,
-  onOpenFollowupDrawer,
+  onOpenDetail,
 }) => {
   const can = usePermission();
-  const navigate = useNavigate();
-  const { initialState } = useModel('@@initialState');
-  const currentUserId = initialState?.currentUser?.id;
 
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferTarget, setTransferTarget] = useState('');
   const [transferReason, setTransferReason] = useState('');
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [releaseReason, setReleaseReason] = useState('');
-
-  const handleClaim = async () => {
-    await claimCustomer(record.id);
-    message.success('已认领到我的客户');
-    onChanged();
-  };
 
   const handleRelease = async () => {
     await releaseCustomer(record.id, releaseReason || undefined);
@@ -84,55 +70,28 @@ const CustomerActionDropdown: React.FC<CustomerActionDropdownProps> = ({
   };
 
   const isOwned = record.poolStatus === 'owned';
-  const isMine = isOwned && record.ownerUserId === currentUserId;
 
-  type MenuKey =
-    | 'open'
-    | 'edit'
-    | 'transfer'
-    | 'release'
-    | 'claim'
-    | 'divider'
-    | 'delete';
+  type MenuKey = 'transfer' | 'release' | 'delete';
 
   const menuItems: MenuProps['items'] = [];
-  menuItems.push({ key: 'open', label: '查看完整详情' });
-  if (can('crm:customer:update')) {
-    menuItems.push({ key: 'edit', label: '编辑客户' });
-  }
   if (can('crm:customer:transfer') && isOwned) {
-    menuItems.push({ key: 'transfer', label: '转交客户' });
+    menuItems.push({ key: 'transfer', label: '转交给同事' });
   }
   if (can('crm:customer:release') && isOwned) {
-    menuItems.push({ key: 'release', label: '释放到公海' });
-  }
-  if (can('crm:customer:claim') && !isOwned) {
-    menuItems.push({ key: 'claim', label: '认领到我的客户' });
+    menuItems.push({ key: 'release', label: '转移至公海' });
   }
   if (can('crm:customer:delete')) {
-    menuItems.push({ key: 'divider', type: 'divider' });
     menuItems.push({ key: 'delete', label: '删除客户', danger: true });
   }
 
   const onMenuClick: MenuProps['onClick'] = ({ key, domEvent }) => {
     domEvent?.stopPropagation?.();
     switch (key as MenuKey) {
-      case 'open':
-        navigate(`/crm/customer-detail?id=${record.id}`);
-        break;
-      case 'edit':
-        navigate(`/crm/customer-detail?id=${record.id}&edit=1`);
-        break;
       case 'transfer':
         setTransferOpen(true);
         break;
       case 'release':
         setReleaseOpen(true);
-        break;
-      case 'claim':
-        void handleClaim().catch((err: unknown) =>
-          message.error((err as Error)?.message ?? '认领失败'),
-        );
         break;
       case 'delete':
         Modal.confirm({
@@ -155,32 +114,39 @@ const CustomerActionDropdown: React.FC<CustomerActionDropdownProps> = ({
     }
   };
 
-  // 占位，移除 isMine 警告避免后续 lint 干扰
-  void isMine;
+  // 公海里的客户没有任何操作项时，"更多"按钮就不渲染，避免空 Dropdown
+  const showMore = menuItems.length > 0;
 
   return (
     <Space size={12} onClick={(e) => e.stopPropagation()}>
       <a
         onClick={(e) => {
           e.stopPropagation();
-          if (onOpenFollowupDrawer) {
-            onOpenFollowupDrawer(record.id);
-          } else {
-            navigate(`/crm/customers/${record.id}?focus=followup`);
-          }
+          onOpenDetail(record.id);
         }}
       >
-        跟进
+        查看
       </a>
-      <Dropdown
-        trigger={['click']}
-        menu={{ items: menuItems, onClick: onMenuClick }}
+      <a
+        onClick={(e) => {
+          e.stopPropagation();
+          // 编辑 = 打开抽屉（Drawer 顶部 [编辑] 按钮触发实际编辑动作）
+          onOpenDetail(record.id);
+        }}
       >
-        <a>
-          更多
-          <DownOutlined style={{ fontSize: 10, marginLeft: 2 }} />
-        </a>
-      </Dropdown>
+        编辑
+      </a>
+      {showMore && (
+        <Dropdown
+          trigger={['click']}
+          menu={{ items: menuItems, onClick: onMenuClick }}
+        >
+          <a>
+            更多
+            <DownOutlined style={{ fontSize: 10, marginLeft: 2 }} />
+          </a>
+        </Dropdown>
+      )}
 
       <Modal
         title={`转交客户「${record.name}」`}

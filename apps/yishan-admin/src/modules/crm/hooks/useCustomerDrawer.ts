@@ -3,8 +3,7 @@
  *
  * 设计：
  * - URL 是单一真相源：?customerId=N 决定 Drawer 是否打开 / 展示哪个客户。
- * - 可选 ?focus=followup：打开 Drawer 时自动跳到跟进 tab + focus 表单。
- *   Phase 3 通过 row action "跟进" 触发。
+ * - 可选 ?focus=basic|contacts|...：打开 Drawer 时自动跳到指定 tab。
  * - 切换客户时直接改 URL search（pathname 不变），保留 view / filter / page 等其余参数。
  * - 关闭 Drawer 只删 customerId 一个键，其余参数原样保留。
  *
@@ -17,9 +16,9 @@
  *     onClose={drawer.closeDrawer}
  *   />
  *
- *   drawer.openDrawer(id)                // 打开，默认 tab
- *   drawer.openDrawer(id, 'followup')    // 打开并切到跟进 tab
- *   drawer.closeDrawer()                 // 关闭
+ *   drawer.openDrawer(id)                  // 打开，默认 basic tab
+ *   drawer.openDrawer(id, 'contacts')      // 打开并切到联系人 tab
+ *   drawer.closeDrawer()                   // 关闭
  */
 
 import { useLocation, useNavigate } from '@umijs/max';
@@ -29,11 +28,17 @@ const CUSTOMER_ID_KEY = 'customerId';
 const FOCUS_KEY = 'focus';
 
 export type DrawerTabKey =
-  | 'overview'
-  | 'followup'
+  | 'basic'
   | 'contacts'
+  | 'leads'
   | 'opportunities'
-  | 'more';
+  | 'quotations'
+  | 'contracts'
+  | 'expenses'
+  | 'products'
+  | 'tasks'
+  | 'attachments'
+  | 'activityLog';
 
 export interface UseCustomerDrawerReturn {
   open: boolean;
@@ -53,16 +58,22 @@ function parseCustomerId(raw: string | null): number | null {
 }
 
 const VALID_TABS: ReadonlySet<DrawerTabKey> = new Set([
-  'overview',
-  'followup',
+  'basic',
   'contacts',
+  'leads',
   'opportunities',
-  'more',
+  'quotations',
+  'contracts',
+  'expenses',
+  'products',
+  'tasks',
+  'attachments',
+  'activityLog',
 ]);
 
 function parseFocus(raw: string | null): DrawerTabKey {
   if (raw && VALID_TABS.has(raw as DrawerTabKey)) return raw as DrawerTabKey;
-  return 'overview';
+  return 'basic';
 }
 
 /** 序列化 + 拼接 search；空串返回 pathname。 */
@@ -102,7 +113,7 @@ export function useCustomerDrawer(): UseCustomerDrawerReturn {
         next.delete(FOCUS_KEY);
       } else {
         next.set(CUSTOMER_ID_KEY, String(id));
-        if (tab && VALID_TABS.has(tab) && tab !== 'overview') {
+        if (tab && VALID_TABS.has(tab) && tab !== 'basic') {
           next.set(FOCUS_KEY, tab);
         } else {
           next.delete(FOCUS_KEY);
