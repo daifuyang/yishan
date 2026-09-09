@@ -28,7 +28,8 @@ const Pool: React.FC = () => {
     await claimCustomer(id);
     message.success('已认领');
     actionRef.current?.reload();
-    history.push(`/crm/customer-detail?id=${id}`);
+    // 跳到客户列表 + Drawer，让销售立刻看到刚认领的客户。
+    history.push(`/crm/customers?customerId=${id}`);
   };
 
   const columns: ProColumns<CustomerRow>[] = [
@@ -37,7 +38,7 @@ const Pool: React.FC = () => {
       dataIndex: 'name',
       width: 200,
       render: (_, r) => (
-        <a onClick={() => history.push(`/crm/customer-detail?id=${r.id}`)}>
+        <a onClick={() => history.push(`/crm/customers?customerId=${r.id}`)}>
           {r.name}
         </a>
       ),
@@ -82,7 +83,9 @@ const Pool: React.FC = () => {
       render: (_, record) => (
         <Space size={16}>
           <a
-            onClick={() => history.push(`/crm/customer-detail?id=${record.id}`)}
+            onClick={() =>
+              history.push(`/crm/customers?customerId=${record.id}`)
+            }
           >
             查看
           </a>

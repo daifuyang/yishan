@@ -31,6 +31,8 @@ export default function LeadImportDialog({
       className="lead-import-dialog"
       style={{
         maxWidth: 'calc(100vw - 32px)',
+        borderRadius: token.borderRadiusLG,
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.10)',
         '--lead-import-primary': token.colorPrimary,
         '--lead-import-primary-bg': token.colorPrimaryBg,
         '--lead-import-text': token.colorText,
@@ -44,8 +46,9 @@ export default function LeadImportDialog({
       footer={null}
       destroyOnHidden
       styles={{
-        content: { borderRadius: token.borderRadiusLG, boxShadow: '0 12px 40px rgba(0, 0, 0, 0.10)' },
-        body: { padding: '16px 0 0' },
+        body: {
+          padding: '16px 0 0',
+        },
       }}
     >
       <div className="lead-import-dialog__body">

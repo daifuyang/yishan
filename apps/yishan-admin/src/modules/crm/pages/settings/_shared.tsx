@@ -153,7 +153,9 @@ export function makeSettingsPage<
           initialValues={editing ?? { enabled: 1, sort: 0 }}
           drawerProps={{ destroyOnClose: true, width: 480 }}
         >
-          {cfg.formFields({ isEdit: !!editing })}
+          {/* antd 6 DrawerForm children 类型与 React 18.3 ReactNode 不兼容；运行时等价 */}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {cfg.formFields({ isEdit: !!editing }) as any}
         </DrawerForm>
       </>
     );

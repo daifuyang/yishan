@@ -101,7 +101,7 @@ const Dashboard: React.FC = () => {
                     <div>
                       <a
                         onClick={() =>
-                          history.push(`/crm/customer-detail?id=${p.id}`)
+                          history.push(`/crm/customers?customerId=${p.id}`)
                         }
                       >
                         {p.name}
@@ -142,7 +142,7 @@ const Dashboard: React.FC = () => {
                         <a
                           onClick={() =>
                             history.push(
-                              `/crm/customer-detail?id=${a.customerId}`,
+                              `/crm/customers?customerId=${a.customerId}`,
                             )
                           }
                         >
