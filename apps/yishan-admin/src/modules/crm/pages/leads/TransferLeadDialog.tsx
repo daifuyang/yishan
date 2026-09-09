@@ -15,7 +15,7 @@ import { message } from 'antd';
 import { useEffect, useState } from 'react';
 import { assignLead, type LeadRow } from '@/services/crm';
 import { getUserList } from '@/services/generated/sysUsers';
-import { LEAD_DIALOG_Z_INDEX } from './leadWorkspaceLayout';
+import { CRM_DIALOG_Z_INDEX } from '../../components/drawer/_shared/crmDialogZIndex';
 import { getLeadAssignmentDialogCopy, type LeadAssignmentDialogMode } from './leadAssignmentDialog';
 
 export interface TransferLeadDialogProps {
@@ -71,7 +71,7 @@ export default function TransferLeadDialog({
       onOpenChange={onOpenChange}
       title={lead ? `${copy.title}：${lead.name || lead.companyName || `线索 #${lead.id}`}` : copy.title}
       width={520}
-      modalProps={{ zIndex: LEAD_DIALOG_Z_INDEX }}
+      modalProps={{ zIndex: CRM_DIALOG_Z_INDEX }}
       submitter={{
         searchConfig: { submitText: copy.submitText, resetText: '取消' },
         submitButtonProps: { loading: submitting },

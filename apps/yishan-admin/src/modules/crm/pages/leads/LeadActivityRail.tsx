@@ -5,33 +5,20 @@ import {
   ProFormSelect,
   ProFormTextArea,
 } from '@ant-design/pro-components';
-import {
-  Button,
-  DatePicker,
-  Divider,
-  Form,
-  message,
-  Popover,
-  Spin,
-  Timeline,
-  Typography,
-} from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
-import { useEffect, useMemo, useState } from 'react';
+import { Button, Divider, message, Spin, Timeline, Typography } from 'antd';
+import dayjs from 'dayjs';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { LeadActivityRow, LeadRow, LeadStatus } from '@/services/crm';
 import { createLeadActivity, listLeadActivities } from '@/services/crm';
 import { formatDateTime } from '@/utils/formatDate';
+import DrawerFilterBar from '../../components/drawer/_shared/DrawerFilterBar';
+import { CRM_DIALOG_Z_INDEX } from '../../components/drawer/_shared/crmDialogZIndex';
+import { groupByDate } from '../../components/drawer/_shared/groupByDate';
 import {
   type LeadFollowUpFormValues,
   toLeadActivityInput,
 } from './leadFollowUpForm';
-import {
-  buildLeadTimeline,
-  filterLeadTimelineByDateRange,
-  groupLeadTimelineByDate,
-  type LeadTimelineCategory,
-} from './leadTimeline';
-import { LEAD_DIALOG_Z_INDEX } from './leadWorkspaceLayout';
+import { buildLeadTimeline, type LeadTimelineCategory } from './leadTimeline';
 
 type ActivityFilter = 'all' | LeadTimelineCategory;
 
@@ -58,22 +45,19 @@ const followUpStatusOptions: Array<{ value: LeadStatus; label: string }> = [
   { value: 'closed', label: '已关闭' },
 ];
 
-const dateLabel = (date: string) => {
-  const value = dayjs(date);
-  if (value.isSame(dayjs(), 'day')) return `今天 · ${value.format('MM月DD日')}`;
-  if (value.isSame(dayjs().subtract(1, 'day'), 'day'))
-    return `昨天 · ${value.format('MM月DD日')}`;
-  return value.format('YYYY年MM月DD日');
-};
-
-export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRow; onLeadChanged?: (next: LeadRow) => void }) {
+export default function LeadActivityRail({
+  lead,
+  onLeadChanged,
+}: {
+  lead: LeadRow;
+  onLeadChanged?: (next: LeadRow) => void;
+}) {
   // 无负责人即在线索池。池内线索尚未归属，不能产生任何销售跟进记录。
   const canWriteFollowUp = lead.ownerUserId !== null;
   const [activities, setActivities] = useState<LeadActivityRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<ActivityFilter>('all');
-  const [filterForm] = Form.useForm<{ dateRange?: [Dayjs, Dayjs] }>();
-  const [createdAtRange, setCreatedAtRange] = useState<[string, string] | null>(
+  const [dateRange, setDateRange] = useState<{ from?: string; to?: string } | null>(
     null,
   );
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
@@ -92,14 +76,21 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
   }, [lead.id]);
 
   const groups = useMemo(() => {
-    const events = filterLeadTimelineByDateRange(
-      buildLeadTimeline(lead, activities).filter(
-        (event) => filter === 'all' || event.category === filter,
-      ),
-      createdAtRange,
+    const events = buildLeadTimeline(lead, activities).filter(
+      (event) => filter === 'all' || event.category === filter,
     );
-    return groupLeadTimelineByDate(events);
-  }, [activities, createdAtRange, filter, lead]);
+    const ranged = dateRange
+      ? events.filter((event) => {
+          const t = dayjs(event.time);
+          const from = dateRange.from ? dayjs(dateRange.from).startOf('day') : null;
+          const to = dateRange.to ? dayjs(dateRange.to).endOf('day') : null;
+          if (from && t.isBefore(from)) return false;
+          if (to && t.isAfter(to)) return false;
+          return true;
+        })
+      : events;
+    return groupByDate(ranged, (event) => event.time);
+  }, [activities, dateRange, filter, lead]);
 
   return (
     <aside
@@ -132,139 +123,90 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
           </Button>
         )}
       </div>
-      {canWriteFollowUp && <ModalForm<LeadFollowUpFormValues>
-        open={followUpModalOpen}
-        onOpenChange={setFollowUpModalOpen}
-        title="写跟进"
-        initialValues={{ type: 'phone', followUpStatus: lead.status ?? 'pending' }}
-        modalProps={{
-          destroyOnHidden: true,
-          okButtonProps: { loading: followUpSubmitting },
-          // 写跟进弹窗在抽屉里打开（LeadActivityRail 渲染在抽屉 children 里），
-          // 同样要走 LEAD_DIALOG_Z_INDEX，保证 Modal 浮在抽屉内容之上。
-          zIndex: LEAD_DIALOG_Z_INDEX,
-        }}
-        onFinish={async (values) => {
-          setFollowUpSubmitting(true);
-          try {
-            const result = await createLeadActivity(
-              lead.id,
-              toLeadActivityInput(values),
-            );
-            if (result.lead.id === lead.id) {
-              onLeadChanged?.(result.lead);
-            }
-            setActivities((current) => [result.activity, ...current]);
-            setFollowUpModalOpen(false);
-            message.success('跟进已保存');
-            // 状态改变时服务端会追加一条审计。保存已经成功后再异步刷新完整
-            // 时间线；刷新失败不能把已提交的表单误报为失败或诱导重复提交。
-            void listLeadActivities(lead.id)
-              .then((refreshedActivities) => setActivities(refreshedActivities.items))
-              .catch(() => message.warning('跟进已保存，但动态刷新失败，请稍后刷新页面'));
-            return true;
-          } catch (err: any) {
-            message.error(err?.message ?? '跟进保存失败');
-            return false;
-          } finally {
-            setFollowUpSubmitting(false);
-          }
-        }}
-      >
-        <ProFormSelect
-          name="type"
-          label="跟进方式"
-          options={typeOptions}
-          rules={[{ required: true, message: '请选择跟进方式' }]}
-        />
-        <ProFormTextArea
-          name="content"
-          label="本次跟进"
-          placeholder="记录本次跟进..."
-          fieldProps={{ autoSize: { minRows: 4, maxRows: 8 }, maxLength: 2000 }}
-          rules={[
-            { required: true, whitespace: true, message: '请填写本次跟进内容' },
-          ]}
-        />
-        <ProFormSelect
-          name="followUpStatus"
-          label="跟进状态"
-          options={followUpStatusOptions}
-          rules={[{ required: true, message: '请选择跟进状态' }]}
-        />
-        <ProFormDateTimePicker
-          name="nextFollowUpAt"
-          label="下次跟进"
-          placeholder="请选择下次跟进时间"
-          width="md"
-        />
-      </ModalForm>}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          marginTop: 14,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {filterLabels.map((item) => (
-          <Button
-            key={item.key}
-            type="text"
-            size="small"
-            onClick={() => setFilter(item.key)}
-            style={{
-              padding: 0,
-              color: filter === item.key ? '#1677ff' : '#667085',
-              fontWeight: filter === item.key ? 500 : 400,
-            }}
-          >
-            {item.label}
-          </Button>
-        ))}
-        <Popover
-          content={
-            <Form
-              form={filterForm}
-              layout="vertical"
-              onValuesChange={(_, values) => {
-                const dateRange = values.dateRange as
-                  | [Dayjs, Dayjs]
-                  | undefined;
-                setCreatedAtRange(
-                  dateRange
-                    ? [
-                        dateRange[0].startOf('day').toISOString(),
-                        dateRange[1].endOf('day').toISOString(),
-                      ]
-                    : null,
+      {canWriteFollowUp && (
+        <ModalForm<LeadFollowUpFormValues>
+          open={followUpModalOpen}
+          onOpenChange={setFollowUpModalOpen}
+          title="写跟进"
+          initialValues={{
+            type: 'phone',
+            followUpStatus: lead.status ?? 'pending',
+          }}
+          modalProps={{
+            destroyOnHidden: true,
+            okButtonProps: { loading: followUpSubmitting },
+            // 写跟进弹窗在抽屉里打开（LeadActivityRail 渲染在抽屉 children 里），
+            // 同样要走 CRM_DIALOG_Z_INDEX，保证 Modal 浮在抽屉内容之上。
+            zIndex: CRM_DIALOG_Z_INDEX,
+          }}
+          onFinish={async (values) => {
+            setFollowUpSubmitting(true);
+            try {
+              const result = await createLeadActivity(
+                lead.id,
+                toLeadActivityInput(values),
+              );
+              if (result.lead.id === lead.id) {
+                onLeadChanged?.(result.lead);
+              }
+              setActivities((current) => [result.activity, ...current]);
+              setFollowUpModalOpen(false);
+              message.success('跟进已保存');
+              // 状态改变时服务端会追加一条审计。保存已经成功后再异步刷新完整
+              // 时间线；刷新失败不能把已提交的表单误报为失败或诱导重复提交。
+              void listLeadActivities(lead.id)
+                .then((refreshedActivities) =>
+                  setActivities(refreshedActivities.items),
+                )
+                .catch(() =>
+                  message.warning(
+                    '跟进已保存，但动态刷新失败，请稍后刷新页面',
+                  ),
                 );
-              }}
-              style={{ width: 280 }}
-            >
-              <Form.Item
-                label="创建时间"
-                name="dateRange"
-                style={{ margin: 0 }}
-              >
-                <DatePicker.RangePicker style={{ width: '100%' }} />
-              </Form.Item>
-            </Form>
-          }
-          trigger="hover"
-          mouseEnterDelay={0.1}
-          mouseLeaveDelay={0.2}
+              return true;
+            } catch (err: any) {
+              message.error(err?.message ?? '跟进保存失败');
+              return false;
+            } finally {
+              setFollowUpSubmitting(false);
+            }
+          }}
         >
-          <Button
-            type="link"
-            size="small"
-            style={{ marginLeft: 'auto', paddingInline: 0 }}
-          >
-            筛选
-          </Button>
-        </Popover>
-      </div>
+          <ProFormSelect
+            name="type"
+            label="跟进方式"
+            options={typeOptions}
+            rules={[{ required: true, message: '请选择跟进方式' }]}
+          />
+          <ProFormTextArea
+            name="content"
+            label="本次跟进"
+            placeholder="记录本次跟进..."
+            fieldProps={{ autoSize: { minRows: 4, maxRows: 8 }, maxLength: 2000 }}
+            rules={[
+              { required: true, whitespace: true, message: '请填写本次跟进内容' },
+            ]}
+          />
+          <ProFormSelect
+            name="followUpStatus"
+            label="跟进状态"
+            options={followUpStatusOptions}
+            rules={[{ required: true, message: '请选择跟进状态' }]}
+          />
+          <ProFormDateTimePicker
+            name="nextFollowUpAt"
+            label="下次跟进"
+            placeholder="请选择下次跟进时间"
+            width="md"
+          />
+        </ModalForm>
+      )}
+      <DrawerFilterBar<ActivityFilter>
+        options={filterLabels}
+        value={filter}
+        onChange={setFilter}
+        dateRange={{ value: dateRange, onChange: setDateRange }}
+      />
       <Divider style={{ margin: '12px 0 16px' }} />
       <div
         style={{
@@ -290,10 +232,10 @@ export default function LeadActivityRail({ lead, onLeadChanged }: { lead: LeadRo
                   color: '#98a2b3',
                 }}
               >
-                {dateLabel(group.date)}
+                {group.label}
               </Typography.Text>
               <Timeline
-                items={group.events.map((item) => ({
+                items={group.items.map((item) => ({
                   color: item.color,
                   children: (
                     <div style={{ paddingBottom: 12 }}>

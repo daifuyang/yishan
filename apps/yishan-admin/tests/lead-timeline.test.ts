@@ -1,7 +1,10 @@
 import {
+  filterByDateRange,
+  groupByDate,
+} from '../src/modules/crm/components/drawer/_shared/groupByDate';
+import {
   buildLeadTimeline,
-  filterLeadTimelineByDateRange,
-  groupLeadTimelineByDate,
+  type LeadTimelineEvent,
 } from '../src/modules/crm/pages/leads/leadTimeline';
 import type { LeadActivityRow, LeadRow } from '../src/services/crm';
 
@@ -79,11 +82,11 @@ describe('线索动态', () => {
         expect.objectContaining({ category: 'status', title: '状态变更' }),
       ]),
     );
-    expect(groupLeadTimelineByDate(events).map((group) => group.date)).toEqual([
-      '2026-09-06',
-      '2026-09-05',
-      '2026-09-01',
-    ]);
+    expect(
+      groupByDate<LeadTimelineEvent>(events, (e) => e.time).map(
+        (group) => group.date,
+      ),
+    ).toEqual(['2026-09-06', '2026-09-05', '2026-09-01']);
   });
 
   it('仅保留创建时间落在所选日期范围内的动态', () => {
@@ -103,10 +106,14 @@ describe('线索动态', () => {
     ]);
 
     expect(
-      filterLeadTimelineByDateRange(events, [
-        '2026-09-05T00:00:00.000Z',
-        '2026-09-06T23:59:59.999Z',
-      ]).map((event) => event.id),
+      filterByDateRange<LeadTimelineEvent>(
+        events,
+        (e) => e.time,
+        {
+          from: '2026-09-05T00:00:00.000Z',
+          to: '2026-09-06T23:59:59.999Z',
+        },
+      ).map((event) => event.id),
     ).toEqual(['followup-1']);
   });
 

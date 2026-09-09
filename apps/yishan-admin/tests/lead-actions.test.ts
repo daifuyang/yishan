@@ -32,16 +32,22 @@ const lead = {
 } satisfies LeadRow;
 
 describe('getLeadActions', () => {
+  // 更多菜单约定（与 LeadDetailDrawer 内的 ActivityRail 解耦）：
+  //   1. 转为客户（已转化则改为「查看客户详情」）
+  //   2. 转交给同事
+  //   3. 退回线索池
+  // 「写跟进」由详情抽屉内的 ActivityRail 承担，不在更多菜单暴露。
+  // 「查看」由行点击触发，也不在此处暴露。
   it.each([
     ['pending'],
     ['contact_valid'],
     ['contact_invalid'],
     ['closed'],
-  ] as const)('%s 状态未转化时始终可以写跟进和转为客户', (status) => {
+  ] as const)('%s 状态未转化时显示 转为客户 / 转交给同事 / 退回线索池', (status) => {
     const result = getLeadActions({ ...lead, status } as LeadRow).map(
       (action) => action.key,
     );
-    expect(result).toEqual(['view', 'followUp', 'transfer', 'convert']);
+    expect(result).toEqual(['convert', 'transfer', 'returnToPool']);
   });
 
   it.each([
@@ -49,7 +55,7 @@ describe('getLeadActions', () => {
     ['contact_valid'],
     ['contact_invalid'],
     ['closed'],
-  ] as const)('%s 状态转化后显示查看客户详情而不再转为客户', (status) => {
+  ] as const)('%s 状态转化后首位替换为「查看客户详情」', (status) => {
     const actions = getLeadActions({
       ...lead,
       status,
@@ -59,14 +65,35 @@ describe('getLeadActions', () => {
     } as LeadRow);
 
     expect(actions.map((action) => action.key)).toEqual([
-      'view',
-      'followUp',
-      'transfer',
       'openCustomer',
+      'transfer',
+      'returnToPool',
     ]);
-    expect(actions.at(-1)).toMatchObject({
+    expect(actions[0]).toMatchObject({
       label: '查看客户详情',
       primary: true,
+    });
+  });
+
+  it('未转化时首位 label = 转为客户 且 primary', () => {
+    const actions = getLeadActions(lead as LeadRow);
+    expect(actions[0]).toMatchObject({
+      label: '转为客户',
+      primary: true,
+    });
+  });
+
+  it('转交给同事 label 文案正确', () => {
+    const actions = getLeadActions(lead as LeadRow);
+    expect(actions.find((a) => a.key === 'transfer')).toMatchObject({
+      label: '转交给同事',
+    });
+  });
+
+  it('退回线索池 label 文案正确且位于末尾', () => {
+    const actions = getLeadActions(lead as LeadRow);
+    expect(actions.at(-1)).toMatchObject({
+      label: '退回线索池',
     });
   });
 });

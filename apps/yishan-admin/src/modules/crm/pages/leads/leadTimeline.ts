@@ -14,11 +14,6 @@ export interface LeadTimelineEvent {
   color: 'blue' | 'gray' | 'green';
 }
 
-export interface LeadTimelineGroup {
-  date: string;
-  events: LeadTimelineEvent[];
-}
-
 const activityLabels: Record<string, string> = {
   phone: '电话跟进',
   wechat: '微信跟进',
@@ -84,7 +79,7 @@ export const buildLeadTimeline = (
     if (timeDifference !== 0) return timeDifference;
 
     // 时间轴整体按倒序展示。同一时刻的状态变更发生在跟进之后，因此在
-    // 倒序列表中要排在跟进上方；从下往上阅读就是“跟进 → 状态变更”。
+    // 倒序列表中要排在跟进上方；从下往上阅读就是"跟进 → 状态变更"。
     const categoryOrder: Record<LeadTimelineCategory, number> = {
       status: 0,
       followup: 1,
@@ -92,31 +87,3 @@ export const buildLeadTimeline = (
     };
     return categoryOrder[a.category] - categoryOrder[b.category];
   });
-
-export const groupLeadTimelineByDate = (
-  events: LeadTimelineEvent[],
-): LeadTimelineGroup[] => {
-  const groups = new Map<string, LeadTimelineEvent[]>();
-  events.forEach((event) => {
-    const date = dayjs(event.time).format('YYYY-MM-DD');
-    groups.set(date, [...(groups.get(date) ?? []), event]);
-  });
-  return [...groups.entries()].map(([date, groupedEvents]) => ({
-    date,
-    events: groupedEvents,
-  }));
-};
-
-export const filterLeadTimelineByDateRange = (
-  events: LeadTimelineEvent[],
-  dateRange?: [string, string] | null,
-) => {
-  if (!dateRange) return events;
-  const [start, end] = dateRange;
-  const startAt = dayjs(start).valueOf();
-  const endAt = dayjs(end).valueOf();
-  return events.filter((event) => {
-    const eventAt = dayjs(event.time).valueOf();
-    return eventAt >= startAt && eventAt <= endAt;
-  });
-};
