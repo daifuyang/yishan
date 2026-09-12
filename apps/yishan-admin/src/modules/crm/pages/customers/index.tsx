@@ -1,310 +1,440 @@
 /**
- * CRM 客户列表页（Workspace 重构版）。
+ * CRM 我的客户列表页（Ant Design Pro 标准 list）。
  *
- * 结构：
- *   PageContainer
- *   ├ CustomerViewTabs      系统 View 切换
- *   └ ProTable              内建搜索、工具栏操作与客户表（行点击打开 Drawer）
- *
- * 状态来源：
- *   - URL search params  ←→  useCustomerFilterUrl（view / 分页 / 筛选）
- *   - 当前用户           useModel('@@initialState').currentUser
- *   - 字典（状态/来源/标签） listStatuses / listSources / listTags
- *   - 概览计数           getDashboard
- *   - 批量 join         findPrimaryContactsByCustomerIds / findOwnerNamesByUserIds（前端用 dashboard 缓存）
- *
- * 注：本页直接调用 /api/crm/v1/* REST 端点；不直接访问 drizzle，
- * 保持 CLAUDE.md 中"前端绝不访问数据库"的边界。
+ * 通过 @/services/crm 调后端 API（待 openapi 重新生成后可切到 generated）。
  */
 
-import { DownOutlined, ImportOutlined, PlusOutlined } from '@ant-design/icons';
-import type { ProTableProps } from '@ant-design/pro-components';
-import { PageContainer, ProTable } from '@ant-design/pro-components';
-import { history, useModel } from '@umijs/max';
-import { Button, Dropdown, message } from 'antd';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  type CustomerRow,
-  type CustomerListOptions,
-  getCustomerListOptions,
+  type ActionType,
+  DrawerForm,
+  PageContainer,
+  ProFormDigit,
+  ProFormSelect,
+  ProFormText,
+  ProFormTextArea,
+  ProTable,
+  type ProColumns,
+} from '@ant-design/pro-components'
+import { message, Modal, Popconfirm, Space, Tag } from 'antd'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { history, useLocation } from '@umijs/max'
+import {
+  createCustomer,
+  deleteCustomer,
   listCustomers,
-  listSources,
-  listStatuses,
-  listTags,
-  type SourceRow,
-  type StatusRow,
-  type TagRow,
-} from '@/services/crm';
-import { usePermission } from '@/utils/permission';
-import CustomerActionDropdown from '../../components/customers/CustomerActionDropdown';
+  releaseCustomer,
+  transferCustomer,
+  updateCustomer,
+  type CustomerCreateInput,
+  type CustomerDetail,
+  type CustomerRow,
+  type CustomerUpdateInput,
+} from '@/services/crm'
+import CustomerAdvancedFilterDrawer from './components/CustomerAdvancedFilterDrawer'
+import CustomerFilterBar from './components/CustomerFilterBar'
+import CustomerPageHeader from './components/CustomerPageHeader'
+import CustomerViewTabs from './components/CustomerViewTabs'
+import styles from './components/customerWorkspace.module.less'
+import type { CustomerWorkspaceQuery } from './types'
 import {
-  buildCustomerTableColumns,
-  type CustomerTableColumnsOptions,
-} from '../../components/customers/CustomerTableColumns';
-import CustomerViewTabs from '../../components/customers/CustomerViewTabs';
-import { useCustomerTableStyles } from '../../components/customers/customerTable.styles';
-import CustomerDrawer from '../../components/drawer/CustomerDrawer';
-import { useCustomerDrawer } from '../../hooks/useCustomerDrawer';
-import { useCustomerFilterUrl } from '../../hooks/useCustomerFilterUrl';
-import { buildQueryFromView } from '../../utils/customerViewFilters';
+  parseCustomerWorkspaceQuery,
+  serializeCustomerWorkspaceQuery,
+  toCustomerListQuery,
+} from './utils/customerWorkspaceQuery'
+
+const TYPE_OPTIONS = [
+  { value: 'enterprise', label: '企业客户' },
+  { value: 'individual', label: '个人客户' },
+]
 
 const Customers: React.FC = () => {
-  const { styles } = useCustomerTableStyles();
-  const { initialState } = useModel('@@initialState');
-  const can = usePermission();
-  const currentUser = initialState?.currentUser;
-  const currentUserId = currentUser?.id;
+  const location = useLocation()
+  const actionRef = useRef<ActionType>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<CustomerDetail | null>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferTarget, setTransferTarget] = useState<{ id: number; name: string } | null>(null)
+  const [releaseOpen, setReleaseOpen] = useState(false)
+  const [releaseTarget, setReleaseTarget] = useState<{ id: number; name: string } | null>(null)
+  const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false)
+  const query = useMemo(() => parseCustomerWorkspaceQuery(location.search), [location.search])
 
-  const {
-    view,
-    filters,
-    pagination,
-    setView,
-    setFilters,
-    setPagination,
-    reset,
-  } = useCustomerFilterUrl();
-
-  const [statuses, setStatuses] = useState<StatusRow[]>([]);
-  const [sources, setSources] = useState<SourceRow[]>([]);
-  const [tags, setTags] = useState<TagRow[]>([]);
-  const [listOptions, setListOptions] = useState<CustomerListOptions | null>(
-    null,
-  );
-  const optionsRequest = useRef<{
-    userId: number | undefined;
-    promise: Promise<CustomerListOptions>;
-  } | null>(null);
-
-  const drawer = useCustomerDrawer();
-
-  // 字典 + 概览数据初始化
   useEffect(() => {
-    let cancelled = false;
-    const loadDicts = async () => {
-      try {
-        const [s, src, t] = await Promise.all([
-          listStatuses({ page: 1, pageSize: 100 }),
-          listSources({ page: 1, pageSize: 100 }),
-          listTags({ page: 1, pageSize: 100 }),
-        ]);
-        if (cancelled) return;
-        setStatuses(s.data);
-        setSources(src.data);
-        setTags(t.data);
-      } catch (err: unknown) {
-        message.error((err as Error)?.message ?? '字典加载失败');
-      }
-    };
-    loadDicts();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    actionRef.current?.reload()
+  }, [query])
 
-  // 表格 ProTable request：根据 view + filters + 分页构造后端 query
-  const request: ProTableProps<
-    CustomerRow,
-    Record<string, unknown>
-  >['request'] = async () => {
+  const updateQuery = (next: Partial<CustomerWorkspaceQuery>) => {
+    const updated = { ...query, ...next }
+    history.replace({
+      pathname: location.pathname,
+      search: `?${serializeCustomerWorkspaceQuery(updated)}`,
+    })
+  }
+
+  const handleOpenCreate = () => {
+    setEditing(null)
+    setFormOpen(true)
+  }
+
+  const handleOpenEdit = async (id: number) => {
+    // 简化：列表里直接编辑时只携带可编辑字段
+    setEditing({ id, name: '', type: 'enterprise' } as CustomerDetail)
+    setFormOpen(true)
+  }
+
+  const handleSubmit = async (
+    values: CustomerCreateInput & { id?: number },
+  ) => {
     try {
-      if (
-        !optionsRequest.current ||
-        optionsRequest.current.userId !== currentUserId
-      ) {
-        optionsRequest.current = {
-          userId: currentUserId,
-          promise: getCustomerListOptions(),
-        };
+      if (values.id) {
+        const { id, ...rest } = values
+        await updateCustomer(id, rest as CustomerUpdateInput)
+        message.success('已更新')
+      } else {
+        try {
+          await createCustomer(values)
+          message.success('已创建')
+        } catch (err: any) {
+          // 重复客户 → 弹出引导
+          const code = err?.response?.data?.code ?? err?.code
+          const details = err?.response?.data?.error ?? err?.details
+          if (code === 33002 && details) {
+            try {
+              const dup = JSON.parse(details)
+              Modal.confirm({
+                title: '发现疑似重复客户',
+                content: `${dup.existingCustomerName}（${dup.ownerUserName ?? '无人负责'}）`,
+                okText: '查看客户',
+                cancelText: '继续创建',
+                onOk: () => {
+                  history.push(`/crm/customer-detail?id=${dup.existingCustomerId}`)
+                },
+              })
+              return false
+            } catch {
+              /* ignore */
+            }
+          }
+          throw err
+        }
       }
-      const options = await optionsRequest.current.promise;
-      setListOptions(options);
-      const query = buildQueryFromView(view, {
-        ...filters,
-        ownerUserId: options.canFilterOwners ? filters.ownerUserId : undefined,
-        page: pagination.page,
-        pageSize: pagination.pageSize,
-      });
-      const res = await listCustomers(query);
-      return {
-        data: res.data,
-        success: true,
-        total: res.total,
-      };
-    } catch (err: unknown) {
-      optionsRequest.current = null;
-      message.error((err as Error)?.message ?? '客户列表加载失败');
-      return { data: [], success: false, total: 0 };
+      setFormOpen(false)
+      setEditing(null)
+      actionRef.current?.reload()
+      return true
+    } catch (err: any) {
+      message.error(err?.message ?? '操作失败')
+      return false
     }
-  };
+  }
 
-  const actionRef = useRef<
-    import('@ant-design/pro-components').ActionType | null
-  >(null);
-  const reloadTable = () => {
-    optionsRequest.current = null;
-    void actionRef.current?.reload();
-  };
-  const reloadAll = reloadTable;
+  const handleDelete = async (id: number) => {
+    await deleteCustomer(id)
+    message.success('已删除')
+    actionRef.current?.reload()
+  }
 
-  // 批量 join（前端轻量补救）：列表当前页的"主要联系人"+"负责人名"
-  const [primaryContactMap] = useState<
-    Map<number, { name: string; mobile: string | null }>
-  >(new Map());
-  const [ownerNameMap] = useState<Map<number, string>>(new Map());
+  const handleTransfer = async (targetUserId: number, reason?: string) => {
+    if (!transferTarget) return
+    await transferCustomer(transferTarget.id, targetUserId, reason)
+    message.success('客户已转交')
+    setTransferOpen(false)
+    setTransferTarget(null)
+    actionRef.current?.reload()
+  }
 
-  const handleCreate = () => {
-    // 简化：与原 page 一致，点击新建直接跳到详情页带 edit=1。
-    // 后续 Phase 2 把"新建"也搬进 Drawer 时再换。
-    history.push('/crm/customer-detail?create=1');
-  };
+  const handleRelease = async (reason?: string) => {
+    if (!releaseTarget) return
+    await releaseCustomer(releaseTarget.id, reason)
+    message.success('客户已释放到公海')
+    setReleaseOpen(false)
+    setReleaseTarget(null)
+    actionRef.current?.reload()
+  }
 
-  const handleOpenDetail = (id: number) => {
-    drawer.openDrawer(id);
-  };
-
-  const columnOpts = useMemo<CustomerTableColumnsOptions>(
-    () => ({
-      statuses,
-      sources,
-      tags,
-      currentUserId,
-      currentUserName: currentUser?.realName,
-      canFilterOwners: listOptions?.canFilterOwners ?? false,
-      ownerOptions: listOptions?.owners ?? [],
-      primaryContactMap,
-      ownerNameMap,
-      onOpenDetail: handleOpenDetail,
-      onChanged: reloadAll,
-      onOpenFollowupDrawer: (id: number) => drawer.openDrawer(id, 'followup'),
-    }),
-    [
-      statuses,
-      sources,
-      tags,
-      currentUserId,
-      currentUser?.realName,
-      listOptions,
-      primaryContactMap,
-      ownerNameMap,
-      reloadAll,
-      drawer,
-    ],
-  );
-  const columns = useMemo(
-    () => buildCustomerTableColumns(columnOpts),
-    [columnOpts],
-  );
+  const columns: ProColumns<CustomerRow>[] = [
+    {
+      title: '客户名称',
+      dataIndex: 'name',
+      width: 200,
+      render: (_, r) => (
+        <a onClick={() => history.push(`/crm/customer-detail?id=${r.id}`)}>{r.name}</a>
+      ),
+    },
+    {
+      title: '类型',
+      dataIndex: 'type',
+      width: 90,
+      valueEnum: {
+        enterprise: { text: '企业' },
+        individual: { text: '个人' },
+      },
+    },
+    {
+      title: '电话',
+      dataIndex: 'phone',
+      width: 140,
+      search: false,
+      render: (_, r) => r.phone || '—',
+    },
+    {
+      title: '状态',
+      dataIndex: 'statusId',
+      width: 100,
+      render: (_, r) =>
+        r.poolStatus === 'public' ? <Tag color="default">公海</Tag> : <Tag color="blue">已分配</Tag>,
+    },
+    {
+      title: '最近跟进',
+      dataIndex: 'lastFollowUpAt',
+      width: 170,
+      search: false,
+      valueType: 'dateTime',
+    },
+    {
+      title: '下次跟进',
+      dataIndex: 'nextFollowUpAt',
+      width: 170,
+      search: false,
+      valueType: 'dateTime',
+    },
+    {
+      title: '更新时间',
+      dataIndex: 'updatedAt',
+      width: 170,
+      search: false,
+      valueType: 'dateTime',
+    },
+    {
+      title: '操作',
+      dataIndex: 'option',
+      valueType: 'option',
+      fixed: 'right',
+      width: 220,
+      render: (_, record) => (
+        <Space size={12}>
+          <a onClick={() => history.push(`/crm/customer-detail?id=${record.id}`)}>查看</a>
+          <a onClick={() => handleOpenEdit(record.id)}>编辑</a>
+          <Popconfirm
+            title={`确认删除「${record.name}」？`}
+            okText="删除"
+            cancelText="取消"
+            onConfirm={() => handleDelete(record.id)}
+          >
+            <a style={{ color: '#ff4d4f' }}>删除</a>
+          </Popconfirm>
+          {record.poolStatus === 'owned' && (
+            <>
+              <a
+                onClick={() => {
+                  setReleaseTarget({ id: record.id, name: record.name })
+                  setReleaseOpen(true)
+                }}
+              >
+                释放
+              </a>
+              <a
+                onClick={() => {
+                  setTransferTarget({ id: record.id, name: record.name })
+                  setTransferOpen(true)
+                }}
+              >
+                转交
+              </a>
+            </>
+          )}
+        </Space>
+      ),
+    },
+  ]
 
   return (
-    <PageContainer title="我的客户">
-      <CustomerViewTabs value={view} onChange={setView} />
-
-      <ProTable<CustomerRow, Record<string, unknown>>
-        className={styles.table}
-        size="middle"
-        headerTitle="客户列表"
+    <PageContainer className={styles.workspace}>
+      <CustomerPageHeader onCreate={handleOpenCreate} />
+      <CustomerViewTabs value={query.view} onChange={(view) => updateQuery({ view, page: 1 })} />
+      <CustomerFilterBar
+        query={query}
+        onChange={(filters) => updateQuery({ ...filters, page: 1 })}
+        onOpenAdvanced={() => setAdvancedFilterOpen(true)}
+      />
+      <ProTable<CustomerRow>
         actionRef={actionRef}
         rowKey="id"
         columns={columns}
-        search={{ labelWidth: 'auto' }}
-        form={{ initialValues: filters, labelAlign: 'right' }}
-        params={{
-          ...filters,
-          view: buildQueryFromView(view).view,
-          page: pagination.page,
-          pageSize: pagination.pageSize,
-        }}
+        search={false}
         pagination={{
-          current: pagination.page,
-          pageSize: pagination.pageSize,
+          current: query.page,
+          pageSize: query.pageSize,
           showSizeChanger: true,
-          onChange: (page, pageSize) => setPagination({ page, pageSize }),
+          onChange: (page, pageSize) => updateQuery({ page, pageSize }),
         }}
-        request={request}
-        onSubmit={(values) => setFilters(values)}
-        onReset={reset}
-        scroll={{ x: 1400 }}
-        rowClassName={() => 'crm-customer-row'}
-        onRow={(record) => ({
-          onClick: () => handleOpenDetail(record.id),
-          style: { cursor: 'pointer' },
-        })}
-        options={{
-          reload: reloadAll,
-          density: true,
-          setting: { draggable: true, checkable: true },
-          fullScreen: false,
+        request={async () => {
+          const res = await listCustomers(toCustomerListQuery(query))
+          return {
+            data: res.data,
+            success: true,
+            total: res.total,
+          }
         }}
-        toolBarRender={() => {
-          const moreItems = [
-            { key: 'export', label: '导出' },
-            { key: 'dedup', label: '查重' },
-            { key: 'recycle', label: '回收站' },
-          ];
-          return [
-            can('crm:customer:create') ? (
-              <Button
-                key="create"
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreate}
-              >
-                新建客户
-              </Button>
-            ) : null,
-            can('crm:customer:create') ? (
-              <Button
-                key="import"
-                icon={<ImportOutlined />}
-                onClick={() => message.info('导入功能开发中（Phase 5）')}
-              >
-                导入
-              </Button>
-            ) : null,
-            <Dropdown
-              key="more"
-              menu={{
-                items: moreItems,
-                onClick: ({ key }) =>
-                  message.info(
-                    key === 'export'
-                      ? '导出功能开发中（Phase 5）'
-                      : key === 'dedup'
-                        ? '查重功能开发中（Phase 5）'
-                        : '回收站功能开发中（Phase 5）',
-                  ),
-              }}
-              trigger={['click']}
-            >
-              <Button>
-                更多
-                <DownOutlined />
-              </Button>
-            </Dropdown>,
-          ].filter(Boolean) as React.ReactNode[];
-        }}
+        options={{ density: true, reload: true, setting: true }}
       />
 
-      <CustomerDrawer
-        open={drawer.open}
-        customerId={drawer.customerId}
-        initialTab={drawer.initialTab}
-        onClose={drawer.closeDrawer}
-        onChanged={reloadAll}
-        statuses={statuses}
-        tags={tags}
+      <CustomerAdvancedFilterDrawer
+        open={advancedFilterOpen}
+        value={query}
+        onClose={() => setAdvancedFilterOpen(false)}
+        onApply={(filters) => updateQuery({ ...filters, page: 1 })}
       />
 
-      {/* 行操作菜单由 CustomerActionDropdown 内部自带 Modal；这里保留引用避免 tree-shake 误删。 */}
-      {false && (
-        <CustomerActionDropdown
-          record={{} as CustomerRow}
-          onChanged={() => undefined}
+      <DrawerForm<CustomerCreateInput & { id?: number }>
+        title={editing?.id ? '编辑客户' : '新建客户'}
+        open={formOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open)
+          if (!open) setEditing(null)
+        }}
+        onFinish={async (values) => {
+          const payload: CustomerCreateInput & { id?: number } = {
+            ...values,
+            type: values.type ?? 'enterprise',
+          }
+          if (editing?.id) payload.id = editing.id
+          return handleSubmit(payload)
+        }}
+        initialValues={{
+          type: 'enterprise',
+        }}
+        drawerProps={{ destroyOnClose: true, maskClosable: false, width: 720 }}
+      >
+        <ProFormText
+          name="name"
+          label="客户名称"
+          rules={[{ required: true, max: 200 }]}
+          colProps={{ span: 12 }}
         />
-      )}
-    </PageContainer>
-  );
-};
+        <ProFormSelect
+          name="type"
+          label="客户类型"
+          options={TYPE_OPTIONS}
+          colProps={{ span: 12 }}
+        />
+        <ProFormDigit
+          name="statusId"
+          label="客户状态"
+          colProps={{ span: 12 }}
+          fieldProps={{ precision: 0 }}
+        />
+        <ProFormDigit
+          name="sourceId"
+          label="客户来源"
+          colProps={{ span: 12 }}
+          fieldProps={{ precision: 0 }}
+        />
+        <ProFormText name="level" label="客户等级" colProps={{ span: 12 }} />
+        <ProFormText name="industry" label="行业" colProps={{ span: 12 }} />
+        <ProFormText
+          name="phone"
+          label="联系电话"
+          colProps={{ span: 12 }}
+          rules={[{ max: 32 }]}
+        />
+        <ProFormText
+          name="website"
+          label="官网"
+          colProps={{ span: 12 }}
+          rules={[{ max: 200 }]}
+        />
+        <ProFormText name="province" label="省份" colProps={{ span: 12 }} />
+        <ProFormText name="city" label="城市" colProps={{ span: 12 }} />
+        <ProFormText
+          name="address"
+          label="详细地址"
+          colProps={{ span: 24 }}
+          rules={[{ max: 255 }]}
+        />
+        <ProFormDigit
+          name="ownerUserId"
+          label="负责人 ID"
+          colProps={{ span: 12 }}
+          fieldProps={{ precision: 0 }}
+        />
+        <ProFormDigit
+          name="ownerDepartmentId"
+          label="负责部门 ID"
+          colProps={{ span: 12 }}
+          fieldProps={{ precision: 0 }}
+        />
+        <ProFormTextArea
+          name="remark"
+          label="备注"
+          colProps={{ span: 24 }}
+          fieldProps={{ maxLength: 2000, rows: 3 }}
+        />
+      </DrawerForm>
 
-export default Customers;
+      {/* 释放 */}
+      <Modal
+        title={releaseTarget ? `释放客户「${releaseTarget.name}」到公海` : '释放客户'}
+        open={releaseOpen}
+        onCancel={() => {
+          setReleaseOpen(false)
+          setReleaseTarget(null)
+        }}
+        onOk={async () => {
+          const reason = (document.getElementById('crm-release-reason') as HTMLTextAreaElement)?.value
+          await handleRelease(reason)
+        }}
+      >
+        <p>释放后该客户将进入公海，其他销售可认领。</p>
+        <textarea
+          id="crm-release-reason"
+          placeholder="释放原因（可选）"
+          style={{ width: '100%', minHeight: 80, padding: 8, border: '1px solid #d9d9d9', borderRadius: 4 }}
+          maxLength={500}
+        />
+      </Modal>
+
+      {/* 转交 */}
+      <Modal
+        title={transferTarget ? `转交客户「${transferTarget.name}」` : '转交客户'}
+        open={transferOpen}
+        onCancel={() => {
+          setTransferOpen(false)
+          setTransferTarget(null)
+        }}
+        onOk={async () => {
+          const targetUserId = Number(
+            (document.getElementById('crm-transfer-target') as HTMLInputElement)?.value,
+          )
+          const reason = (document.getElementById('crm-transfer-reason') as HTMLTextAreaElement)?.value
+          if (!targetUserId || Number.isNaN(targetUserId)) {
+            message.error('请输入目标用户 ID')
+            return
+          }
+          await handleTransfer(targetUserId, reason)
+        }}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <label htmlFor="crm-transfer-target">目标用户 ID</label>
+          <input
+            id="crm-transfer-target"
+            type="number"
+            placeholder="请输入目标用户 ID"
+            style={{ width: '100%', padding: 8, border: '1px solid #d9d9d9', borderRadius: 4 }}
+          />
+        </div>
+        <div>
+          <label htmlFor="crm-transfer-reason">转交原因（可选）</label>
+          <textarea
+            id="crm-transfer-reason"
+            placeholder="区域调整 / 客户类型变更..."
+            style={{ width: '100%', minHeight: 80, padding: 8, border: '1px solid #d9d9d9', borderRadius: 4 }}
+            maxLength={500}
+          />
+        </div>
+      </Modal>
+    </PageContainer>
+  )
+}
+
+export default Customers
