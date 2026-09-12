@@ -1,26 +1,25 @@
-import { CloseOutlined, DownOutlined, MoreOutlined, PrinterOutlined } from '@ant-design/icons';
+import { DownOutlined, MoreOutlined, PrinterOutlined } from '@ant-design/icons';
 import {
   Button,
   Divider,
-  Drawer,
   Dropdown,
   Empty,
-  Grid,
   message,
-  Popconfirm,
   Space,
   Tabs,
-  Tag,
   Typography,
 } from 'antd';
-import { useState } from 'react';
+import React from 'react';
 import type { LeadRow } from '@/services/crm';
 import { formatDateTime } from '@/utils/formatDate';
+import DrawerChrome from '../../components/drawer/_shared/DrawerChrome';
+import DrawerCloseButton from '../../components/drawer/_shared/DrawerCloseButton';
+import DrawerDeletePopconfirm from '../../components/drawer/_shared/DrawerDeletePopconfirm';
+import DrawerMetaRow from '../../components/drawer/_shared/DrawerMetaRow';
+import DrawerStatusTag from '../../components/drawer/_shared/DrawerStatusTag';
+import useDrawerBreakpoint from '../../components/drawer/_shared/useBreakpoint';
+import { useResizableDrawer } from '../../components/drawer/_shared/useResizableDrawer';
 import LeadActivityRail from './LeadActivityRail';
-import {
-  clampLeadDrawerSize,
-  getInitialLeadDrawerSize,
-} from './leadDrawerSize';
 import { getLeadWorkspaceLayout } from './leadWorkspaceLayout';
 
 const statusLabels: Record<string, string> = {
@@ -129,19 +128,15 @@ export default function LeadDetailDrawer({
   onDelete,
   onLeadChanged,
 }: LeadDetailDrawerProps) {
-  const screens = Grid.useBreakpoint();
-  const [size, setSize] = useState(() =>
-    getInitialLeadDrawerSize(
-      typeof window === 'undefined' ? 1366 : window.innerWidth,
-    ),
-  );
+  const isDesktop = useDrawerBreakpoint();
+  const [size, setSize] = useResizableDrawer();
 
   const renderHeaderActions = () => {
     if (!lead) return null;
     const isConverted = lead.convertedCustomerId !== null;
     // 公海「更多」菜单：打印 + 删除。
     // 私海走 onTransfer / onReturnToPool，不渲染「更多」按钮。
-    const moreItems: Array<{ key: string; label: React.ReactNode; icon?: React.ReactNode }> = [];
+    const moreItems: import('antd').MenuProps['items'] = [];
     if (onPrint) {
       moreItems.push({
         key: 'print',
@@ -153,28 +148,19 @@ export default function LeadDetailDrawer({
       moreItems.push({
         key: 'delete',
         label: (
-          <Popconfirm
-            title={
-              <span>
-                删除
-                <strong style={{ marginLeft: 4 }}>
-                  {lead.name || lead.companyName || `线索 #${lead.id}`}
-                </strong>
-                ？
-              </span>
-            }
-            description="删除后线索将不可见，且无法恢复。"
-            okText="删除"
-            okButtonProps={{ danger: true }}
-            cancelText="取消"
+          <DrawerDeletePopconfirm
+            targetName={lead.name || lead.companyName || `线索 #${lead.id}`}
             onConfirm={() => onDelete(lead)}
           >
             <span style={{ color: '#d4380d' }}>删除</span>
-          </Popconfirm>
+          </DrawerDeletePopconfirm>
         ),
       });
     }
-    const handleMoreClick: import('antd').MenuProps['onClick'] = ({ key, domEvent }) => {
+    const handleMoreClick: import('antd').MenuProps['onClick'] = ({
+      key,
+      domEvent,
+    }) => {
       if (key === 'print') {
         if (onPrint) onPrint(lead);
         else message.info('打印功能未接入');
@@ -190,9 +176,7 @@ export default function LeadDetailDrawer({
             领取
           </Button>
         )}
-        {onAssign && (
-          <Button onClick={() => onAssign(lead)}>分配</Button>
-        )}
+        {onAssign && <Button onClick={() => onAssign(lead)}>分配</Button>}
         {(onConvert || (onOpenCustomer && isConverted)) && (
           <Button
             type="primary"
@@ -240,19 +224,14 @@ export default function LeadDetailDrawer({
             </Button>
           </Dropdown>
         )}
-        <Button
-          type="text"
-          icon={<CloseOutlined />}
-          aria-label="关闭线索详情"
-          onClick={onClose}
-        />
+        <DrawerCloseButton onClose={onClose} tooltip="关闭线索详情" />
       </Space>
     );
   };
 
   const renderWorkspace = () => {
     if (!lead) return null;
-    const workspaceLayout = getLeadWorkspaceLayout(Boolean(screens.xl));
+    const workspaceLayout = getLeadWorkspaceLayout(isDesktop);
 
     // 联系信息：3 个固定字段 + 4 个条件字段（按 spec 顺序）
     const contactFields: Array<{ label: string; value: React.ReactNode }> = [
@@ -278,7 +257,7 @@ export default function LeadDetailDrawer({
           gridTemplateColumns: workspaceLayout.gridTemplateColumns,
           width: workspaceLayout.width,
           minHeight: workspaceLayout.minHeight,
-          height: screens.xl ? workspaceLayout.minHeight : undefined,
+          height: isDesktop ? workspaceLayout.minHeight : undefined,
           alignItems: 'stretch',
         }}
       >
@@ -286,8 +265,8 @@ export default function LeadDetailDrawer({
           style={{
             minWidth: 0,
             maxWidth: workspaceLayout.detailMaxWidth,
-            paddingRight: screens.xl ? 40 : 0,
-            overflowY: screens.xl ? 'auto' : undefined,
+            paddingRight: isDesktop ? 40 : 0,
+            overflowY: isDesktop ? 'auto' : undefined,
           }}
         >
           <DetailSection title="联系信息">
@@ -379,20 +358,11 @@ export default function LeadDetailDrawer({
   };
 
   return (
-    <Drawer
+    <DrawerChrome
       open={Boolean(lead)}
       onClose={onClose}
       size={size}
-      // antd ResizableConfig 没有 minSize prop；按官方文档示例在回调里
-      // 用 Math.max(MIN, size) clamp。onResize 是纯通知，必须自己 setSize
-      // 才能让 drawer 视觉跟随鼠标——否则只动 currentSize 内部态，wrapper
-      // 视觉宽度停在 size 上，体感就是"拖不动"。
-      resizable={{
-        onResize: (next) => setSize(clampLeadDrawerSize(next)),
-        onResizeEnd: () => undefined,
-      }}
-      destroyOnClose
-      closable={false}
+      setSize={setSize}
       styles={{
         header: { padding: '16px 20px' },
         body: {
@@ -421,49 +391,31 @@ export default function LeadDetailDrawer({
               >
                 {lead.name || lead.companyName || `线索 #${lead.id}`}
               </Typography.Text>
-              <Tag
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  height: 24,
-                  marginInlineEnd: 0,
-                  lineHeight: '22px',
-                }}
-                color={
-                  lead.status === 'contact_invalid'
-                    ? 'error'
-                    : lead.status === 'contact_valid'
-                      ? 'success'
-                      : lead.status === 'closed'
-                        ? 'default'
-                        : 'processing'
-                }
-              >
-                {statusLabels[lead.status] ?? lead.status}
-              </Tag>
+              <DrawerStatusTag
+                status={lead.status}
+                label={statusLabels[lead.status] ?? lead.status}
+              />
             </div>
-            <Space
-              size={12}
-              split={<Divider type="vertical" />}
-              style={{ marginTop: 6 }}
-              wrap
-            >
-              <Typography.Text type="secondary">
-                {valueOrDash(lead.companyName)}
-              </Typography.Text>
-              <Typography.Text type="secondary">
-                负责人：
-                {lead.ownerUserId === null
-                  ? '线索公海'
-                  : lead.ownerUserName?.trim() || '暂未分配'}
-              </Typography.Text>
-              <Typography.Text type="secondary">
-                最近跟进：{formatDateTime(lead.lastFollowUpAt)}
-              </Typography.Text>
-              <Typography.Text type="secondary">
-                下次跟进：{formatDateTime(lead.nextFollowUpAt)}
-              </Typography.Text>
-            </Space>
+            <DrawerMetaRow
+              items={[
+                { value: valueOrDash(lead.companyName) },
+                {
+                  label: '负责人：',
+                  value:
+                    lead.ownerUserId === null
+                      ? '线索公海'
+                      : lead.ownerUserName?.trim() || '暂未分配',
+                },
+                {
+                  label: '最近跟进：',
+                  value: formatDateTime(lead.lastFollowUpAt),
+                },
+                {
+                  label: '下次跟进：',
+                  value: formatDateTime(lead.nextFollowUpAt),
+                },
+              ]}
+            />
           </div>
         ) : (
           '线索详情'
@@ -506,6 +458,6 @@ export default function LeadDetailDrawer({
           },
         ]}
       />
-    </Drawer>
+    </DrawerChrome>
   );
 }

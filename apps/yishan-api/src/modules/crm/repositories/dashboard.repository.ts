@@ -83,7 +83,7 @@ export class DashboardRepository {
       .select({
         id: crmActivity.id,
         type: crmActivity.type,
-        customerId: crmActivity.customerId,
+        customerId: crmCustomer.id,
         customerName: crmCustomer.name,
         occurredAt: crmActivity.occurredAt,
         content: crmActivity.content,
@@ -125,7 +125,7 @@ export class DashboardRepository {
       .select({
         id: crmActivity.id,
         type: crmActivity.type,
-        customerId: crmActivity.customerId,
+        customerId: crmCustomer.id,
         customerName: crmCustomer.name,
         occurredAt: crmActivity.occurredAt,
         content: crmActivity.content,

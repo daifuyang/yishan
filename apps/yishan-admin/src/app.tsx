@@ -444,7 +444,7 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
     // 线索），递归展开所有 path 叶子后追加到 rootRoute.children。helper
     // 内部按 path 去重，并与上述 existingPaths 联合去重。path-bearing 节
     // 点视为叶子（不递归下钻 routes），以保留 umi 的 layout route 嵌套语义。
-    for (const r of flattenPathlessDirectories(dynamicRoutes, existingPaths)) {
+    for (const r of flattenPathlessDirectories<any>(dynamicRoutes, existingPaths)) {
       rootRoute.children.push(r);
     }
 

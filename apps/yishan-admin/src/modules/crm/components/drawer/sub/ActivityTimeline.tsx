@@ -1,13 +1,16 @@
 /**
- * 跟进时间线（共享组件）。
+ * 跟进时间线（客户侧）。
  *
  * 用法：
  *   <ActivityTimeline items={activities} loading={loading} groupByDate />
+ *   <ActivityTimeline items={activities} dateRange={{ value, onChange }} />
  *   <ActivityTimeline items={activities} emptyText="暂无记录" />
  *
  * 设计：
  * - 单条结构：时间 · 操作人 · 跟进类型 tag · 跟进内容 · 下次跟进提示
  * - groupByDate=true 时按"今天 / 昨天 / 本年 / 更早"分组，分别用 antd Timeline 渲染。
+ * - dateRange 提供时，渲染 DrawerFilterBar 的「筛选」按钮（与线索一致），
+ *   调用方负责按 ISO 字符串过滤 items。
  * - 空状态：antd Empty + 文案；loading：Skeleton + 占位条。
  */
 
@@ -16,6 +19,8 @@ import { Empty, Skeleton, Space, Tag, Timeline, Typography } from 'antd';
 import dayjs from 'dayjs';
 import React, { useMemo } from 'react';
 import type { ActivityRow } from '@/services/crm';
+import DrawerFilterBar from '../_shared/DrawerFilterBar';
+import { groupByDate as groupItemsByDate } from '../_shared/groupByDate';
 
 const { Text } = Typography;
 
@@ -32,56 +37,6 @@ function activityTypeLabel(type: string): string {
   return ACTIVITY_TYPE_LABEL[type] ?? type;
 }
 
-interface Group {
-  key: string;
-  label: string;
-  items: ActivityRow[];
-}
-
-/** 按日期分桶：今天 / 昨天 / 本年 / 更早 */
-function groupByDateBucket(items: ActivityRow[]): Group[] {
-  const today = dayjs().startOf('day');
-  const yesterday = today.subtract(1, 'day');
-  const yearStart = today.startOf('year');
-
-  const buckets: Record<string, ActivityRow[]> = {
-    today: [],
-    yesterday: [],
-    thisYear: [],
-    earlier: [],
-  };
-  for (const it of items) {
-    const d = dayjs(it.occurredAt);
-    if (!d.isValid()) {
-      buckets.earlier.push(it);
-      continue;
-    }
-    if (d.isSame(today, 'day')) buckets.today.push(it);
-    else if (d.isSame(yesterday, 'day')) buckets.yesterday.push(it);
-    else if (d.isAfter(yearStart)) buckets.thisYear.push(it);
-    else buckets.earlier.push(it);
-  }
-
-  const groups: Group[] = [];
-  if (buckets.today.length)
-    groups.push({ key: 'today', label: '今天', items: buckets.today });
-  if (buckets.yesterday.length)
-    groups.push({
-      key: 'yesterday',
-      label: '昨天',
-      items: buckets.yesterday,
-    });
-  if (buckets.thisYear.length)
-    groups.push({
-      key: 'thisYear',
-      label: '本年',
-      items: buckets.thisYear,
-    });
-  if (buckets.earlier.length)
-    groups.push({ key: 'earlier', label: '更早', items: buckets.earlier });
-  return groups;
-}
-
 export interface ActivityTimelineProps {
   items: ActivityRow[];
   loading?: boolean;
@@ -89,6 +44,15 @@ export interface ActivityTimelineProps {
   emptyText?: string;
   /** 渲染时是否限制总数（默认不限；OverviewTab 调用时传 30）。 */
   limit?: number;
+  /**
+   * 日期范围筛选（可选）。与线索 drawer 对齐：传此 prop 后在 timeline 顶部
+   * 渲染 DrawerFilterBar 的「筛选」按钮 + 日期 Popover，调用方负责按 value
+   * 过滤 items。
+   */
+  dateRange?: {
+    value: { from?: string; to?: string } | null;
+    onChange: (next: { from?: string; to?: string } | null) => void;
+  };
 }
 
 const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
@@ -97,10 +61,17 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   groupByDate,
   emptyText,
   limit,
+  dateRange,
 }) => {
   const sliced = useMemo(
     () => (limit && items.length > limit ? items.slice(0, limit) : items),
     [items, limit],
+  );
+
+  // 复用 _shared 的按日分组（今天/昨天/YYYY年MM月DD日）当 dateRange 不传 groupByDate 时
+  const sharedGroups = useMemo(
+    () => (groupByDate ? groupItemsByDate(sliced, (it) => it.occurredAt) : []),
+    [groupByDate, sliced],
   );
 
   if (loading) {
@@ -116,11 +87,16 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 
   if (sliced.length === 0) {
     return (
-      <Empty
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-        description={emptyText ?? '暂无跟进记录'}
-        style={{ margin: '16px 0' }}
-      />
+      <div>
+        {dateRange && (
+          <DrawerFilterBar dateRange={dateRange} />
+        )}
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={emptyText ?? '暂无跟进记录'}
+          style={{ margin: '16px 0' }}
+        />
+      </div>
     );
   }
 
@@ -163,30 +139,37 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     ),
   });
 
-  if (groupByDate) {
-    const groups = groupByDateBucket(sliced);
+  if (groupByDate && sharedGroups.length > 0) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {groups.map((g) => (
-          <div key={g.key}>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#8c8c8c',
-                marginBottom: 8,
-                fontWeight: 500,
-              }}
-            >
-              {g.label}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {dateRange && <DrawerFilterBar dateRange={dateRange} />}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {sharedGroups.map((g) => (
+            <div key={g.date}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#8c8c8c',
+                  marginBottom: 8,
+                  fontWeight: 500,
+                }}
+              >
+                {g.label}
+              </div>
+              <Timeline items={g.items.map(renderItem)} />
             </div>
-            <Timeline items={g.items.map(renderItem)} />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   }
 
-  return <Timeline items={sliced.map(renderItem)} />;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {dateRange && <DrawerFilterBar dateRange={dateRange} />}
+      <Timeline items={sliced.map(renderItem)} />
+    </div>
+  );
 };
 
 export default ActivityTimeline;

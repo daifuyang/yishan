@@ -24,7 +24,7 @@ import {
   Typography,
 } from 'antd';
 import dayjs from 'dayjs';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type {
   ActivityRow,
   CustomerDetail,
@@ -32,6 +32,7 @@ import type {
   TransferLogRow,
 } from '@/services/crm';
 import { listMembers, listTransfers } from '@/services/crm';
+import { filterByDateRange } from '../_shared/groupByDate';
 import ActivityTimeline from '../sub/ActivityTimeline';
 
 const { Sider, Content } = Layout;
@@ -75,6 +76,15 @@ const MoreTab: React.FC<MoreTabProps> = ({
   const [membersLoading, setMembersLoading] = useState(false);
   const [transfers, setTransfers] = useState<TransferLogRow[] | null>(null);
   const [transfersLoading, setTransfersLoading] = useState(false);
+  // 与线索 drawer 对齐：阶段历史支持日期范围筛选。
+  const [stageDateRange, setStageDateRange] = useState<{
+    from?: string;
+    to?: string;
+  } | null>(null);
+  const filteredStageActivities = useMemo(
+    () => filterByDateRange(activities, (a) => a.occurredAt, stageDateRange),
+    [activities, stageDateRange],
+  );
 
   // 切到 team 才拉协同人
   useEffect(() => {
@@ -138,10 +148,15 @@ const MoreTab: React.FC<MoreTabProps> = ({
         {section === 'basic' && <BasicSection customer={customer} />}
         {section === 'stage' && (
           <ActivityTimeline
-            items={activities}
+            items={filteredStageActivities}
             loading={activitiesLoading}
             groupByDate
-            emptyText="暂无阶段历史（将随阶段变更自动记录）"
+            emptyText={
+              stageDateRange
+                ? '该时间范围内无阶段历史'
+                : '暂无阶段历史（将随阶段变更自动记录）'
+            }
+            dateRange={{ value: stageDateRange, onChange: setStageDateRange }}
           />
         )}
         {section === 'team' && (

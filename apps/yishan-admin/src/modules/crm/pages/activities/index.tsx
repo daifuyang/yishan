@@ -20,6 +20,11 @@ const Activities: React.FC = () => {
       .catch(() => undefined);
   }, []);
 
+  const handleRowClick = (customerId: number) => {
+    // 跨页打开客户 Drawer：跳到客户列表，URL 带上 customerId 触发 Drawer。
+    history.push(`/crm/customers?customerId=${customerId}`);
+  };
+
   return (
     <PageContainer header={{ title: '跟进记录' }}>
       {data?.recentActivities.length === 0 ? (
@@ -34,9 +39,7 @@ const Activities: React.FC = () => {
                 borderBottom: '1px solid #f0f0f0',
                 cursor: 'pointer',
               }}
-              onClick={() =>
-                history.push(`/crm/customer-detail?id=${a.customerId}`)
-              }
+              onClick={() => handleRowClick(a.customerId)}
             >
               <div>
                 <strong>{a.operatorUserName ?? `用户`}</strong>

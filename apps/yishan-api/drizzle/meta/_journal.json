@@ -15,6 +15,13 @@
       "when": 1788794946759,
       "tag": "0001_lead_follow_up_status",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1788881192896,
+      "tag": "0002_init",
+      "breakpoints": true
     }
   ]
 }

@@ -28,7 +28,7 @@ import {
   type LeadFormValues,
   validateMobile,
 } from './leadFormFields';
-import { LEAD_DIALOG_Z_INDEX } from '../leadWorkspaceLayout';
+import { CRM_DIALOG_Z_INDEX } from '../../../components/drawer/_shared/crmDialogZIndex';
 
 const MOBILE_RULE = [{ validator: validateMobile, message: '请输入正确的手机号' }]
 
@@ -201,7 +201,7 @@ export default function LeadForm({
       modalProps={{
         // 抽屉 z-index 默认 1100；这里显式提到 1200，确保 Dialog 永远在抽屉之上。
         // 多个 Dialog 同时打开时，DOM 顺序保证后开的自然在更上层（"一层一层"）。
-        zIndex: LEAD_DIALOG_Z_INDEX,
+        zIndex: CRM_DIALOG_Z_INDEX,
         styles: {
           body: {
             maxHeight: 'min(720px, calc(100vh - 64px))',

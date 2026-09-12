@@ -3,7 +3,7 @@ import { Alert, message } from 'antd';
 import { useState } from 'react';
 import { reactivateLead } from '@/services/crm';
 import type { LeadRow } from '@/services/crm';
-import { LEAD_DIALOG_Z_INDEX } from './leadWorkspaceLayout';
+import { CRM_DIALOG_Z_INDEX } from '../../components/drawer/_shared/crmDialogZIndex';
 
 interface ReactivateLeadDialogProps {
   open: boolean;
@@ -30,7 +30,7 @@ export default function ReactivateLeadDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="重新激活线索"
-      modalProps={{ destroyOnHidden: true, okButtonProps: { loading: submitting }, zIndex: LEAD_DIALOG_Z_INDEX }}
+      modalProps={{ destroyOnHidden: true, okButtonProps: { loading: submitting }, zIndex: CRM_DIALOG_Z_INDEX }}
       initialValues={{ reason: '' }}
       onFinish={async (values) => {
         if (!lead) return false

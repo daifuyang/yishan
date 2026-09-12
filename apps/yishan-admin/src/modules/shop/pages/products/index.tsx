@@ -20,7 +20,7 @@ import {
   ProTable,
 } from '@ant-design/pro-components'
 import { Button, message, Popconfirm, Space, Tag } from 'antd'
-import { FormEditor } from 'yishan-tiptap'
+import { FormEditor } from '@zerocmf/yishan-tiptap'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   deleteShopV1ProductsId,

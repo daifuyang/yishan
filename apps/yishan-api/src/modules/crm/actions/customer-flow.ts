@@ -74,6 +74,15 @@ export class CustomerFlowService {
           '客户当前不在公海，无法认领',
         )
       }
+      // Phase 1：认领成功后清空入池时间（不再是公海客户）
+      await CustomerRepository.update(
+        customerId,
+        {
+          poolEnteredAt: null,
+          updaterId: currentUser.id,
+        },
+        tx,
+      )
       const updated = await CustomerRepository.findById(customerId, tx)
       if (!updated) {
         throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在')
@@ -127,6 +136,8 @@ export class CustomerFlowService {
           ownerUserId: null,
           ownerDepartmentId: null,
           poolStatus: 'public',
+          // Phase 1：进入公海 → 入池时间刷新
+          poolEnteredAt: new Date(),
           updaterId: currentUser.id,
         },
         tx,
@@ -181,6 +192,8 @@ export class CustomerFlowService {
           ownerUserId: targetUserId,
           ownerDepartmentId: null, // 第一版：转交时不强制同步部门；后续可加 target 用户的 deptIds[0]
           poolStatus: 'owned',
+          // Phase 1：转交不属于"进入公海"，清空入池时间
+          poolEnteredAt: null,
           updaterId: currentUser.id,
         },
         tx,

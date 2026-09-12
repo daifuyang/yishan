@@ -1,6 +1,10 @@
 {
-  "name": "yishan-tiptap",
-  "version": "1.0.0",
+  "name": "@zerocmf/yishan-tiptap",
+  "version": "0.0.1-dev.0",
+  "publishConfig": {
+    "access": "public",
+    "tag": "dev"
+  },
   "description": "A React component library with TipTap editor",
   "type": "module",
   "main": "dist/index.cjs",
@@ -19,12 +23,16 @@
     "*.scss"
   ],
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
-    "build": "rollup -c",
+    "build": "node ./scripts/clean-dist.mjs && rollup -c",
     "dev": "rollup -c -w",
-    "clean": "rm -rf dist"
+    "clean": "node ./scripts/clean-dist.mjs",
+    "verify:package": "node ./scripts/verify-package.mjs",
+    "prepack": "pnpm run build && pnpm run verify:package"
   },
   "peerDependencies": {
     "react": ">=16.8.0",

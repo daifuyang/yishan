@@ -48,6 +48,10 @@ export interface CustomerRow {
   sourceId: number | null
   level: string | null
   industry: string | null
+  statusCode: string | null
+  sourceCode: string | null
+  levelCode: string | null
+  industryCode: string | null
   phone: string | null
   website: string | null
   province: string | null
@@ -56,6 +60,12 @@ export interface CustomerRow {
   ownerUserId: number | null
   ownerDepartmentId: number | null
   poolStatus: string
+  /**
+   * Phase 1：客户进入公海的时刻。
+   * 公海客户的"入池时长" = now - poolEnteredAt；公海排序默认按此列 ASC。
+   * 责任人认领/转出时刷新。
+   */
+  poolEnteredAt: Date | null
   lastFollowUpAt: Date | null
   nextFollowUpAt: Date | null
   remark: string | null
@@ -101,6 +111,10 @@ export interface UpdateCustomerInput {
   sourceId?: number | null
   level?: string | null
   industry?: string | null
+  statusCode?: string | null
+  sourceCode?: string | null
+  levelCode?: string | null
+  industryCode?: string | null
   phone?: string | null
   website?: string | null
   province?: string | null
@@ -109,6 +123,7 @@ export interface UpdateCustomerInput {
   ownerUserId?: number | null
   ownerDepartmentId?: number | null
   poolStatus?: CustomerPoolStatus
+  poolEnteredAt?: Date | null
   lastFollowUpAt?: Date | null
   nextFollowUpAt?: Date | null
   remark?: string | null
@@ -192,6 +207,10 @@ const customerPublicColumns = {
   sourceId: crmCustomer.sourceId,
   level: crmCustomer.level,
   industry: crmCustomer.industry,
+  statusCode: crmCustomer.statusCode,
+  sourceCode: crmCustomer.sourceCode,
+  levelCode: crmCustomer.levelCode,
+  industryCode: crmCustomer.industryCode,
   phone: crmCustomer.phone,
   website: crmCustomer.website,
   province: crmCustomer.province,
@@ -200,6 +219,7 @@ const customerPublicColumns = {
   ownerUserId: crmCustomer.ownerUserId,
   ownerDepartmentId: crmCustomer.ownerDepartmentId,
   poolStatus: crmCustomer.poolStatus,
+  poolEnteredAt: crmCustomer.poolEnteredAt,
   lastFollowUpAt: crmCustomer.lastFollowUpAt,
   nextFollowUpAt: crmCustomer.nextFollowUpAt,
   remark: crmCustomer.remark,
@@ -507,6 +527,10 @@ export class CustomerRepository {
     if (input.sourceId !== undefined) patch.sourceId = input.sourceId
     if (input.level !== undefined) patch.level = input.level
     if (input.industry !== undefined) patch.industry = input.industry
+    if (input.statusCode !== undefined) patch.statusCode = input.statusCode
+    if (input.sourceCode !== undefined) patch.sourceCode = input.sourceCode
+    if (input.levelCode !== undefined) patch.levelCode = input.levelCode
+    if (input.industryCode !== undefined) patch.industryCode = input.industryCode
     if (input.phone !== undefined) patch.phone = input.phone
     if (input.website !== undefined) patch.website = input.website
     if (input.province !== undefined) patch.province = input.province
@@ -515,6 +539,7 @@ export class CustomerRepository {
     if (input.ownerUserId !== undefined) patch.ownerUserId = input.ownerUserId
     if (input.ownerDepartmentId !== undefined) patch.ownerDepartmentId = input.ownerDepartmentId
     if (input.poolStatus !== undefined) patch.poolStatus = input.poolStatus
+    if (input.poolEnteredAt !== undefined) patch.poolEnteredAt = input.poolEnteredAt
     if (input.lastFollowUpAt !== undefined) patch.lastFollowUpAt = input.lastFollowUpAt
     if (input.nextFollowUpAt !== undefined) patch.nextFollowUpAt = input.nextFollowUpAt
     if (input.remark !== undefined) patch.remark = input.remark

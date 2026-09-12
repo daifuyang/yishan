@@ -170,6 +170,33 @@ export interface ActivityRow {
   updatedAt: string
 }
 
+/**
+ * Phase 1 polymorphic：跟进响应包含 entityType/entityId。
+ * Phase 4 拜访：plannedAt/location/participants/visitResultCode/summary。
+ */
+export interface ActivityResp {
+  id: number
+  /** @deprecated 兼容旧字段；新代码用 entityType/entityId */
+  customerId: number | null
+  contactId: number | null
+  entityType: 'lead' | 'customer' | 'opportunity' | 'contract' | null
+  entityId: number | null
+  entityRefType: string | null
+  type: string
+  content: string
+  occurredAt: string
+  nextFollowUpAt: string | null
+  plannedAt: string | null
+  location: string | null
+  participants: string | null
+  visitResultCode: string | null
+  summary: string | null
+  operatorUserId: number
+  operatorUserName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ActivityCreateInput {
   contactId?: number | null
   type: ActivityType
@@ -514,4 +541,124 @@ export function maskPhone(phone: string | null | undefined): string {
   if (!phone) return '—'
   if (phone.length <= 7) return phone
   return `${phone.slice(0, 3)}****${phone.slice(-4)}`
+}
+
+/* --------------------------------------------------------------------------
+ * sys_enum 枚举中心
+ *
+ * URL: /api/v1/admin/enums/*（core 路由，自动挂在 admin 下）
+ *
+ * - listEnums / createEnum / updateEnum / deleteEnum  管理后台列表 CRUD
+ * - listEnumByType  启用项的精简版（dropdown 用，60s 缓存）
+ * - listEnumByTypes 批量拉取（首屏 SSR）
+ * ------------------------------------------------------------------------ */
+
+export interface EnumItem {
+  id: number
+  type: string
+  code: string
+  name: string
+  sort: number
+  enabled: number
+  remark: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface EnumInput {
+  type: string
+  code: string
+  name: string
+  sort?: number
+  enabled?: number
+  remark?: string | null
+}
+
+export interface EnumUpdateInput {
+  name?: string
+  sort?: number
+  enabled?: number
+  remark?: string | null
+}
+
+export interface EnumCodeNameItem {
+  code: string
+  name: string
+  sort: number
+}
+
+export async function listEnums(query: PageQuery & { type?: string; keyword?: string }): Promise<{
+  data: EnumItem[]
+  total: number
+}> {
+  const r = await request<ApiResp<EnumItem[]>>('/api/v1/admin/enums', {
+    method: 'GET',
+    params: query as any,
+  })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function listEnumTypes(): Promise<string[]> {
+  const r = await request<ApiResp<string[]>>('/api/v1/admin/enums/types', { method: 'GET' })
+  return unwrap(r)
+}
+
+export async function listEnumByType(type: string): Promise<EnumCodeNameItem[]> {
+  const r = await request<ApiResp<{ type: string; items: EnumCodeNameItem[] }>>(
+    '/api/v1/admin/enums/by-type',
+    { method: 'GET', params: { type } },
+  )
+  return unwrap(r).items
+}
+
+export async function listEnumByTypes(types: string[]): Promise<Record<string, EnumCodeNameItem[]>> {
+  if (types.length === 0) return {}
+  const r = await request<ApiResp<{ items: Record<string, EnumCodeNameItem[]> }>>(
+    '/api/v1/admin/enums/by-types',
+    { method: 'GET', params: { types: types.join(',') } },
+  )
+  return unwrap(r).items
+}
+
+export async function createEnum(input: EnumInput): Promise<EnumItem> {
+  const r = await request<ApiResp<EnumItem>>('/api/v1/admin/enums', {
+    method: 'POST',
+    data: input,
+  })
+  return unwrap(r)
+}
+
+export async function updateEnum(id: number, input: EnumUpdateInput): Promise<EnumItem> {
+  const r = await request<ApiResp<EnumItem>>(`/api/v1/admin/enums/${id}`, {
+    method: 'PUT',
+    data: input,
+  })
+  return unwrap(r)
+}
+
+export async function deleteEnum(id: number): Promise<{ id: number; affected: number }> {
+  const r = await request<ApiResp<{ id: number; affected: number }>>(`/api/v1/admin/enums/${id}`, {
+    method: 'DELETE',
+  })
+  return unwrap(r)
+}
+
+/* --------------------------------------------------------------------------
+ * 拜访（crm_activity.type='visit'）独立列表
+ *
+ * URL: /api/crm/v1/visits
+ * ------------------------------------------------------------------------ */
+
+export async function listVisits(query: {
+  customerId?: number
+  plannedFrom?: string
+  plannedTo?: string
+  page?: number
+  pageSize?: number
+}): Promise<{ data: ActivityResp[]; total: number }> {
+  const r = await request<ApiResp<ActivityResp[]>>('/api/crm/v1/visits', {
+    method: 'GET',
+    params: query as any,
+  })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
 }

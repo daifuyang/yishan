@@ -1,5 +1,5 @@
 import type { Route } from "./+types/home";
-import { FormEditor } from "yishan-tiptap";
+import { FormEditor } from "@zerocmf/yishan-tiptap";
 
 export function meta({}: Route.MetaArgs) {
   return [

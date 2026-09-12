@@ -3,7 +3,7 @@ import { message } from 'antd';
 import { useState } from 'react';
 import { disqualifyLead } from '@/services/crm';
 import type { DisqualifyCode, LeadRow } from '@/services/crm';
-import { LEAD_DIALOG_Z_INDEX } from './leadWorkspaceLayout';
+import { CRM_DIALOG_Z_INDEX } from '../../components/drawer/_shared/crmDialogZIndex';
 
 interface DisqualifyLeadDialogProps {
   open: boolean;
@@ -40,7 +40,7 @@ export default function DisqualifyLeadDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="作废线索"
-      modalProps={{ destroyOnHidden: true, okButtonProps: { loading: submitting, danger: true }, zIndex: LEAD_DIALOG_Z_INDEX }}
+      modalProps={{ destroyOnHidden: true, okButtonProps: { loading: submitting, danger: true }, zIndex: CRM_DIALOG_Z_INDEX }}
       initialValues={{ code: 'other' as DisqualifyCode, reason: '' }}
       onFinish={async (values) => {
         if (!lead) return false

@@ -136,6 +136,30 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 - For CN-locale pages, format with `dayjs(value).format('YYYY-MM-DD HH:mm:ss')`. dayjs defaults to the runtime's local timezone, which matches the user's expectation in CN deployments. Avoid `toLocaleString()` (browser default) and the raw `Intl.DateTimeFormat` boilerplate.
 - `valueType: 'dateTime'` columns don't need any of the above — let ProTable render.
 
+### CRM drawer 共享原子
+
+`apps/yishan-admin/src/modules/crm/components/drawer/_shared/` 下放线索 / 客户两个 drawer
+的共享 UI 原子。新建 drawer 或扩展现有 drawer 时**先查这里**，避免重写：
+
+| 原子 | 职责 |
+|---|---|
+| `DrawerChrome.tsx` | antd `<Drawer>` 统一外壳（resizable + destroyOnClose + closable=false） |
+| `useResizableDrawer.ts` | size state hook + clamp（`MIN_DRAWER_SIZE=1100`） |
+| `DrawerCloseButton.tsx` | 右上角 × text icon button |
+| `DrawerNewWindowButton.tsx` | 右上角 ↗ 新窗口 button |
+| `DrawerMetaRow.tsx` | 标题下分隔线 join 的二级元数据行 |
+| `DrawerStatusTag.tsx` | status → antd Tag color 映射 |
+| `DrawerFilterBar.tsx` | filter 按钮组 + 可选 DateRange Popover |
+| `DrawerDeletePopconfirm.tsx` | 删除 Popconfirm 包装（线索 / 客户共用） |
+| `groupByDate.ts` | 按日期分组的纯函数（今天 / 昨天 / YYYY年MM月DD日） |
+| `crmDialogZIndex.ts` | `CRM_DIALOG_Z_INDEX=1200`（弹窗在抽屉里的统一 z 基准） |
+
+调用方保留各自的视觉差异（线索 vs 客户的 Activity Timeline、tag 块、metric 卡），
+仅复用以上原子保证交互模式一致。
+
+跨页打开客户 Drawer：navigate 到 `/crm/customers?customerId=N`，`useCustomerDrawer` 会
+自动打开。新建客户 / 编辑全屏模式尚未实现，Phase 3 接入 `customer-edit` 路由后接入。
+
 ## Tracking ongoing work
 
 - `TODO.md` is the index of `TODO-*.md` files at the repo root for known follow-ups (e.g. `TODO-admin-routes-factory.md`, `TODO-attachment-select-split.md`, `TODO-architecture-doc-sync.md`).
