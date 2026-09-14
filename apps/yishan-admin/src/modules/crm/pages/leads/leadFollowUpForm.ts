@@ -1,6 +1,11 @@
 import dayjs, { type Dayjs } from 'dayjs';
 import type { ActivityType, LeadActivityCreateInput, LeadStatus } from '@/services/crm';
 
+export const getLeadFollowUpInitialValues = ({ status }: { status?: LeadStatus | null }) => ({
+  type: 'phone' as const,
+  followUpStatus: status ?? 'pending',
+});
+
 /**
  * 写跟进表单的字段值。
  *

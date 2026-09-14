@@ -1,7 +1,17 @@
 import dayjs from 'dayjs';
-import { toLeadActivityInput } from '../src/modules/crm/pages/leads/leadFollowUpForm';
+import {
+  getLeadFollowUpInitialValues,
+  toLeadActivityInput,
+} from '../src/modules/crm/pages/leads/leadFollowUpForm';
 
 describe('写跟进弹窗表单', () => {
+  it('打开时使用最新线索状态作为默认跟进状态', () => {
+    expect(getLeadFollowUpInitialValues({ status: 'contact_valid' })).toEqual({
+      type: 'phone',
+      followUpStatus: 'contact_valid',
+    });
+  });
+
   it('提交时整理内容，并把选择的跟进状态传给接口', () => {
     expect(
       toLeadActivityInput({
