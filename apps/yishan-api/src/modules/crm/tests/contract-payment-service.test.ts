@@ -8,6 +8,7 @@ import { PaymentRepository } from '../repositories/payment.repository.js'
 import { QuotationRepository } from '../repositories/quotation.repository.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
 import { CustomerService } from '../services/customer.service.js'
+import { CustomerLifecycleService } from '../services/customer-lifecycle.service.js'
 import { CrmErrorCode } from '../schemas/error-codes.js'
 import { getTableConfig } from 'drizzle-orm/mysql-core'
 import { crmContract } from '../db/schema.js'
@@ -21,6 +22,32 @@ beforeEach(() => {
 })
 
 describe('CRM contract and payment lifecycle', () => {
+  it('recalculates customer lifecycle after updating a contract', async () => {
+    const contract = { id: 31, customerId: 11, ownerUserId: 7, ownerDepartmentId: 10, amountCents: 100_000, status: 'draft' }
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
+    vi.spyOn(ContractRepository, 'findById').mockResolvedValue(contract as any)
+    vi.spyOn(ContractRepository, 'update').mockResolvedValue({ ...contract, status: 'completed' } as any)
+    const recalculate = vi.spyOn(CustomerLifecycleService, 'recalculate').mockResolvedValue('customer')
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+
+    await new ContractService().update(31, { status: 'completed', updaterId: 7 } as any, salesperson)
+
+    expect(recalculate).toHaveBeenCalledWith(11, 7, expect.anything())
+  })
+
+  it('recalculates customer lifecycle after removing a contract', async () => {
+    const contract = { id: 31, customerId: 11, ownerUserId: 7, ownerDepartmentId: 10, amountCents: 100_000, status: 'draft' }
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
+    vi.spyOn(ContractRepository, 'findById').mockResolvedValue(contract as any)
+    vi.spyOn(ContractRepository, 'softDelete').mockResolvedValue(1)
+    const recalculate = vi.spyOn(CustomerLifecycleService, 'recalculate').mockResolvedValue('potential')
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+
+    await new ContractService().remove(31, salesperson)
+
+    expect(recalculate).toHaveBeenCalledWith(11, 7, expect.anything())
+  })
+
   it('keeps quotation linkage unique at the schema boundary, including soft-deleted contracts', () => {
     const config = getTableConfig(crmContract)
     expect(config.indexes.some((index) => index.config.name === 'uniq_crm_contract_quotation_id')).toBe(true)

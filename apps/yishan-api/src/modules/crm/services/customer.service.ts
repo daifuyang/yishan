@@ -16,6 +16,7 @@ import {
   type CustomerMemberWithUser,
 } from '../repositories/member.repository.js'
 import { isCustomerStatusCode, type CustomerStatusCode } from '../domain/statuses.js'
+import { UserRepository } from '@/core/repositories/user.repository.js'
 
 /**
  * CustomerService —— 客户业务编排。
@@ -215,6 +216,28 @@ export class CustomerService {
     //    crm_customer.owner_user_id 只是 INT，依赖 service 上层 / 数据约束做兜底。
 
     // 4. 写入
+    if (input.ownerUserId !== undefined && input.ownerUserId !== null) {
+      const owner = await UserRepository.findById(input.ownerUserId, this.deps.db)
+      if (!owner || owner.status !== 1) {
+        throw new BusinessError(
+          CrmErrorCode.CRM_CUSTOMER_TRANSFER_TARGET_INVALID,
+          '负责人用户无效或已停用',
+        )
+      }
+      const roleCodes = currentUser.roleCodes ?? []
+      const isGlobalAdmin = roleCodes.includes('super_admin') || roleCodes.includes('admin')
+      const isSelf = owner.id === currentUser.id
+      const isDepartmentOwner =
+        roleCodes.includes('sales_lead') &&
+        (currentUser.deptIds ?? []).some((deptId) => owner.deptIds.includes(deptId))
+      if (!isGlobalAdmin && !isSelf && !isDepartmentOwner) {
+        throw new BusinessError(
+          CrmErrorCode.CRM_CUSTOMER_TRANSFER_FORBIDDEN,
+          '无权将客户分配给该负责人',
+        )
+      }
+    }
+
     const createInput: CreateCustomerInput = {
       name: input.name,
       type,

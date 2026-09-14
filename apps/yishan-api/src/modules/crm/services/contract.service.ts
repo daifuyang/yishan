@@ -47,13 +47,26 @@ export class ContractService {
     })
   }
   async update(id: number, input: UpdateContractInput, currentUser: DataScopeUser): Promise<ContractRow> {
-    await this.getAccessible(id, currentUser)
+    const existing = await this.getAccessible(id, currentUser)
     if (input.status !== undefined && !isContractStatusCode(input.status)) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_STATUS_INVALID, '合同状态无效')
-    const updated = await ContractRepository.update(id, { ...input, updaterId: currentUser.id })
+    const updated = await dbManager.transaction(async (tx) => {
+      const row = await ContractRepository.update(id, { ...input, updaterId: currentUser.id }, tx)
+      if (!row) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, 'contract not found')
+      await CustomerLifecycleService.recalculate(existing.customerId, currentUser.id, tx)
+      return row
+    })
     if (!updated) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, '合同不存在')
     return updated
   }
-  async remove(id: number, currentUser: DataScopeUser): Promise<void> { await this.getAccessible(id, currentUser); if (await ContractRepository.softDelete(id) === 0) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, '合同不存在') }
+  async remove(id: number, currentUser: DataScopeUser): Promise<void> {
+    const existing = await this.getAccessible(id, currentUser)
+    await dbManager.transaction(async (tx) => {
+      if (await ContractRepository.softDelete(id, tx) === 0) {
+        throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, '合同不存在')
+      }
+      await CustomerLifecycleService.recalculate(existing.customerId, currentUser.id, tx)
+    })
+  }
   private async getAccessible(id: number, currentUser: DataScopeUser): Promise<ContractRow> { const contract = await ContractRepository.findById(id); if (!contract) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, '合同不存在'); await new CustomerService().detail(contract.customerId, currentUser); return contract }
   private async createWithUniqueNo(input: Omit<CreateContractInput, 'contractNo'>, tx: any): Promise<{ id: number }> { const baseNo = await this.nextNo(tx); for (let attempt = 0; attempt < 3; attempt += 1) { try { return await ContractRepository.create({ ...input, contractNo: attempt === 0 ? baseNo : `${baseNo}-${attempt}` }, tx) } catch (error: any) { if (error?.code !== 'ER_DUP_ENTRY' || attempt === 2) throw error } } throw new Error('unreachable') }
   private async nextNo(tx: any): Promise<string> { const now = new Date(); const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`; const prefix = `CT-${day}-`; return `${prefix}${String((await ContractRepository.countTodayByNoPrefix(prefix, tx)) + 1).padStart(3, '0')}` }

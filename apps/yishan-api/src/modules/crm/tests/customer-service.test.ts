@@ -10,6 +10,7 @@ import { CustomerService } from '../services/customer.service.js'
 import { CustomerFlowService } from '../actions/customer-flow.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
 import { TransferRepository } from '../repositories/transfer.repository.js'
+import { UserRepository } from '@/core/repositories/user.repository.js'
 import { dbManager } from '@/db'
 import { CrmErrorCode } from '../schemas/error-codes.js'
 
@@ -67,6 +68,45 @@ afterEach(() => {
 })
 
 describe('CustomerService.create', () => {
+  it('rejects a missing or disabled owner user before writing the customer', async () => {
+    vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
+    vi.spyOn(UserRepository, 'findById').mockResolvedValue(null)
+    const createSpy = vi.spyOn(CustomerRepository, 'create')
+
+    await expect(
+      new CustomerService().create({
+        input: { name: 'Invalid owner', type: 'enterprise', ownerUserId: 404 },
+        currentUser: superAdmin,
+      }),
+    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_CUSTOMER_TRANSFER_TARGET_INVALID })
+    expect(createSpy).not.toHaveBeenCalled()
+  })
+
+  it('limits ordinary sales to assigning themselves as owner', async () => {
+    vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
+    vi.spyOn(UserRepository, 'findById').mockResolvedValue({ id: 8, status: 1, deptIds: [10] } as any)
+
+    await expect(
+      new CustomerService().create({
+        input: { name: 'Other owner', type: 'enterprise', ownerUserId: 8 },
+        currentUser: normalSales,
+      }),
+    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_CUSTOMER_TRANSFER_FORBIDDEN })
+  })
+
+  it('allows a sales lead to assign an enabled user in their department', async () => {
+    vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
+    vi.spyOn(UserRepository, 'findById').mockResolvedValue({ id: 8, status: 1, deptIds: [10] } as any)
+    vi.spyOn(CustomerRepository, 'create').mockResolvedValue({ ...baseCustomer, id: 101, ownerUserId: 8, poolStatus: 'owned' })
+
+    await expect(
+      new CustomerService().create({
+        input: { name: 'Department owner', type: 'enterprise', ownerUserId: 8 },
+        currentUser: { id: 7, roleCodes: ['sales_lead'], deptIds: [10] },
+      }),
+    ).resolves.toMatchObject({ customer: { ownerUserId: 8, poolStatus: 'owned' } })
+  })
+
   it('重复企业客户 → CRM_CUSTOMER_DUPLICATE + details', async () => {
     vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(baseCustomer)
     vi.spyOn(CustomerRepository, 'findOwnerNamesByUserIds').mockResolvedValue(new Map())
@@ -109,6 +149,7 @@ describe('CustomerService.create', () => {
 
   it('新企业客户带 ownerUserId → poolStatus=owned', async () => {
     vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
+    vi.spyOn(UserRepository, 'findById').mockResolvedValue({ id: 7, status: 1, deptIds: [10] } as any)
     const createSpy = vi
       .spyOn(CustomerRepository, 'create')
       .mockResolvedValue({ ...baseCustomer, id: 100 })
