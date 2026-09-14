@@ -5,7 +5,7 @@ import {
   ProFormSelect,
   ProFormTextArea,
 } from '@ant-design/pro-components';
-import { Button, Divider, message, Spin, Timeline, Typography, type FormInstance } from 'antd';
+import { Button, Divider, message, Spin, Timeline, Typography } from 'antd';
 import dayjs from 'dayjs';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { LeadActivityRow, LeadRow, LeadStatus } from '@/services/crm';
@@ -17,7 +17,6 @@ import { groupByDate } from '../../components/drawer/_shared/groupByDate';
 import {
   type LeadFollowUpFormValues,
   toLeadActivityInput,
-  getLeadFollowUpInitialValues,
 } from './leadFollowUpForm';
 import { buildLeadTimeline, type LeadTimelineCategory } from './leadTimeline';
 
@@ -63,16 +62,6 @@ export default function LeadActivityRail({
   );
   const [followUpModalOpen, setFollowUpModalOpen] = useState(false);
   const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
-  const followUpFormRef = React.useRef<FormInstance<LeadFollowUpFormValues> | undefined>(undefined);
-
-  useEffect(() => {
-    if (followUpModalOpen) {
-      followUpFormRef.current?.setFieldValue(
-        'followUpStatus',
-        getLeadFollowUpInitialValues(lead).followUpStatus,
-      );
-    }
-  }, [followUpModalOpen, lead.id, lead.status]);
 
   useEffect(() => {
     let active = true;
@@ -136,11 +125,13 @@ export default function LeadActivityRail({
       </div>
       {canWriteFollowUp && (
         <ModalForm<LeadFollowUpFormValues>
-          formRef={followUpFormRef}
           open={followUpModalOpen}
           onOpenChange={setFollowUpModalOpen}
           title="写跟进"
-          initialValues={getLeadFollowUpInitialValues(lead)}
+          initialValues={{
+            type: 'phone',
+            followUpStatus: lead.status ?? 'pending',
+          }}
           modalProps={{
             destroyOnHidden: true,
             okButtonProps: { loading: followUpSubmitting },
