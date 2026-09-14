@@ -13,6 +13,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import {
   ModalForm,
+  ProForm,
   ProFormDateTimePicker,
   ProFormSelect,
   ProFormTextArea,
@@ -38,12 +39,15 @@ import { formatDateTime } from '@/utils/formatDate';
 import DrawerFilterBar from '../_shared/DrawerFilterBar';
 import { CRM_DIALOG_Z_INDEX } from '../_shared/crmDialogZIndex';
 import ActivityTimeline from './ActivityTimeline';
+import { AttachmentSelect } from '@/components/AttachmentSelect';
 
 export interface CustomerFollowUpFormValues {
   type: ActivityType;
   content: string;
   statusId?: number;
   nextFollowUpAt?: Dayjs | string | Date | null;
+  attachmentIds?: Array<number | string>;
+  metadata?: Record<string, unknown> | null;
 }
 
 type ActivityFilter = 'all' | 'followup' | 'system';
@@ -85,6 +89,10 @@ function toActivityInput(values: CustomerFollowUpFormValues) {
     type: values.type,
     content: values.content.trim(),
     nextFollowUpAt: next ? dayjs(next).toISOString() : null,
+    attachmentIds: (values.attachmentIds ?? [])
+      .map(Number)
+      .filter((id) => Number.isInteger(id) && id > 0),
+    metadata: values.metadata ?? null,
   };
 }
 
@@ -278,6 +286,9 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
             placeholder="请选择下次跟进时间"
             width="md"
           />
+          <ProForm.Item name="attachmentIds" label="附件">
+            <AttachmentSelect valueType="id" multiple maxCount={10} />
+          </ProForm.Item>
         </ModalForm>
       )}
 

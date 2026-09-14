@@ -8,6 +8,7 @@
 import {
   DrawerForm,
   PageContainer,
+  ProForm,
   ProFormDateTimePicker,
   ProFormSelect,
   ProFormText,
@@ -46,6 +47,7 @@ import {
   updateContact,
   updateCustomer,
 } from '@/services/crm';
+import { AttachmentSelect } from '@/components/AttachmentSelect';
 
 const ACTIVITY_OPTIONS = [
   { value: 'phone', label: '电话' },
@@ -551,6 +553,9 @@ const CustomerDetailPage: React.FC = () => {
           label="下次跟进时间"
           fieldProps={{ style: { width: '100%' } }}
         />
+        <ProForm.Item name="attachmentIds" label="附件">
+          <AttachmentSelect valueType="id" multiple maxCount={10} />
+        </ProForm.Item>
       </DrawerForm>
 
       {/* 新建/编辑联系人 Drawer */}

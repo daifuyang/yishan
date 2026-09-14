@@ -162,6 +162,8 @@ export class ActivityService {
           content: input.content,
           occurredAt: typeof input.occurredAt === 'string' ? new Date(input.occurredAt) : input.occurredAt ?? new Date(),
           nextFollowUpAt: typeof input.nextFollowUpAt === 'string' ? new Date(input.nextFollowUpAt) : input.nextFollowUpAt ?? null,
+          attachmentIds: input.attachmentIds ?? null,
+          metadata: input.metadata ?? null,
           plannedAt: input.plannedAt ?? null,
           location: input.location ?? null,
           participants: input.participants ?? null,
@@ -204,6 +206,8 @@ export class ActivityService {
         ...input,
         occurredAt: typeof input.occurredAt === 'string' ? new Date(input.occurredAt) : input.occurredAt,
         nextFollowUpAt: typeof input.nextFollowUpAt === 'string' ? new Date(input.nextFollowUpAt) : input.nextFollowUpAt,
+        attachmentIds: input.attachmentIds,
+        metadata: input.metadata,
       }, tx)
       if (!updated) {
         throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_NOT_FOUND, '跟进记录不存在')

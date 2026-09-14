@@ -53,6 +53,54 @@ afterEach(() => {
 })
 
 describe('ActivityService.create', () => {
+  it('persists follow-up attachment ids and extensible metadata', async () => {
+    vi.spyOn(CustomerRepository, 'findById').mockResolvedValue(ownedCustomer)
+    const createSpy = vi.spyOn(ActivityRepository, 'create').mockResolvedValue({
+      id: 101,
+      customerId: 1,
+      contactId: null,
+      entityType: 'customer',
+      entityId: 1,
+      entityRefType: 'customer',
+      type: 'phone',
+      content: 'with attachment',
+      occurredAt: new Date(),
+      nextFollowUpAt: null,
+      plannedAt: null,
+      location: null,
+      participants: null,
+      visitResultCode: null,
+      summary: null,
+      attachmentIds: [42, 43],
+      metadata: { source: 'drawer' },
+      operatorUserId: 7,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    vi.spyOn(ActivityRepository, 'computeFollowUpState').mockResolvedValue({
+      lastFollowUpAt: new Date(),
+      nextFollowUpAt: null,
+    })
+    vi.spyOn(CustomerRepository, 'update').mockResolvedValue(ownedCustomer)
+    vi.spyOn(ActivityRepository, 'listByCustomerId').mockResolvedValue([])
+
+    await new ActivityService().create(
+      1,
+      {
+        type: 'phone',
+        content: 'with attachment',
+        attachmentIds: [42, 43],
+        metadata: { source: 'drawer' },
+      },
+      currentUser,
+    )
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ attachmentIds: [42, 43], metadata: { source: 'drawer' } }),
+      expect.anything(),
+    )
+  })
+
   it('客户属于当前用户 → 写跟进 + 更新客户跟进时间（同一事务）', async () => {
     vi.spyOn(CustomerRepository, 'findById').mockResolvedValue(ownedCustomer)
     vi.spyOn(ActivityRepository, 'create').mockResolvedValue({

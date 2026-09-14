@@ -51,6 +51,8 @@ export const ActivityRespSchema = Type.Object({
   content: Type.String(),
   occurredAt: Type.String({ format: 'date-time' }),
   nextFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+  attachmentIds: Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()]),
+  metadata: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
   /** Phase 4 拜访专用字段 */
   plannedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
   location: Type.Union([Type.String(), Type.Null()]),
@@ -75,6 +77,8 @@ export const ActivityCreateReqSchema = Type.Object({
   content: Type.String({ minLength: 1, maxLength: 2000 }),
   occurredAt: Type.Optional(Type.String({ format: 'date-time' })),
   nextFollowUpAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
+  attachmentIds: Type.Optional(Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()])),
+  metadata: Type.Optional(Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()])),
   /** Phase 4 拜访：计划拜访时间 */
   plannedAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
   location: Type.Optional(Type.Union([Type.String({ maxLength: 255 }), Type.Null()])),
@@ -97,6 +101,8 @@ export const ActivityUpdateReqSchema = Type.Partial(
     content: Type.String({ minLength: 1, maxLength: 2000 }),
     occurredAt: Type.String({ format: 'date-time' }),
     nextFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+    attachmentIds: Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()]),
+    metadata: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
     plannedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
     location: Type.Union([Type.String({ maxLength: 255 }), Type.Null()]),
     participants: Type.Union([Type.String({ maxLength: 500 }), Type.Null()]),

@@ -32,6 +32,8 @@ export interface ActivityRow {
   content: string
   occurredAt: Date
   nextFollowUpAt: Date | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
   plannedAt: Date | null
   location: string | null
   participants: string | null
@@ -57,6 +59,8 @@ export interface CreateActivityInput {
   content: string
   occurredAt?: Date
   nextFollowUpAt?: Date | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
   plannedAt?: Date | null
   location?: string | null
   participants?: string | null
@@ -71,6 +75,8 @@ export interface UpdateActivityInput {
   content?: string
   occurredAt?: Date
   nextFollowUpAt?: Date | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
   plannedAt?: Date | null
   location?: string | null
   participants?: string | null
@@ -106,6 +112,8 @@ const activityPublicColumns = {
   content: crmActivity.content,
   occurredAt: crmActivity.occurredAt,
   nextFollowUpAt: crmActivity.nextFollowUpAt,
+  attachmentIds: crmActivity.attachmentIds,
+  metadata: crmActivity.metadata,
   plannedAt: crmActivity.plannedAt,
   location: crmActivity.location,
   participants: crmActivity.participants,
@@ -244,6 +252,8 @@ export class ActivityRepository {
         content: input.content,
         occurredAt: input.occurredAt ?? new Date(),
         nextFollowUpAt: input.nextFollowUpAt ?? null,
+        attachmentIds: input.attachmentIds ?? null,
+        metadata: input.metadata ?? null,
         plannedAt: input.plannedAt ?? null,
         location: input.location ?? null,
         participants: input.participants ?? null,
@@ -268,6 +278,8 @@ export class ActivityRepository {
     if (input.content !== undefined) patch.content = input.content
     if (input.occurredAt !== undefined) patch.occurredAt = input.occurredAt
     if (input.nextFollowUpAt !== undefined) patch.nextFollowUpAt = input.nextFollowUpAt
+    if (input.attachmentIds !== undefined) patch.attachmentIds = input.attachmentIds
+    if (input.metadata !== undefined) patch.metadata = input.metadata
     if (input.plannedAt !== undefined) patch.plannedAt = input.plannedAt
     if (input.location !== undefined) patch.location = input.location
     if (input.participants !== undefined) patch.participants = input.participants

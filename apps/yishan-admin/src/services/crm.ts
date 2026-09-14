@@ -170,6 +170,8 @@ export interface ActivityRow {
   content: string
   occurredAt: string
   nextFollowUpAt: string | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
   operatorUserId: number
   operatorUserName: string | null
   createdAt: string
@@ -192,6 +194,8 @@ export interface ActivityResp {
   content: string
   occurredAt: string
   nextFollowUpAt: string | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
   plannedAt: string | null
   location: string | null
   participants: string | null
@@ -209,6 +213,8 @@ export interface ActivityCreateInput {
   content: string
   occurredAt?: string
   nextFollowUpAt?: string | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
 }
 
 /* ─── 销售与工作台 ─────────────────────────────────────── */

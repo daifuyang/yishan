@@ -163,6 +163,8 @@ export const crmActivity = mysqlTable(
     content: varchar({ length: 2000 }).notNull().default(''),
     occurredAt: datetime('occurred_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
     nextFollowUpAt: datetime('next_follow_up_at'),
+    attachmentIds: json('attachment_ids'),
+    metadata: json('metadata'),
     /**
      * Phase 4 引入：拜访专用字段。
      * 复用 crm_activity(type='visit')，plannedAt / location / participants / visitResultCode / summary
