@@ -6,13 +6,23 @@ import { ContractRepository } from '../repositories/contract.repository.js'
 import { PaymentRepository } from '../repositories/payment.repository.js'
 import { QuotationRepository } from '../repositories/quotation.repository.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
+import { CustomerService } from '../services/customer.service.js'
+import { CrmErrorCode } from '../schemas/error-codes.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
 afterEach(() => vi.restoreAllMocks())
 
 describe('CRM contract and payment lifecycle', () => {
+  it('rejects a contract detail when its owning customer is outside the caller scope', async () => {
+    vi.spyOn(ContractRepository, 'findById').mockResolvedValue({ id: 31, customerId: 99, ownerUserId: 7, ownerDepartmentId: 10 } as any)
+    vi.spyOn(CustomerService.prototype, 'detail').mockRejectedValue({ code: CrmErrorCode.CRM_CUSTOMER_NOT_FOUND })
+
+    await expect(new ContractService().detail(31, salesperson)).rejects.toMatchObject({ code: CrmErrorCode.CRM_CUSTOMER_NOT_FOUND })
+  })
+
   it('creates a customer-owned contract from an accepted quotation', async () => {
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(QuotationRepository, 'findByIdWithLock').mockResolvedValue({
       id: 23,
@@ -51,6 +61,7 @@ describe('CRM contract and payment lifecycle', () => {
   })
 
   it('returns the existing contract when the quotation was already converted', async () => {
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(QuotationRepository, 'findByIdWithLock').mockResolvedValue({ id: 23, ownerUserId: 7, status: 'accepted' } as any)
     const existing = { id: 31, quotationId: 23, customerId: 11, ownerUserId: 7, ownerDepartmentId: 10, amountCents: 100_000 }
@@ -62,6 +73,7 @@ describe('CRM contract and payment lifecycle', () => {
   })
 
   it('reports received and remaining cents from active payment entries', async () => {
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
     vi.spyOn(ContractRepository, 'findById').mockResolvedValue({
       id: 31,
       customerId: 11,
@@ -78,5 +90,31 @@ describe('CRM contract and payment lifecycle', () => {
 
     expect(summary.receivedCents).toBe(50_000)
     expect(summary.remainingCents).toBe(50_000)
+  })
+
+  it('rejects a payment that would exceed the contract amount', async () => {
+    vi.spyOn(ContractService.prototype, 'detail').mockResolvedValue({ id: 31, customerId: 11, amountCents: 100_000 } as any)
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(PaymentRepository, 'listByContractId').mockResolvedValue([{ id: 1, contractId: 31, amountCents: 80_000 }] as any)
+
+    await expect(new PaymentService().create(31, {
+      amountCents: 30_000, paidAt: new Date(), methodCode: 'bank_transfer',
+    }, salesperson)).rejects.toMatchObject({ code: CrmErrorCode.CRM_PAYMENT_AMOUNT_INVALID })
+  })
+
+  it('retries a duplicate generated contract number inside the transaction', async () => {
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(ContractRepository, 'countTodayByNoPrefix').mockResolvedValueOnce(0).mockResolvedValueOnce(1)
+    vi.spyOn(ContractRepository, 'create').mockRejectedValueOnce({ code: 'ER_DUP_ENTRY' }).mockResolvedValueOnce({ id: 32 } as any)
+    vi.spyOn(ContractRepository, 'findById').mockResolvedValue({ id: 32, customerId: 11 } as any)
+    vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 11, statusCode: 'customer' } as any)
+
+    await expect(new ContractService().create({
+      name: 'Renewal', customerId: 11, opportunityId: null, quotationId: null, amountCents: 1_000,
+      signedAt: null, effectiveAt: null, expiresAt: null, status: 'draft', ownerUserId: 7,
+      ownerDepartmentId: 10, attachmentIds: null, description: null,
+    }, salesperson)).resolves.toMatchObject({ id: 32 })
+    expect(ContractRepository.create).toHaveBeenCalledTimes(2)
   })
 })

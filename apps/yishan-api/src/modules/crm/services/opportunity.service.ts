@@ -18,6 +18,7 @@ import {
 } from '../schemas/opportunity.schema.js'
 import { ActivityRepository } from '../repositories/activity.repository.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
+import { CustomerService } from './customer.service.js'
 import {
   OpportunityRepository,
   type CreateOpportunityInput,
@@ -175,6 +176,7 @@ export class OpportunityService {
     if (input.expectedAmountCents !== undefined) {
       assertSafeAmountCents(input.expectedAmountCents, '预计金额')
     }
+    await new CustomerService().detail(input.customerId, currentUser)
     const departmentId = currentUser.deptIds?.[0] ?? null
     const payload: CreateOpportunityInput = {
       name,
@@ -300,7 +302,6 @@ export class OpportunityService {
       const opp = await OpportunityRepository.findByIdForUpdate(id, tx)
       if (!opp) throw new BusinessError(CrmErrorCode.CRM_OPPORTUNITY_NOT_FOUND, '商机不存在或已删除')
       await this.assertAccessibleInTx(opp, currentUser, tx)
-
       if (isTerminalStage(opp.stageCode)) {
         throw new BusinessError(CrmErrorCode.CRM_OPPORTUNITY_STAGE_INVALID, '终态商机不可再切换阶段')
       }
@@ -448,6 +449,8 @@ export class OpportunityService {
           updaterId: currentUser.id,
         })
         .where(eq(crmOpportunity.id, id))
+
+      await new CustomerService({ db: tx }).detail(opp.customerId, currentUser)
 
       await CustomerRepository.update(
         opp.customerId,

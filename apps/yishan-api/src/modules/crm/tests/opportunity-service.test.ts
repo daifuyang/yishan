@@ -8,6 +8,7 @@ import {
 } from '../repositories/opportunity.repository.js'
 import { ActivityRepository } from '../repositories/activity.repository.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
+import { CustomerService } from '../services/customer.service.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
@@ -225,6 +226,7 @@ describe('OpportunityService.markLost', () => {
   })
 
   it('从 discover 阶段标为流失（任意阶段允许）', async () => {
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 100 } as any)
     vi.spyOn(OpportunityRepository, 'findByIdForUpdate').mockResolvedValue(buildOpportunity({ stageCode: 'discover' }))
     installOpportunityUpdateTxStub()
     const stageLogSpy = vi.spyOn(OpportunityRepository, 'createStageLog').mockResolvedValue({
@@ -359,6 +361,7 @@ describe('OpportunityService.create', () => {
   })
 
   it('创建人即默认负责人', async () => {
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 100 } as any)
     const createSpy = vi.spyOn(OpportunityRepository, 'create').mockResolvedValue(buildOpportunity())
     vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 100, statusCode: 'opportunity' } as any)
 

@@ -1,6 +1,9 @@
 import { and, count, desc, eq, isNull, like, or } from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@/db'
 import { crmContract } from '../db/schema.js'
+import { crmCustomer } from '../db/schema.js'
+import { buildListWhere } from './customer.repository.js'
+import type { ScopeContext } from '../schemas/data-scope.js'
 
 export interface ContractRow {
   id: number; contractNo: string; name: string; customerId: number; opportunityId: number | null; quotationId: number | null
@@ -26,13 +29,13 @@ function buildWhere(query: ContractListQuery) {
 }
 
 export class ContractRepository {
-  static async list(query: ContractListQuery, db: AppQueryDb = drizzleDb): Promise<{ rows: ContractRow[]; total: number }> {
-    const page = query.page ?? 1; const pageSize = query.pageSize ?? 10; const where = buildWhere(query)
+  static async list(query: ContractListQuery, scope: ScopeContext, db: AppQueryDb = drizzleDb): Promise<{ rows: ContractRow[]; total: number }> {
+    const page = query.page ?? 1; const pageSize = query.pageSize ?? 10; const where = and(buildWhere(query), buildListWhere(scope))
     const [rows, totalRows] = await Promise.all([
-      db.select().from(crmContract).where(where).orderBy(desc(crmContract.createdAt)).limit(pageSize).offset((page - 1) * pageSize),
-      db.select({ total: count() }).from(crmContract).where(where),
+      db.select().from(crmContract).innerJoin(crmCustomer, eq(crmContract.customerId, crmCustomer.id)).where(where).orderBy(desc(crmContract.createdAt)).limit(pageSize).offset((page - 1) * pageSize),
+      db.select({ total: count() }).from(crmContract).innerJoin(crmCustomer, eq(crmContract.customerId, crmCustomer.id)).where(where),
     ])
-    return { rows: rows as ContractRow[], total: Number(totalRows[0]?.total ?? 0) }
+    return { rows: rows.map((row: any) => row.crm_contract ?? row) as ContractRow[], total: Number(totalRows[0]?.total ?? 0) }
   }
   static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<ContractRow | null> {
     const rows = await db.select().from(crmContract).where(and(eq(crmContract.id, id), isNull(crmContract.deletedAt))).limit(1)
