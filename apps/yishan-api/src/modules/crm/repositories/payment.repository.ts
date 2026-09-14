@@ -14,7 +14,7 @@ export class PaymentRepository {
   static async list(query: PaymentListQuery, scope: ScopeContext, db: AppQueryDb = drizzleDb): Promise<{ rows: PaymentListRow[]; total: number }> {
     const page = query.page ?? 1
     const pageSize = query.pageSize ?? 10
-    const conditions: any[] = [isNull(crmPayment.deletedAt), buildListWhere(scope)]
+    const conditions: any[] = [isNull(crmPayment.deletedAt), isNull(crmContract.deletedAt), buildListWhere(scope)]
     if (query.contractId !== undefined) conditions.push(eq(crmPayment.contractId, query.contractId))
     if (query.customerId !== undefined) conditions.push(eq(crmPayment.customerId, query.customerId))
     if (query.methodCode) conditions.push(eq(crmPayment.methodCode, query.methodCode))
