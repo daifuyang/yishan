@@ -30,3 +30,14 @@ The full admin `tsc --noEmit` remains blocked by pre-existing Umi generated-type
 - `pnpm --filter yishan-admin jest --runInBand src/modules/crm/components/drawer/tabs/journeyEvents.test.ts src/modules/crm/components/drawer/CustomerDrawer.test.tsx src/modules/crm/pages/customers/utils/customerWorkspaceQuery.test.ts src/modules/crm/components/customers/CustomerTableColumns.test.tsx` (4 suites, 19 tests passed)
 - `pnpm --filter yishan-admin exec biome lint ...` for all 12 changed CRM admin files (passed)
 - `pnpm --filter yishan-admin exec tsc --noEmit` remains blocked by pre-existing workspace-wide Umi generated-type/module-resolution errors.
+
+## Contract Journey Follow-up
+
+- Contract API responses now include `createdAt`, allowing Journey to emit a creation event for every contract.
+- Journey no longer labels a contract's historical signing or effective date with its current status. The API does not provide a reliable contract status-transition timestamp, so no contract status event is projected.
+- Added a regression test for a performing contract whose creation, signing, and effective dates differ.
+
+## Contract Journey Verification
+
+- `pnpm --filter yishan-admin jest --runInBand src/modules/crm/components/drawer/tabs/journeyEvents.test.ts src/modules/crm/components/drawer/CustomerDrawer.test.tsx` (2 suites, 3 tests passed)
+- `pnpm --filter yishan-api test -- tests/contract-payment-service.test.ts` (1 file, 8 tests passed)

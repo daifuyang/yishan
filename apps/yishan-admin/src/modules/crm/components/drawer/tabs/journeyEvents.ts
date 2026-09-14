@@ -6,7 +6,6 @@ import type {
   QuotationRow,
 } from '@/services/crm';
 import {
-  CONTRACT_STATUSES,
   OPPORTUNITY_STAGES,
   QUOTATION_STATUSES,
   statusOf,
@@ -80,18 +79,13 @@ export function buildCustomerSystemEvents({
           : null,
       ].filter((event): event is ActivityRow => event !== null),
     ),
-    ...contracts.flatMap((item) => {
-      const occurredAt = item.signedAt ?? item.effectiveAt;
-      return occurredAt
-        ? [
-            systemEvent(
-              -3000000 - item.id,
-              `合同「${item.name}」进入${statusOf(item.status, CONTRACT_STATUSES).label}`,
-              occurredAt,
-            ),
-          ]
-        : [];
-    }),
+    ...contracts.map((item) =>
+      systemEvent(
+        -3000000 - item.id,
+        `合同「${item.name}」已创建`,
+        item.createdAt,
+      ),
+    ),
     ...payments.map((item) =>
       systemEvent(
         -4000000 - item.id,

@@ -249,6 +249,7 @@ export interface ContractRow {
   effectiveAt: string | null
   expiresAt: string | null
   description: string | null
+  createdAt: string
 }
 
 export async function listAllPages<T>(load: (page: number, pageSize: number) => Promise<{ data: T[]; total: number }>): Promise<T[]> {
