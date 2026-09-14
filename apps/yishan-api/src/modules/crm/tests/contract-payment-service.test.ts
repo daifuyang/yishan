@@ -138,6 +138,18 @@ describe('CRM contract and payment lifecycle', () => {
     expect(summary.remainingCents).toBe(50_000)
   })
 
+  it('lists payments with pagination through the scoped repository query', async () => {
+    const list = vi.spyOn(PaymentRepository, 'list').mockResolvedValue({
+      rows: [{ id: 2, contractId: 31, customerId: 11, amountCents: 20_000, contractNo: 'CT-001', contractName: 'CRM', customerName: 'Acme' } as any],
+      total: 3,
+    })
+
+    const result = await new PaymentService().list({ page: 2, pageSize: 1, keyword: 'Acme', paidFrom: new Date('2026-01-01T00:00:00.000Z') }, salesperson)
+
+    expect(result).toMatchObject({ items: expect.any(Array), total: 3, page: 2, pageSize: 1 })
+    expect(list).toHaveBeenCalledWith(expect.objectContaining({ page: 2, pageSize: 1, keyword: 'Acme' }), expect.objectContaining({ ownerUserIds: [7] }))
+  })
+
   it('rejects a payment that would exceed the contract amount', async () => {
     vi.spyOn(ContractService.prototype, 'detail').mockResolvedValue({ id: 31, customerId: 11, amountCents: 100_000 } as any)
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))

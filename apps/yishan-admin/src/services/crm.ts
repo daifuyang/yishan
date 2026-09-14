@@ -8,6 +8,7 @@
  */
 
 import { request } from '@umijs/max'
+import type { CustomerStatusCode } from '@/modules/crm/domain/statuses'
 
 /* ─── 通用包装 ────────────────────────────────────────── */
 
@@ -48,7 +49,7 @@ export interface CustomerRow {
   code: string | null
   name: string
   type: string
-  statusId: number | null
+  statusCode: CustomerStatusCode | null
   sourceId: number | null
   level: string | null
   industry: string | null
@@ -81,7 +82,7 @@ export interface CustomerDetail extends CustomerRow {
 export interface CustomerCreateInput {
   name: string
   type?: CustomerType
-  statusId?: number | null
+  statusCode?: CustomerStatusCode | null
   sourceId?: number | null
   level?: string | null
   industry?: string | null
@@ -100,7 +101,7 @@ export interface CustomerUpdateInput extends Partial<CustomerCreateInput> {}
 
 export interface CustomerListQuery extends PageQuery {
   view?: CustomerListView
-  statusId?: number
+  statusCode?: CustomerStatusCode
   sourceId?: number
   level?: string
   type?: string
@@ -286,6 +287,9 @@ export interface PaymentRow {
   paidAt: string
   methodCode: string
   remark: string | null
+  contractNo?: string
+  contractName?: string
+  customerName?: string
 }
 export interface PaymentInput {
   amountCents: number
@@ -633,6 +637,11 @@ export async function deleteContract(id: number): Promise<void> {
 export async function listPaymentsByContract(contractId: number): Promise<PaymentRow[]> {
   const r = await request<ApiResp<PaymentRow[]>>(`/api/crm/v1/payments/contracts/${contractId}`, { method: 'GET' })
   return unwrap(r)
+}
+
+export async function listPayments(query: PageQuery & { contractId?: number; customerId?: number; methodCode?: string; paidFrom?: string; paidTo?: string }): Promise<{ data: PaymentRow[]; total: number }> {
+  const r = await request<ApiResp<PaymentRow[]>>('/api/crm/v1/payments', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
 }
 
 export async function createPayment(contractId: number, input: PaymentInput): Promise<PaymentRow> {
