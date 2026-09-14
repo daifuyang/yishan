@@ -19,7 +19,8 @@ import type { ProColumns } from '@ant-design/pro-components';
 import { Tag, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import React from 'react';
-import type { CustomerRow, SourceRow, StatusRow, TagRow } from '@/services/crm';
+import type { CustomerRow, SourceRow, TagRow } from '@/services/crm';
+import { CUSTOMER_STATUSES, statusOf } from '@/modules/crm/domain/statuses';
 import CustomerActionDropdown from './CustomerActionDropdown';
 import CustomerContactCell from './CustomerContactCell';
 import CustomerNameCell from './CustomerNameCell';
@@ -27,7 +28,6 @@ import CustomerNameCell from './CustomerNameCell';
 export interface CustomerTableColumnsOptions {
   canFilterOwners?: boolean;
   ownerOptions?: Array<{ id: number; name: string }>;
-  statuses: StatusRow[];
   sources: SourceRow[];
   tags: TagRow[];
   currentUserId?: number;
@@ -42,7 +42,6 @@ export function buildCustomerTableColumns(
   opts: CustomerTableColumnsOptions,
 ): ProColumns<CustomerRow>[] {
   const {
-    statuses,
     sources,
     tags,
     canFilterOwners = false,
@@ -53,16 +52,11 @@ export function buildCustomerTableColumns(
     onChanged,
   } = opts;
 
-  const statusNameMap = new Map<number, string>();
-  for (const s of statuses) statusNameMap.set(s.id, s.name);
-
   const sourceNameMap = new Map<number, string>();
   for (const s of sources) sourceNameMap.set(s.id, s.name);
 
   const statusValueEnum = Object.fromEntries(
-    statuses
-      .filter((s) => s.enabled === 1)
-      .map((s) => [s.id, { text: s.name }]),
+    CUSTOMER_STATUSES.map((s) => [s.value, { text: s.label }]),
   );
   const sourceValueEnum = Object.fromEntries(
     sources.filter((s) => s.enabled === 1).map((s) => [s.id, { text: s.name }]),
@@ -148,12 +142,12 @@ export function buildCustomerTableColumns(
     },
     {
       title: '客户状态',
-      dataIndex: 'statusId',
+      dataIndex: 'statusCode',
       width: 110,
       valueType: 'select',
       valueEnum: statusValueEnum,
       render: (_, r) => {
-        const name = r.statusId ? statusNameMap.get(r.statusId) : null;
+        const name = r.statusCode ? statusOf(r.statusCode, CUSTOMER_STATUSES).label : null;
         if (!name) return <Tag color="default">未设置</Tag>;
         return <Tag color="blue">{name}</Tag>;
       },

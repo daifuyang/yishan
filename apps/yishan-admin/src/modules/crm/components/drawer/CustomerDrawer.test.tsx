@@ -16,7 +16,7 @@ jest.mock('@/services/crm', () => ({
     name: '上海示例客户',
     type: 'enterprise',
     code: 'CUS-007',
-    statusId: 1,
+    statusCode: 'following',
     statusName: '跟进中',
     sourceId: 2,
     sourceName: '官网咨询',
@@ -77,7 +77,6 @@ describe('CustomerDrawer', () => {
         open: true,
         customerId: 7,
         onClose: jest.fn(),
-        statuses: [],
       }),
     );
 
@@ -107,7 +106,6 @@ describe('CustomerDrawer', () => {
         open: true,
         customerId: 7,
         onClose: jest.fn(),
-        statuses: [],
       }),
     );
 

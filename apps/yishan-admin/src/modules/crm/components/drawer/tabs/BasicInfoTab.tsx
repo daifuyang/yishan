@@ -13,7 +13,7 @@
 import { Divider, Space, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import React from 'react';
-import type { CustomerDetail, StatusRow } from '@/services/crm';
+import type { CustomerDetail } from '@/services/crm';
 import { formatDateTime } from '@/utils/formatDate';
 import CustomerActivityRail from '../sub/CustomerActivityRail';
 import useDrawerBreakpoint from '../_shared/useBreakpoint';
@@ -22,7 +22,6 @@ const { Text } = Typography;
 
 export interface BasicInfoTabProps {
   customer: CustomerDetail;
-  statuses: StatusRow[];
   /** 写完一条跟进后通知父级（用于刷新客户详情里的 statusId / 时间戳）。 */
   onFollowUpSaved?: () => void;
 }
@@ -92,7 +91,6 @@ const LEVEL_COLOR: Record<string, string> = {
 
 const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
   customer,
-  statuses,
   onFollowUpSaved,
 }) => {
   const isDesktop = useDrawerBreakpoint();
@@ -285,7 +283,6 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
       >
         <CustomerActivityRail
           customer={customer}
-          statuses={statuses}
           onFollowUpSaved={onFollowUpSaved}
         />
       </div>

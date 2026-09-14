@@ -1,10 +1,11 @@
 import type { CustomerSortField, CustomerType, PoolStatus } from '@/services/crm'
+import type { CustomerStatusCode } from '../../domain/statuses'
 
 export type CustomerViewId = 'all' | 'mine' | 'pending' | 'important' | 'pool'
 
 export interface CustomerWorkspaceFilters {
   keyword?: string
-  statusId?: number
+  statusCode?: CustomerStatusCode
   sourceId?: number
   level?: string
   type?: CustomerType

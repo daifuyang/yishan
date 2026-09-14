@@ -56,7 +56,7 @@ const CustomerFilterBar = ({ query, onChange, onOpenAdvanced }: CustomerFilterBa
       <Button
         aria-label="重置筛选"
         icon={<ReloadOutlined />}
-        onClick={() => onChange({ keyword: undefined, type: undefined, level: undefined, statusId: undefined, sourceId: undefined, industry: undefined, ownerUserId: undefined, tagId: undefined, poolStatus: undefined, createdAtFrom: undefined, createdAtTo: undefined, lastFollowUpAtFrom: undefined, lastFollowUpAtTo: undefined, nextFollowUpAtFrom: undefined, nextFollowUpAtTo: undefined })}
+        onClick={() => onChange({ keyword: undefined, type: undefined, level: undefined, statusCode: undefined, sourceId: undefined, industry: undefined, ownerUserId: undefined, tagId: undefined, poolStatus: undefined, createdAtFrom: undefined, createdAtTo: undefined, lastFollowUpAtFrom: undefined, lastFollowUpAtTo: undefined, nextFollowUpAtFrom: undefined, nextFollowUpAtTo: undefined })}
       >
         重置
       </Button>

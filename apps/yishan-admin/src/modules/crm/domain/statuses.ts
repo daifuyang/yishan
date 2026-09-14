@@ -6,6 +6,15 @@ export interface StatusDescriptor {
   semantic: StatusSemantic;
 }
 
+export const CUSTOMER_STATUSES: StatusDescriptor[] = [
+  { value: 'potential', label: '潜在', semantic: 'default' },
+  { value: 'following', label: '跟进中', semantic: 'processing' },
+  { value: 'opportunity', label: '有商机', semantic: 'warning' },
+  { value: 'customer', label: '已成交', semantic: 'success' },
+  { value: 'lost', label: '已流失', semantic: 'error' },
+];
+export type CustomerStatusCode = (typeof CUSTOMER_STATUSES)[number]['value'];
+
 export const OPPORTUNITY_STAGES: StatusDescriptor[] = [
   { value: 'discover', label: '需求发现', semantic: 'default' },
   { value: 'qualify', label: '方案确认', semantic: 'processing' },

@@ -633,7 +633,7 @@ const CustomerDetailPage: React.FC = () => {
         initialValues={{
           name: customer.name,
           type: customer.type,
-          statusId: customer.statusId ?? undefined,
+          statusCode: customer.statusCode ?? undefined,
           sourceId: customer.sourceId ?? undefined,
           level: customer.level ?? undefined,
           industry: customer.industry ?? undefined,

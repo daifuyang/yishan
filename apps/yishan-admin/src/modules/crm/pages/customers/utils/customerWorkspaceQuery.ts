@@ -10,6 +10,7 @@ import type {
   CustomerWorkspaceFilters,
   CustomerWorkspaceQuery,
 } from '../types'
+import { CUSTOMER_STATUSES } from '../../../domain/statuses'
 
 const DEFAULT_QUERY: Pick<CustomerWorkspaceQuery, 'view' | 'page' | 'pageSize'> = {
   view: 'all',
@@ -49,8 +50,10 @@ const DATE_FILTER_KEYS: Array<keyof Pick<
 
 const NUMBER_FILTER_KEYS: Array<keyof Pick<
   CustomerWorkspaceFilters,
-  'statusId' | 'sourceId' | 'ownerUserId' | 'collaboratorUserId' | 'tagId'
->> = ['statusId', 'sourceId', 'ownerUserId', 'collaboratorUserId', 'tagId']
+  'sourceId' | 'ownerUserId' | 'collaboratorUserId' | 'tagId'
+>> = ['sourceId', 'ownerUserId', 'collaboratorUserId', 'tagId']
+
+const CUSTOMER_STATUS_CODES = CUSTOMER_STATUSES.map((status) => status.value)
 
 function toPositiveInteger(value: string | null): number | undefined {
   if (!value || !/^\d+$/.test(value)) return undefined
@@ -102,6 +105,9 @@ export function parseCustomerWorkspaceQuery(search: string | URLSearchParams): C
   const poolStatus = params.get('poolStatus')
   if (POOL_STATUSES.includes(poolStatus as PoolStatus)) Object.assign(parsed, { poolStatus })
 
+  const statusCode = params.get('statusCode')
+  if (CUSTOMER_STATUS_CODES.includes(statusCode as any)) Object.assign(parsed, { statusCode })
+
   const sortBy = params.get('sortBy')
   if (CUSTOMER_SORT_FIELDS.includes(sortBy as CustomerSortField)) Object.assign(parsed, { sortBy })
 
@@ -135,6 +141,7 @@ export function serializeCustomerWorkspaceQuery(query: CustomerWorkspaceQuery): 
   if (query.keyword) params.set('keyword', query.keyword)
   if (query.type) params.set('type', query.type)
   if (query.poolStatus) params.set('poolStatus', query.poolStatus)
+  if (query.statusCode) params.set('statusCode', query.statusCode)
   if (query.sortBy) params.set('sortBy', query.sortBy)
   if (query.sortOrder) params.set('sortOrder', query.sortOrder)
 

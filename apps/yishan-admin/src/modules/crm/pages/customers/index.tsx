@@ -29,10 +29,8 @@ import {
   getCustomerListOptions,
   listCustomers,
   listSources,
-  listStatuses,
   listTags,
   type SourceRow,
-  type StatusRow,
   type TagRow,
 } from '@/services/crm';
 import { usePermission } from '@/utils/permission';
@@ -65,7 +63,6 @@ const Customers: React.FC = () => {
     reset,
   } = useCustomerFilterUrl();
 
-  const [statuses, setStatuses] = useState<StatusRow[]>([]);
   const [sources, setSources] = useState<SourceRow[]>([]);
   const [tags, setTags] = useState<TagRow[]>([]);
   const [listOptions, setListOptions] = useState<CustomerListOptions | null>(
@@ -83,13 +80,11 @@ const Customers: React.FC = () => {
     let cancelled = false;
     const loadDicts = async () => {
       try {
-        const [s, src, t] = await Promise.all([
-          listStatuses({ page: 1, pageSize: 100 }),
+        const [src, t] = await Promise.all([
           listSources({ page: 1, pageSize: 100 }),
           listTags({ page: 1, pageSize: 100 }),
         ]);
         if (cancelled) return;
-        setStatuses(s.data);
         setSources(src.data);
         setTags(t.data);
       } catch (err: unknown) {
@@ -165,7 +160,6 @@ const Customers: React.FC = () => {
 
   const columnOpts = useMemo<CustomerTableColumnsOptions>(
     () => ({
-      statuses,
       sources,
       tags,
       currentUserId,
@@ -179,7 +173,6 @@ const Customers: React.FC = () => {
       onOpenFollowupDrawer: (id: number) => drawer.openDrawer(id, 'overview'),
     }),
     [
-      statuses,
       sources,
       tags,
       currentUserId,
@@ -292,7 +285,6 @@ const Customers: React.FC = () => {
         initialTab={drawer.initialTab}
         onClose={drawer.closeDrawer}
         onChanged={reloadAll}
-        statuses={statuses}
         onCreateEntity={(entity) => {
           const pageByEntity = {
             contact: 'contacts',

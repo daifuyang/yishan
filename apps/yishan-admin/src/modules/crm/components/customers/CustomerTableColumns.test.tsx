@@ -27,7 +27,7 @@ const customer: CustomerRow = {
   name: '上海简策品牌咨询有限公司',
   type: 'enterprise',
   code: null,
-  statusId: null,
+  statusCode: 'following',
   sourceId: null,
   level: 'B',
   industry: '品牌营销',
@@ -51,7 +51,6 @@ const customer: CustomerRow = {
   primaryContactMobile: '13800001010',
 };
 const options = (): CustomerTableColumnsOptions => ({
-  statuses: [],
   sources: [],
   tags: [],
   primaryContactMap: new Map(),
@@ -125,7 +124,7 @@ it('retains the tag filter and existing table columns and widths', () => {
     [
       'name',
       'primaryContactName',
-      'statusId',
+      'statusCode',
       'level',
       'ownerUserId',
       'lastFollowUpAt',

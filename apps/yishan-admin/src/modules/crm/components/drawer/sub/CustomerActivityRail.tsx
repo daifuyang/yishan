@@ -31,10 +31,10 @@ import {
   type ActivityRow,
   type ActivityType,
   type CustomerDetail,
-  type StatusRow,
   createActivity,
   listActivitiesByCustomer,
 } from '@/services/crm';
+import { CUSTOMER_STATUSES } from '@/modules/crm/domain/statuses';
 import { formatDateTime } from '@/utils/formatDate';
 import DrawerFilterBar from '../_shared/DrawerFilterBar';
 import { CRM_DIALOG_Z_INDEX } from '../_shared/crmDialogZIndex';
@@ -44,7 +44,7 @@ import { AttachmentSelect } from '@/components/AttachmentSelect';
 export interface CustomerFollowUpFormValues {
   type: ActivityType;
   content: string;
-  statusId?: number;
+  statusCode?: string;
   nextFollowUpAt?: Dayjs | string | Date | null;
   attachmentIds?: Array<number | string>;
   metadata?: Record<string, unknown> | null;
@@ -69,7 +69,6 @@ const typeOptions: Array<{ value: ActivityType; label: string }> = [
 
 export interface CustomerActivityRailProps {
   customer: CustomerDetail;
-  statuses: StatusRow[];
   /**
    * 写完一条跟进后通知父组件刷新客户详情（状态可能变化）。
    * 不传则只刷新活动列表。
@@ -98,7 +97,6 @@ function toActivityInput(values: CustomerFollowUpFormValues) {
 
 const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
   customer,
-  statuses,
   onFollowUpSaved,
   followUpRequest,
 }) => {
@@ -157,12 +155,8 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
   }, [activities, filter, dateRange]);
 
   const statusOptions = useMemo(
-    () =>
-      statuses
-        .filter((s) => s.enabled === 1)
-        .sort((a, b) => a.sort - b.sort)
-        .map((s) => ({ value: s.id, label: s.name })),
-    [statuses],
+    () => CUSTOMER_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+    [],
   );
 
   return (
@@ -217,13 +211,13 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
               await createActivity(customer.id, toActivityInput(values));
               // 阶段变化：客户 statusId 可能要改（CRM 实体可能需要专门接口，Phase 3 完善）
               if (
-                values.statusId &&
-                customer.statusId !== values.statusId
+                values.statusCode &&
+                customer.statusCode !== values.statusCode
               ) {
                 try {
                   const { updateCustomer } = await import('@/services/crm');
                   await updateCustomer(customer.id, {
-                    statusId: values.statusId,
+                    statusCode: values.statusCode as any,
                   });
                 } catch {
                   /* statusId 同步失败不影响跟进保存 */
@@ -274,7 +268,7 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
             ]}
           />
           <ProFormSelect
-            name="statusId"
+            name="statusCode"
             label="当前阶段"
             allowClear
             placeholder="保持不变"

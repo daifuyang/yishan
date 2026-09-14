@@ -23,7 +23,7 @@ const PAGE_PARAM_KEYS = ['page', 'pageSize'] as const;
 const FILTER_PARAM_KEYS = [
   'keyword',
   'ownerUserId',
-  'statusId',
+  'statusCode',
   'sourceId',
   'level',
   'type',
@@ -106,12 +106,7 @@ export function useCustomerFilterUrl(): UseCustomerFilterUrlReturn {
         if ((out[key] as number[]).length === 0) delete out[key];
         continue;
       }
-      if (
-        key === 'ownerUserId' ||
-        key === 'statusId' ||
-        key === 'sourceId' ||
-        key === 'collaboratorId'
-      ) {
+      if (key === 'ownerUserId' || key === 'sourceId' || key === 'collaboratorId') {
         const n = Number(raw);
         if (Number.isFinite(n) && n > 0) out[key] = n;
         continue;

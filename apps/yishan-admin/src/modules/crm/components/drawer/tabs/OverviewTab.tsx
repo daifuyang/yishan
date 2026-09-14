@@ -1,13 +1,13 @@
 import { Descriptions, Empty, Skeleton, Statistic, Tag } from 'antd';
 import React, { useEffect, useState } from 'react';
-import type { ContractRow, CustomerDetail, OpportunityRow, PaymentRow, StatusRow } from '@/services/crm';
+import type { ContractRow, CustomerDetail, OpportunityRow, PaymentRow } from '@/services/crm';
 import { listAllPages, listContracts, listOpportunities, listPaymentsByContract } from '@/services/crm';
 import { formatDateTime } from '@/utils/formatDate';
 import CustomerActivityRail from '../sub/CustomerActivityRail';
 
 const money = (cents: number) => `￥${(cents / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}`;
 
-const OverviewTab: React.FC<{ customer: CustomerDetail; statuses: StatusRow[]; followUpRequest?: number; onFollowUpSaved?: () => void }> = ({ customer, statuses, followUpRequest, onFollowUpSaved }) => {
+const OverviewTab: React.FC<{ customer: CustomerDetail; followUpRequest?: number; onFollowUpSaved?: () => void }> = ({ customer, followUpRequest, onFollowUpSaved }) => {
   const [loading, setLoading] = useState(true);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
@@ -59,7 +59,7 @@ const OverviewTab: React.FC<{ customer: CustomerDetail; statuses: StatusRow[]; f
       </div>
       {!loading && contracts.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无合同与回款" style={{ margin: '24px 0 0' }} />}
       <div style={{ marginTop: 24, borderTop: '1px solid #eaecf0', paddingTop: 16 }}>
-        <CustomerActivityRail customer={customer} statuses={statuses} followUpRequest={followUpRequest} onFollowUpSaved={onFollowUpSaved} />
+        <CustomerActivityRail customer={customer} followUpRequest={followUpRequest} onFollowUpSaved={onFollowUpSaved} />
       </div>
     </div>
   );

@@ -19,7 +19,6 @@ import React, { useEffect, useState } from 'react';
 import {
   type ContactRow,
   type CustomerDetail,
-  type StatusRow,
   deleteCustomer,
   getCustomer,
   listContactsByCustomer,
@@ -69,7 +68,6 @@ export interface CustomerDrawerProps {
   onClose: () => void;
   /** 任意数据被变更后通知上层 reload 列表/计数。 */
   onChanged?: () => void;
-  statuses: StatusRow[];
   /** Drawer 右上"新增"子菜单回调映射；undefined 时该子项仍渲染但走 toast 占位。 */
   onCreateEntity?: (entity: CreateEntityKey) => void;
   /** Drawer 右上"转移"按钮回调；undefined 时走 toast 占位。 */
@@ -83,7 +81,6 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   initialTab = 'overview',
   onClose,
   onChanged,
-  statuses,
   onCreateEntity,
   onTransfer,
   onRelease,
@@ -241,7 +238,6 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
         return (
           <OverviewTab
             customer={current}
-            statuses={statuses}
             followUpRequest={followUpRequest}
             onFollowUpSaved={handleFollowUpSaved}
           />
