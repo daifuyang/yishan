@@ -99,5 +99,9 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   CONTRACT_DELETE: { code: 'crm:contract:delete', label: 'CRM-合同-删除', group: 'crm' },
   CONTRACT_PAYMENT_VIEW: { code: 'crm:contract:payment', label: 'CRM-合同-回款查看', group: 'crm' },
   CONTRACT_PAYMENT_MANAGE: { code: 'crm:contract:payment-manage', label: 'CRM-合同-回款登记', group: 'crm' },
+  TASK_LIST: { code: 'crm:task:list', label: 'CRM-任务-查看', group: 'crm' },
+  TASK_CREATE: { code: 'crm:task:create', label: 'CRM-任务-新建', group: 'crm' },
+  TASK_UPDATE: { code: 'crm:task:update', label: 'CRM-任务-编辑', group: 'crm' },
+  TASK_DELETE: { code: 'crm:task:delete', label: 'CRM-任务-删除', group: 'crm' },
 })
 registerPermissions(...Object.values(CrmPermissions))

@@ -13,6 +13,7 @@ import { Type } from '@sinclair/typebox'
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
 import { ResponseUtil } from '@/utils/response.js'
 import { QuotationService } from '../../../services/quotation.service.js'
+import { ContractService } from '../../../services/contract.service.js'
 import {
   QuotationCreateReqSchema,
   QuotationIdParamSchema,
@@ -28,6 +29,7 @@ import { CrmPermissions as PERMS } from '../../../schemas/permissions.js'
 export default (async (app) => {
   const route = createRouteRegistrar(app)
   const service = new QuotationService()
+  const contractService = new ContractService()
 
   route.get(
     '/',
@@ -198,6 +200,26 @@ export default (async (app) => {
     async (request: any, reply: any) => {
       const detail = await service.voidQuotation(request.params.id, request.body?.reason, request.currentUser)
       return ResponseUtil.success(reply, { ...detail.head, items: detail.items }, '报价单已作废')
+    },
+  )
+
+  route.post(
+    '/:id/contract',
+    {
+      access: { permission: PERMS.CONTRACT_CREATE },
+      schema: {
+        tags: [ROUTE_TAG],
+        summary: '从已接受报价创建合同',
+        operationId: 'crmQuotationsCreateContract',
+        params: QuotationIdParamSchema,
+      },
+    },
+    async (request: any, reply: any) => {
+      return ResponseUtil.success(
+        reply,
+        await contractService.createFromQuotation(request.params.id, request.currentUser),
+        '合同已创建',
+      )
     },
   )
 

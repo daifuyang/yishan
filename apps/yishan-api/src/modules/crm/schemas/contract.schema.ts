@@ -1,0 +1,12 @@
+import { Type, type Static } from '@sinclair/typebox'
+import { CONTRACT_STATUSES } from '../domain/statuses.js'
+import { PaginationQuerySchema } from './common.schema.js'
+
+const ContractStatusSchema = Type.String({ enum: CONTRACT_STATUSES.map((status) => status.value) })
+export const ContractIdParamSchema = Type.Object({ id: Type.Integer({ minimum: 1 }) })
+export const ContractRespSchema = Type.Object({ id: Type.Number(), contractNo: Type.String(), name: Type.String(), customerId: Type.Number(), opportunityId: Type.Union([Type.Number(), Type.Null()]), quotationId: Type.Union([Type.Number(), Type.Null()]), amountCents: Type.Number(), status: ContractStatusSchema, ownerUserId: Type.Union([Type.Number(), Type.Null()]), ownerDepartmentId: Type.Union([Type.Number(), Type.Null()]), signedAt: Type.Union([Type.String(), Type.Null()]), effectiveAt: Type.Union([Type.String(), Type.Null()]), expiresAt: Type.Union([Type.String(), Type.Null()]), description: Type.Union([Type.String(), Type.Null()]) })
+export const ContractListQuerySchema = Type.Composite([PaginationQuerySchema, Type.Object({ keyword: Type.Optional(Type.String()), customerId: Type.Optional(Type.Integer()), status: Type.Optional(ContractStatusSchema) })])
+export const ContractCreateReqSchema = Type.Object({ name: Type.String({ minLength: 1, maxLength: 200 }), customerId: Type.Integer({ minimum: 1 }), opportunityId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])), amountCents: Type.Integer({ minimum: 0 }), signedAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])), effectiveAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])), expiresAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])), status: Type.Optional(ContractStatusSchema), description: Type.Optional(Type.Union([Type.String({ maxLength: 2000 }), Type.Null()])) })
+export const ContractUpdateReqSchema = Type.Partial(Type.Object({ name: Type.String({ minLength: 1, maxLength: 200 }), signedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]), effectiveAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]), expiresAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]), status: ContractStatusSchema, description: Type.Union([Type.String({ maxLength: 2000 }), Type.Null()]) }))
+export type ContractCreateReq = Static<typeof ContractCreateReqSchema>
+export type ContractUpdateReq = Static<typeof ContractUpdateReqSchema>

@@ -17,6 +17,7 @@ import {
   isTerminalStage,
 } from '../schemas/opportunity.schema.js'
 import { ActivityRepository } from '../repositories/activity.repository.js'
+import { CustomerRepository } from '../repositories/customer.repository.js'
 import {
   OpportunityRepository,
   type CreateOpportunityInput,
@@ -190,7 +191,11 @@ export class OpportunityService {
       creatorId: currentUser.id,
       updaterId: currentUser.id,
     }
-    return OpportunityRepository.create(payload)
+    return dbManager.transaction(async (tx) => {
+      const opportunity = await OpportunityRepository.create(payload, tx)
+      await CustomerRepository.update(input.customerId, { statusCode: 'opportunity', updaterId: currentUser.id }, tx)
+      return opportunity
+    })
   }
 
   /* ─── Update（白名单字段） ─────────────────────────── */
@@ -443,6 +448,12 @@ export class OpportunityService {
           updaterId: currentUser.id,
         })
         .where(eq(crmOpportunity.id, id))
+
+      await CustomerRepository.update(
+        opp.customerId,
+        { statusCode: 'lost', updaterId: currentUser.id },
+        tx,
+      )
 
       await OpportunityRepository.createStageLog(
         {

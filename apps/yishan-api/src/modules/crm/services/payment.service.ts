@@ -1,0 +1,14 @@
+import { BusinessError } from '@/exceptions/business-error.js'
+import { dbManager } from '@/db'
+import type { DataScopeUser } from '../schemas/data-scope.js'
+import { CrmErrorCode } from '../schemas/error-codes.js'
+import { ContractService } from './contract.service.js'
+import { PaymentRepository, type PaymentRow, type UpdatePaymentInput } from '../repositories/payment.repository.js'
+
+export class PaymentService {
+  async listByContract(contractId: number, currentUser: DataScopeUser) { const contract = await new ContractService().detail(contractId, currentUser); const items = await PaymentRepository.listByContractId(contractId); const receivedCents = items.reduce((total, payment) => total + payment.amountCents, 0); return { items, receivedCents, remainingCents: Math.max(0, contract.amountCents - receivedCents) } }
+  async create(contractId: number, input: { amountCents: number; paidAt: string | Date; methodCode: string; remark?: string | null }, currentUser: DataScopeUser): Promise<PaymentRow> { const contract = await new ContractService().detail(contractId, currentUser); this.assertAmount(input.amountCents); return dbManager.transaction((tx) => PaymentRepository.create({ contractId, customerId: contract.customerId, amountCents: input.amountCents, paidAt: new Date(input.paidAt), methodCode: input.methodCode, remark: input.remark ?? null, creatorId: currentUser.id, updaterId: currentUser.id }, tx)) }
+  async update(id: number, input: UpdatePaymentInput, currentUser: DataScopeUser): Promise<PaymentRow> { const payment = await PaymentRepository.findById(id); if (!payment) throw new BusinessError(CrmErrorCode.CRM_PAYMENT_NOT_FOUND, '回款不存在'); await new ContractService().detail(payment.contractId, currentUser); if (input.amountCents !== undefined) this.assertAmount(input.amountCents); const updated = await PaymentRepository.update(id, { ...input, updaterId: currentUser.id }); if (!updated) throw new BusinessError(CrmErrorCode.CRM_PAYMENT_NOT_FOUND, '回款不存在'); return updated }
+  async remove(id: number, currentUser: DataScopeUser): Promise<void> { const payment = await PaymentRepository.findById(id); if (!payment) throw new BusinessError(CrmErrorCode.CRM_PAYMENT_NOT_FOUND, '回款不存在'); await new ContractService().detail(payment.contractId, currentUser); if (await PaymentRepository.softDelete(id) === 0) throw new BusinessError(CrmErrorCode.CRM_PAYMENT_NOT_FOUND, '回款不存在') }
+  private assertAmount(amountCents: number) { if (!Number.isSafeInteger(amountCents) || amountCents <= 0) throw new BusinessError(CrmErrorCode.CRM_PAYMENT_AMOUNT_INVALID, '回款金额必须是正整分') }
+}

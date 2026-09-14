@@ -33,10 +33,9 @@ export const QUOTATION_STATUSES = [
 
 export const CONTRACT_STATUSES = [
   { value: 'draft', label: '草稿', semantic: 'default' },
-  { value: 'pending', label: '待生效', semantic: 'warning' },
-  { value: 'active', label: '履约中', semantic: 'processing' },
+  { value: 'performing', label: '履约中', semantic: 'processing' },
   { value: 'completed', label: '已完成', semantic: 'success' },
-  { value: 'voided', label: '已作废', semantic: 'error' },
+  { value: 'terminated', label: '已终止', semantic: 'error' },
 ] as const satisfies readonly StatusDescriptor[]
 
 export const TASK_STATUSES = [
@@ -54,6 +53,14 @@ export type TaskStatusCode = (typeof TASK_STATUSES)[number]['value']
 
 export function isCustomerStatusCode(value: string): value is CustomerStatusCode {
   return CUSTOMER_STATUSES.some((status) => status.value === value)
+}
+
+export function isContractStatusCode(value: string): value is ContractStatusCode {
+  return CONTRACT_STATUSES.some((status) => status.value === value)
+}
+
+export function isTaskStatusCode(value: string): value is TaskStatusCode {
+  return TASK_STATUSES.some((status) => status.value === value)
 }
 
 export function getCustomerStatusLabel(value: string | null): string | null {

@@ -7,6 +7,7 @@ import {
   type OpportunityRow,
 } from '../repositories/opportunity.repository.js'
 import { ActivityRepository } from '../repositories/activity.repository.js'
+import { CustomerRepository } from '../repositories/customer.repository.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
@@ -235,6 +236,7 @@ describe('OpportunityService.markLost', () => {
       lostAt: new Date(),
       lostReasonCode: 'no_budget',
     }))
+    const customerStatusUpdate = vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 100, statusCode: 'lost' } as any)
 
     const result = await new OpportunityService().markLost({
       id: 1,
@@ -247,6 +249,7 @@ describe('OpportunityService.markLost', () => {
     }), expect.anything())
     expect(result.stageCode).toBe('lost')
     expect(result.lostReasonCode).toBe('no_budget')
+    expect(customerStatusUpdate).toHaveBeenCalledWith(100, expect.objectContaining({ statusCode: 'lost' }), expect.anything())
   })
 
   it('终态（lost）不能再次 markLost', async () => {
@@ -357,6 +360,7 @@ describe('OpportunityService.create', () => {
 
   it('创建人即默认负责人', async () => {
     const createSpy = vi.spyOn(OpportunityRepository, 'create').mockResolvedValue(buildOpportunity())
+    vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 100, statusCode: 'opportunity' } as any)
 
     await new OpportunityService().create({
       input: { name: '示例商机', customerId: 100, expectedAmountCents: 1_000_000 },
@@ -373,7 +377,7 @@ describe('OpportunityService.create', () => {
       expectedAmountCents: 1_000_000,
       stageCode: 'discover',
       pipelineCode: 'default',
-    }))
+    }), expect.anything())
   })
 })
 

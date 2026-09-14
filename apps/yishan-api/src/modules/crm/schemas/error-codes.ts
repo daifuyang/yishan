@@ -91,6 +91,14 @@ export const CrmErrorCode = {
   CRM_QUOTATION_NOT_SENT: 33706,
   /** accepted 状态不可变（任何 edit/void/reject 都拒绝）。 */
   CRM_QUOTATION_ACCEPTED_IMMUTABLE: 33707,
+
+  CRM_CONTRACT_NOT_FOUND: 33801,
+  CRM_CONTRACT_STATUS_INVALID: 33802,
+  CRM_CONTRACT_QUOTATION_INVALID: 33803,
+  CRM_PAYMENT_NOT_FOUND: 33811,
+  CRM_PAYMENT_AMOUNT_INVALID: 33812,
+  CRM_TASK_NOT_FOUND: 33821,
+  CRM_TASK_STATUS_INVALID: 33822,
 } as const
 
 export type CrmErrorCodeType = (typeof CrmErrorCode)[keyof typeof CrmErrorCode]

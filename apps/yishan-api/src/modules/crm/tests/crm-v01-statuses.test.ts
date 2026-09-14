@@ -41,10 +41,9 @@ describe('CRM V0.1 status descriptors', () => {
       ],
       CONTRACT_STATUSES: [
       { value: 'draft', label: '草稿', semantic: 'default' },
-      { value: 'pending', label: '待生效', semantic: 'warning' },
-      { value: 'active', label: '履约中', semantic: 'processing' },
+      { value: 'performing', label: '履约中', semantic: 'processing' },
       { value: 'completed', label: '已完成', semantic: 'success' },
-      { value: 'voided', label: '已作废', semantic: 'error' },
+      { value: 'terminated', label: '已终止', semantic: 'error' },
       ],
       TASK_STATUSES: [
       { value: 'todo', label: '待处理', semantic: 'default' },
