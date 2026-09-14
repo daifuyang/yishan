@@ -66,7 +66,10 @@ const RETIRED_PERMISSION_CODES = [
   'crm:lead:convert',
 ] as const
 
+export const RETIRED_CRM_ENUM_TYPES = ['crm_lead_status'] as const
+
 async function purgeRetiredMenuDeclarations(): Promise<void> {
+  await drizzleDb.delete(sysEnum).where(inArray(sysEnum.type, [...RETIRED_CRM_ENUM_TYPES]))
   const retiredMenus = await drizzleDb
     .select({ id: sysMenu.id })
     .from(sysMenu)
@@ -345,8 +348,8 @@ export default async function seedCrm(): Promise<void> {
     .limit(1)
   const creatorId = admin?.id ?? 1
 
-  await seedCrmEnums(creatorId)
   await purgeRetiredMenuDeclarations()
+  await seedCrmEnums(creatorId)
   await upsertTree(menuTree, null, creatorId)
   const flat = flattenMenuTree(menuTree)
   await bindAllPermissions(flat, creatorId)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import menuTree from '../config/system-menu.json'
+import { SYS_ENUM_TYPES } from '@/core/schemas/enum.schema.js'
 
 type MenuNode = {
   path?: string
@@ -39,6 +40,27 @@ describe('CRM V0.1 system menu', () => {
       '/crm/tickets',
       '/crm/settings',
     ]))
-    expect(permissions).not.toEqual(expect.arrayContaining(['crm:lead:list', 'crm:lead:create']))
+    expect(permissions).not.toEqual(expect.arrayContaining([
+      'crm:lead:list',
+      'crm:lead:create',
+      'crm:lead:update',
+      'crm:lead:delete',
+      'crm:lead:claim',
+      'crm:lead:assign',
+      'crm:lead:return',
+      'crm:lead:qualify',
+      'crm:lead:disqualify',
+      'crm:lead:reactivate',
+      'crm:lead:convert',
+    ]))
+  })
+
+  it('does not permit or retain the retired Lead status enum type', async () => {
+    const seed = await import('../seed.js') as {
+      RETIRED_CRM_ENUM_TYPES?: readonly string[]
+    }
+
+    expect(SYS_ENUM_TYPES).not.toContain('crm_lead_status')
+    expect(seed.RETIRED_CRM_ENUM_TYPES).toEqual(['crm_lead_status'])
   })
 })

@@ -21,8 +21,6 @@ export const SYS_ENUM_TYPES = [
   'crm_customer_level',
   'crm_customer_status',
   'crm_customer_source',
-  // CRM 线索
-  'crm_lead_status',
   // CRM 商机
   'crm_opportunity_stage',
   'crm_opportunity_pipeline',
