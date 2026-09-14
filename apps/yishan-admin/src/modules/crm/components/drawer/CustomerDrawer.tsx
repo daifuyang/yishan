@@ -1,11 +1,11 @@
 /**
- * 客户 Drawer 主壳（对齐线索 Drawer 风格的 Workspace 重构版）。
+ * 客户 Drawer 主壳。
  *
  * 职责：
  *   - 宽度由 useResizableDrawer 维护（≥1100px），可拖拽右边沿
  *   - open / customerId 由父组件传入；onClose 时清掉 URL 上的 customerId 由 hook 负责
  *   - 顶部 Header：CustomerDrawerHeader
- *   - 11 个 Tab：基本信息（分段详情 + 活动 rail）/ 联系人 / 线索 / 商机 / 报价单 /
+ *   - 10 个 Tab：基本信息（分段详情 + 活动 rail）/ 联系人 / 商机 / 报价单 /
  *     合同 / 费用 / 已成交产品 / 任务 / 附件 / 操作日志
  *
  * 出错处理：
@@ -37,7 +37,6 @@ import PlaceholderTab from './tabs/PlaceholderTab';
 export type CustomerDrawerTabKey =
   | 'basic'
   | 'contacts'
-  | 'leads'
   | 'opportunities'
   | 'quotations'
   | 'contracts'
@@ -50,7 +49,6 @@ export type CustomerDrawerTabKey =
 const TAB_LABELS: Array<{ key: CustomerDrawerTabKey; label: string }> = [
   { key: 'basic', label: '基本信息' },
   { key: 'contacts', label: '联系人' },
-  { key: 'leads', label: '线索' },
   { key: 'opportunities', label: '商机' },
   { key: 'quotations', label: '报价单' },
   { key: 'contracts', label: '合同' },
@@ -65,7 +63,6 @@ const PLACEHOLDER_TABS: Array<{
   key: CustomerDrawerTabKey;
   entity: string;
 }> = [
-  { key: 'leads', entity: '线索' },
   { key: 'opportunities', entity: '商机' },
   { key: 'quotations', entity: '报价单' },
   { key: 'contracts', entity: '合同' },

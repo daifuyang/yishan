@@ -5,8 +5,7 @@ import { Type, type Static } from '@sinclair/typebox'
  *
  * Phase 1 扩展：
  *   - ACTIVITY_TYPES 增加 polymorphic 语义：
- *       lead_followup（吸收 crm_lead_activity）
- *       status_change（lead/customer 状态变更）
+ *       status_change（客户状态变更）
  *       owner_change（转移）
  *       profile_edit（资料编辑审计）
  *       qualification（判为有效）
@@ -28,12 +27,11 @@ export const ACTIVITY_TYPES = [
   'owner_change',
   'qualification',
   'profile_edit',
-  'lead_followup',
 ] as const
 export type ActivityType = (typeof ACTIVITY_TYPES)[number]
 
 /** 实体类型（polymorphic）。 */
-export const ACTIVITY_ENTITY_TYPES = ['lead', 'customer', 'opportunity', 'contract'] as const
+export const ACTIVITY_ENTITY_TYPES = ['customer', 'opportunity', 'contract'] as const
 export type ActivityEntityType = (typeof ACTIVITY_ENTITY_TYPES)[number]
 
 export const ActivityRespSchema = Type.Object({
@@ -42,7 +40,6 @@ export const ActivityRespSchema = Type.Object({
   customerId: Type.Union([Type.Number(), Type.Null()]),
   contactId: Type.Union([Type.Number(), Type.Null()]),
   entityType: Type.Union([
-    Type.Literal('lead'),
     Type.Literal('customer'),
     Type.Literal('opportunity'),
     Type.Literal('contract'),

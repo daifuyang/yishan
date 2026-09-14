@@ -9,7 +9,7 @@
  * 设计：
  * - 单条结构：时间 · 操作人 · 跟进类型 tag · 跟进内容 · 下次跟进提示
  * - groupByDate=true 时按"今天 / 昨天 / 本年 / 更早"分组，分别用 antd Timeline 渲染。
- * - dateRange 提供时，渲染 DrawerFilterBar 的「筛选」按钮（与线索一致），
+ * - dateRange 提供时，渲染 DrawerFilterBar 的「筛选」按钮，
  *   调用方负责按 ISO 字符串过滤 items。
  * - 空状态：antd Empty + 文案；loading：Skeleton + 占位条。
  */
@@ -45,7 +45,7 @@ export interface ActivityTimelineProps {
   /** 渲染时是否限制总数（默认不限；OverviewTab 调用时传 30）。 */
   limit?: number;
   /**
-   * 日期范围筛选（可选）。与线索 drawer 对齐：传此 prop 后在 timeline 顶部
+   * 日期范围筛选（可选）。传此 prop 后在 timeline 顶部
    * 渲染 DrawerFilterBar 的「筛选」按钮 + 日期 Popover，调用方负责按 value
    * 过滤 items。
    */

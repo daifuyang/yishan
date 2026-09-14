@@ -12,7 +12,7 @@
 
 import { eq, inArray } from 'drizzle-orm'
 import { drizzleDb } from '@/db'
-import { sysEnum, sysMenu, sysMenuPermission, sysUser } from '@/db/schema'
+import { sysEnum, sysMenu, sysMenuPermission, sysRoleMenu, sysRolePermission, sysUser } from '@/db/schema'
 import adminMenu from './config/system-menu.json'
 import {
   CONTRACT_STATUSES,
@@ -37,6 +37,51 @@ export type AdminMenuNode = {
 
 const menuTree = adminMenu as AdminMenuNode[]
 export const toBool = (n: 0 | 1 | undefined): boolean => n === 1
+
+const RETIRED_MENU_PATHS = [
+  '/crm/market',
+  '/crm/leads',
+  '/crm/lead-pool',
+  '/crm/service',
+  '/crm/activities',
+  '/crm/visits',
+  '/crm/settings',
+  '/crm/settings/tags',
+  '/crm/settings/statuses',
+  '/crm/settings/sources',
+  '/crm/settings/enums',
+] as const
+
+const RETIRED_PERMISSION_CODES = [
+  'crm:lead:list',
+  'crm:lead:create',
+  'crm:lead:update',
+  'crm:lead:delete',
+  'crm:lead:claim',
+  'crm:lead:assign',
+  'crm:lead:return',
+  'crm:lead:qualify',
+  'crm:lead:disqualify',
+  'crm:lead:reactivate',
+  'crm:lead:convert',
+] as const
+
+async function purgeRetiredMenuDeclarations(): Promise<void> {
+  const retiredMenus = await drizzleDb
+    .select({ id: sysMenu.id })
+    .from(sysMenu)
+    .where(inArray(sysMenu.path, [...RETIRED_MENU_PATHS]))
+  const retiredMenuIds = retiredMenus.map(({ id }) => id)
+
+  if (retiredMenuIds.length > 0) {
+    await drizzleDb.delete(sysMenuPermission).where(inArray(sysMenuPermission.menuId, retiredMenuIds))
+    await drizzleDb.delete(sysRoleMenu).where(inArray(sysRoleMenu.menuId, retiredMenuIds))
+    await drizzleDb.delete(sysMenu).where(inArray(sysMenu.id, retiredMenuIds))
+  }
+  await drizzleDb
+    .delete(sysRolePermission)
+    .where(inArray(sysRolePermission.permissionCode, [...RETIRED_PERMISSION_CODES]))
+}
 
 export type FlatNode = {
   node: AdminMenuNode
@@ -301,6 +346,7 @@ export default async function seedCrm(): Promise<void> {
   const creatorId = admin?.id ?? 1
 
   await seedCrmEnums(creatorId)
+  await purgeRetiredMenuDeclarations()
   await upsertTree(menuTree, null, creatorId)
   const flat = flattenMenuTree(menuTree)
   await bindAllPermissions(flat, creatorId)

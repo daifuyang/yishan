@@ -14,7 +14,7 @@ import { crmOpportunity, crmOpportunityStageLog } from '../db/schema.js'
  *     不在 repository 里 join crm_customer（模块边界）。
  *   - 阶段流转审计日志（stage_log）只在 service 层事务内写入；
  *     repository 暴露 createStageLog + listStageLogsByOpportunity 两个入口。
- *   - findByIdForUpdate 走 raw `SELECT ... FOR UPDATE`，与 lead 的 lockAvailableForConversionInTx
+ *   - findByIdForUpdate 走 raw `SELECT ... FOR UPDATE`，与客户写路径的锁策略
  *     同样的实现思路：drizzle query builder 不直接暴露 FOR UPDATE，用 execute 兜底。
  */
 
@@ -176,7 +176,7 @@ const baseColumns = {
 /**
  * 列表查询的 where 子句。
  *
- * 与 LeadRepository.buildLeadListWhere 保持一致风格：
+ * 与 CustomerRepository.buildListWhere 保持一致风格：
  *   - 软删除过滤始终在第一位
  *   - keyword 命中 name
  *   - 各枚举 / 范围 filter 走显式 if
@@ -337,7 +337,7 @@ export class OpportunityRepository {
   /**
    * 事务内：按 ID 锁定一条未删除的商机（FOR UPDATE）。
    *
-   * 与 LeadRepository.lockAvailableForConversionInTx 同款思路：
+   * 与客户写路径同款思路：
    *   - drizzle 不暴露 FOR UPDATE；用 db.execute 兜底。
    *   - execute 失败（如 query builder 不支持）时退化为 findById 的状态检查；
    *     真正的安全门是 findById 的结果 + stage 状态。
@@ -351,7 +351,7 @@ export class OpportunityRepository {
         sql`SELECT id FROM ${crmOpportunity} WHERE id = ${id} AND deleted_at IS NULL FOR UPDATE`,
       )
     } catch {
-      // 同 lead：锁只是并发加锁的尝试；状态校验由 findById 兜底。
+      // 锁只是并发加锁的尝试；状态校验由 findById 兜底。
     }
     return OpportunityRepository.findById(id, db)
   }

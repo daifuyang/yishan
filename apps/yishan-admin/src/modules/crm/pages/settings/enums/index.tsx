@@ -36,7 +36,6 @@ const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'crm_customer_level', label: '客户级别' },
   { value: 'crm_customer_status', label: '客户状态' },
   { value: 'crm_customer_source', label: '客户来源' },
-  { value: 'crm_lead_status', label: '线索状态' },
   { value: 'crm_opportunity_stage', label: '商机阶段' },
   { value: 'crm_opportunity_pipeline', label: '商机管道' },
   { value: 'crm_opportunity_lost_reason', label: '商机丢单原因' },
@@ -161,7 +160,7 @@ const EnumsPage: React.FC = () => {
     <PageContainer
       header={{
         title: '枚举中心',
-        subTitle: 'sys_enum 通用枚举表：客户 / 线索 / 商机 / 拜访 / 工单 / 回款 等业务枚举的单一来源',
+        subTitle: 'sys_enum 通用枚举表：客户 / 商机 / 拜访 / 工单 / 回款 等业务枚举的单一来源',
       }}
     >
       <ProTable<EnumItem>

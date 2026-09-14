@@ -41,7 +41,7 @@ export interface DrawerFilterBarProps<T extends string> {
  *   - 右：「筛选」按钮 → Popover(创建时间 RangePicker)，可省略
  *
  * 业务：
- *   - 选项 / 当前值 / 变更回调由调用方决定（本组件不绑 lead/customer 业务枚举）
+ *   - 选项 / 当前值 / 变更回调由调用方决定（本组件不绑具体业务枚举）
  *   - 日期范围通过 prop 传；不传则不渲染筛选按钮
  */
 function DrawerFilterBar<T extends string>({

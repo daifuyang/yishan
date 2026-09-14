@@ -3,8 +3,8 @@
  *
  * `menuTreeToRoutes` 对 type=0 目录节点会返回无 path 的 `{ routes: [...] }`
  * 包装器（参见 src/utils/menuRoutes.ts 的目录约定）。当目录嵌套深度 > 1
- * 时 —— 例如 CRM → 市场管理(type=0) → 线索(/crm/leads) —— 老逻辑只平铺
- * 一层会丢失深层的 path 路由，导致 /crm/leads 落到 404。
+ * 时 —— 例如 CRM → 销售管理(type=0) → 商机(/crm/opportunities) —— 老逻辑只平铺
+ * 一层会丢失深层的 path 路由，导致 /crm/opportunities 落到 404。
  *
  * 本模块提供 `flattenPathlessDirectories`：沿 `routes` 字段递归下降，把
  * 所有 path-bearing 叶子按 pre-order 收集起来；遇到 path-bearing 节点即

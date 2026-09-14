@@ -126,7 +126,7 @@ function genQuotationNo(todayCount: number): string {
 
 export class QuotationService {
   /**
-   * 列表。data-scope：与 LeadService/CustomerService 一致，按 role.dataScope 收敛。
+   * 列表。data-scope：与 CustomerService 一致，按 role.dataScope 收敛。
    */
   async list(query: QuotationListQuery, currentUser: DataScopeUser): Promise<{ items: QuotationRow[]; total: number; page: number; pageSize: number }> {
     const scope = computeDataScope(currentUser)
@@ -400,7 +400,7 @@ export class QuotationService {
   }
 
   /**
-   * 可见性判定：与 LeadService.getAccessibleLead 风格一致。
+   * 可见性判定：与 CustomerService 的数据范围风格一致。
    * 无权 → 抛 NOT_FOUND 而不是 403，避免泄漏存在性。
    */
   private async getAccessibleQuotation(quotationId: number, currentUser: DataScopeUser): Promise<QuotationRow> {

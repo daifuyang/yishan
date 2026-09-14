@@ -6,7 +6,7 @@ import { PaginationQuerySchema } from './common.schema.js'
  *
  * 设计要点：
  *   - 阶段、pipeline、lost_reason 全部用 `Type.Union([Type.Literal(...])` 严格校验；
- *     `Type.String({ enum: [...] })` 在 TypeBox Value.Check 下不严格（与 lead.schema 注释一致）。
+ *     `Type.String({ enum: [...] })` 在 TypeBox Value.Check 下不严格。
  *   - 金额统一用「分」整数 cents（与 utils/money 约定一致）。
  *   - time 字段统一 `format: 'date-time'`。
  *   - update 接口白名单字段；owner / stage / won / lost / transfer 全部走专门业务接口。

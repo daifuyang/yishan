@@ -17,7 +17,7 @@ import { crmActivity } from '../db/schema.js'
  */
 
 /** 实体类型白名单（与 schema 注释一致）。 */
-export const ACTIVITY_ENTITY_TYPES = ['lead', 'customer', 'opportunity', 'contract'] as const
+export const ACTIVITY_ENTITY_TYPES = ['customer', 'opportunity', 'contract'] as const
 export type ActivityEntityType = (typeof ACTIVITY_ENTITY_TYPES)[number]
 
 export interface ActivityRow {
@@ -234,7 +234,7 @@ export class ActivityRepository {
     const [inserted] = await db
       .insert(crmActivity)
       .values({
-        // 旧列：customer 实体时双写，lead/opportunity/contract 时为 null
+        // 旧列：customer 实体时双写，opportunity/contract 时为 null
         customerId: input.entityType === 'customer' ? input.entityId : input.customerId ?? null,
         contactId: input.contactId ?? null,
         entityType: input.entityType,

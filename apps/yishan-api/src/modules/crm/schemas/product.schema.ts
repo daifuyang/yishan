@@ -5,7 +5,7 @@
  *   - 所有金额字段在 wire 上都是 integer cents（JSON number，safe integer）。
  *   - 税率字段是 integer 基点（basis points）：1300 = 13%；前端按需展示百分比。
  *   - 必填字段用 Type.Literal / Type.Integer({ minimum }) 做严格校验，
- *     与 lead.schema 风格一致。
+ *     与 CRM 其它枚举 schema 风格一致。
  */
 import { Type, type Static } from '@sinclair/typebox'
 import { IdParamsSchema, PaginationQuerySchema } from './common.schema.js'
