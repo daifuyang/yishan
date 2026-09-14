@@ -1,6 +1,7 @@
 import { Empty, Skeleton, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import React, { useEffect, useState } from 'react';
+import type { StatusDescriptor } from '@/modules/crm/domain/statuses';
 
 export interface LifecycleListTabProps<T extends { id: number }> {
   load: () => Promise<T[]>;
@@ -21,4 +22,7 @@ export function LifecycleListTab<T extends { id: number }>({ load, columns, empt
   return <Table size="small" rowKey="id" pagination={false} columns={columns} dataSource={rows} />;
 }
 
-export const statusTag = (status: string) => <Tag color={status === 'completed' || status === 'active' || status === 'signed' ? 'green' : 'blue'}>{status}</Tag>;
+export const statusTag = (status: string, statuses: StatusDescriptor[]) => {
+  const descriptor = statuses.find((item) => item.value === status) ?? { label: status, semantic: 'default' as const };
+  return <Tag color={descriptor.semantic}>{descriptor.label}</Tag>;
+};

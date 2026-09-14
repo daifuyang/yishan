@@ -1,7 +1,7 @@
 import { Descriptions, Empty, Skeleton, Statistic, Tag } from 'antd';
 import React, { useEffect, useState } from 'react';
 import type { ContractRow, CustomerDetail, OpportunityRow, PaymentRow, StatusRow } from '@/services/crm';
-import { listContracts, listOpportunities, listPaymentsByContract } from '@/services/crm';
+import { listAllPages, listContracts, listOpportunities, listPaymentsByContract } from '@/services/crm';
 import { formatDateTime } from '@/utils/formatDate';
 import CustomerActivityRail from '../sub/CustomerActivityRail';
 
@@ -16,14 +16,14 @@ const OverviewTab: React.FC<{ customer: CustomerDetail; statuses: StatusRow[]; f
   useEffect(() => {
     let active = true;
     void Promise.all([
-      listOpportunities({ customerId: customer.id, page: 1, pageSize: 50 }),
-      listContracts({ customerId: customer.id, page: 1, pageSize: 50 }),
+      listAllPages((page, pageSize) => listOpportunities({ customerId: customer.id, page, pageSize })),
+      listAllPages((page, pageSize) => listContracts({ customerId: customer.id, page, pageSize })),
     ])
       .then(async ([opportunityResult, contractResult]) => {
-        const paymentRows = await Promise.all(contractResult.data.map((contract) => listPaymentsByContract(contract.id)));
+        const paymentRows = await Promise.all(contractResult.map((contract) => listPaymentsByContract(contract.id)));
         if (!active) return;
-        setOpportunities(opportunityResult.data);
-        setContracts(contractResult.data);
+        setOpportunities(opportunityResult);
+        setContracts(contractResult);
         setPayments(paymentRows.flat());
       })
       .catch(() => active && undefined)

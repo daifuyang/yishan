@@ -221,6 +221,7 @@ export interface OpportunityRow {
   expectedAmountCents: number
   expectedCloseDate: string | null
   ownerUserName: string | null
+  stageEnteredAt?: string
 }
 
 export interface QuotationRow {
@@ -230,6 +231,9 @@ export interface QuotationRow {
   status: string
   totalCents: number
   validUntil: string | null
+  sentAt?: string | null
+  acceptedAt?: string | null
+  closedAt?: string | null
 }
 
 export interface ContractRow {
@@ -245,6 +249,15 @@ export interface ContractRow {
   effectiveAt: string | null
   expiresAt: string | null
   description: string | null
+}
+
+export async function listAllPages<T>(load: (page: number, pageSize: number) => Promise<{ data: T[]; total: number }>): Promise<T[]> {
+  const pageSize = 100;
+  const first = await load(1, pageSize);
+  const pages = Math.ceil(first.total / pageSize);
+  if (pages <= 1) return first.data;
+  const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, index) => load(index + 2, pageSize)));
+  return first.data.concat(...rest.map((result) => result.data));
 }
 export interface ContractInput {
   name: string

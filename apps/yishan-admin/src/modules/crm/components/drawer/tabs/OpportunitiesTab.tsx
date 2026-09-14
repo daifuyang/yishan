@@ -9,12 +9,13 @@ import React, { useCallback } from 'react';
 import type { OpportunityRow } from '@/services/crm';
 import { listOpportunities } from '@/services/crm';
 import { LifecycleListTab, statusTag } from './LifecycleListTab';
+import { OPPORTUNITY_STAGES } from '@/modules/crm/domain/statuses';
 
 const money = (cents: number) => `￥${(cents / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}`;
 
 const OpportunitiesTab: React.FC<{ customerId: number }> = ({ customerId }) => {
   const load = useCallback(() => listOpportunities({ customerId, page: 1, pageSize: 100 }).then((result) => result.data), [customerId]);
-  return <LifecycleListTab<OpportunityRow> load={load} emptyText="暂无商机" columns={[{ title: '商机名称', dataIndex: 'name' }, { title: '阶段', dataIndex: 'stageCode', render: statusTag }, { title: '预计金额', render: (_, row) => money(row.expectedAmountCents) }, { title: '预计成交', dataIndex: 'expectedCloseDate' }]} />;
+  return <LifecycleListTab<OpportunityRow> load={load} emptyText="暂无商机" columns={[{ title: '商机名称', dataIndex: 'name' }, { title: '阶段', dataIndex: 'stageCode', render: (value) => statusTag(value, OPPORTUNITY_STAGES) }, { title: '预计金额', render: (_, row) => money(row.expectedAmountCents) }, { title: '预计成交', dataIndex: 'expectedCloseDate' }]} />;
 };
 
 export default OpportunitiesTab;

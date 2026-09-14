@@ -17,3 +17,16 @@
 - `pnpm --filter yishan-admin exec biome lint ...` for the changed CRM admin files
 
 The full admin `tsc --noEmit` remains blocked by pre-existing Umi generated-type and workspace module resolution failures, including missing exports from `@umijs/max`.
+
+## Review Follow-up
+
+- Journey now combines manual customer activities with customer-scoped opportunity, quotation, contract, and payment system events, newest first.
+- Overview and Payments load all paginated opportunities and contracts before calculating financial aggregates or retrieving contract payments.
+- Lifecycle statuses now use shared Chinese labels and Ant Design semantic colors for opportunities, quotations, contracts, and tasks.
+- Added a focused system-event projection test and updated the drawer-service mock for paginated loading.
+
+## Review Verification
+
+- `pnpm --filter yishan-admin jest --runInBand src/modules/crm/components/drawer/tabs/journeyEvents.test.ts src/modules/crm/components/drawer/CustomerDrawer.test.tsx src/modules/crm/pages/customers/utils/customerWorkspaceQuery.test.ts src/modules/crm/components/customers/CustomerTableColumns.test.tsx` (4 suites, 19 tests passed)
+- `pnpm --filter yishan-admin exec biome lint ...` for all 12 changed CRM admin files (passed)
+- `pnpm --filter yishan-admin exec tsc --noEmit` remains blocked by pre-existing workspace-wide Umi generated-type/module-resolution errors.

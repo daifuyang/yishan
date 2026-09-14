@@ -50,6 +50,7 @@ jest.mock('@/services/crm', () => ({
   listPaymentsByContract: jest.fn().mockResolvedValue([]),
   listQuotations: jest.fn().mockResolvedValue({ data: [], total: 0 }),
   listTasks: jest.fn().mockResolvedValue({ data: [], total: 0 }),
+  listAllPages: (load: any) => load(1, 100).then((result: any) => result.data),
   maskPhone: (phone: string) => phone,
 }));
 
