@@ -116,6 +116,7 @@ const PROFILE_FIELD_LABELS: Record<EditableProfileField, string> = {
 }
 
 export class OpportunityService {
+  constructor(private readonly lifecycle: Pick<typeof CustomerLifecycleService, 'recalculate'> = CustomerLifecycleService) {}
   /* ─── List / Detail ────────────────────────────────── */
 
   async list(
@@ -195,7 +196,7 @@ export class OpportunityService {
     }
     return dbManager.transaction(async (tx) => {
       const opportunity = await OpportunityRepository.create(payload, tx)
-      await CustomerLifecycleService.recalculate(input.customerId, currentUser.id, tx)
+      await this.lifecycle.recalculate(input.customerId, currentUser.id, tx)
       return opportunity
     })
   }
@@ -452,7 +453,7 @@ export class OpportunityService {
 
       await new CustomerService({ db: tx }).detail(opp.customerId, currentUser)
 
-      await CustomerLifecycleService.recalculate(opp.customerId, currentUser.id, tx)
+      await this.lifecycle.recalculate(opp.customerId, currentUser.id, tx)
 
       await OpportunityRepository.createStageLog(
         {

@@ -8,6 +8,7 @@ import { TaskRepository } from '../repositories/task.repository.js'
 import { CustomerService } from '../services/customer.service.js'
 import { computeDataScope } from '../schemas/data-scope.js'
 import { CrmErrorCode } from '../schemas/error-codes.js'
+import { CustomerLifecycleService } from '../services/customer-lifecycle.service.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
@@ -19,16 +20,14 @@ it('moves the customer lifecycle to opportunity when an opportunity is created',
   vi.spyOn(OpportunityRepository, 'create').mockResolvedValue({ id: 18 } as any)
   vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 11, statusCode: 'opportunity' } as any)
 
-  await new OpportunityService().create({
+  const lifecycle = { recalculate: vi.fn().mockResolvedValue('opportunity') } as unknown as typeof CustomerLifecycleService
+  await new OpportunityService(lifecycle).create({
     input: { name: 'Expansion', customerId: 11 },
     currentUser: salesperson,
   })
 
-  expect(CustomerRepository.update).toHaveBeenCalledWith(
-    11,
-    expect.objectContaining({ statusCode: 'opportunity', updaterId: 7 }),
-    expect.anything(),
-  )
+  expect(lifecycle.recalculate).toHaveBeenCalledWith(11, 7, expect.anything())
+
 })
 
 it('rejects opportunity creation before changing an inaccessible customer lifecycle', async () => {
