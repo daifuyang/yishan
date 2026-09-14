@@ -3,8 +3,8 @@ import { dbManager } from '@/db'
 import { computeDataScope, type DataScopeUser } from '../schemas/data-scope.js'
 import { CrmErrorCode } from '../schemas/error-codes.js'
 import { isContractStatusCode } from '../domain/statuses.js'
-import { CustomerRepository } from '../repositories/customer.repository.js'
 import { CustomerService } from './customer.service.js'
+import { CustomerLifecycleService } from './customer-lifecycle.service.js'
 import { QuotationRepository } from '../repositories/quotation.repository.js'
 import { ContractRepository, type ContractListQuery, type ContractRow, type CreateContractInput, type UpdateContractInput } from '../repositories/contract.repository.js'
 
@@ -22,7 +22,7 @@ export class ContractService {
       const created = await this.createWithUniqueNo({ ...input, creatorId: currentUser.id, updaterId: currentUser.id }, tx)
       const contract = await ContractRepository.findById(created.id, tx)
       if (!contract) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, '合同不存在')
-      await CustomerRepository.update(contract.customerId, { statusCode: 'customer', updaterId: currentUser.id }, tx)
+      await CustomerLifecycleService.recalculate(contract.customerId, currentUser.id, tx)
       return contract
     })
   }
@@ -40,7 +40,7 @@ export class ContractService {
         ownerDepartmentId: currentUser.deptIds?.[0] ?? null, attachmentIds: null, description: quotation.remark,
         creatorId: currentUser.id, updaterId: currentUser.id,
       }, tx)
-      await CustomerRepository.update(quotation.customerId, { statusCode: 'customer', updaterId: currentUser.id }, tx)
+      await CustomerLifecycleService.recalculate(quotation.customerId, currentUser.id, tx)
       const contract = await ContractRepository.findById(created.id, tx)
       if (!contract) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, '合同不存在')
       return contract

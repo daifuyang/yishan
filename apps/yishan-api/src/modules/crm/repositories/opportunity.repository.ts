@@ -215,6 +215,14 @@ export function buildOpportunityListWhere(q: OpportunityListQuery): SQL | undefi
 }
 
 export class OpportunityRepository {
+  static async listStagesByCustomerId(customerId: number, db: AppQueryDb = drizzleDb): Promise<OpportunityStage[]> {
+    const rows = await db
+      .select({ stageCode: crmOpportunity.stageCode })
+      .from(crmOpportunity)
+      .where(and(eq(crmOpportunity.customerId, customerId), isNull(crmOpportunity.deletedAt)))
+    return rows.map((row) => row.stageCode as OpportunityStage)
+  }
+
   static async list(
     q: OpportunityListQuery,
     db: AppQueryDb = drizzleDb,

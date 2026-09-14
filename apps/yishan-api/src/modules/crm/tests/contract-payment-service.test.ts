@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { OpportunityRepository } from '../repositories/opportunity.repository.js'
 import { dbManager } from '@/db'
 import { ContractService } from '../services/contract.service.js'
 import { PaymentService } from '../services/payment.service.js'
@@ -8,12 +9,23 @@ import { QuotationRepository } from '../repositories/quotation.repository.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
 import { CustomerService } from '../services/customer.service.js'
 import { CrmErrorCode } from '../schemas/error-codes.js'
+import { getTableConfig } from 'drizzle-orm/mysql-core'
+import { crmContract } from '../db/schema.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
 afterEach(() => vi.restoreAllMocks())
+beforeEach(() => {
+  vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue([])
+  vi.spyOn(ContractRepository, 'existsByCustomerId').mockResolvedValue(true)
+})
 
 describe('CRM contract and payment lifecycle', () => {
+  it('keeps quotation linkage unique at the schema boundary, including soft-deleted contracts', () => {
+    const config = getTableConfig(crmContract)
+    expect(config.indexes.some((index) => index.config.name === 'uniq_crm_contract_quotation_id')).toBe(true)
+  })
+
   it('propagates a contract row-lock failure instead of reading unlocked data', async () => {
     const lockError = Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK' })
     const db = { execute: vi.fn().mockRejectedValue(lockError) }

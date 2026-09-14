@@ -99,6 +99,13 @@
       "when": 1789344000000,
       "tag": "0052_crm-v01-customer-lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1789347600000,
+      "tag": "0053_crm-v01-lifecycle-hardening",
+      "breakpoints": true
     }
   ]
 }

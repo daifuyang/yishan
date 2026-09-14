@@ -9,11 +9,17 @@ import {
 import { ActivityRepository } from '../repositories/activity.repository.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
 import { CustomerService } from '../services/customer.service.js'
+import { ContractRepository } from '../repositories/contract.repository.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+beforeEach(() => {
+  vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue(['lost'])
+  vi.spyOn(ContractRepository, 'existsByCustomerId').mockResolvedValue(false)
 })
 
 function buildOpportunity(overrides: Partial<OpportunityRow> = {}): OpportunityRow {
@@ -206,6 +212,29 @@ describe('OpportunityService.markWon', () => {
 })
 
 describe('OpportunityService.markLost', () => {
+  it('does not downgrade a customer with another active opportunity to lost', async () => {
+    vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 100 } as any)
+    vi.spyOn(OpportunityRepository, 'findByIdForUpdate').mockResolvedValue(buildOpportunity({ stageCode: 'discover' }))
+    installOpportunityUpdateTxStub()
+    vi.spyOn(OpportunityRepository, 'createStageLog').mockResolvedValue({} as any)
+    vi.spyOn(ActivityRepository, 'create').mockResolvedValue({} as any)
+    vi.spyOn(OpportunityRepository, 'findById').mockResolvedValue(buildOpportunity({ stageCode: 'lost', lostAt: new Date() }))
+    vi.mocked(OpportunityRepository.listStagesByCustomerId).mockResolvedValue(['lost', 'discover'])
+    const customerStatusUpdate = vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 100, statusCode: 'opportunity' } as any)
+
+    await new OpportunityService().markLost({
+      id: 1,
+      input: { reasonCode: 'no_budget', reason: 'active opportunity remains' },
+      currentUser: salesperson,
+    })
+
+    expect(customerStatusUpdate).toHaveBeenCalledWith(
+      100,
+      expect.objectContaining({ statusCode: 'opportunity' }),
+      expect.anything(),
+    )
+  })
+
   beforeEach(() => {
     vi.spyOn(ActivityRepository, 'create').mockResolvedValue({
       id: 1, customerId: null, contactId: null, entityType: 'opportunity', entityId: 1, entityRefType: 'opportunity',

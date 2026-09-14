@@ -15,7 +15,6 @@ export const CustomerRespSchema = Type.Object({
   code: Type.Union([Type.String(), Type.Null()]),
   name: Type.String(),
   type: Type.String(),
-  statusId: Type.Union([Type.Number(), Type.Null()]),
   statusCode: Type.String({ enum: CUSTOMER_STATUS_CODES }),
   sourceId: Type.Union([Type.Number(), Type.Null()]),
   level: Type.Union([Type.String(), Type.Null()]),

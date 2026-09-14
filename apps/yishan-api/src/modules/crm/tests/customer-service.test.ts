@@ -284,6 +284,18 @@ describe('CustomerFlowService.release', () => {
 })
 
 describe('CustomerFlowService.transfer', () => {
+  it('rejects a transfer by a user outside the customer data scope', async () => {
+    vi.spyOn(CustomerRepository, 'findById').mockResolvedValue(ownedCustomer)
+
+    await expect(
+      new CustomerFlowService().transfer({
+        customerId: ownedCustomer.id,
+        targetUserId: 8,
+        currentUser: { id: 99, roleCodes: ['sales'], deptIds: [99] },
+      }),
+    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_CUSTOMER_TRANSFER_FORBIDDEN })
+  })
+
   it('转交给目标是自己 → TRANSFER_TARGET_INVALID', async () => {
     const flow = new CustomerFlowService()
     await expect(

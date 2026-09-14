@@ -5,11 +5,10 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { TagService } from '../services/settings.service.js'
-import { StatusService } from '../services/settings.service.js'
 import { SourceService } from '../services/settings.service.js'
 import { TagRepository } from '../repositories/tag.repository.js'
-import { StatusRepository } from '../repositories/status.repository.js'
 import { SourceRepository } from '../repositories/source.repository.js'
+import * as settings from '../services/settings.service.js'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -46,41 +45,9 @@ describe('TagService', () => {
   })
 })
 
-describe('StatusService', () => {
-  it('系统预置 status（isSystem=1）不可删除', async () => {
-    vi.spyOn(StatusRepository, 'findById').mockResolvedValue({
-      id: 1,
-      name: '待跟进',
-      code: 'pending',
-      type: 'active',
-      sort: 1,
-      enabled: 1,
-      isSystem: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    const service = new StatusService()
-    await expect(service.remove(1)).rejects.toMatchObject({ code: 33313 })
-  })
-
-  it('非系统 status 可删除', async () => {
-    vi.spyOn(StatusRepository, 'findById').mockResolvedValue({
-      id: 2,
-      name: '客户自定义状态',
-      code: null,
-      type: 'active',
-      sort: 99,
-      enabled: 1,
-      isSystem: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    const softDeleteSpy = vi
-      .spyOn(StatusRepository, 'softDelete')
-      .mockResolvedValue(undefined)
-    const service = new StatusService()
-    await service.remove(2)
-    expect(softDeleteSpy).toHaveBeenCalled()
+describe('customer lifecycle status settings', () => {
+  it('does not expose mutable customer status CRUD', () => {
+    expect((settings as Record<string, unknown>).StatusService).toBeUndefined()
   })
 })
 

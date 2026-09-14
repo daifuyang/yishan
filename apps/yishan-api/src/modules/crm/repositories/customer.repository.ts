@@ -44,7 +44,6 @@ export interface CustomerRow {
   code: string | null
   name: string
   type: string
-  statusId: number | null
   sourceId: number | null
   level: string | null
   industry: string | null
@@ -202,7 +201,6 @@ const customerPublicColumns = {
   code: crmCustomer.code,
   name: crmCustomer.name,
   type: crmCustomer.type,
-  statusId: crmCustomer.statusId,
   sourceId: crmCustomer.sourceId,
   level: crmCustomer.level,
   industry: crmCustomer.industry,

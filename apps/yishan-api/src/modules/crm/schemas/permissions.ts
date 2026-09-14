@@ -37,6 +37,8 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   ACTIVITY_CREATE: { code: 'crm:activity:create', label: 'CRM-跟进-新建', group: 'crm' },
   ACTIVITY_UPDATE: { code: 'crm:activity:update', label: 'CRM-跟进-编辑', group: 'crm' },
   ACTIVITY_DELETE: { code: 'crm:activity:delete', label: 'CRM-跟进-删除', group: 'crm' },
+  ATTACHMENT_LIST: { code: 'crm:attachment:list', label: 'CRM-附件-查看', group: 'crm' },
+  ATTACHMENT_MANAGE: { code: 'crm:attachment:manage', label: 'CRM-附件-管理', group: 'crm' },
 
   POOL_LIST: { code: 'crm:pool:list', label: 'CRM-公海-查看', group: 'crm' },
 

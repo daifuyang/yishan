@@ -9,13 +9,6 @@ import {
   type UpdateTagInput,
 } from '../repositories/tag.repository.js'
 import {
-  StatusRepository,
-  type StatusListQuery,
-  type StatusRow,
-  type CreateStatusInput,
-  type UpdateStatusInput,
-} from '../repositories/status.repository.js'
-import {
   SourceRepository,
   type SourceListQuery,
   type SourceRow,
@@ -75,52 +68,6 @@ export class TagService {
       throw new BusinessError(CrmErrorCode.CRM_TAG_NOT_FOUND, '标签不存在')
     }
     await TagRepository.softDelete(id, this.deps.db)
-  }
-}
-
-export class StatusService {
-  constructor(private readonly deps: { db?: AppQueryDb } = {}) {}
-
-  async list(query: StatusListQuery): Promise<{ total: number; items: StatusRow[]; page: number; pageSize: number }> {
-    const { rows, total } = await StatusRepository.list(query, this.deps.db)
-    return { total, items: rows, page: query.page ?? 1, pageSize: query.pageSize ?? 200 }
-  }
-
-  async findById(id: number): Promise<StatusRow | null> {
-    return StatusRepository.findById(id, this.deps.db)
-  }
-
-  async create(input: CreateStatusInput): Promise<StatusRow> {
-    const dupe = await StatusRepository.findByName(input.name, undefined, this.deps.db)
-    if (dupe) {
-      throw new BusinessError(CrmErrorCode.CRM_STATUS_NAME_DUPLICATE, '状态名称已存在')
-    }
-    return StatusRepository.create(input, this.deps.db)
-  }
-
-  async update(id: number, input: UpdateStatusInput): Promise<StatusRow | null> {
-    const existing = await StatusRepository.findById(id, this.deps.db)
-    if (!existing) {
-      throw new BusinessError(CrmErrorCode.CRM_STATUS_NOT_FOUND, '客户状态不存在')
-    }
-    if (input.name !== undefined && input.name !== existing.name) {
-      const dupe = await StatusRepository.findByName(input.name, id, this.deps.db)
-      if (dupe) {
-        throw new BusinessError(CrmErrorCode.CRM_STATUS_NAME_DUPLICATE, '状态名称已存在')
-      }
-    }
-    return StatusRepository.update(id, input, this.deps.db)
-  }
-
-  async remove(id: number): Promise<void> {
-    const existing = await StatusRepository.findById(id, this.deps.db)
-    if (!existing) {
-      throw new BusinessError(CrmErrorCode.CRM_STATUS_NOT_FOUND, '客户状态不存在')
-    }
-    if (existing.isSystem === 1) {
-      throw new BusinessError(CrmErrorCode.CRM_STATUS_SYSTEM_PROTECTED, '系统预置状态不允许删除')
-    }
-    await StatusRepository.softDelete(id, this.deps.db)
   }
 }
 

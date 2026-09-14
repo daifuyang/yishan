@@ -17,8 +17,8 @@ import {
   isTerminalStage,
 } from '../schemas/opportunity.schema.js'
 import { ActivityRepository } from '../repositories/activity.repository.js'
-import { CustomerRepository } from '../repositories/customer.repository.js'
 import { CustomerService } from './customer.service.js'
+import { CustomerLifecycleService } from './customer-lifecycle.service.js'
 import {
   OpportunityRepository,
   type CreateOpportunityInput,
@@ -195,7 +195,7 @@ export class OpportunityService {
     }
     return dbManager.transaction(async (tx) => {
       const opportunity = await OpportunityRepository.create(payload, tx)
-      await CustomerRepository.update(input.customerId, { statusCode: 'opportunity', updaterId: currentUser.id }, tx)
+      await CustomerLifecycleService.recalculate(input.customerId, currentUser.id, tx)
       return opportunity
     })
   }
@@ -452,11 +452,7 @@ export class OpportunityService {
 
       await new CustomerService({ db: tx }).detail(opp.customerId, currentUser)
 
-      await CustomerRepository.update(
-        opp.customerId,
-        { statusCode: 'lost', updaterId: currentUser.id },
-        tx,
-      )
+      await CustomerLifecycleService.recalculate(opp.customerId, currentUser.id, tx)
 
       await OpportunityRepository.createStageLog(
         {

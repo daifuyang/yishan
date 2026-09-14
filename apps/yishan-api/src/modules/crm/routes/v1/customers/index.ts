@@ -300,6 +300,7 @@ export default (async (app) => {
       },
     },
     async (request: any, reply: any) => {
+      await service.detail(Number(request.params.id), request.currentUser)
       const items = await TransferRepository.listByCustomerId(Number(request.params.id))
       return ResponseUtil.success(reply, items)
     },

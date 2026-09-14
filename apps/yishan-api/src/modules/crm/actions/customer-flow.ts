@@ -2,6 +2,7 @@ import { BusinessError } from '@/exceptions/business-error.js'
 import { dbManager } from '@/db'
 import { CrmErrorCode } from '../schemas/error-codes.js'
 import type { DataScopeUser } from '../schemas/data-scope.js'
+import { computeDataScope } from '../schemas/data-scope.js'
 import { CustomerRepository, type CustomerRow } from '../repositories/customer.repository.js'
 import { TransferRepository } from '../repositories/transfer.repository.js'
 
@@ -183,6 +184,14 @@ export class CustomerFlowService {
       const existing = await CustomerRepository.findById(customerId, tx)
       if (!existing) {
         throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在或已删除')
+      }
+
+      const scope = computeDataScope(currentUser)
+      const withinScope = scope.ownerUserIds === null ||
+        (existing.ownerUserId !== null && (scope.ownerUserIds ?? []).includes(existing.ownerUserId)) ||
+        (existing.ownerDepartmentId !== null && (scope.ownerDepartmentIds ?? []).includes(existing.ownerDepartmentId))
+      if (!withinScope) {
+        throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_TRANSFER_FORBIDDEN, '无权转交该客户')
       }
 
       const fromUserId = existing.ownerUserId

@@ -49,6 +49,10 @@ export class ContractRepository {
     const rows = await db.select().from(crmContract).where(and(eq(crmContract.quotationId, quotationId), isNull(crmContract.deletedAt))).limit(1)
     return (rows[0] as ContractRow | undefined) ?? null
   }
+  static async existsByCustomerId(customerId: number, db: AppQueryDb = drizzleDb): Promise<boolean> {
+    const rows = await db.select({ id: crmContract.id }).from(crmContract).where(and(eq(crmContract.customerId, customerId), isNull(crmContract.deletedAt))).limit(1)
+    return rows.length > 0
+  }
   static async create(input: CreateContractInput, db: AppQueryDb = drizzleDb): Promise<{ id: number }> {
     const result = await db.insert(crmContract).values(input as any)
     return { id: Number(result[0].insertId) }
