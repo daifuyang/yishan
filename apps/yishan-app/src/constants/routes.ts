@@ -5,9 +5,12 @@ export const LOGIN_PATH = 'login/index'
 
 export const TAB_PAGES = {
   home: 'pages/index/index',
+  customers: 'pages/customers/index',
   apps: 'pages/apps/index',
   mine: 'pages/mine/index',
 } as const
+
+export const CRM_ACTION_PAGE = 'pages/crm/action/index'
 
 export const SECONDARY_PAGES = {
   profileEdit: 'pages/profile/edit/index',

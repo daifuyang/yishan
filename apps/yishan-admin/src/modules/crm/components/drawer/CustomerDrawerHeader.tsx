@@ -62,19 +62,15 @@ export type CreateEntityKey =
   | 'contact'
   | 'opportunity'
   | 'contract'
-  | 'expense'
   | 'quotation'
-  | 'payment'
-  | 'invoice';
+  | 'payment';
 
 const CREATE_LABELS: Array<{ key: CreateEntityKey; label: string }> = [
   { key: 'contact', label: '联系人' },
   { key: 'opportunity', label: '商机' },
   { key: 'contract', label: '合同' },
-  { key: 'expense', label: '费用' },
   { key: 'quotation', label: '报价单' },
   { key: 'payment', label: '回款记录' },
-  { key: 'invoice', label: '开票记录' },
 ];
 
 const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({

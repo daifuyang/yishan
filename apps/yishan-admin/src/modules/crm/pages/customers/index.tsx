@@ -293,6 +293,17 @@ const Customers: React.FC = () => {
         onClose={drawer.closeDrawer}
         onChanged={reloadAll}
         statuses={statuses}
+        onCreateEntity={(entity) => {
+          const pageByEntity = {
+            contact: 'contacts',
+            opportunity: 'opportunities',
+            quotation: 'quotations',
+            contract: 'contracts',
+            payment: 'payments',
+          } as const;
+          history.push(`/crm/${pageByEntity[entity]}?customerId=${drawer.customerId ?? ''}`);
+          drawer.closeDrawer();
+        }}
       />
 
       {/* 行操作菜单由 CustomerActionDropdown 内部自带 Modal；这里保留引用避免 tree-shake 误删。 */}

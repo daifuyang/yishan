@@ -13,8 +13,14 @@ export const TAB_BAR = {
       selectedIconPath: 'assets/tabbar/home-active.png',
     },
     {
+      pagePath: 'pages/customers/index',
+      text: '客户',
+      iconPath: 'assets/tabbar/user.png',
+      selectedIconPath: 'assets/tabbar/user-active.png',
+    },
+    {
       pagePath: 'pages/apps/index',
-      text: '应用',
+      text: '工作台',
       iconPath: 'assets/tabbar/apps.png',
       selectedIconPath: 'assets/tabbar/apps-active.png',
     },

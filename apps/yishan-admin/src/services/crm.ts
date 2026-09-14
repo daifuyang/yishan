@@ -307,6 +307,31 @@ export interface TaskInput {
   description?: string | null
 }
 
+export interface ProductRow {
+  id: number
+  code: string
+  name: string
+  categoryCode: string | null
+  categoryName: string | null
+  unitCode: string | null
+  unitName: string | null
+  standardPriceCents: number
+  taxRateBp: number
+  enabled: number
+  description: string | null
+}
+
+export interface CrmAttachmentRow {
+  id: number
+  customerId: number
+  entityType: 'customer' | 'activity'
+  entityId: number | null
+  attachmentId: number
+  name?: string | null
+  url?: string | null
+  createdAt: string
+}
+
 /* ─── Tag / Status / Source ────────────────────────────────────────── */
 
 export interface TagRow {
@@ -635,6 +660,25 @@ export async function updateTask(id: number, input: Partial<Omit<TaskInput, 'cus
 
 export async function deleteTask(id: number): Promise<void> {
   await request(`/api/crm/v1/tasks/${id}`, { method: 'DELETE' })
+}
+
+export async function listProducts(query: PageQuery & { enabled?: number }): Promise<{ data: ProductRow[]; total: number }> {
+  const r = await request<ApiResp<ProductRow[]>>('/api/crm/v1/products', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function listCrmAttachments(customerId: number): Promise<CrmAttachmentRow[]> {
+  const r = await request<ApiResp<CrmAttachmentRow[]>>('/api/crm/v1/attachments', { method: 'GET', params: { customerId } }) as ApiResp<CrmAttachmentRow[]>
+  return unwrap(r)
+}
+
+export async function createCrmAttachment(input: Pick<CrmAttachmentRow, 'customerId' | 'entityType' | 'entityId' | 'attachmentId'>): Promise<CrmAttachmentRow> {
+  const r = await request<ApiResp<CrmAttachmentRow>>('/api/crm/v1/attachments', { method: 'POST', data: input }) as ApiResp<CrmAttachmentRow>
+  return unwrap(r)
+}
+
+export async function deleteCrmAttachment(id: number): Promise<void> {
+  await request(`/api/crm/v1/attachments/${id}`, { method: 'DELETE' })
 }
 
 /* Settings — Tag */

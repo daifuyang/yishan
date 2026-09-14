@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import CustomerDrawer from './CustomerDrawer';
 
@@ -68,6 +68,8 @@ jest.mock('./_shared/useResizableDrawer', () => ({
   useResizableDrawer: () => [1100, jest.fn()],
 }));
 
+jest.mock('./tabs/AttachmentsTab', () => () => null);
+
 describe('CustomerDrawer', () => {
   it('renders the V0.1 customer lifecycle tabs and exposes 新增跟进 as the primary action', async () => {
     render(
@@ -97,5 +99,25 @@ describe('CustomerDrawer', () => {
     expect(
       screen.getByRole('button', { name: '新增跟进' }).classList.contains('ant-btn-primary'),
     ).toBe(true);
+  });
+
+  it('keeps V0.1 excluded expense and invoice actions out of the create menu', async () => {
+    render(
+      React.createElement(CustomerDrawer, {
+        open: true,
+        customerId: 7,
+        onClose: jest.fn(),
+        statuses: [],
+      }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getAllByText('\u4e0a\u6d77\u793a\u4f8b\u5ba2\u6237').length).toBeGreaterThan(0),
+    );
+    fireEvent.click(screen.getByRole('button', { name: /\u65b0\u589e down/ }));
+
+    expect(screen.queryByText('\u8d39\u7528')).toBeNull();
+    expect(screen.queryByText('\u5f00\u7968\u8bb0\u5f55')).toBeNull();
+    expect(screen.getAllByText('\u5546\u673a').length).toBeGreaterThan(1);
   });
 });

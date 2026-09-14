@@ -256,7 +256,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       case 'contracts': return <ContractsTab customerId={current.id} />;
       case 'payments': return <PaymentsTab customerId={current.id} />;
       case 'tasks': return <TasksTab customerId={current.id} />;
-      case 'attachments': return <AttachmentsTab />;
+      case 'attachments': return <AttachmentsTab customerId={current.id} />;
       default: return null;
     }
   };
@@ -304,10 +304,8 @@ const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
   contact: '新建联系人请到基本信息 tab 的联系人入口（Phase 3 接入表单）',
   opportunity: '新建商机功能开发中（Phase 3）',
   contract: '新建合同功能开发中（Phase 3）',
-  expense: '新建费用功能开发中（Phase 3）',
   quotation: '新建报价单功能开发中（Phase 3）',
   payment: '新建回款记录功能开发中（Phase 3）',
-  invoice: '新建开票记录功能开发中（Phase 3）',
 };
 
 /**

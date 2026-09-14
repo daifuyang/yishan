@@ -18,7 +18,8 @@ export interface TabBarProps {
 
 const DEFAULT_LIST: TabBarItem[] = [
   { pagePath: 'pages/index/index', text: '首页', icon: 'home' },
-  { pagePath: 'pages/apps/index', text: '功能', icon: 'apps' },
+  { pagePath: 'pages/customers/index', text: '客户', icon: 'user' },
+  { pagePath: 'pages/apps/index', text: '工作台', icon: 'apps' },
   { pagePath: 'pages/mine/index', text: '我的', icon: 'user' },
 ]
 
@@ -30,6 +31,7 @@ export function TabBar({ currentPath, list = DEFAULT_LIST }: TabBarProps) {
     if (item.pagePath === active) return
     const url = `/${item.pagePath}`
     if (item.pagePath === 'pages/index/index'
+      || item.pagePath === 'pages/customers/index'
       || item.pagePath === 'pages/apps/index'
       || item.pagePath === 'pages/mine/index') {
       switchTab({ url })
