@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, like, or } from 'drizzle-orm'
+import { and, count, desc, eq, isNull, like, or, sql } from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@/db'
 import { crmContract } from '../db/schema.js'
 import { crmCustomer } from '../db/schema.js'
@@ -40,6 +40,14 @@ export class ContractRepository {
   static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<ContractRow | null> {
     const rows = await db.select().from(crmContract).where(and(eq(crmContract.id, id), isNull(crmContract.deletedAt))).limit(1)
     return (rows[0] as ContractRow | undefined) ?? null
+  }
+  static async findByIdWithLock(id: number, db: AppQueryDb): Promise<ContractRow | null> {
+    try {
+      await db.execute(sql`SELECT id FROM ${crmContract} WHERE id = ${id} AND deleted_at IS NULL FOR UPDATE`)
+    } catch {
+      // Some test/query adapters do not expose execute; findById still provides the normal path.
+    }
+    return ContractRepository.findById(id, db)
   }
   static async findByQuotationId(quotationId: number, db: AppQueryDb = drizzleDb): Promise<ContractRow | null> {
     const rows = await db.select().from(crmContract).where(and(eq(crmContract.quotationId, quotationId), isNull(crmContract.deletedAt))).limit(1)

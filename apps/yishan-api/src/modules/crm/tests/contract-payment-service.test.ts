@@ -95,6 +95,7 @@ describe('CRM contract and payment lifecycle', () => {
   it('rejects a payment that would exceed the contract amount', async () => {
     vi.spyOn(ContractService.prototype, 'detail').mockResolvedValue({ id: 31, customerId: 11, amountCents: 100_000 } as any)
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(ContractRepository, 'findByIdWithLock').mockResolvedValue({ id: 31, customerId: 11, amountCents: 100_000 } as any)
     vi.spyOn(PaymentRepository, 'listByContractId').mockResolvedValue([{ id: 1, contractId: 31, amountCents: 80_000 }] as any)
 
     await expect(new PaymentService().create(31, {
@@ -102,10 +103,23 @@ describe('CRM contract and payment lifecycle', () => {
     }, salesperson)).rejects.toMatchObject({ code: CrmErrorCode.CRM_PAYMENT_AMOUNT_INVALID })
   })
 
+  it('locks the contract before reading payments and writing a payment', async () => {
+    const calls: string[] = []
+    vi.spyOn(ContractService.prototype, 'detail').mockResolvedValue({ id: 31, customerId: 11, amountCents: 100_000 } as any)
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(ContractRepository as any, 'findByIdWithLock').mockImplementation(async () => { calls.push('lock'); return { id: 31, customerId: 11, amountCents: 100_000 } })
+    vi.spyOn(PaymentRepository, 'listByContractId').mockImplementation(async () => { calls.push('payments'); return [{ id: 1, contractId: 31, amountCents: 50_000 }] as any })
+    vi.spyOn(PaymentRepository, 'create').mockImplementation(async () => { calls.push('create'); return { id: 2, contractId: 31, amountCents: 20_000 } as any })
+
+    await new PaymentService().create(31, { amountCents: 20_000, paidAt: new Date(), methodCode: 'bank_transfer' }, salesperson)
+
+    expect(calls).toEqual(['lock', 'payments', 'create'])
+  })
+
   it('retries a duplicate generated contract number inside the transaction', async () => {
     vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
-    vi.spyOn(ContractRepository, 'countTodayByNoPrefix').mockResolvedValueOnce(0).mockResolvedValueOnce(1)
+    const count = vi.spyOn(ContractRepository, 'countTodayByNoPrefix').mockResolvedValue(0)
     vi.spyOn(ContractRepository, 'create').mockRejectedValueOnce({ code: 'ER_DUP_ENTRY' }).mockResolvedValueOnce({ id: 32 } as any)
     vi.spyOn(ContractRepository, 'findById').mockResolvedValue({ id: 32, customerId: 11 } as any)
     vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 11, statusCode: 'customer' } as any)
@@ -116,5 +130,8 @@ describe('CRM contract and payment lifecycle', () => {
       ownerDepartmentId: 10, attachmentIds: null, description: null,
     }, salesperson)).resolves.toMatchObject({ id: 32 })
     expect(ContractRepository.create).toHaveBeenCalledTimes(2)
+    expect(count).toHaveBeenCalledTimes(1)
+    const candidates = vi.mocked(ContractRepository.create).mock.calls.map(([input]) => input.contractNo)
+    expect(candidates[0]).not.toBe(candidates[1])
   })
 })
