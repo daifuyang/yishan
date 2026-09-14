@@ -251,19 +251,52 @@ const CRM_ENUM_SEED: ReadonlyArray<{
   { type: 'crm_contact_status', code: 'active', name: '在职', sort: 10 },
   { type: 'crm_contact_status', code: 'paused', name: '暂时联系不上', sort: 20 },
   { type: 'crm_contact_status', code: 'invalid', name: '已离职/失效', sort: 30 },
+  { type: 'crm_customer_status', code: 'potential', name: '潜在客户', sort: 10 },
+  { type: 'crm_customer_status', code: 'following', name: '跟进中', sort: 20 },
+  { type: 'crm_customer_status', code: 'opportunity', name: '商机客户', sort: 30 },
+  { type: 'crm_customer_status', code: 'customer', name: '正式客户', sort: 40 },
+  { type: 'crm_customer_status', code: 'lost', name: '已流失', sort: 50 },
+
+  { type: 'crm_quotation_status', code: 'draft', name: '草稿', sort: 10 },
+  { type: 'crm_quotation_status', code: 'sent', name: '已发送', sort: 20 },
+  { type: 'crm_quotation_status', code: 'accepted', name: '已接受', sort: 30 },
+  { type: 'crm_quotation_status', code: 'rejected', name: '已拒绝', sort: 40 },
+  { type: 'crm_quotation_status', code: 'voided', name: '已作废', sort: 50 },
+  { type: 'crm_quotation_status', code: 'superseded', name: '已被新版替代', sort: 60 },
+
+  { type: 'crm_contract_status', code: 'draft', name: '草稿', sort: 10 },
+  { type: 'crm_contract_status', code: 'pending', name: '待生效', sort: 20 },
+  { type: 'crm_contract_status', code: 'active', name: '履约中', sort: 30 },
+  { type: 'crm_contract_status', code: 'completed', name: '已完成', sort: 40 },
+  { type: 'crm_contract_status', code: 'voided', name: '已作废', sort: 50 },
+
+  { type: 'crm_task_status', code: 'todo', name: '待处理', sort: 10 },
+  { type: 'crm_task_status', code: 'in_progress', name: '进行中', sort: 20 },
+  { type: 'crm_task_status', code: 'completed', name: '已完成', sort: 30 },
+  { type: 'crm_task_status', code: 'cancelled', name: '已取消', sort: 40 },
 ]
 
 async function seedCrmEnums(creatorId: number): Promise<void> {
   // 已有 type+code 的不写；不存在的插入。
   // 用批量 SELECT 把"已存在"提前拉出来，减少 N+1。
-  const types = [...new Set(CRM_ENUM_SEED.map((s) => s.type))]
+  const v01Seed = CRM_ENUM_SEED.filter((seed) => {
+    if (seed.type === 'crm_lead_status') return false
+    if (seed.type === 'crm_customer_status') {
+      return ['potential', 'following', 'opportunity', 'customer', 'lost'].includes(seed.code)
+    }
+    if (seed.type === 'crm_opportunity_stage') {
+      return ['discover', 'qualify', 'proposal', 'negotiation', 'won'].includes(seed.code)
+    }
+    return true
+  })
+  const types = [...new Set(v01Seed.map((s) => s.type))]
   const existing = await drizzleDb
     .select({ type: sysEnum.type, code: sysEnum.code })
     .from(sysEnum)
     .where(inArray(sysEnum.type, types))
   const existSet = new Set(existing.map((e) => `${e.type}::${e.code}`))
 
-  const toInsert = CRM_ENUM_SEED
+  const toInsert = v01Seed
     .filter((s) => !existSet.has(`${s.type}::${s.code}`))
     .map((s) => ({
       type: s.type,

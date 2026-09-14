@@ -42,7 +42,7 @@ export const crmCustomer = mysqlTable(
      * 新路径优先使用 *_code 列；旧 *_id / * 字符串列保留以便平滑迁移。
      * Phase 1 验证新路径稳定后，迁移脚本最后一步允许 drop 旧列。
      */
-    statusCode: varchar('status_code', { length: 64 }),
+    statusCode: varchar('status_code', { length: 64 }).notNull().default('potential'),
     sourceCode: varchar('source_code', { length: 64 }),
     levelCode: varchar('level_code', { length: 64 }),
     industryCode: varchar('industry_code', { length: 64 }),
@@ -89,69 +89,6 @@ export const crmCustomer = mysqlTable(
       t.ownerDepartmentId,
       t.poolStatus,
     ),
-  }),
-)
-
-/** 尚未验证、尚未转化为客户的获客信息。 */
-export const crmLead = mysqlTable(
-  'crm_lead',
-  {
-    id: int().primaryKey().autoincrement().notNull(),
-    name: varchar({ length: 100 }),
-    companyName: varchar('company_name', { length: 200 }),
-    mobile: varchar({ length: 32 }),
-    phone: varchar({ length: 32 }),
-    email: varchar({ length: 100 }),
-    wechat: varchar({ length: 64 }),
-    qq: varchar({ length: 32 }),
-    sourceId: int('source_id'),
-    intention: varchar({ length: 2000 }),
-    status: varchar({ length: 16 }).notNull().default('pending'),
-    ownerUserId: int('owner_user_id'),
-    ownerDepartmentId: int('owner_department_id'),
-    lastFollowUpAt: datetime('last_follow_up_at'),
-    nextFollowUpAt: datetime('next_follow_up_at'),
-    disqualifyReason: varchar('disqualify_reason', { length: 500 }),
-    /** 标准化作废原因代码：duplicate / not_target / no_demand / unreachable / invalid_contact / rejected / other */
-    disqualifyCode: varchar('disqualify_code', { length: 32 }),
-    convertedCustomerId: int('converted_customer_id'),
-    convertedContactId: int('converted_contact_id'),
-    convertedAt: datetime('converted_at'),
-    creatorId: int('creator_id'),
-    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-    updaterId: int('updater_id'),
-    updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-    deletedAt: datetime('deleted_at'),
-  },
-  (t) => ({
-    idxStatus: index('idx_crm_lead_status').on(t.status),
-    idxOwner: index('idx_crm_lead_owner').on(t.ownerUserId, t.ownerDepartmentId),
-    idxMobile: index('idx_crm_lead_mobile').on(t.mobile),
-    idxEmail: index('idx_crm_lead_email').on(t.email),
-    idxNextFollowUp: index('idx_crm_lead_next_follow_up_at').on(t.nextFollowUpAt),
-    idxDeletedAt: index('idx_crm_lead_deleted_at').on(t.deletedAt),
-    idxDisqualifyCode: index('idx_crm_lead_disqualify_code').on(t.disqualifyCode),
-  }),
-)
-
-/** 线索的人工跟进记录。与客户活动分表，避免改变客户查询和数据契约。 */
-export const crmLeadActivity = mysqlTable(
-  'crm_lead_activity',
-  {
-    id: int().primaryKey().autoincrement().notNull(),
-    leadId: int('lead_id').notNull(),
-    type: varchar({ length: 16 }).notNull(),
-    content: varchar({ length: 2000 }).notNull().default(''),
-    occurredAt: datetime('occurred_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-    nextFollowUpAt: datetime('next_follow_up_at'),
-    operatorUserId: int('operator_user_id').notNull(),
-    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-    updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-  },
-  (t) => ({
-    idxLead: index('idx_crm_lead_activity_lead_id').on(t.leadId),
-    idxOperator: index('idx_crm_lead_activity_operator_user_id').on(t.operatorUserId),
-    idxLeadOccurred: index('idx_crm_lead_activity_lead_occurred').on(t.leadId, t.occurredAt),
   }),
 )
 
@@ -212,8 +149,8 @@ export const crmActivity = mysqlTable(
     /**
      * Phase 1 引入 polymorphic：业务对象 + id 组合。
      *
-     *   entity_type ∈ { 'lead', 'customer', 'opportunity', 'contract' }
-     *   entity_id  对应 crm_lead.id / crm_customer.id / crm_opportunity.id / crm_contract.id
+     *   entity_type ∈ { 'customer', 'opportunity', 'contract' }
+     *   entity_id  对应 crm_customer.id / crm_opportunity.id / crm_contract.id
      *
      * 旧 customer_id 列暂时保留：数据迁移期与新列双写，新业务只写 entity_*。
      * Phase 1 验证稳定后，最后一步允许 drop 旧 customer_id / contact_id 列。
@@ -457,47 +394,6 @@ export const crmProduct = mysqlTable(
     idxUnitCode: index('idx_crm_product_unit_code').on(t.unitCode),
     idxEnabled: index('idx_crm_product_enabled').on(t.enabled),
     idxDeletedAt: index('idx_crm_product_deleted_at').on(t.deletedAt),
-  }),
-)
-
-/**
- * Phase 4 引入：工单表。
- *
- * 注意：**不挂任何业务路由**。表保留供 Phase 5 P1 使用；
- * 任何对它的引用都会因为没有 route + service 而编译期报错（防止误用）。
- */
-export const crmTicket = mysqlTable(
-  'crm_ticket',
-  {
-    id: int().primaryKey().autoincrement().notNull(),
-    ticketNo: varchar('ticket_no', { length: 32 }).notNull(),
-    title: varchar({ length: 200 }).notNull(),
-    customerId: int('customer_id').notNull(),
-    contactId: int('contact_id'),
-    contractId: int('contract_id'),
-    productId: int('product_id'),
-    typeCode: varchar('type_code', { length: 64 }).notNull(),
-    priorityCode: varchar('priority_code', { length: 64 }).notNull(),
-    status: varchar({ length: 32 }).notNull().default('open'),
-    ownerUserId: int('owner_user_id'),
-    slaDueAt: datetime('sla_due_at'),
-    description: varchar({ length: 2000 }),
-    solution: varchar({ length: 2000 }),
-    creatorId: int('creator_id'),
-    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-    updaterId: int('updater_id'),
-    updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-    closedAt: datetime('closed_at'),
-    deletedAt: datetime('deleted_at'),
-  },
-  (t) => ({
-    uniqTicketNo: uniqueIndex('uniq_crm_ticket_no').on(t.ticketNo),
-    idxCustomer: index('idx_crm_ticket_customer_id').on(t.customerId),
-    idxOwner: index('idx_crm_ticket_owner_user_id').on(t.ownerUserId),
-    idxStatus: index('idx_crm_ticket_status').on(t.status),
-    idxTypeCode: index('idx_crm_ticket_type_code').on(t.typeCode),
-    idxPriorityCode: index('idx_crm_ticket_priority_code').on(t.priorityCode),
-    idxDeletedAt: index('idx_crm_ticket_deleted_at').on(t.deletedAt),
   }),
 )
 
@@ -798,23 +694,15 @@ export const crmContract = mysqlTable(
   }),
 )
 
-/**
- * Phase 3 回款计划。
- *
- * 计划合计 ≤ 合同金额（DB check + service 校验双层）。
- * status 由 computePaymentPlanStatus 计算（pending / partial / paid / overdue）；
- * 不会在写入时设值，由定时 job 重算。
- */
-export const crmPaymentPlan = mysqlTable(
-  'crm_payment_plan',
+export const crmPayment = mysqlTable(
+  'crm_payment',
   {
     id: int().primaryKey().autoincrement().notNull(),
     contractId: int('contract_id').notNull(),
-    periodNo: int('period_no').notNull(),
-    plannedDate: datetime('planned_date').notNull(),
-    plannedAmountCents: bigint('planned_amount_cents', { mode: 'number' }).notNull().default(0),
-    /** 由 job 写入；不在 service 写入路径出现。 */
-    status: varchar({ length: 16 }).notNull().default('pending'),
+    customerId: int('customer_id').notNull(),
+    amountCents: bigint('amount_cents', { mode: 'number' }).notNull().default(0),
+    paidAt: datetime('paid_at').notNull(),
+    methodCode: varchar('method_code', { length: 64 }).notNull(),
     remark: varchar({ length: 500 }),
     creatorId: int('creator_id'),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
@@ -823,62 +711,53 @@ export const crmPaymentPlan = mysqlTable(
     deletedAt: datetime('deleted_at'),
   },
   (t) => ({
-    idxContract: index('idx_crm_payment_plan_contract_id').on(t.contractId),
-    idxPlannedDate: index('idx_crm_payment_plan_planned_date').on(t.plannedDate),
-    idxStatus: index('idx_crm_payment_plan_status').on(t.status),
-    idxContractPeriod: uniqueIndex('uniq_crm_payment_plan_contract_period').on(t.contractId, t.periodNo),
-    idxDeletedAt: index('idx_crm_payment_plan_deleted_at').on(t.deletedAt),
+    idxContract: index('idx_crm_payment_contract_id').on(t.contractId),
+    idxCustomer: index('idx_crm_payment_customer_id').on(t.customerId),
+    idxPaidAt: index('idx_crm_payment_paid_at').on(t.paidAt),
+    idxMethodCode: index('idx_crm_payment_method_code').on(t.methodCode),
+    idxDeletedAt: index('idx_crm_payment_deleted_at').on(t.deletedAt),
   }),
 )
 
-/**
- * Phase 3 实际回款。
- *
- * 不直接关联 plan —— 实际回款可分配到任意 plan，通过 crm_payment_writeoff 桥接。
- * 冲销：不允许物理删除，仅创建负向 writeoff + 审计活动。
- */
-export const crmPaymentActual = mysqlTable(
-  'crm_payment_actual',
+export const crmTask = mysqlTable(
+  'crm_task',
   {
     id: int().primaryKey().autoincrement().notNull(),
-    contractId: int('contract_id').notNull(),
-    receivedAt: datetime('received_at').notNull(),
-    amountCents: bigint('amount_cents', { mode: 'number' }).notNull().default(0),
-    methodCode: varchar('method_code', { length: 64 }).notNull(),
-    operatorUserId: int('operator_user_id').notNull(),
-    remark: varchar({ length: 500 }),
+    customerId: int('customer_id').notNull(),
+    title: varchar({ length: 200 }).notNull(),
+    status: varchar({ length: 32 }).notNull().default('todo'),
+    assigneeUserId: int('assignee_user_id'),
+    dueAt: datetime('due_at'),
+    completedAt: datetime('completed_at'),
+    description: varchar({ length: 2000 }),
     creatorId: int('creator_id'),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    updaterId: int('updater_id'),
     updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
     deletedAt: datetime('deleted_at'),
   },
   (t) => ({
-    idxContract: index('idx_crm_payment_actual_contract_id').on(t.contractId),
-    idxReceivedAt: index('idx_crm_payment_actual_received_at').on(t.receivedAt),
-    idxMethodCode: index('idx_crm_payment_actual_method_code').on(t.methodCode),
-    idxDeletedAt: index('idx_crm_payment_actual_deleted_at').on(t.deletedAt),
+    idxCustomer: index('idx_crm_task_customer_id').on(t.customerId),
+    idxAssigneeStatus: index('idx_crm_task_assignee_status').on(t.assigneeUserId, t.status),
+    idxDueAt: index('idx_crm_task_due_at').on(t.dueAt),
+    idxDeletedAt: index('idx_crm_task_deleted_at').on(t.deletedAt),
   }),
 )
 
-/**
- * Phase 3 核销桥接表。
- *
- * 多对多：actualId ↔ planId；amountCents 表示本次核销金额。
- * 同一个 actual 可以分摊到多个 plan（FIFO / 手动指定）。
- */
-export const crmPaymentWriteoff = mysqlTable(
-  'crm_payment_writeoff',
+export const crmAttachment = mysqlTable(
+  'crm_attachment',
   {
     id: int().primaryKey().autoincrement().notNull(),
-    actualId: int('actual_id').notNull(),
-    planId: int('plan_id').notNull(),
-    amountCents: bigint('amount_cents', { mode: 'number' }).notNull().default(0),
-    operatorUserId: int('operator_user_id').notNull(),
+    customerId: int('customer_id').notNull(),
+    entityType: varchar('entity_type', { length: 32 }).notNull(),
+    entityId: int('entity_id').notNull(),
+    attachmentId: int('attachment_id').notNull(),
+    creatorId: int('creator_id'),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
   },
   (t) => ({
-    idxActual: index('idx_crm_payment_writeoff_actual_id').on(t.actualId),
-    idxPlan: index('idx_crm_payment_writeoff_plan_id').on(t.planId),
-    idxActualPlan: uniqueIndex('uniq_crm_payment_writeoff_actual_plan').on(t.actualId, t.planId),
+    idxCustomer: index('idx_crm_attachment_customer_id').on(t.customerId),
+    idxEntity: index('idx_crm_attachment_entity').on(t.entityType, t.entityId),
+    idxAttachment: uniqueIndex('uniq_crm_attachment_attachment_id').on(t.attachmentId),
   }),
 )
