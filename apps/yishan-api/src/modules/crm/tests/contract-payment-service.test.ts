@@ -14,6 +14,13 @@ const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 afterEach(() => vi.restoreAllMocks())
 
 describe('CRM contract and payment lifecycle', () => {
+  it('propagates a contract row-lock failure instead of reading unlocked data', async () => {
+    const lockError = Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK' })
+    const db = { execute: vi.fn().mockRejectedValue(lockError) }
+
+    await expect(ContractRepository.findByIdWithLock(31, db as any)).rejects.toBe(lockError)
+  })
+
   it('rejects a contract detail when its owning customer is outside the caller scope', async () => {
     vi.spyOn(ContractRepository, 'findById').mockResolvedValue({ id: 31, customerId: 99, ownerUserId: 7, ownerDepartmentId: 10 } as any)
     vi.spyOn(CustomerService.prototype, 'detail').mockRejectedValue({ code: CrmErrorCode.CRM_CUSTOMER_NOT_FOUND })

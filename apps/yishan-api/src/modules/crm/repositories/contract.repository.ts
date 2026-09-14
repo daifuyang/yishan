@@ -42,11 +42,7 @@ export class ContractRepository {
     return (rows[0] as ContractRow | undefined) ?? null
   }
   static async findByIdWithLock(id: number, db: AppQueryDb): Promise<ContractRow | null> {
-    try {
-      await db.execute(sql`SELECT id FROM ${crmContract} WHERE id = ${id} AND deleted_at IS NULL FOR UPDATE`)
-    } catch {
-      // Some test/query adapters do not expose execute; findById still provides the normal path.
-    }
+    await db.execute(sql`SELECT id FROM ${crmContract} WHERE id = ${id} AND deleted_at IS NULL FOR UPDATE`)
     return ContractRepository.findById(id, db)
   }
   static async findByQuotationId(quotationId: number, db: AppQueryDb = drizzleDb): Promise<ContractRow | null> {
