@@ -10,12 +10,12 @@ import {
   type CustomerRow,
   type UpdateCustomerInput,
 } from '../repositories/customer.repository.js'
-import { StatusRepository } from '../repositories/status.repository.js'
 import { SourceRepository } from '../repositories/source.repository.js'
 import {
   CustomerMemberRepository,
   type CustomerMemberWithUser,
 } from '../repositories/member.repository.js'
+import { isCustomerStatusCode, type CustomerStatusCode } from '../domain/statuses.js'
 
 /**
  * CustomerService —— 客户业务编排。
@@ -33,7 +33,7 @@ export interface CreateCustomerArgs {
   input: {
     name: string
     type?: 'enterprise' | 'individual'
-    statusId?: number | null
+    statusCode?: CustomerStatusCode
     sourceId?: number | null
     level?: string | null
     industry?: string | null
@@ -161,7 +161,7 @@ export class CustomerService {
    * 创建客户：
    *   1. 查重：enterprise 按 name 精确，phone 辅助；individual 按 phone 优先。
    *      重复 → BusinessError(CRM_CUSTOMER_DUPLICATE)，附 existingCustomerId/Name/OwnerUserId。
-   *   2. 校验 statusId/sourceId 存在（如设置）。
+   *   2. 校验 statusCode/sourceId 存在（如设置）。
    *   3. 校验 ownerUserId 存在（如设置）。
    *   4. 写入客户 + 标签（在事务内）。
    */
@@ -199,12 +199,10 @@ export class CustomerService {
       )
     }
 
-    // 2. 校验 statusId / sourceId 存在
-    if (input.statusId !== undefined && input.statusId !== null) {
-      const exists = await StatusRepository.findById(input.statusId, this.deps.db)
-      if (!exists) {
-        throw new BusinessError(CrmErrorCode.CRM_STATUS_NOT_FOUND, '客户状态不存在')
-      }
+    // 2. status_code 是客户生命周期的唯一真相。
+    const statusCode = input.statusCode ?? 'potential'
+    if (!isCustomerStatusCode(statusCode)) {
+      throw new BusinessError(CrmErrorCode.CRM_STATUS_NOT_FOUND, '客户状态不存在')
     }
     if (input.sourceId !== undefined && input.sourceId !== null) {
       const exists = await SourceRepository.findById(input.sourceId, this.deps.db)
@@ -220,7 +218,7 @@ export class CustomerService {
     const createInput: CreateCustomerInput = {
       name: input.name,
       type,
-      statusId: input.statusId ?? null,
+      statusCode,
       sourceId: input.sourceId ?? null,
       level: input.level ?? null,
       industry: input.industry ?? null,
@@ -292,12 +290,8 @@ export class CustomerService {
       }
     }
 
-    // 校验 statusId / sourceId
-    if (input.statusId !== undefined && input.statusId !== null) {
-      const exists = await StatusRepository.findById(input.statusId, this.deps.db)
-      if (!exists) {
-        throw new BusinessError(CrmErrorCode.CRM_STATUS_NOT_FOUND, '客户状态不存在')
-      }
+    if (input.statusCode !== undefined && !isCustomerStatusCode(input.statusCode)) {
+      throw new BusinessError(CrmErrorCode.CRM_STATUS_NOT_FOUND, '客户状态不存在')
     }
     if (input.sourceId !== undefined && input.sourceId !== null) {
       const exists = await SourceRepository.findById(input.sourceId, this.deps.db)

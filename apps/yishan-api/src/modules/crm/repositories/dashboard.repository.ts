@@ -1,7 +1,8 @@
 import { and, count, desc, eq, gte, isNull, lte, type SQL } from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@/db'
 import { sysUser } from '@/db/schema'
-import { crmActivity, crmCustomer, crmCustomerStatus } from '../db/schema.js'
+import { crmActivity, crmCustomer } from '../db/schema.js'
+import { getCustomerStatusLabel } from '../domain/statuses.js'
 
 /**
  * dashboard Repository。
@@ -41,18 +42,16 @@ export class DashboardRepository {
     }>
   > {
     const owner = sysUser
-    const status = crmCustomerStatus
     const rows = await db
       .select({
         id: crmCustomer.id,
         name: crmCustomer.name,
         ownerUserName: owner.username,
         nextFollowUpAt: crmCustomer.nextFollowUpAt,
-        statusName: status.name,
+        statusCode: crmCustomer.statusCode,
       })
       .from(crmCustomer)
       .leftJoin(owner, eq(owner.id, crmCustomer.ownerUserId))
-      .leftJoin(status, eq(status.id, crmCustomer.statusId))
       .where(
         and(
           eq(crmCustomer.ownerUserId, userId),
@@ -61,7 +60,10 @@ export class DashboardRepository {
       )
       .orderBy(crmCustomer.nextFollowUpAt)
       .limit(limit)
-    return rows
+    return rows.map((row) => ({
+      ...row,
+      statusName: getCustomerStatusLabel(row.statusCode),
+    }))
   }
 
   static async findRecentActivities(

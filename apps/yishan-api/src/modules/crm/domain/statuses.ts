@@ -51,3 +51,11 @@ export type OpportunityStageCode = (typeof OPPORTUNITY_STAGES)[number]['value']
 export type QuotationStatusCode = (typeof QUOTATION_STATUSES)[number]['value']
 export type ContractStatusCode = (typeof CONTRACT_STATUSES)[number]['value']
 export type TaskStatusCode = (typeof TASK_STATUSES)[number]['value']
+
+export function isCustomerStatusCode(value: string): value is CustomerStatusCode {
+  return CUSTOMER_STATUSES.some((status) => status.value === value)
+}
+
+export function getCustomerStatusLabel(value: string | null): string | null {
+  return CUSTOMER_STATUSES.find((status) => status.value === value)?.label ?? null
+}

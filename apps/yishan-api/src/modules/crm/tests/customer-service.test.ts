@@ -10,7 +10,6 @@ import { CustomerService } from '../services/customer.service.js'
 import { CustomerFlowService } from '../actions/customer-flow.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
 import { TransferRepository } from '../repositories/transfer.repository.js'
-import { StatusRepository } from '../repositories/status.repository.js'
 import { dbManager } from '@/db'
 import { CrmErrorCode } from '../schemas/error-codes.js'
 
@@ -98,7 +97,12 @@ describe('CustomerService.create', () => {
     })
     expect(result.customer.id).toBe(99)
     expect(createSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'XYZ', type: 'enterprise', poolStatus: 'public' }),
+      expect.objectContaining({
+        name: 'XYZ',
+        type: 'enterprise',
+        poolStatus: 'public',
+        statusCode: 'potential',
+      }),
       expect.anything(),
     )
   })
@@ -120,13 +124,12 @@ describe('CustomerService.create', () => {
     )
   })
 
-  it('statusId 不存在 → CRM_STATUS_NOT_FOUND', async () => {
+  it('未知 statusCode → CRM_STATUS_NOT_FOUND', async () => {
     vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
-    vi.spyOn(StatusRepository, 'findById').mockResolvedValue(null)
     const service = new CustomerService()
     await expect(
       service.create({
-        input: { name: 'Z', type: 'enterprise', statusId: 999 },
+        input: { name: 'Z', type: 'enterprise', statusCode: 'unknown' as any },
         currentUser: superAdmin,
       }),
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_STATUS_NOT_FOUND })

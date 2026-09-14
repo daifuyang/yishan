@@ -27,6 +27,7 @@ ALTER TABLE `crm_customer`
 
 DELETE FROM `sys_enum`
 WHERE `type` = 'crm_lead_status'
+   OR `type` IN ('crm_ticket_priority', 'crm_ticket_type')
    OR (`type` = 'crm_customer_status' AND `code` NOT IN ('potential', 'following', 'opportunity', 'customer', 'lost'))
    OR (`type` = 'crm_opportunity_stage' AND `code` NOT IN ('discover', 'qualify', 'proposal', 'negotiation', 'won'));
 --> statement-breakpoint

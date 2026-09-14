@@ -92,6 +92,13 @@
       "when": 1788881947479,
       "tag": "0012_green_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1789344000000,
+      "tag": "0052_crm-v01-customer-lifecycle",
+      "breakpoints": true
     }
   ]
 }

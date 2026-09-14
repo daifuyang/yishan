@@ -68,3 +68,47 @@ The final green run was performed after the complete schema cleanup.
   this task because legacy lead services/routes remain until Task 3 while their
   Drizzle declarations are intentionally removed by this task; the plan's
   focused verification command is the status suite above.
+
+## Review Fix Round 1
+
+### Findings Addressed
+
+- Registered `0052_crm-v01-customer-lifecycle` as journal entry `idx: 13` in
+  `drizzle/meta/_journal.json`, using the existing module journal format.
+- Rebuilt `CRM_ENUM_SEED` from the V0.1 descriptor arrays. There is now one
+  entry per `(type, code)`, with no duplicate `crm_customer_status:lost`, no
+  legacy lead lifecycle seed, no lost opportunity stage seed, and no ticket
+  seed types.
+- Made `status_code` the active lifecycle field for customer creation, update,
+  list filtering, detail label resolution, and dashboard pending-follow-up
+  labels. `status_id` remains selected only as nullable compatibility data; it
+  is no longer validated, written, filtered, or joined for lifecycle behavior.
+- Restored temporary `crmLead` and `crmLeadActivity` table declarations so the
+  still-present legacy lead repository, service, and route imports compile.
+  Migration `0052` still drops both tables. Task 3 owns removal of the legacy
+  lead route/service/repository import graph, after which these temporary
+  declarations must be removed.
+
+### RED
+
+Command:
+
+```powershell
+pnpm --filter yishan-api test -- crm-v01-migration-seed customer-service
+```
+
+Result: exit 1. The new checks failed because the journal had no `0052` entry,
+the seed did not export its canonical entries, and customer creation did not
+pass `statusCode: 'potential'` to the repository.
+
+### GREEN
+
+Commands:
+
+```powershell
+pnpm --filter yishan-api test -- crm-v01-statuses crm-v01-migration-seed customer-service
+pnpm --filter yishan-api build:ts
+```
+
+Result: the focused suites passed 18/18 tests and the API TypeScript build
+completed successfully.

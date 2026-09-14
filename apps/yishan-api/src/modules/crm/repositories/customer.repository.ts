@@ -19,12 +19,12 @@ import { sysUser } from '@/db/schema'
 import {
   crmCustomer,
   crmCustomerSource,
-  crmCustomerStatus,
   crmCustomerTag,
   crmContact,
 } from '../db/schema.js'
 import { collaboratorExists } from './member.repository.js'
 import type { POOL_STATUS } from '../schemas/customer.schema.js'
+import { getCustomerStatusLabel, type CustomerStatusCode } from '../domain/statuses.js'
 
 /**
  * crm_customer Repository。
@@ -48,7 +48,7 @@ export interface CustomerRow {
   sourceId: number | null
   level: string | null
   industry: string | null
-  statusCode: string | null
+  statusCode: CustomerStatusCode | null
   sourceCode: string | null
   levelCode: string | null
   industryCode: string | null
@@ -87,7 +87,7 @@ export interface CustomerDetailRow extends CustomerRow {
 export interface CreateCustomerInput {
   name: string
   type: CustomerType
-  statusId?: number | null
+  statusCode?: CustomerStatusCode
   sourceId?: number | null
   level?: string | null
   industry?: string | null
@@ -107,11 +107,10 @@ export interface CreateCustomerInput {
 export interface UpdateCustomerInput {
   name?: string
   type?: CustomerType
-  statusId?: number | null
   sourceId?: number | null
   level?: string | null
   industry?: string | null
-  statusCode?: string | null
+  statusCode?: CustomerStatusCode
   sourceCode?: string | null
   levelCode?: string | null
   industryCode?: string | null
@@ -166,7 +165,7 @@ export interface CustomerListQuery {
   page?: number
   pageSize?: number
   keyword?: string
-  statusId?: number
+  statusCode?: CustomerStatusCode
   sourceId?: number
   level?: string
   type?: string
@@ -294,7 +293,7 @@ export function buildListWhere(opts: CustomerListQuery, now: Date = new Date()):
     )
   }
   if (opts.view) conds.push(...buildViewConds(opts.view, opts.currentUserId, now))
-  if (opts.statusId !== undefined) conds.push(eq(crmCustomer.statusId, opts.statusId))
+  if (opts.statusCode !== undefined) conds.push(eq(crmCustomer.statusCode, opts.statusCode))
   if (opts.sourceId !== undefined) conds.push(eq(crmCustomer.sourceId, opts.sourceId))
   if (opts.level) conds.push(eq(crmCustomer.level, opts.level))
   if (opts.type) conds.push(eq(crmCustomer.type, opts.type))
@@ -440,7 +439,7 @@ export class CustomerRepository {
     if (!row) return null
     const base = row as CustomerRow
 
-    const [ownerRow, statusRow, sourceRow, primary, tagRows] = await Promise.all([
+    const [ownerRow, sourceRow, primary, tagRows] = await Promise.all([
       base.ownerUserId
         ? db
             .select({ username: sysUser.username })
@@ -448,15 +447,6 @@ export class CustomerRepository {
             .where(eq(sysUser.id, base.ownerUserId))
             .limit(1)
         : Promise.resolve([] as Array<{ username: string | null }>),
-      base.statusId
-        ? db
-            .select({ name: crmCustomerStatus.name })
-            .from(crmCustomerStatus)
-            .where(
-              and(eq(crmCustomerStatus.id, base.statusId), isNull(crmCustomerStatus.deletedAt)),
-            )
-            .limit(1)
-        : Promise.resolve([] as Array<{ name: string | null }>),
       base.sourceId
         ? db
             .select({ name: crmCustomerSource.name })
@@ -476,7 +466,7 @@ export class CustomerRepository {
     return {
       ...base,
       ownerUserName: ownerRow[0]?.username ?? null,
-      statusName: statusRow[0]?.name ?? null,
+      statusName: getCustomerStatusLabel(base.statusCode),
       sourceName: sourceRow[0]?.name ?? null,
       primaryContactId: primary?.id ?? null,
       primaryContactName: primary?.name ?? null,
@@ -493,7 +483,7 @@ export class CustomerRepository {
       .values({
         name: input.name,
         type: input.type,
-        statusId: input.statusId ?? null,
+        statusCode: input.statusCode ?? 'potential',
         sourceId: input.sourceId ?? null,
         level: input.level ?? null,
         industry: input.industry ?? null,
@@ -523,7 +513,6 @@ export class CustomerRepository {
     const patch: Record<string, unknown> = { updatedAt: new Date(), updaterId: input.updaterId }
     if (input.name !== undefined) patch.name = input.name
     if (input.type !== undefined) patch.type = input.type
-    if (input.statusId !== undefined) patch.statusId = input.statusId
     if (input.sourceId !== undefined) patch.sourceId = input.sourceId
     if (input.level !== undefined) patch.level = input.level
     if (input.industry !== undefined) patch.industry = input.industry
