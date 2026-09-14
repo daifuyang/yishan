@@ -71,6 +71,7 @@ export interface CustomerActivityRailProps {
    * 不传则只刷新活动列表。
    */
   onFollowUpSaved?: () => void;
+  followUpRequest?: number;
 }
 
 /**
@@ -91,6 +92,7 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
   customer,
   statuses,
   onFollowUpSaved,
+  followUpRequest,
 }) => {
   // 公海里的客户尚未归属，不允许写跟进。
   const canWriteFollowUp = customer.poolStatus === 'owned';
@@ -118,6 +120,10 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
       active = false;
     };
   }, [customer.id]);
+
+  useEffect(() => {
+    if (followUpRequest && canWriteFollowUp) setFollowUpOpen(true);
+  }, [followUpRequest, canWriteFollowUp]);
 
   // 过滤：分类 + 日期范围
   const filteredActivities = useMemo(() => {
@@ -178,7 +184,7 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
             icon={<PlusOutlined />}
             onClick={() => setFollowUpOpen(true)}
           >
-            写跟进
+            新增跟进
           </Button>
         )}
       </div>

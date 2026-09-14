@@ -57,9 +57,6 @@ const CustomerAdvancedFilterDrawer = ({
         <Form.Item label="负责人 ID" name="ownerUserId">
           <InputNumber min={1} precision={0} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item label="协同人 ID" name="collaboratorUserId">
-          <InputNumber min={1} precision={0} style={{ width: '100%' }} />
-        </Form.Item>
         <Form.Item label="标签 ID" name="tagId">
           <InputNumber min={1} precision={0} style={{ width: '100%' }} />
         </Form.Item>

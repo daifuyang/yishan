@@ -211,6 +211,88 @@ export interface ActivityCreateInput {
   nextFollowUpAt?: string | null
 }
 
+/* ─── 销售与工作台 ─────────────────────────────────────── */
+
+export interface OpportunityRow {
+  id: number
+  name: string
+  customerId: number
+  stageCode: string
+  expectedAmountCents: number
+  expectedCloseDate: string | null
+  ownerUserName: string | null
+}
+
+export interface QuotationRow {
+  id: number
+  quotationNo: string
+  customerId: number
+  status: string
+  totalCents: number
+  validUntil: string | null
+}
+
+export interface ContractRow {
+  id: number
+  contractNo: string
+  name: string
+  customerId: number
+  opportunityId: number | null
+  quotationId: number | null
+  amountCents: number
+  status: string
+  signedAt: string | null
+  effectiveAt: string | null
+  expiresAt: string | null
+  description: string | null
+}
+export interface ContractInput {
+  name: string
+  customerId: number
+  opportunityId?: number | null
+  amountCents: number
+  signedAt?: string | null
+  effectiveAt?: string | null
+  expiresAt?: string | null
+  status?: string
+  description?: string | null
+}
+
+export interface PaymentRow {
+  id: number
+  contractId: number
+  customerId: number
+  amountCents: number
+  paidAt: string
+  methodCode: string
+  remark: string | null
+}
+export interface PaymentInput {
+  amountCents: number
+  paidAt: string
+  methodCode: string
+  remark?: string | null
+}
+
+export interface TaskRow {
+  id: number
+  customerId: number
+  title: string
+  status: string
+  assigneeUserId: number | null
+  dueAt: string | null
+  completedAt: string | null
+  description: string | null
+}
+export interface TaskInput {
+  customerId: number
+  title: string
+  status?: string
+  assigneeUserId?: number | null
+  dueAt?: string | null
+  description?: string | null
+}
+
 /* ─── Tag / Status / Source ────────────────────────────────────────── */
 
 export interface TagRow {
@@ -472,6 +554,73 @@ export async function createActivity(customerId: number, input: ActivityCreateIn
     data: input,
   })
   return unwrap(r)
+}
+
+export async function listOpportunities(query: PageQuery & { customerId?: number }): Promise<{ data: OpportunityRow[]; total: number }> {
+  const r = await request<ApiResp<OpportunityRow[]>>('/api/crm/v1/opportunities', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function listQuotations(query: PageQuery & { customerId?: number }): Promise<{ data: QuotationRow[]; total: number }> {
+  const r = await request<ApiResp<QuotationRow[]>>('/api/crm/v1/quotations', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function listContracts(query: PageQuery & { customerId?: number; status?: string }): Promise<{ data: ContractRow[]; total: number }> {
+  const r = await request<ApiResp<ContractRow[]>>('/api/crm/v1/contracts', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function createContract(input: ContractInput): Promise<ContractRow> {
+  const r = await request<ApiResp<ContractRow>>('/api/crm/v1/contracts', { method: 'POST', data: input })
+  return unwrap(r)
+}
+
+export async function updateContract(id: number, input: Partial<Omit<ContractInput, 'customerId' | 'opportunityId' | 'amountCents'>>): Promise<ContractRow> {
+  const r = await request<ApiResp<ContractRow>>(`/api/crm/v1/contracts/${id}`, { method: 'PATCH', data: input })
+  return unwrap(r)
+}
+
+export async function deleteContract(id: number): Promise<void> {
+  await request(`/api/crm/v1/contracts/${id}`, { method: 'DELETE' })
+}
+
+export async function listPaymentsByContract(contractId: number): Promise<PaymentRow[]> {
+  const r = await request<ApiResp<PaymentRow[]>>(`/api/crm/v1/payments/contracts/${contractId}`, { method: 'GET' })
+  return unwrap(r)
+}
+
+export async function createPayment(contractId: number, input: PaymentInput): Promise<PaymentRow> {
+  const r = await request<ApiResp<PaymentRow>>(`/api/crm/v1/payments/contracts/${contractId}`, { method: 'POST', data: input })
+  return unwrap(r)
+}
+
+export async function updatePayment(id: number, input: Partial<PaymentInput>): Promise<PaymentRow> {
+  const r = await request<ApiResp<PaymentRow>>(`/api/crm/v1/payments/${id}`, { method: 'PATCH', data: input })
+  return unwrap(r)
+}
+
+export async function deletePayment(id: number): Promise<void> {
+  await request(`/api/crm/v1/payments/${id}`, { method: 'DELETE' })
+}
+
+export async function listTasks(query: PageQuery & { customerId?: number; status?: string }): Promise<{ data: TaskRow[]; total: number }> {
+  const r = await request<ApiResp<TaskRow[]>>('/api/crm/v1/tasks', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function createTask(input: TaskInput): Promise<TaskRow> {
+  const r = await request<ApiResp<TaskRow>>('/api/crm/v1/tasks', { method: 'POST', data: input })
+  return unwrap(r)
+}
+
+export async function updateTask(id: number, input: Partial<Omit<TaskInput, 'customerId'>>): Promise<TaskRow> {
+  const r = await request<ApiResp<TaskRow>>(`/api/crm/v1/tasks/${id}`, { method: 'PATCH', data: input })
+  return unwrap(r)
+}
+
+export async function deleteTask(id: number): Promise<void> {
+  await request(`/api/crm/v1/tasks/${id}`, { method: 'DELETE' })
 }
 
 /* Settings — Tag */

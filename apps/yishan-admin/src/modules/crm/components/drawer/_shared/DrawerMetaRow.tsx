@@ -1,4 +1,4 @@
-import { Divider, Space } from 'antd';
+import { Space } from 'antd';
 import React from 'react';
 
 export interface DrawerMetaItem {
@@ -34,7 +34,7 @@ const DrawerMetaRow: React.FC<DrawerMetaRowProps> = ({
 }) => (
   <Space
     size={size}
-    split={<Divider type="vertical" />}
+    separator={<span aria-hidden style={{ color: '#d0d5dd' }}>|</span>}
     wrap
     className={className}
     style={{ marginTop: 6, fontSize, color: '#475569', ...style }}

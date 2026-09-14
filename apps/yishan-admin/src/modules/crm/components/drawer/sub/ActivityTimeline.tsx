@@ -14,7 +14,7 @@
  * - 空状态：antd Empty + 文案；loading：Skeleton + 占位条。
  */
 
-import { CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { CalendarOutlined, ClockCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import { Empty, Skeleton, Space, Tag, Timeline, Typography } from 'antd';
 import dayjs from 'dayjs';
 import React, { useMemo } from 'react';
@@ -36,6 +36,9 @@ const ACTIVITY_TYPE_LABEL: Record<string, string> = {
 function activityTypeLabel(type: string): string {
   return ACTIVITY_TYPE_LABEL[type] ?? type;
 }
+
+const isSystemEvent = (type: string) =>
+  type === 'system' || type === 'other' || type.startsWith('system_');
 
 export interface ActivityTimelineProps {
   items: ActivityRow[];
@@ -102,16 +105,20 @@ const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 
   const renderItem = (a: ActivityRow) => ({
     dot:
-      a.type === 'visit' ? (
+      isSystemEvent(a.type) ? (
+        <SettingOutlined style={{ color: '#98a2b3' }} />
+      ) : a.type === 'visit' ? (
         <CalendarOutlined style={{ color: '#1677ff' }} />
       ) : (
         <ClockCircleOutlined style={{ color: '#8c8c8c' }} />
       ),
     children: (
-      <div style={{ paddingBottom: 4 }}>
+      <div style={{ paddingBottom: 4, paddingLeft: isSystemEvent(a.type) ? 10 : 0, borderLeft: isSystemEvent(a.type) ? '2px solid #d0d5dd' : undefined }}>
         <div style={{ marginBottom: 4 }}>
           <Space size={8} wrap>
-            <Tag color="blue">{activityTypeLabel(a.type)}</Tag>
+            <Tag color={isSystemEvent(a.type) ? 'default' : 'blue'}>
+              {isSystemEvent(a.type) ? '系统事件' : activityTypeLabel(a.type)}
+            </Tag>
             <Text strong>
               {a.operatorUserName ?? `用户 ${a.operatorUserId}`}
             </Text>

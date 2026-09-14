@@ -43,4 +43,3 @@ export interface CustomerWorkspaceUnavailableCapability {
 
 export type CustomerWorkspaceStatsCapability = CustomerWorkspaceUnavailableCapability
 export type CustomerStagePipelineCapability = CustomerWorkspaceUnavailableCapability
-export type CustomerOpportunitiesCapability = CustomerWorkspaceUnavailableCapability

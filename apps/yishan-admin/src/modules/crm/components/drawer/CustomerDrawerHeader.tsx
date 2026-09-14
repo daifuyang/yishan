@@ -54,6 +54,8 @@ export interface CustomerDrawerHeaderProps {
   onLock?: () => void;
   /** 删除 */
   onDelete?: () => void;
+  /** 录入一次客户跟进 */
+  onFollowUp?: () => void;
 }
 
 export type CreateEntityKey =
@@ -85,6 +87,7 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
   onPrint,
   onLock,
   onDelete,
+  onFollowUp,
 }) => {
   const can = usePermission();
 
@@ -195,6 +198,11 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
 
         {/* 右：主操作 + 图标 */}
         <Space size={8} wrap>
+          {onFollowUp && customer.poolStatus === 'owned' && (
+            <Button type="primary" onClick={onFollowUp}>
+              新增跟进
+            </Button>
+          )}
           {canCreate && onCreateEntity && (
             <Dropdown
               trigger={['click']}

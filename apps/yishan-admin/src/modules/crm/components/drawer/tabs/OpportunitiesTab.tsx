@@ -5,24 +5,16 @@
  * 只展示"开发中"空状态 + disabled [+ 新建商机] 按钮。
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Empty } from 'antd';
-import React from 'react';
+import React, { useCallback } from 'react';
+import type { OpportunityRow } from '@/services/crm';
+import { listOpportunities } from '@/services/crm';
+import { LifecycleListTab, statusTag } from './LifecycleListTab';
 
-const OpportunitiesTab: React.FC = () => {
-  return (
-    <Card>
-      <Empty
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-        description="商机功能开发中（Phase 3）"
-        style={{ padding: '24px 0' }}
-      >
-        <Button icon={<PlusOutlined />} disabled>
-          新建商机
-        </Button>
-      </Empty>
-    </Card>
-  );
+const money = (cents: number) => `￥${(cents / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}`;
+
+const OpportunitiesTab: React.FC<{ customerId: number }> = ({ customerId }) => {
+  const load = useCallback(() => listOpportunities({ customerId, page: 1, pageSize: 100 }).then((result) => result.data), [customerId]);
+  return <LifecycleListTab<OpportunityRow> load={load} emptyText="暂无商机" columns={[{ title: '商机名称', dataIndex: 'name' }, { title: '阶段', dataIndex: 'stageCode', render: statusTag }, { title: '预计金额', render: (_, row) => money(row.expectedAmountCents) }, { title: '预计成交', dataIndex: 'expectedCloseDate' }]} />;
 };
 
 export default OpportunitiesTab;

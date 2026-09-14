@@ -29,48 +29,37 @@ import { useResizableDrawer } from './_shared/useResizableDrawer';
 import CustomerDrawerHeader, {
   type CreateEntityKey,
 } from './CustomerDrawerHeader';
-import BasicInfoTab from './tabs/BasicInfoTab';
 import ContactsTab from './tabs/ContactsTab';
 import OpportunitiesTab from './tabs/OpportunitiesTab';
-import PlaceholderTab from './tabs/PlaceholderTab';
+import OverviewTab from './tabs/OverviewTab';
+import JourneyTab from './tabs/JourneyTab';
+import QuotationsTab from './tabs/QuotationsTab';
+import ContractsTab from './tabs/ContractsTab';
+import PaymentsTab from './tabs/PaymentsTab';
+import TasksTab from './tabs/TasksTab';
+import AttachmentsTab from './tabs/AttachmentsTab';
 
 export type CustomerDrawerTabKey =
-  | 'basic'
+  | 'overview'
+  | 'journey'
   | 'contacts'
   | 'opportunities'
   | 'quotations'
   | 'contracts'
-  | 'expenses'
-  | 'products'
+  | 'payments'
   | 'tasks'
-  | 'attachments'
-  | 'activityLog';
+  | 'attachments';
 
 const TAB_LABELS: Array<{ key: CustomerDrawerTabKey; label: string }> = [
-  { key: 'basic', label: '基本信息' },
+  { key: 'overview', label: '概览' },
+  { key: 'journey', label: '历程' },
   { key: 'contacts', label: '联系人' },
   { key: 'opportunities', label: '商机' },
   { key: 'quotations', label: '报价单' },
   { key: 'contracts', label: '合同' },
-  { key: 'expenses', label: '费用' },
-  { key: 'products', label: '已成交产品' },
+  { key: 'payments', label: '回款' },
   { key: 'tasks', label: '任务' },
   { key: 'attachments', label: '附件' },
-  { key: 'activityLog', label: '操作日志' },
-];
-
-const PLACEHOLDER_TABS: Array<{
-  key: CustomerDrawerTabKey;
-  entity: string;
-}> = [
-  { key: 'opportunities', entity: '商机' },
-  { key: 'quotations', entity: '报价单' },
-  { key: 'contracts', entity: '合同' },
-  { key: 'expenses', entity: '费用' },
-  { key: 'products', entity: '已成交产品' },
-  { key: 'tasks', entity: '任务' },
-  { key: 'attachments', entity: '附件' },
-  { key: 'activityLog', entity: '操作日志' },
 ];
 
 export interface CustomerDrawerProps {
@@ -91,7 +80,7 @@ export interface CustomerDrawerProps {
 const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   open,
   customerId,
-  initialTab = 'basic',
+  initialTab = 'overview',
   onClose,
   onChanged,
   statuses,
@@ -102,6 +91,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   const [size, setSize] = useResizableDrawer();
   const [activeTab, setActiveTab] =
     useState<CustomerDrawerTabKey>(initialTab);
+  const [followUpRequest, setFollowUpRequest] = useState(0);
 
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [customerLoading, setCustomerLoading] = useState(false);
@@ -234,7 +224,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       <Tabs
         activeKey={activeTab}
         onChange={(k) => setActiveTab(k as CustomerDrawerTabKey)}
-        destroyInactiveTabPane={false}
+        destroyOnHidden={false}
         style={{ padding: '0 20px' }}
         items={TAB_LABELS.map((t) => ({
           key: t.key,
@@ -247,25 +237,27 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
 
   const renderTab = (key: CustomerDrawerTabKey, current: CustomerDetail) => {
     switch (key) {
-      case 'basic':
+      case 'overview':
         return (
-          <BasicInfoTab
+          <OverviewTab
             customer={current}
             statuses={statuses}
+            followUpRequest={followUpRequest}
             onFollowUpSaved={handleFollowUpSaved}
           />
         );
+      case 'journey':
+        return <JourneyTab customerId={current.id} />;
       case 'contacts':
         return <ContactsTabStandalone customerId={current.id} />;
       case 'opportunities':
-        return <OpportunitiesTab />;
-      default: {
-        const placeholder = PLACEHOLDER_TABS.find((p) => p.key === key);
-        if (placeholder) {
-          return <PlaceholderTab entity={placeholder.entity} />;
-        }
-        return null;
-      }
+        return <OpportunitiesTab customerId={current.id} />;
+      case 'quotations': return <QuotationsTab customerId={current.id} />;
+      case 'contracts': return <ContractsTab customerId={current.id} />;
+      case 'payments': return <PaymentsTab customerId={current.id} />;
+      case 'tasks': return <TasksTab customerId={current.id} />;
+      case 'attachments': return <AttachmentsTab />;
+      default: return null;
     }
   };
 
@@ -295,6 +287,10 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           onTransfer={handleTransfer}
           onRelease={handleRelease}
           onDelete={handleDelete}
+          onFollowUp={() => {
+            setActiveTab('overview');
+            setFollowUpRequest((request) => request + 1);
+          }}
         />
       )}
       {renderBody()}

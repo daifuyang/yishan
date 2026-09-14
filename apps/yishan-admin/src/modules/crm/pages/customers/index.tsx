@@ -176,7 +176,7 @@ const Customers: React.FC = () => {
       ownerNameMap,
       onOpenDetail: handleOpenDetail,
       onChanged: reloadAll,
-      onOpenFollowupDrawer: (id: number) => drawer.openDrawer(id, 'basic'),
+      onOpenFollowupDrawer: (id: number) => drawer.openDrawer(id, 'overview'),
     }),
     [
       statuses,
