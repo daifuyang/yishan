@@ -11,7 +11,7 @@ describe('CRM V0.1 status descriptors', () => {
       { value: 'potential', label: '潜在客户', semantic: 'default' },
       { value: 'following', label: '跟进中', semantic: 'processing' },
       { value: 'opportunity', label: '商机客户', semantic: 'warning' },
-      { value: 'customer', label: '正式客户', semantic: 'success' },
+      { value: 'won', label: '已成交', semantic: 'success' },
       { value: 'lost', label: '已流失', semantic: 'error' },
       ],
     })
@@ -20,11 +20,11 @@ describe('CRM V0.1 status descriptors', () => {
   it('exposes the five opportunity stages with Chinese labels and semantic tokens', async () => {
     await expect(loadStatuses()).resolves.toMatchObject({
       OPPORTUNITY_STAGES: [
-      { value: 'discover', label: '需求发现', semantic: 'default' },
-      { value: 'qualify', label: '方案确认', semantic: 'processing' },
+      { value: 'requirement', label: '需求确认', semantic: 'processing' },
       { value: 'proposal', label: '方案报价', semantic: 'warning' },
       { value: 'negotiation', label: '商务谈判', semantic: 'warning' },
-      { value: 'won', label: '赢单', semantic: 'success' },
+      { value: 'won', label: '成交', semantic: 'success' },
+      { value: 'lost', label: '失败', semantic: 'default' },
       ],
     })
   })

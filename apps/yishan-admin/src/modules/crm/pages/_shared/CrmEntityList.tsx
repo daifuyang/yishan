@@ -1,4 +1,4 @@
-import { PageContainer, ProTable, type ProColumns } from '@ant-design/pro-components';
+import { PageContainer, ProTable, type ActionType, type ProColumns } from '@ant-design/pro-components';
 import { Button } from 'antd';
 import React, { useMemo, useState } from 'react';
 import EntityDetailDrawer from '@/modules/crm/components/drawer/EntityDetailDrawer';
@@ -11,9 +11,11 @@ export interface CrmEntityListProps<T extends Row> {
   load: (query: { page?: number; pageSize?: number; keyword?: string }) => Promise<{ data: T[]; total: number }>;
   fields: Array<{ key: keyof T; label: string; render?: (value: T[keyof T], record: T) => React.ReactNode }>;
   onCreate?: () => void;
+  createAction?: React.ReactNode;
+  actionRef?: React.MutableRefObject<ActionType | undefined>;
 }
 
-export function CrmEntityList<T extends Row>({ title, columns, load, fields, onCreate }: CrmEntityListProps<T>) {
+export function CrmEntityList<T extends Row>({ title, columns, load, fields, onCreate, createAction, actionRef }: CrmEntityListProps<T>) {
   const [selected, setSelected] = useState<T | null>(null);
   const tableColumns = useMemo<ProColumns<T>[]>(() => [
     ...columns,
@@ -29,6 +31,7 @@ export function CrmEntityList<T extends Row>({ title, columns, load, fields, onC
   return (
     <PageContainer header={{ title }}>
       <ProTable<T>
+        actionRef={actionRef}
         headerTitle={`${title}列表`}
         rowKey="id"
         columns={tableColumns}
@@ -41,7 +44,7 @@ export function CrmEntityList<T extends Row>({ title, columns, load, fields, onC
           });
           return { ...result, success: true };
         }}
-        toolBarRender={() => onCreate ? [<Button key="create" type="primary" onClick={onCreate}>新建</Button>] : []}
+        toolBarRender={() => createAction ? [createAction as React.ReactElement] : onCreate ? [<Button key="create" type="primary" onClick={onCreate}>新建</Button>] : []}
       />
       <EntityDetailDrawer open={selected !== null} title={`${title}详情`} record={selected} onClose={() => setSelected(null)} fields={fields} />
     </PageContainer>

@@ -16,6 +16,7 @@ export const CustomerRespSchema = Type.Object({
   name: Type.String(),
   type: Type.String(),
   statusCode: Type.String({ enum: CUSTOMER_STATUS_CODES }),
+  relationshipStatus: Type.String({ enum: ['potential', 'following', 'lost'] }),
   sourceId: Type.Union([Type.Number(), Type.Null()]),
   level: Type.Union([Type.String(), Type.Null()]),
   industry: Type.Union([Type.String(), Type.Null()]),
@@ -134,7 +135,6 @@ export type CustomerMemberAddReq = Static<typeof CustomerMemberAddReqSchema>
 export const CustomerCreateReqSchema = Type.Object({
   name: Type.String({ minLength: 1, maxLength: 200 }),
   type: Type.Optional(Type.String({ enum: [...CUSTOMER_TYPE] })),
-  statusCode: Type.Optional(Type.String({ enum: CUSTOMER_STATUS_CODES })),
   sourceId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
   level: Type.Optional(Type.String({ maxLength: 16 })),
   industry: Type.Optional(Type.String({ maxLength: 64 })),
@@ -154,7 +154,6 @@ export const CustomerUpdateReqSchema = Type.Partial(
   Type.Object({
     name: Type.String({ minLength: 1, maxLength: 200 }),
     type: Type.String({ enum: [...CUSTOMER_TYPE] }),
-    statusCode: Type.String({ enum: CUSTOMER_STATUS_CODES }),
     sourceId: Type.Union([Type.Integer(), Type.Null()]),
     level: Type.String({ maxLength: 16 }),
     industry: Type.String({ maxLength: 64 }),
@@ -170,6 +169,13 @@ export const CustomerUpdateReqSchema = Type.Partial(
   }),
 )
 export type CustomerUpdateReq = Static<typeof CustomerUpdateReqSchema>
+
+export const CustomerRelationshipStatusTransitionReqSchema = Type.Object({
+  target: Type.String({ enum: ['potential', 'following', 'lost'] }),
+  reasonCode: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+  remark: Type.Optional(Type.String({ maxLength: 2000 })),
+})
+export type CustomerRelationshipStatusTransitionReq = Static<typeof CustomerRelationshipStatusTransitionReqSchema>
 
 export const CustomerReleaseReqSchema = Type.Object({
   reason: Type.Optional(Type.String({ maxLength: 500 })),

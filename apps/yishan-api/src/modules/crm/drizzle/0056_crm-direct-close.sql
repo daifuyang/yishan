@@ -1,0 +1,21 @@
+CREATE TABLE `crm_direct_close` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `customer_id` int NOT NULL,
+  `opportunity_id` int NOT NULL,
+  `amount_cents` bigint NOT NULL,
+  `closed_at` datetime NOT NULL,
+  `evidence_type` varchar(32) NOT NULL,
+  `attachment_ids` json,
+  `remark` varchar(2000),
+  `revoked_at` datetime,
+  `revoked_reason` varchar(500),
+  `creator_id` int,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updater_id` int,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_crm_direct_close_customer_id` (`customer_id`),
+  KEY `idx_crm_direct_close_opportunity_id` (`opportunity_id`),
+  KEY `idx_crm_direct_close_customer_active` (`customer_id`, `revoked_at`),
+  KEY `idx_crm_direct_close_closed_at` (`closed_at`)
+);

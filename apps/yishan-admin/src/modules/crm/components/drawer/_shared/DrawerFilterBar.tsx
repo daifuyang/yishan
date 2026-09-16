@@ -31,6 +31,8 @@ export interface DrawerFilterBarProps<T extends string> {
       };
   /** 加载态：仅影响 cursor；不阻塞 click。 */
   loading?: boolean;
+  /** Optional lightweight controls rendered above the date range. */
+  filterContent?: React.ReactNode;
 }
 
 /**
@@ -49,14 +51,16 @@ function DrawerFilterBar<T extends string>({
   value,
   onChange,
   dateRange,
+  filterContent,
 }: DrawerFilterBarProps<T>) {
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   const hasOptions = options && options.length > 0;
   const hasDateRange = Boolean(dateRange);
+  const hasFilterContent = Boolean(filterContent);
   const optionList = options ?? [];
 
-  if (!hasOptions && !hasDateRange) return null;
+  if (!hasOptions && !hasDateRange && !hasFilterContent) return null;
 
   return (
     <div
@@ -87,15 +91,14 @@ function DrawerFilterBar<T extends string>({
             </Button>
           );
         })}
-      {hasDateRange && (
+      {(hasDateRange || hasFilterContent) && (
         <Popover
           open={popoverOpen}
           onOpenChange={setPopoverOpen}
-          trigger="hover"
-          mouseEnterDelay={0.1}
-          mouseLeaveDelay={0.2}
-          content={
-            <Form
+          trigger="click"
+          content={<div style={{ width: 280 }}>
+            {filterContent}
+            {hasDateRange && <Form
               layout="vertical"
               initialValues={{
                 dateRange:
@@ -121,7 +124,7 @@ function DrawerFilterBar<T extends string>({
                   );
                 }
               }}
-              style={{ width: 280 }}
+              style={filterContent ? { marginTop: 12 } : undefined}
             >
               <Form.Item
                 label="创建时间"
@@ -130,8 +133,8 @@ function DrawerFilterBar<T extends string>({
               >
                 <RangePicker style={{ width: '100%' }} />
               </Form.Item>
-            </Form>
-          }
+            </Form>}
+          </div>}
         >
           <Button
             type="link"

@@ -141,7 +141,6 @@ describe('CustomerService.create', () => {
         name: 'XYZ',
         type: 'enterprise',
         poolStatus: 'public',
-        statusCode: 'potential',
       }),
       expect.anything(),
     )
@@ -165,15 +164,16 @@ describe('CustomerService.create', () => {
     )
   })
 
-  it('未知 statusCode → CRM_STATUS_NOT_FOUND', async () => {
+  it('ignores a statusCode injected outside the generic create contract', async () => {
     vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
+    const create = vi.spyOn(CustomerRepository, 'create').mockResolvedValue({ ...baseCustomer, id: 100 } as any)
     const service = new CustomerService()
-    await expect(
-      service.create({
-        input: { name: 'Z', type: 'enterprise', statusCode: 'unknown' as any },
-        currentUser: superAdmin,
-      }),
-    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_STATUS_NOT_FOUND })
+    await service.create({
+      input: { name: 'Z', type: 'enterprise', statusCode: 'customer' } as any,
+      currentUser: superAdmin,
+    })
+    expect(create).toHaveBeenCalled()
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty('statusCode')
   })
 })
 

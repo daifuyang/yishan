@@ -283,9 +283,11 @@ const Customers: React.FC = () => {
         open={drawer.open}
         customerId={drawer.customerId}
         initialTab={drawer.initialTab}
+        currentUser={currentUser}
         onClose={drawer.closeDrawer}
         onChanged={reloadAll}
         onCreateEntity={(entity) => {
+          if (entity === 'followup') return;
           const pageByEntity = {
             contact: 'contacts',
             opportunity: 'opportunities',

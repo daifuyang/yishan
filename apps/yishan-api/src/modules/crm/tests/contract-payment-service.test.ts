@@ -4,6 +4,7 @@ import { dbManager } from '@/db'
 import { ContractService } from '../services/contract.service.js'
 import { PaymentService } from '../services/payment.service.js'
 import { ContractRepository } from '../repositories/contract.repository.js'
+import { DirectCloseRepository } from '../repositories/direct-close.repository.js'
 import { PaymentRepository } from '../repositories/payment.repository.js'
 import { QuotationRepository } from '../repositories/quotation.repository.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
@@ -18,7 +19,10 @@ const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 afterEach(() => vi.restoreAllMocks())
 beforeEach(() => {
   vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue([])
-  vi.spyOn(ContractRepository, 'existsByCustomerId').mockResolvedValue(true)
+  vi.spyOn(ContractRepository, 'hasQualifyingContractByCustomerId').mockResolvedValue(false)
+  vi.spyOn(DirectCloseRepository, 'hasActiveByCustomerId').mockResolvedValue(false)
+  vi.spyOn(CustomerRepository, 'findById').mockResolvedValue({ id: 11, relationshipStatus: 'following' } as any)
+  vi.spyOn(CustomerRepository, 'updateLifecycle').mockResolvedValue({ id: 11, statusCode: 'following', relationshipStatus: 'following' } as any)
 })
 
 describe('CRM contract and payment lifecycle', () => {
@@ -27,7 +31,7 @@ describe('CRM contract and payment lifecycle', () => {
     vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
     vi.spyOn(ContractRepository, 'findById').mockResolvedValue(contract as any)
     vi.spyOn(ContractRepository, 'update').mockResolvedValue({ ...contract, status: 'completed' } as any)
-    const recalculate = vi.spyOn(CustomerLifecycleService, 'recalculate').mockResolvedValue('customer')
+    const recalculate = vi.spyOn(CustomerLifecycleService, 'recalculate').mockResolvedValue('won')
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
 
     await new ContractService().update(31, { status: 'completed', updaterId: 7 } as any, salesperson)
@@ -91,7 +95,7 @@ describe('CRM contract and payment lifecycle', () => {
     } as any)
     vi.spyOn(ContractRepository, 'countTodayByNoPrefix').mockResolvedValue(0)
     vi.spyOn(ContractRepository, 'findByQuotationId').mockResolvedValue(null)
-    vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 11, statusCode: 'customer' } as any)
+    vi.mocked(CustomerRepository.updateLifecycle).mockResolvedValue({ id: 11, statusCode: 'following' } as any)
 
     const contract = await new ContractService().createFromQuotation(23, salesperson)
 

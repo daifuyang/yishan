@@ -42,6 +42,7 @@ export const crmCustomer = mysqlTable(
      * Phase 1 验证新路径稳定后，迁移脚本最后一步允许 drop 旧列。
      */
     statusCode: varchar('status_code', { length: 64 }).notNull().default('potential'),
+    relationshipStatus: varchar('relationship_status', { length: 16 }).notNull().default('potential'),
     sourceCode: varchar('source_code', { length: 64 }),
     levelCode: varchar('level_code', { length: 64 }),
     industryCode: varchar('industry_code', { length: 64 }),
@@ -77,6 +78,7 @@ export const crmCustomer = mysqlTable(
     idxPoolEnteredAt: index('idx_crm_customer_pool_entered_at').on(t.poolEnteredAt),
     idxSource: index('idx_crm_customer_source_id').on(t.sourceId),
     idxStatusCode: index('idx_crm_customer_status_code').on(t.statusCode),
+    idxRelationshipStatus: index('idx_crm_customer_relationship_status').on(t.relationshipStatus),
     idxSourceCode: index('idx_crm_customer_source_code').on(t.sourceCode),
     idxLevelCode: index('idx_crm_customer_level_code').on(t.levelCode),
     idxIndustryCode: index('idx_crm_customer_industry_code').on(t.industryCode),
@@ -575,16 +577,18 @@ export const crmOpportunity = mysqlTable(
     id: int().primaryKey().autoincrement().notNull(),
     name: varchar({ length: 200 }).notNull(),
     customerId: int('customer_id').notNull(),
-    contactId: int('contact_id'),
-    ownerUserId: int('owner_user_id'),
+    primaryContactId: int('primary_contact_id'),
+    ownerId: int('owner_id'),
     ownerDepartmentId: int('owner_department_id'),
-    pipelineCode: varchar('pipeline_code', { length: 64 }).notNull().default('default'),
-    stageCode: varchar('stage_code', { length: 64 }).notNull().default('discover'),
+    stage: varchar({ length: 64 }).notNull().default('requirement'),
     stageEnteredAt: datetime('stage_entered_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-    expectedAmountCents: bigint('expected_amount_cents', { mode: 'number' }).notNull().default(0),
+    amountCents: bigint('amount_cents', { mode: 'number' }),
     expectedCloseDate: datetime('expected_close_date'),
-    nextActionAt: datetime('next_action_at'),
-    lostReasonCode: varchar('lost_reason_code', { length: 64 }),
+    requirement: varchar({ length: 2000 }),
+    nextAction: varchar('next_action', { length: 500 }),
+    nextFollowUpAt: datetime('next_follow_up_at'),
+    remark: varchar({ length: 1000 }),
+    lostReason: varchar('lost_reason', { length: 64 }),
     wonAt: datetime('won_at'),
     lostAt: datetime('lost_at'),
     /**
@@ -600,17 +604,10 @@ export const crmOpportunity = mysqlTable(
   },
   (t) => ({
     idxCustomer: index('idx_crm_opportunity_customer_id').on(t.customerId),
-    idxContact: index('idx_crm_opportunity_contact_id').on(t.contactId),
-    idxOwnerStage: index('idx_crm_opportunity_owner_stage').on(t.ownerUserId, t.stageCode),
-    idxCustomerStage: index('idx_crm_opportunity_customer_stage').on(t.customerId, t.stageCode),
-    idxPipelineStage: index('idx_crm_opportunity_pipeline_stage').on(t.pipelineCode, t.stageCode),
-    idxPipelineStageEntered: index('idx_crm_opportunity_pipeline_stage_entered').on(
-      t.pipelineCode,
-      t.stageCode,
-      t.stageEnteredAt,
-    ),
-    idxStage: index('idx_crm_opportunity_stage').on(t.stageCode),
-    idxNextAction: index('idx_crm_opportunity_next_action_at').on(t.nextActionAt),
+    idxContact: index('idx_crm_opportunity_primary_contact_id').on(t.primaryContactId),
+    idxOwnerStage: index('idx_crm_opportunity_owner_stage').on(t.ownerId, t.stage),
+    idxCustomerStage: index('idx_crm_opportunity_customer_stage').on(t.customerId, t.stage),
+    idxStage: index('idx_crm_opportunity_stage').on(t.stage),
     idxDeletedAt: index('idx_crm_opportunity_deleted_at').on(t.deletedAt),
     idxCreatedAt: index('idx_crm_opportunity_created_at').on(t.createdAt),
   }),
@@ -691,6 +688,52 @@ export const crmContract = mysqlTable(
     idxStatus: index('idx_crm_contract_status').on(t.status),
     idxCustomerStatus: index('idx_crm_contract_customer_status').on(t.customerId, t.status),
     idxDeletedAt: index('idx_crm_contract_deleted_at').on(t.deletedAt),
+  }),
+)
+
+/** Products a customer is interested in for an opportunity, never quotation items. */
+export const crmOpportunityProductIntent = mysqlTable(
+  'crm_opportunity_product_intent',
+  {
+    id: int().primaryKey().autoincrement().notNull(),
+    opportunityId: int('opportunity_id').notNull(),
+    productId: int('product_id').notNull(),
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  },
+  (t) => ({
+    uniqOpportunityProduct: uniqueIndex('uniq_crm_opportunity_product_intent').on(t.opportunityId, t.productId),
+    idxOpportunity: index('idx_crm_opportunity_product_intent_opportunity').on(t.opportunityId),
+    idxProduct: index('idx_crm_opportunity_product_intent_product').on(t.productId),
+  }),
+)
+
+/**
+ * A confirmed commercial close that intentionally has no contract record.
+ * It is a lifecycle fact, not an order or a substitute contract.
+ */
+export const crmDirectClose = mysqlTable(
+  'crm_direct_close',
+  {
+    id: int().primaryKey().autoincrement().notNull(),
+    customerId: int('customer_id').notNull(),
+    opportunityId: int('opportunity_id').notNull(),
+    amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
+    closedAt: datetime('closed_at').notNull(),
+    evidenceType: varchar('evidence_type', { length: 32 }).notNull(),
+    attachmentIds: json('attachment_ids'),
+    remark: varchar({ length: 2000 }),
+    revokedAt: datetime('revoked_at'),
+    revokedReason: varchar('revoked_reason', { length: 500 }),
+    creatorId: int('creator_id'),
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    updaterId: int('updater_id'),
+    updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  },
+  (t) => ({
+    idxCustomer: index('idx_crm_direct_close_customer_id').on(t.customerId),
+    idxOpportunity: index('idx_crm_direct_close_opportunity_id').on(t.opportunityId),
+    idxCustomerActive: index('idx_crm_direct_close_customer_active').on(t.customerId, t.revokedAt),
+    idxClosedAt: index('idx_crm_direct_close_closed_at').on(t.closedAt),
   }),
 )
 

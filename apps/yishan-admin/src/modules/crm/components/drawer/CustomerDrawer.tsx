@@ -31,16 +31,15 @@ import CustomerDrawerHeader, {
 import ContactsTab from './tabs/ContactsTab';
 import OpportunitiesTab from './tabs/OpportunitiesTab';
 import OverviewTab from './tabs/OverviewTab';
-import JourneyTab from './tabs/JourneyTab';
 import QuotationsTab from './tabs/QuotationsTab';
 import ContractsTab from './tabs/ContractsTab';
 import PaymentsTab from './tabs/PaymentsTab';
 import TasksTab from './tabs/TasksTab';
 import AttachmentsTab from './tabs/AttachmentsTab';
+import OpportunitySave from '../opportunity/OpportunitySave';
 
 export type CustomerDrawerTabKey =
   | 'overview'
-  | 'journey'
   | 'contacts'
   | 'opportunities'
   | 'quotations'
@@ -51,7 +50,6 @@ export type CustomerDrawerTabKey =
 
 const TAB_LABELS: Array<{ key: CustomerDrawerTabKey; label: string }> = [
   { key: 'overview', label: '概览' },
-  { key: 'journey', label: '历程' },
   { key: 'contacts', label: '联系人' },
   { key: 'opportunities', label: '商机' },
   { key: 'quotations', label: '报价单' },
@@ -73,6 +71,7 @@ export interface CustomerDrawerProps {
   /** Drawer 右上"转移"按钮回调；undefined 时走 toast 占位。 */
   onTransfer?: (customer: CustomerDetail) => void;
   onRelease?: (customer: CustomerDetail) => void;
+  currentUser?: { id?: number; realName?: string; username?: string } | null;
 }
 
 const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
@@ -84,11 +83,13 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   onCreateEntity,
   onTransfer,
   onRelease,
+  currentUser,
 }) => {
   const [size, setSize] = useResizableDrawer();
   const [activeTab, setActiveTab] =
     useState<CustomerDrawerTabKey>(initialTab);
   const [followUpRequest, setFollowUpRequest] = useState(0);
+  const [customerRefreshKey, setCustomerRefreshKey] = useState(0);
 
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [customerLoading, setCustomerLoading] = useState(false);
@@ -100,6 +101,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       setCustomer(null);
       setCustomerError(null);
       setCustomerLoading(false);
+      setFollowUpRequest(0);
       return;
     }
     let cancelled = false;
@@ -136,6 +138,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     };
   }, [open, customerId, initialTab]);
 
+
   const handleFollowUpSaved = () => {
     // 跟进写完后，可能改了 statusId；主动重拉详情同步头部 MetaRow 与 status tag
     if (!customerId) return;
@@ -146,6 +149,10 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   };
 
   const handleCreateEntity = (entity: CreateEntityKey) => {
+    if (entity === 'opportunity') {
+      setActiveTab('opportunities');
+      return;
+    }
     if (onCreateEntity) {
       onCreateEntity(entity);
     } else {
@@ -153,6 +160,14 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
         CREATE_ENTITY_TOAST[entity] ?? `${entity}功能开发中`;
       antdMessage.info(label);
     }
+  };
+
+  const handleOpportunityCreated = async () => {
+    if (!customerId) return;
+    const refreshed = await getCustomer(customerId);
+    setCustomer(refreshed);
+      setCustomerRefreshKey((value) => value + 1);
+    onChanged?.();
   };
 
   const handleTransfer = () => {
@@ -240,14 +255,13 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
             customer={current}
             followUpRequest={followUpRequest}
             onFollowUpSaved={handleFollowUpSaved}
+            onRelationshipStatusChanged={handleFollowUpSaved}
           />
         );
-      case 'journey':
-        return <JourneyTab customerId={current.id} />;
       case 'contacts':
         return <ContactsTabStandalone customerId={current.id} />;
       case 'opportunities':
-        return <OpportunitiesTab customerId={current.id} />;
+        return <OpportunitiesTab customer={current} refreshKey={customerRefreshKey} createAction={<OpportunitySave customerId={current.id} customerName={current.name} ownerId={currentUser?.id} onFinish={handleOpportunityCreated}><Button type="primary">新建商机</Button></OpportunitySave>} />;
       case 'quotations': return <QuotationsTab customerId={current.id} />;
       case 'contracts': return <ContractsTab customerId={current.id} />;
       case 'payments': return <PaymentsTab customerId={current.id} />;
@@ -297,6 +311,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
 export default CustomerDrawer;
 
 const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
+  followup: '请使用右侧动态中的新增跟进入口',
   contact: '新建联系人请到基本信息 tab 的联系人入口（Phase 3 接入表单）',
   opportunity: '新建商机功能开发中（Phase 3）',
   contract: '新建合同功能开发中（Phase 3）',

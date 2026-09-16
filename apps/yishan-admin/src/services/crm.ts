@@ -77,6 +77,7 @@ export interface CustomerDetail extends CustomerRow {
   sourceName: string | null
   primaryContactId: number | null
   primaryContactName: string | null
+  relationshipStatus?: CustomerStatusCode | null
 }
 
 export interface CustomerCreateInput {
@@ -224,10 +225,17 @@ export interface OpportunityRow {
   id: number
   name: string
   customerId: number
-  stageCode: string
-  expectedAmountCents: number
+  stage: 'requirement' | 'proposal' | 'negotiation' | 'won' | 'lost'
+  amountCents: number | null
   expectedCloseDate: string | null
-  ownerUserName: string | null
+  ownerName: string | null
+  ownerId: number | null
+  primaryContactId: number | null
+  products: Array<{ id: number; code: string; name: string }>
+  requirement?: string | null
+  nextAction?: string | null
+  nextFollowUpAt?: string | null
+  remark?: string | null
   stageEnteredAt?: string
 }
 
@@ -468,6 +476,25 @@ export async function updateCustomer(id: number, input: CustomerUpdateInput): Pr
   return unwrap(r)
 }
 
+export type CustomerRelationshipStatusTarget = 'potential' | 'following' | 'lost'
+
+export interface CustomerRelationshipStatusTransitionInput {
+  target: CustomerRelationshipStatusTarget
+  reasonCode?: string
+  remark?: string
+}
+
+export async function transitionCustomerRelationshipStatus(
+  id: number,
+  input: CustomerRelationshipStatusTransitionInput,
+): Promise<CustomerDetail> {
+  const r = await request<ApiResp<CustomerDetail>>(
+    `/api/crm/v1/customers/${id}/relationship-status-transitions`,
+    { method: 'POST', data: input },
+  )
+  return unwrap(r)
+}
+
 export async function deleteCustomer(id: number): Promise<void> {
   await request(`/api/crm/v1/customers/${id}`, { method: 'DELETE' })
 }
@@ -608,6 +635,26 @@ export async function createActivity(customerId: number, input: ActivityCreateIn
 export async function listOpportunities(query: PageQuery & { customerId?: number }): Promise<{ data: OpportunityRow[]; total: number }> {
   const r = await request<ApiResp<OpportunityRow[]>>('/api/crm/v1/opportunities', { method: 'GET', params: query as any })
   return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export interface OpportunityCreateInput {
+  name: string
+  customerId: number
+  primaryContactId?: number | null
+  ownerId: number
+  stage?: 'requirement' | 'proposal' | 'negotiation'
+  amountCents?: number | null
+  expectedCloseDate?: string | null
+  productIds?: number[]
+  requirement?: string
+  remark?: string
+  nextAction?: string
+  nextFollowUpAt?: string | null
+}
+
+export async function createOpportunity(input: OpportunityCreateInput): Promise<OpportunityRow> {
+  const r = await request<ApiResp<OpportunityRow>>('/api/crm/v1/opportunities', { method: 'POST', data: input })
+  return unwrap(r)
 }
 
 export async function listQuotations(query: PageQuery & { customerId?: number }): Promise<{ data: QuotationRow[]; total: number }> {

@@ -29,7 +29,6 @@ const FOCUS_KEY = 'focus';
 
 export type DrawerTabKey =
   | 'overview'
-  | 'journey'
   | 'contacts'
   | 'opportunities'
   | 'quotations'
@@ -57,7 +56,6 @@ function parseCustomerId(raw: string | null): number | null {
 
 const VALID_TABS: ReadonlySet<DrawerTabKey> = new Set([
   'overview',
-  'journey',
   'contacts',
   'opportunities',
   'quotations',

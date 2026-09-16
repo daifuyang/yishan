@@ -10,16 +10,16 @@ export const CUSTOMER_STATUSES = [
   { value: 'potential', label: '潜在客户', semantic: 'default' },
   { value: 'following', label: '跟进中', semantic: 'processing' },
   { value: 'opportunity', label: '商机客户', semantic: 'warning' },
-  { value: 'customer', label: '正式客户', semantic: 'success' },
+  { value: 'won', label: '已成交', semantic: 'success' },
   { value: 'lost', label: '已流失', semantic: 'error' },
 ] as const satisfies readonly StatusDescriptor[]
 
 export const OPPORTUNITY_STAGES = [
-  { value: 'discover', label: '需求发现', semantic: 'default' },
-  { value: 'qualify', label: '方案确认', semantic: 'processing' },
+  { value: 'requirement', label: '需求确认', semantic: 'processing' },
   { value: 'proposal', label: '方案报价', semantic: 'warning' },
   { value: 'negotiation', label: '商务谈判', semantic: 'warning' },
-  { value: 'won', label: '赢单', semantic: 'success' },
+  { value: 'won', label: '成交', semantic: 'success' },
+  { value: 'lost', label: '失败', semantic: 'default' },
 ] as const satisfies readonly StatusDescriptor[]
 
 export const QUOTATION_STATUSES = [
@@ -46,6 +46,8 @@ export const TASK_STATUSES = [
 ] as const satisfies readonly StatusDescriptor[]
 
 export type CustomerStatusCode = (typeof CUSTOMER_STATUSES)[number]['value']
+export const RELATIONSHIP_STATUSES = ['potential', 'following', 'lost'] as const
+export type RelationshipStatus = (typeof RELATIONSHIP_STATUSES)[number]
 export type OpportunityStageCode = (typeof OPPORTUNITY_STAGES)[number]['value']
 export type QuotationStatusCode = (typeof QUOTATION_STATUSES)[number]['value']
 export type ContractStatusCode = (typeof CONTRACT_STATUSES)[number]['value']

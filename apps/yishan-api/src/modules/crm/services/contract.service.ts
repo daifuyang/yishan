@@ -17,7 +17,10 @@ export class ContractService {
   async create(input: Omit<CreateContractInput, 'contractNo' | 'creatorId' | 'updaterId'>, currentUser: DataScopeUser): Promise<ContractRow> {
     if (!Number.isSafeInteger(input.amountCents) || input.amountCents < 0) throw new BusinessError(CrmErrorCode.CRM_PAYMENT_AMOUNT_INVALID, '合同金额必须是非负整分')
     if (!isContractStatusCode(input.status)) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_STATUS_INVALID, '合同状态无效')
-    await new CustomerService().detail(input.customerId, currentUser)
+    const customer = await new CustomerService().detail(input.customerId, currentUser)
+    if (customer.relationshipStatus === 'lost') {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_LOST, '流失客户需重新激活后才能创建合同')
+    }
     return dbManager.transaction(async (tx) => {
       const created = await this.createWithUniqueNo({ ...input, creatorId: currentUser.id, updaterId: currentUser.id }, tx)
       const contract = await ContractRepository.findById(created.id, tx)
@@ -30,7 +33,10 @@ export class ContractService {
     return dbManager.transaction(async (tx) => {
       const quotation = await QuotationRepository.findByIdWithLock(quotationId, tx)
       if (!quotation || quotation.status !== 'accepted') throw new BusinessError(CrmErrorCode.CRM_CONTRACT_QUOTATION_INVALID, '仅已接受报价可生成合同')
-      await new CustomerService({ db: tx }).detail(quotation.customerId, currentUser)
+      const customer = await new CustomerService({ db: tx }).detail(quotation.customerId, currentUser)
+      if (customer.relationshipStatus === 'lost') {
+        throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_LOST, '流失客户需重新激活后才能创建合同')
+      }
       const existing = await ContractRepository.findByQuotationId(quotationId, tx)
       if (existing) return existing
       const created = await this.createWithUniqueNo({

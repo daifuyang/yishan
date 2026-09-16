@@ -24,7 +24,7 @@ import {
 } from '../db/schema.js'
 import { collaboratorExists } from './member.repository.js'
 import type { POOL_STATUS } from '../schemas/customer.schema.js'
-import { getCustomerStatusLabel, type CustomerStatusCode } from '../domain/statuses.js'
+import { getCustomerStatusLabel, type CustomerStatusCode, type RelationshipStatus } from '../domain/statuses.js'
 
 /**
  * crm_customer Repository。
@@ -48,6 +48,8 @@ export interface CustomerRow {
   level: string | null
   industry: string | null
   statusCode: CustomerStatusCode | null
+  /** Existing fixtures may omit this field; persisted rows always contain it after migration 0055. */
+  relationshipStatus?: RelationshipStatus
   sourceCode: string | null
   levelCode: string | null
   industryCode: string | null
@@ -86,7 +88,6 @@ export interface CustomerDetailRow extends CustomerRow {
 export interface CreateCustomerInput {
   name: string
   type: CustomerType
-  statusCode?: CustomerStatusCode
   sourceId?: number | null
   level?: string | null
   industry?: string | null
@@ -109,7 +110,6 @@ export interface UpdateCustomerInput {
   sourceId?: number | null
   level?: string | null
   industry?: string | null
-  statusCode?: CustomerStatusCode
   sourceCode?: string | null
   levelCode?: string | null
   industryCode?: string | null
@@ -205,6 +205,7 @@ const customerPublicColumns = {
   level: crmCustomer.level,
   industry: crmCustomer.industry,
   statusCode: crmCustomer.statusCode,
+  relationshipStatus: crmCustomer.relationshipStatus,
   sourceCode: crmCustomer.sourceCode,
   levelCode: crmCustomer.levelCode,
   industryCode: crmCustomer.industryCode,
@@ -481,7 +482,8 @@ export class CustomerRepository {
       .values({
         name: input.name,
         type: input.type,
-        statusCode: input.statusCode ?? 'potential',
+        statusCode: 'potential',
+        relationshipStatus: 'potential',
         sourceId: input.sourceId ?? null,
         level: input.level ?? null,
         industry: input.industry ?? null,
@@ -514,7 +516,6 @@ export class CustomerRepository {
     if (input.sourceId !== undefined) patch.sourceId = input.sourceId
     if (input.level !== undefined) patch.level = input.level
     if (input.industry !== undefined) patch.industry = input.industry
-    if (input.statusCode !== undefined) patch.statusCode = input.statusCode
     if (input.sourceCode !== undefined) patch.sourceCode = input.sourceCode
     if (input.levelCode !== undefined) patch.levelCode = input.levelCode
     if (input.industryCode !== undefined) patch.industryCode = input.industryCode
@@ -531,6 +532,22 @@ export class CustomerRepository {
     if (input.nextFollowUpAt !== undefined) patch.nextFollowUpAt = input.nextFollowUpAt
     if (input.remark !== undefined) patch.remark = input.remark
 
+    await db.update(crmCustomer).set(patch).where(eq(crmCustomer.id, id))
+    return CustomerRepository.findById(id, db)
+  }
+
+  /** Lifecycle fields are only writable through the state projector. */
+  static async updateLifecycle(
+    id: number,
+    input: { statusCode: CustomerStatusCode; relationshipStatus?: RelationshipStatus; updaterId: number },
+    db: AppQueryDb = drizzleDb,
+  ): Promise<CustomerRow | null> {
+    const patch: Record<string, unknown> = {
+      statusCode: input.statusCode,
+      updaterId: input.updaterId,
+      updatedAt: new Date(),
+    }
+    if (input.relationshipStatus !== undefined) patch.relationshipStatus = input.relationshipStatus
     await db.update(crmCustomer).set(patch).where(eq(crmCustomer.id, id))
     return CustomerRepository.findById(id, db)
   }

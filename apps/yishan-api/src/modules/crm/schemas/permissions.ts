@@ -81,6 +81,7 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   OPPORTUNITY_WON: { code: 'crm:opportunity:won', label: 'CRM-商机-赢单', group: 'crm' },
   OPPORTUNITY_LOST: { code: 'crm:opportunity:lost', label: 'CRM-商机-丢单', group: 'crm' },
   OPPORTUNITY_TRANSFER: { code: 'crm:opportunity:transfer', label: 'CRM-商机-转移', group: 'crm' },
+  DIRECT_CLOSE_MANAGE: { code: 'crm:direct-close:manage', label: 'CRM-无合同成交-确认与撤销', group: 'crm' },
 
   /* ─── Contract (Phase 3) ────────────────── */
   CONTRACT_LIST: { code: 'crm:contract:list', label: 'CRM-合同-查看', group: 'crm' },

@@ -13,6 +13,7 @@ import {
 } from '../repositories/activity.repository.js'
 import { CustomerRepository, type CustomerRow } from '../repositories/customer.repository.js'
 import { CustomerMemberRepository } from '../repositories/member.repository.js'
+import { CustomerLifecycleService } from './customer-lifecycle.service.js'
 
 /**
  * ActivityService —— 跟进记录业务编排。
@@ -121,6 +122,32 @@ export class ActivityService {
     )
   }
 
+  /** The first recorded follow-up is a relationship fact, not a generic customer edit. */
+  private static async promotePotentialCustomerAfterFollowUp(
+    customerId: number,
+    updaterId: number,
+    tx: AppQueryDb,
+  ): Promise<void> {
+    const customer = await CustomerRepository.findById(customerId, tx)
+    if (!customer || customer.relationshipStatus !== 'potential') return
+    await CustomerRepository.updateLifecycle(customerId, {
+      statusCode: customer.statusCode ?? 'potential',
+      relationshipStatus: 'following',
+      updaterId,
+    }, tx)
+    const statusCode = await CustomerLifecycleService.recalculate(customerId, updaterId, tx)
+    await ActivityRepository.create({
+      customerId,
+      entityType: 'customer',
+      entityId: customerId,
+      entityRefType: 'customer',
+      type: 'status_change',
+      content: '客户关系状态变更：potential -> following',
+      metadata: { from: 'potential', to: 'following', reasonCode: null, remark: null, source: 'follow_up', statusCode },
+      operatorUserId: updaterId,
+    }, tx)
+  }
+
   async listByCustomerId(
     customerId: number,
     currentUser: DataScopeUser,
@@ -175,6 +202,7 @@ export class ActivityService {
       )
 
       await ActivityService.syncCustomerFollowUp(customerId, currentUser.id, tx)
+      await ActivityService.promotePotentialCustomerAfterFollowUp(customerId, currentUser.id, tx)
 
       const list = await ActivityRepository.listByCustomerId(customerId, { limit: 1 }, tx)
       return list[0] ?? { ...activity, operatorUserName: null }
