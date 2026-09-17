@@ -1,14 +1,14 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { Type } from '@sinclair/typebox';
-import { createRouteRegistrar } from '../../../../route-registrar.js';
-import { createCrudHandlers, declareCrudPermissions } from '../../../../admin-crud.js';
-import { ResponseUtil } from '../../../../../../utils/response.js';
-import { ValidationErrorCode } from '../../../../../../constants/business-codes/validation.js';
-import { PositionErrorCode } from '../../../../../../constants/business-codes/position.js';
-import { BusinessError } from '../../../../../../exceptions/business-error.js';
-import type { PositionListQuery, SavePositionReq, UpdatePositionReq } from '../../../../../schemas/position.js';
-import { PositionService } from '../../../../../services/position.service.js';
-import { getPositionMessage, PositionMessageKeys } from '../../../../../../constants/messages/position.js';
+import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
+import { createCrudHandlers, declareCrudPermissions } from '@/core/routes/admin-crud.js';
+import { ResponseUtil } from '@/utils/response.js';
+import { ValidationErrorCode } from '@/constants/business-codes/validation.js';
+import { PositionErrorCode } from '@/constants/business-codes/position.js';
+import { BusinessError } from '@/exceptions/business-error.js';
+import type { PositionListQuery, SavePositionReq, UpdatePositionReq } from '@/core/schemas/position.js';
+import { PositionService } from '@/core/services/position.service.js';
+import { getPositionMessage, PositionMessageKeys } from '@/constants/messages/position.js';
 
 const CRUD_OPTIONS = {
     resource: 'position',
