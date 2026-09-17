@@ -1,9 +1,10 @@
-import { createRouteRegistrar } from '../../../../route-registrar.js';
+import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
+import { createCrudHandlers } from '@/core/routes/admin-crud.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
-import { ResponseUtil } from "../../../../../../utils/response.js";
-import { DictErrorCode } from "../../../../../../constants/business-codes/dict.js";
-import { BusinessError } from "../../../../../../exceptions/business-error.js";
+import { ResponseUtil } from "@/utils/response.js";
+import { DictErrorCode } from "@/constants/business-codes/dict.js";
+import { BusinessError } from "@/exceptions/business-error.js";
 import {
   DictDataListQuery,
   DictTypeListQuery,
@@ -11,46 +12,45 @@ import {
   SaveDictTypeReq,
   UpdateDictDataReq,
   UpdateDictTypeReq,
-} from "../../../../../schemas/dict.js";
-import { DictService } from "../../../../../services/dict.service.js";
-import { getDictMessage, DictMessageKeys } from "../../../../../../constants/messages/dict.js";
-import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
-
-const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  LIST:   { code: 'system:dict:list',   label: '字典管理-列表', group: 'system' },
-  CREATE: { code: 'system:dict:create', label: '字典管理-创建', group: 'system' },
-  UPDATE: { code: 'system:dict:update', label: '字典管理-更新', group: 'system' },
-  DELETE: { code: 'system:dict:delete', label: '字典管理-删除', group: 'system' },
-});
-registerPermissions(...Object.values(PERMS));
+} from "@/core/schemas/dict.js";
+import { DictService } from "@/core/services/dict.service.js";
+import { getDictMessage, DictMessageKeys } from "@/constants/messages/dict.js";
 const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
-  route.get(
-    "/types",
-    {
-      access: { permission: PERMS.LIST },
-      schema: {
-        summary: "获取字典类型列表",
-        description: "分页获取字典类型列表",
-        operationId: "getDictTypeList",
-        tags: ["sysDictTypes"],
-        security: [{ bearerAuth: [] }],
-        querystring: { $ref: "dictTypeListQuery#" },
-        response: { 200: { $ref: "dictTypeListResp#" } },
-      },
+  const crud = createCrudHandlers(route, {
+    resource: 'dict',
+    group: 'system',
+    perms: {
+      list: '字典管理-列表',
+      create: '字典管理-创建',
+      update: '字典管理-更新',
+      delete: '字典管理-删除',
     },
-    async (request: FastifyRequest<{ Querystring: DictTypeListQuery }>, reply: FastifyReply) => {
-      const { page, pageSize } = request.query;
-      const result = await DictService.getDictTypeList(request.query);
-      const message = getDictMessage(DictMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.paginated(reply, result.list, page, pageSize, result.total, message);
-    }
-  );
+    messages: {
+      listSuccess: (lang) => getDictMessage(DictMessageKeys.LIST_SUCCESS, lang),
+      createSuccess: (lang) => getDictMessage(DictMessageKeys.CREATE_SUCCESS, lang),
+      updateSuccess: (lang) => getDictMessage(DictMessageKeys.UPDATE_SUCCESS, lang),
+      deleteSuccess: (lang) => getDictMessage(DictMessageKeys.DELETE_SUCCESS, lang),
+    },
+  });
+  crud.list({
+    path: '/types',
+    schema: {
+      summary: "获取字典类型列表",
+      description: "分页获取字典类型列表",
+      operationId: "getDictTypeList",
+      tags: ["sysDictTypes"],
+      security: [{ bearerAuth: [] }],
+      querystring: { $ref: "dictTypeListQuery#" },
+      response: { 200: { $ref: "dictTypeListResp#" } },
+    },
+    service: (query) => DictService.getDictTypeList(query as DictTypeListQuery),
+  });
 
   route.get(
     "/types/:id",
     {
-      access: { permission: PERMS.LIST },
+      access: { permission: crud.permissions.list },
       schema: {
         summary: "获取字典类型详情",
         description: "根据字典类型ID获取详情",
@@ -70,11 +70,9 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
-  route.post(
-    "/types",
-    {
-      access: { permission: PERMS.CREATE },
-      schema: {
+  crud.create({
+    path: '/types',
+    schema: {
         summary: "创建字典类型",
         description: "创建字典类型",
         operationId: "createDictType",
@@ -82,20 +80,13 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         security: [{ bearerAuth: [] }],
         body: { $ref: "saveDictTypeReq#" },
         response: { 200: { $ref: "dictTypeDetailResp#" } },
-      },
     },
-    async (request: FastifyRequest<{ Body: SaveDictTypeReq }>, reply: FastifyReply) => {
-      const d = await DictService.createDictType(request.body, fastify);
-      const message = getDictMessage(DictMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.success(reply, d, message);
-    }
-  );
+    service: (request) => DictService.createDictType(request.body as SaveDictTypeReq, fastify),
+  });
 
-  route.put(
-    "/types/:id",
-    {
-      access: { permission: PERMS.UPDATE },
-      schema: {
+  crud.update({
+    path: '/types/:id',
+    schema: {
         summary: "更新字典类型",
         description: "更新字典类型",
         operationId: "updateDictType",
@@ -104,21 +95,13 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         params: Type.Object({ id: Type.Integer({ minimum: 1 }) }),
         body: { $ref: "updateDictTypeReq#" },
         response: { 200: { $ref: "dictTypeDetailResp#" } },
-      },
     },
-    async (request: FastifyRequest<{ Params: { id: number }; Body: UpdateDictTypeReq }>, reply: FastifyReply) => {
-      const id = request.params.id;
-      const d = await DictService.updateDictType(id, request.body, fastify);
-      const message = getDictMessage(DictMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.success(reply, d, message);
-    }
-  );
+    service: (id, request) => DictService.updateDictType(id, request.body as UpdateDictTypeReq, fastify),
+  });
 
-  route.delete(
-    "/types/:id",
-    {
-      access: { permission: PERMS.DELETE },
-      schema: {
+  crud.delete({
+    path: '/types/:id',
+    schema: {
         summary: "删除字典类型",
         description: "软删除字典类型",
         operationId: "deleteDictType",
@@ -126,21 +109,13 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         security: [{ bearerAuth: [] }],
         params: Type.Object({ id: Type.Integer({ minimum: 1 }) }),
         response: { 200: { $ref: "dictTypeDeleteResp#" } },
-      },
     },
-    async (request: FastifyRequest<{ Params: { id: number } }>, reply: FastifyReply) => {
-      const id = request.params.id;
-      const res = await DictService.deleteDictType(id, fastify);
-      const message = getDictMessage(DictMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.success(reply, res, message);
-    }
-  );
+    service: (id) => DictService.deleteDictType(id, fastify),
+  });
 
-  route.get(
-    "/data",
-    {
-      access: { permission: PERMS.LIST },
-      schema: {
+  crud.list({
+    path: '/data',
+    schema: {
         summary: "获取字典数据列表",
         description: "分页获取字典数据列表",
         operationId: "getDictDataList",
@@ -148,20 +123,14 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         security: [{ bearerAuth: [] }],
         querystring: { $ref: "dictDataListQuery#" },
         response: { 200: { $ref: "dictDataListResp#" } },
-      },
     },
-    async (request: FastifyRequest<{ Querystring: DictDataListQuery }>, reply: FastifyReply) => {
-      const { page, pageSize } = request.query;
-      const result = await DictService.getDictDataList(request.query);
-      const message = getDictMessage(DictMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.paginated(reply, result.list, page, pageSize, result.total, message);
-    }
-  );
+    service: (query) => DictService.getDictDataList(query as DictDataListQuery),
+  });
 
   route.get(
     "/data/:id",
     {
-      access: { permission: PERMS.LIST },
+      access: { permission: crud.permissions.list },
       schema: {
         summary: "获取字典数据详情",
         description: "根据字典数据ID获取详情",
@@ -181,11 +150,9 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
   );
 
-  route.post(
-    "/data",
-    {
-      access: { permission: PERMS.CREATE },
-      schema: {
+  crud.create({
+    path: '/data',
+    schema: {
         summary: "创建字典数据",
         description: "创建字典数据",
         operationId: "createDictData",
@@ -193,20 +160,13 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         security: [{ bearerAuth: [] }],
         body: { $ref: "saveDictDataReq#" },
         response: { 200: { $ref: "dictDataDetailResp#" } },
-      },
     },
-    async (request: FastifyRequest<{ Body: SaveDictDataReq }>, reply: FastifyReply) => {
-      const d = await DictService.createDictData(request.body, fastify);
-      const message = getDictMessage(DictMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.success(reply, d, message);
-    }
-  );
+    service: (request) => DictService.createDictData(request.body as SaveDictDataReq, fastify),
+  });
 
-  route.put(
-    "/data/:id",
-    {
-      access: { permission: PERMS.UPDATE },
-      schema: {
+  crud.update({
+    path: '/data/:id',
+    schema: {
         summary: "更新字典数据",
         description: "更新字典数据",
         operationId: "updateDictData",
@@ -215,21 +175,13 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         params: Type.Object({ id: Type.Integer({ minimum: 1 }) }),
         body: { $ref: "updateDictDataReq#" },
         response: { 200: { $ref: "dictDataDetailResp#" } },
-      },
     },
-    async (request: FastifyRequest<{ Params: { id: number }; Body: UpdateDictDataReq }>, reply: FastifyReply) => {
-      const id = request.params.id;
-      const d = await DictService.updateDictData(id, request.body, fastify);
-      const message = getDictMessage(DictMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.success(reply, d, message);
-    }
-  );
+    service: (id, request) => DictService.updateDictData(id, request.body as UpdateDictDataReq, fastify),
+  });
 
-  route.delete(
-    "/data/:id",
-    {
-      access: { permission: PERMS.DELETE },
-      schema: {
+  crud.delete({
+    path: '/data/:id',
+    schema: {
         summary: "删除字典数据",
         description: "软删除字典数据",
         operationId: "deleteDictData",
@@ -237,20 +189,14 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         security: [{ bearerAuth: [] }],
         params: Type.Object({ id: Type.Integer({ minimum: 1 }) }),
         response: { 200: { $ref: "dictDataDeleteResp#" } },
-      },
     },
-    async (request: FastifyRequest<{ Params: { id: number } }>, reply: FastifyReply) => {
-      const id = request.params.id;
-      const res = await DictService.deleteDictData(id, fastify);
-      const message = getDictMessage(DictMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.success(reply, res, message);
-    }
-  );
+    service: (id) => DictService.deleteDictData(id, fastify),
+  });
 
   route.get(
     "/data/map",
     {
-      access: { permission: PERMS.LIST },
+      access: { permission: crud.permissions.list },
       schema: {
         summary: "获取全部字典数据映射",
         description: "获取所有启用的字典数据，按字典类型分组，返回key:{label:'',value:''}的形式",

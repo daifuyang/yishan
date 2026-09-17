@@ -11,6 +11,9 @@ import { DictService } from '../src/core/services/dict.service.ts'
 import { DictErrorCode } from '../src/constants/business-codes/dict.ts'
 import { ValidationErrorCode } from '../src/constants/business-codes/validation.ts'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+
+const dictRoutesSource = readFileSync(new URL('../src/core/routes/api/v1/admin/dicts/index.ts', import.meta.url), 'utf8')
 
 const PREFIX = '/api/v1/admin/dicts'
 
@@ -49,6 +52,21 @@ async function buildApp() {
 
 beforeEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('Dictionary CRUD factory boundary', () => {
+  it('registers both type and data standard actions through one factory with explicit paths', () => {
+    expect(dictRoutesSource).toMatch(/const crud = createCrudHandlers\(route, \{[\s\S]*resource: 'dict'/)
+
+    for (const path of ['/types', '/types/:id', '/data', '/data/:id']) {
+      expect(dictRoutesSource).toContain(`path: '${path}'`)
+    }
+
+    expect(dictRoutesSource.match(/crud\.list\(/g)).toHaveLength(2)
+    expect(dictRoutesSource.match(/crud\.create\(/g)).toHaveLength(2)
+    expect(dictRoutesSource.match(/crud\.update\(/g)).toHaveLength(2)
+    expect(dictRoutesSource.match(/crud\.delete\(/g)).toHaveLength(2)
+  })
 })
 
 describe('N2: 字典 not-found 业务错误码', () => {
