@@ -8,6 +8,9 @@ import { ValidationErrorCode } from '../src/constants/business-codes/validation.
 import { MenuErrorCode } from '../src/constants/business-codes/menu.ts'
 import { BusinessError } from '../src/exceptions/business-error.js'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { readFile } from 'node:fs/promises'
+
+const menuRouteSource = new URL('../src/core/routes/api/v1/admin/menus/index.ts', import.meta.url)
 
 async function buildApp() {
   const app = Fastify({ logger: false });
@@ -31,6 +34,22 @@ beforeEach(() => {
 })
 
 describe('Admin Menus routes', () => {
+  it('delegates standard CRUD to the factory while preserving local menu routes', async () => {
+    const source = await readFile(menuRouteSource, 'utf8')
+
+    expect(source).toContain("import { createCrudHandlers } from '@/core/routes/admin-crud.js'")
+    expect(source).toContain("const crud = createCrudHandlers(route, {")
+    expect(source).toContain('crud.list({')
+    expect(source).toContain('crud.create({')
+    expect(source).toContain('crud.update({')
+    expect(source).toContain('crud.delete({')
+    expect(source).toContain('const parseMenuId = (rawId: string) =>')
+    expect(source).toContain('parseId: parseMenuId')
+    expect(source).toContain('const menuId = parseMenuId(request.params.id)')
+    expect(source).toContain('access: { permission: crud.permissions.list }')
+    expect(source).toContain('access: { permission: READ_AUTHORIZED }')
+  })
+
   it('GET / 应返回分页的菜单列表', async () => {
     const app = await buildApp()
 

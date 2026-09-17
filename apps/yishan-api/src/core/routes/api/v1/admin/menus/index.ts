@@ -1,32 +1,52 @@
-import { createRouteRegistrar } from '../../../../route-registrar.js';
+import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
+import { createCrudHandlers } from '@/core/routes/admin-crud.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
-import { ResponseUtil } from "../../../../../../utils/response.js";
-import { ValidationErrorCode } from "../../../../../../constants/business-codes/validation.js";
-import { MenuErrorCode } from "../../../../../../constants/business-codes/menu.js";
-import { BusinessError } from "../../../../../../exceptions/business-error.js";
-import { MenuListQuery, SaveMenuReq, UpdateMenuReq } from "../../../../../schemas/menu.js";
-import { MenuService } from "../../../../../services/menu.service.js";
-import { getMenuMessage, MenuMessageKeys } from "../../../../../../constants/messages/menu.js";
-import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+import { ResponseUtil } from '@/utils/response.js';
+import { ValidationErrorCode } from '@/constants/business-codes/validation.js';
+import { MenuErrorCode } from '@/constants/business-codes/menu.js';
+import { BusinessError } from '@/exceptions/business-error.js';
+import { MenuListQuery, SaveMenuReq, UpdateMenuReq } from '@/core/schemas/menu.js';
+import { MenuService } from '@/core/services/menu.service.js';
+import { getMenuMessage, MenuMessageKeys } from '@/constants/messages/menu.js';
+import { registerPermissions, type PermissionRef } from '@/core/permissions/catalog.js';
 
-const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  LIST:   { code: 'system:menu:list',   label: '菜单管理-列表', group: 'system' },
-  CREATE: { code: 'system:menu:create', label: '菜单管理-创建', group: 'system' },
-  UPDATE: { code: 'system:menu:update', label: '菜单管理-更新', group: 'system' },
-  DELETE: { code: 'system:menu:delete', label: '菜单管理-删除', group: 'system' },
-  READ_AUTHORIZED: { code: 'system:menu:authorized', label: '菜单-已授权查询', group: 'system' },
-});
-registerPermissions(...Object.values(PERMS));
+const READ_AUTHORIZED: PermissionRef = {
+  code: 'system:menu:authorized',
+  label: '菜单-已授权查询',
+  group: 'system',
+};
+registerPermissions(READ_AUTHORIZED);
 
-const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+const parseMenuId = (rawId: string) => {
+  const id = parseInt(rawId, 10);
+  if (Number.isNaN(id)) {
+    throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "菜单ID不能为空");
+  }
+  return id;
+};
+
+const adminMenus: FastifyPluginAsync = async (fastify): Promise<void> => {
   const route = createRouteRegistrar(fastify);
+  const crud = createCrudHandlers(route, {
+    resource: 'menu',
+    group: 'system',
+    perms: {
+      list: '菜单管理-列表',
+      create: '菜单管理-创建',
+      update: '菜单管理-更新',
+      delete: '菜单管理-删除',
+    },
+    messages: {
+      listSuccess: (lang) => getMenuMessage(MenuMessageKeys.LIST_SUCCESS, lang),
+      createSuccess: (lang) => getMenuMessage(MenuMessageKeys.CREATE_SUCCESS, lang),
+      updateSuccess: (lang) => getMenuMessage(MenuMessageKeys.UPDATE_SUCCESS, lang),
+      deleteSuccess: (lang) => getMenuMessage(MenuMessageKeys.DELETE_SUCCESS, lang),
+    },
+  });
   // GET /api/v1/admin/menus - 获取菜单列表
-  route.get(
-    "/",
-    {
-      access: { permission: PERMS.LIST },
-      schema: {
+  crud.list({
+    schema: {
         summary: "获取菜单列表",
         description: "分页获取菜单列表，支持关键词、状态、类型与父级过滤",
         operationId: "getMenuList",
@@ -34,30 +54,14 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         security: [{ bearerAuth: [] }],
         querystring: { $ref: "menuListQuery#" },
         response: { 200: { $ref: "menuListResp#" } },
-      },
     },
-    async (
-      request: FastifyRequest<{ Querystring: MenuListQuery }>,
-      reply: FastifyReply
-    ) => {
-      const { page, pageSize } = request.query;
-      const result = await MenuService.getMenuList(request.query);
-      const message = getMenuMessage(MenuMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.paginated(
-        reply,
-        result.list,
-        page,
-        pageSize,
-        result.total,
-        message
-      );
-    }
-  );
+    service: (query) => MenuService.getMenuList(query as MenuListQuery),
+  });
 
   route.get(
     "/tree",
     {
-      access: { permission: PERMS.LIST },
+      access: { permission: crud.permissions.list },
       schema: {
         summary: "获取菜单树",
         description: "获取全部树形菜单",
@@ -82,7 +86,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/tree/authorized",
     {
-      access: { permission: PERMS.READ_AUTHORIZED },
+      access: { permission: READ_AUTHORIZED },
       schema: {
         summary: "获取已授权菜单树",
         description: "根据当前用户角色并集返回授权菜单树",
@@ -108,7 +112,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/paths/authorized",
     {
-      access: { permission: PERMS.READ_AUTHORIZED },
+      access: { permission: READ_AUTHORIZED },
       schema: {
         summary: "获取已授权菜单路径",
         description: "根据当前用户角色并集返回允许访问的菜单路径列表",
@@ -135,7 +139,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.get(
     "/:id",
     {
-      access: { permission: PERMS.LIST },
+      access: { permission: crud.permissions.list },
       schema: {
         summary: "获取菜单详情",
         description: "根据菜单ID获取菜单详情",
@@ -150,10 +154,7 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       request: FastifyRequest<{ Params: { id: string } }>,
       reply: FastifyReply
     ) => {
-      const menuId = parseInt(request.params.id);
-      if (isNaN(menuId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "菜单ID不能为空");
-      }
+      const menuId = parseMenuId(request.params.id);
       const menu = await MenuService.getMenuById(menuId);
       if (!menu) {
         throw new BusinessError(MenuErrorCode.MENU_NOT_FOUND, "菜单不存在");
@@ -166,11 +167,8 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // POST /api/v1/admin/menus - 创建菜单
-  route.post(
-    "/",
-    {
-      access: { permission: PERMS.CREATE },
-      schema: {
+  crud.create({
+    schema: {
         summary: "创建菜单",
         description: "创建一个新的菜单",
         operationId: "createMenu",
@@ -178,26 +176,13 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         security: [{ bearerAuth: [] }],
         body: { $ref: "saveMenuReq#" },
         response: { 200: { $ref: "menuDetailResp#" } },
-      },
     },
-    async (
-      request: FastifyRequest<{ Body: SaveMenuReq }>,
-      reply: FastifyReply
-    ) => {
-      const menu = await MenuService.createMenu(request.body);
-      {
-        const message = getMenuMessage(MenuMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
-        return ResponseUtil.success(reply, menu, message);
-      }
-    }
-  );
+    service: (request) => MenuService.createMenu(request.body as SaveMenuReq),
+  });
 
   // PUT /api/v1/admin/menus/{id} - 更新菜单
-  route.put(
-    "/:id",
-    {
-      access: { permission: PERMS.UPDATE },
-      schema: {
+  crud.update({
+    schema: {
         summary: "更新菜单",
         description: "根据菜单ID更新菜单信息",
         operationId: "updateMenu",
@@ -206,30 +191,14 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         params: Type.Object({ id: Type.String({ description: "菜单ID" }) }),
         body: { $ref: "updateMenuReq#" },
         response: { 200: { $ref: "menuDetailResp#" } },
-      },
     },
-    async (
-      request: FastifyRequest<{ Params: { id: string }; Body: UpdateMenuReq }>,
-      reply: FastifyReply
-    ) => {
-      const menuId = parseInt(request.params.id);
-      if (isNaN(menuId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "菜单ID不能为空");
-      }
-      const menu = await MenuService.updateMenu(menuId, request.body);
-      {
-        const message = getMenuMessage(MenuMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
-        return ResponseUtil.success(reply, menu, message);
-      }
-    }
-  );
+    parseId: parseMenuId,
+    service: (id, request) => MenuService.updateMenu(id, request.body as UpdateMenuReq),
+  });
 
   // DELETE /api/v1/admin/menus/{id} - 删除菜单（软删除）
-  route.delete(
-    "/:id",
-    {
-      access: { permission: PERMS.DELETE },
-      schema: {
+  crud.delete({
+    schema: {
         summary: "删除菜单",
         description: "根据菜单ID进行软删除，存在子菜单或已绑定角色禁止删除",
         operationId: "deleteMenu",
@@ -237,23 +206,10 @@ const adminMenus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         security: [{ bearerAuth: [] }],
         params: Type.Object({ id: Type.String({ description: "菜单ID" }) }),
         response: { 200: { $ref: "menuDeleteResp#" } },
-      },
     },
-    async (
-      request: FastifyRequest<{ Params: { id: string } }>,
-      reply: FastifyReply
-    ) => {
-      const menuId = parseInt(request.params.id);
-      if (isNaN(menuId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "菜单ID不能为空");
-      }
-      const result = await MenuService.deleteMenu(menuId);
-      {
-        const message = getMenuMessage(MenuMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
-        return ResponseUtil.success(reply, result, message);
-      }
-    }
-  );
+    parseId: parseMenuId,
+    service: (id) => MenuService.deleteMenu(id),
+  });
 };
 
 export default adminMenus;
