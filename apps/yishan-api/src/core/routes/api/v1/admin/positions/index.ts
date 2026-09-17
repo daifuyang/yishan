@@ -1,177 +1,124 @@
+import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import { Type } from '@sinclair/typebox';
 import { createRouteRegistrar } from '../../../../route-registrar.js';
-import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
-import { Type } from "@sinclair/typebox";
-import { ResponseUtil } from "../../../../../../utils/response.js";
-import { ValidationErrorCode } from "../../../../../../constants/business-codes/validation.js";
-import { PositionErrorCode } from "../../../../../../constants/business-codes/position.js";
-import { BusinessError } from "../../../../../../exceptions/business-error.js";
-import { PositionListQuery, SavePositionReq, UpdatePositionReq } from "../../../../../schemas/position.js";
-import { PositionService } from "../../../../../services/position.service.js";
-import { getPositionMessage, PositionMessageKeys } from "../../../../../../constants/messages/position.js";
-import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+import { createCrudHandlers } from '../../../../admin-crud.js';
+import { ResponseUtil } from '../../../../../../utils/response.js';
+import { ValidationErrorCode } from '../../../../../../constants/business-codes/validation.js';
+import { PositionErrorCode } from '../../../../../../constants/business-codes/position.js';
+import { BusinessError } from '../../../../../../exceptions/business-error.js';
+import type { PositionListQuery, SavePositionReq, UpdatePositionReq } from '../../../../../schemas/position.js';
+import { PositionService } from '../../../../../services/position.service.js';
+import { getPositionMessage, PositionMessageKeys } from '../../../../../../constants/messages/position.js';
 
-const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  LIST:   { code: 'system:position:list',   label: '岗位管理-列表', group: 'system' },
-  CREATE: { code: 'system:position:create', label: '岗位管理-创建', group: 'system' },
-  UPDATE: { code: 'system:position:update', label: '岗位管理-更新', group: 'system' },
-  DELETE: { code: 'system:position:delete', label: '岗位管理-删除', group: 'system' },
-});
-registerPermissions(...Object.values(PERMS));
-const adminPositions: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+const adminPositions: FastifyPluginAsync = async (fastify): Promise<void> => {
   const route = createRouteRegistrar(fastify);
-  route.get(
-    "/",
-    {
-      access: { permission: PERMS.LIST },
-      schema: {
-        summary: "获取岗位列表",
-        description: "分页获取系统岗位列表，支持关键词搜索和状态筛选",
-        operationId: "getPositionList",
-        tags: ["sysPositions"],
-        security: [{ bearerAuth: [] }],
-        querystring: { $ref: "positionListQuery#" },
-        response: {
-          200: { $ref: "positionListResp#" },
-        },
-      },
+  const crud = createCrudHandlers(route, {
+    resource: 'position',
+    group: 'system',
+    perms: {
+      list: '岗位管理-列表',
+      create: '岗位管理-创建',
+      update: '岗位管理-更新',
+      delete: '岗位管理-删除',
     },
-    async (
-      request: FastifyRequest<{ Querystring: PositionListQuery }>,
-      reply: FastifyReply
-    ) => {
-      const { page, pageSize } = request.query;
-      const result = await PositionService.getPositionList(request.query);
-      const message = getPositionMessage(PositionMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.paginated(
-        reply,
-        result.list,
-        page,
-        pageSize,
-        result.total,
-        message
-      );
-    }
-  );
+    messages: {
+      listSuccess: (lang) => getPositionMessage(PositionMessageKeys.LIST_SUCCESS, lang),
+      createSuccess: (lang) => getPositionMessage(PositionMessageKeys.CREATE_SUCCESS, lang),
+      updateSuccess: (lang) => getPositionMessage(PositionMessageKeys.UPDATE_SUCCESS, lang),
+      deleteSuccess: (lang) => getPositionMessage(PositionMessageKeys.DELETE_SUCCESS, lang),
+    },
+  });
 
-  route.get(
-    "/:id",
-    {
-      access: { permission: PERMS.LIST },
-      schema: {
-        summary: "获取岗位详情",
-        description: "根据岗位ID获取岗位详情",
-        operationId: "getPositionDetail",
-        tags: ["sysPositions"],
-        security: [{ bearerAuth: [] }],
-        params: Type.Object({ id: Type.String({ description: "岗位ID" }) }),
-        response: { 200: { $ref: "positionDetailResp#" } },
-      },
+  crud.list({
+    schema: {
+      summary: '获取岗位列表',
+      description: '分页获取系统岗位列表，支持关键词搜索和状态筛选',
+      operationId: 'getPositionList',
+      tags: ['sysPositions'],
+      security: [{ bearerAuth: [] }],
+      querystring: { $ref: 'positionListQuery#' },
+      response: { 200: { $ref: 'positionListResp#' } },
     },
-    async (
-      request: FastifyRequest<{ Params: { id: string } }>,
-      reply: FastifyReply
-    ) => {
-      const positionId = parseInt(request.params.id);
-      if (isNaN(positionId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "岗位ID不能为空");
-      }
-      const position = await PositionService.getPositionById(positionId);
-      if (!position) {
-        throw new BusinessError(PositionErrorCode.POSITION_NOT_FOUND, "岗位不存在");
-      }
-      {
-        const message = getPositionMessage(PositionMessageKeys.DETAIL_SUCCESS, request.headers["accept-language"] as string);
-        return ResponseUtil.success(reply, position, message);
-      }
-    }
-  );
+    service: (query) => PositionService.getPositionList(query as PositionListQuery),
+  });
 
-  route.post(
-    "/",
-    {
-      access: { permission: PERMS.CREATE },
-      schema: {
-        summary: "创建岗位",
-        description: "创建一个新的岗位",
-        operationId: "createPosition",
-        tags: ["sysPositions"],
-        security: [{ bearerAuth: [] }],
-        body: { $ref: "savePositionReq#" },
-        response: { 200: { $ref: "positionDetailResp#" } },
-      },
+  // 详情接口不是标准 CRUD 四件套的一部分，因此保留显式处理。
+  route.get('/:id', {
+    access: { permission: crud.permissions.list },
+    schema: {
+      summary: '获取岗位详情',
+      description: '根据岗位ID获取岗位详情',
+      operationId: 'getPositionDetail',
+      tags: ['sysPositions'],
+      security: [{ bearerAuth: [] }],
+      params: Type.Object({ id: Type.String({ description: '岗位ID' }) }),
+      response: { 200: { $ref: 'positionDetailResp#' } },
     },
-    async (
-      request: FastifyRequest<{ Body: SavePositionReq }>,
-      reply: FastifyReply
-    ) => {
-      const position = await PositionService.createPosition(request.body);
-      {
-        const message = getPositionMessage(PositionMessageKeys.CREATE_SUCCESS, request.headers["accept-language"] as string);
-        return ResponseUtil.success(reply, position, message);
-      }
+  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    const positionId = parseInt(request.params.id, 10);
+    if (Number.isNaN(positionId)) {
+      throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, '岗位ID不能为空');
     }
-  );
+    const position = await PositionService.getPositionById(positionId);
+    if (!position) {
+      throw new BusinessError(PositionErrorCode.POSITION_NOT_FOUND, '岗位不存在');
+    }
+    return ResponseUtil.success(
+      reply,
+      position,
+      getPositionMessage(PositionMessageKeys.DETAIL_SUCCESS, request.headers['accept-language'] as string | undefined),
+    );
+  });
 
-  route.put(
-    "/:id",
-    {
-      access: { permission: PERMS.UPDATE },
-      schema: {
-        summary: "更新岗位",
-        description: "根据岗位ID更新岗位信息",
-        operationId: "updatePosition",
-        tags: ["sysPositions"],
-        security: [{ bearerAuth: [] }],
-        params: Type.Object({ id: Type.String({ description: "岗位ID" }) }),
-        body: { $ref: "updatePositionReq#" },
-        response: { 200: { $ref: "positionDetailResp#" } },
-      },
+  crud.create({
+    schema: {
+      summary: '创建岗位',
+      description: '创建一个新的岗位',
+      operationId: 'createPosition',
+      tags: ['sysPositions'],
+      security: [{ bearerAuth: [] }],
+      body: { $ref: 'savePositionReq#' },
+      response: { 200: { $ref: 'positionDetailResp#' } },
     },
-    async (
-      request: FastifyRequest<{ Params: { id: string }; Body: UpdatePositionReq }>,
-      reply: FastifyReply
-    ) => {
-      const positionId = parseInt(request.params.id);
-      if (isNaN(positionId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "岗位ID不能为空");
-      }
-      const position = await PositionService.updatePosition(positionId, request.body);
-      {
-        const message = getPositionMessage(PositionMessageKeys.UPDATE_SUCCESS, request.headers["accept-language"] as string);
-        return ResponseUtil.success(reply, position, message);
-      }
-    }
-  );
+    service: (request) => PositionService.createPosition(request.body as SavePositionReq),
+  });
 
-  route.delete(
-    "/:id",
-    {
-      access: { permission: PERMS.DELETE },
-      schema: {
-        summary: "删除岗位",
-        description: "根据岗位ID进行软删除",
-        operationId: "deletePosition",
-        tags: ["sysPositions"],
-        security: [{ bearerAuth: [] }],
-        params: Type.Object({ id: Type.String({ description: "岗位ID" }) }),
-        response: { 200: { $ref: "positionDeleteResp#" } },
-      },
-    },
-    async (
-      request: FastifyRequest<{ Params: { id: string } }>,
-      reply: FastifyReply
-    ) => {
-      const positionId = parseInt(request.params.id);
-      if (isNaN(positionId)) {
-        throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "岗位ID不能为空");
-      }
-      const result = await PositionService.deletePosition(positionId);
-      {
-        const message = getPositionMessage(PositionMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
-        return ResponseUtil.success(reply, result, message);
-      }
+  const parsePositionId = (rawId: string) => {
+    const id = parseInt(rawId, 10);
+    if (Number.isNaN(id)) {
+      throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, '岗位ID不能为空');
     }
-  );
+    return id;
+  };
+
+  crud.update({
+    schema: {
+      summary: '更新岗位',
+      description: '根据岗位ID更新岗位信息',
+      operationId: 'updatePosition',
+      tags: ['sysPositions'],
+      security: [{ bearerAuth: [] }],
+      params: Type.Object({ id: Type.String({ description: '岗位ID' }) }),
+      body: { $ref: 'updatePositionReq#' },
+      response: { 200: { $ref: 'positionDetailResp#' } },
+    },
+    parseId: parsePositionId,
+    service: (id, request) => PositionService.updatePosition(id, request.body as UpdatePositionReq),
+  });
+
+  crud.delete({
+    schema: {
+      summary: '删除岗位',
+      description: '根据岗位ID进行软删除',
+      operationId: 'deletePosition',
+      tags: ['sysPositions'],
+      security: [{ bearerAuth: [] }],
+      params: Type.Object({ id: Type.String({ description: '岗位ID' }) }),
+      response: { 200: { $ref: 'positionDeleteResp#' } },
+    },
+    parseId: parsePositionId,
+    service: (id) => PositionService.deletePosition(id),
+  });
 };
 
 export default adminPositions;
