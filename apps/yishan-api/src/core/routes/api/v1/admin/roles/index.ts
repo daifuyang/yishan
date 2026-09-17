@@ -1,30 +1,42 @@
-import { createRouteRegistrar } from '../../../../route-registrar.js';
+import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
+import { createCrudHandlers } from '@/core/routes/admin-crud.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
-import { ResponseUtil } from "../../../../../../utils/response.js";
-import { RoleErrorCode } from "../../../../../../constants/business-codes/role.js";
-import { BusinessError } from "../../../../../../exceptions/business-error.js";
-import { RoleListQuery, SaveRoleReq, UpdateRoleReq } from "../../../../../schemas/role.js";
-import { RoleService } from "../../../../../services/role.service.js";
-import { getRoleMessage, RoleMessageKeys } from "../../../../../../constants/messages/role.js";
-import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
+import { ResponseUtil } from "@/utils/response.js";
+import { RoleErrorCode } from "@/constants/business-codes/role.js";
+import { BusinessError } from "@/exceptions/business-error.js";
+import { RoleListQuery, SaveRoleReq, UpdateRoleReq } from "@/core/schemas/role.js";
+import { RoleService } from "@/core/services/role.service.js";
+import { getRoleMessage, RoleMessageKeys } from "@/constants/messages/role.js";
+import { registerPermissions, type PermissionRef } from '@/core/permissions/catalog.js';
 
-const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  LIST:   { code: 'system:role:list',   label: '角色管理-列表', group: 'system' },
-  CREATE: { code: 'system:role:create', label: '角色管理-创建', group: 'system' },
-  UPDATE: { code: 'system:role:update', label: '角色管理-更新', group: 'system' },
-  DELETE: { code: 'system:role:delete', label: '角色管理-删除', group: 'system' },
-  GRANT:  { code: 'system:role:grant',  label: '角色管理-授权', group: 'system' },
-});
-registerPermissions(...Object.values(PERMS));
+const GRANT_PERMISSION: PermissionRef = {
+  code: 'system:role:grant',
+  label: '角色管理-授权',
+  group: 'system',
+};
+registerPermissions(GRANT_PERMISSION);
 const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   const route = createRouteRegistrar(fastify);
+  const crud = createCrudHandlers(route, {
+    resource: 'role',
+    group: 'system',
+    perms: {
+      list: '角色管理-列表',
+      create: '角色管理-创建',
+      update: '角色管理-更新',
+      delete: '角色管理-删除',
+    },
+    messages: {
+      listSuccess: (lang) => getRoleMessage(RoleMessageKeys.LIST_SUCCESS, lang),
+      createSuccess: (lang) => getRoleMessage(RoleMessageKeys.CREATE_SUCCESS, lang),
+      updateSuccess: (lang) => getRoleMessage(RoleMessageKeys.UPDATE_SUCCESS, lang),
+      deleteSuccess: (lang) => getRoleMessage(RoleMessageKeys.DELETE_SUCCESS, lang),
+    },
+  });
   // GET /api/v1/admin/roles - 获取角色列表
-  route.get(
-    "/",
-    {
-      access: { permission: PERMS.LIST },
-      schema: {
+  crud.list({
+    schema: {
         summary: "获取角色列表",
         description: "分页获取系统角色列表，支持关键词搜索和状态筛选",
         operationId: "getRoleList",
@@ -34,31 +46,15 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         response: {
           200: { $ref: "roleListResp#" },
         },
-      },
     },
-    async (
-      request: FastifyRequest<{ Querystring: RoleListQuery }>,
-      reply: FastifyReply
-    ) => {
-      const { page, pageSize } = request.query;
-      const result = await RoleService.getRoleList(request.query);
-      const message = getRoleMessage(RoleMessageKeys.LIST_SUCCESS, request.headers["accept-language"] as string);
-      return ResponseUtil.paginated(
-        reply,
-        result.list,
-        page,
-        pageSize,
-        result.total,
-        message
-      );
-    }
-  );
+    service: (query) => RoleService.getRoleList(query as RoleListQuery),
+  });
 
   // GET /api/v1/admin/roles/{id} - 获取角色详情
   route.get(
     "/:id",
     {
-      access: { permission: PERMS.LIST },
+      access: { permission: crud.permissions.list },
       schema: {
         summary: "获取角色详情",
         description: "根据角色ID获取角色详情",
@@ -93,9 +89,9 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.post(
     "/",
     {
-      access: { permission: PERMS.CREATE },
+      access: { permission: crud.permissions.create },
       preHandler: [
-        fastify.requirePermission(PERMS.GRANT),
+        fastify.requirePermission(GRANT_PERMISSION),
       ] as any,
       schema: {
         summary: "创建角色",
@@ -125,9 +121,9 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   route.put(
     "/:id",
     {
-      access: { permission: PERMS.UPDATE },
+      access: { permission: crud.permissions.update },
       preHandler: [
-        fastify.requirePermission(PERMS.GRANT),
+        fastify.requirePermission(GRANT_PERMISSION),
       ] as any,
       schema: {
         summary: "更新角色",
@@ -158,11 +154,8 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   );
 
   // DELETE /api/v1/admin/roles/{id} - 删除角色（软删除）
-  route.delete(
-    "/:id",
-    {
-      access: { permission: PERMS.DELETE },
-      schema: {
+  crud.delete({
+    schema: {
         summary: "删除角色",
         description: "根据角色ID进行软删除",
         operationId: "deleteRole",
@@ -174,20 +167,9 @@ const adminRoles: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         response: {
           200: { $ref: "roleDeleteResp#" },
         },
-      },
     },
-    async (
-      request: FastifyRequest<{ Params: { id: number } }>,
-      reply: FastifyReply
-    ) => {
-      const roleId = request.params.id;
-      const result = await RoleService.deleteRole(roleId);
-      {
-        const message = getRoleMessage(RoleMessageKeys.DELETE_SUCCESS, request.headers["accept-language"] as string);
-        return ResponseUtil.success(reply, result, message);
-      }
-    }
-  );
+    service: (id) => RoleService.deleteRole(id),
+  });
 }; 
 
 export default adminRoles;
