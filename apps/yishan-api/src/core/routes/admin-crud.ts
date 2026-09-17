@@ -1,8 +1,8 @@
 import type { FastifyRequest } from 'fastify'
-import type { PermissionRef } from '../permissions/catalog.js'
-import { registerPermissions as defaultRegisterPermissions } from '../permissions/catalog.js'
-import { ResponseUtil } from '../../utils/response.js'
-import type { RouteRegistrar } from './route-registrar.js'
+import type { PermissionRef } from '@/core/permissions/catalog.js'
+import { registerPermissions as defaultRegisterPermissions } from '@/core/permissions/catalog.js'
+import { ResponseUtil } from '@/utils/response.js'
+import type { RouteRegistrar } from '@/core/routes/route-registrar.js'
 
 type CrudAction = 'list' | 'create' | 'update' | 'delete'
 
