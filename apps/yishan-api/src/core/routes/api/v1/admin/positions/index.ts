@@ -1,7 +1,7 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { Type } from '@sinclair/typebox';
 import { createRouteRegistrar } from '../../../../route-registrar.js';
-import { createCrudHandlers } from '../../../../admin-crud.js';
+import { createCrudHandlers, declareCrudPermissions } from '../../../../admin-crud.js';
 import { ResponseUtil } from '../../../../../../utils/response.js';
 import { ValidationErrorCode } from '../../../../../../constants/business-codes/validation.js';
 import { PositionErrorCode } from '../../../../../../constants/business-codes/position.js';
@@ -10,9 +10,7 @@ import type { PositionListQuery, SavePositionReq, UpdatePositionReq } from '../.
 import { PositionService } from '../../../../../services/position.service.js';
 import { getPositionMessage, PositionMessageKeys } from '../../../../../../constants/messages/position.js';
 
-const adminPositions: FastifyPluginAsync = async (fastify): Promise<void> => {
-  const route = createRouteRegistrar(fastify);
-  const crud = createCrudHandlers(route, {
+const CRUD_OPTIONS = {
     resource: 'position',
     group: 'system',
     perms: {
@@ -27,7 +25,12 @@ const adminPositions: FastifyPluginAsync = async (fastify): Promise<void> => {
       updateSuccess: (lang) => getPositionMessage(PositionMessageKeys.UPDATE_SUCCESS, lang),
       deleteSuccess: (lang) => getPositionMessage(PositionMessageKeys.DELETE_SUCCESS, lang),
     },
-  });
+};
+const CRUD_PERMISSIONS = declareCrudPermissions(CRUD_OPTIONS.resource, CRUD_OPTIONS.group, CRUD_OPTIONS.perms);
+
+const adminPositions: FastifyPluginAsync = async (fastify): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
+  const crud = createCrudHandlers(route, { ...CRUD_OPTIONS, predeclaredPermissions: CRUD_PERMISSIONS });
 
   crud.list({
     schema: {

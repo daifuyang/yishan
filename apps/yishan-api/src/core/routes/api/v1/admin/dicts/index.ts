@@ -1,5 +1,5 @@
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
-import { createCrudHandlers } from '@/core/routes/admin-crud.js';
+import { createCrudHandlers, declareCrudPermissions } from '@/core/routes/admin-crud.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from "@/utils/response.js";
@@ -15,9 +15,7 @@ import {
 } from "@/core/schemas/dict.js";
 import { DictService } from "@/core/services/dict.service.js";
 import { getDictMessage, DictMessageKeys } from "@/constants/messages/dict.js";
-const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
-  const route = createRouteRegistrar(fastify);
-  const crud = createCrudHandlers(route, {
+const CRUD_OPTIONS = {
     resource: 'dict',
     group: 'system',
     perms: {
@@ -32,7 +30,12 @@ const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       updateSuccess: (lang) => getDictMessage(DictMessageKeys.UPDATE_SUCCESS, lang),
       deleteSuccess: (lang) => getDictMessage(DictMessageKeys.DELETE_SUCCESS, lang),
     },
-  });
+};
+const CRUD_PERMISSIONS = declareCrudPermissions(CRUD_OPTIONS.resource, CRUD_OPTIONS.group, CRUD_OPTIONS.perms);
+
+const adminDicts: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
+  const crud = createCrudHandlers(route, { ...CRUD_OPTIONS, predeclaredPermissions: CRUD_PERMISSIONS });
   crud.list({
     path: '/types',
     schema: {

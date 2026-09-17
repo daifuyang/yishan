@@ -37,8 +37,10 @@ describe('Admin Menus routes', () => {
   it('delegates standard CRUD to the factory while preserving local menu routes', async () => {
     const source = await readFile(menuRouteSource, 'utf8')
 
-    expect(source).toContain("import { createCrudHandlers } from '@/core/routes/admin-crud.js'")
-    expect(source).toContain("const crud = createCrudHandlers(route, {")
+    expect(source).toContain("import { createCrudHandlers, declareCrudPermissions } from '@/core/routes/admin-crud.js'")
+    expect(source).toContain('const CRUD_OPTIONS = {')
+    expect(source).toContain('const CRUD_PERMISSIONS = declareCrudPermissions(CRUD_OPTIONS.resource, CRUD_OPTIONS.group, CRUD_OPTIONS.perms)')
+    expect(source).toContain('const crud = createCrudHandlers(route, { ...CRUD_OPTIONS, predeclaredPermissions: CRUD_PERMISSIONS })')
     expect(source).toContain('crud.list({')
     expect(source).toContain('crud.create({')
     expect(source).toContain('crud.update({')

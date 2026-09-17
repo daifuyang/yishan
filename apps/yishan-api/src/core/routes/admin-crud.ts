@@ -4,7 +4,7 @@ import { registerPermissions as defaultRegisterPermissions } from '@/core/permis
 import { ResponseUtil } from '@/utils/response.js'
 import type { RouteRegistrar } from '@/core/routes/route-registrar.js'
 
-type CrudAction = 'list' | 'create' | 'update' | 'delete'
+export type CrudAction = 'list' | 'create' | 'update' | 'delete'
 
 const registeredCrudPermissionCodes = new Set<string>()
 
@@ -37,11 +37,15 @@ export interface CrudDeleteConfig extends CrudByIdConfig {
   service: (id: number, request: FastifyRequest) => Promise<unknown>
 }
 
-export interface CrudHandlersOptions {
+export interface CrudPermissionConfig {
   resource: string
   group: string
   perms: Record<CrudAction, string>
+}
+
+export interface CrudHandlersOptions extends CrudPermissionConfig {
   messages?: CrudMessages
+  predeclaredPermissions?: Record<CrudAction, PermissionRef>
   registerPermissions?: (...permissions: PermissionRef[]) => void
 }
 
@@ -65,25 +69,45 @@ function baseSchema(schema: Record<string, unknown> | undefined): Record<string,
   return schema ? { ...schema } : {}
 }
 
-export function createCrudHandlers(route: RouteRegistrar, options: CrudHandlersOptions): CrudHandlers {
-  const permissions = Object.fromEntries(
-    (Object.keys(options.perms) as CrudAction[]).map((action) => [action, {
-      code: `${options.group}:${options.resource}:${action}`,
-      label: options.perms[action],
-      group: options.group,
+function buildCrudPermissions({ resource, group, perms }: CrudPermissionConfig): Record<CrudAction, PermissionRef> {
+  return Object.fromEntries(
+    (Object.keys(perms) as CrudAction[]).map((action) => [action, {
+      code: `${group}:${resource}:${action}`,
+      label: perms[action],
+      group,
     }]),
   ) as Record<CrudAction, PermissionRef>
+}
 
-  const declaredPermissions = Object.values(permissions)
-  if (options.registerPermissions) {
-    options.registerPermissions(...declaredPermissions)
-  } else {
-    // Fastify route plugins are recreated in tests and can be mounted more than once.
-    // Keep the process-wide permission catalog idempotent across those instances.
-    const freshPermissions = declaredPermissions.filter(({ code }) => !registeredCrudPermissionCodes.has(code))
-    if (freshPermissions.length > 0) {
-      defaultRegisterPermissions(...freshPermissions)
-      freshPermissions.forEach(({ code }) => registeredCrudPermissionCodes.add(code))
+function registerDefaultCrudPermissions(permissions: Record<CrudAction, PermissionRef>): void {
+  // Fastify route plugins are recreated in tests and can be mounted more than once.
+  // Keep the process-wide permission catalog idempotent across those instances.
+  const freshPermissions = Object.values(permissions).filter(({ code }) => !registeredCrudPermissionCodes.has(code))
+  if (freshPermissions.length > 0) {
+    defaultRegisterPermissions(...freshPermissions)
+    freshPermissions.forEach(({ code }) => registeredCrudPermissionCodes.add(code))
+  }
+}
+
+/** Declares the uniform CRUD permissions when an admin route module is imported. */
+export function declareCrudPermissions(
+  resource: string,
+  group: string,
+  perms: Record<CrudAction, string>,
+): Record<CrudAction, PermissionRef> {
+  const permissions = buildCrudPermissions({ resource, group, perms })
+  registerDefaultCrudPermissions(permissions)
+  return permissions
+}
+
+export function createCrudHandlers(route: RouteRegistrar, options: CrudHandlersOptions): CrudHandlers {
+  const permissions = options.predeclaredPermissions ?? buildCrudPermissions(options)
+
+  if (!options.predeclaredPermissions) {
+    if (options.registerPermissions) {
+      options.registerPermissions(...Object.values(permissions))
+    } else {
+      registerDefaultCrudPermissions(permissions)
     }
   }
 

@@ -1,5 +1,5 @@
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
-import { createCrudHandlers } from '@/core/routes/admin-crud.js';
+import { createCrudHandlers, declareCrudPermissions } from '@/core/routes/admin-crud.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import { Type } from '@sinclair/typebox';
 import { ResponseUtil } from '@/utils/response.js';
@@ -9,9 +9,7 @@ import { DeptListQuery, CreateDeptReq, UpdateDeptReq } from '@/core/schemas/depa
 import { DeptService } from '@/core/services/dept.service.js';
 import { getDepartmentMessage, DepartmentMessageKeys } from '@/constants/messages/department.js';
 
-const adminDepts: FastifyPluginAsync = async (fastify): Promise<void> => {
-  const route = createRouteRegistrar(fastify);
-  const crud = createCrudHandlers(route, {
+const CRUD_OPTIONS = {
     resource: 'department',
     group: 'system',
     perms: {
@@ -26,7 +24,12 @@ const adminDepts: FastifyPluginAsync = async (fastify): Promise<void> => {
       updateSuccess: (lang) => getDepartmentMessage(DepartmentMessageKeys.UPDATE_SUCCESS, lang),
       deleteSuccess: (lang) => getDepartmentMessage(DepartmentMessageKeys.DELETE_SUCCESS, lang),
     },
-  });
+};
+const CRUD_PERMISSIONS = declareCrudPermissions(CRUD_OPTIONS.resource, CRUD_OPTIONS.group, CRUD_OPTIONS.perms);
+
+const adminDepts: FastifyPluginAsync = async (fastify): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
+  const crud = createCrudHandlers(route, { ...CRUD_OPTIONS, predeclaredPermissions: CRUD_PERMISSIONS });
 
   crud.list({
     schema: {

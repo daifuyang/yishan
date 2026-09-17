@@ -88,6 +88,10 @@ and update remain direct because they must also enforce the role grant
 permission. Attachments, permissions, system routes, and enums are deliberately
 excluded by the uniform-action contract; they are not migration gaps.
 
+CRUD permission declarations remain module-load catalog declarations: each
+migrated route creates its declaration with `declareCrudPermissions` and passes
+that same record to `createCrudHandlers` when Fastify binds the routes.
+
 ## 步骤
 
 ### Step 1：抽象工厂接口

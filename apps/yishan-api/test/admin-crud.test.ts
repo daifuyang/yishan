@@ -1,7 +1,41 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createCrudHandlers } from '../src/core/routes/admin-crud.ts'
+import { listPermissions } from '../src/core/permissions/catalog.ts'
+import { createCrudHandlers, declareCrudPermissions } from '../src/core/routes/admin-crud.ts'
 
 describe('createCrudHandlers', () => {
+  it('reuses module-load CRUD declarations without registering them again', () => {
+    const perms = {
+      list: 'Catalog list',
+      create: 'Catalog create',
+      update: 'Catalog update',
+      delete: 'Catalog delete',
+    }
+    const predeclared = declareCrudPermissions('catalog-regression', 'test', perms)
+    const repeatedDeclaration = declareCrudPermissions('catalog-regression', 'test', perms)
+    const route = {
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      patch: vi.fn(),
+      delete: vi.fn(),
+    } as any
+    const registerPermissions = vi.fn()
+
+    const crud = createCrudHandlers(route, {
+      resource: 'catalog-regression',
+      group: 'test',
+      perms,
+      predeclaredPermissions: predeclared,
+      registerPermissions,
+    })
+
+    expect(listPermissions().filter(({ code }) => code.startsWith('test:catalog-regression:')))
+      .toHaveLength(4)
+    expect(repeatedDeclaration).toEqual(predeclared)
+    expect(crud.permissions).toBe(predeclared)
+    expect(registerPermissions).not.toHaveBeenCalled()
+  })
+
   it('自动注册 CRUD 权限并将列表结果包装成分页响应', async () => {
     const routes: Record<string, any> = {}
     const route = {

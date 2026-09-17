@@ -1,5 +1,5 @@
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js';
-import { createCrudHandlers } from '@/core/routes/admin-crud.js';
+import { createCrudHandlers, declareCrudPermissions } from '@/core/routes/admin-crud.js';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { Type } from "@sinclair/typebox";
 import { ResponseUtil } from '@/utils/response.js';
@@ -12,9 +12,7 @@ import {
 import { UserService } from '@/core/services/user.service.js';
 import { UserErrorCode } from '@/constants/business-codes/user.js';
 import { getUserMessage, UserMessageKeys } from '@/constants/messages/user.js';
-const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
-  const route = createRouteRegistrar(fastify);
-  const crud = createCrudHandlers(route, {
+const CRUD_OPTIONS = {
     resource: 'user',
     group: 'system',
     perms: {
@@ -29,7 +27,12 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       updateSuccess: (lang) => getUserMessage(UserMessageKeys.UPDATE_SUCCESS, lang),
       deleteSuccess: (lang) => getUserMessage(UserMessageKeys.DELETE_SUCCESS, lang),
     },
-  });
+};
+const CRUD_PERMISSIONS = declareCrudPermissions(CRUD_OPTIONS.resource, CRUD_OPTIONS.group, CRUD_OPTIONS.perms);
+
+const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
+  const route = createRouteRegistrar(fastify);
+  const crud = createCrudHandlers(route, { ...CRUD_OPTIONS, predeclaredPermissions: CRUD_PERMISSIONS });
   // GET /api/v1/admin/user - 获取管理员用户列表
   crud.list({
     schema: {

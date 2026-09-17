@@ -13,7 +13,7 @@ Reduce repeated admin route plumbing without making `createCrudHandlers` a secon
 - `update`: `PUT /:id`, update permission, ID parsing and success message.
 - `delete`: `DELETE /:id`, delete permission, ID parsing and success message.
 
-It also declares and registers the four corresponding permissions. It does not own detail lookup, trees, grants, uploads, streams, state transitions, or arbitrary HTTP methods.
+Each migrated route module declares and registers the four corresponding permissions at module load through `declareCrudPermissions`, then supplies that declaration to `createCrudHandlers` for route binding. The factory does not own detail lookup, trees, grants, uploads, streams, state transitions, or arbitrary HTTP methods.
 
 `RouteRegistrar` remains the sole API for every non-standard endpoint. A custom route reuses an already declared CRUD permission when appropriate:
 
@@ -54,6 +54,7 @@ The following stay hand-written in this work:
 ## Implementation Rules
 
 - Preserve HTTP paths, operation IDs, OpenAPI schemas, permissions, response envelopes, localized messages, and business errors.
+- Keep CRUD permission declarations at module load so import-only catalog consumers can discover them; route binding reuses the predeclared permission record.
 - Each migrated resource declares one `crud` instance and uses `crud.permissions` for custom endpoints that share a standard action's permission.
 - Use `@/` aliases for imports touched by the migration. The existing `tsc-alias` build step rewrites aliases in `dist`.
 - Do not add custom-route APIs to `createCrudHandlers`.
