@@ -76,6 +76,18 @@ x.update()    // PUT /:id
 x.delete()    // DELETE /:id
 ```
 
+## Migration Closeout
+
+`createCrudHandlers` now owns the uniform list/create/update/delete actions for
+positions, departments, users, menus, and both dictionary type and dictionary
+data resources. Their detail, tree, map, and authorized routes remain direct
+where their response or authorization contract is specific to the domain.
+
+Roles are intentionally partial: list and delete use the factory, while create
+and update remain direct because they must also enforce the role grant
+permission. Attachments, permissions, system routes, and enums are deliberately
+excluded by the uniform-action contract; they are not migration gaps.
+
 ## 步骤
 
 ### Step 1：抽象工厂接口
