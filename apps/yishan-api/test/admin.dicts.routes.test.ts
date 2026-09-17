@@ -11,9 +11,6 @@ import { DictService } from '../src/core/services/dict.service.ts'
 import { DictErrorCode } from '../src/constants/business-codes/dict.ts'
 import { ValidationErrorCode } from '../src/constants/business-codes/validation.ts'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { readFileSync } from 'node:fs'
-
-const dictRoutesSource = readFileSync(new URL('../src/core/routes/api/v1/admin/dicts/index.ts', import.meta.url), 'utf8')
 
 const PREFIX = '/api/v1/admin/dicts'
 
@@ -54,18 +51,49 @@ beforeEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('Dictionary CRUD factory boundary', () => {
-  it('registers both type and data standard actions through one factory with explicit paths', () => {
-    expect(dictRoutesSource).toMatch(/const crud = createCrudHandlers\(route, \{[\s\S]*resource: 'dict'/)
+describe('Dictionary CRUD factory routes', () => {
+  it('POST /types forwards the type payload and returns the success envelope', async () => {
+    const app = await buildApp()
+    const payload = { name: 'Order status', type: 'order_status', status: 1, sort_order: 5 }
+    const now = new Date().toISOString()
+    const created = { id: 101, ...payload, createdAt: now, updatedAt: now }
+    const createDictType = vi.spyOn(DictService, 'createDictType').mockResolvedValue(created as any)
 
-    for (const path of ['/types', '/types/:id', '/data', '/data/:id']) {
-      expect(dictRoutesSource).toContain(`path: '${path}'`)
-    }
+    const res = await app.inject({
+      method: 'POST',
+      url: `${PREFIX}/types`,
+      headers: { Authorization: 'Bearer test-token' },
+      payload,
+    })
 
-    expect(dictRoutesSource.match(/crud\.list\(/g)).toHaveLength(2)
-    expect(dictRoutesSource.match(/crud\.create\(/g)).toHaveLength(2)
-    expect(dictRoutesSource.match(/crud\.update\(/g)).toHaveLength(2)
-    expect(dictRoutesSource.match(/crud\.delete\(/g)).toHaveLength(2)
+    expect(createDictType).toHaveBeenCalledOnce()
+    expect(createDictType.mock.calls[0][0]).toEqual(payload)
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ success: true, code: 10000, data: created })
+
+    await app.close()
+  })
+
+  it('POST /data forwards the data payload and returns the success envelope', async () => {
+    const app = await buildApp()
+    const payload = { typeId: 101, label: 'Paid', value: 'paid', status: 1, sort_order: 10, isDefault: false }
+    const now = new Date().toISOString()
+    const created = { id: 201, type: 'order_status', ...payload, createdAt: now, updatedAt: now }
+    const createDictData = vi.spyOn(DictService, 'createDictData').mockResolvedValue(created as any)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `${PREFIX}/data`,
+      headers: { Authorization: 'Bearer test-token' },
+      payload,
+    })
+
+    expect(createDictData).toHaveBeenCalledOnce()
+    expect(createDictData.mock.calls[0][0]).toEqual(payload)
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ success: true, code: 10000, data: created })
+
+    await app.close()
   })
 })
 
