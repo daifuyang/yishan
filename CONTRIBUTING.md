@@ -14,7 +14,7 @@ Install dependencies at repo root:
 pnpm install
 ```
 
-修改前请先阅读根目录的 `AGENTS.md`、`ARCHITECTURE.md`。
+修改前请先阅读 [`CLAUDE.md`](CLAUDE.md) 与 [`docs/module-onboarding.md`](docs/module-onboarding.md)。
 
 ## Common Commands
 
@@ -26,7 +26,7 @@ pnpm build
 
 ## Quality Gate
 
-提交前按 `AGENTS.md` §7 跑完对应改动范围的 app `lint/test/build`。
+提交前按改动范围运行对应 app 的 `lint`、`test` 与 `build`；根目录 `package.json` 列出了可用命令。
 
 ## Architecture Rules
 
@@ -50,7 +50,7 @@ pnpm --filter yishan-docs start
 1. 从 `main` 创建特性分支。
 2. 保持改动聚焦、便于 review。
 3. 行为变更时同步新增或更新测试。
-4. 推送前在本地跑完 `AGENTS.md` §7 对应范围的命令。
+4. 推送前在本地跑完与改动范围对应的 `lint`、`test` 与 `build` 命令。
 5. 涉及架构、根规范的改动需同步更新根目录文档。
 
 ## Commit Message

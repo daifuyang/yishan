@@ -95,5 +95,30 @@ jobs:
       - name: API TypeScript Build
         run: pnpm --filter yishan-api build:ts
 
+      - name: Verify OpenAPI spec is in sync
+        shell: bash
+        run: |
+          pnpm --filter yishan-api exec fastify start -l error dist/app.js > /tmp/yishan-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill "$API_PID" 2>/dev/null || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3100/api/docs/json > /dev/null; then
+              break
+            fi
+            if ! kill -0 "$API_PID" 2>/dev/null; then
+              cat /tmp/yishan-api.log
+              exit 1
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/yishan-api.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          pnpm --filter yishan-api openapi:dump
+          pnpm check:openapi
+
       - name: API Test
         run: pnpm --filter yishan-api test

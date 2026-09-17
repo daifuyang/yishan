@@ -107,9 +107,11 @@ git diff --check
 
 Expected: `TODO.md` contains only the admin-route factory and OpenAPI drift tasks; `git diff --check` exits `0`.
 
-- [ ] **Step 4: Commit the closure documentation.**
+- [x] **Step 4: Commit the closure documentation.**
 
 ```powershell
 git add docs/archive/fixes TODO-openapi-spec-sync.md TODO.md
 git commit -m "docs(api): archive verified validation findings"
 ```
+
+Completed in commit `4071d65` (`docs: archive resolved API validation records and TODOs`).

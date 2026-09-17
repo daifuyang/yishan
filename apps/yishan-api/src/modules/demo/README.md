@@ -98,7 +98,7 @@ npx drizzle-kit --config=apps/yishan-api/src/modules/demo/drizzle.config.ts migr
 demo 模块的菜单由 `config/system-menu.json` 声明、`seed.ts` 写入 `sys_menu`（通过 `pnpm db:seed` 触发）：
 
 - 顶级目录「示例插件」下挂 3 个页面：`/demo/quickstart`、`/demo/health`、`/demo/todos`
-- `component` 字段使用虚拟路径 `./modules/demo/<page>`，由 [apps/yishan-admin/src/utils/moduleComponents.ts](file:///home/dfy/workspace/products/yishan/apps/yishan-admin/src/utils/moduleComponents.ts) 在运行时映射到 `apps/yishan-admin/src/modules/demo/pages/<page>/index.tsx`
+- `component` 字段使用虚拟路径 `./modules/demo/<page>`，由 [apps/yishan-admin/src/utils/moduleComponents.ts](../../../../yishan-admin/src/utils/moduleComponents.ts) 在运行时映射到 `apps/yishan-admin/src/modules/demo/pages/<page>/index.tsx`
 - 按钮对应的权限码统一在 `config/system-menu.json` 声明（页面 → `children[].permissionCodes`），`seed.ts` 把它们绑到 `sys_menu_permission`
 
 修改菜单：只动 `config/system-menu.json`，重跑 `pnpm db:seed` 即可。不需要碰 core，也不需要重建 core seed。
