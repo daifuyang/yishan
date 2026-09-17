@@ -162,8 +162,8 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 
 ## Tracking ongoing work
 
-- `TODO.md` is the index of `TODO-*.md` files at the repo root for known follow-ups (e.g. `TODO-admin-routes-factory.md`, `TODO-attachment-select-split.md`, `TODO-architecture-doc-sync.md`).
-- `TODO-architecture-doc-sync.md` tracks that `README.md` and `CONTRIBUTING.md` reference `AGENTS.md` / `ARCHITECTURE.md` that don't yet exist — content has been folded into `docs/module-onboarding.md` and this file. Treat those doc references as pointing here.
+- `TODO.md` is the index of current follow-ups. Completed or obsolete TODO records live under `docs/archive/todos/`.
+- The former architecture-doc-sync TODO is archived: `AGENTS.md` / `ARCHITECTURE.md` do not exist, and the relevant guidance is in `docs/module-onboarding.md` and this file.
 - `profiles/*.yaml` are module-catalog configs; consumed tooling emits to `artifacts/` (gitignored).
 
 ## Other things worth knowing

@@ -76,8 +76,8 @@ committed 文件严重落后 live spec，导致：
 - `apps/yishan-api/src/app.ts:90-106` — onRoute hook 自动注入 security
 - `apps/yishan-api/scripts/dump-openapi.mjs` — dump 脚本
 - `apps/yishan-api/openapi.json` — 已更新到 120 paths
-- `FIX-api-validation-2026-07-24.md` — 上次 restish 验证发现
-- `TODO-openapi-module-security.md` — 同类问题（已修复）
+- [`docs/archive/fixes/FIX-api-validation-2026-07-24.md`](docs/archive/fixes/FIX-api-validation-2026-07-24.md) — 上次 restish 验证发现（已闭环）
+- [`docs/archive/todos/TODO-openapi-module-security.md`](docs/archive/todos/TODO-openapi-module-security.md) — 同类问题（已修复）
 
 ## 备注
 

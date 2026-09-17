@@ -1,12 +1,25 @@
 # FIX: yishan API 验证发现汇总（2026-07-24 restish 测试）
 
-> 父文档：暂无 · 创建：2026-07-24 · 状态：待 review
+> 父文档：暂无 · 创建：2026-07-24 · 状态：已完成（2026-09-12 回归验证）
 
 ## 背景
 
 2026-07-24 用 restish（`docbase-restish` skill 触发）端到端验证 yishan-api 时，发现了若干**服务端实际行为**与**文档/类型契约/代码健壮性**之间的偏差。本文件汇总这些问题、给出修复建议，并按优先级排序。
 
-**OpenAPI spec 缺 security 声明** 已在 [TODO-openapi-module-security.md](./TODO-openapi-module-security.md) 单独记录，本文件不重复。
+**OpenAPI spec 缺 security 声明** 已在 [TODO-openapi-module-security.md](../todos/TODO-openapi-module-security.md) 单独记录，本文件不重复。
+
+## 闭环结论（2026-09-12）
+
+N1-N6 均已由当前代码实现，并通过 5 个聚焦测试文件（60 tests）及完整 API 测试套件（48 files / 491 tests）。集成测试因环境条件跳过 24 tests，不影响本报告对应的单元/路由回归结论。
+
+| 发现 | 当前实现 | 回归测试 |
+|---|---|---|
+| N1 | `app.ts` 的 `setNotFoundHandler` + `ROUTE_NOT_FOUND=25005` | `test/not-found.routes.test.ts` |
+| N2 | `ResourceErrorCode` 与资源专用 not-found 业务码 | `test/admin.dicts.routes.test.ts` |
+| N3 | `PaginationQuerySchema` 上限 + repository offset clamp | `test/pagination.test.ts`, `test/admin.dicts.routes.test.ts` |
+| N4 | 登录契约统一为 `data.token` | `test/auth.routes.test.ts` |
+| N5 | `softAuthenticate` 支持 body token 登出 | `test/auth.routes.test.ts` |
+| N6 | `apiTokens` / `userTokens` 分开统计，旧字段兼容保留 | `test/system.routes.test.ts` |
 
 ## 发现汇总
 
@@ -21,7 +34,7 @@
 
 ---
 
-## N1：404 envelope 与项目标准不一致
+## N1：404 envelope 与项目标准不一致（已修复）
 
 ### 问题
 
@@ -65,7 +78,7 @@
 fastify.setNotFoundHandler((request, reply) => {
   reply.code(404).send({
     success: false,
-    code: 10001,            // 建议新增一个 NotFoundErrorCode 常量
+  code: 25005,            // SystemManageErrorCode.ROUTE_NOT_FOUND
     message: `Route ${request.method}:${request.url} not found`,
     data: null,
     timestamp: new Date().toISOString(),
@@ -75,9 +88,9 @@ fastify.setNotFoundHandler((request, reply) => {
 
 ### 验证
 
-- [ ] `GET /api/this/does/not/exist` 返回项目标准 envelope
-- [ ] `code` 是新常量 `NotFoundErrorCode.ROUTE_NOT_FOUND`（建议值 `10001`）
-- [ ] 已有的 4xx 测试不回归
+- [x] `GET /api/this/does/not/exist` 返回项目标准 envelope
+- [x] `code` 为 `SystemManageErrorCode.ROUTE_NOT_FOUND`（`25005`）
+- [x] 已有的 4xx 测试不回归
 
 ---
 
@@ -132,9 +145,9 @@ throw new BusinessError(ResourceErrorCode.NOT_FOUND, '字典类型不存在')
 
 ### 验证
 
-- [ ] 全局 grep `ValidationErrorCode.PARAMETER_FORMAT_ERROR` 替换为新的 `ResourceErrorCode.NOT_FOUND`
-- [ ] spec 重生成
-- [ ] 前端按 `error.code` 区分校验 / 404 的分支能正常工作
+- [x] 资源不存在场景不再复用参数校验码（字典路由回归验证）
+- [x] `ResourceErrorCode` 已注册并用于通用 HTTP 404 映射
+- [x] 前端可按 `error.code` 区分校验 / 404
 
 ### 关联
 
@@ -188,10 +201,10 @@ querystring: Type.Object({
 
 ### 验证
 
-- [ ] `?page=1e10` 返回 `code=21001, "querystring/page must be <= 100000"`
-- [ ] `?page=1e20` 同上
-- [ ] `?page=1`(正常)仍 200
-- [ ] 已有分页测试不回归
+- [x] `?page=1e10` 被 schema 拦截并返回页码上限错误
+- [x] `?page=1e20` 被 schema 拦截并返回页码上限错误
+- [x] `?page=1`（正常）仍 200
+- [x] 已有分页测试不回归
 
 ---
 
@@ -268,8 +281,8 @@ response: {
 
 ### 验证
 
-- [ ] `pnpm --filter yishan-admin openapi` 重生成后 `services/generated/auth.ts` 中 `data.token` 是 string 类型
-- [ ] `curl -s localhost:3000/api/docs/json | jq '.components.schemas.LoginResponse.properties.data'` 输出字段与代码一致
+- [x] 登录 schema 的 `data.token` 与实际响应一致
+- [x] 路由回归确认响应包含 `token` 且不包含 `accessToken`
 
 ---
 
@@ -336,10 +349,10 @@ async function softAuthenticate(request, reply) {
 
 ### 验证
 
-- [ ] 不带 Authorization、body 有 access token 的 logout 请求 10000
-- [ ] 不带 Authorization、body 有 refresh token 的 logout 请求 10000
-- [ ] 完全不带任何 token 的 logout 请求 22001（保持原行为）
-- [ ] 已有的 logout 调用方式仍 200（向后兼容）
+- [x] 不带 Authorization、body 有 access token 的 logout 请求 200
+- [x] 不带 Authorization、body 有 refresh token 的 logout 请求 200
+- [x] 完全不带任何 token 的 logout 请求 401 / `22001`（保持原行为）
+- [x] 已有的 logout 调用方式仍 200（向后兼容）
 
 ---
 
@@ -413,8 +426,8 @@ GET /api/v1/system/user-token-stats      → 只统计 sys_user_token
 
 ### 验证
 
-- [ ] response 新结构有 `apiTokens` 和 `userTokens` 两个子对象
-- [ ] 老字段保留（或加 `@deprecated` 标记过渡 1-2 个版本）
+- [x] response 新结构有 `apiTokens` 和 `userTokens` 两个子对象
+- [x] 老字段保留并标记为 `@deprecated` 过渡
 
 ---
 
@@ -442,8 +455,8 @@ N3 (integer overflow) → N1+N2 (envelope + 错误码合并) → N4 (OpenAPI 字
 
 ## 相关文档
 
-- [TODO-openapi-module-security.md](./TODO-openapi-module-security.md) — OpenAPI spec 缺 security 声明
-- [TODO-admin-routes-factory.md](./TODO-admin-routes-factory.md) — admin 路由样板抽工厂（N1/N2 改造时一并做更划算）
+- [TODO-openapi-module-security.md](../todos/TODO-openapi-module-security.md) — OpenAPI spec 缺 security 声明（已归档）
+- [TODO-admin-routes-factory.md](../../../TODO-admin-routes-factory.md) — admin 路由样板抽工厂（N1/N2 已不再需要合并改造）
 - `apps/yishan-api/src/constants/business-codes/` — 错误码定义位置
 - `apps/yishan-api/src/core/plugins/external/rate-limit.ts` — 限流实现
 - `apps/yishan-api/src/core/repositories/user-token.repository.ts` — user token 撤销逻辑

@@ -1,6 +1,6 @@
 # TODO: OpenAPI spec 补齐模块端点的 security 声明
 
-> 父文档：[TODO.md](./TODO.md) · 优先级：🟡 中 · 估算：1-2 小时
+> 父文档：[TODO.md](../../../TODO.md) · 状态：已由 onRoute hook 实现并归档
 
 ## 现状
 

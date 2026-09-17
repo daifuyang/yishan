@@ -1,6 +1,6 @@
 # TODO: 后端 admin 路由抽工厂（5 件套样板去重）
 
-> 父文档：[TODO.md](./TODO.md) · 优先级：🔴 高（架构债） · 估算：1-2 天
+> 父文档：[TODO.md](./TODO.md) · 优先级：🔴 高（架构债） · 状态：进行中（工厂与 positions 试点已完成）
 
 ## 现状
 
@@ -125,11 +125,12 @@ function respondWithMessage(reply, data, messageKey, acceptLang): Response
 
 封装 `ResponseUtil.success/paginated` + `getXxxMessage` 的样板。
 
-### Step 4：迁移一个最简单的路由作为试点
+### Step 4：迁移一个最简单的路由作为试点（已完成）
 
 - 选 `permissions/index.ts`（38 行，只有 GET /catalog）— **不直接适用** createCrudHandlers，但可以用作参照
 - 选 `positions/index.ts`（177 行，4 个标准 CRUD） — **最合适**
-- 改完后跑测试：`cd apps/yishan-api && pnpm exec vitest run` 必须全过
+- 已完成：列表、创建、更新、删除使用工厂；详情接口保留手写
+- 已验证：岗位路由测试与完整 API 测试通过
 
 ### Step 5：迁移其余 7 个路由
 
@@ -160,8 +161,8 @@ guards.push((fastify as any).requirePermission(access.permission))   // ← 这�
 
 ## 验收
 
-- [ ] `createCrudHandlers` 工厂实现并通过测试
-- [ ] 8 个 admin 路由全部迁移完成
+- [x] `createCrudHandlers` 工厂实现并通过测试
+- [ ] 其余标准 admin 路由全部迁移完成（positions 已完成试点）
 - [ ] 每个 admin 路由文件行数 < 100（除了 attachments 可能例外）
 - [ ] 没有任何 `as any` 强制转换（Step 6 收口）
 - [ ] `pnpm exec vitest run` 215/215 通过

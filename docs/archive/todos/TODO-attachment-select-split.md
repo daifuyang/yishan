@@ -1,6 +1,6 @@
 # TODO: `AttachmentSelect` 拆分（1315 行 → 拆为两个目录）
 
-> 父文档：[TODO.md](./TODO.md) · 优先级：🟡 中 · 估算：半天
+> 父文档：[TODO.md](../../../TODO.md) · 状态：已完成并归档
 
 ## 现状
 

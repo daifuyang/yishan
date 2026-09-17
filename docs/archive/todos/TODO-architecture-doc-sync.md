@@ -1,6 +1,6 @@
 # TODO: ARCHITECTURE.md 与现状同步
 
-> 父文档：[TODO.md](./TODO.md) · 优先级：🟡 中 · 估算：半小时
+> 父文档：[TODO.md](../../../TODO.md) · 状态：目标文件不存在，已归档
 
 ## 现状
 

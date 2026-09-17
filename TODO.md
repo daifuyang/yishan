@@ -1,26 +1,22 @@
 # TODO — yishan 后台与全栈待办入口
 
-本目录列出当前未做但已经过讨论/摸底的后续工作。每项对应一份细化的 `TODO-*.md`。
+本文件只保留当前仍值得推进的事项。已完成或失去目标的 TODO 统一归档到 [`docs/archive/todos/`](./docs/archive/todos/)。
 
 ## 待办列表
 
 | # | 主题 | 文档 | 优先级 | 估算 |
 |---|---|---|---|---|
-| 1 | `AttachmentSelect` 1315 行超大门面组件拆分 | [TODO-attachment-select-split.md](./TODO-attachment-select-split.md) | 🟡 中 | 半天 |
-| 2 | 后端 admin 路由 5 件套样板抽工厂 | [TODO-admin-routes-factory.md](./TODO-admin-routes-factory.md) | 🔴 高（架构债） | 1-2 天 |
-| 3 | ARCHITECTURE.md 与现状同步 | [TODO-architecture-doc-sync.md](./TODO-architecture-doc-sync.md) | 🟡 中 | 半小时 |
-| 4 | OpenAPI spec 补齐模块端点的 security 声明 | [TODO-openapi-module-security.md](./TODO-openapi-module-security.md) | 🟡 中 | 1-2 小时 |
+| 1 | 后端 admin 路由 5 件套样板抽工厂 | [TODO-admin-routes-factory.md](./TODO-admin-routes-factory.md) | 🔴 高（架构债） | 1-2 天 |
+| 2 | OpenAPI spec 同步自动化（CI drift 检查） | [TODO-openapi-spec-sync.md](./TODO-openapi-spec-sync.md) | 🟡 中 | 1-2 小时 |
 
 ## 推荐执行顺序
 
 ```
-1 → 3 → 4 → 2
+1 → 2
 ```
 
-- 先做 **#1（AttachmentSelect 拆分）**：投入产出比高，改动隔离，能给后续 PR 减少冲突。
-- 再做 **#3（ARCHITECTURE.md 同步）**：纯文档，半小时；做完 #2 后文档描述的架构更准确。
-- 接着做 **#4（OpenAPI security 补齐）**：纯 swagger.ts + openapi.json 改动，影响面可控；做完后再做 #2 可避免路由工厂改造与 spec 重生成互相干扰。
-- 最后做 **#2（admin 路由抽工厂）**：影响面最大、工作量最重；架构债类型，需要专门 PR。
+- 先做 **#1（admin 路由抽工厂）**：影响面最大、工作量最重，需要专门 PR。
+- 再做 **#2（OpenAPI spec 同步自动化）**：dump 脚本已完成，只需补 CI drift 检查。
 
 ## 已完成（2026-07-22 这轮会话）
 
@@ -35,6 +31,11 @@
 
 ## 文档约定
 
-- 每份 `TODO-*.md` 包含：现状 / 目标 / 步骤 / 验收 / 风险
-- 完成后把对应行的状态改为 ✅ 并把本节"待办列表"里那一行移到下方"已完成"
-- 完成时间不确定时留空，待 commit 后再回填
+- 每份当前 TODO 包含：现状 / 目标 / 步骤 / 验收 / 风险。
+- 完成后将对应文档移入 `docs/archive/todos/`，并在上方“已归档”中留下结论。
+
+## 已归档
+
+- [`TODO-attachment-select-split.md`](./docs/archive/todos/TODO-attachment-select-split.md)：拆分已完成，当前 `AttachmentSelect` 为 311 行。
+- [`TODO-openapi-module-security.md`](./docs/archive/todos/TODO-openapi-module-security.md)：已由 API `onRoute` hook 自动注入 security 声明。
+- [`TODO-architecture-doc-sync.md`](./docs/archive/todos/TODO-architecture-doc-sync.md)：目标文件不存在，相关内容已沉淀到 `CLAUDE.md` 与 `docs/module-onboarding.md`。
