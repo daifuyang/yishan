@@ -34,6 +34,8 @@ jobs:
       FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
       FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
       FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
+      ALIBABA_CLOUD_OIDC_AUDIENCE: github-actions
+      ALIBABA_CLOUD_OIDC_PROVIDER_ARN: acs:ram::1650595695532785:oidc-provider/github-actions
     steps:
       - name: Validate deployment variables
         run: |
@@ -201,12 +203,12 @@ jobs:
           chmod 600 ~/.aliyun/config.json
           TOKEN=$(curl -fsS \
             -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=github-actions" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${ALIBABA_CLOUD_OIDC_AUDIENCE}" \
             | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
           RESP=$(aliyun sts AssumeRoleWithOIDC \
             --region cn-hangzhou \
             --RoleArn "$ROLE_ARN" \
-            --OIDCProviderArn 'acs:ram::1650595695532785:oidc-provider/github-actions' \
+            --OIDCProviderArn "$ALIBABA_CLOUD_OIDC_PROVIDER_ARN" \
             --OIDCToken "$TOKEN" \
             --RoleSessionName "gha-${{ github.run_id }}" \
             --DurationSeconds 3600)

@@ -325,9 +325,13 @@ const AttachmentsPage: React.FC = () => {
         width={640}
       >
         {folder.mediaPreviewKind === 'audio' ? (
-          <audio src={folder.mediaPreviewSrc} controls autoPlay style={{ width: '100%' }} />
+          <audio src={folder.mediaPreviewSrc} controls autoPlay style={{ width: '100%' }}>
+            <track kind="captions" srcLang="zh-CN" label="Captions" />
+          </audio>
         ) : folder.mediaPreviewKind === 'video' ? (
-          <video src={folder.mediaPreviewSrc} controls autoPlay style={{ width: '100%', maxHeight: '60vh' }} />
+          <video src={folder.mediaPreviewSrc} controls autoPlay style={{ width: '100%', maxHeight: '60vh' }}>
+            <track kind="captions" srcLang="zh-CN" label="Captions" />
+          </video>
         ) : null}
       </Modal>
 

@@ -19,8 +19,8 @@ s deploy -y -t deploy/fc3/templates/function.yaml
 
 - `templates/{function,domain,runner}.yaml` 的 `access` 字段是 `default`（对应 OIDC STS profile 名）。
 - `publish-runtime-layer.sh` 通过 `YISHAN_FC_ACCESS_ALIAS=default` 覆盖其默认的 `enterprise`。
-- 需要 GitHub Environment `YISHAN_API` 中的 Secret `FC_DEPLOY_ROLE_ARN`。
-- RAM OIDC trust policy 至少应匹配 issuer `https://token.actions.githubusercontent.com`、workflow 请求的 audience `github-actions`，以及本仓库的 environment subject `repo:daifuyang/yishan:environment:YISHAN_API`。不要只校验 issuer，否则其他仓库也可能尝试使用该角色。
+- 需要 GitHub Environment `YISHAN_API` 中的 Secret `FC_DEPLOY_ROLE_ARN`；该 Secret 应指向账号级统一部署角色，不为本仓库单独创建角色。
+- 账号级 OIDC Provider 使用 `acs:ram::1650595695532785:oidc-provider/github-actions`，workflow audience 固定为 `github-actions`。统一角色的 trust policy 必须同时匹配 issuer `https://token.actions.githubusercontent.com`、audience `github-actions`，以及允许的仓库 subject（当前为 `repo:daifuyang/yishan:environment:YISHAN_API`）。不要只校验 issuer。
 
 `yishan-fc-migrate.yml` 不使用 OIDC；它是手动触发的 SSH tunnel + `drizzle-kit migrate` workflow，只需要 GitHub Environment 中的数据库和 SSH 相关配置。
 
