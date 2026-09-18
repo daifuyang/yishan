@@ -151,7 +151,7 @@ throw new BusinessError(ResourceErrorCode.NOT_FOUND, '字典类型不存在')
 
 ### 关联
 
-可与 **TODO-admin-routes-factory.md**（admin 路由样板抽工厂）合并，因为工厂可以统一注入"资源不存在"的错误码。
+该方向后来收敛为 [admin CRUD 路由边界](../../superpowers/specs/2026-09-17-admin-crud-route-boundary-design.md)，工厂不承担通用“资源不存在”错误码注入。
 
 ---
 
@@ -456,7 +456,7 @@ N3 (integer overflow) → N1+N2 (envelope + 错误码合并) → N4 (OpenAPI 字
 ## 相关文档
 
 - [TODO-openapi-module-security.md](../todos/TODO-openapi-module-security.md) — OpenAPI spec 缺 security 声明（已归档）
-- [TODO-admin-routes-factory.md](../../../TODO-admin-routes-factory.md) — admin 路由样板抽工厂（N1/N2 已不再需要合并改造）
+- [admin CRUD 路由边界](../../superpowers/specs/2026-09-17-admin-crud-route-boundary-design.md) — admin 路由工厂的已落实边界
 - `apps/yishan-api/src/constants/business-codes/` — 错误码定义位置
 - `apps/yishan-api/src/core/plugins/external/rate-limit.ts` — 限流实现
 - `apps/yishan-api/src/core/repositories/user-token.repository.ts` — user token 撤销逻辑

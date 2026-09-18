@@ -6,17 +6,7 @@
 
 | # | 主题 | 文档 | 优先级 | 估算 |
 |---|---|---|---|---|
-| 1 | 后端 admin 路由 5 件套样板抽工厂 | [TODO-admin-routes-factory.md](./TODO-admin-routes-factory.md) | 🔴 高（架构债） | 1-2 天 |
-| 2 | OpenAPI spec 同步自动化（CI drift 检查） | [TODO-openapi-spec-sync.md](./TODO-openapi-spec-sync.md) | 🟡 中 | 1-2 小时 |
-
-## 推荐执行顺序
-
-```
-1 → 2
-```
-
-- 先做 **#1（admin 路由抽工厂）**：影响面最大、工作量最重，需要专门 PR。
-- 再做 **#2（OpenAPI spec 同步自动化）**：dump 脚本已完成，只需补 CI drift 检查。
+| 1 | OpenAPI spec 同步自动化（CI drift 检查） | [TODO-openapi-spec-sync.md](./TODO-openapi-spec-sync.md) | 🟡 中 | 1-2 小时 |
 
 ## 已完成（2026-07-22 这轮会话）
 
