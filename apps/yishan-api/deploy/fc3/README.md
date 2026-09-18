@@ -15,10 +15,13 @@ s deploy -y -t deploy/fc3/templates/function.yaml
 
 ## 凭证：OIDC（推荐）vs 写死 AK
 
-`yishan-fullstack-cd-fc.yml` 与 `yishan-fc-migrate.yml` 默认走 **OIDC**：job 声明 `permissions: id-token: write`，在 workflow 里用 `aliyun sts AssumeRoleWithOIDC` 换取 1 小时有效的 STS 凭证，写入 `~/.s/access.yaml` 的 `default` profile。因此：
+`yishan-fullstack-cd-fc.yml` 使用 **OIDC**：job 声明 `permissions: id-token: write`，通过 `aliyun sts AssumeRoleWithOIDC` 换取 1 小时有效的 STS 凭证，写入 `~/.s/access.yaml` 的 `default` profile。因此：
 
 - `templates/{function,domain,runner}.yaml` 的 `access` 字段是 `default`（对应 OIDC STS profile 名）。
 - `publish-runtime-layer.sh` 通过 `YISHAN_FC_ACCESS_ALIAS=default` 覆盖其默认的 `enterprise`。
-- 需要 GitHub Secret `FC_DEPLOY_ROLE_ARN`（共享 RAM Role `GithubActionsFcDeployer`，trust policy 只校验 `oidc:iss`，天然覆盖本仓库）。
+- 需要 GitHub Environment `YISHAN_API` 中的 Secret `FC_DEPLOY_ROLE_ARN`。
+- RAM OIDC trust policy 至少应匹配 issuer `https://token.actions.githubusercontent.com`、workflow 请求的 audience `github-actions`，以及本仓库的 environment subject `repo:daifuyang/yishan:environment:YISHAN_API`。不要只校验 issuer，否则其他仓库也可能尝试使用该角色。
+
+`yishan-fc-migrate.yml` 不使用 OIDC；它是手动触发的 SSH tunnel + `drizzle-kit migrate` workflow，只需要 GitHub Environment 中的数据库和 SSH 相关配置。
 
 `yishan-cert-rotate-fc.yml` 仍用写死 AK（`ALIBABA_CLOUD_ACCESS_KEY_ID/SECRET` + `-a enterprise`）：OIDC role 策略只有 `fc:* + vpc:Describe*`，没有 `dns:*`/`cas:*`，证书轮换需要 DNS/CAS 权限，故保留长期 AK。

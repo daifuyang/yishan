@@ -188,6 +188,8 @@ jobs:
           ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
         run: |
           set -euo pipefail
+          : "${ROLE_ARN:?Missing FC_DEPLOY_ROLE_ARN in the YISHAN_API environment}"
+          echo "Requesting Alibaba Cloud OIDC credentials for the YISHAN_API environment"
           curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" -o /tmp/aliyun.tgz
           tar -xzf /tmp/aliyun.tgz -C /tmp
           if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
