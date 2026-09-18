@@ -39,7 +39,7 @@ Out of scope:
 - Replacing resource-specific not-found codes with one global code.
 - Removing deprecated token-statistics fields before downstream callers are audited.
 - Changing logout semantics beyond the existing `softAuthenticate` flow.
-- Adding an OpenAPI drift CI job; that remains `TODO-openapi-spec-sync.md`.
+- OpenAPI drift CI is handled separately by the committed `openapi:dump` workflow and drift check.
 
 ## Acceptance Criteria
 

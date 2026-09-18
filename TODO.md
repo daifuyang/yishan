@@ -4,9 +4,7 @@
 
 ## 待办列表
 
-| # | 主题 | 文档 | 优先级 | 估算 |
-|---|---|---|---|---|
-| 1 | OpenAPI spec 同步自动化（CI drift 检查） | [TODO-openapi-spec-sync.md](./TODO-openapi-spec-sync.md) | 🟡 中 | 1-2 小时 |
+当前没有待办项。
 
 ## 已完成（2026-07-22 这轮会话）
 
@@ -28,4 +26,5 @@
 
 - [`TODO-attachment-select-split.md`](./docs/archive/todos/TODO-attachment-select-split.md)：拆分已完成，当前 `AttachmentSelect` 为 311 行。
 - [`TODO-openapi-module-security.md`](./docs/archive/todos/TODO-openapi-module-security.md)：已由 API `onRoute` hook 自动注入 security 声明。
+- OpenAPI spec 同步：已由 `openapi:dump` 和 CI drift 检查闭环，相关 TODO 已清理。
 - [`TODO-architecture-doc-sync.md`](./docs/archive/todos/TODO-architecture-doc-sync.md)：目标文件不存在，相关内容已沉淀到 `CLAUDE.md` 与 `docs/module-onboarding.md`。
