@@ -123,7 +123,7 @@ jobs:
       - name: Verify OpenAPI spec is in sync
         shell: bash
         run: |
-          pnpm --filter yishan-api exec fastify start -l error dist/app.js > /tmp/yishan-api.log 2>&1 &
+          PORT=3100 pnpm --filter yishan-api exec fastify start -l error dist/app.js > /tmp/yishan-api.log 2>&1 &
           API_PID=$!
           trap 'kill "$API_PID" 2>/dev/null || true' EXIT
 
