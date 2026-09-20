@@ -26,6 +26,18 @@ jobs:
     timeout-minutes: 45
     environment: YISHAN_API
     services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: yishan
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
       redis:
         image: redis:7-alpine
         ports:
@@ -85,11 +97,11 @@ jobs:
       - name: Prepare API .env
         working-directory: apps/yishan-api
         env:
-          DATABASE_URL: ${{ secrets.YISHAN_API_DATABASE_URL }}
-          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
-          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
-          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/yishan
+          DATABASE_USER: root
+          DATABASE_PASSWORD: root
+          DATABASE_NAME: yishan
+          DATABASE_HOST: 127.0.0.1
         run: |
           ENV_FILE="$(pwd)/.env"
           : > "$ENV_FILE"
@@ -101,6 +113,9 @@ jobs:
 
       - name: API Schema Generate
         run: pnpm --filter yishan-api db:generate
+
+      - name: API Schema Migrate
+        run: pnpm --filter yishan-api db:migrate
 
       - name: API TypeScript Build
         run: pnpm --filter yishan-api build:ts
