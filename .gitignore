@@ -42,6 +42,5 @@ tmp/
 
 # Generated artifacts (release output, plugin catalog from profiles/*.yaml)
 artifacts/
-apps/yishan-api/openapi.json
 
 # Local dev module enable/disable overrides — 已废弃。启停事实迁入 sys_module 表。

@@ -5,22 +5,80 @@ on:
     branches:
       - all
     paths:
-      - "apps/**"
-      - "apps/yishan-api/deploy/fc3/**"
-      - "!apps/**/docs/**"
-      - "!apps/**/*.md"
-      - "!apps/**/README.md"
+      # 与 yishan-fullstack-ci.yml 的 paths 保持一致：
+      # 只要 CD 被触发，同一 commit 的 CI 也一定会被触发，ci-gate 不会永久等待。
+      - ".github/workflows/**"
+      - "apps/yishan-admin/**"
+      - "apps/yishan-api/**"
+      - "apps/yishan-components/yishan-tiptap/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
   workflow_dispatch:
+    inputs:
+      skip_ci_gate:
+        description: "紧急覆盖：跳过对 yishan-fullstack-ci 的等待，直接部署该 commit。"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: yishan-fullstack-cd-fc
   cancel-in-progress: true
 
 jobs:
+  # CI 必须先在同一 commit 上通过，才允许部署。
+  # 背景：此前 CD 与 CI 完全并行，CI 连续红 2 个月而 CD 照常下发。
+  # 注意：CD 的 paths 已收窄为 CI paths 的子集，故 push 触发 CD 时 CI 必然也在跑。
+  ci-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require green yishan-fullstack-ci on this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          SKIP_GATE: ${{ inputs.skip_ci_gate }}
+        run: |
+          set -euo pipefail
+          if [ "$SKIP_GATE" = "true" ]; then
+            echo "::warning::skip_ci_gate=true — 跳过 CI 门禁（紧急覆盖），直接部署。"
+            exit 0
+          fi
+          echo "等待 yishan-fullstack-ci @ ${SHA}"
+          deadline=$(( $(date +%s) + 3000 ))
+          while :; do
+            json="$(gh api "repos/${REPO}/actions/workflows/yishan-fullstack-ci.yml/runs?head_sha=${SHA}&per_page=100" 2>/dev/null || echo '{}')"
+            status="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request")] | sort_by(.created_at) | last | .status // "missing"')"
+            conclusion="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request")] | sort_by(.created_at) | last | .conclusion // ""')"
+            echo "ci status=${status} conclusion=${conclusion}"
+            # workflow_dispatch 落在从未跑过 CI 的 commit 上时，"missing" 会一直保持，
+            # 白等到超时没有意义，直接给出可操作的提示。
+            if [ "$status" = "missing" ] && [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+              echo "::error::${SHA} 上不存在 yishan-fullstack-ci 运行；如需跳过门禁请勾选 skip_ci_gate。"
+              exit 1
+            fi
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" = "success" ]; then
+                echo "CI 已通过，继续部署。"
+                exit 0
+              fi
+              echo "::error::yishan-fullstack-ci 在该 commit 上结论为 ${conclusion}，拒绝部署。"
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::等待 yishan-fullstack-ci（${SHA}）超时；如需紧急部署，请用 workflow_dispatch 并勾选 skip_ci_gate。"
+              exit 1
+            fi
+            sleep 15
+          done
+
   deploy:
+    needs: ci-gate
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: YISHAN_API
@@ -325,3 +383,45 @@ jobs:
           NODE
           . /tmp/yishan_layered_env.sh
           bash ./deploy/fc3/scripts/deploy-layered-function.sh
+
+      # 部署脚本自身只校验 CLI 退出码，无法证明函数真的在服务请求。
+      # 这里补一次事实校验：健康检查 + DB 连通 + admin 静态资源可达。
+      - name: Post-deploy smoke check
+        env:
+          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL }}
+        run: |
+          set -euo pipefail
+          BASE="${SMOKE_BASE_URL:-}"
+          if [ -z "$BASE" ]; then
+            echo "::warning::SMOKE_BASE_URL 未配置，跳过部署后 smoke 检查。"
+            echo "::warning::请在 GitHub Environment YISHAN_API 中设置 variable SMOKE_BASE_URL（例如 https://yishan.zerocmf.com）以启用校验。"
+            exit 0
+          fi
+          BASE="${BASE%/}"
+          echo "Smoke target: ${BASE}"
+
+          # FC 自定义域名后面是函数实例，部署后需要一点时间切换/预热，允许重试。
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            HEALTH="$(curl -fsS --max-time 15 "${BASE}/api/health" 2>/dev/null || true)"
+            if [ -n "$HEALTH" ]; then
+              echo "health: ${HEALTH}"
+              echo "$HEALTH" | jq -e '.success == true and .data.status == "ok"' >/dev/null \
+                || { echo "::error::/api/health 返回体不符合预期。"; exit 1; }
+              echo "$HEALTH" | jq -e '.data.db.ok == true' >/dev/null \
+                || { echo "::error::/api/health 报告数据库不可用。"; exit 1; }
+              break
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "::error::/api/health 连续 10 次不可用，部署视为失败。"
+              exit 1
+            fi
+            echo "health 暂不可用（第 ${attempt} 次），5s 后重试…"
+            sleep 5
+          done
+
+          # admin 静态资源必须返回 200，否则前端会白屏而部署仍然“成功”。
+          ADMIN_CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${BASE}/admin/" || true)"
+          echo "/admin/ -> ${ADMIN_CODE}"
+          [ "$ADMIN_CODE" = "200" ] || { echo "::error::/admin/ 返回 ${ADMIN_CODE}，期望 200。"; exit 1; }
+
+          echo "Smoke check passed."

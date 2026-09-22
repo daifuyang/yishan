@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
-import { join, sep } from 'node:path'
+import { join } from 'node:path'
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
 import { ModuleLoader } from './core/module-loader/module-loader.js'
 import { SystemManageErrorCode } from './constants/business-codes/system.js'
@@ -134,7 +134,10 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
   void fastify.register(AutoLoad, {
     dir: join(__dirname, 'core/routes'),
     // 跳过 _dev/ 子树（_dev/<...>/<file>.ts）；下方的条件 autoload 单独处理 dev 路由。
-    ignoreFilter: (filepath) => filepath.includes(`${sep}_dev${sep}`),
+    // 注意：@fastify/autoload 传给 ignoreFilter 的 filepath 已在其内部把反斜杠归一化为
+    // 正斜杠，因此这里必须写死 '/'，不能用 path.sep——否则 Windows 上会拼出反斜杠形式
+    // 而匹配失败，导致 _dev 路由被重复挂载一次。
+    ignoreFilter: (filepath) => filepath.includes('/_dev/'),
     autoHooks: true,
     cascadeHooks: true,
     options: opts,
