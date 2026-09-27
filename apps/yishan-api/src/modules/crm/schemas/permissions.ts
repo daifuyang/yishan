@@ -37,18 +37,8 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   ACTIVITY_CREATE: { code: 'crm:activity:create', label: 'CRM-跟进-新建', group: 'crm' },
   ACTIVITY_UPDATE: { code: 'crm:activity:update', label: 'CRM-跟进-编辑', group: 'crm' },
   ACTIVITY_DELETE: { code: 'crm:activity:delete', label: 'CRM-跟进-删除', group: 'crm' },
-
-  LEAD_LIST: { code: 'crm:lead:list', label: 'CRM-线索-查看', group: 'crm' },
-  LEAD_CREATE: { code: 'crm:lead:create', label: 'CRM-线索-新建', group: 'crm' },
-  LEAD_UPDATE: { code: 'crm:lead:update', label: 'CRM-线索-编辑资料', group: 'crm' },
-  LEAD_DELETE: { code: 'crm:lead:delete', label: 'CRM-线索-删除', group: 'crm' },
-  LEAD_CLAIM: { code: 'crm:lead:claim', label: 'CRM-线索-领取', group: 'crm' },
-  LEAD_ASSIGN: { code: 'crm:lead:assign', label: 'CRM-线索-转移', group: 'crm' },
-  LEAD_RETURN_TO_POOL: { code: 'crm:lead:return', label: 'CRM-线索-退回公海', group: 'crm' },
-  LEAD_QUALIFY: { code: 'crm:lead:qualify', label: 'CRM-线索-判定', group: 'crm' },
-  LEAD_DISQUALIFY: { code: 'crm:lead:disqualify', label: 'CRM-线索-作废', group: 'crm' },
-  LEAD_REACTIVATE: { code: 'crm:lead:reactivate', label: 'CRM-线索-重新激活', group: 'crm' },
-  LEAD_CONVERT: { code: 'crm:lead:convert', label: 'CRM-线索-转为客户', group: 'crm' },
+  ATTACHMENT_LIST: { code: 'crm:attachment:list', label: 'CRM-附件-查看', group: 'crm' },
+  ATTACHMENT_MANAGE: { code: 'crm:attachment:manage', label: 'CRM-附件-管理', group: 'crm' },
 
   POOL_LIST: { code: 'crm:pool:list', label: 'CRM-公海-查看', group: 'crm' },
 
@@ -91,6 +81,7 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   OPPORTUNITY_WON: { code: 'crm:opportunity:won', label: 'CRM-商机-赢单', group: 'crm' },
   OPPORTUNITY_LOST: { code: 'crm:opportunity:lost', label: 'CRM-商机-丢单', group: 'crm' },
   OPPORTUNITY_TRANSFER: { code: 'crm:opportunity:transfer', label: 'CRM-商机-转移', group: 'crm' },
+  DIRECT_CLOSE_MANAGE: { code: 'crm:direct-close:manage', label: 'CRM-无合同成交-确认与撤销', group: 'crm' },
 
   /* ─── Contract (Phase 3) ────────────────── */
   CONTRACT_LIST: { code: 'crm:contract:list', label: 'CRM-合同-查看', group: 'crm' },
@@ -99,5 +90,9 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   CONTRACT_DELETE: { code: 'crm:contract:delete', label: 'CRM-合同-删除', group: 'crm' },
   CONTRACT_PAYMENT_VIEW: { code: 'crm:contract:payment', label: 'CRM-合同-回款查看', group: 'crm' },
   CONTRACT_PAYMENT_MANAGE: { code: 'crm:contract:payment-manage', label: 'CRM-合同-回款登记', group: 'crm' },
+  TASK_LIST: { code: 'crm:task:list', label: 'CRM-任务-查看', group: 'crm' },
+  TASK_CREATE: { code: 'crm:task:create', label: 'CRM-任务-新建', group: 'crm' },
+  TASK_UPDATE: { code: 'crm:task:update', label: 'CRM-任务-编辑', group: 'crm' },
+  TASK_DELETE: { code: 'crm:task:delete', label: 'CRM-任务-删除', group: 'crm' },
 })
 registerPermissions(...Object.values(CrmPermissions))

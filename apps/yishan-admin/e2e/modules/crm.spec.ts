@@ -41,17 +41,15 @@ interface PageSpec {
 
 const PAGES: PageSpec[] = [
   { path: '/crm/dashboard',     expectText: '工作台',   api: '/api/crm/v1/dashboard' },
-  { path: '/crm/leads',          expectText: '线索',     api: '/api/crm/v1/leads' },
-  { path: '/crm/lead-pool',      expectText: '线索池' },
   { path: '/crm/customers',      expectText: '客户',     api: '/api/crm/v1/customers' },
   { path: '/crm/pool',           expectText: '客户公海', api: '/api/crm/v1/pool' },
   { path: '/crm/contacts',       expectText: '联系人',   api: '/api/crm/v1/contacts' },
-  { path: '/crm/activities',     expectText: '跟进' },
-  { path: '/crm/visits',         expectText: '拜访',     api: '/api/crm/v1/visits' },
-  { path: '/crm/settings/tags',      expectText: '标签',     api: '/api/crm/v1/settings/tags' },
-  { path: '/crm/settings/statuses',  expectText: '状态',     api: '/api/crm/v1/settings/statuses' },
-  { path: '/crm/settings/sources',  expectText: '来源',     api: '/api/crm/v1/settings/sources' },
-  { path: '/crm/settings/enums',     expectText: '枚举',     api: '/api/v1/admin/enums' },
+  { path: '/crm/opportunities',  expectText: '商机',     api: '/api/crm/v1/opportunities' },
+  { path: '/crm/quotations',     expectText: '报价单',   api: '/api/crm/v1/quotations' },
+  { path: '/crm/contracts',      expectText: '合同',     api: '/api/crm/v1/contracts' },
+  { path: '/crm/payments',       expectText: '回款',     api: '/api/crm/v1/payments' },
+  { path: '/crm/tasks',          expectText: '任务',     api: '/api/crm/v1/tasks' },
+  { path: '/crm/products',       expectText: '产品',     api: '/api/crm/v1/products' },
 ];
 
 // ============================================================================

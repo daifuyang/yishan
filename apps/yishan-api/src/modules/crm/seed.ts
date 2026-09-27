@@ -12,8 +12,15 @@
 
 import { eq, inArray } from 'drizzle-orm'
 import { drizzleDb } from '@/db'
-import { sysEnum, sysMenu, sysMenuPermission, sysUser } from '@/db/schema'
+import { sysEnum, sysMenu, sysMenuPermission, sysRoleMenu, sysRolePermission, sysUser } from '@/db/schema'
 import adminMenu from './config/system-menu.json'
+import {
+  CONTRACT_STATUSES,
+  CUSTOMER_STATUSES,
+  OPPORTUNITY_STAGES,
+  QUOTATION_STATUSES,
+  TASK_STATUSES,
+} from './domain/statuses.js'
 
 export type AdminMenuNode = {
   type: 0 | 1 | 2
@@ -30,6 +37,54 @@ export type AdminMenuNode = {
 
 const menuTree = adminMenu as AdminMenuNode[]
 export const toBool = (n: 0 | 1 | undefined): boolean => n === 1
+
+const RETIRED_MENU_PATHS = [
+  '/crm/market',
+  '/crm/leads',
+  '/crm/lead-pool',
+  '/crm/service',
+  '/crm/activities',
+  '/crm/visits',
+  '/crm/settings',
+  '/crm/settings/tags',
+  '/crm/settings/statuses',
+  '/crm/settings/sources',
+  '/crm/settings/enums',
+] as const
+
+const RETIRED_PERMISSION_CODES = [
+  'crm:lead:list',
+  'crm:lead:create',
+  'crm:lead:update',
+  'crm:lead:delete',
+  'crm:lead:claim',
+  'crm:lead:assign',
+  'crm:lead:return',
+  'crm:lead:qualify',
+  'crm:lead:disqualify',
+  'crm:lead:reactivate',
+  'crm:lead:convert',
+] as const
+
+export const RETIRED_CRM_ENUM_TYPES = ['crm_lead_status'] as const
+
+async function purgeRetiredMenuDeclarations(): Promise<void> {
+  await drizzleDb.delete(sysEnum).where(inArray(sysEnum.type, [...RETIRED_CRM_ENUM_TYPES]))
+  const retiredMenus = await drizzleDb
+    .select({ id: sysMenu.id })
+    .from(sysMenu)
+    .where(inArray(sysMenu.path, [...RETIRED_MENU_PATHS]))
+  const retiredMenuIds = retiredMenus.map(({ id }) => id)
+
+  if (retiredMenuIds.length > 0) {
+    await drizzleDb.delete(sysMenuPermission).where(inArray(sysMenuPermission.menuId, retiredMenuIds))
+    await drizzleDb.delete(sysRoleMenu).where(inArray(sysRoleMenu.menuId, retiredMenuIds))
+    await drizzleDb.delete(sysMenu).where(inArray(sysMenu.id, retiredMenuIds))
+  }
+  await drizzleDb
+    .delete(sysRolePermission)
+    .where(inArray(sysRolePermission.permissionCode, [...RETIRED_PERMISSION_CODES]))
+}
 
 export type FlatNode = {
   node: AdminMenuNode
@@ -150,7 +205,7 @@ async function bindAllPermissions(flat: FlatNode[], creatorId: number): Promise<
  *
  * 11 个 type 的标准项；这些值都是业务强约定——变更时需同步更新产品文档 + Phase 计划。
  */
-const CRM_ENUM_SEED: ReadonlyArray<{
+export const CRM_ENUM_SEED: ReadonlyArray<{
   type: string
   code: string
   name: string
@@ -173,11 +228,13 @@ const CRM_ENUM_SEED: ReadonlyArray<{
   { type: 'crm_customer_level', code: 'C', name: 'C 类（一般）', sort: 30 },
   { type: 'crm_customer_level', code: 'D', name: 'D 类（低优先）', sort: 40 },
 
-  // crm_customer_status：客户状态
-  { type: 'crm_customer_status', code: 'prospect', name: '潜在客户', sort: 10 },
-  { type: 'crm_customer_status', code: 'qualified', name: '已签约', sort: 20 },
-  { type: 'crm_customer_status', code: 'lost', name: '流失', sort: 30 },
-  { type: 'crm_customer_status', code: 'paused', name: '暂停合作', sort: 40 },
+  // crm_customer_status：客户生命周期
+  ...CUSTOMER_STATUSES.map((status, index) => ({
+    type: 'crm_customer_status',
+    code: status.value,
+    name: status.label,
+    sort: (index + 1) * 10,
+  })),
 
   // crm_customer_source：客户来源
   { type: 'crm_customer_source', code: 'referral', name: '客户介绍', sort: 10 },
@@ -188,19 +245,13 @@ const CRM_ENUM_SEED: ReadonlyArray<{
   { type: 'crm_customer_source', code: 'partner', name: '合作伙伴', sort: 60 },
   { type: 'crm_customer_source', code: 'other', name: '其他', sort: 99 },
 
-  // crm_lead_status：线索状态
-  { type: 'crm_lead_status', code: 'pending', name: '未处理', sort: 10 },
-  { type: 'crm_lead_status', code: 'contact_valid', name: '联系方式有效', sort: 20 },
-  { type: 'crm_lead_status', code: 'contact_invalid', name: '联系方式无效', sort: 30 },
-  { type: 'crm_lead_status', code: 'closed', name: '已关闭', sort: 40 },
-
   // crm_opportunity_stage：商机阶段
-  { type: 'crm_opportunity_stage', code: 'discover', name: '需求发现', sort: 10 },
-  { type: 'crm_opportunity_stage', code: 'qualify', name: '方案确认', sort: 20 },
-  { type: 'crm_opportunity_stage', code: 'proposal', name: '报价中', sort: 30 },
-  { type: 'crm_opportunity_stage', code: 'negotiation', name: '商务谈判', sort: 40 },
-  { type: 'crm_opportunity_stage', code: 'won', name: '赢单', sort: 50 },
-  { type: 'crm_opportunity_stage', code: 'lost', name: '丢单', sort: 60 },
+  ...OPPORTUNITY_STAGES.map((stage, index) => ({
+    type: 'crm_opportunity_stage',
+    code: stage.value,
+    name: stage.label,
+    sort: (index + 1) * 10,
+  })),
 
   // crm_opportunity_pipeline：管道
   { type: 'crm_opportunity_pipeline', code: 'standard', name: '标准销售管道', sort: 10 },
@@ -221,18 +272,6 @@ const CRM_ENUM_SEED: ReadonlyArray<{
   { type: 'crm_visit_result', code: 'rescheduled', name: '改约', sort: 30 },
   { type: 'crm_visit_result', code: 'invalid_contact', name: '联系方式失效', sort: 40 },
 
-  // crm_ticket_priority
-  { type: 'crm_ticket_priority', code: 'P0', name: 'P0 紧急', sort: 10 },
-  { type: 'crm_ticket_priority', code: 'P1', name: 'P1 高', sort: 20 },
-  { type: 'crm_ticket_priority', code: 'P2', name: 'P2 中', sort: 30 },
-  { type: 'crm_ticket_priority', code: 'P3', name: 'P3 低', sort: 40 },
-
-  // crm_ticket_type
-  { type: 'crm_ticket_type', code: 'consult', name: '咨询', sort: 10 },
-  { type: 'crm_ticket_type', code: 'complaint', name: '投诉', sort: 20 },
-  { type: 'crm_ticket_type', code: 'aftersales', name: '售后', sort: 30 },
-  { type: 'crm_ticket_type', code: 'other', name: '其他', sort: 99 },
-
   // crm_payment_method
   { type: 'crm_payment_method', code: 'bank_transfer', name: '银行转账', sort: 10 },
   { type: 'crm_payment_method', code: 'alipay', name: '支付宝', sort: 20 },
@@ -252,6 +291,24 @@ const CRM_ENUM_SEED: ReadonlyArray<{
   { type: 'crm_contact_status', code: 'active', name: '在职', sort: 10 },
   { type: 'crm_contact_status', code: 'paused', name: '暂时联系不上', sort: 20 },
   { type: 'crm_contact_status', code: 'invalid', name: '已离职/失效', sort: 30 },
+  ...QUOTATION_STATUSES.map((status, index) => ({
+    type: 'crm_quotation_status',
+    code: status.value,
+    name: status.label,
+    sort: (index + 1) * 10,
+  })),
+  ...CONTRACT_STATUSES.map((status, index) => ({
+    type: 'crm_contract_status',
+    code: status.value,
+    name: status.label,
+    sort: (index + 1) * 10,
+  })),
+  ...TASK_STATUSES.map((status, index) => ({
+    type: 'crm_task_status',
+    code: status.value,
+    name: status.label,
+    sort: (index + 1) * 10,
+  })),
 ]
 
 async function seedCrmEnums(creatorId: number): Promise<void> {
@@ -292,6 +349,7 @@ export default async function seedCrm(): Promise<void> {
     .limit(1)
   const creatorId = admin?.id ?? 1
 
+  await purgeRetiredMenuDeclarations()
   await seedCrmEnums(creatorId)
   await upsertTree(menuTree, null, creatorId)
   const flat = flattenMenuTree(menuTree)

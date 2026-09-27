@@ -54,25 +54,25 @@ export interface CustomerDrawerHeaderProps {
   onLock?: () => void;
   /** 删除 */
   onDelete?: () => void;
+  /** 录入一次客户跟进 */
+  onFollowUp?: () => void;
 }
 
 export type CreateEntityKey =
+  | 'followup'
   | 'contact'
   | 'opportunity'
   | 'contract'
-  | 'expense'
   | 'quotation'
-  | 'payment'
-  | 'invoice';
+  | 'payment';
 
 const CREATE_LABELS: Array<{ key: CreateEntityKey; label: string }> = [
+  { key: 'followup', label: '跟进' },
   { key: 'contact', label: '联系人' },
   { key: 'opportunity', label: '商机' },
   { key: 'contract', label: '合同' },
-  { key: 'expense', label: '费用' },
   { key: 'quotation', label: '报价单' },
   { key: 'payment', label: '回款记录' },
-  { key: 'invoice', label: '开票记录' },
 ];
 
 const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
@@ -85,6 +85,7 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
   onPrint,
   onLock,
   onDelete,
+  onFollowUp,
 }) => {
   const can = usePermission();
 
@@ -97,6 +98,10 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
   const canDelete = can('crm:customer:delete');
 
   const handleCreateMenuClick: MenuProps['onClick'] = ({ key }) => {
+    if (key === 'followup') {
+      onFollowUp?.();
+      return;
+    }
     onCreateEntity?.(key as CreateEntityKey);
   };
 

@@ -5,8 +5,7 @@ import { Type, type Static } from '@sinclair/typebox'
  *
  * Phase 1 扩展：
  *   - ACTIVITY_TYPES 增加 polymorphic 语义：
- *       lead_followup（吸收 crm_lead_activity）
- *       status_change（lead/customer 状态变更）
+ *       status_change（客户状态变更）
  *       owner_change（转移）
  *       profile_edit（资料编辑审计）
  *       qualification（判为有效）
@@ -28,12 +27,11 @@ export const ACTIVITY_TYPES = [
   'owner_change',
   'qualification',
   'profile_edit',
-  'lead_followup',
 ] as const
 export type ActivityType = (typeof ACTIVITY_TYPES)[number]
 
 /** 实体类型（polymorphic）。 */
-export const ACTIVITY_ENTITY_TYPES = ['lead', 'customer', 'opportunity', 'contract'] as const
+export const ACTIVITY_ENTITY_TYPES = ['customer', 'opportunity', 'contract'] as const
 export type ActivityEntityType = (typeof ACTIVITY_ENTITY_TYPES)[number]
 
 export const ActivityRespSchema = Type.Object({
@@ -42,7 +40,6 @@ export const ActivityRespSchema = Type.Object({
   customerId: Type.Union([Type.Number(), Type.Null()]),
   contactId: Type.Union([Type.Number(), Type.Null()]),
   entityType: Type.Union([
-    Type.Literal('lead'),
     Type.Literal('customer'),
     Type.Literal('opportunity'),
     Type.Literal('contract'),
@@ -54,6 +51,8 @@ export const ActivityRespSchema = Type.Object({
   content: Type.String(),
   occurredAt: Type.String({ format: 'date-time' }),
   nextFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+  attachmentIds: Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()]),
+  metadata: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
   /** Phase 4 拜访专用字段 */
   plannedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
   location: Type.Union([Type.String(), Type.Null()]),
@@ -78,6 +77,8 @@ export const ActivityCreateReqSchema = Type.Object({
   content: Type.String({ minLength: 1, maxLength: 2000 }),
   occurredAt: Type.Optional(Type.String({ format: 'date-time' })),
   nextFollowUpAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
+  attachmentIds: Type.Optional(Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()])),
+  metadata: Type.Optional(Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()])),
   /** Phase 4 拜访：计划拜访时间 */
   plannedAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
   location: Type.Optional(Type.Union([Type.String({ maxLength: 255 }), Type.Null()])),
@@ -100,6 +101,8 @@ export const ActivityUpdateReqSchema = Type.Partial(
     content: Type.String({ minLength: 1, maxLength: 2000 }),
     occurredAt: Type.String({ format: 'date-time' }),
     nextFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+    attachmentIds: Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()]),
+    metadata: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
     plannedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
     location: Type.Union([Type.String({ maxLength: 255 }), Type.Null()]),
     participants: Type.Union([Type.String({ maxLength: 500 }), Type.Null()]),

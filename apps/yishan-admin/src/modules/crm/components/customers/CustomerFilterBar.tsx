@@ -11,7 +11,8 @@
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Input, Select, Space } from 'antd';
 import React from 'react';
-import type { CustomerListQuery, SourceRow, StatusRow } from '@/services/crm';
+import type { CustomerListQuery, SourceRow } from '@/services/crm';
+import { CUSTOMER_STATUSES } from '@/modules/crm/domain/statuses';
 
 const LEVEL_OPTIONS = [
   { value: 'A', label: 'A' },
@@ -34,7 +35,6 @@ export interface CustomerFilterBarProps {
   onKeywordChange: (keyword: string) => void;
   onReset: () => void;
   onOpenAdvanced: () => void;
-  statuses: StatusRow[];
   sources: SourceRow[];
   /** 负责人下拉选项；为 undefined 时显示"我自己"占位。 */
   ownerOptions?: Array<{ value: number; label: string }>;
@@ -49,18 +49,14 @@ const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
   onKeywordChange,
   onReset,
   onOpenAdvanced,
-  statuses,
   sources,
   ownerOptions,
   currentUserId,
   currentUserName,
 }) => {
   const statusOptions = React.useMemo(
-    () =>
-      statuses
-        .filter((s) => s.enabled === 1)
-        .map((s) => ({ value: s.id, label: s.name })),
-    [statuses],
+    () => CUSTOMER_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+    [],
   );
   const _sourceOptions = React.useMemo(
     () =>
@@ -123,8 +119,8 @@ const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
           allowClear
           placeholder="客户状态"
           style={{ width: 130 }}
-          value={filters.statusId}
-          onChange={(v) => onFilterChange('statusId', v)}
+          value={filters.statusCode}
+          onChange={(v) => onFilterChange('statusCode', v)}
           options={statusOptions}
         />
         <Select

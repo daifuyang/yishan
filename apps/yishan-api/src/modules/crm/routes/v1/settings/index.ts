@@ -3,7 +3,6 @@ import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
 import { ResponseUtil } from '@/utils/response.js'
 import {
   SourceService,
-  StatusService,
   TagService,
 } from '../../../services/settings.service.js'
 import {
@@ -12,9 +11,6 @@ import {
   SourceUpdateReqSchema,
 } from '../../../schemas/settings.schema.js'
 import {
-  StatusCreateReqSchema,
-  StatusRespSchema,
-  StatusUpdateReqSchema,
 } from '../../../schemas/settings.schema.js'
 import {
   TagCreateReqSchema,
@@ -42,7 +38,6 @@ import { CrmPermissions as PERMS } from '../../../schemas/permissions.js'
 export default (async (app) => {
   const route = createRouteRegistrar(app)
   const tagService = new TagService()
-  const statusService = new StatusService()
   const sourceService = new SourceService()
 
   /* ─── Tag ─────────────────────────── */
@@ -122,6 +117,7 @@ export default (async (app) => {
 
   /* ─── Status ──────────────────────── */
 
+  /* Customer lifecycle descriptors are static domain data, not settings CRUD.
   route.get(
     '/statuses',
     {

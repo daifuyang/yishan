@@ -15,6 +15,7 @@ import {
   CustomerMemberAddReqSchema,
   CustomerMemberListRespSchema,
   CustomerReleaseReqSchema,
+  CustomerRelationshipStatusTransitionReqSchema,
   CustomerRespSchema,
   CustomerListItemRespSchema,
   CustomerTransferReqSchema,
@@ -218,6 +219,31 @@ export default (async (app) => {
     },
   )
 
+  route.post(
+    '/:id/relationship-status-transitions',
+    {
+      access: { permission: PERMS.CUSTOMER_UPDATE },
+      schema: {
+        tags: [ROUTE_TAG],
+        summary: '变更客户关系状态',
+        operationId: 'crmCustomersTransitionRelationshipStatus',
+        params: CustomerIdParamsSchema,
+        body: CustomerRelationshipStatusTransitionReqSchema,
+        response: { 200: EnvelopeSchema(CustomerRespSchema) },
+      },
+    },
+    async (request: any, reply: any) => {
+      const updated = await service.transitionRelationshipStatus({
+        id: Number(request.params.id),
+        target: request.body.target,
+        reasonCode: request.body.reasonCode,
+        remark: request.body.remark,
+        currentUser: request.currentUser,
+      })
+      return ResponseUtil.success(reply, updated, '客户关系状态已变更')
+    },
+  )
+
   // 删除
   route.delete(
     '/:id',
@@ -300,6 +326,7 @@ export default (async (app) => {
       },
     },
     async (request: any, reply: any) => {
+      await service.detail(Number(request.params.id), request.currentUser)
       const items = await TransferRepository.listByCustomerId(Number(request.params.id))
       return ResponseUtil.success(reply, items)
     },

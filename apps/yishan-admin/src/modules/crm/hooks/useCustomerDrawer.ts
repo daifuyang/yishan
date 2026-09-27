@@ -28,17 +28,14 @@ const CUSTOMER_ID_KEY = 'customerId';
 const FOCUS_KEY = 'focus';
 
 export type DrawerTabKey =
-  | 'basic'
+  | 'overview'
   | 'contacts'
-  | 'leads'
   | 'opportunities'
   | 'quotations'
   | 'contracts'
-  | 'expenses'
-  | 'products'
+  | 'payments'
   | 'tasks'
-  | 'attachments'
-  | 'activityLog';
+  | 'attachments';
 
 export interface UseCustomerDrawerReturn {
   open: boolean;
@@ -58,22 +55,19 @@ function parseCustomerId(raw: string | null): number | null {
 }
 
 const VALID_TABS: ReadonlySet<DrawerTabKey> = new Set([
-  'basic',
+  'overview',
   'contacts',
-  'leads',
   'opportunities',
   'quotations',
   'contracts',
-  'expenses',
-  'products',
+  'payments',
   'tasks',
   'attachments',
-  'activityLog',
 ]);
 
 function parseFocus(raw: string | null): DrawerTabKey {
   if (raw && VALID_TABS.has(raw as DrawerTabKey)) return raw as DrawerTabKey;
-  return 'basic';
+  return 'overview';
 }
 
 /** 序列化 + 拼接 search；空串返回 pathname。 */
@@ -113,7 +107,7 @@ export function useCustomerDrawer(): UseCustomerDrawerReturn {
         next.delete(FOCUS_KEY);
       } else {
         next.set(CUSTOMER_ID_KEY, String(id));
-        if (tab && VALID_TABS.has(tab) && tab !== 'basic') {
+        if (tab && VALID_TABS.has(tab) && tab !== 'overview') {
           next.set(FOCUS_KEY, tab);
         } else {
           next.delete(FOCUS_KEY);

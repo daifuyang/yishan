@@ -13,15 +13,15 @@
 import { PlusOutlined } from '@ant-design/icons';
 import {
   ModalForm,
+  ProForm,
   ProFormDateTimePicker,
   ProFormSelect,
   ProFormTextArea,
 } from '@ant-design/pro-components';
 import {
   Button,
-  Divider,
   message as antdMessage,
-  Spin,
+  Select,
   Typography,
 } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
@@ -30,20 +30,20 @@ import {
   type ActivityRow,
   type ActivityType,
   type CustomerDetail,
-  type StatusRow,
   createActivity,
   listActivitiesByCustomer,
 } from '@/services/crm';
-import { formatDateTime } from '@/utils/formatDate';
 import DrawerFilterBar from '../_shared/DrawerFilterBar';
 import { CRM_DIALOG_Z_INDEX } from '../_shared/crmDialogZIndex';
-import ActivityTimeline from './ActivityTimeline';
+import ActivityTimeline, { getActivityCategory } from './ActivityTimeline';
+import { AttachmentSelect } from '@/components/AttachmentSelect';
 
 export interface CustomerFollowUpFormValues {
   type: ActivityType;
   content: string;
-  statusId?: number;
   nextFollowUpAt?: Dayjs | string | Date | null;
+  attachmentIds?: Array<number | string>;
+  metadata?: Record<string, unknown> | null;
 }
 
 type ActivityFilter = 'all' | 'followup' | 'system';
@@ -51,7 +51,7 @@ type ActivityFilter = 'all' | 'followup' | 'system';
 const filterLabels: Array<{ key: ActivityFilter; label: string }> = [
   { key: 'all', label: '全部' },
   { key: 'followup', label: '跟进' },
-  { key: 'system', label: '系统记录' },
+  { key: 'system', label: '系统' },
 ];
 
 const typeOptions: Array<{ value: ActivityType; label: string }> = [
@@ -65,12 +65,29 @@ const typeOptions: Array<{ value: ActivityType; label: string }> = [
 
 export interface CustomerActivityRailProps {
   customer: CustomerDetail;
-  statuses: StatusRow[];
   /**
    * 写完一条跟进后通知父组件刷新客户详情（状态可能变化）。
    * 不传则只刷新活动列表。
    */
   onFollowUpSaved?: () => void;
+  followUpRequest?: number;
+}
+
+function buildCustomerCreatedEvent(customer: CustomerDetail): ActivityRow {
+  return {
+    id: -customer.id,
+    customerId: customer.id,
+    contactId: null,
+    type: 'other',
+    content: '客户新增\n客户通过官网提交产品试用申请，由系统自动创建。',
+    occurredAt: customer.createdAt,
+    nextFollowUpAt: null,
+    metadata: { eventType: 'customer_created' },
+    operatorUserId: 0,
+    operatorUserName: '系统',
+    createdAt: customer.createdAt,
+    updatedAt: customer.createdAt,
+  };
 }
 
 /**
@@ -84,13 +101,17 @@ function toActivityInput(values: CustomerFollowUpFormValues) {
     type: values.type,
     content: values.content.trim(),
     nextFollowUpAt: next ? dayjs(next).toISOString() : null,
+    attachmentIds: (values.attachmentIds ?? [])
+      .map(Number)
+      .filter((id) => Number.isInteger(id) && id > 0),
+    metadata: values.metadata ?? null,
   };
 }
 
 const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
   customer,
-  statuses,
   onFollowUpSaved,
+  followUpRequest,
 }) => {
   // 公海里的客户尚未归属，不允许写跟进。
   const canWriteFollowUp = customer.poolStatus === 'owned';
@@ -98,6 +119,7 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<ActivityFilter>('all');
+  const [operatorUserId, setOperatorUserId] = useState<number | undefined>();
   const [dateRange, setDateRange] = useState<{
     from?: string;
     to?: string;
@@ -109,7 +131,14 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
     let active = true;
     setLoading(true);
     listActivitiesByCustomer(customer.id)
-      .then((res) => active && setActivities(res.items ?? []))
+      .then((res) => {
+        if (!active) return;
+        const items = res.items ?? [];
+        const hasCreatedEvent = items.some(
+          (item) => item.metadata?.eventType === 'customer_created',
+        );
+        setActivities(hasCreatedEvent ? items : [buildCustomerCreatedEvent(customer), ...items]);
+      })
       .catch(() =>
         active && antdMessage.error('动态加载失败，请稍后重试'),
       )
@@ -119,16 +148,19 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
     };
   }, [customer.id]);
 
+  useEffect(() => {
+    if (followUpRequest && canWriteFollowUp) setFollowUpOpen(true);
+  }, [followUpRequest, canWriteFollowUp]);
+
   // 过滤：分类 + 日期范围
   const filteredActivities = useMemo(() => {
     let rows = activities;
     if (filter === 'followup') {
-      rows = rows.filter((a) =>
-        ['phone', 'wechat', 'visit', 'meeting', 'email'].includes(a.type),
-      );
+      rows = rows.filter((activity) => getActivityCategory(activity) === 'followup');
     } else if (filter === 'system') {
-      rows = rows.filter((a) => a.type === 'other');
+      rows = rows.filter((activity) => getActivityCategory(activity) === 'system');
     }
+    if (operatorUserId) rows = rows.filter((activity) => activity.operatorUserId === operatorUserId);
     if (dateRange?.from || dateRange?.to) {
       const from = dateRange.from ? dayjs(dateRange.from).startOf('day') : null;
       const to = dateRange.to ? dayjs(dateRange.to).endOf('day') : null;
@@ -140,15 +172,11 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
       });
     }
     return rows;
-  }, [activities, filter, dateRange]);
+  }, [activities, filter, dateRange, operatorUserId]);
 
-  const statusOptions = useMemo(
-    () =>
-      statuses
-        .filter((s) => s.enabled === 1)
-        .sort((a, b) => a.sort - b.sort)
-        .map((s) => ({ value: s.id, label: s.name })),
-    [statuses],
+  const operatorOptions = useMemo(
+    () => Array.from(new Map(activities.filter((activity) => activity.operatorUserName).map((activity) => [activity.operatorUserId, activity.operatorUserName])).entries()).map(([value, label]) => ({ value, label })),
+    [activities],
   );
 
   return (
@@ -168,7 +196,7 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
           justifyContent: 'space-between',
         }}
       >
-        <Typography.Text strong style={{ fontSize: 14 }}>
+        <Typography.Text strong style={{ fontSize: 15, fontWeight: 600 }}>
           动态
         </Typography.Text>
         {canWriteFollowUp && (
@@ -178,7 +206,7 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
             icon={<PlusOutlined />}
             onClick={() => setFollowUpOpen(true)}
           >
-            写跟进
+            新增跟进
           </Button>
         )}
       </div>
@@ -201,25 +229,14 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
             setFollowUpSubmitting(true);
             try {
               await createActivity(customer.id, toActivityInput(values));
-              // 阶段变化：客户 statusId 可能要改（CRM 实体可能需要专门接口，Phase 3 完善）
-              if (
-                values.statusId &&
-                customer.statusId !== values.statusId
-              ) {
-                try {
-                  const { updateCustomer } = await import('@/services/crm');
-                  await updateCustomer(customer.id, {
-                    statusId: values.statusId,
-                  });
-                } catch {
-                  /* statusId 同步失败不影响跟进保存 */
-                }
-              }
               antdMessage.success('跟进已保存');
               setFollowUpOpen(false);
               // 异步刷新活动 + 客户详情
               void listActivitiesByCustomer(customer.id)
-                .then((res) => setActivities(res.items ?? []))
+                .then((res) => {
+                  const items = res.items ?? [];
+                  setActivities(items.some((item) => item.metadata?.eventType === 'customer_created') ? items : [buildCustomerCreatedEvent(customer), ...items]);
+                })
                 .catch(() =>
                   antdMessage.warning(
                     '跟进已保存，但动态刷新失败，请稍后刷新页面',
@@ -259,19 +276,15 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
               },
             ]}
           />
-          <ProFormSelect
-            name="statusId"
-            label="当前阶段"
-            allowClear
-            placeholder="保持不变"
-            options={statusOptions}
-          />
           <ProFormDateTimePicker
             name="nextFollowUpAt"
             label="下次跟进"
             placeholder="请选择下次跟进时间"
             width="md"
           />
+          <ProForm.Item name="attachmentIds" label="附件">
+            <AttachmentSelect valueType="id" multiple maxCount={10} />
+          </ProForm.Item>
         </ModalForm>
       )}
 
@@ -280,8 +293,8 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
         value={filter}
         onChange={setFilter}
         dateRange={{ value: dateRange, onChange: setDateRange }}
+        filterContent={operatorOptions.length > 0 ? <Select allowClear placeholder="操作人" value={operatorUserId} options={operatorOptions} onChange={setOperatorUserId} style={{ width: '100%' }} /> : undefined}
       />
-      <Divider style={{ margin: '12px 0 16px' }} />
 
       <div
         style={{
@@ -291,30 +304,13 @@ const CustomerActivityRail: React.FC<CustomerActivityRailProps> = ({
           paddingRight: 4,
         }}
       >
-        {loading ? (
-          <div style={{ padding: '24px 0', textAlign: 'center' }}>
-            <Spin size="small" />
-          </div>
-        ) : (
-          <ActivityTimeline
-            items={filteredActivities}
-            groupByDate
-            emptyText={
-              filter === 'all' && !dateRange
-                ? '暂无跟进记录'
-                : '当前筛选下无记录'
-            }
-          />
-        )}
-        {!loading && filteredActivities.length > 0 && (
-          <Typography.Text
-            type="secondary"
-            style={{ display: 'block', fontSize: 11, marginTop: 8 }}
-          >
-            最近 {filteredActivities.length} 条 · 客户 #
-            {customer.id} · 更新于 {formatDateTime(customer.updatedAt)}
-          </Typography.Text>
-        )}
+        <ActivityTimeline
+          loading={loading}
+          items={filteredActivities}
+          groupByDate
+          emptyText={filter === 'all' && !dateRange && !operatorUserId ? '暂无动态' : '当前筛选下暂无动态'}
+          emptyExtra={canWriteFollowUp ? <Button type="primary" size="small" onClick={() => setFollowUpOpen(true)}>新增跟进</Button> : undefined}
+        />
       </div>
     </aside>
   );

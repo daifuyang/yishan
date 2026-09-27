@@ -19,12 +19,12 @@ import { sysUser } from '@/db/schema'
 import {
   crmCustomer,
   crmCustomerSource,
-  crmCustomerStatus,
   crmCustomerTag,
   crmContact,
 } from '../db/schema.js'
 import { collaboratorExists } from './member.repository.js'
 import type { POOL_STATUS } from '../schemas/customer.schema.js'
+import { getCustomerStatusLabel, type CustomerStatusCode, type RelationshipStatus } from '../domain/statuses.js'
 
 /**
  * crm_customer Repository。
@@ -44,11 +44,12 @@ export interface CustomerRow {
   code: string | null
   name: string
   type: string
-  statusId: number | null
   sourceId: number | null
   level: string | null
   industry: string | null
-  statusCode: string | null
+  statusCode: CustomerStatusCode | null
+  /** Existing fixtures may omit this field; persisted rows always contain it after migration 0055. */
+  relationshipStatus?: RelationshipStatus
   sourceCode: string | null
   levelCode: string | null
   industryCode: string | null
@@ -87,7 +88,6 @@ export interface CustomerDetailRow extends CustomerRow {
 export interface CreateCustomerInput {
   name: string
   type: CustomerType
-  statusId?: number | null
   sourceId?: number | null
   level?: string | null
   industry?: string | null
@@ -107,11 +107,9 @@ export interface CreateCustomerInput {
 export interface UpdateCustomerInput {
   name?: string
   type?: CustomerType
-  statusId?: number | null
   sourceId?: number | null
   level?: string | null
   industry?: string | null
-  statusCode?: string | null
   sourceCode?: string | null
   levelCode?: string | null
   industryCode?: string | null
@@ -166,7 +164,7 @@ export interface CustomerListQuery {
   page?: number
   pageSize?: number
   keyword?: string
-  statusId?: number
+  statusCode?: CustomerStatusCode
   sourceId?: number
   level?: string
   type?: string
@@ -203,11 +201,11 @@ const customerPublicColumns = {
   code: crmCustomer.code,
   name: crmCustomer.name,
   type: crmCustomer.type,
-  statusId: crmCustomer.statusId,
   sourceId: crmCustomer.sourceId,
   level: crmCustomer.level,
   industry: crmCustomer.industry,
   statusCode: crmCustomer.statusCode,
+  relationshipStatus: crmCustomer.relationshipStatus,
   sourceCode: crmCustomer.sourceCode,
   levelCode: crmCustomer.levelCode,
   industryCode: crmCustomer.industryCode,
@@ -294,7 +292,7 @@ export function buildListWhere(opts: CustomerListQuery, now: Date = new Date()):
     )
   }
   if (opts.view) conds.push(...buildViewConds(opts.view, opts.currentUserId, now))
-  if (opts.statusId !== undefined) conds.push(eq(crmCustomer.statusId, opts.statusId))
+  if (opts.statusCode !== undefined) conds.push(eq(crmCustomer.statusCode, opts.statusCode))
   if (opts.sourceId !== undefined) conds.push(eq(crmCustomer.sourceId, opts.sourceId))
   if (opts.level) conds.push(eq(crmCustomer.level, opts.level))
   if (opts.type) conds.push(eq(crmCustomer.type, opts.type))
@@ -440,7 +438,7 @@ export class CustomerRepository {
     if (!row) return null
     const base = row as CustomerRow
 
-    const [ownerRow, statusRow, sourceRow, primary, tagRows] = await Promise.all([
+    const [ownerRow, sourceRow, primary, tagRows] = await Promise.all([
       base.ownerUserId
         ? db
             .select({ username: sysUser.username })
@@ -448,15 +446,6 @@ export class CustomerRepository {
             .where(eq(sysUser.id, base.ownerUserId))
             .limit(1)
         : Promise.resolve([] as Array<{ username: string | null }>),
-      base.statusId
-        ? db
-            .select({ name: crmCustomerStatus.name })
-            .from(crmCustomerStatus)
-            .where(
-              and(eq(crmCustomerStatus.id, base.statusId), isNull(crmCustomerStatus.deletedAt)),
-            )
-            .limit(1)
-        : Promise.resolve([] as Array<{ name: string | null }>),
       base.sourceId
         ? db
             .select({ name: crmCustomerSource.name })
@@ -476,7 +465,7 @@ export class CustomerRepository {
     return {
       ...base,
       ownerUserName: ownerRow[0]?.username ?? null,
-      statusName: statusRow[0]?.name ?? null,
+      statusName: getCustomerStatusLabel(base.statusCode),
       sourceName: sourceRow[0]?.name ?? null,
       primaryContactId: primary?.id ?? null,
       primaryContactName: primary?.name ?? null,
@@ -493,7 +482,8 @@ export class CustomerRepository {
       .values({
         name: input.name,
         type: input.type,
-        statusId: input.statusId ?? null,
+        statusCode: 'potential',
+        relationshipStatus: 'potential',
         sourceId: input.sourceId ?? null,
         level: input.level ?? null,
         industry: input.industry ?? null,
@@ -523,11 +513,9 @@ export class CustomerRepository {
     const patch: Record<string, unknown> = { updatedAt: new Date(), updaterId: input.updaterId }
     if (input.name !== undefined) patch.name = input.name
     if (input.type !== undefined) patch.type = input.type
-    if (input.statusId !== undefined) patch.statusId = input.statusId
     if (input.sourceId !== undefined) patch.sourceId = input.sourceId
     if (input.level !== undefined) patch.level = input.level
     if (input.industry !== undefined) patch.industry = input.industry
-    if (input.statusCode !== undefined) patch.statusCode = input.statusCode
     if (input.sourceCode !== undefined) patch.sourceCode = input.sourceCode
     if (input.levelCode !== undefined) patch.levelCode = input.levelCode
     if (input.industryCode !== undefined) patch.industryCode = input.industryCode
@@ -544,6 +532,22 @@ export class CustomerRepository {
     if (input.nextFollowUpAt !== undefined) patch.nextFollowUpAt = input.nextFollowUpAt
     if (input.remark !== undefined) patch.remark = input.remark
 
+    await db.update(crmCustomer).set(patch).where(eq(crmCustomer.id, id))
+    return CustomerRepository.findById(id, db)
+  }
+
+  /** Lifecycle fields are only writable through the state projector. */
+  static async updateLifecycle(
+    id: number,
+    input: { statusCode: CustomerStatusCode; relationshipStatus?: RelationshipStatus; updaterId: number },
+    db: AppQueryDb = drizzleDb,
+  ): Promise<CustomerRow | null> {
+    const patch: Record<string, unknown> = {
+      statusCode: input.statusCode,
+      updaterId: input.updaterId,
+      updatedAt: new Date(),
+    }
+    if (input.relationshipStatus !== undefined) patch.relationshipStatus = input.relationshipStatus
     await db.update(crmCustomer).set(patch).where(eq(crmCustomer.id, id))
     return CustomerRepository.findById(id, db)
   }
@@ -735,38 +739,4 @@ export class CustomerRepository {
     return map
   }
 
-  /**
-   * 转化预览：基于线索字段的查重候选。
-   *
-   * - enterprise: 同 name 视为候选；phone 命中（且 phone 非空）则视为强匹配。
-   * - individual: phone 优先；phone 为空时按 name 匹配。
-   *
-   * 仅返回 ID/name/type/ownerUserId/name；用于弹窗提示，不作为链路强制选择。
-   * 候选列表不能跨越 actor 的数据范围：在 service 层做可见性再校验。
-   */
-  static async findConversionCandidates(
-    input: { name: string | null; phone: string | null; type: 'enterprise' | 'individual' },
-    db: AppQueryDb = drizzleDb,
-  ): Promise<Array<Pick<CustomerRow, 'id' | 'name' | 'type' | 'ownerUserId'>>> {
-    const conds: SQL[] = [isNull(crmCustomer.deletedAt)]
-    if (input.type === 'enterprise') {
-      if (input.name) conds.push(eq(crmCustomer.name, input.name))
-      else return []
-    } else {
-      if (input.phone) conds.push(eq(crmCustomer.phone, input.phone))
-      else if (input.name) conds.push(eq(crmCustomer.name, input.name))
-      else return []
-    }
-    const rows = await db
-      .select({
-        id: crmCustomer.id,
-        name: crmCustomer.name,
-        type: crmCustomer.type,
-        ownerUserId: crmCustomer.ownerUserId,
-      })
-      .from(crmCustomer)
-      .where(and(...conds))
-      .limit(20)
-    return rows
-  }
 }

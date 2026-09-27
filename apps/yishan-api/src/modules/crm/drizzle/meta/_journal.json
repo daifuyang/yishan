@@ -96,8 +96,57 @@
     {
       "idx": 13,
       "version": "5",
-      "when": 1789910400000,
-      "tag": "0013_lead-follow-up-status-data",
+      "when": 1789344000000,
+      "tag": "0052_crm-v01-customer-lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1789347600000,
+      "tag": "0053_crm-v01-lifecycle-hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "5",
+      "when": 1789348200000,
+      "tag": "0054_crm-activity-follow-up-metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1789350000000,
+      "tag": "0055_crm-customer-relationship-status",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1789353600000,
+      "tag": "0056_crm-direct-close",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1789430400000,
+      "tag": "0057_crm-opportunity-workspace",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1789516800000,
+      "tag": "0058_crm-opportunity-domain-reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1789603200000,
+      "tag": "0059_crm-opportunity-optional-forecast",
       "breakpoints": true
     }
   ]

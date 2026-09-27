@@ -1,11 +1,11 @@
 /**
- * 客户 Drawer 主壳（对齐线索 Drawer 风格的 Workspace 重构版）。
+ * 客户 Drawer 主壳。
  *
  * 职责：
  *   - 宽度由 useResizableDrawer 维护（≥1100px），可拖拽右边沿
  *   - open / customerId 由父组件传入；onClose 时清掉 URL 上的 customerId 由 hook 负责
  *   - 顶部 Header：CustomerDrawerHeader
- *   - 11 个 Tab：基本信息（分段详情 + 活动 rail）/ 联系人 / 线索 / 商机 / 报价单 /
+ *   - 10 个 Tab：基本信息（分段详情 + 活动 rail）/ 联系人 / 商机 / 报价单 /
  *     合同 / 费用 / 已成交产品 / 任务 / 附件 / 操作日志
  *
  * 出错处理：
@@ -14,18 +14,17 @@
  *   - 其他错误 → antd message.error
  */
 
-import { message as antdMessage, Button, Skeleton, Tabs } from 'antd';
+import { Button, Skeleton, Tabs, message as antdMessage } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   type ContactRow,
   type CustomerDetail,
+  type EnumCodeNameItem,
   deleteContact,
   deleteCustomer,
-  type EnumCodeNameItem,
   getCustomer,
   listContactsByCustomer,
   listEnumByType,
-  type StatusRow,
   updateContact,
 } from '@/services/crm';
 import DrawerChrome from './_shared/DrawerChrome';
@@ -33,52 +32,36 @@ import { useResizableDrawer } from './_shared/useResizableDrawer';
 import CustomerDrawerHeader, {
   type CreateEntityKey,
 } from './CustomerDrawerHeader';
-import BasicInfoTab from './tabs/BasicInfoTab';
 import ContactCreateModal from './tabs/ContactCreateModal';
 import ContactsTab from './tabs/ContactsTab';
 import OpportunitiesTab from './tabs/OpportunitiesTab';
-import PlaceholderTab from './tabs/PlaceholderTab';
+import OverviewTab from './tabs/OverviewTab';
+import QuotationsTab from './tabs/QuotationsTab';
+import ContractsTab from './tabs/ContractsTab';
+import PaymentsTab from './tabs/PaymentsTab';
+import TasksTab from './tabs/TasksTab';
+import AttachmentsTab from './tabs/AttachmentsTab';
+import OpportunitySave from '../opportunity/OpportunitySave';
 
 export type CustomerDrawerTabKey =
-  | 'basic'
+  | 'overview'
   | 'contacts'
-  | 'leads'
   | 'opportunities'
   | 'quotations'
   | 'contracts'
-  | 'expenses'
-  | 'products'
+  | 'payments'
   | 'tasks'
-  | 'attachments'
-  | 'activityLog';
+  | 'attachments';
 
 const TAB_LABELS: Array<{ key: CustomerDrawerTabKey; label: string }> = [
-  { key: 'basic', label: '基本信息' },
+  { key: 'overview', label: '概览' },
   { key: 'contacts', label: '联系人' },
-  { key: 'leads', label: '线索' },
   { key: 'opportunities', label: '商机' },
   { key: 'quotations', label: '报价单' },
   { key: 'contracts', label: '合同' },
-  { key: 'expenses', label: '费用' },
-  { key: 'products', label: '已成交产品' },
+  { key: 'payments', label: '回款' },
   { key: 'tasks', label: '任务' },
   { key: 'attachments', label: '附件' },
-  { key: 'activityLog', label: '操作日志' },
-];
-
-const PLACEHOLDER_TABS: Array<{
-  key: CustomerDrawerTabKey;
-  entity: string;
-}> = [
-  { key: 'leads', entity: '线索' },
-  { key: 'opportunities', entity: '商机' },
-  { key: 'quotations', entity: '报价单' },
-  { key: 'contracts', entity: '合同' },
-  { key: 'expenses', entity: '费用' },
-  { key: 'products', entity: '已成交产品' },
-  { key: 'tasks', entity: '任务' },
-  { key: 'attachments', entity: '附件' },
-  { key: 'activityLog', entity: '操作日志' },
 ];
 
 export interface CustomerDrawerProps {
@@ -88,27 +71,30 @@ export interface CustomerDrawerProps {
   onClose: () => void;
   /** 任意数据被变更后通知上层 reload 列表/计数。 */
   onChanged?: () => void;
-  statuses: StatusRow[];
   /** Drawer 右上"新增"子菜单回调映射；undefined 时该子项仍渲染但走 toast 占位。 */
   onCreateEntity?: (entity: CreateEntityKey) => void;
   /** Drawer 右上"转移"按钮回调；undefined 时走 toast 占位。 */
   onTransfer?: (customer: CustomerDetail) => void;
   onRelease?: (customer: CustomerDetail) => void;
+  currentUser?: { id?: number; realName?: string; username?: string } | null;
 }
 
 const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   open,
   customerId,
-  initialTab = 'basic',
+  initialTab = 'overview',
   onClose,
   onChanged,
-  statuses,
   onCreateEntity,
   onTransfer,
   onRelease,
+  currentUser,
 }) => {
   const [size, setSize] = useResizableDrawer();
-  const [activeTab, setActiveTab] = useState<CustomerDrawerTabKey>(initialTab);
+  const [activeTab, setActiveTab] =
+    useState<CustomerDrawerTabKey>(initialTab);
+  const [followUpRequest, setFollowUpRequest] = useState(0);
+  const [customerRefreshKey, setCustomerRefreshKey] = useState(0);
 
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [customerLoading, setCustomerLoading] = useState(false);
@@ -137,6 +123,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       setCustomer(null);
       setCustomerError(null);
       setCustomerLoading(false);
+      setFollowUpRequest(0);
       return;
     }
     let cancelled = false;
@@ -173,6 +160,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     };
   }, [open, customerId, initialTab]);
 
+
   const handleFollowUpSaved = () => {
     // 跟进写完后，可能改了 statusId；主动重拉详情同步头部 MetaRow 与 status tag
     if (!customerId) return;
@@ -189,12 +177,25 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       requestOpenCreateContact();
       return;
     }
+    if (entity === 'opportunity') {
+      setActiveTab('opportunities');
+      return;
+    }
     if (onCreateEntity) {
       onCreateEntity(entity);
     } else {
-      const label = CREATE_ENTITY_TOAST[entity] ?? `${entity}功能开发中`;
+      const label =
+        CREATE_ENTITY_TOAST[entity] ?? `${entity}功能开发中`;
       antdMessage.info(label);
     }
+  };
+
+  const handleOpportunityCreated = async () => {
+    if (!customerId) return;
+    const refreshed = await getCustomer(customerId);
+    setCustomer(refreshed);
+      setCustomerRefreshKey((value) => value + 1);
+    onChanged?.();
   };
 
   const handleTransfer = () => {
@@ -238,7 +239,9 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
             color: '#8c8c8c',
           }}
         >
-          <div style={{ fontSize: 14, marginBottom: 12 }}>{customerError}</div>
+          <div style={{ fontSize: 14, marginBottom: 12 }}>
+            {customerError}
+          </div>
           <Button onClick={onClose}>关闭</Button>
         </div>
       );
@@ -261,7 +264,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       <Tabs
         activeKey={activeTab}
         onChange={(k) => setActiveTab(k as CustomerDrawerTabKey)}
-        destroyInactiveTabPane={false}
+        destroyOnHidden={false}
         style={{ padding: '0 20px' }}
         items={TAB_LABELS.map((t) => ({
           key: t.key,
@@ -274,12 +277,13 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
 
   const renderTab = (key: CustomerDrawerTabKey, current: CustomerDetail) => {
     switch (key) {
-      case 'basic':
+      case 'overview':
         return (
-          <BasicInfoTab
+          <OverviewTab
             customer={current}
-            statuses={statuses}
+            followUpRequest={followUpRequest}
             onFollowUpSaved={handleFollowUpSaved}
+            onRelationshipStatusChanged={handleFollowUpSaved}
           />
         );
       case 'contacts':
@@ -295,14 +299,13 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           />
         );
       case 'opportunities':
-        return <OpportunitiesTab />;
-      default: {
-        const placeholder = PLACEHOLDER_TABS.find((p) => p.key === key);
-        if (placeholder) {
-          return <PlaceholderTab entity={placeholder.entity} />;
-        }
-        return null;
-      }
+        return <OpportunitiesTab customer={current} refreshKey={customerRefreshKey} createAction={<OpportunitySave customerId={current.id} customerName={current.name} ownerId={currentUser?.id} onFinish={handleOpportunityCreated}><Button type="primary">新建商机</Button></OpportunitySave>} />;
+      case 'quotations': return <QuotationsTab customerId={current.id} />;
+      case 'contracts': return <ContractsTab customerId={current.id} />;
+      case 'payments': return <PaymentsTab customerId={current.id} />;
+      case 'tasks': return <TasksTab customerId={current.id} />;
+      case 'attachments': return <AttachmentsTab customerId={current.id} />;
+      default: return null;
     }
   };
 
@@ -327,13 +330,15 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
         <CustomerDrawerHeader
           customer={customer}
           onClose={onClose}
-          onEdit={() =>
-            antdMessage.info('全屏编辑模式开发中；当前请在 Drawer 内操作')
-          }
+          onEdit={() => antdMessage.info('全屏编辑模式开发中；当前请在 Drawer 内操作')}
           onCreateEntity={handleCreateEntity}
           onTransfer={handleTransfer}
           onRelease={handleRelease}
           onDelete={handleDelete}
+          onFollowUp={() => {
+            setActiveTab('overview');
+            setFollowUpRequest((request) => request + 1);
+          }}
         />
       )}
       {renderBody()}
@@ -344,20 +349,19 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
 export default CustomerDrawer;
 
 const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
+  followup: '请使用右侧动态中的新增跟进入口',
   contact: '新建联系人请到联系人 Tab 操作',
   opportunity: '新建商机功能开发中（Phase 3）',
   contract: '新建合同功能开发中（Phase 3）',
-  expense: '新建费用功能开发中（Phase 3）',
   quotation: '新建报价单功能开发中（Phase 3）',
   payment: '新建回款记录功能开发中（Phase 3）',
-  invoice: '新建开票记录功能开发中（Phase 3）',
 };
 
 /**
  * ContactsTab 的 standalone 包装：自己拉 listContactsByCustomer，
  * 因为 ContactsTab 设计是父级传 contacts 进来。
  *
- * 写操作（create / edit / setPrimary / delete）已经接到真实 API：
+ * 写操作（create / edit / setPrimary / delete）已接真实 API：
  *   - 新建 / 编辑：渲染 ContactCreateModal（受控开关由 CustomerDrawer 持有）
  *   - 设为主联系人：updateContact(id, { isPrimary: 1 })，后端事务内自动清零其他
  *   - 删除：deleteContact(id)

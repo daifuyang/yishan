@@ -9,7 +9,8 @@ import { menuApi } from '@/api'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { useCanWrite } from '@/hooks'
 import { navigateTo, switchTab } from '@/utils/router'
-import { TAB_PAGES, PERMS, SYSTEM_PAGES } from '@/constants/routes'
+import { CRM_ACTION_PAGE, TAB_PAGES, PERMS, SYSTEM_PAGES } from '@/constants/routes'
+import { CRM_WORKBENCH_ACTIONS } from '@/constants/crm-workbench'
 import { resolveMenuRoute } from '@/constants/menu-routes'
 import { fallbackIconChar, mapMenuIcon } from '@/utils/menu-icon'
 import type { SysMenuNode } from '@/api/types'
@@ -120,7 +121,16 @@ export default function AppsPage() {
       }
       walk(data || [])
       setFlatMenus(flat)
-      setGroups(buildGroups(data || []))
+      setGroups([
+        {
+          key: 'crm-workbench',
+          title: 'CRM',
+          bordered: false,
+          columns: 4,
+          items: CRM_WORKBENCH_ACTIONS.map((item) => ({ key: `crm:${item.key}`, icon: <Text className={styles.apps__icon}>{item.icon}</Text>, label: item.label })),
+        },
+        ...buildGroups(data || []),
+      ])
     } catch (e) {
       setError((e as Error).message || '加载失败')
     } finally {
@@ -150,6 +160,10 @@ export default function AppsPage() {
   }
 
   const handleItem = (key: string) => {
+    if (key.startsWith('crm:')) {
+      navigateTo(`/${CRM_ACTION_PAGE}?action=${key.slice(4)}`)
+      return
+    }
     const menu = flatMenus.find((m) => String(m.id) === key)
     if (!menu) {
       Taro.showToast({ title: '该功能待实现', icon: 'none' })

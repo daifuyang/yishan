@@ -45,7 +45,7 @@ import { getDictDataMap } from "@/services/generated/sysDictData";
 import type { CloudStorageConfig } from "@/utils/attachmentUpload";
 import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
 import type { AttachmentKind, CurrentUser, MenuTreeList, MenuTreeNode, UploadAttachmentsResp } from "@/types/sdk";
-import avatarFallback from "@public/icons/avatar.png";
+const avatarFallback = '/icons/avatar.png';
 import queryString from "query-string";
 import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPath";
 import { menuTreeToRoutes } from "@/utils/menuRoutes";

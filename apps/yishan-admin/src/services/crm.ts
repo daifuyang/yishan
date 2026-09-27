@@ -8,6 +8,7 @@
  */
 
 import { request } from '@umijs/max'
+import type { CustomerStatusCode } from '@/modules/crm/domain/statuses'
 
 /* ─── 通用包装 ────────────────────────────────────────── */
 
@@ -38,7 +39,6 @@ export type PoolStatus = 'owned' | 'public'
 export type CustomerListView = 'all' | 'important' | 'mine' | 'collaborating' | 'pending' | 'stale7d' | 'pool'
 export type CustomerSortOrder = 'asc' | 'desc'
 export type CustomerSortField = 'updatedAt' | 'nextFollowUpAt' | 'lastFollowUpAt' | 'createdAt' | 'name' | 'level'
-export type LeadStatus = 'pending' | 'contact_valid' | 'contact_invalid' | 'closed'
 
 export interface CustomerRow {
   ownerUserName?: string | null
@@ -49,7 +49,7 @@ export interface CustomerRow {
   code: string | null
   name: string
   type: string
-  statusId: number | null
+  statusCode: CustomerStatusCode | null
   sourceId: number | null
   level: string | null
   industry: string | null
@@ -77,12 +77,13 @@ export interface CustomerDetail extends CustomerRow {
   sourceName: string | null
   primaryContactId: number | null
   primaryContactName: string | null
+  relationshipStatus?: CustomerStatusCode | null
 }
 
 export interface CustomerCreateInput {
   name: string
   type?: CustomerType
-  statusId?: number | null
+  statusCode?: CustomerStatusCode | null
   sourceId?: number | null
   level?: string | null
   industry?: string | null
@@ -99,63 +100,9 @@ export interface CustomerCreateInput {
 
 export interface CustomerUpdateInput extends Partial<CustomerCreateInput> {}
 
-export interface LeadRow {
-  id: number; name: string | null; companyName: string | null; mobile: string | null; phone: string | null; email: string | null; wechat: string | null; qq: string | null; sourceId: number | null; sourceName: string | null; intention: string | null; status: LeadStatus; ownerUserId: number | null; ownerUserName: string | null; ownerDepartmentId: number | null; createdBy: number | null; createdByUserName: string | null; lastFollowUpAt: string | null; nextFollowUpAt: string | null; disqualifyReason: string | null; disqualifyCode: string | null; convertedCustomerId: number | null; convertedContactId: number | null; convertedAt: string | null; isConverted: boolean; createdAt: string; updatedAt: string
-}
-function withLeadConversionState(lead: Omit<LeadRow, 'isConverted'>): LeadRow {
-  return { ...lead, isConverted: lead.convertedCustomerId !== null }
-}
-/**
- * 创建请求不传 ownerUserId/ownerDepartmentId：
- * 服务端按当前认证用户自动写入 createdBy=ownerUserId=currentUser.id。
- */
-export interface LeadCreateInput { name?: string; companyName?: string; mobile?: string; phone?: string; email?: string; wechat?: string; qq?: string; sourceId?: number | null; intention?: string }
-/**
- * PATCH /leads/:id 资料字段：仅白名单生效。
- * ownerUserId/status/converted* 等业务字段必须走专门接口。
- */
-export interface LeadUpdateInput { name?: string; companyName?: string; mobile?: string; phone?: string; email?: string; wechat?: string; qq?: string; sourceId?: number | null; intention?: string }
-export async function listLeads(query: PageQuery & { status?: LeadStatus; ownerUserId?: number; pool?: boolean }): Promise<{ data: LeadRow[]; total: number }> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>[]>>('/api/crm/v1/leads', { method: 'GET', params: query as any }); return { data: unwrap(r).map(withLeadConversionState), total: r.pagination?.total ?? 0 } }
-export async function createLead(input: LeadCreateInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>('/api/crm/v1/leads', { method: 'POST', data: input }); return withLeadConversionState(unwrap(r)) }
-/** 运营录入和批量导入使用：创建后不分配负责人，直接进入线索池。 */
-export async function createPoolLead(input: LeadCreateInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>('/api/crm/v1/leads/pool', { method: 'POST', data: input }); return withLeadConversionState(unwrap(r)) }
-export async function updateLead(id: number, input: LeadUpdateInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}`, { method: 'PATCH', data: input }); return withLeadConversionState(unwrap(r)) }
-export async function deleteLead(id: number): Promise<void> { await request(`/api/crm/v1/leads/${id}`, { method: 'DELETE' }) }
-export async function assignLead(id: number, targetUserId: number | null): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/assign`, { method: 'POST', data: { targetUserId } }); return withLeadConversionState(unwrap(r)) }
-export async function claimLead(id: number): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/claim`, { method: 'POST' }); return withLeadConversionState(unwrap(r)) }
-export interface LeadQualifyInput { evidence: string; nextAction: string }
-export async function qualifyLead(id: number, input: LeadQualifyInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/qualify`, { method: 'POST', data: input }); return withLeadConversionState(unwrap(r)) }
-export type DisqualifyCode = 'duplicate' | 'not_target' | 'no_demand' | 'unreachable' | 'invalid_contact' | 'rejected' | 'other'
-export interface LeadDisqualifyInput { code: DisqualifyCode; reason: string }
-export async function disqualifyLead(id: number, input: LeadDisqualifyInput): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/disqualify`, { method: 'POST', data: input }); return withLeadConversionState(unwrap(r)) }
-export async function reactivateLead(id: number, reason: string): Promise<LeadRow> { const r = await request<ApiResp<Omit<LeadRow, 'isConverted'>>>(`/api/crm/v1/leads/${id}/reactivate`, { method: 'POST', data: { reason } }); return withLeadConversionState(unwrap(r)) }
-export interface LeadConversionPreviewCustomer { id: number; name: string; type: 'enterprise' | 'individual'; ownerUserId: number | null; ownerUserName: string | null }
-export interface LeadConversionPreviewContact { id: number; customerId: number; name: string; mobile: string | null; email: string | null }
-export interface LeadConversionPreview { lead: LeadRow; customers: LeadConversionPreviewCustomer[]; contacts: LeadConversionPreviewContact[] }
-export async function getLeadConversionPreview(id: number): Promise<LeadConversionPreview> { const r = await request<ApiResp<Omit<LeadConversionPreview, 'lead'> & { lead: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/conversion-preview`, { method: 'GET' }); const preview = unwrap(r); return { ...preview, lead: withLeadConversionState(preview.lead) } }
-export type LeadConvertInput = {
-  customer:
-    | { mode: 'existing'; customerId: number }
-    | { mode: 'create'; name: string; type: 'enterprise' | 'individual'; phone?: string | null }
-  contact:
-    | { mode: 'existing'; contactId: number }
-    | { mode: 'create'; name: string; mobile?: string | null; phone?: string | null; email?: string | null }
-}
-export interface LeadConversionResult { lead: LeadRow; customer: CustomerRow; contact: LeadConversionPreviewContact }
-export async function convertLead(id: number, input: LeadConvertInput): Promise<LeadConversionResult> { const r = await request<ApiResp<Omit<LeadConversionResult, 'lead'> & { lead: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/convert`, { method: 'POST', data: input }); const result = unwrap(r); return { ...result, lead: withLeadConversionState(result.lead) } }
-export interface LeadActivityRow { id: number; leadId: number; type: string; content: string; occurredAt: string; nextFollowUpAt: string | null; operatorUserId: number; operatorUserName: string | null; createdAt: string; updatedAt: string }
-export interface LeadActivityCreateInput { type: ActivityType; content: string; followUpStatus: LeadStatus; occurredAt?: string; nextFollowUpAt?: string | null }
-/**
- * 写跟进成功响应：activity + 最新 lead。客户端必须在写完一次跟进后用 lead 替换本地状态，
- * 这样每次跟进返回的显式 followUpStatus 都能立刻反映在 UI 上。
- */
-export interface LeadActivityCreateResponse { activity: LeadActivityRow; lead: LeadRow }
-export async function listLeadActivities(id: number): Promise<{ total: number; items: LeadActivityRow[] }> { const r = await request<ApiResp<{ total: number; items: LeadActivityRow[] }>>(`/api/crm/v1/leads/${id}/activities`, { method: 'GET' }); return unwrap(r) }
-export async function createLeadActivity(id: number, input: LeadActivityCreateInput): Promise<LeadActivityCreateResponse> { const r = await request<ApiResp<Omit<LeadActivityCreateResponse, 'lead'> & { lead: Omit<LeadRow, 'isConverted'> }>>(`/api/crm/v1/leads/${id}/activities`, { method: 'POST', data: input }); const result = unwrap(r); return { ...result, lead: withLeadConversionState(result.lead) } }
-
 export interface CustomerListQuery extends PageQuery {
   view?: CustomerListView
-  statusId?: number
+  statusCode?: CustomerStatusCode
   sourceId?: number
   level?: string
   type?: string
@@ -227,6 +174,8 @@ export interface ActivityRow {
   content: string
   occurredAt: string
   nextFollowUpAt: string | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
   operatorUserId: number
   operatorUserName: string | null
   createdAt: string
@@ -242,13 +191,15 @@ export interface ActivityResp {
   /** @deprecated 兼容旧字段；新代码用 entityType/entityId */
   customerId: number | null
   contactId: number | null
-  entityType: 'lead' | 'customer' | 'opportunity' | 'contract' | null
+  entityType: 'customer' | 'opportunity' | 'contract' | null
   entityId: number | null
   entityRefType: string | null
   type: string
   content: string
   occurredAt: string
   nextFollowUpAt: string | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
   plannedAt: string | null
   location: string | null
   participants: string | null
@@ -266,6 +217,139 @@ export interface ActivityCreateInput {
   content: string
   occurredAt?: string
   nextFollowUpAt?: string | null
+  attachmentIds?: number[] | null
+  metadata?: Record<string, unknown> | null
+}
+
+/* ─── 销售与工作台 ─────────────────────────────────────── */
+
+export interface OpportunityRow {
+  id: number
+  name: string
+  customerId: number
+  stage: 'requirement' | 'proposal' | 'negotiation' | 'won' | 'lost'
+  amountCents: number | null
+  expectedCloseDate: string | null
+  ownerName: string | null
+  ownerId: number | null
+  primaryContactId: number | null
+  products: Array<{ id: number; code: string; name: string }>
+  requirement?: string | null
+  nextAction?: string | null
+  nextFollowUpAt?: string | null
+  remark?: string | null
+  stageEnteredAt?: string
+}
+
+export interface QuotationRow {
+  id: number
+  quotationNo: string
+  customerId: number
+  status: string
+  totalCents: number
+  validUntil: string | null
+  sentAt?: string | null
+  acceptedAt?: string | null
+  closedAt?: string | null
+}
+
+export interface ContractRow {
+  id: number
+  contractNo: string
+  name: string
+  customerId: number
+  opportunityId: number | null
+  quotationId: number | null
+  amountCents: number
+  status: string
+  signedAt: string | null
+  effectiveAt: string | null
+  expiresAt: string | null
+  description: string | null
+  createdAt: string
+}
+
+export async function listAllPages<T>(load: (page: number, pageSize: number) => Promise<{ data: T[]; total: number }>): Promise<T[]> {
+  const pageSize = 100;
+  const first = await load(1, pageSize);
+  const pages = Math.ceil(first.total / pageSize);
+  if (pages <= 1) return first.data;
+  const rest = await Promise.all(Array.from({ length: pages - 1 }, (_, index) => load(index + 2, pageSize)));
+  return first.data.concat(...rest.map((result) => result.data));
+}
+export interface ContractInput {
+  name: string
+  customerId: number
+  opportunityId?: number | null
+  amountCents: number
+  signedAt?: string | null
+  effectiveAt?: string | null
+  expiresAt?: string | null
+  status?: string
+  description?: string | null
+}
+
+export interface PaymentRow {
+  id: number
+  contractId: number
+  customerId: number
+  amountCents: number
+  paidAt: string
+  methodCode: string
+  remark: string | null
+  contractNo?: string
+  contractName?: string
+  customerName?: string
+}
+export interface PaymentInput {
+  amountCents: number
+  paidAt: string
+  methodCode: string
+  remark?: string | null
+}
+
+export interface TaskRow {
+  id: number
+  customerId: number
+  title: string
+  status: string
+  assigneeUserId: number | null
+  dueAt: string | null
+  completedAt: string | null
+  description: string | null
+}
+export interface TaskInput {
+  customerId: number
+  title: string
+  status?: string
+  assigneeUserId?: number | null
+  dueAt?: string | null
+  description?: string | null
+}
+
+export interface ProductRow {
+  id: number
+  code: string
+  name: string
+  categoryCode: string | null
+  categoryName: string | null
+  unitCode: string | null
+  unitName: string | null
+  standardPriceCents: number
+  taxRateBp: number
+  enabled: number
+  description: string | null
+}
+
+export interface CrmAttachmentRow {
+  id: number
+  customerId: number
+  entityType: 'customer' | 'activity'
+  entityId: number | null
+  attachmentId: number
+  name?: string | null
+  url?: string | null
+  createdAt: string
 }
 
 /* ─── Tag / Status / Source ────────────────────────────────────────── */
@@ -391,6 +475,25 @@ export async function updateCustomer(id: number, input: CustomerUpdateInput): Pr
     method: 'PATCH',
     data: input,
   })
+  return unwrap(r)
+}
+
+export type CustomerRelationshipStatusTarget = 'potential' | 'following' | 'lost'
+
+export interface CustomerRelationshipStatusTransitionInput {
+  target: CustomerRelationshipStatusTarget
+  reasonCode?: string
+  remark?: string
+}
+
+export async function transitionCustomerRelationshipStatus(
+  id: number,
+  input: CustomerRelationshipStatusTransitionInput,
+): Promise<CustomerDetail> {
+  const r = await request<ApiResp<CustomerDetail>>(
+    `/api/crm/v1/customers/${id}/relationship-status-transitions`,
+    { method: 'POST', data: input },
+  )
   return unwrap(r)
 }
 
@@ -529,6 +632,117 @@ export async function createActivity(customerId: number, input: ActivityCreateIn
     data: input,
   })
   return unwrap(r)
+}
+
+export async function listOpportunities(query: PageQuery & { customerId?: number }): Promise<{ data: OpportunityRow[]; total: number }> {
+  const r = await request<ApiResp<OpportunityRow[]>>('/api/crm/v1/opportunities', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export interface OpportunityCreateInput {
+  name: string
+  customerId: number
+  primaryContactId?: number | null
+  ownerId: number
+  stage?: 'requirement' | 'proposal' | 'negotiation'
+  amountCents?: number | null
+  expectedCloseDate?: string | null
+  productIds?: number[]
+  requirement?: string
+  remark?: string
+  nextAction?: string
+  nextFollowUpAt?: string | null
+}
+
+export async function createOpportunity(input: OpportunityCreateInput): Promise<OpportunityRow> {
+  const r = await request<ApiResp<OpportunityRow>>('/api/crm/v1/opportunities', { method: 'POST', data: input })
+  return unwrap(r)
+}
+
+export async function listQuotations(query: PageQuery & { customerId?: number }): Promise<{ data: QuotationRow[]; total: number }> {
+  const r = await request<ApiResp<QuotationRow[]>>('/api/crm/v1/quotations', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function listContracts(query: PageQuery & { customerId?: number; status?: string }): Promise<{ data: ContractRow[]; total: number }> {
+  const r = await request<ApiResp<ContractRow[]>>('/api/crm/v1/contracts', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function createContract(input: ContractInput): Promise<ContractRow> {
+  const r = await request<ApiResp<ContractRow>>('/api/crm/v1/contracts', { method: 'POST', data: input })
+  return unwrap(r)
+}
+
+export async function updateContract(id: number, input: Partial<Omit<ContractInput, 'customerId' | 'opportunityId' | 'amountCents'>>): Promise<ContractRow> {
+  const r = await request<ApiResp<ContractRow>>(`/api/crm/v1/contracts/${id}`, { method: 'PATCH', data: input })
+  return unwrap(r)
+}
+
+export async function deleteContract(id: number): Promise<void> {
+  await request(`/api/crm/v1/contracts/${id}`, { method: 'DELETE' })
+}
+
+export async function listPaymentsByContract(contractId: number): Promise<PaymentRow[]> {
+  const r = await request<ApiResp<PaymentRow[]>>(`/api/crm/v1/payments/contracts/${contractId}`, { method: 'GET' })
+  return unwrap(r)
+}
+
+export async function listPayments(query: PageQuery & { contractId?: number; customerId?: number; methodCode?: string; paidFrom?: string; paidTo?: string }): Promise<{ data: PaymentRow[]; total: number }> {
+  const r = await request<ApiResp<PaymentRow[]>>('/api/crm/v1/payments', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function createPayment(contractId: number, input: PaymentInput): Promise<PaymentRow> {
+  const r = await request<ApiResp<PaymentRow>>(`/api/crm/v1/payments/contracts/${contractId}`, { method: 'POST', data: input })
+  return unwrap(r)
+}
+
+export async function updatePayment(id: number, input: Partial<PaymentInput>): Promise<PaymentRow> {
+  const r = await request<ApiResp<PaymentRow>>(`/api/crm/v1/payments/${id}`, { method: 'PATCH', data: input })
+  return unwrap(r)
+}
+
+export async function deletePayment(id: number): Promise<void> {
+  await request(`/api/crm/v1/payments/${id}`, { method: 'DELETE' })
+}
+
+export async function listTasks(query: PageQuery & { customerId?: number; status?: string }): Promise<{ data: TaskRow[]; total: number }> {
+  const r = await request<ApiResp<TaskRow[]>>('/api/crm/v1/tasks', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function createTask(input: TaskInput): Promise<TaskRow> {
+  const r = await request<ApiResp<TaskRow>>('/api/crm/v1/tasks', { method: 'POST', data: input })
+  return unwrap(r)
+}
+
+export async function updateTask(id: number, input: Partial<Omit<TaskInput, 'customerId'>>): Promise<TaskRow> {
+  const r = await request<ApiResp<TaskRow>>(`/api/crm/v1/tasks/${id}`, { method: 'PATCH', data: input })
+  return unwrap(r)
+}
+
+export async function deleteTask(id: number): Promise<void> {
+  await request(`/api/crm/v1/tasks/${id}`, { method: 'DELETE' })
+}
+
+export async function listProducts(query: PageQuery & { enabled?: number }): Promise<{ data: ProductRow[]; total: number }> {
+  const r = await request<ApiResp<ProductRow[]>>('/api/crm/v1/products', { method: 'GET', params: query as any })
+  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function listCrmAttachments(customerId: number): Promise<CrmAttachmentRow[]> {
+  const r = await request<ApiResp<CrmAttachmentRow[]>>('/api/crm/v1/attachments', { method: 'GET', params: { customerId } }) as ApiResp<CrmAttachmentRow[]>
+  return unwrap(r)
+}
+
+export async function createCrmAttachment(input: Pick<CrmAttachmentRow, 'customerId' | 'entityType' | 'entityId' | 'attachmentId'>): Promise<CrmAttachmentRow> {
+  const r = await request<ApiResp<CrmAttachmentRow>>('/api/crm/v1/attachments', { method: 'POST', data: input }) as ApiResp<CrmAttachmentRow>
+  return unwrap(r)
+}
+
+export async function deleteCrmAttachment(id: number): Promise<void> {
+  await request(`/api/crm/v1/attachments/${id}`, { method: 'DELETE' })
 }
 
 /* Settings — Tag */

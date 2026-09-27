@@ -10,12 +10,18 @@ import {
   type CustomerRow,
   type UpdateCustomerInput,
 } from '../repositories/customer.repository.js'
-import { StatusRepository } from '../repositories/status.repository.js'
 import { SourceRepository } from '../repositories/source.repository.js'
 import {
   CustomerMemberRepository,
   type CustomerMemberWithUser,
 } from '../repositories/member.repository.js'
+import type { RelationshipStatus } from '../domain/statuses.js'
+import { UserRepository } from '@/core/repositories/user.repository.js'
+import { ActivityRepository } from '../repositories/activity.repository.js'
+import { OpportunityRepository } from '../repositories/opportunity.repository.js'
+import { ContractRepository } from '../repositories/contract.repository.js'
+import { DirectCloseRepository } from '../repositories/direct-close.repository.js'
+import { CustomerLifecycleService } from './customer-lifecycle.service.js'
 
 /**
  * CustomerService —— 客户业务编排。
@@ -33,7 +39,6 @@ export interface CreateCustomerArgs {
   input: {
     name: string
     type?: 'enterprise' | 'individual'
-    statusId?: number | null
     sourceId?: number | null
     level?: string | null
     industry?: string | null
@@ -58,6 +63,14 @@ export interface UpdateCustomerArgs {
 
 export interface CustomerServiceDeps {
   db?: AppQueryDb
+}
+
+export interface TransitionRelationshipStatusArgs {
+  id: number
+  target: RelationshipStatus
+  reasonCode?: string
+  remark?: string
+  currentUser: DataScopeUser
 }
 
 export class CustomerService {
@@ -161,7 +174,7 @@ export class CustomerService {
    * 创建客户：
    *   1. 查重：enterprise 按 name 精确，phone 辅助；individual 按 phone 优先。
    *      重复 → BusinessError(CRM_CUSTOMER_DUPLICATE)，附 existingCustomerId/Name/OwnerUserId。
-   *   2. 校验 statusId/sourceId 存在（如设置）。
+   *   2. 校验 statusCode/sourceId 存在（如设置）。
    *   3. 校验 ownerUserId 存在（如设置）。
    *   4. 写入客户 + 标签（在事务内）。
    */
@@ -199,13 +212,7 @@ export class CustomerService {
       )
     }
 
-    // 2. 校验 statusId / sourceId 存在
-    if (input.statusId !== undefined && input.statusId !== null) {
-      const exists = await StatusRepository.findById(input.statusId, this.deps.db)
-      if (!exists) {
-        throw new BusinessError(CrmErrorCode.CRM_STATUS_NOT_FOUND, '客户状态不存在')
-      }
-    }
+    // Effective status is projected after commercial facts, never supplied by a generic create.
     if (input.sourceId !== undefined && input.sourceId !== null) {
       const exists = await SourceRepository.findById(input.sourceId, this.deps.db)
       if (!exists) {
@@ -217,10 +224,31 @@ export class CustomerService {
     //    crm_customer.owner_user_id 只是 INT，依赖 service 上层 / 数据约束做兜底。
 
     // 4. 写入
+    if (input.ownerUserId !== undefined && input.ownerUserId !== null) {
+      const owner = await UserRepository.findById(input.ownerUserId, this.deps.db)
+      if (!owner || owner.status !== 1) {
+        throw new BusinessError(
+          CrmErrorCode.CRM_CUSTOMER_TRANSFER_TARGET_INVALID,
+          '负责人用户无效或已停用',
+        )
+      }
+      const roleCodes = currentUser.roleCodes ?? []
+      const isGlobalAdmin = roleCodes.includes('super_admin') || roleCodes.includes('admin')
+      const isSelf = owner.id === currentUser.id
+      const isDepartmentOwner =
+        roleCodes.includes('sales_lead') &&
+        (currentUser.deptIds ?? []).some((deptId) => owner.deptIds.includes(deptId))
+      if (!isGlobalAdmin && !isSelf && !isDepartmentOwner) {
+        throw new BusinessError(
+          CrmErrorCode.CRM_CUSTOMER_TRANSFER_FORBIDDEN,
+          '无权将客户分配给该负责人',
+        )
+      }
+    }
+
     const createInput: CreateCustomerInput = {
       name: input.name,
       type,
-      statusId: input.statusId ?? null,
       sourceId: input.sourceId ?? null,
       level: input.level ?? null,
       industry: input.industry ?? null,
@@ -292,13 +320,6 @@ export class CustomerService {
       }
     }
 
-    // 校验 statusId / sourceId
-    if (input.statusId !== undefined && input.statusId !== null) {
-      const exists = await StatusRepository.findById(input.statusId, this.deps.db)
-      if (!exists) {
-        throw new BusinessError(CrmErrorCode.CRM_STATUS_NOT_FOUND, '客户状态不存在')
-      }
-    }
     if (input.sourceId !== undefined && input.sourceId !== null) {
       const exists = await SourceRepository.findById(input.sourceId, this.deps.db)
       if (!exists) {
@@ -316,6 +337,68 @@ export class CustomerService {
     })
 
     return updated
+  }
+
+  async transitionRelationshipStatus({
+    id,
+    target,
+    reasonCode,
+    remark,
+    currentUser,
+  }: TransitionRelationshipStatusArgs): Promise<CustomerRow> {
+    const existing = await CustomerRepository.findById(id, this.deps.db)
+    if (!existing) throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在或已删除')
+    await this.assertCanOperate(existing, currentUser, 'update')
+
+    const from = existing.relationshipStatus as RelationshipStatus
+    const trimmedRemark = remark?.trim() ?? ''
+    if (from === target) {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_STATUS_TRANSITION_INVALID, '客户关系状态未发生变化')
+    }
+    if (from === 'lost' && (target !== 'following' || !trimmedRemark)) {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_STATUS_TRANSITION_INVALID, '流失客户仅可填写备注后重新激活为跟进中')
+    }
+    if (from !== 'lost' && target === 'lost' && !reasonCode?.trim()) {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_STATUS_TRANSITION_INVALID, '标记流失必须填写原因')
+    }
+    if (from !== 'lost' && target !== 'potential' && target !== 'following' && target !== 'lost') {
+      throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_STATUS_TRANSITION_INVALID, '无效的客户关系状态转换')
+    }
+
+    return dbManager.transaction(async (tx) => {
+      const [stages, hasQualifyingContract, hasActiveDirectClose] = await Promise.all([
+        OpportunityRepository.listStagesByCustomerId(id, tx),
+        ContractRepository.hasQualifyingContractByCustomerId(id, tx),
+        DirectCloseRepository.hasActiveByCustomerId(id, tx),
+      ])
+      const hasActiveOrWonOpportunity = stages.some((stage) => stage !== 'lost')
+      if (target === 'lost' && (hasActiveOrWonOpportunity || hasQualifyingContract || hasActiveDirectClose)) {
+        throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_STATUS_TRANSITION_INVALID, '存在进行中商机或有效成交事实，不能标记流失')
+      }
+      if (hasQualifyingContract || hasActiveDirectClose) {
+        throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_STATUS_TRANSITION_INVALID, '存在有效成交事实，不能下调客户关系状态')
+      }
+
+      await CustomerRepository.updateLifecycle(id, {
+        statusCode: existing.statusCode ?? 'potential',
+        relationshipStatus: target,
+        updaterId: currentUser.id,
+      }, tx)
+      const statusCode = await CustomerLifecycleService.recalculate(id, currentUser.id, tx)
+      const updated = await CustomerRepository.findById(id, tx)
+      if (!updated) throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_NOT_FOUND, '客户不存在或已删除')
+      await ActivityRepository.create({
+        customerId: id,
+        entityType: 'customer',
+        entityId: id,
+        entityRefType: 'customer',
+        type: 'status_change',
+        content: `客户关系状态变更：${from} -> ${target}`,
+        metadata: { from, to: target, reasonCode: reasonCode ?? null, remark: remark ?? null, source: 'relationship_transition', statusCode },
+        operatorUserId: currentUser.id,
+      }, tx)
+      return updated
+    })
   }
 
   async remove(id: number, currentUser: DataScopeUser): Promise<void> {

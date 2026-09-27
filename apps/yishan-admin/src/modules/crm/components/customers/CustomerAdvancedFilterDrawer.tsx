@@ -25,9 +25,9 @@ import React, { useEffect } from 'react';
 import type {
   CustomerListQuery,
   SourceRow,
-  StatusRow,
   TagRow,
 } from '@/services/crm';
+import { CUSTOMER_STATUSES } from '@/modules/crm/domain/statuses';
 
 const { RangePicker } = DatePicker;
 
@@ -43,6 +43,7 @@ const TYPE_OPTIONS = [
 ];
 
 export interface AdvancedFilterValues {
+  statusCode?: string;
   collaboratorId?: number;
   industry?: string;
   province?: string;
@@ -63,14 +64,13 @@ export interface CustomerAdvancedFilterDrawerProps {
   onClose: () => void;
   onApply: (next: AdvancedFilterValues) => void;
   onReset: () => void;
-  statuses: StatusRow[];
   sources: SourceRow[];
   tags: TagRow[];
 }
 
 const CustomerAdvancedFilterDrawer: React.FC<
   CustomerAdvancedFilterDrawerProps
-> = ({ open, values, onClose, onApply, onReset, statuses, sources, tags }) => {
+> = ({ open, values, onClose, onApply, onReset, sources, tags }) => {
   const [form] = Form.useForm<AdvancedFilterValues>();
 
   useEffect(() => {
@@ -82,11 +82,8 @@ const CustomerAdvancedFilterDrawer: React.FC<
   }, [open, values, form]);
 
   const statusOptions = React.useMemo(
-    () =>
-      statuses
-        .filter((s) => s.enabled === 1)
-        .map((s) => ({ value: s.id, label: s.name })),
-    [statuses],
+    () => CUSTOMER_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+    [],
   );
   const sourceOptions = React.useMemo(
     () =>
@@ -146,7 +143,7 @@ const CustomerAdvancedFilterDrawer: React.FC<
         <Form.Item label="协同人" name="collaboratorId">
           <InputNumberLike placeholder="协同人用户 ID" />
         </Form.Item>
-        <Form.Item label="客户状态" name="statusId">
+        <Form.Item label="客户状态" name="statusCode">
           <Select allowClear options={statusOptions} placeholder="全部状态" />
         </Form.Item>
         <Form.Item label="客户等级" name="level">
