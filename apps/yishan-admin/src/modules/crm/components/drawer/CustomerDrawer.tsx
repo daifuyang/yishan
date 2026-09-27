@@ -14,14 +14,14 @@
  *   - 其他错误 → antd message.error
  */
 
-import { Button, Skeleton, Tabs, message as antdMessage } from 'antd';
+import { message as antdMessage, Button, Skeleton, Tabs } from 'antd';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   type ContactRow,
   type CustomerDetail,
-  type EnumCodeNameItem,
   deleteContact,
   deleteCustomer,
+  type EnumCodeNameItem,
   getCustomer,
   listContactsByCustomer,
   listEnumByType,
@@ -32,16 +32,15 @@ import { useResizableDrawer } from './_shared/useResizableDrawer';
 import CustomerDrawerHeader, {
   type CreateEntityKey,
 } from './CustomerDrawerHeader';
+import AttachmentsTab from './tabs/AttachmentsTab';
 import ContactCreateModal from './tabs/ContactCreateModal';
 import ContactsTab from './tabs/ContactsTab';
-import OpportunitiesTab from './tabs/OpportunitiesTab';
-import OverviewTab from './tabs/OverviewTab';
-import QuotationsTab from './tabs/QuotationsTab';
 import ContractsTab from './tabs/ContractsTab';
+import { OpportunitiesTabStandalone } from './tabs/OpportunitiesTab';
+import OverviewTab from './tabs/OverviewTab';
 import PaymentsTab from './tabs/PaymentsTab';
+import QuotationsTab from './tabs/QuotationsTab';
 import TasksTab from './tabs/TasksTab';
-import AttachmentsTab from './tabs/AttachmentsTab';
-import OpportunitySave from '../opportunity/OpportunitySave';
 
 export type CustomerDrawerTabKey =
   | 'overview'
@@ -88,11 +87,9 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   onCreateEntity,
   onTransfer,
   onRelease,
-  currentUser,
 }) => {
   const [size, setSize] = useResizableDrawer();
-  const [activeTab, setActiveTab] =
-    useState<CustomerDrawerTabKey>(initialTab);
+  const [activeTab, setActiveTab] = useState<CustomerDrawerTabKey>(initialTab);
   const [followUpRequest, setFollowUpRequest] = useState(0);
   const [customerRefreshKey, setCustomerRefreshKey] = useState(0);
 
@@ -115,6 +112,15 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   const handleContactModalOpenChange = useCallback((next: boolean) => {
     setCreateContactOpen(next);
     if (!next) setEditingContact(null);
+  }, []);
+
+  // 商机新建 Modal 开关（Drawer + ModalForm 模式，与联系 Modal 对齐）。
+  const [createOpportunityOpen, setCreateOpportunityOpen] = useState(false);
+  const requestOpenCreateOpportunity = useCallback(() => {
+    setCreateOpportunityOpen(true);
+  }, []);
+  const handleOpportunityModalOpenChange = useCallback((next: boolean) => {
+    setCreateOpportunityOpen(next);
   }, []);
 
   // customerId / open 变化时拉详情
@@ -160,7 +166,6 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     };
   }, [open, customerId, initialTab]);
 
-
   const handleFollowUpSaved = () => {
     // 跟进写完后，可能改了 statusId；主动重拉详情同步头部 MetaRow 与 status tag
     if (!customerId) return;
@@ -178,23 +183,25 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       return;
     }
     if (entity === 'opportunity') {
+      // 切到商机 Tab 并打开商机新建 Modal（Drawer + ModalForm）
       setActiveTab('opportunities');
+      requestOpenCreateOpportunity();
       return;
     }
     if (onCreateEntity) {
       onCreateEntity(entity);
     } else {
-      const label =
-        CREATE_ENTITY_TOAST[entity] ?? `${entity}功能开发中`;
+      const label = CREATE_ENTITY_TOAST[entity] ?? `${entity}功能开发中`;
       antdMessage.info(label);
     }
   };
 
   const handleOpportunityCreated = async () => {
+    // 商机创建成功：刷新客户详情（status / lifecycle 可能变化）+ 商机列表 refreshKey++。
     if (!customerId) return;
     const refreshed = await getCustomer(customerId);
     setCustomer(refreshed);
-      setCustomerRefreshKey((value) => value + 1);
+    setCustomerRefreshKey((value) => value + 1);
     onChanged?.();
   };
 
@@ -239,9 +246,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
             color: '#8c8c8c',
           }}
         >
-          <div style={{ fontSize: 14, marginBottom: 12 }}>
-            {customerError}
-          </div>
+          <div style={{ fontSize: 14, marginBottom: 12 }}>{customerError}</div>
           <Button onClick={onClose}>关闭</Button>
         </div>
       );
@@ -299,13 +304,28 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           />
         );
       case 'opportunities':
-        return <OpportunitiesTab customer={current} refreshKey={customerRefreshKey} createAction={<OpportunitySave customerId={current.id} customerName={current.name} ownerId={currentUser?.id} onFinish={handleOpportunityCreated}><Button type="primary">新建商机</Button></OpportunitySave>} />;
-      case 'quotations': return <QuotationsTab customerId={current.id} />;
-      case 'contracts': return <ContractsTab customerId={current.id} />;
-      case 'payments': return <PaymentsTab customerId={current.id} />;
-      case 'tasks': return <TasksTab customerId={current.id} />;
-      case 'attachments': return <AttachmentsTab customerId={current.id} />;
-      default: return null;
+        return (
+          <OpportunitiesTabStandalone
+            customer={current}
+            refreshKey={customerRefreshKey}
+            createOpen={createOpportunityOpen}
+            onCreateRequest={requestOpenCreateOpportunity}
+            onModalOpenChange={handleOpportunityModalOpenChange}
+            onOpportunityCreated={handleOpportunityCreated}
+          />
+        );
+      case 'quotations':
+        return <QuotationsTab customerId={current.id} />;
+      case 'contracts':
+        return <ContractsTab customerId={current.id} />;
+      case 'payments':
+        return <PaymentsTab customerId={current.id} />;
+      case 'tasks':
+        return <TasksTab customerId={current.id} />;
+      case 'attachments':
+        return <AttachmentsTab customerId={current.id} />;
+      default:
+        return null;
     }
   };
 
@@ -330,7 +350,9 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
         <CustomerDrawerHeader
           customer={customer}
           onClose={onClose}
-          onEdit={() => antdMessage.info('全屏编辑模式开发中；当前请在 Drawer 内操作')}
+          onEdit={() =>
+            antdMessage.info('全屏编辑模式开发中；当前请在 Drawer 内操作')
+          }
           onCreateEntity={handleCreateEntity}
           onTransfer={handleTransfer}
           onRelease={handleRelease}
