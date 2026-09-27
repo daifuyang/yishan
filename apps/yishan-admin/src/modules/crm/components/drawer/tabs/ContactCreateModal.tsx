@@ -97,13 +97,17 @@ const ContactCreateModal: React.FC<ContactCreateModalProps> = ({
     };
   }, [open]);
 
-  // 初次打开时铺一次 initialValues；后续切换编辑对象时也跟着刷新。
+  // 关闭时 resetFields，避免下次打开残留旧值。
   useEffect(() => {
-    if (!open) return;
-    const form = formRef.current;
-    if (!form) return;
+    if (open) return;
+    formRef.current?.resetFields();
+  }, [open]);
+
+  // initialValues 用 ModalForm 自带机制：key 强制 remount，
+  // 编辑 / 新建切换 editingContact 时表单字段能正确初始化。
+  const initialValues = useMemo(() => {
     if (editingContact) {
-      form.setFieldsValue({
+      return {
         name: editingContact.name,
         mobile: editingContact.mobile ?? undefined,
         position: editingContact.position ?? undefined,
@@ -111,10 +115,9 @@ const ContactCreateModal: React.FC<ContactCreateModalProps> = ({
         email: editingContact.email ?? undefined,
         isPrimary: Boolean(editingContact.isPrimary),
         remark: editingContact.remark ?? undefined,
-      });
-      return;
+      };
     }
-    form.setFieldsValue({
+    return {
       name: undefined,
       mobile: undefined,
       position: undefined,
@@ -122,19 +125,19 @@ const ContactCreateModal: React.FC<ContactCreateModalProps> = ({
       email: undefined,
       isPrimary: existingContacts.length === 0,
       remark: undefined,
-    });
-  }, [open, editingContact, existingContacts.length]);
+    };
+  }, [editingContact, existingContacts.length]);
 
-  // 关闭时 resetFields，避免下次打开残留旧值。
-  useEffect(() => {
-    if (open) return;
-    formRef.current?.resetFields();
-  }, [open]);
+  const modalKey = useMemo(
+    () => (editingContact ? `edit-${editingContact.id}` : 'create'),
+    [editingContact],
+  );
 
   const submitText = useMemo(() => (isEdit ? '保存' : '创建'), [isEdit]);
 
   return (
     <ModalForm
+      key={modalKey}
       open={open}
       onOpenChange={onOpenChange}
       title={isEdit ? '编辑联系人' : '新建联系人'}
@@ -142,6 +145,7 @@ const ContactCreateModal: React.FC<ContactCreateModalProps> = ({
       layout="vertical"
       autoFocusFirstInput
       formRef={formRef}
+      initialValues={initialValues}
       modalProps={{
         destroyOnHidden: true,
         maskClosable: false,
