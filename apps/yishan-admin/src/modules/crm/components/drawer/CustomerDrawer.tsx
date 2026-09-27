@@ -14,15 +14,19 @@
  *   - 其他错误 → antd message.error
  */
 
-import { Button, Skeleton, Tabs, message as antdMessage } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { message as antdMessage, Button, Skeleton, Tabs } from 'antd';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   type ContactRow,
   type CustomerDetail,
-  type StatusRow,
+  deleteContact,
   deleteCustomer,
+  type EnumCodeNameItem,
   getCustomer,
   listContactsByCustomer,
+  listEnumByType,
+  type StatusRow,
+  updateContact,
 } from '@/services/crm';
 import DrawerChrome from './_shared/DrawerChrome';
 import { useResizableDrawer } from './_shared/useResizableDrawer';
@@ -30,6 +34,7 @@ import CustomerDrawerHeader, {
   type CreateEntityKey,
 } from './CustomerDrawerHeader';
 import BasicInfoTab from './tabs/BasicInfoTab';
+import ContactCreateModal from './tabs/ContactCreateModal';
 import ContactsTab from './tabs/ContactsTab';
 import OpportunitiesTab from './tabs/OpportunitiesTab';
 import PlaceholderTab from './tabs/PlaceholderTab';
@@ -103,12 +108,28 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   onRelease,
 }) => {
   const [size, setSize] = useResizableDrawer();
-  const [activeTab, setActiveTab] =
-    useState<CustomerDrawerTabKey>(initialTab);
+  const [activeTab, setActiveTab] = useState<CustomerDrawerTabKey>(initialTab);
 
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);
+
+  // 联系人新建 / 编辑 Modal 的开关与编辑对象。
+  const [createContactOpen, setCreateContactOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<ContactRow | null>(null);
+
+  const requestOpenCreateContact = useCallback(() => {
+    setEditingContact(null);
+    setCreateContactOpen(true);
+  }, []);
+  const requestOpenEditContact = useCallback((c: ContactRow) => {
+    setEditingContact(c);
+    setCreateContactOpen(true);
+  }, []);
+  const handleContactModalOpenChange = useCallback((next: boolean) => {
+    setCreateContactOpen(next);
+    if (!next) setEditingContact(null);
+  }, []);
 
   // customerId / open 变化时拉详情
   useEffect(() => {
@@ -162,11 +183,16 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   };
 
   const handleCreateEntity = (entity: CreateEntityKey) => {
+    if (entity === 'contact') {
+      // 「联系人」走 ContactsTabStandalone 内部 ModalForm；不走父级回调，
+      // 避免维护两套创建入口。
+      requestOpenCreateContact();
+      return;
+    }
     if (onCreateEntity) {
       onCreateEntity(entity);
     } else {
-      const label =
-        CREATE_ENTITY_TOAST[entity] ?? `${entity}功能开发中`;
+      const label = CREATE_ENTITY_TOAST[entity] ?? `${entity}功能开发中`;
       antdMessage.info(label);
     }
   };
@@ -212,9 +238,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
             color: '#8c8c8c',
           }}
         >
-          <div style={{ fontSize: 14, marginBottom: 12 }}>
-            {customerError}
-          </div>
+          <div style={{ fontSize: 14, marginBottom: 12 }}>{customerError}</div>
           <Button onClick={onClose}>关闭</Button>
         </div>
       );
@@ -259,7 +283,17 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           />
         );
       case 'contacts':
-        return <ContactsTabStandalone customerId={current.id} />;
+        return (
+          <ContactsTabStandalone
+            customerId={current.id}
+            ownerUserId={current.ownerUserId}
+            createContactOpen={createContactOpen}
+            editingContact={editingContact}
+            onCreateContactRequest={requestOpenCreateContact}
+            onEditContactRequest={requestOpenEditContact}
+            onModalOpenChange={handleContactModalOpenChange}
+          />
+        );
       case 'opportunities':
         return <OpportunitiesTab />;
       default: {
@@ -293,7 +327,9 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
         <CustomerDrawerHeader
           customer={customer}
           onClose={onClose}
-          onEdit={() => antdMessage.info('全屏编辑模式开发中；当前请在 Drawer 内操作')}
+          onEdit={() =>
+            antdMessage.info('全屏编辑模式开发中；当前请在 Drawer 内操作')
+          }
           onCreateEntity={handleCreateEntity}
           onTransfer={handleTransfer}
           onRelease={handleRelease}
@@ -308,7 +344,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
 export default CustomerDrawer;
 
 const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
-  contact: '新建联系人请到基本信息 tab 的联系人入口（Phase 3 接入表单）',
+  contact: '新建联系人请到联系人 Tab 操作',
   opportunity: '新建商机功能开发中（Phase 3）',
   contract: '新建合同功能开发中（Phase 3）',
   expense: '新建费用功能开发中（Phase 3）',
@@ -321,45 +357,112 @@ const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
  * ContactsTab 的 standalone 包装：自己拉 listContactsByCustomer，
  * 因为 ContactsTab 设计是父级传 contacts 进来。
  *
- * 写操作（create/edit/delete）目前都走 toast 占位。
+ * 写操作（create / edit / setPrimary / delete）已经接到真实 API：
+ *   - 新建 / 编辑：渲染 ContactCreateModal（受控开关由 CustomerDrawer 持有）
+ *   - 设为主联系人：updateContact(id, { isPrimary: 1 })，后端事务内自动清零其他
+ *   - 删除：deleteContact(id)
+ *
+ * 刷新策略：只刷新当前联系人列表（listContactsByCustomer），
+ * 不动客户详情 / 跟进 / 流转等其它数据。
  */
-const ContactsTabStandalone: React.FC<{ customerId: number }> = ({
+interface ContactsTabStandaloneProps {
+  customerId: number;
+  ownerUserId: number | null;
+  createContactOpen: boolean;
+  editingContact: ContactRow | null;
+  onCreateContactRequest: () => void;
+  onEditContactRequest: (contact: ContactRow) => void;
+  onModalOpenChange: (open: boolean) => void;
+}
+
+const ContactsTabStandalone: React.FC<ContactsTabStandaloneProps> = ({
   customerId,
+  ownerUserId,
+  createContactOpen,
+  editingContact,
+  onCreateContactRequest,
+  onEditContactRequest,
+  onModalOpenChange,
 }) => {
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [roleEnum, setRoleEnum] = useState<EnumCodeNameItem[]>([]);
+
+  const reloadContacts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const rows = await listContactsByCustomer(customerId);
+      setContacts(rows);
+    } catch {
+      setContacts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [customerId]);
 
   useEffect(() => {
+    reloadContacts().catch(() => undefined);
+  }, [reloadContacts]);
+
+  // 决策角色枚举：用于卡片展示 + 弹窗下拉选项。
+  useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    listContactsByCustomer(customerId)
-      .then((rows) => {
-        if (!cancelled) setContacts(rows);
+    listEnumByType('crm_contact_role')
+      .then((items) => {
+        if (!cancelled) setRoleEnum(items);
       })
       .catch(() => {
-        if (!cancelled) setContacts([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setRoleEnum([]);
       });
     return () => {
       cancelled = true;
     };
-  }, [customerId]);
+  }, []);
+
+  const handleSetPrimary = async (c: ContactRow) => {
+    try {
+      await updateContact(c.id, { isPrimary: 1 });
+      antdMessage.success(`已将「${c.name}」设为主联系人`);
+      await reloadContacts();
+    } catch (err) {
+      antdMessage.error(
+        err instanceof Error ? err.message : '设置主联系人失败',
+      );
+    }
+  };
+
+  const handleDelete = async (c: ContactRow) => {
+    try {
+      await deleteContact(c.id);
+      antdMessage.success(`「${c.name}」已删除`);
+      await reloadContacts();
+    } catch (err) {
+      antdMessage.error(err instanceof Error ? err.message : '删除失败');
+    }
+  };
 
   return (
-    <ContactsTab
-      contacts={contacts}
-      loading={loading}
-      onCreate={() =>
-        antdMessage.info('新建联系人（Phase 3 接入表单）')
-      }
-      onEdit={(c) =>
-        antdMessage.info(`编辑联系人「${c.name}」（Phase 3 接入表单）`)
-      }
-      onDelete={(c) =>
-        antdMessage.info(`删除联系人「${c.name}」（Phase 3 接入接口）`)
-      }
-    />
+    <>
+      <ContactsTab
+        contacts={contacts}
+        loading={loading}
+        roleEnum={roleEnum}
+        onCreate={onCreateContactRequest}
+        onEdit={onEditContactRequest}
+        onSetPrimary={handleSetPrimary}
+        onDelete={handleDelete}
+      />
+      <ContactCreateModal
+        open={createContactOpen}
+        onOpenChange={onModalOpenChange}
+        customerId={customerId}
+        ownerUserId={ownerUserId}
+        existingContacts={contacts}
+        editingContact={editingContact}
+        onSuccess={() => {
+          reloadContacts().catch(() => undefined);
+        }}
+      />
+    </>
   );
 };

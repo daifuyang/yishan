@@ -189,6 +189,7 @@ export interface ContactRow {
   department: string | null
   position: string | null
   isPrimary: number
+  roleCode: string | null
   birthday: string | null
   remark: string | null
   creatorId: number | null
@@ -207,6 +208,7 @@ export interface ContactCreateInput {
   department?: string | null
   position?: string | null
   isPrimary?: number
+  roleCode?: string | null
   birthday?: string | null
   remark?: string | null
 }

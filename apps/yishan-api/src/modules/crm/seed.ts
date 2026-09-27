@@ -242,10 +242,11 @@ const CRM_ENUM_SEED: ReadonlyArray<{
   { type: 'crm_payment_method', code: 'other', name: '其他', sort: 99 },
 
   // crm_contact_role
-  { type: 'crm_contact_role', code: 'decision_maker', name: '最终决策人', sort: 10 },
-  { type: 'crm_contact_role', code: 'influencer', name: '影响者', sort: 20 },
-  { type: 'crm_contact_role', code: 'user', name: '使用者', sort: 30 },
-  { type: 'crm_contact_role', code: 'contact', name: '普通联系人', sort: 40 },
+  { type: 'crm_contact_role', code: 'decision_maker', name: '决策人', sort: 10 },
+  { type: 'crm_contact_role', code: 'influencer', name: '影响人', sort: 20 },
+  { type: 'crm_contact_role', code: 'user', name: '使用人', sort: 30 },
+  { type: 'crm_contact_role', code: 'contact', name: '经办人', sort: 40 },
+  { type: 'crm_contact_role', code: 'other', name: '其他', sort: 50 },
 
   // crm_contact_status
   { type: 'crm_contact_status', code: 'active', name: '在职', sort: 10 },

@@ -16,6 +16,7 @@ export const ContactRespSchema = Type.Object({
   department: Type.Union([Type.String(), Type.Null()]),
   position: Type.Union([Type.String(), Type.Null()]),
   isPrimary: Type.Number(),
+  roleCode: Type.Union([Type.String(), Type.Null()]),
   birthday: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
   remark: Type.Union([Type.String(), Type.Null()]),
   creatorId: Type.Union([Type.Number(), Type.Null()]),
@@ -51,6 +52,7 @@ export const ContactCreateReqSchema = Type.Object({
   department: Type.Optional(Type.String({ maxLength: 100 })),
   position: Type.Optional(Type.String({ maxLength: 100 })),
   isPrimary: Type.Optional(Type.Integer({ minimum: 0, maximum: 1 })),
+  roleCode: Type.Optional(Type.String({ maxLength: 64 })),
   birthday: Type.Optional(Type.String({ format: 'date-time' })),
   remark: Type.Optional(Type.String({ maxLength: 1000 })),
 })
@@ -66,6 +68,7 @@ export const ContactUpdateReqSchema = Type.Partial(
     department: Type.Union([Type.String({ maxLength: 100 }), Type.Null()]),
     position: Type.Union([Type.String({ maxLength: 100 }), Type.Null()]),
     isPrimary: Type.Integer({ minimum: 0, maximum: 1 }),
+    roleCode: Type.Union([Type.String({ maxLength: 64 }), Type.Null()]),
     birthday: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
     remark: Type.Union([Type.String({ maxLength: 1000 }), Type.Null()]),
   }),
