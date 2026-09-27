@@ -15,7 +15,6 @@ import {
   PhoneOutlined,
   PlusOutlined,
   StarOutlined,
-  UserAddOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import {
@@ -102,29 +101,7 @@ const ContactsTab: React.FC<ContactsTabProps> = ({
       </div>
 
       {contacts.length === 0 ? (
-        <Card>
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              <Space direction="vertical" size={2} style={{ marginTop: 4 }}>
-                <Text>暂无联系人</Text>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  还没有添加该客户的联系人
-                </Text>
-              </Space>
-            }
-          >
-            {canCreate && (
-              <Button
-                type="primary"
-                icon={<UserAddOutlined />}
-                onClick={onCreate}
-              >
-                新建联系人
-              </Button>
-            )}
-          </Empty>
-        </Card>
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无联系人" />
       ) : (
         <div
           style={{

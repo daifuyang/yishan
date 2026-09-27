@@ -167,29 +167,7 @@ export default function OpportunitiesTab({
       {loading ? (
         <Skeleton active paragraph={{ rows: 4 }} />
       ) : rows.length === 0 ? (
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description={
-            <>
-              <div>暂无商机</div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: '#8c8c8c',
-                  marginTop: 4,
-                }}
-              >
-                客户明确采购需求后，可以创建商机持续推进。
-              </div>
-            </>
-          }
-          style={{ height: 250, paddingTop: 62, margin: 0 }}
-        >
-          {canCreate && onCreateRequest && (
-            // Empty CTA 用 default 按钮，避免与右上 primary 重复
-            <Button onClick={onCreateRequest}>新建商机</Button>
-          )}
-        </Empty>
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无商机" />
       ) : (
         <>
           <div
