@@ -187,7 +187,7 @@ describe('CRM contract and payment lifecycle', () => {
     vi.spyOn(CustomerRepository, 'update').mockResolvedValue({ id: 11, statusCode: 'customer' } as any)
 
     await expect(new ContractService().create({
-      name: 'Renewal', customerId: 11, opportunityId: null, quotationId: null, amountCents: 1_000,
+      name: 'Renewal', customerId: 11, opportunityId: null, quotationId: null, contactId: null, amountCents: 1_000,
       signedAt: null, effectiveAt: null, expiresAt: null, status: 'draft', ownerUserId: 7,
       ownerDepartmentId: 10, attachmentIds: null, description: null,
     }, salesperson)).resolves.toMatchObject({ id: 32 })

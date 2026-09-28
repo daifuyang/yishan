@@ -41,7 +41,8 @@ export class ContractService {
       if (existing) return existing
       const created = await this.createWithUniqueNo({
         name: quotation.quotationNo, customerId: quotation.customerId,
-        opportunityId: quotation.opportunityId, quotationId: quotation.id, amountCents: quotation.totalCents,
+        opportunityId: quotation.opportunityId, quotationId: quotation.id, contactId: quotation.contactId ?? null,
+        amountCents: quotation.totalCents,
         signedAt: null, effectiveAt: null, expiresAt: null, status: 'draft', ownerUserId: quotation.ownerUserId,
         ownerDepartmentId: currentUser.deptIds?.[0] ?? null, attachmentIds: null, description: quotation.remark,
         creatorId: currentUser.id, updaterId: currentUser.id,

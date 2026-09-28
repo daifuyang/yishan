@@ -159,7 +159,7 @@ describe('lost customer commercial guards', () => {
     const create = vi.spyOn(ContractRepository, 'create')
 
     await expect(new ContractService().create({
-      name: '续约合同', customerId: 11, opportunityId: null, quotationId: null,
+      name: '续约合同', customerId: 11, opportunityId: null, quotationId: null, contactId: null,
       amountCents: 10_000, signedAt: null, effectiveAt: null, expiresAt: null,
       status: 'draft', ownerUserId: 7, ownerDepartmentId: 10, attachmentIds: null, description: null,
     }, salesperson)).rejects.toMatchObject({ code: CrmErrorCode.CRM_CUSTOMER_LOST })

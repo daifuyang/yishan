@@ -317,7 +317,12 @@ export interface ContractRow {
   name: string
   customerId: number
   opportunityId: number | null
+  opportunityName?: string | null
   quotationId: number | null
+  quotationNo?: string | null
+  contactId: number | null
+  contactName?: string | null
+  ownerUserName?: string | null
   amountCents: number
   status: string
   signedAt: string | null
@@ -339,6 +344,8 @@ export interface ContractInput {
   name: string
   customerId: number
   opportunityId?: number | null
+  quotationId?: number | null
+  contactId?: number | null
   amountCents: number
   signedAt?: string | null
   effectiveAt?: string | null

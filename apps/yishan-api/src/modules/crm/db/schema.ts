@@ -680,6 +680,11 @@ export const crmContract = mysqlTable(
     status: varchar({ length: 32 }).notNull().default('draft'),
     ownerUserId: int('owner_user_id'),
     ownerDepartmentId: int('owner_department_id'),
+    /**
+     * 联系人 id（crm_contact.id）。可空：合同可不绑定具体联系人；服务层不引入
+     * 强校验，UI 层负责从同客户联系人范围内挑选。
+     */
+    contactId: int('contact_id'),
     /** 附件 ID 列表（json 数组存储）；附件走 sys_attachment。 */
     attachmentIds: json('attachment_ids'),
     description: varchar({ length: 2000 }),
@@ -694,6 +699,7 @@ export const crmContract = mysqlTable(
     idxCustomer: index('idx_crm_contract_customer_id').on(t.customerId),
     idxOpportunity: index('idx_crm_contract_opportunity_id').on(t.opportunityId),
     uniqQuotation: uniqueIndex('uniq_crm_contract_quotation_id').on(t.quotationId),
+    idxContact: index('idx_crm_contract_contact_id').on(t.contactId),
     idxOwner: index('idx_crm_contract_owner_user_id').on(t.ownerUserId),
     idxStatus: index('idx_crm_contract_status').on(t.status),
     idxCustomerStatus: index('idx_crm_contract_customer_status').on(t.customerId, t.status),

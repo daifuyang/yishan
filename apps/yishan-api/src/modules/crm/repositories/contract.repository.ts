@@ -7,6 +7,7 @@ import type { ScopeContext } from '../schemas/data-scope.js'
 
 export interface ContractRow {
   id: number; contractNo: string; name: string; customerId: number; opportunityId: number | null; quotationId: number | null
+  contactId: number | null
   amountCents: number; signedAt: Date | null; effectiveAt: Date | null; expiresAt: Date | null; status: string
   ownerUserId: number | null; ownerDepartmentId: number | null; attachmentIds: unknown; description: string | null
   creatorId: number | null; updaterId: number | null; createdAt: Date; updatedAt: Date; deletedAt: Date | null

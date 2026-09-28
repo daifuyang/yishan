@@ -35,7 +35,7 @@ import CustomerDrawerHeader, {
 import AttachmentsTab from './tabs/AttachmentsTab';
 import ContactCreateModal from './tabs/ContactCreateModal';
 import ContactsTab from './tabs/ContactsTab';
-import ContractsTab from './tabs/ContractsTab';
+import { ContractsTabStandalone } from './tabs/ContractsTab';
 import { OpportunitiesTabStandalone } from './tabs/OpportunitiesTab';
 import OverviewTab from './tabs/OverviewTab';
 import PaymentsTab from './tabs/PaymentsTab';
@@ -132,6 +132,15 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     setCreateQuotationOpen(next);
   }, []);
 
+  // 合同新建 Modal 开关（Drawer + ModalForm 模式，与联系 / 商机 / 报价单 Modal 对齐）。
+  const [createContractOpen, setCreateContractOpen] = useState(false);
+  const requestOpenCreateContract = useCallback(() => {
+    setCreateContractOpen(true);
+  }, []);
+  const handleContractModalOpenChange = useCallback((next: boolean) => {
+    setCreateContractOpen(next);
+  }, []);
+
   // customerId / open 变化时拉详情
   useEffect(() => {
     if (!open || !customerId) {
@@ -201,6 +210,12 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       // 切到报价单 Tab 并打开报价单新建 Modal（Drawer + ModalForm）
       setActiveTab('quotations');
       requestOpenCreateQuotation();
+      return;
+    }
+    if (entity === 'contract') {
+      // 切到合同 Tab 并打开合同新建 Modal（Drawer + ModalForm）
+      setActiveTab('contracts');
+      requestOpenCreateContract();
       return;
     }
     if (onCreateEntity) {
@@ -341,7 +356,16 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           />
         );
       case 'contracts':
-        return <ContractsTab customerId={current.id} />;
+        return (
+          <ContractsTabStandalone
+            customer={current}
+            refreshKey={customerRefreshKey}
+            createOpen={createContractOpen}
+            onCreateRequest={requestOpenCreateContract}
+            onModalOpenChange={handleContractModalOpenChange}
+            onContractCreated={handleOpportunityCreated}
+          />
+        );
       case 'payments':
         return <PaymentsTab customerId={current.id} />;
       case 'tasks':
@@ -398,7 +422,7 @@ const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
   followup: '请使用右侧动态中的新增跟进入口',
   contact: '新建联系人请到联系人 Tab 操作',
   opportunity: '新建商机功能开发中（Phase 3）',
-  contract: '新建合同功能开发中（Phase 3）',
+  contract: '新建合同请到合同 Tab 操作',
   quotation: '新建报价单请到报价单 Tab 操作',
   payment: '新建回款记录功能开发中（Phase 3）',
 };
