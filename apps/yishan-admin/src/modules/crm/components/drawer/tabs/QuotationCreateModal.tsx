@@ -1,26 +1,24 @@
 /**
  * 报价单创建 Modal（浮在客户详情 Drawer 之上）。
  *
- * 设计原则：
+ * 设计原则（按紧凑化重构）：
  *   - 不暴露「所属客户」「负责人」（由上下文确定）
- *   - 字段按 spec：报价单名称 / 关联商机 / 联系人 / 有效期 / 报价明细 / 整单优惠 / 备注
  *   - 沿用 ContactCreateModal 的 controlled-open + formRef + useState submitting + try/finally 模式
- *   - 金额走 transform：明细行 unitPrice yuan → cents × 100；整单优惠同样 × 100
- *   - 失败保留用户已输入的数据（Modal 不关）
- *   - 仅 create 模式（编辑流后续独立做）
+ *   - 顶部三列栅格（商机 / 联系人 / 有效期）减少纵向空间
+ *   - 报价明细用 Form.List（items 在 form values 内），避免本地 React state 双源
+ *   - 默认 1 条空明细；「+ 添加报价项」由 Form.List.add 接管
+ *   - 单一「+ 添加报价项」入口；行内 productId Select 自然支持「+ 添加自定义项目」分支
+ *   - 删除按钮降噪：DeleteOutlined + text 样式，hover 才红
+ *   - Modal 尺寸 width=1000 + maxWidth 响应式 + Body 独立滚动
  *
- * 明细行：使用本地 React state（不用 Form.List）：
- *   - 每行 { key, productId?, name, spec?, unit?, quantity, unitPriceYuan }
- *   - subtotalYuan = quantity × unitPriceYuan，只读展示
- *   - 添加商品（选 productId 自动回填）/ 添加自定义项（productId=null 手填）
- *   - 头部 `name` 智能默认：商机名 + '报价单' / 客户名 + '报价单'
+ * 仅 create 模式（编辑流后续单独做）。失败保留用户已输入数据，Modal 不关。
  */
 
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import {
   ModalForm,
   ProFormDatePicker,
-  ProFormDigit,
   ProFormSelect,
   ProFormText,
   ProFormTextArea,
@@ -29,13 +27,13 @@ import {
   App,
   Button,
   Col,
-  Divider,
-  Empty,
+  Form,
   Input,
   InputNumber,
   Row,
   Select,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import type { Dayjs } from 'dayjs';
@@ -63,6 +61,14 @@ export interface QuotationCreateModalProps {
   onSuccess?: (quotation: QuotationResp) => void;
 }
 
+interface ItemValues {
+  productId?: number | null;
+  name?: string;
+  spec?: string;
+  quantity?: number;
+  unitPriceYuan?: number;
+}
+
 interface FormValues {
   name?: string;
   opportunityId?: number;
@@ -70,21 +76,7 @@ interface FormValues {
   validUntil?: Dayjs;
   discountAmountYuan?: number;
   remark?: string;
-}
-
-interface ItemRow {
-  /** React key，必须稳定。 */
-  key: string;
-  /** null 表示自定义项。 */
-  productId: number | null;
-  name: string;
-  /** 规格 / 描述（unitSnapshot）。 */
-  spec: string;
-  /** 单位（unitSnapshot 的可读化展示）。 */
-  unit: string;
-  quantity: number;
-  /** unitPriceCents / 100，UI 用 yuan 数字。 */
-  unitPriceYuan: number;
+  items?: ItemValues[];
 }
 
 const money = (cents: number | null | undefined) =>
@@ -97,8 +89,222 @@ const money = (cents: number | null | undefined) =>
         maximumFractionDigits: 2,
       }).format(cents / 100);
 
-const newRowKey = () =>
-  `row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+/**
+ * 报价明细单行 —— 由 Form.List 渲染。
+ *   - productId：标准商品 Select（支持「+ 添加自定义项目」分支）
+ *   - name / spec / quantity / unitPriceYuan：可编辑
+ *   - subtotal：实时计算（quantity × unitPriceYuan），只读
+ *   - 删除：DeleteOutlined + Tooltip
+ */
+interface ItemRowProps {
+  /** Form.List 提供的数组下标（字段路径段）。 */
+  index: number;
+  /** 该行在 Form.List 里的 field 名（用于 Form.Item name={…}）。 */
+  fieldName: number;
+  /** 标准商品 options（label = 商品名，value = productId）。 */
+  productOptions: Array<{ value: number; label: string; data: ProductRow }>;
+  /** 删除该行。 */
+  onRemove: (name: number) => void;
+}
+
+const ItemRow: React.FC<ItemRowProps> = ({
+  index,
+  fieldName,
+  productOptions,
+  onRemove,
+}) => {
+  const form = Form.useFormInstance();
+  const itemValue = Form.useWatch(['items', index], form) ?? {};
+  const quantity = itemValue.quantity ?? 0;
+  const unitPriceYuan = itemValue.unitPriceYuan ?? 0;
+  const subtotal = quantity * unitPriceYuan;
+
+  const handleProductChange = (productId: number | null) => {
+    if (productId == null) {
+      form.setFieldValue(['items', index, 'productId'], null);
+      return;
+    }
+    const product = productOptions.find((p) => p.value === productId);
+    if (!product) {
+      form.setFieldValue(['items', index, 'productId'], productId);
+      return;
+    }
+    // 自动回填名称 / 规格 / 单位 / 单价（用户仍可继续编辑覆盖）
+    const currentItems: ItemValues[] = form.getFieldValue('items') ?? [];
+    const next = currentItems.map((it, idx) =>
+      idx === index
+        ? {
+            ...it,
+            productId: product.value,
+            name: product.label,
+            unitPriceYuan: product.data.standardPriceCents / 100,
+            spec: it.spec ?? product.data.description ?? '',
+          }
+        : it,
+    );
+    form.setFieldsValue({ items: next });
+  };
+
+  return (
+    <Row gutter={8} align="middle" wrap={false} style={{ marginBottom: 8 }}>
+      <Col flex="1.4">
+        <Form.Item name={[fieldName, 'productId']} noStyle>
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="选择商品或自定义"
+            style={{ width: '100%' }}
+            options={productOptions}
+            onChange={(v) => handleProductChange(v ?? null)}
+            dropdownRender={(menu) => (
+              <>
+                {menu}
+                {productOptions.length > 0 && (
+                  <div
+                    style={{
+                      borderTop: '1px solid #f0f0f0',
+                      margin: '4px 0',
+                    }}
+                  />
+                )}
+                <div
+                  style={{
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    color: '#1677ff',
+                  }}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleProductChange(null)}
+                >
+                  + 添加自定义项目
+                </div>
+              </>
+            )}
+          />
+        </Form.Item>
+      </Col>
+      <Col flex="1.1">
+        <Form.Item name={[fieldName, 'name']} noStyle>
+          <Input placeholder="项目名称" />
+        </Form.Item>
+      </Col>
+      <Col flex="90px">
+        <Form.Item name={[fieldName, 'quantity']} noStyle>
+          <InputNumber
+            min={1}
+            step={1}
+            precision={0}
+            defaultValue={1}
+            style={{ width: '100%' }}
+          />
+        </Form.Item>
+      </Col>
+      <Col flex="130px">
+        <Form.Item name={[fieldName, 'unitPriceYuan']} noStyle>
+          <InputNumber
+            min={0}
+            step={0.01}
+            precision={2}
+            prefix="¥"
+            style={{ width: '100%' }}
+          />
+        </Form.Item>
+      </Col>
+      <Col
+        flex="110px"
+        style={{
+          textAlign: 'right',
+          fontVariantNumeric: 'tabular-nums',
+          fontWeight: 500,
+        }}
+      >
+        {money(Math.round(subtotal * 100))}
+      </Col>
+      <Col flex="64px" style={{ textAlign: 'center' }}>
+        <Tooltip title="删除">
+          <Button
+            type="text"
+            icon={<DeleteOutlined />}
+            onClick={() => onRemove(fieldName)}
+          />
+        </Tooltip>
+      </Col>
+    </Row>
+  );
+};
+
+/** 金额汇总；订阅 items + discountAmountYuan，实时算出报价总额。 */
+const SummarySection: React.FC = () => {
+  const form = Form.useFormInstance();
+  const items = Form.useWatch('items', form) ?? [];
+  const discountYuan = Form.useWatch('discountAmountYuan', form) ?? 0;
+
+  const itemsTotal = items.reduce(
+    (sum: number, it: ItemValues | undefined) =>
+      sum + (it?.quantity ?? 0) * (it?.unitPriceYuan ?? 0),
+    0,
+  );
+  const totalCents = Math.max(
+    0,
+    Math.round(itemsTotal * 100) - Math.round(discountYuan * 100),
+  );
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+      <div style={{ width: 320 }}>
+        <Row justify="space-between" align="middle" style={{ marginBottom: 8 }}>
+          <Col>
+            <Text>商品金额</Text>
+          </Col>
+          <Col style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {money(Math.round(itemsTotal * 100))}
+          </Col>
+        </Row>
+        <Row
+          justify="space-between"
+          align="middle"
+          style={{ marginBottom: 12 }}
+        >
+          <Col>
+            <Text>优惠金额</Text>
+          </Col>
+          <Col style={{ width: 160 }}>
+            <Form.Item name="discountAmountYuan" noStyle>
+              <InputNumber
+                min={0}
+                step={0.01}
+                precision={2}
+                prefix="-¥"
+                placeholder="0.00"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+        <Row
+          justify="space-between"
+          align="middle"
+          style={{ paddingTop: 8, borderTop: '1px solid #f0f0f0' }}
+        >
+          <Col>
+            <Text strong style={{ fontSize: 16 }}>
+              报价总额
+            </Text>
+          </Col>
+          <Col>
+            <Text
+              strong
+              style={{ fontSize: 16, fontVariantNumeric: 'tabular-nums' }}
+            >
+              {money(totalCents)}
+            </Text>
+          </Col>
+        </Row>
+      </div>
+    </div>
+  );
+};
 
 const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
   open,
@@ -112,9 +318,7 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
 }) => {
   const { message } = App.useApp();
   const formRef = useRef<ProFormInstance | null>(null);
-
   const [submitting, setSubmitting] = useState(false);
-  const [items, setItems] = useState<ItemRow[]>([]);
 
   const productOptions = useMemo(
     () =>
@@ -145,7 +349,7 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
           const amount =
             o.amountCents == null
               ? ''
-              : ` ¥${(o.amountCents / 100).toLocaleString('zh-CN')}`;
+              : `¥${(o.amountCents / 100).toLocaleString('zh-CN')} `;
           const stageLabel =
             o.stage === 'requirement'
               ? '需求确认'
@@ -156,13 +360,13 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
                   : o.stage;
           return {
             value: o.id,
-            label: `${o.name}${amount ? ` · ${amount.replace(' ¥', '¥')}` : ''} · ${stageLabel}`,
+            label: `${o.name} · ${amount}${stageLabel}`,
           };
         }),
     [existingOpportunities],
   );
 
-  /** 智能默认 name：机会名 → 客户名。 */
+  /** 智能默认 name：第一个商机名 + '报价单' / 客户名 + '报价单'。 */
   const defaultName = useMemo(() => {
     const firstOpp = existingOpportunities[0];
     if (firstOpp?.name) return `${firstOpp.name}报价单`;
@@ -170,7 +374,6 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
     return undefined;
   }, [existingOpportunities, customerName]);
 
-  /** initialValues：name 默认、items 通过 React state 管理（不在 form 中）。 */
   const initialValues = useMemo<FormValues>(
     () => ({
       name: defaultName,
@@ -179,84 +382,24 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
       validUntil: undefined,
       discountAmountYuan: undefined,
       remark: undefined,
+      items: [
+        {
+          productId: undefined,
+          name: '',
+          spec: '',
+          quantity: 1,
+          unitPriceYuan: 0,
+        },
+      ],
     }),
     [defaultName],
   );
 
-  /** 关闭时清理。 */
+  // 关闭时清空 Form（含 items）。
   useEffect(() => {
     if (open) return;
     formRef.current?.resetFields();
-    setItems([]);
   }, [open]);
-
-  /** 商品金额（明细 sum）与报价总额（max(0, 商品金额 − 优惠)）。 */
-  const totals = useMemo(() => {
-    const itemsTotal = items.reduce(
-      (sum, it) => sum + it.quantity * it.unitPriceYuan,
-      0,
-    );
-    return { itemsTotal };
-  }, [items]);
-
-  const updateItem = (key: string, patch: Partial<ItemRow>) => {
-    setItems((prev) =>
-      prev.map((it) => (it.key === key ? { ...it, ...patch } : it)),
-    );
-  };
-
-  const removeItem = (key: string) => {
-    setItems((prev) => prev.filter((it) => it.key !== key));
-  };
-
-  const addProductRow = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        key: newRowKey(),
-        productId: null,
-        name: '',
-        spec: '',
-        unit: '',
-        quantity: 1,
-        unitPriceYuan: 0,
-      },
-    ]);
-  };
-
-  const addCustomRow = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        key: newRowKey(),
-        productId: null,
-        name: '',
-        spec: '',
-        unit: '',
-        quantity: 1,
-        unitPriceYuan: 0,
-      },
-    ]);
-  };
-
-  const handleProductChange = (key: string, productId: number | null) => {
-    if (productId == null) {
-      updateItem(key, { productId: null });
-      return;
-    }
-    const product = existingProducts.find((p) => p.id === productId);
-    if (!product) {
-      updateItem(key, { productId });
-      return;
-    }
-    updateItem(key, {
-      productId: product.id,
-      name: product.name,
-      spec: product.description ?? '',
-      unit: product.unitName ?? product.unitCode ?? '',
-      unitPriceYuan: product.standardPriceCents / 100,
-    });
-  };
 
   return (
     <ModalForm<FormValues>
@@ -264,7 +407,7 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
       open={open}
       onOpenChange={onOpenChange}
       title="新建报价单"
-      width={920}
+      width={1000}
       layout="vertical"
       autoFocusFirstInput
       formRef={formRef}
@@ -273,8 +416,15 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
         destroyOnHidden: true,
         maskClosable: false,
         zIndex: CRM_DIALOG_Z_INDEX,
+        width: 1000,
+        style: { maxWidth: 'calc(100vw - 48px)' },
         styles: {
-          body: { maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' },
+          body: {
+            maxHeight: 'calc(100vh - 200px)',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            padding: '16px 24px',
+          },
         },
       }}
       submitter={{
@@ -287,12 +437,14 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
           message.error('请填写报价单名称');
           return false;
         }
-        const validItems = items.filter(
+        const validItems = (raw.items ?? []).filter(
           (it) =>
-            it.name.trim() !== '' && it.quantity > 0 && it.unitPriceYuan >= 0,
+            (it.name ?? '').trim() !== '' &&
+            (it.quantity ?? 0) > 0 &&
+            (it.unitPriceYuan ?? 0) >= 0,
         );
         if (validItems.length === 0) {
-          message.error('请至少添加一条报价明细');
+          message.error('请至少添加一条有效报价明细');
           return false;
         }
 
@@ -309,11 +461,11 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
             discountYuan > 0 ? Math.round(discountYuan * 100) : undefined,
           remark: raw.remark?.trim() || undefined,
           items: validItems.map((it) => ({
-            productId: it.productId,
-            productNameSnapshot: it.name.trim(),
-            unitSnapshot: it.spec?.trim() || null,
-            quantityCents: Math.round(it.quantity * 10000),
-            unitPriceCents: Math.round(it.unitPriceYuan * 100),
+            productId: it.productId ?? null,
+            productNameSnapshot: (it.name ?? '').trim(),
+            unitSnapshot: (it.spec ?? '').trim() || null,
+            quantityCents: Math.round((it.quantity ?? 0) * 10000),
+            unitPriceCents: Math.round((it.unitPriceYuan ?? 0) * 100),
           })),
         };
 
@@ -332,10 +484,7 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
         }
       }}
     >
-      <Divider titlePlacement="left" plain style={{ margin: '0 0 12px' }}>
-        <Text strong>基本信息</Text>
-      </Divider>
-
+      {/* 顶部：报价单名称 */}
       <ProFormText
         name="name"
         label="报价单名称"
@@ -346,8 +495,9 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
         ]}
       />
 
-      <Row gutter={24}>
-        <Col span={12}>
+      {/* 顶部三列：商机 / 联系人 / 有效期 */}
+      <Row gutter={16}>
+        <Col span={8}>
           <ProFormSelect
             name="opportunityId"
             label="关联商机"
@@ -356,9 +506,10 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
             }
             options={opportunityOptions}
             allowClear
+            disabled={opportunityOptions.length === 0}
           />
         </Col>
-        <Col span={12}>
+        <Col span={8}>
           <ProFormSelect
             name="contactId"
             label="联系人"
@@ -367,235 +518,107 @@ const QuotationCreateModal: React.FC<QuotationCreateModalProps> = ({
             }
             options={contactOptions}
             allowClear
+            disabled={contactOptions.length === 0}
+          />
+        </Col>
+        <Col span={8}>
+          <ProFormDatePicker
+            name="validUntil"
+            label="有效期至"
+            placeholder="请选择日期（可选）"
+            fieldProps={{ format: 'YYYY-MM-DD', style: { width: '100%' } }}
           />
         </Col>
       </Row>
 
-      <ProFormDatePicker
-        name="validUntil"
-        label="有效期至"
-        placeholder="请选择有效期（可选）"
-        fieldProps={{ format: 'YYYY-MM-DD', style: { width: '100%' } }}
-      />
-
-      <Divider titlePlacement="left" plain style={{ margin: '12px 0' }}>
-        <Text strong>报价明细</Text>
-      </Divider>
-
-      {items.length === 0 ? (
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="还没有添加报价项"
-          style={{ margin: '16px 0' }}
-        />
-      ) : (
-        <div
-          style={{
-            border: '1px solid #f0f0f0',
-            borderRadius: 6,
-            overflow: 'hidden',
-          }}
-        >
-          {/* header */}
+      {/* 报价明细 Section Header + 添加按钮 */}
+      <Form.List name="items">
+        {(_fields, { add }) => (
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns:
-                'minmax(160px, 2fr) minmax(120px, 1.5fr) 90px 130px 110px 60px',
-              gap: 8,
-              padding: '8px 12px',
-              background: '#fafafa',
-              fontSize: 12,
-              color: '#595959',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginTop: 16,
+              marginBottom: 8,
             }}
           >
-            <span>商品 / 服务</span>
-            <span>规格</span>
-            <span style={{ textAlign: 'right' }}>数量</span>
-            <span style={{ textAlign: 'right' }}>单价</span>
-            <span style={{ textAlign: 'right' }}>小计</span>
-            <span />
+            <Text strong style={{ fontSize: 14 }}>
+              报价明细
+            </Text>
+            <Button
+              type="link"
+              size="small"
+              icon={<PlusOutlined />}
+              onClick={() =>
+                add({
+                  productId: undefined,
+                  name: '',
+                  spec: '',
+                  quantity: 1,
+                  unitPriceYuan: 0,
+                })
+              }
+            >
+              添加报价项
+            </Button>
           </div>
-          {items.map((it) => {
-            const subtotal = it.quantity * it.unitPriceYuan;
-            return (
-              <div
-                key={it.key}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns:
-                    'minmax(160px, 2fr) minmax(120px, 1.5fr) 90px 130px 110px 60px',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderTop: '1px solid #f0f0f0',
-                  alignItems: 'center',
-                }}
-              >
-                {it.productId ? (
-                  <Select
-                    value={it.productId}
-                    showSearch
-                    optionFilterProp="label"
-                    style={{ width: '100%' }}
-                    options={productOptions}
-                    onChange={(v) => handleProductChange(it.key, v ?? null)}
-                    placeholder="选择商品"
-                  />
-                ) : (
-                  <Input
-                    value={it.name}
-                    onChange={(e) =>
-                      updateItem(it.key, { name: e.target.value })
-                    }
-                    placeholder="自定义项名称"
-                  />
-                )}
-                <Input
-                  value={it.spec}
-                  onChange={(e) => updateItem(it.key, { spec: e.target.value })}
-                  placeholder="规格 / 说明"
-                />
-                <InputNumber
-                  value={it.quantity}
-                  onChange={(v) =>
-                    updateItem(it.key, {
-                      quantity: typeof v === 'number' ? v : 0,
-                    })
-                  }
-                  min={0}
-                  step={1}
-                  precision={0}
-                  style={{ width: '100%' }}
-                  addonAfter={it.unit || undefined}
-                />
-                <InputNumber
-                  value={it.unitPriceYuan}
-                  onChange={(v) =>
-                    updateItem(it.key, {
-                      unitPriceYuan: typeof v === 'number' ? v : 0,
-                    })
-                  }
-                  min={0}
-                  step={0.01}
-                  precision={2}
-                  prefix="¥"
-                  style={{ width: '100%' }}
-                />
-                <Text
-                  strong
-                  style={{
-                    textAlign: 'right',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {money(Math.round(subtotal * 100))}
-                </Text>
-                <Button
-                  type="text"
-                  size="small"
-                  onClick={() => removeItem(it.key)}
-                  danger
-                >
-                  删除
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        )}
+      </Form.List>
 
-      <Space style={{ marginTop: 12 }}>
-        <Button
-          onClick={() => {
-            if (productOptions.length === 0) {
-              message.info('当前没有可用商品，将添加自定义项');
-              addCustomRow();
-              return;
-            }
-            addProductRow();
-          }}
-        >
-          + 添加报价项
-        </Button>
-        <Button onClick={addCustomRow}>+ 添加自定义项</Button>
-      </Space>
+      {/* 报价明细行容器 */}
+      <Form.List name="items">
+        {(fields, { remove }) =>
+          fields.length === 0 ? (
+            <Space
+              direction="vertical"
+              align="center"
+              style={{
+                width: '100%',
+                padding: '24px 0',
+                border: '1px dashed #d9d9d9',
+                borderRadius: 6,
+              }}
+            >
+              <Text type="secondary">
+                暂无报价明细，请点击右上「添加报价项」
+              </Text>
+            </Space>
+          ) : (
+            <div
+              style={{
+                border: '1px solid #f0f0f0',
+                borderRadius: 6,
+                padding: '8px 12px',
+              }}
+            >
+              {fields.map((field, index) => (
+                <ItemRow
+                  key={field.key}
+                  index={index}
+                  fieldName={field.name}
+                  productOptions={productOptions}
+                  onRemove={remove}
+                />
+              ))}
+            </div>
+          )
+        }
+      </Form.List>
 
       {/* 金额汇总 */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginTop: 24,
-          paddingTop: 16,
-          borderTop: '1px solid #f0f0f0',
-        }}
-      >
-        <div style={{ minWidth: 320 }}>
-          <Row
-            justify="space-between"
-            align="middle"
-            style={{ marginBottom: 8 }}
-          >
-            <Col>商品金额</Col>
-            <Col style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {money(Math.round(totals.itemsTotal * 100))}
-            </Col>
-          </Row>
-          <Row
-            justify="space-between"
-            align="middle"
-            style={{ marginBottom: 12 }}
-          >
-            <Col>优惠金额</Col>
-            <Col style={{ width: 180 }}>
-              <ProFormDigit
-                name="discountAmountYuan"
-                fieldProps={{
-                  min: 0,
-                  precision: 2,
-                  prefix: '-¥',
-                  style: { width: '100%' },
-                }}
-              />
-            </Col>
-          </Row>
-          <Row
-            justify="space-between"
-            align="middle"
-            style={{
-              paddingTop: 8,
-              borderTop: '1px solid #f0f0f0',
-            }}
-          >
-            <Col>
-              <Text strong style={{ fontSize: 16 }}>
-                报价总额
-              </Text>
-            </Col>
-            <Col>
-              <Text
-                strong
-                style={{
-                  fontSize: 18,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {money(Math.round(Math.max(0, totals.itemsTotal) * 100))}
-              </Text>
-            </Col>
-          </Row>
-        </div>
-      </div>
+      <SummarySection />
 
-      <Divider titlePlacement="left" plain style={{ margin: '12px 0' }}>
-        <Text strong>备注</Text>
-      </Divider>
-
+      {/* 备注 */}
       <ProFormTextArea
         name="remark"
-        label=""
+        label="备注"
         placeholder="补充报价说明、交付条件等（可选）"
-        fieldProps={{ rows: 3, maxLength: 500, showCount: true }}
+        fieldProps={{
+          autoSize: { minRows: 2, maxRows: 4 },
+          maxLength: 500,
+          showCount: true,
+        }}
       />
     </ModalForm>
   );
