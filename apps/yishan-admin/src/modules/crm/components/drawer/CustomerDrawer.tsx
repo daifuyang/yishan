@@ -40,7 +40,7 @@ import { OpportunitiesTabStandalone } from './tabs/OpportunitiesTab';
 import OverviewTab from './tabs/OverviewTab';
 import { PaymentsTabStandalone } from './tabs/PaymentsTab';
 import { QuotationsTabStandalone } from './tabs/QuotationsTab';
-import TasksTab from './tabs/TasksTab';
+import { TasksTabStandalone } from './tabs/TasksTab';
 
 export type CustomerDrawerTabKey =
   | 'overview'
@@ -150,6 +150,15 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     setCreatePaymentOpen(next);
   }, []);
 
+  // 任务新建 Modal 开关（Drawer + ModalForm 模式）。
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const requestOpenCreateTask = useCallback(() => {
+    setCreateTaskOpen(true);
+  }, []);
+  const handleTaskModalOpenChange = useCallback((next: boolean) => {
+    setCreateTaskOpen(next);
+  }, []);
+
   // customerId / open 变化时拉详情
   useEffect(() => {
     if (!open || !customerId) {
@@ -231,6 +240,12 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       // 切到回款 Tab 并打开回款登记 Modal（Drawer + ModalForm）
       setActiveTab('payments');
       requestOpenCreatePayment();
+      return;
+    }
+    if (entity === 'task') {
+      // 切到任务 Tab 并打开任务新建 Modal（Drawer + ModalForm）
+      setActiveTab('tasks');
+      requestOpenCreateTask();
       return;
     }
     if (onCreateEntity) {
@@ -393,7 +408,15 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           />
         );
       case 'tasks':
-        return <TasksTab customerId={current.id} />;
+        return (
+          <TasksTabStandalone
+            customer={current}
+            refreshKey={customerRefreshKey}
+            createOpen={createTaskOpen}
+            onCreateRequest={requestOpenCreateTask}
+            onModalOpenChange={handleTaskModalOpenChange}
+          />
+        );
       case 'attachments':
         return <AttachmentsTab customerId={current.id} />;
       default:
@@ -449,6 +472,7 @@ const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
   contract: '新建合同请到合同 Tab 操作',
   quotation: '新建报价单请到报价单 Tab 操作',
   payment: '登记回款请到回款 Tab 操作',
+  task: '新建任务请到任务 Tab 操作',
 };
 
 /**

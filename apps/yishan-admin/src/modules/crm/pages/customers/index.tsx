@@ -294,6 +294,7 @@ const Customers: React.FC = () => {
             quotation: 'quotations',
             contract: 'contracts',
             payment: 'payments',
+            task: 'tasks',
           } as const;
           history.push(`/crm/${pageByEntity[entity]}?customerId=${drawer.customerId ?? ''}`);
           drawer.closeDrawer();

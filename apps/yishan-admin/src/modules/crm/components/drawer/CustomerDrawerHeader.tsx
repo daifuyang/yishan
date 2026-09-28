@@ -64,7 +64,8 @@ export type CreateEntityKey =
   | 'opportunity'
   | 'contract'
   | 'quotation'
-  | 'payment';
+  | 'payment'
+  | 'task';
 
 const CREATE_LABELS: Array<{ key: CreateEntityKey; label: string }> = [
   { key: 'followup', label: '跟进' },

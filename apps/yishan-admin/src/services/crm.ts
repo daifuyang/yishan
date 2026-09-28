@@ -414,20 +414,41 @@ export interface PaymentInput {
   remark?: string | null
 }
 
+/**
+ * 任务优先级字典（3 档；与后端 TASK_PRIORITIES 对齐）。
+ * UI 不引入 5 档；颜色用 Ant Design semantic。
+ */
+export const TASK_PRIORITY_OPTIONS: ReadonlyArray<{
+  value: string
+  label: string
+  semantic: 'default' | 'warning' | 'error'
+}> = [
+  { value: 'normal', label: '普通', semantic: 'default' },
+  { value: 'high', label: '重要', semantic: 'warning' },
+  { value: 'urgent', label: '紧急', semantic: 'error' },
+]
+
 export interface TaskRow {
   id: number
   customerId: number
   title: string
   status: string
+  priority: string
   assigneeUserId: number | null
+  assigneeName?: string | null
   dueAt: string | null
   completedAt: string | null
   description: string | null
+  creatorId?: number | null
+  creatorName?: string | null
+  createdAt?: string
+  updatedAt?: string
 }
 export interface TaskInput {
   customerId: number
   title: string
   status?: string
+  priority?: string
   assigneeUserId?: number | null
   dueAt?: string | null
   description?: string | null
@@ -834,6 +855,14 @@ export async function createTask(input: TaskInput): Promise<TaskRow> {
 export async function updateTask(id: number, input: Partial<Omit<TaskInput, 'customerId'>>): Promise<TaskRow> {
   const r = await request<ApiResp<TaskRow>>(`/api/crm/v1/tasks/${id}`, { method: 'PATCH', data: input })
   return unwrap(r)
+}
+
+/**
+ * 完成任务：内部走 updateTask 写 status='completed' + completedAt=now。
+ * 后端 service 自动维护 completedAt；前端不再传。
+ */
+export async function completeTask(id: number): Promise<TaskRow> {
+  return updateTask(id, { status: 'completed' })
 }
 
 export async function deleteTask(id: number): Promise<void> {

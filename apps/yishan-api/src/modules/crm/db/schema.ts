@@ -799,6 +799,11 @@ export const crmTask = mysqlTable(
     customerId: int('customer_id').notNull(),
     title: varchar({ length: 200 }).notNull(),
     status: varchar({ length: 32 }).notNull().default('todo'),
+    /**
+     * 优先级：normal / high / urgent（MVP 3 档；不引入 5 档）。
+     * UI 不暴露「overdue」—— overdue 是计算状态（status='todo' && dueAt < now）。
+     */
+    priority: varchar({ length: 16 }).notNull().default('normal'),
     assigneeUserId: int('assignee_user_id'),
     dueAt: datetime('due_at'),
     completedAt: datetime('completed_at'),
@@ -813,6 +818,7 @@ export const crmTask = mysqlTable(
     idxCustomer: index('idx_crm_task_customer_id').on(t.customerId),
     idxAssigneeStatus: index('idx_crm_task_assignee_status').on(t.assigneeUserId, t.status),
     idxDueAt: index('idx_crm_task_due_at').on(t.dueAt),
+    idxPriority: index('idx_crm_task_priority').on(t.priority),
     idxDeletedAt: index('idx_crm_task_deleted_at').on(t.deletedAt),
   }),
 )
