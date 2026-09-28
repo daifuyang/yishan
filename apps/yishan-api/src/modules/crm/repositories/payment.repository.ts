@@ -1,14 +1,36 @@
 import { and, count, desc, eq, gte, isNull, like, lte, or } from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@/db'
+import { sysUser } from '@/db/schema'
 import { crmContract, crmCustomer, crmPayment } from '../db/schema.js'
 import { buildListWhere } from './customer.repository.js'
 import type { ScopeContext } from '../schemas/data-scope.js'
 
-export interface PaymentRow { id: number; contractId: number; customerId: number; amountCents: number; paidAt: Date; methodCode: string; remark: string | null; creatorId: number | null; updaterId: number | null; createdAt: Date; updatedAt: Date; deletedAt: Date | null }
-export interface PaymentListRow extends PaymentRow { contractNo: string; contractName: string; customerName: string }
+export interface PaymentRow {
+  id: number
+  paymentNo: string
+  contractId: number
+  customerId: number
+  amountCents: number
+  paidAt: Date
+  methodCode: string
+  transactionNo: string | null
+  status: string
+  remark: string | null
+  creatorId: number | null
+  updaterId: number | null
+  createdAt: Date
+  updatedAt: Date
+  deletedAt: Date | null
+}
+export interface PaymentListRow extends PaymentRow {
+  contractNo: string
+  contractName: string
+  customerName: string
+  creatorName: string | null
+}
 export interface PaymentListQuery { page?: number; pageSize?: number; keyword?: string; contractId?: number; customerId?: number; methodCode?: string; paidFrom?: Date; paidTo?: Date }
 export type CreatePaymentInput = Omit<PaymentRow, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
-export type UpdatePaymentInput = Partial<Pick<PaymentRow, 'amountCents' | 'paidAt' | 'methodCode' | 'remark'>> & { updaterId: number }
+export type UpdatePaymentInput = Partial<Pick<PaymentRow, 'amountCents' | 'paidAt' | 'methodCode' | 'transactionNo' | 'remark'>> & { updaterId: number }
 
 export class PaymentRepository {
   static async list(query: PaymentListQuery, scope: ScopeContext, db: AppQueryDb = drizzleDb): Promise<{ rows: PaymentListRow[]; total: number }> {
@@ -29,6 +51,7 @@ export class PaymentRepository {
       db.select().from(crmPayment)
         .innerJoin(crmContract, eq(crmPayment.contractId, crmContract.id))
         .innerJoin(crmCustomer, eq(crmPayment.customerId, crmCustomer.id))
+        .leftJoin(sysUser, eq(sysUser.id, crmPayment.creatorId))
         .where(where)
         .orderBy(desc(crmPayment.paidAt), desc(crmPayment.id))
         .limit(pageSize)
@@ -44,6 +67,7 @@ export class PaymentRepository {
         contractNo: row.crm_contract?.contractNo ?? '',
         contractName: row.crm_contract?.name ?? '',
         customerName: row.crm_customer?.name ?? '',
+        creatorName: row.sys_user?.realName ?? null,
       })) as PaymentListRow[],
       total: Number(totals[0]?.total ?? 0),
     }
@@ -64,5 +88,17 @@ export class PaymentRepository {
   }
   static async softDelete(id: number, db: AppQueryDb = drizzleDb): Promise<number> {
     const result = await db.update(crmPayment).set({ deletedAt: new Date() }).where(and(eq(crmPayment.id, id), isNull(crmPayment.deletedAt))); return Number(result[0].affectedRows ?? 0)
+  }
+  /**
+   * 生成回款单号：RC-yyyyMMdd-NNNN（与 ContractRepository.nextNo 同模式）。
+   * 不依赖 sequence；冲突由 uniq_crm_payment_no 兜底，重试一次。
+   */
+  static async nextPaymentNo(db: AppQueryDb): Promise<string> {
+    const now = new Date()
+    const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+    const prefix = `RC-${day}-`
+    const [row] = await db.select({ c: count() }).from(crmPayment).where(like(crmPayment.paymentNo, `${prefix}%`))
+    const next = Number(row?.c ?? 0) + 1
+    return `${prefix}${String(next).padStart(3, '0')}`
   }
 }

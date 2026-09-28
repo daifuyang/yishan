@@ -354,22 +354,63 @@ export interface ContractInput {
   description?: string | null
 }
 
+/**
+ * 收款方式字典（与后端 sys_enum 'crm_payment_method' seed 对齐）。
+ * 顺序与金额无关，按使用频率排列；其他 / 银行转账 / 移动支付 / 现金 / 票据。
+ */
+export const PAYMENT_METHOD_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'bank_transfer', label: '银行转账' },
+  { value: 'alipay', label: '支付宝' },
+  { value: 'wechat', label: '微信支付' },
+  { value: 'cash', label: '现金' },
+  { value: 'check', label: '支票' },
+  { value: 'other', label: '其他' },
+]
+
+/**
+ * 客户级回款汇总（前端轻量统计用）。
+ */
+export interface PaymentCustomerSummary {
+  totalContractCents: number
+  paidCents: number
+  outstandingCents: number
+}
+
+/**
+ * 合同级回款汇总（Modal 选中合同后展示上下文）。
+ */
+export interface PaymentContractSummary {
+  contractId: number
+  contractNo: string
+  contractName: string
+  contractAmountCents: number
+  paidCents: number
+  outstandingCents: number
+}
+
 export interface PaymentRow {
   id: number
+  paymentNo: string
   contractId: number
   customerId: number
   amountCents: number
   paidAt: string
   methodCode: string
+  transactionNo: string | null
+  status: string
   remark: string | null
   contractNo?: string
   contractName?: string
   customerName?: string
+  creatorId?: number | null
+  creatorName?: string | null
+  createdAt?: string
 }
 export interface PaymentInput {
   amountCents: number
   paidAt: string
-  methodCode: string
+  methodCode?: string
+  transactionNo?: string | null
   remark?: string | null
 }
 

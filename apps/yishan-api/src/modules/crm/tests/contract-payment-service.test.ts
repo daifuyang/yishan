@@ -171,6 +171,7 @@ describe('CRM contract and payment lifecycle', () => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
     vi.spyOn(ContractRepository as any, 'findByIdWithLock').mockImplementation(async () => { calls.push('lock'); return { id: 31, customerId: 11, amountCents: 100_000 } })
     vi.spyOn(PaymentRepository, 'listByContractId').mockImplementation(async () => { calls.push('payments'); return [{ id: 1, contractId: 31, amountCents: 50_000 }] as any })
+    vi.spyOn(PaymentRepository, 'nextPaymentNo').mockResolvedValue('RC-20260928-001')
     vi.spyOn(PaymentRepository, 'create').mockImplementation(async () => { calls.push('create'); return { id: 2, contractId: 31, amountCents: 20_000 } as any })
 
     await new PaymentService().create(31, { amountCents: 20_000, paidAt: new Date(), methodCode: 'bank_transfer' }, salesperson)

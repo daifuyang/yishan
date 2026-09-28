@@ -757,11 +757,23 @@ export const crmPayment = mysqlTable(
   'crm_payment',
   {
     id: int().primaryKey().autoincrement().notNull(),
+    /** 业务可见回款单号（全局唯一），格式 RC-yyyyMMdd-NNNN，服务层生成。 */
+    paymentNo: varchar('payment_no', { length: 32 }).notNull().default(''),
     contractId: int('contract_id').notNull(),
     customerId: int('customer_id').notNull(),
     amountCents: bigint('amount_cents', { mode: 'number' }).notNull().default(0),
     paidAt: datetime('paid_at').notNull(),
     methodCode: varchar('method_code', { length: 64 }).notNull(),
+    /**
+     * 银行 / 支付宝 / 微信 交易流水号（可空）；负数 / 退款 由独立的 Refund 模型承载，
+     * 不允许本字段写入负数。
+     */
+    transactionNo: varchar('transaction_no', { length: 64 }),
+    /**
+     * 回款生命周期状态：MVP 仅 default 'confirmed'；预留 PENDING / VOIDED 扩展位。
+     * 注意：与 contract.status 解耦；全额回款 ≠ 合同履约完成。
+     */
+    status: varchar({ length: 16 }).notNull().default('confirmed'),
     remark: varchar({ length: 500 }),
     creatorId: int('creator_id'),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
@@ -770,10 +782,12 @@ export const crmPayment = mysqlTable(
     deletedAt: datetime('deleted_at'),
   },
   (t) => ({
+    uniqPaymentNo: uniqueIndex('uniq_crm_payment_no').on(t.paymentNo),
     idxContract: index('idx_crm_payment_contract_id').on(t.contractId),
     idxCustomer: index('idx_crm_payment_customer_id').on(t.customerId),
     idxPaidAt: index('idx_crm_payment_paid_at').on(t.paidAt),
     idxMethodCode: index('idx_crm_payment_method_code').on(t.methodCode),
+    idxStatus: index('idx_crm_payment_status').on(t.status),
     idxDeletedAt: index('idx_crm_payment_deleted_at').on(t.deletedAt),
   }),
 )

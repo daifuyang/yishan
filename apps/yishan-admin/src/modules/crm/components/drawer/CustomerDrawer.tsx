@@ -38,7 +38,7 @@ import ContactsTab from './tabs/ContactsTab';
 import { ContractsTabStandalone } from './tabs/ContractsTab';
 import { OpportunitiesTabStandalone } from './tabs/OpportunitiesTab';
 import OverviewTab from './tabs/OverviewTab';
-import PaymentsTab from './tabs/PaymentsTab';
+import { PaymentsTabStandalone } from './tabs/PaymentsTab';
 import { QuotationsTabStandalone } from './tabs/QuotationsTab';
 import TasksTab from './tabs/TasksTab';
 
@@ -141,6 +141,15 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     setCreateContractOpen(next);
   }, []);
 
+  // 回款登记 Modal 开关（Drawer + ModalForm 模式，与其他 Modal 对齐）。
+  const [createPaymentOpen, setCreatePaymentOpen] = useState(false);
+  const requestOpenCreatePayment = useCallback(() => {
+    setCreatePaymentOpen(true);
+  }, []);
+  const handlePaymentModalOpenChange = useCallback((next: boolean) => {
+    setCreatePaymentOpen(next);
+  }, []);
+
   // customerId / open 变化时拉详情
   useEffect(() => {
     if (!open || !customerId) {
@@ -216,6 +225,12 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       // 切到合同 Tab 并打开合同新建 Modal（Drawer + ModalForm）
       setActiveTab('contracts');
       requestOpenCreateContract();
+      return;
+    }
+    if (entity === 'payment') {
+      // 切到回款 Tab 并打开回款登记 Modal（Drawer + ModalForm）
+      setActiveTab('payments');
+      requestOpenCreatePayment();
       return;
     }
     if (onCreateEntity) {
@@ -367,7 +382,16 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           />
         );
       case 'payments':
-        return <PaymentsTab customerId={current.id} />;
+        return (
+          <PaymentsTabStandalone
+            customer={current}
+            refreshKey={customerRefreshKey}
+            createOpen={createPaymentOpen}
+            onCreateRequest={requestOpenCreatePayment}
+            onModalOpenChange={handlePaymentModalOpenChange}
+            onPaymentCreated={handleOpportunityCreated}
+          />
+        );
       case 'tasks':
         return <TasksTab customerId={current.id} />;
       case 'attachments':
@@ -424,7 +448,7 @@ const CREATE_ENTITY_TOAST: Record<CreateEntityKey, string> = {
   opportunity: '新建商机功能开发中（Phase 3）',
   contract: '新建合同请到合同 Tab 操作',
   quotation: '新建报价单请到报价单 Tab 操作',
-  payment: '新建回款记录功能开发中（Phase 3）',
+  payment: '登记回款请到回款 Tab 操作',
 };
 
 /**

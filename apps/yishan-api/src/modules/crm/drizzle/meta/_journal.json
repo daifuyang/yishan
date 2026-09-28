@@ -162,6 +162,13 @@
       "when": 1790100000000,
       "tag": "0061_crm-contract-contact",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1790200000000,
+      "tag": "0062_crm-payment-no-tx-status",
+      "breakpoints": true
     }
   ]
 }
