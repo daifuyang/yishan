@@ -425,6 +425,10 @@ export const crmQuotation = mysqlTable(
      */
     quotationNo: varchar('quotation_no', { length: 32 }).notNull(),
     /**
+     * 报价单名称（业务可见）。前端必填；后端再次兜底必填校验。
+     */
+    name: varchar({ length: 200 }).notNull().default(''),
+    /**
      * 版本号：同一 opportunity 下的版本计数，从 1 开始递增。
      * acceptance 时把同 opportunity 下旧 accepted 置为 superseded（version 不变，只改 status）。
      */
@@ -445,6 +449,11 @@ export const crmQuotation = mysqlTable(
     netCents: bigint('net_cents', { mode: 'number' }).notNull().default(0),
     taxCents: bigint('tax_cents', { mode: 'number' }).notNull().default(0),
     totalCents: bigint('total_cents', { mode: 'number' }).notNull().default(0),
+    /**
+     * 整单优惠（cents BIGINT）。与每行 discountBp 叠加；service 在 computeItemsTotals
+     * 里从 items sum 中扣减。MVP 只允许「整单优惠金额」一种表达。
+     */
+    discountAmountCents: bigint('discount_amount_cents', { mode: 'number' }).notNull().default(0),
     remark: varchar({ length: 2000 }),
     creatorId: int('creator_id'),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
@@ -498,9 +507,10 @@ export const crmQuotationItem = mysqlTable(
     id: int().primaryKey().autoincrement().notNull(),
     quotationId: int('quotation_id').notNull(),
     /**
-     * 产品 id（crm_product.id）。删除产品不级联删除 item 行；service 层负责按需读快照展示。
+     * 产品 id（crm_product.id）。可空：自定义项（不来自 Product 表）也允许；
+     * 删除产品不级联删除 item 行；service 层负责按需读快照展示。
      */
-    productId: int('product_id').notNull(),
+    productId: int('product_id'),
     productNameSnapshot: varchar('product_name_snapshot', { length: 200 }).notNull(),
     unitSnapshot: varchar('unit_snapshot', { length: 64 }),
     quantityCents: int('quantity_cents').notNull().default(0),

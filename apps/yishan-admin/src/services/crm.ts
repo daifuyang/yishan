@@ -244,13 +244,71 @@ export interface OpportunityRow {
 export interface QuotationRow {
   id: number
   quotationNo: string
+  name: string
   customerId: number
+  customerName?: string | null
+  opportunityId?: number | null
+  opportunityName?: string | null
+  contactId?: number | null
+  contactName?: string | null
   status: string
   totalCents: number
+  discountAmountCents: number
+  netCents?: number
+  taxCents?: number
   validUntil: string | null
+  createdAt?: string
   sentAt?: string | null
   acceptedAt?: string | null
   closedAt?: string | null
+}
+
+export interface QuotationItemInput {
+  /** null 表示自定义项（不绑定 Product 主数据）。 */
+  productId?: number | null
+  productNameSnapshot: string
+  unitSnapshot?: string | null
+  /** ×10000 倍精度整数（例：12.3456 件 → 123456）。 */
+  quantityCents: number
+  /** cents。 */
+  unitPriceCents: number
+  /** 万分位基础点（1300 = 13%）。MVP 流程不暴露给 UI。 */
+  discountBp?: number
+  taxRateBp?: number
+}
+
+export interface QuotationCreateInput {
+  customerId: number
+  opportunityId?: number | null
+  contactId?: number | null
+  validUntil?: string | null
+  /** 报价单名称（业务可见），必填。 */
+  name: string
+  /** 整单优惠（cents）。 */
+  discountAmountCents?: number
+  remark?: string | null
+  items: QuotationItemInput[]
+}
+
+export interface QuotationResp extends QuotationRow {
+  ownerUserId: number
+  ownerUserName?: string | null
+  remark: string | null
+  items: Array<{
+    id: number
+    quotationId: number
+    productId: number | null
+    productNameSnapshot: string
+    unitSnapshot: string | null
+    quantityCents: number
+    unitPriceCents: number
+    discountBp: number
+    taxRateBp: number
+    lineAmountCents: number
+    sortOrder: number
+    createdAt: string
+    updatedAt: string
+  }>
 }
 
 export interface ContractRow {
@@ -662,6 +720,14 @@ export async function createOpportunity(input: OpportunityCreateInput): Promise<
 export async function listQuotations(query: PageQuery & { customerId?: number }): Promise<{ data: QuotationRow[]; total: number }> {
   const r = await request<ApiResp<QuotationRow[]>>('/api/crm/v1/quotations', { method: 'GET', params: query as any })
   return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+}
+
+export async function createQuotation(input: QuotationCreateInput): Promise<QuotationResp> {
+  const r = await request<ApiResp<QuotationResp>>('/api/crm/v1/quotations', {
+    method: 'POST',
+    data: input,
+  })
+  return unwrap(r)
 }
 
 export async function listContracts(query: PageQuery & { customerId?: number; status?: string }): Promise<{ data: ContractRow[]; total: number }> {

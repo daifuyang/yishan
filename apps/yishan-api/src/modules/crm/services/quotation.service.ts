@@ -64,18 +64,29 @@ interface ItemsTotals {
   netCents: number
   taxCents: number
   totalCents: number
+  discountAmountCents: number
   items: CreateQuotationItemInput[]
 }
 
 /**
- * 根据「每行 unit price × qty × (1 − discount) × (1 + taxRate)」计算明细行与总额。
- * 所有金额进入 DB 时是已经计算好的 cents；服务层不二次重算总额。
+ * 根据「每行 unit price × qty × (1 − discount) × (1 + taxRate)」计算明细行与总额；
+ * 再扣减整单优惠 discountAmountCents 得出最终 totalCents。
  *
- * - netCents  = Σ item.unitPriceCents × qty/10000 × (1 - discountBp/10000)   税前
- * - taxCents  = Σ item.net × taxRateBp/10000                                  税额
- * - totalCents = Σ item.lineAmountCents                                       总价
+ * - itemsNet   = Σ item.unitPriceCents × qty/10000 × (1 - discountBp/10000)  税前
+ * - itemsTax   = Σ item.lineAmountCents - itemsNet                              税额
+ * - itemsTotal = Σ item.lineAmountCents                                       明细合计
+ * - totalCents = max(0, itemsTotal - discountAmountCents)                      最终总价（clamp 防负）
+ *
+ * 整单优惠 = 直接对最终总价做现金减免；netCents/taxCents 保留「未优惠前」
+ * 的金额（与单行明细口径一致），仅 totalCents 反映 head 优惠。
+ *
+ * 边界：discountAmountCents clamp 在 ≥0；与单行 discountBp 叠加语义在 service
+ * 层组合，UI 层只在 head 暴露 discountAmountCents，单行 discountBp 不在本 MVP 流程中暴露。
  */
-function computeItemsTotals(items: NonNullable<QuotationCreateReq['items']> | NonNullable<QuotationUpdateReq['items']>): ItemsTotals {
+function computeItemsTotals(
+  items: NonNullable<QuotationCreateReq['items']> | NonNullable<QuotationUpdateReq['items']>,
+  discountAmountCents: number = 0,
+): ItemsTotals {
   const out: CreateQuotationItemInput[] = []
   const netList: number[] = []
   const totalList: number[] = []
@@ -91,7 +102,7 @@ function computeItemsTotals(items: NonNullable<QuotationCreateReq['items']> | No
     const net = Math.round(unitPriceCents * netFactor)
     out.push({
       quotationId: 0, // service 在插入前会重写为实际 id；create 时由 repository 处理
-      productId: it.productId,
+      productId: it.productId ?? null, // 自定义项：productId = null
       productNameSnapshot: it.productNameSnapshot ?? '',
       unitSnapshot: it.unitSnapshot ?? null,
       quantityCents: qty,
@@ -105,10 +116,20 @@ function computeItemsTotals(items: NonNullable<QuotationCreateReq['items']> | No
     totalList.push(lineAmountCents)
   }
   const netCents = sumCents(netList)
-  const totalCents = sumCents(totalList)
-  // tax = total - net（保证 3 个数一致，不做重复乘除）
-  const taxCents = totalCents - netCents
-  return { netCents, taxCents, totalCents, items: out }
+  const itemsTax = sumCents(totalList) - netCents
+  const itemsTotal = sumCents(totalList)
+  const safeDiscount = Math.max(0, discountAmountCents | 0)
+  const totalCents = Math.max(0, itemsTotal - safeDiscount)
+  // netCents / taxCents 保留未优惠前金额；totalCents 反映 head 优惠。
+  // 当 headDiscount > 0 时，net + tax > total；账目以 totalCents 为准。
+  const taxCents = itemsTax
+  return {
+    netCents,
+    taxCents,
+    totalCents,
+    discountAmountCents: safeDiscount,
+    items: out,
+  }
 }
 
 /**
@@ -163,7 +184,7 @@ export class QuotationService {
     if (!input.items || input.items.length === 0) {
       throw new BusinessError(CrmErrorCode.CRM_QUOTATION_ITEMS_REQUIRED, '报价单至少要有一条商品')
     }
-    const totals = computeItemsTotals(input.items)
+    const totals = computeItemsTotals(input.items, input.discountAmountCents ?? 0)
     // 单号生成：用本日 prefix + 当前 count + 1；uniq index 兜底，重试一次。
     const today = new Date()
     const prefix = `Q-${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}-`
@@ -172,6 +193,7 @@ export class QuotationService {
       const quotationNo = genQuotationNo(count + attempt - 1)
       const { id } = await QuotationRepository.create({
         quotationNo,
+        name: input.name,
         customerId: input.customerId,
         opportunityId: input.opportunityId ?? null,
         contactId: input.contactId ?? null,
@@ -181,6 +203,7 @@ export class QuotationService {
         netCents: totals.netCents,
         taxCents: totals.taxCents,
         totalCents: totals.totalCents,
+        discountAmountCents: totals.discountAmountCents,
         remark: input.remark ?? null,
         creatorId: currentUser.id,
         updaterId: currentUser.id,
@@ -216,7 +239,7 @@ export class QuotationService {
       let nextItems: CreateQuotationItemInput[] | null = null
       let nextTotals: ItemsTotals | null = null
       if (input.items && input.items.length > 0) {
-        const totals = computeItemsTotals(input.items)
+        const totals = computeItemsTotals(input.items, input.discountAmountCents ?? locked.discountAmountCents)
         nextTotals = totals
         nextItems = totals.items.map((it) => ({ ...it, quotationId: locked.id }))
         await QuotationRepository.replaceItems(locked.id, nextItems, tx)
@@ -226,9 +249,18 @@ export class QuotationService {
         ...(input.opportunityId !== undefined ? { opportunityId: input.opportunityId } : {}),
         ...(input.contactId !== undefined ? { contactId: input.contactId } : {}),
         ...(input.validUntil !== undefined ? { validUntil: input.validUntil ? new Date(input.validUntil) : null } : {}),
+        ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.discountAmountCents !== undefined
+          ? { discountAmountCents: Math.max(0, input.discountAmountCents | 0) }
+          : {}),
         ...(input.remark !== undefined ? { remark: input.remark } : {}),
         ...(nextTotals
-          ? { netCents: nextTotals.netCents, taxCents: nextTotals.taxCents, totalCents: nextTotals.totalCents }
+          ? {
+              netCents: nextTotals.netCents,
+              taxCents: nextTotals.taxCents,
+              totalCents: nextTotals.totalCents,
+              discountAmountCents: nextTotals.discountAmountCents,
+            }
           : {}),
         updaterId: currentUser.id,
       }, tx)

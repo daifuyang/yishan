@@ -32,7 +32,8 @@ export type QuotationStatus = (typeof QUOTATION_STATUS)[number]
 export const QuotationItemRespSchema = Type.Object({
   id: Type.Number(),
   quotationId: Type.Number(),
-  productId: Type.Number(),
+  /** 产品 id：可为 null（自定义项不绑定 Product 主数据）。 */
+  productId: Type.Union([Type.Number(), Type.Null()]),
   productNameSnapshot: Type.String(),
   unitSnapshot: Type.Union([Type.String(), Type.Null()]),
   /** ×10000 倍精度整数（例：12.3456 件 → 123456）。 */
@@ -51,6 +52,8 @@ export type QuotationItemResp = Static<typeof QuotationItemRespSchema>
 export const QuotationRespSchema = Type.Object({
   id: Type.Number(),
   quotationNo: Type.String(),
+  /** 报价单名称（前端必填；旧数据默认空字符串，UI 兜底展示 quotationNo）。 */
+  name: Type.String(),
   version: Type.Number(),
   customerId: Type.Number(),
   opportunityId: Type.Union([Type.Number(), Type.Null()]),
@@ -63,6 +66,8 @@ export const QuotationRespSchema = Type.Object({
   netCents: Type.Number(),
   taxCents: Type.Number(),
   totalCents: Type.Number(),
+  /** 整单优惠（cents BIGINT）；与每行 discountBp 叠加，由 service 在 computeItemsTotals 中扣减。 */
+  discountAmountCents: Type.Number(),
   remark: Type.Union([Type.String(), Type.Null()]),
   creatorId: Type.Union([Type.Number(), Type.Null()]),
   createdAt: Type.String({ format: 'date-time' }),
@@ -98,7 +103,8 @@ export type QuotationListQuery = Static<typeof QuotationListQuerySchema>
  * （sortOrder 在 service 内按 items 顺序补；id / 时间由 DB 自动生成）。
  */
 export const QuotationItemCreateSchema = Type.Object({
-  productId: Type.Integer({ minimum: 1 }),
+  /** 产品 id：可选；null 表示「自定义项」（不绑定 Product 主数据）。 */
+  productId: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
   productNameSnapshot: Type.Optional(Type.String({ maxLength: 200 })),
   unitSnapshot: Type.Optional(Type.String({ maxLength: 64 })),
   quantityCents: Type.Integer({ minimum: 0 }),
@@ -112,6 +118,10 @@ export const QuotationCreateReqSchema = Type.Object({
   opportunityId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
   contactId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
   validUntil: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
+  /** 报价单名称（业务可见）；与 quotationNo 一起在列表展示。 */
+  name: Type.String({ minLength: 1, maxLength: 200 }),
+  /** 整单优惠（cents）；与每行 discountBp 叠加在 service.computeItemsTotals 中扣减。 */
+  discountAmountCents: Type.Optional(Type.Integer({ minimum: 0 })),
   remark: Type.Optional(Type.String({ maxLength: 2000 })),
   items: Type.Array(QuotationItemCreateSchema, { minItems: 1, maxItems: 200 }),
 })
@@ -131,6 +141,8 @@ export const QuotationUpdateReqSchema = Type.Object({
   opportunityId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
   contactId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
   validUntil: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
+  name: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
+  discountAmountCents: Type.Optional(Type.Integer({ minimum: 0 })),
   remark: Type.Optional(Type.String({ maxLength: 2000 })),
   items: Type.Optional(Type.Array(QuotationItemUpdateSchema, { minItems: 1, maxItems: 200 })),
 })

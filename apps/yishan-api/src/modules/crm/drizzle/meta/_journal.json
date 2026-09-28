@@ -148,6 +148,13 @@
       "when": 1789603200000,
       "tag": "0059_crm-opportunity-optional-forecast",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1790000000000,
+      "tag": "0060_crm-quotation-name-discount",
+      "breakpoints": true
     }
   ]
 }

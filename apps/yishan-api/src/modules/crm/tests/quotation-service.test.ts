@@ -21,6 +21,7 @@ function buildQuotation(overrides: Partial<QuotationRow> = {}): QuotationRow {
   return {
     id: 1,
     quotationNo: 'Q-20260908-0001',
+    name: '示例报价单',
     version: 1,
     customerId: 100,
     customerName: '上海示例有限公司',
@@ -33,6 +34,7 @@ function buildQuotation(overrides: Partial<QuotationRow> = {}): QuotationRow {
     netCents: 0,
     taxCents: 0,
     totalCents: 0,
+    discountAmountCents: 0,
     remark: null,
     creatorId: salesperson.id,
     createdAt: new Date(),
@@ -113,6 +115,7 @@ describe('QuotationService.createDraft', () => {
     const result = await new QuotationService().createDraft(
       {
         customerId: 100,
+        name: '示例报价单',
         items: [
           {
             productId: 1,
@@ -144,6 +147,7 @@ describe('QuotationService.createDraft', () => {
       new QuotationService().createDraft(
         {
           customerId: 100,
+          name: '空 items 测试',
           items: [],
         },
         salesperson,
@@ -162,6 +166,7 @@ describe('QuotationService.createDraft', () => {
     return new QuotationService().createDraft(
       {
         customerId: 1,
+        name: '一致性测试',
         items: [
           {
             productId: 1,
@@ -192,6 +197,69 @@ describe('QuotationService.createDraft', () => {
       expect(args.netCents).toBe(19500)
       // tax = total - net = 1300
       expect(args.taxCents).toBe(1300)
+    })
+  })
+
+  it('subtracts discountAmountCents from total', () => {
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(QuotationRepository, 'countTodayByNoPrefix').mockResolvedValue(0)
+    const createSpy = vi.spyOn(QuotationRepository, 'create').mockResolvedValue({ id: 1 })
+    vi.spyOn(QuotationRepository, 'replaceItems').mockResolvedValue([])
+    vi.spyOn(QuotationRepository, 'findDetailById').mockResolvedValue({ head: buildQuotation(), items: [] })
+
+    return new QuotationService().createDraft(
+      {
+        customerId: 1,
+        name: '整单优惠测试',
+        discountAmountCents: 500, // -¥5.00
+        items: [
+          {
+            productId: 1,
+            productNameSnapshot: 'A',
+            quantityCents: 10000,
+            unitPriceCents: 10000, // 100.00 元，无折扣无税
+          },
+        ],
+      },
+      salesperson,
+    ).then(() => {
+      const args = createSpy.mock.calls[0]?.[0] as unknown as Record<string, unknown>
+      // itemsTotal = 10000；discountAmountCents = 500 → totalCents = 9500
+      expect(args.totalCents).toBe(9500)
+      // net / tax 保留未优惠前金额（明细口径）
+      expect(args.netCents).toBe(10000)
+      expect(args.taxCents).toBe(0)
+      expect(args.discountAmountCents).toBe(500)
+    })
+  })
+
+  it('clamps total to 0 when discountAmountCents exceeds items sum', () => {
+    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
+    vi.spyOn(QuotationRepository, 'countTodayByNoPrefix').mockResolvedValue(0)
+    const createSpy = vi.spyOn(QuotationRepository, 'create').mockResolvedValue({ id: 1 })
+    vi.spyOn(QuotationRepository, 'replaceItems').mockResolvedValue([])
+    vi.spyOn(QuotationRepository, 'findDetailById').mockResolvedValue({ head: buildQuotation(), items: [] })
+
+    return new QuotationService().createDraft(
+      {
+        customerId: 1,
+        name: '极端优惠测试',
+        discountAmountCents: 99999, // 大于商品金额
+        items: [
+          {
+            productId: 1,
+            productNameSnapshot: 'A',
+            quantityCents: 10000,
+            unitPriceCents: 1000, // ¥10.00
+          },
+        ],
+      },
+      salesperson,
+    ).then(() => {
+      const args = createSpy.mock.calls[0]?.[0] as unknown as Record<string, unknown>
+      // itemsTotal = 1000；discountAmountCents = 99999 → totalCents = 0（clamp）
+      expect(args.totalCents).toBe(0)
+      expect(args.discountAmountCents).toBe(99999)
     })
   })
 })

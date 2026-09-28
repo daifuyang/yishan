@@ -28,6 +28,7 @@ import type {
 export interface QuotationRow {
   id: number
   quotationNo: string
+  name: string
   version: number
   customerId: number
   customerName: string | null
@@ -40,6 +41,7 @@ export interface QuotationRow {
   netCents: number
   taxCents: number
   totalCents: number
+  discountAmountCents: number
   remark: string | null
   creatorId: number | null
   createdAt: Date
@@ -53,7 +55,7 @@ export interface QuotationRow {
 export interface QuotationItemRow {
   id: number
   quotationId: number
-  productId: number
+  productId: number | null
   productNameSnapshot: string
   unitSnapshot: string | null
   quantityCents: number
@@ -91,6 +93,7 @@ export interface QuotationListQuery {
 
 export interface CreateQuotationInput {
   quotationNo: string
+  name: string
   customerId: number
   opportunityId?: number | null
   contactId?: number | null
@@ -100,6 +103,7 @@ export interface CreateQuotationInput {
   netCents: number
   taxCents: number
   totalCents: number
+  discountAmountCents: number
   remark?: string | null
   creatorId: number
   updaterId: number
@@ -110,9 +114,11 @@ export interface UpdateQuotationInput {
   opportunityId?: number | null
   contactId?: number | null
   validUntil?: Date | null
+  name?: string
   netCents?: number
   taxCents?: number
   totalCents?: number
+  discountAmountCents?: number
   remark?: string | null
   updaterId: number
   status?: QuotationStatus
@@ -123,7 +129,7 @@ export interface UpdateQuotationInput {
 
 export interface CreateQuotationItemInput {
   quotationId: number
-  productId: number
+  productId: number | null
   productNameSnapshot: string
   unitSnapshot?: string | null
   quantityCents: number
@@ -148,6 +154,7 @@ const customer = crmCustomer
 const quotationColumns = {
   id: crmQuotation.id,
   quotationNo: crmQuotation.quotationNo,
+  name: crmQuotation.name,
   version: crmQuotation.version,
   customerId: crmQuotation.customerId,
   customerName: customer.name,
@@ -160,6 +167,7 @@ const quotationColumns = {
   netCents: crmQuotation.netCents,
   taxCents: crmQuotation.taxCents,
   totalCents: crmQuotation.totalCents,
+  discountAmountCents: crmQuotation.discountAmountCents,
   remark: crmQuotation.remark,
   creatorId: crmQuotation.creatorId,
   createdAt: crmQuotation.createdAt,
@@ -296,6 +304,7 @@ export class QuotationRepository {
   /**
    * 整体替换 item 集合：删旧 + 插新。
    * 必须传入 db（同事务），否则新行 quotation_id 外键会找不到。
+   * productId 可为 null —— 自定义项不绑定 Product 主数据。
    */
   static async replaceItems(quotationId: number, items: CreateQuotationItemInput[], db: AppQueryDb): Promise<QuotationItemRow[]> {
     await db.delete(crmQuotationItem).where(eq(crmQuotationItem.quotationId, quotationId))
@@ -319,6 +328,7 @@ export class QuotationRepository {
   static async create(input: CreateQuotationInput, db: AppQueryDb = drizzleDb): Promise<{ id: number }> {
     const [inserted] = await db.insert(crmQuotation).values({
       quotationNo: input.quotationNo,
+      name: input.name,
       version: 1,
       customerId: input.customerId,
       opportunityId: input.opportunityId ?? null,
@@ -329,6 +339,7 @@ export class QuotationRepository {
       netCents: input.netCents,
       taxCents: input.taxCents,
       totalCents: input.totalCents,
+      discountAmountCents: input.discountAmountCents,
       remark: input.remark ?? null,
       creatorId: input.creatorId,
       updaterId: input.updaterId,
@@ -342,9 +353,11 @@ export class QuotationRepository {
     if (input.opportunityId !== undefined) patch.opportunityId = input.opportunityId
     if (input.contactId !== undefined) patch.contactId = input.contactId
     if (input.validUntil !== undefined) patch.validUntil = input.validUntil
+    if (input.name !== undefined) patch.name = input.name
     if (input.netCents !== undefined) patch.netCents = input.netCents
     if (input.taxCents !== undefined) patch.taxCents = input.taxCents
     if (input.totalCents !== undefined) patch.totalCents = input.totalCents
+    if (input.discountAmountCents !== undefined) patch.discountAmountCents = input.discountAmountCents
     if (input.remark !== undefined) patch.remark = input.remark
     if (input.status !== undefined) patch.status = input.status
     if (input.sentAt !== undefined) patch.sentAt = input.sentAt
