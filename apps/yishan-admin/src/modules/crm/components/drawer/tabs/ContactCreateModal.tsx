@@ -71,7 +71,7 @@ const ContactCreateModal: React.FC<ContactCreateModalProps> = ({
   onSuccess,
 }) => {
   const { message } = App.useApp();
-  const formRef = useRef<ProFormInstance | null>(null);
+  const formRef = useRef<ProFormInstance<FormValues>>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [roleOptions, setRoleOptions] = useState<
     Array<{ label: string; value: string }>

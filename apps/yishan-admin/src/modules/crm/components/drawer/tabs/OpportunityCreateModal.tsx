@@ -70,7 +70,7 @@ const OpportunityCreateModal: React.FC<OpportunityCreateModalProps> = ({
   onSuccess,
 }) => {
   const { message } = App.useApp();
-  const formRef = useRef<ProFormInstance | null>(null);
+  const formRef = useRef<ProFormInstance<FormValues>>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
   const contactOptions = useMemo(

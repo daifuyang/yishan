@@ -70,7 +70,7 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
   onSuccess,
 }) => {
   const { message } = App.useApp();
-  const formRef = useRef<ProFormInstance | null>(null);
+  const formRef = useRef<ProFormInstance<FormValues>>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
   // 只展示「有效状态」的报价单（draft / sent / accepted），过滤掉已作废 / 已被新版替代

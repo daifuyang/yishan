@@ -61,7 +61,7 @@ const TaskCreateModal: React.FC<TaskCreateModalProps> = ({
   onSuccess,
 }) => {
   const { message } = App.useApp();
-  const formRef = useRef<ProFormInstance | null>(null);
+  const formRef = useRef<ProFormInstance<FormValues>>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
   const initialValues = useMemo<FormValues>(

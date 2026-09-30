@@ -72,7 +72,7 @@ const PaymentCreateModal: React.FC<PaymentCreateModalProps> = ({
   onSuccess,
 }) => {
   const { message } = App.useApp();
-  const formRef = useRef<ProFormInstance | null>(null);
+  const formRef = useRef<ProFormInstance<FormValues>>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
   // Form 内对 contractId / amountYuan 订阅，用于 contextual info + 实时反馈
