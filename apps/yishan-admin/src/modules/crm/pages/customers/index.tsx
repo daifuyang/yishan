@@ -35,6 +35,7 @@ import {
 } from '@/services/crm';
 import { usePermission } from '@/utils/permission';
 import CustomerActionDropdown from '../../components/customers/CustomerActionDropdown';
+import CustomerCreateModal from '../../components/customers/CustomerCreateModal';
 import {
   buildCustomerTableColumns,
   type CustomerTableColumnsOptions,
@@ -148,12 +149,6 @@ const Customers: React.FC = () => {
   >(new Map());
   const [ownerNameMap] = useState<Map<number, string>>(new Map());
 
-  const handleCreate = () => {
-    // 简化：与原 page 一致，点击新建直接跳到详情页带 edit=1。
-    // 后续 Phase 2 把"新建"也搬进 Drawer 时再换。
-    history.push('/crm/customer-detail?create=1');
-  };
-
   const handleOpenDetail = (id: number) => {
     drawer.openDrawer(id);
   };
@@ -237,14 +232,21 @@ const Customers: React.FC = () => {
           ];
           return [
             can('crm:customer:create') ? (
-              <Button
+              <CustomerCreateModal
                 key="create"
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleCreate}
+                sources={sources}
+                tags={tags}
+                currentUserId={currentUserId}
+                currentUserName={currentUser?.realName}
+                onSuccess={(customer) => {
+                  reloadAll();
+                  drawer.openDrawer(customer.id);
+                }}
               >
-                新建客户
-              </Button>
+                <Button type="primary" icon={<PlusOutlined />}>
+                  新建客户
+                </Button>
+              </CustomerCreateModal>
             ) : null,
             can('crm:customer:create') ? (
               <Button

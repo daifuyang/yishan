@@ -2,7 +2,7 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
-/** 文章模板列表 GET /api/portal/v1/article-templates */
+/** 文章模板列表 GET /api/portal/v1/article-templates/ */
 export async function getPortalV1ArticleTemplates(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getPortalV1ArticleTemplatesParams,
@@ -26,7 +26,7 @@ export async function getPortalV1ArticleTemplates(
       updaterId: number | null;
       updatedAt: string;
     }[];
-  }>("/api/portal/v1/article-templates", {
+  }>("/api/portal/v1/article-templates/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -40,7 +40,7 @@ export async function getPortalV1ArticleTemplates(
   });
 }
 
-/** 新建文章模板 POST /api/portal/v1/article-templates */
+/** 新建文章模板 POST /api/portal/v1/article-templates/ */
 export async function postPortalV1ArticleTemplates(
   body: {
     name: string;
@@ -66,7 +66,7 @@ export async function postPortalV1ArticleTemplates(
     createdAt: string;
     updaterId: number | null;
     updatedAt: string;
-  }>("/api/portal/v1/article-templates", {
+  }>("/api/portal/v1/article-templates/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -110,7 +110,7 @@ export async function deletePortalV1ArticleTemplatesId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(
+  return request<{ success: boolean }>(
     `/api/portal/v1/article-templates/${param0}`,
     {
       method: "DELETE",
@@ -160,7 +160,7 @@ export async function patchPortalV1ArticleTemplatesId(
   });
 }
 
-/** 文章列表 GET /api/portal/v1/articles */
+/** 文章列表 GET /api/portal/v1/articles/ */
 export async function getPortalV1Articles(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getPortalV1ArticlesParams,
@@ -180,6 +180,7 @@ export async function getPortalV1Articles(
       status: number;
       isPinned: boolean;
       publishTime: string | null;
+      attributes?: Record<string, any>;
       tags?: string[];
       templateId: number | null;
       categoryIds?: number[];
@@ -188,7 +189,7 @@ export async function getPortalV1Articles(
       updaterId: number | null;
       updatedAt: string;
     }[];
-  }>("/api/portal/v1/articles", {
+  }>("/api/portal/v1/articles/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -202,7 +203,7 @@ export async function getPortalV1Articles(
   });
 }
 
-/** 新建文章 POST /api/portal/v1/articles */
+/** 新建文章 POST /api/portal/v1/articles/ */
 export async function postPortalV1Articles(
   body: {
     title: string;
@@ -213,6 +214,7 @@ export async function postPortalV1Articles(
     status?: number;
     isPinned?: boolean;
     publishTime?: string;
+    attributes?: Record<string, any>;
     tags?: string[];
     templateId?: number | null;
     categoryIds?: number[];
@@ -229,6 +231,7 @@ export async function postPortalV1Articles(
     status: number;
     isPinned: boolean;
     publishTime: string | null;
+    attributes?: Record<string, any>;
     tags?: string[];
     templateId: number | null;
     categoryIds?: number[];
@@ -236,7 +239,7 @@ export async function postPortalV1Articles(
     createdAt: string;
     updaterId: number | null;
     updatedAt: string;
-  }>("/api/portal/v1/articles", {
+  }>("/api/portal/v1/articles/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -263,6 +266,7 @@ export async function getPortalV1ArticlesId(
     status: number;
     isPinned: boolean;
     publishTime: string | null;
+    attributes?: Record<string, any>;
     tags?: string[];
     templateId: number | null;
     categoryIds?: number[];
@@ -284,7 +288,7 @@ export async function deletePortalV1ArticlesId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(`/api/portal/v1/articles/${param0}`, {
+  return request<{ success: boolean }>(`/api/portal/v1/articles/${param0}`, {
     method: "DELETE",
     params: { ...queryParams },
     ...(options || {}),
@@ -304,6 +308,7 @@ export async function patchPortalV1ArticlesId(
     status?: number;
     isPinned?: boolean;
     publishTime?: string;
+    attributes?: Record<string, any>;
     tags?: string[];
     templateId?: number | null;
     categoryIds?: number[];
@@ -321,6 +326,7 @@ export async function patchPortalV1ArticlesId(
     status: number;
     isPinned: boolean;
     publishTime: string | null;
+    attributes?: Record<string, any>;
     tags?: string[];
     templateId: number | null;
     categoryIds?: number[];
@@ -346,7 +352,7 @@ export async function postPortalV1ArticlesIdPublish(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(
+  return request<{ success: boolean }>(
     `/api/portal/v1/articles/${param0}/publish`,
     {
       method: "POST",
@@ -356,7 +362,7 @@ export async function postPortalV1ArticlesIdPublish(
   );
 }
 
-/** 分类列表 GET /api/portal/v1/categories */
+/** 分类列表 GET /api/portal/v1/categories/ */
 export async function getPortalV1Categories(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getPortalV1CategoriesParams,
@@ -379,7 +385,7 @@ export async function getPortalV1Categories(
       updaterId: number | null;
       updatedAt: string;
     }[];
-  }>("/api/portal/v1/categories", {
+  }>("/api/portal/v1/categories/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -393,7 +399,7 @@ export async function getPortalV1Categories(
   });
 }
 
-/** 新建分类 POST /api/portal/v1/categories */
+/** 新建分类 POST /api/portal/v1/categories/ */
 export async function postPortalV1Categories(
   body: {
     name: string;
@@ -417,7 +423,7 @@ export async function postPortalV1Categories(
     createdAt: string;
     updaterId: number | null;
     updatedAt: string;
-  }>("/api/portal/v1/categories", {
+  }>("/api/portal/v1/categories/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -460,7 +466,7 @@ export async function deletePortalV1CategoriesId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(`/api/portal/v1/categories/${param0}`, {
+  return request<{ success: boolean }>(`/api/portal/v1/categories/${param0}`, {
     method: "DELETE",
     params: { ...queryParams },
     ...(options || {}),
@@ -505,7 +511,7 @@ export async function patchPortalV1CategoriesId(
   });
 }
 
-/** 页面模板列表 GET /api/portal/v1/page-templates */
+/** 页面模板列表 GET /api/portal/v1/page-templates/ */
 export async function getPortalV1PageTemplates(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getPortalV1PageTemplatesParams,
@@ -529,7 +535,7 @@ export async function getPortalV1PageTemplates(
       updaterId: number | null;
       updatedAt: string;
     }[];
-  }>("/api/portal/v1/page-templates", {
+  }>("/api/portal/v1/page-templates/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -543,7 +549,7 @@ export async function getPortalV1PageTemplates(
   });
 }
 
-/** 新建页面模板 POST /api/portal/v1/page-templates */
+/** 新建页面模板 POST /api/portal/v1/page-templates/ */
 export async function postPortalV1PageTemplates(
   body: {
     name: string;
@@ -569,7 +575,7 @@ export async function postPortalV1PageTemplates(
     createdAt: string;
     updaterId: number | null;
     updatedAt: string;
-  }>("/api/portal/v1/page-templates", {
+  }>("/api/portal/v1/page-templates/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -613,7 +619,7 @@ export async function deletePortalV1PageTemplatesId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(
+  return request<{ success: boolean }>(
     `/api/portal/v1/page-templates/${param0}`,
     {
       method: "DELETE",
@@ -663,7 +669,7 @@ export async function patchPortalV1PageTemplatesId(
   });
 }
 
-/** 页面列表 GET /api/portal/v1/pages */
+/** 页面列表 GET /api/portal/v1/pages/ */
 export async function getPortalV1Pages(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getPortalV1PagesParams,
@@ -679,6 +685,7 @@ export async function getPortalV1Pages(
       path: string;
       content: string;
       status: number;
+      attributes?: Record<string, any>;
       publishTime: string | null;
       templateId: number | null;
       creatorId: number | null;
@@ -686,7 +693,7 @@ export async function getPortalV1Pages(
       updaterId: number | null;
       updatedAt: string;
     }[];
-  }>("/api/portal/v1/pages", {
+  }>("/api/portal/v1/pages/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -700,13 +707,14 @@ export async function getPortalV1Pages(
   });
 }
 
-/** 新建页面 POST /api/portal/v1/pages */
+/** 新建页面 POST /api/portal/v1/pages/ */
 export async function postPortalV1Pages(
   body: {
     title: string;
     path: string;
     content: string;
     status?: number;
+    attributes?: Record<string, any>;
     publishTime?: string;
     templateId?: number | null;
   },
@@ -718,13 +726,14 @@ export async function postPortalV1Pages(
     path: string;
     content: string;
     status: number;
+    attributes?: Record<string, any>;
     publishTime: string | null;
     templateId: number | null;
     creatorId: number | null;
     createdAt: string;
     updaterId: number | null;
     updatedAt: string;
-  }>("/api/portal/v1/pages", {
+  }>("/api/portal/v1/pages/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -747,6 +756,7 @@ export async function getPortalV1PagesId(
     path: string;
     content: string;
     status: number;
+    attributes?: Record<string, any>;
     publishTime: string | null;
     templateId: number | null;
     creatorId: number | null;
@@ -767,7 +777,7 @@ export async function deletePortalV1PagesId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(`/api/portal/v1/pages/${param0}`, {
+  return request<{ success: boolean }>(`/api/portal/v1/pages/${param0}`, {
     method: "DELETE",
     params: { ...queryParams },
     ...(options || {}),
@@ -783,6 +793,7 @@ export async function patchPortalV1PagesId(
     path?: string;
     content?: string;
     status?: number;
+    attributes?: Record<string, any>;
     publishTime?: string;
     templateId?: number | null;
   },
@@ -795,6 +806,7 @@ export async function patchPortalV1PagesId(
     path: string;
     content: string;
     status: number;
+    attributes?: Record<string, any>;
     publishTime: string | null;
     templateId: number | null;
     creatorId: number | null;

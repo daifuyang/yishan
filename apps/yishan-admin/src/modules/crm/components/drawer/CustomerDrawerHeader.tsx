@@ -3,11 +3,11 @@
  *
  * 结构（与 LeadDetailDrawer 对齐）：
  *   - 左：[客户名 + DrawerStatusTag] + DrawerMetaRow（负责人/最近跟进/下次跟进/客户等级/当前状态）
- *   - 右 actions：[新增▼] [转移▼] [编辑] [更多▼] [↗ 新窗口] [× 关闭]
+ *   - 右 actions：[新增跟进] [转移▼] [编辑] [新增▼] [更多▼] [↗ 新窗口] [× 关闭]
  *
  * 行为：
- *   - 新增 ▼：联系人 / 商机 / 合同 / 费用 / 报价单 / 回款记录 / 开票记录
- *     · 后端未接入前都走 toast 占位
+ *   - 新增跟进：客户详情主操作，打开 ModalForm
+ *   - 新增 ▼：联系人 / 商机 / 任务
  *   - 转移 ▼：转移给同事 / 转移至公海
  *     · 公海客户不渲染"转移给同事"；owned 客户不渲染"转移至公海"
  *   - 编辑 → 全屏编辑（暂占位，Phase 3 接入）
@@ -28,7 +28,10 @@ import DrawerDeletePopconfirm from './_shared/DrawerDeletePopconfirm';
 import DrawerMetaRow from './_shared/DrawerMetaRow';
 import DrawerNewWindowButton from './_shared/DrawerNewWindowButton';
 import DrawerStatusTag from './_shared/DrawerStatusTag';
-import { formatDateTime } from '@/utils/formatDate';
+import {
+  formatDateTimeMinute,
+  formatRelativeDateTime,
+} from '@/utils/formatDate';
 
 const { Text } = Typography;
 
@@ -68,12 +71,9 @@ export type CreateEntityKey =
   | 'task';
 
 const CREATE_LABELS: Array<{ key: CreateEntityKey; label: string }> = [
-  { key: 'followup', label: '跟进' },
   { key: 'contact', label: '联系人' },
   { key: 'opportunity', label: '商机' },
-  { key: 'contract', label: '合同' },
-  { key: 'quotation', label: '报价单' },
-  { key: 'payment', label: '回款记录' },
+  { key: 'task', label: '任务' },
 ];
 
 const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
@@ -90,6 +90,8 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
 }) => {
   const can = usePermission();
 
+  const canFollowUp =
+    can('crm:activity:create') && customer.poolStatus === 'owned';
   const canCreate = can('crm:customer:update') || can('crm:contact:create');
   const canTransfer =
     can('crm:customer:transfer') && customer.poolStatus === 'owned';
@@ -99,10 +101,6 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
   const canDelete = can('crm:customer:delete');
 
   const handleCreateMenuClick: MenuProps['onClick'] = ({ key }) => {
-    if (key === 'followup') {
-      onFollowUp?.();
-      return;
-    }
     onCreateEntity?.(key as CreateEntityKey);
   };
 
@@ -144,11 +142,11 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
     },
     {
       label: '最近跟进：',
-      value: formatDateTime(customer.lastFollowUpAt),
+      value: formatRelativeDateTime(customer.lastFollowUpAt),
     },
     {
       label: '下次跟进：',
-      value: formatDateTime(customer.nextFollowUpAt),
+      value: formatDateTimeMinute(customer.nextFollowUpAt),
     },
     { label: '客户等级：', value: customer.level ?? '—' },
     { label: '当前状态：', value: customer.statusName ?? '—' },
@@ -201,6 +199,11 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
 
         {/* 右：主操作 + 图标 */}
         <Space size={8} wrap>
+          {canFollowUp && onFollowUp && (
+            <Button type="primary" onClick={onFollowUp}>
+              新增跟进
+            </Button>
+          )}
           {canCreate && onCreateEntity && (
             <Dropdown
               trigger={['click']}
@@ -212,7 +215,7 @@ const CustomerDrawerHeader: React.FC<CustomerDrawerHeaderProps> = ({
                 onClick: handleCreateMenuClick,
               }}
             >
-              <Button type="primary">
+              <Button>
                 新增
                 <DownOutlined style={{ fontSize: 10, marginLeft: 2 }} />
               </Button>

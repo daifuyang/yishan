@@ -95,6 +95,7 @@ const CustomerActionDropdown: React.FC<CustomerActionDropdownProps> = ({
         break;
       case 'delete':
         Modal.confirm({
+          centered: true,
           title: `确认删除「${record.name}」？`,
           content: '删除后可在回收站中恢复。',
           okText: '删除',

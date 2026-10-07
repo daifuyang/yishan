@@ -1,32 +1,32 @@
 import { Type, type Static } from '@sinclair/typebox'
+import {
+  ACTIVITY_CATEGORIES,
+  FOLLOW_UP_RESULTS,
+  FOLLOW_UP_TYPES,
+} from '../domain/statuses.js'
 
 /**
  * 跟进记录的 HTTP schema。
  *
- * Phase 1 扩展：
- *   - ACTIVITY_TYPES 增加 polymorphic 语义：
- *       status_change（客户状态变更）
- *       owner_change（转移）
- *       profile_edit（资料编辑审计）
- *       qualification（判为有效）
- *       task / note
- *   - 旧 phone/wechat/visit/meeting/email/other 全部保留
- *   - Response 暴露 entityType/entityId 供前端按对象分组
+ * 动态类别 category ∈ { follow_up, system, business }。
+ * 人工跟进的 type 是跟进方式（phone / wechat / ...），由服务端写入 category=follow_up。
+ * 系统/业务事件由其它服务写入，不走「新建跟进」接口。
  */
+
+export const FOLLOW_UP_TYPE_VALUES = FOLLOW_UP_TYPES.map((item) => item.value)
+export const FOLLOW_UP_RESULT_VALUES = FOLLOW_UP_RESULTS.map((item) => item.value)
+export const ACTIVITY_CATEGORY_VALUES = ACTIVITY_CATEGORIES.map((item) => item.value)
 
 /** 全部 type 字面量；前端只对业务类型做 UI 映射，技术型（status_change 等）走隐藏。 */
 export const ACTIVITY_TYPES = [
-  'phone',
-  'wechat',
-  'visit',
-  'meeting',
-  'email',
+  ...FOLLOW_UP_TYPE_VALUES,
   'task',
   'note',
   'status_change',
   'owner_change',
   'qualification',
   'profile_edit',
+  'customer_created',
 ] as const
 export type ActivityType = (typeof ACTIVITY_TYPES)[number]
 
@@ -47,10 +47,13 @@ export const ActivityRespSchema = Type.Object({
   ]),
   entityId: Type.Union([Type.Number(), Type.Null()]),
   entityRefType: Type.Union([Type.String(), Type.Null()]),
+  category: Type.String({ enum: [...ACTIVITY_CATEGORY_VALUES] }),
   type: Type.String(),
   content: Type.String(),
   occurredAt: Type.String({ format: 'date-time' }),
   nextFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+  result: Type.Union([Type.String(), Type.Null()]),
+  nextFollowUpPlan: Type.Union([Type.String(), Type.Null()]),
   attachmentIds: Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()]),
   metadata: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
   /** Phase 4 拜访专用字段 */
@@ -73,10 +76,12 @@ export const ActivityListRespSchema = Type.Object({
 
 export const ActivityCreateReqSchema = Type.Object({
   contactId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
-  type: Type.String({ enum: [...ACTIVITY_TYPES] }),
+  type: Type.String({ enum: [...FOLLOW_UP_TYPE_VALUES] }),
   content: Type.String({ minLength: 1, maxLength: 2000 }),
   occurredAt: Type.Optional(Type.String({ format: 'date-time' })),
   nextFollowUpAt: Type.Optional(Type.Union([Type.String({ format: 'date-time' }), Type.Null()])),
+  result: Type.Optional(Type.Union([Type.String({ enum: [...FOLLOW_UP_RESULT_VALUES] }), Type.Null()])),
+  nextFollowUpPlan: Type.Optional(Type.Union([Type.String({ maxLength: 500 }), Type.Null()])),
   attachmentIds: Type.Optional(Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()])),
   metadata: Type.Optional(Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()])),
   /** Phase 4 拜访：计划拜访时间 */
@@ -97,10 +102,12 @@ export type ActivityCreateReq = Static<typeof ActivityCreateReqSchema>
 export const ActivityUpdateReqSchema = Type.Partial(
   Type.Object({
     contactId: Type.Union([Type.Integer(), Type.Null()]),
-    type: Type.String({ enum: [...ACTIVITY_TYPES] }),
+    type: Type.String({ enum: [...FOLLOW_UP_TYPE_VALUES] }),
     content: Type.String({ minLength: 1, maxLength: 2000 }),
     occurredAt: Type.String({ format: 'date-time' }),
     nextFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+    result: Type.Union([Type.String({ enum: [...FOLLOW_UP_RESULT_VALUES] }), Type.Null()]),
+    nextFollowUpPlan: Type.Union([Type.String({ maxLength: 500 }), Type.Null()]),
     attachmentIds: Type.Union([Type.Array(Type.Integer({ minimum: 1 })), Type.Null()]),
     metadata: Type.Union([Type.Record(Type.String(), Type.Any()), Type.Null()]),
     plannedAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),

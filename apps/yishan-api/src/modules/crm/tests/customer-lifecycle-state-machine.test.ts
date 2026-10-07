@@ -64,6 +64,15 @@ describe('CustomerLifecycleService projected status', () => {
     expect(update).toHaveBeenCalledWith(11, expect.objectContaining({ statusCode: 'won' }), expect.anything())
   })
 
+  it('does not project an open opportunity onto customer status', async () => {
+    vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue(['needs_confirmation'] as any)
+    vi.spyOn(CustomerRepository, 'findById').mockResolvedValue(customer({ statusCode: 'potential', relationshipStatus: 'potential' }))
+    const update = vi.spyOn(CustomerRepository, 'updateLifecycle').mockResolvedValue(customer({ statusCode: 'potential', relationshipStatus: 'potential' }))
+
+    await expect(CustomerLifecycleService.recalculate(11, 7, {} as any)).resolves.toBe('potential')
+    expect(update).toHaveBeenCalledWith(11, expect.objectContaining({ statusCode: 'potential' }), expect.anything())
+  })
+
   it('does not project a draft contract as customer', async () => {
     vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue([])
     vi.spyOn(ContractRepository, 'hasQualifyingContractByCustomerId').mockResolvedValue(false)
@@ -77,7 +86,7 @@ describe('CustomerLifecycleService projected status', () => {
 describe('CustomerService relationship transitions', () => {
   it('blocks marking a customer lost while an active opportunity exists', async () => {
     vi.spyOn(CustomerRepository, 'findById').mockResolvedValue(customer())
-    vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue(['proposal'] as any)
+    vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue(['quotation'] as any)
     vi.spyOn(ContractRepository, 'hasQualifyingContractByCustomerId').mockResolvedValue(false)
 
     await expect(new CustomerService().transitionRelationshipStatus({
@@ -136,20 +145,18 @@ describe('CustomerService relationship transitions', () => {
 })
 
 describe('CustomerLifecycleService follow-up projection', () => {
-  it('promotes a potential customer to following after the first valid follow-up', async () => {
+  it('does not change customer status after the first follow-up', async () => {
     vi.spyOn(CustomerRepository, 'findById').mockResolvedValue(customer({ statusCode: 'potential', relationshipStatus: 'potential' }))
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (fn: any) => fn({} as any))
     vi.spyOn(ActivityRepository, 'create').mockResolvedValue({ id: 1 } as any)
     vi.spyOn(ActivityRepository, 'listByCustomerId').mockResolvedValue([])
     vi.spyOn(ActivityRepository, 'computeFollowUpState').mockResolvedValue({ lastFollowUpAt: new Date(), nextFollowUpAt: null })
     vi.spyOn(CustomerRepository, 'update').mockResolvedValue(customer())
-    const lifecycleUpdate = vi.spyOn(CustomerRepository, 'updateLifecycle').mockResolvedValue(customer({ statusCode: 'following', relationshipStatus: 'following' }))
-    vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue([])
-    vi.spyOn(ContractRepository, 'hasQualifyingContractByCustomerId').mockResolvedValue(false)
+    const lifecycleUpdate = vi.spyOn(CustomerRepository, 'updateLifecycle')
 
-    await new ActivityService().create(11, { type: 'phone', content: '首次沟通' }, salesperson)
+    await new ActivityService().create(11, { type: 'phone', content: '首次沟通', result: 'interested' }, salesperson)
 
-    expect(lifecycleUpdate).toHaveBeenCalledWith(11, expect.objectContaining({ relationshipStatus: 'following' }), expect.anything())
+    expect(lifecycleUpdate).not.toHaveBeenCalled()
   })
 })
 

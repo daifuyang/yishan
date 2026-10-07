@@ -26,6 +26,12 @@ import {
   varchar,
 } from 'drizzle-orm/mysql-core'
 
+/** 每个业务编号前缀的原子计数器，避免并发创建商机得到重复编号。 */
+export const crmBusinessNumber = mysqlTable('crm_business_number', {
+  prefix: varchar({ length: 32 }).primaryKey().notNull(),
+  nextValue: int('next_value').notNull().default(1),
+})
+
 export const crmCustomer = mysqlTable(
   'crm_customer',
   {
@@ -161,10 +167,17 @@ export const crmActivity = mysqlTable(
     entityType: varchar('entity_type', { length: 32 }),
     entityId: int('entity_id'),
     entityRefType: varchar('entity_ref_type', { length: 32 }),
+    /**
+     * 动态类别：follow_up 人工跟进 / system 系统事件 / business 业务事件。
+     * type 继续表示具体动作（phone、status_change、opportunity_created 等）。
+     */
+    category: varchar({ length: 32 }).notNull().default('follow_up'),
     type: varchar({ length: 32 }).notNull(),
     content: varchar({ length: 2000 }).notNull().default(''),
     occurredAt: datetime('occurred_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
     nextFollowUpAt: datetime('next_follow_up_at'),
+    result: varchar({ length: 64 }),
+    nextFollowUpPlan: varchar('next_follow_up_plan', { length: 500 }),
     attachmentIds: json('attachment_ids'),
     metadata: json('metadata'),
     /**
@@ -189,6 +202,7 @@ export const crmActivity = mysqlTable(
     idxCustomerOccurred: index('idx_crm_activity_customer_occurred').on(t.customerId, t.occurredAt),
     idxEntity: index('idx_crm_activity_entity').on(t.entityType, t.entityId, t.occurredAt),
     idxType: index('idx_crm_activity_type').on(t.type),
+    idxCategory: index('idx_crm_activity_category').on(t.category),
     idxPlannedAt: index('idx_crm_activity_planned_at').on(t.plannedAt),
     idxDeletedAt: index('idx_crm_activity_deleted_at').on(t.deletedAt),
   }),
@@ -424,15 +438,19 @@ export const crmQuotation = mysqlTable(
      * 全局唯一（uniq_crm_quotation_no）；由 service 层按规则生成（见 QuotationService.genQuotationNo）。
      */
     quotationNo: varchar('quotation_no', { length: 32 }).notNull(),
+    /** 报价系列内部稳定标识（同一系列所有版本相同）。 */
+    seriesId: varchar('series_id', { length: 36 }).notNull(),
+    /** 报价系列业务编号（同一系列所有版本相同）。 */
+    seriesNo: varchar('series_no', { length: 32 }).notNull(),
     /**
      * 报价单名称（业务可见）。前端必填；后端再次兜底必填校验。
      */
     name: varchar({ length: 200 }).notNull().default(''),
-    /**
-     * 版本号：同一 opportunity 下的版本计数，从 1 开始递增。
-     * acceptance 时把同 opportunity 下旧 accepted 置为 superseded（version 不变，只改 status）。
-     */
+    /** 系列内递增，删除的版本也不复用其版本号。 */
     version: int().notNull().default(1),
+    /** 根报价插入后，在同一事务中回填自身 id；其它版本直接继承根 id。 */
+    rootQuoteId: int('root_quote_id'),
+    sourceQuoteId: int('source_quote_id'),
     customerId: int('customer_id').notNull(),
     /**
      * 商机 id：Phase 2 暂存 nullable；Phase 3 Opportunity 上线后开始填充。
@@ -445,6 +463,7 @@ export const crmQuotation = mysqlTable(
      * 详见 quotation.schema.ts 的 QUOTATION_STATUS 常量。
      */
     status: varchar({ length: 16 }).notNull().default('draft'),
+    quoteDate: datetime('quote_date'),
     validUntil: datetime('valid_until'),
     netCents: bigint('net_cents', { mode: 'number' }).notNull().default(0),
     taxCents: bigint('tax_cents', { mode: 'number' }).notNull().default(0),
@@ -454,6 +473,8 @@ export const crmQuotation = mysqlTable(
      * 里从 items sum 中扣减。MVP 只允许「整单优惠金额」一种表达。
      */
     discountAmountCents: bigint('discount_amount_cents', { mode: 'number' }).notNull().default(0),
+    publicDiscountDescription: varchar('public_discount_description', { length: 50 }),
+    internalDiscountReason: varchar('internal_discount_reason', { length: 500 }),
     remark: varchar({ length: 2000 }),
     creatorId: int('creator_id'),
     createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
@@ -467,6 +488,7 @@ export const crmQuotation = mysqlTable(
      * 接受时间（sent → accepted 时写入）。
      */
     acceptedAt: datetime('accepted_at'),
+    acceptedBy: int('accepted_by'),
     /**
      * 作废/拒绝时间。
      */
@@ -475,6 +497,9 @@ export const crmQuotation = mysqlTable(
   },
   (t) => ({
     uniqQuotationNo: uniqueIndex('uniq_crm_quotation_no').on(t.quotationNo),
+    uniqSeriesVersion: uniqueIndex('uniq_crm_quotation_series_version').on(t.seriesId, t.version),
+    uniqRootVersion: uniqueIndex('uniq_crm_quotation_root_version').on(t.rootQuoteId, t.version),
+    idxSourceQuote: index('idx_crm_quotation_source_quote_id').on(t.sourceQuoteId),
     idxCustomer: index('idx_crm_quotation_customer_id').on(t.customerId),
     idxOpportunity: index('idx_crm_quotation_opportunity_id').on(t.opportunityId),
     idxContact: index('idx_crm_quotation_contact_id').on(t.contactId),
@@ -512,6 +537,7 @@ export const crmQuotationItem = mysqlTable(
      */
     productId: int('product_id'),
     productNameSnapshot: varchar('product_name_snapshot', { length: 200 }).notNull(),
+    description: varchar({ length: 2000 }),
     unitSnapshot: varchar('unit_snapshot', { length: 64 }),
     quantityCents: int('quantity_cents').notNull().default(0),
     unitPriceCents: bigint('unit_price_cents', { mode: 'number' }).notNull().default(0),
@@ -560,6 +586,36 @@ export const crmQuotationStatusLog = mysqlTable(
 )
 
 /**
+ * 报价公开分享链接。只保存 token hash，raw token 仅在创建响应中返回。
+ * 一个报价可拥有多条历史分享记录，旧链接停用后不会删除。
+ */
+export const crmQuotationShare = mysqlTable(
+  'crm_quotation_share',
+  {
+    id: int().primaryKey().autoincrement().notNull(),
+    quotationId: int('quotation_id').notNull(),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+    status: varchar({ length: 16 }).notNull().default('active'),
+    expiresAt: datetime('expires_at').notNull(),
+    durationDays: int('duration_days'),
+    followQuoteValidUntil: tinyint('follow_quote_valid_until').notNull().default(0),
+    createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+    createdBy: int('created_by').notNull(),
+    sentAt: datetime('sent_at'),
+    firstViewedAt: datetime('first_viewed_at'),
+    lastViewedAt: datetime('last_viewed_at'),
+    viewCount: int('view_count').notNull().default(0),
+    revokedAt: datetime('revoked_at'),
+    updatedAt: datetime('updated_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  },
+  (t) => ({
+    uniqTokenHash: uniqueIndex('uniq_crm_quotation_share_token_hash').on(t.tokenHash),
+    idxQuotation: index('idx_crm_quotation_share_quotation_id').on(t.quotationId),
+    idxStatusExpires: index('idx_crm_quotation_share_status_expires').on(t.status, t.expiresAt),
+  }),
+)
+
+/**
  * Phase 2 引入：商机（Opportunity）。
  *
  * 实体关系：
@@ -585,16 +641,22 @@ export const crmOpportunity = mysqlTable(
   'crm_opportunity',
   {
     id: int().primaryKey().autoincrement().notNull(),
+    /** 业务可读编号，创建后不可改变。 */
+    opportunityNo: varchar('opportunity_no', { length: 32 }).notNull(),
+    /** 客户端请求幂等键；为空时沿用普通创建流程。 */
+    creationKey: varchar('creation_key', { length: 64 }),
     name: varchar({ length: 200 }).notNull(),
     customerId: int('customer_id').notNull(),
     primaryContactId: int('primary_contact_id'),
     ownerId: int('owner_id'),
     ownerDepartmentId: int('owner_department_id'),
-    stage: varchar({ length: 64 }).notNull().default('requirement'),
+    stage: varchar({ length: 64 }).notNull().default('needs_confirmation'),
     stageEnteredAt: datetime('stage_entered_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
     amountCents: bigint('amount_cents', { mode: 'number' }),
     expectedCloseDate: datetime('expected_close_date'),
-    requirement: varchar({ length: 2000 }),
+    sourceId: int('source_id'),
+    requirement: varchar({ length: 1000 }),
+    competition: varchar({ length: 1000 }),
     nextAction: varchar('next_action', { length: 500 }),
     nextFollowUpAt: datetime('next_follow_up_at'),
     remark: varchar({ length: 1000 }),
@@ -613,6 +675,8 @@ export const crmOpportunity = mysqlTable(
     deletedAt: datetime('deleted_at'),
   },
   (t) => ({
+    uniqOpportunityNo: uniqueIndex('uniq_crm_opportunity_no').on(t.opportunityNo),
+    uniqCreationKey: uniqueIndex('uniq_crm_opportunity_creation_key').on(t.creationKey),
     idxCustomer: index('idx_crm_opportunity_customer_id').on(t.customerId),
     idxContact: index('idx_crm_opportunity_primary_contact_id').on(t.primaryContactId),
     idxOwnerStage: index('idx_crm_opportunity_owner_stage').on(t.ownerId, t.stage),

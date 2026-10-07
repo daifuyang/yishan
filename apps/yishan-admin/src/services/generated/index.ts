@@ -2,6 +2,7 @@
 /* eslint-disable */
 // API 更新时间：
 // API 唯一标识：
+import * as crm from "./crm";
 import * as demo from "./demo";
 import * as portal from "./portal";
 import * as shop from "./shop";
@@ -10,6 +11,7 @@ import * as attachments from "./attachments";
 import * as sysDepts from "./sysDepts";
 import * as sysDictTypes from "./sysDictTypes";
 import * as sysDictData from "./sysDictData";
+import * as sysEnum from "./sysEnum";
 import * as sysMenus from "./sysMenus";
 import * as sysPermissions from "./sysPermissions";
 import * as sysPositions from "./sysPositions";
@@ -29,6 +31,7 @@ import * as auth from "./auth";
 import * as meApiTokens from "./meApiTokens";
 import * as moduleManagement from "./moduleManagement";
 export default {
+  crm,
   demo,
   portal,
   shop,
@@ -37,6 +40,7 @@ export default {
   sysDepts,
   sysDictTypes,
   sysDictData,
+  sysEnum,
   sysMenus,
   sysPermissions,
   sysPositions,

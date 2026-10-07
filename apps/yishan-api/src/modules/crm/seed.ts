@@ -17,6 +17,8 @@ import adminMenu from './config/system-menu.json'
 import {
   CONTRACT_STATUSES,
   CUSTOMER_STATUSES,
+  FOLLOW_UP_RESULTS,
+  FOLLOW_UP_TYPES,
   OPPORTUNITY_STAGES,
   QUOTATION_STATUSES,
   TASK_STATUSES,
@@ -307,6 +309,18 @@ export const CRM_ENUM_SEED: ReadonlyArray<{
     type: 'crm_task_status',
     code: status.value,
     name: status.label,
+    sort: (index + 1) * 10,
+  })),
+  ...FOLLOW_UP_TYPES.map((item, index) => ({
+    type: 'crm_follow_up_type',
+    code: item.value,
+    name: item.label,
+    sort: (index + 1) * 10,
+  })),
+  ...FOLLOW_UP_RESULTS.map((item, index) => ({
+    type: 'crm_follow_up_result',
+    code: item.value,
+    name: item.label,
     sort: (index + 1) * 10,
   })),
 ]

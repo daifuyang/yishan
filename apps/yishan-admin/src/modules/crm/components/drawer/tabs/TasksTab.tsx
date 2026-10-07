@@ -332,7 +332,7 @@ export function TasksTabStandalone({
 
   useEffect(() => {
     let cancelled = false;
-    getUserList({ page: 1, pageSize: 200 })
+    getUserList({ page: 1, pageSize: 100 })
       .then((res: unknown) => {
         if (cancelled) return;
         const data =

@@ -3,13 +3,14 @@ import { Type } from '@sinclair/typebox'
 import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
 import { ResponseUtil } from '@/utils/response.js'
 import { OpportunityService } from '../../../services/opportunity.service.js'
-import { OpportunityAdvanceReqSchema, OpportunityCreateReqSchema, OpportunityIdParamSchema, OpportunityListQuerySchema, OpportunityMarkLostReqSchema, OpportunityMarkWonReqSchema, OpportunityRespSchema, OpportunityUpdateReqSchema } from '../../../schemas/opportunity.schema.js'
+import { OpportunityAdvanceReqSchema, OpportunityCreateReqSchema, OpportunityDuplicateCheckQuerySchema, OpportunityIdParamSchema, OpportunityListQuerySchema, OpportunityMarkLostReqSchema, OpportunityMarkWonReqSchema, OpportunityRespSchema, OpportunityUpdateReqSchema } from '../../../schemas/opportunity.schema.js'
 import { EnvelopeSchema, PaginatedEnvelopeSchema, ROUTE_TAG } from '../../../schemas/routes.schema.js'
 import { CrmPermissions as PERMS } from '../../../schemas/permissions.js'
 
 export default (async (app) => {
   const route = createRouteRegistrar(app); const service = new OpportunityService()
   route.get('/', { access: { permission: PERMS.OPPORTUNITY_LIST }, schema: { tags: [ROUTE_TAG], querystring: OpportunityListQuerySchema, response: { 200: PaginatedEnvelopeSchema(OpportunityRespSchema) } } }, async (request: any, reply: any) => { const result = await service.list(request.query, request.currentUser); return ResponseUtil.paginated(reply, result.rows, request.query.page ?? 1, request.query.pageSize ?? 20, result.total) })
+  route.get('/duplicate-check', { access: { permission: PERMS.OPPORTUNITY_LIST }, schema: { tags: [ROUTE_TAG], querystring: OpportunityDuplicateCheckQuerySchema, response: { 200: EnvelopeSchema(Type.Array(OpportunityRespSchema)) } } }, async (request: any, reply: any) => ResponseUtil.success(reply, await service.duplicateCandidates({ ...request.query, currentUser: request.currentUser })))
   route.post('/', { access: { permission: PERMS.OPPORTUNITY_CREATE }, schema: { tags: [ROUTE_TAG], body: OpportunityCreateReqSchema, response: { 200: EnvelopeSchema(OpportunityRespSchema) } } }, async (request: any, reply: any) => ResponseUtil.success(reply, await service.create({ input: request.body, currentUser: request.currentUser }), '商机创建成功'))
   route.get('/:id', { access: { permission: PERMS.OPPORTUNITY_LIST }, schema: { tags: [ROUTE_TAG], params: OpportunityIdParamSchema, response: { 200: EnvelopeSchema(OpportunityRespSchema) } } }, async (request: any, reply: any) => ResponseUtil.success(reply, await service.detail(request.params.id, request.currentUser)))
   route.patch('/:id', { access: { permission: PERMS.OPPORTUNITY_UPDATE }, schema: { tags: [ROUTE_TAG], params: OpportunityIdParamSchema, body: OpportunityUpdateReqSchema, response: { 200: EnvelopeSchema(OpportunityRespSchema) } } }, async (request: any, reply: any) => ResponseUtil.success(reply, await service.update({ id: request.params.id, input: request.body, currentUser: request.currentUser }), '商机已更新'))

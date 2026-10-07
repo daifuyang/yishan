@@ -51,6 +51,7 @@ export const CrmErrorCode = {
   CRM_OPPORTUNITY_TRANSFER_TARGET_INVALID: 33506,
   CRM_OPPORTUNITY_TERMINAL_STATE: 33507,
   CRM_OPPORTUNITY_AMOUNT_INVALID: 33508,
+  CRM_OPPORTUNITY_IDEMPOTENCY_CONFLICT: 33509,
 
   /* ─── Product Catalog (336xx) ───────── */
   CRM_PRODUCT_NOT_FOUND: 33601,
@@ -66,6 +67,7 @@ export const CrmErrorCode = {
 
   /* ─── Quotation (337xx) ──────────── */
   /** 报价单不存在或已删除。 */
+  CRM_QUOTATION_INVALID: 33708,
   CRM_QUOTATION_NOT_FOUND: 33701,
   /** 报价单 status 字段非法（HTTP 层 TypeBox 已挡，service 层兜底）。 */
   CRM_QUOTATION_STATUS_INVALID: 33702,

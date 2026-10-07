@@ -3,9 +3,10 @@ import { dbManager } from '@/db'
 import { computeDataScope, type DataScopeUser } from '../schemas/data-scope.js'
 import { CrmErrorCode } from '../schemas/error-codes.js'
 import { isContractStatusCode } from '../domain/statuses.js'
+import { ActivityRepository } from '../repositories/activity.repository.js'
 import { CustomerService } from './customer.service.js'
 import { CustomerLifecycleService } from './customer-lifecycle.service.js'
-import { QuotationRepository } from '../repositories/quotation.repository.js'
+import { QuotationRepository, type QuotationRow } from '../repositories/quotation.repository.js'
 import { ContractRepository, type ContractListQuery, type ContractRow, type CreateContractInput, type UpdateContractInput } from '../repositories/contract.repository.js'
 
 export class ContractService {
@@ -22,36 +23,42 @@ export class ContractService {
       throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_LOST, '流失客户需重新激活后才能创建合同')
     }
     return dbManager.transaction(async (tx) => {
-      const created = await this.createWithUniqueNo({ ...input, creatorId: currentUser.id, updaterId: currentUser.id }, tx)
+      let quotation: QuotationRow | null = null
+      if (input.quotationId != null) {
+        quotation = await QuotationRepository.findByIdWithLock(input.quotationId, tx)
+        if (!quotation || quotation.status !== 'accepted') throw new BusinessError(CrmErrorCode.CRM_CONTRACT_QUOTATION_INVALID, '只有已确认报价可以生成合同')
+        const scope = computeDataScope(currentUser)
+        if (scope.ownerUserIds !== null && !scope.ownerUserIds.includes(quotation.ownerUserId) && !(scope.ownerDepartmentIds ?? []).includes(quotation.ownerDepartmentId ?? -1)) {
+          throw new BusinessError(CrmErrorCode.CRM_QUOTATION_NOT_FOUND, '报价单不存在或无权访问')
+        }
+        await new CustomerService({ db: tx }).detail(quotation.customerId, currentUser)
+        if (input.customerId !== quotation.customerId || (input.opportunityId ?? null) !== quotation.opportunityId) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_QUOTATION_INVALID, '合同客户或商机与来源报价不一致')
+        const existing = await ContractRepository.findByQuotationId(quotation.id, tx, true)
+        if (existing) {
+          if (existing.deletedAt) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_QUOTATION_INVALID, '当前报价已生成合同（已归档）')
+          return existing
+        }
+        if (quotation.seriesId) {
+          const latest = await QuotationRepository.latestBySeriesWithLock(quotation.seriesId, tx)
+          if (!latest || latest.id !== quotation.id) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_QUOTATION_INVALID, '历史版本不能生成合同')
+        }
+      }
+      const created = await this.createWithUniqueNo({ ...input,
+        ...(quotation ? { ownerUserId: quotation.ownerUserId, ownerDepartmentId: quotation.ownerDepartmentId, contactId: input.contactId ?? quotation.contactId } : {}),
+        creatorId: currentUser.id, updaterId: currentUser.id }, tx)
       const contract = await ContractRepository.findById(created.id, tx)
       if (!contract) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, '合同不存在')
+      if (quotation) await ActivityRepository.create({
+        customerId: quotation.customerId, entityType: 'customer', entityId: quotation.customerId, entityRefType: 'customer', category: 'business', type: 'quote_contract_created',
+        content: '基于 V' + quotation.version + ' 报价「' + quotation.name + '」创建合同「' + contract.name + '」',
+        metadata: { quotationId: quotation.id, version: quotation.version, contractId: contract.id, opportunityId: quotation.opportunityId, amountCents: contract.amountCents }, operatorUserId: currentUser.id,
+      }, tx)
       await CustomerLifecycleService.recalculate(contract.customerId, currentUser.id, tx)
       return contract
     })
   }
-  async createFromQuotation(quotationId: number, currentUser: DataScopeUser): Promise<ContractRow> {
-    return dbManager.transaction(async (tx) => {
-      const quotation = await QuotationRepository.findByIdWithLock(quotationId, tx)
-      if (!quotation || quotation.status !== 'accepted') throw new BusinessError(CrmErrorCode.CRM_CONTRACT_QUOTATION_INVALID, '仅已接受报价可生成合同')
-      const customer = await new CustomerService({ db: tx }).detail(quotation.customerId, currentUser)
-      if (customer.relationshipStatus === 'lost') {
-        throw new BusinessError(CrmErrorCode.CRM_CUSTOMER_LOST, '流失客户需重新激活后才能创建合同')
-      }
-      const existing = await ContractRepository.findByQuotationId(quotationId, tx)
-      if (existing) return existing
-      const created = await this.createWithUniqueNo({
-        name: quotation.quotationNo, customerId: quotation.customerId,
-        opportunityId: quotation.opportunityId, quotationId: quotation.id, contactId: quotation.contactId ?? null,
-        amountCents: quotation.totalCents,
-        signedAt: null, effectiveAt: null, expiresAt: null, status: 'draft', ownerUserId: quotation.ownerUserId,
-        ownerDepartmentId: currentUser.deptIds?.[0] ?? null, attachmentIds: null, description: quotation.remark,
-        creatorId: currentUser.id, updaterId: currentUser.id,
-      }, tx)
-      await CustomerLifecycleService.recalculate(quotation.customerId, currentUser.id, tx)
-      const contract = await ContractRepository.findById(created.id, tx)
-      if (!contract) throw new BusinessError(CrmErrorCode.CRM_CONTRACT_NOT_FOUND, '合同不存在')
-      return contract
-    })
+  async createFromQuotation(quotationId: number, currentUser: DataScopeUser, input: Omit<CreateContractInput, 'contractNo' | 'creatorId' | 'updaterId'>): Promise<ContractRow> {
+    return this.create({ ...input, quotationId }, currentUser)
   }
   async update(id: number, input: UpdateContractInput, currentUser: DataScopeUser): Promise<ContractRow> {
     const existing = await this.getAccessible(id, currentUser)

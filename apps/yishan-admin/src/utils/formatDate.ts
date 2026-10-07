@@ -38,6 +38,22 @@ export function formatDateTime(value: unknown): string {
   return dayjs(value as string | number | Date).format(FORMAT)
 }
 
+/** 最近跟进：刚刚 / N 分钟前 / YYYY-MM-DD HH:mm */
+export function formatRelativeDateTime(value: unknown): string {
+  if (!isValidDateInput(value)) return PLACEHOLDER
+  const date = dayjs(value as string | number | Date)
+  const diffMin = dayjs().diff(date, 'minute')
+  if (diffMin < 1) return '刚刚'
+  if (diffMin < 60) return `${diffMin}分钟前`
+  if (diffMin < 60 * 24) return `${Math.floor(diffMin / 60)}小时前`
+  return date.format('YYYY-MM-DD HH:mm')
+}
+
+export function formatDateTimeMinute(value: unknown): string {
+  if (!isValidDateInput(value)) return PLACEHOLDER
+  return dayjs(value as string | number | Date).format('YYYY-MM-DD HH:mm')
+}
+
 /**
  * 判断「下次跟进时间」是否已过 `now`。无效输入一律按「未逾期」处理，
  * 避免空字段被误标红。

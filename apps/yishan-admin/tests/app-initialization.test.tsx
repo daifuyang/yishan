@@ -125,7 +125,8 @@ jest.mock('../src/requestErrorConfig', () => ({
 }))
 
 // 必须在所有 jest.mock 之后再 import 生产函数
-import { getInitialState } from '../src/app'
+import { getInitialState, render } from '../src/app'
+import { getAuthorizedMenuTree } from '@/services/generated/sysMenus'
 
 interface Deferred<T> {
   promise: Promise<T>
@@ -156,6 +157,7 @@ beforeEach(() => {
   mockHandles.authGetCurrentUser.mockReset()
   mockHandles.getDictDataMap.mockReset()
   mockHandles.fetchCloudStorageConfig.mockReset()
+  jest.mocked(getAuthorizedMenuTree).mockReset()
   mockHandles.pathname = '/admin/dashboard'
 })
 
@@ -164,6 +166,18 @@ beforeEach(() => {
 // ============================================================================
 
 describe('getInitialState — 真实生产函数回归', () => {
+  it.each(['/q/share-token', '/q/share-token/'])('公开报价页 %s：不读取后台用户、字典和存储配置', async (pathname) => {
+    mockHandles.pathname = pathname
+    mockHandles.authGetCurrentUser.mockResolvedValue({ success: true, data: undefined })
+
+    const state = await getInitialState()
+
+    expect(mockHandles.authGetCurrentUser).not.toHaveBeenCalled()
+    expect(mockHandles.getDictDataMap).not.toHaveBeenCalled()
+    expect(mockHandles.fetchCloudStorageConfig).not.toHaveBeenCalled()
+    expect(state.currentUser).toBeUndefined()
+  })
+
   it('登录页：不读取用户、字典、存储配置', async () => {
     mockHandles.pathname = '/user/login'
 
@@ -271,5 +285,32 @@ describe('getInitialState — 真实生产函数回归', () => {
     expect(state.currentUser).toEqual({ id: 1, name: 'admin' })
     expect(state.dictDataMap).toEqual({})
     expect(state.cloudStorageConfig).toEqual({ provider: 'local' })
+  })
+})
+
+describe('render — 公开报价与后台登录边界', () => {
+  afterEach(() => window.history.replaceState({}, '', '/'))
+
+  it('公开报价页直接渲染，不请求授权菜单', () => {
+    window.history.replaceState({}, '', '/q/share-token')
+    jest.mocked(getAuthorizedMenuTree).mockResolvedValue({ success: true, code: 10000, message: '成功', data: [], timestamp: '2026-10-07T00:00:00.000Z' })
+    const oldRender = jest.fn()
+
+    render(oldRender)
+
+    expect(oldRender).toHaveBeenCalledTimes(1)
+    expect(getAuthorizedMenuTree).not.toHaveBeenCalled()
+  })
+
+  it.each(['/crm/opportunities', '/q/share-token/private'])('%s 仍请求后台授权菜单', async (pathname) => {
+    window.history.replaceState({}, '', pathname)
+    jest.mocked(getAuthorizedMenuTree).mockResolvedValue({ success: true, code: 10000, message: '成功', data: [], timestamp: '2026-10-07T00:00:00.000Z' })
+    const oldRender = jest.fn()
+
+    render(oldRender)
+    await Promise.resolve()
+
+    expect(getAuthorizedMenuTree).toHaveBeenCalledTimes(1)
+    expect(oldRender).toHaveBeenCalledTimes(1)
   })
 })

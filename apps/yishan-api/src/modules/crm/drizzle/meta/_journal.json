@@ -176,6 +176,69 @@
       "when": 1790300000000,
       "tag": "0063_crm-task-priority",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1790400000000,
+      "tag": "0064_crm-activity-follow-up-category",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1790500000000,
+      "tag": "0065_crm-opportunity-create-fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1790600000000,
+      "tag": "0066_crm-quotation-workflow",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1790700000000,
+      "tag": "0067_crm-quotation-share",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1790800000000,
+      "tag": "0068_crm-quotation-discount-description",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1790900000000,
+      "tag": "0069_crm-quotation-revision",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1791000000000,
+      "tag": "0070_crm-opportunity-quote-series",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1791100000000,
+      "tag": "0071_crm-quotation-confirmation",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1791200000000,
+      "tag": "0072_crm-business-number-backfill",
+      "breakpoints": true
     }
   ]
 }

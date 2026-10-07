@@ -358,6 +358,401 @@ declare namespace API {
     roleIds?: number[];
   };
 
+  type crmActivityDeleteParams = {
+    id: number;
+  };
+
+  type crmActivityGetParams = {
+    id: number;
+  };
+
+  type crmActivityUpdateParams = {
+    id: number;
+  };
+
+  type crmContactsDeleteParams = {
+    id: number;
+  };
+
+  type crmContactsDetailParams = {
+    id: number;
+  };
+
+  type crmContactsListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    customerId?: number;
+    isPrimary?: number;
+  };
+
+  type crmContactsUpdateParams = {
+    id: number;
+  };
+
+  type crmCustomerActivitiesCreateParams = {
+    customerId: number;
+  };
+
+  type crmCustomerActivitiesListParams = {
+    customerId: number;
+  };
+
+  type crmCustomerContactsCreateParams = {
+    customerId: number;
+  };
+
+  type crmCustomerContactsListParams = {
+    customerId: number;
+  };
+
+  type crmCustomerMembersAddParams = {
+    id: number;
+  };
+
+  type crmCustomerMembersListParams = {
+    id: number;
+  };
+
+  type crmCustomerMembersRemoveParams = {
+    id: number;
+    userId: number;
+  };
+
+  type crmCustomersClaimParams = {
+    id: number;
+  };
+
+  type crmCustomersDeleteParams = {
+    id: number;
+  };
+
+  type crmCustomersDetailParams = {
+    id: number;
+  };
+
+  type crmCustomersListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    view?:
+      | "all"
+      | "important"
+      | "mine"
+      | "collaborating"
+      | "pending"
+      | "stale7d"
+      | "pool";
+    statusCode?: "potential" | "following" | "opportunity" | "won" | "lost";
+    sourceId?: number;
+    level?: string;
+    type?: string;
+    industry?: string;
+    ownerUserId?: number;
+    collaboratorId?: number;
+    poolStatus?: string;
+    tagIds?: number[];
+    createdFrom?: string;
+    createdTo?: string;
+    lastFollowUpFrom?: string;
+    lastFollowUpTo?: string;
+    nextFollowUpFrom?: string;
+    nextFollowUpTo?: string;
+    sortBy?:
+      | "name"
+      | "createdAt"
+      | "updatedAt"
+      | "lastFollowUpAt"
+      | "nextFollowUpAt"
+      | "level";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type crmCustomersPurgeParams = {
+    id: number;
+  };
+
+  type crmCustomersReleaseParams = {
+    id: number;
+  };
+
+  type crmCustomersRestoreParams = {
+    id: number;
+  };
+
+  type crmCustomersTransferParams = {
+    id: number;
+  };
+
+  type crmCustomersTransfersParams = {
+    id: number;
+  };
+
+  type crmCustomersTransitionRelationshipStatusParams = {
+    id: number;
+  };
+
+  type crmCustomersTrashListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    view?:
+      | "all"
+      | "important"
+      | "mine"
+      | "collaborating"
+      | "pending"
+      | "stale7d"
+      | "pool";
+    statusCode?: "potential" | "following" | "opportunity" | "won" | "lost";
+    sourceId?: number;
+    level?: string;
+    type?: string;
+    industry?: string;
+    ownerUserId?: number;
+    collaboratorId?: number;
+    poolStatus?: string;
+    tagIds?: number[];
+    createdFrom?: string;
+    createdTo?: string;
+    lastFollowUpFrom?: string;
+    lastFollowUpTo?: string;
+    nextFollowUpFrom?: string;
+    nextFollowUpTo?: string;
+    sortBy?:
+      | "name"
+      | "createdAt"
+      | "updatedAt"
+      | "lastFollowUpAt"
+      | "nextFollowUpAt"
+      | "level";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type crmCustomersUpdateParams = {
+    id: number;
+  };
+
+  type crmDirectCloseRevokeParams = {
+    id: number;
+  };
+
+  type crmPoolListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    view?:
+      | "all"
+      | "important"
+      | "mine"
+      | "collaborating"
+      | "pending"
+      | "stale7d"
+      | "pool";
+    statusCode?: "potential" | "following" | "opportunity" | "won" | "lost";
+    sourceId?: number;
+    level?: string;
+    type?: string;
+    industry?: string;
+    ownerUserId?: number;
+    collaboratorId?: number;
+    poolStatus?: string;
+    tagIds?: number[];
+    createdFrom?: string;
+    createdTo?: string;
+    lastFollowUpFrom?: string;
+    lastFollowUpTo?: string;
+    nextFollowUpFrom?: string;
+    nextFollowUpTo?: string;
+    sortBy?:
+      | "name"
+      | "createdAt"
+      | "updatedAt"
+      | "lastFollowUpAt"
+      | "nextFollowUpAt"
+      | "level";
+    sortOrder?: "asc" | "desc";
+  };
+
+  type crmProductCategoriesDeleteParams = {
+    id: number;
+  };
+
+  type crmProductCategoriesListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string & string;
+    enabled?: number;
+    includeDisabled?: boolean;
+  };
+
+  type crmProductCategoriesUpdateParams = {
+    id: number;
+  };
+
+  type crmProductsDeleteParams = {
+    id: number;
+  };
+
+  type crmProductsDetailParams = {
+    id: number;
+  };
+
+  type crmProductsDisableParams = {
+    id: number;
+  };
+
+  type crmProductsEnableParams = {
+    id: number;
+  };
+
+  type crmProductsListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string & string;
+    categoryCode?: string;
+    enabled?: number;
+    includeDisabled?: boolean;
+  };
+
+  type crmProductsUpdateParams = {
+    id: number;
+  };
+
+  type crmProductUnitsDeleteParams = {
+    id: number;
+  };
+
+  type crmProductUnitsListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string & string;
+    enabled?: number;
+    includeDisabled?: boolean;
+  };
+
+  type crmProductUnitsUpdateParams = {
+    id: number;
+  };
+
+  type crmPublicQuoteGetParams = {
+    token: string;
+  };
+
+  type crmQuotationsAcceptParams = {
+    id: number;
+  };
+
+  type crmQuotationsCreateContractParams = {
+    id: number;
+  };
+
+  type crmQuotationsCreateShareParams = {
+    id: number;
+  };
+
+  type crmQuotationsDeleteParams = {
+    id: number;
+  };
+
+  type crmQuotationsDuplicatesParams = {
+    opportunityId: number;
+    name: string;
+  };
+
+  type crmQuotationsGetParams = {
+    id: number;
+  };
+
+  type crmQuotationsListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string & string;
+    status?:
+      | "draft"
+      | "sent"
+      | "accepted"
+      | "rejected"
+      | "voided"
+      | "superseded";
+    customerId?: number;
+    opportunityId?: number;
+    ownerUserId?: number;
+  };
+
+  type crmQuotationsPreviewParams = {
+    id: number;
+  };
+
+  type crmQuotationsRejectParams = {
+    id: number;
+  };
+
+  type crmQuotationsReviseParams = {
+    id: number;
+  };
+
+  type crmQuotationsRevokeConfirmationParams = {
+    id: number;
+  };
+
+  type crmQuotationsRevokeShareParams = {
+    id: number;
+    shareId: number;
+  };
+
+  type crmQuotationsSendParams = {
+    id: number;
+  };
+
+  type crmQuotationsStatusLogsParams = {
+    id: number;
+  };
+
+  type crmQuotationsUpdateParams = {
+    id: number;
+  };
+
+  type crmQuotationsVoidParams = {
+    id: number;
+  };
+
+  type crmSettingsSourcesDeleteParams = {
+    id: number;
+  };
+
+  type crmSettingsSourcesListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+  };
+
+  type crmSettingsSourcesUpdateParams = {
+    id: number;
+  };
+
+  type crmSettingsTagsDeleteParams = {
+    id: number;
+  };
+
+  type crmSettingsTagsListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+  };
+
+  type crmSettingsTagsUpdateParams = {
+    id: number;
+  };
+
+  type crmVisitsListParams = {
+    customerId?: number;
+    plannedFrom?: string;
+    plannedTo?: string;
+    page?: number;
+    pageSize?: number;
+  };
+
   type currentUser = {
     /** 用户ID */
     id: number;
@@ -412,6 +807,26 @@ declare namespace API {
 
   type deleteAttachmentParams = {
     /** 素材ID */
+    id: number;
+  };
+
+  type deleteCrmV1AttachmentsIdParams = {
+    id: number;
+  };
+
+  type deleteCrmV1ContractsIdParams = {
+    id: number;
+  };
+
+  type deleteCrmV1OpportunitiesIdParams = {
+    id: number;
+  };
+
+  type deleteCrmV1PaymentsIdParams = {
+    id: number;
+  };
+
+  type deleteCrmV1TasksIdParams = {
     id: number;
   };
 
@@ -483,7 +898,7 @@ declare namespace API {
     id: number;
   };
 
-  type deleteShopV1SkusIdParams = {
+  type deleteShopV1ProductsSkusIdParams = {
     id: number;
   };
 
@@ -718,6 +1133,77 @@ declare namespace API {
     status?: "0" | "1";
     sortBy?: "createdAt" | "size" | "updatedAt";
     sortOrder?: "asc" | "desc";
+  };
+
+  type getCrmV1AttachmentsParams = {
+    customerId: number;
+  };
+
+  type getCrmV1ContractsIdParams = {
+    id: number;
+  };
+
+  type getCrmV1ContractsParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string & string;
+    customerId?: number;
+    status?: "draft" | "performing" | "completed" | "terminated";
+  };
+
+  type getCrmV1OpportunitiesDuplicateCheckParams = {
+    customerId: number;
+    name: string;
+  };
+
+  type getCrmV1OpportunitiesIdParams = {
+    id: number;
+  };
+
+  type getCrmV1OpportunitiesParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string & string;
+    customerId?: number;
+    primaryContactId?: number;
+    stage?:
+      | "needs_confirmation"
+      | "solution"
+      | "quotation"
+      | "negotiation"
+      | "won"
+      | "lost";
+    ownerId?: number;
+    expectedCloseFrom?: string;
+    expectedCloseTo?: string;
+  };
+
+  type getCrmV1PaymentsContractsContractIdParams = {
+    contractId: number;
+  };
+
+  type getCrmV1PaymentsParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    contractId?: number;
+    customerId?: number;
+    methodCode?: string;
+    paidFrom?: string;
+    paidTo?: string;
+  };
+
+  type getCrmV1TasksIdParams = {
+    id: number;
+  };
+
+  type getCrmV1TasksParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string & string;
+    customerId?: number;
+    status?: "todo" | "in_progress" | "completed" | "cancelled";
+    assigneeUserId?: number;
   };
 
   type getDeptDetailParams = {
@@ -1215,6 +1701,22 @@ declare namespace API {
     totalPages: number;
   };
 
+  type patchCrmV1ContractsIdParams = {
+    id: number;
+  };
+
+  type patchCrmV1OpportunitiesIdParams = {
+    id: number;
+  };
+
+  type patchCrmV1PaymentsIdParams = {
+    id: number;
+  };
+
+  type patchCrmV1TasksIdParams = {
+    id: number;
+  };
+
   type patchPortalV1ArticlesIdParams = {
     id: number;
   };
@@ -1251,7 +1753,7 @@ declare namespace API {
     id: number;
   };
 
-  type patchShopV1SkusIdParams = {
+  type patchShopV1ProductsSkusIdParams = {
     id: number;
   };
 
@@ -1314,6 +1816,22 @@ declare namespace API {
     data: sysPosition[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+
+  type postCrmV1OpportunitiesIdAdvanceParams = {
+    id: number;
+  };
+
+  type postCrmV1OpportunitiesIdLostParams = {
+    id: number;
+  };
+
+  type postCrmV1OpportunitiesIdWonParams = {
+    id: number;
+  };
+
+  type postCrmV1PaymentsContractsContractIdParams = {
+    contractId: number;
   };
 
   type postPortalV1ArticlesIdPublishParams = {
@@ -1673,6 +2191,33 @@ declare namespace API {
     updatedAt: string;
   };
 
+  type sysEnumByTypeParams = {
+    type: string;
+  };
+
+  type sysEnumByTypesParams = {
+    /** 逗号分隔的 type 列表 */
+    types: string;
+  };
+
+  type sysEnumDeleteParams = {
+    id: number;
+  };
+
+  type sysEnumListParams = {
+    /** 页码 */
+    page?: number;
+    /** 每页数量 */
+    pageSize?: number;
+    type?: string;
+    keyword?: string;
+    enabled?: 0 | 1;
+  };
+
+  type sysEnumUpdateParams = {
+    id: number;
+  };
+
   type sysLoginLog = {
     /** 日志ID */
     id: number;
@@ -1894,12 +2439,25 @@ declare namespace API {
     id: string;
   };
 
+  type tokenCategoryStats = {
+    /** 总数（未软删） */
+    total: number;
+    /** 活跃数（未过期 / 未撤销） */
+    active: number;
+    /** 过期数（未撤销但已过期） */
+    expired: number;
+    /** 已撤销 / 已软删数 */
+    revoked: number;
+  };
+
   type tokenStatsResp = {
     success?: boolean;
     code?: number;
     message?: string;
     timestamp?: string;
     data?: {
+      apiTokens: tokenCategoryStats;
+      userTokens: tokenCategoryStats;
       totalTokens?: number;
       activeTokens?: number;
       expiredTokens?: number;
@@ -2171,5 +2729,12 @@ declare namespace API {
     data: sysUser[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+  type deleteShopV1SkusIdParams = {
+    id: number;
+  };
+
+  type patchShopV1SkusIdParams = {
+    id: number;
   };
 }

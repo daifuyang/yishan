@@ -1,7 +1,13 @@
-import { and, count, desc, eq, gte, isNotNull, isNull, lte, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@/db'
 import { sysUser } from '@/db/schema'
 import { crmActivity } from '../db/schema.js'
+import {
+  FOLLOW_UP_TYPES,
+  inferActivityCategory,
+  type ActivityCategory,
+  type FollowUpResult,
+} from '../domain/statuses.js'
 
 /**
  * crm_activity Repository。
@@ -28,10 +34,13 @@ export interface ActivityRow {
   entityType: ActivityEntityType | null
   entityId: number | null
   entityRefType: string | null
+  category: ActivityCategory
   type: string
   content: string
   occurredAt: Date
   nextFollowUpAt: Date | null
+  result: string | null
+  nextFollowUpPlan: string | null
   attachmentIds?: number[] | null
   metadata?: Record<string, unknown> | null
   plannedAt: Date | null
@@ -55,10 +64,13 @@ export interface CreateActivityInput {
   entityType: ActivityEntityType
   entityId: number
   entityRefType?: string | null
+  category?: ActivityCategory
   type: string
   content: string
   occurredAt?: Date
   nextFollowUpAt?: Date | null
+  result?: FollowUpResult | string | null
+  nextFollowUpPlan?: string | null
   attachmentIds?: number[] | null
   metadata?: Record<string, unknown> | null
   plannedAt?: Date | null
@@ -75,6 +87,8 @@ export interface UpdateActivityInput {
   content?: string
   occurredAt?: Date
   nextFollowUpAt?: Date | null
+  result?: FollowUpResult | string | null
+  nextFollowUpPlan?: string | null
   attachmentIds?: number[] | null
   metadata?: Record<string, unknown> | null
   plannedAt?: Date | null
@@ -101,6 +115,12 @@ export interface CustomerFollowUpState {
   nextFollowUpAt: Date | null
 }
 
+const FOLLOW_UP_TYPE_VALUES = FOLLOW_UP_TYPES.map((item) => item.value)
+
+const operatorUserNameExpr = sql<
+  string | null
+>`COALESCE(NULLIF(${sysUser.realName}, ''), ${sysUser.username})`
+
 const activityPublicColumns = {
   id: crmActivity.id,
   customerId: crmActivity.customerId,
@@ -108,10 +128,13 @@ const activityPublicColumns = {
   entityType: crmActivity.entityType,
   entityId: crmActivity.entityId,
   entityRefType: crmActivity.entityRefType,
+  category: crmActivity.category,
   type: crmActivity.type,
   content: crmActivity.content,
   occurredAt: crmActivity.occurredAt,
   nextFollowUpAt: crmActivity.nextFollowUpAt,
+  result: crmActivity.result,
+  nextFollowUpPlan: crmActivity.nextFollowUpPlan,
   attachmentIds: crmActivity.attachmentIds,
   metadata: crmActivity.metadata,
   plannedAt: crmActivity.plannedAt,
@@ -150,7 +173,7 @@ export class ActivityRepository {
     const rows = await db
       .select({
         ...activityPublicColumns,
-        operatorUserName: sysUser.username,
+        operatorUserName: operatorUserNameExpr,
       })
       .from(crmActivity)
       .leftJoin(sysUser, eq(sysUser.id, crmActivity.operatorUserId))
@@ -173,7 +196,7 @@ export class ActivityRepository {
     const rows = await db
       .select({
         ...activityPublicColumns,
-        operatorUserName: sysUser.username,
+        operatorUserName: operatorUserNameExpr,
       })
       .from(crmActivity)
       .leftJoin(sysUser, eq(sysUser.id, crmActivity.operatorUserId))
@@ -212,7 +235,7 @@ export class ActivityRepository {
       db
         .select({
           ...activityPublicColumns,
-          operatorUserName: sysUser.username,
+          operatorUserName: operatorUserNameExpr,
         })
         .from(crmActivity)
         .leftJoin(sysUser, eq(sysUser.id, crmActivity.operatorUserId))
@@ -226,19 +249,20 @@ export class ActivityRepository {
     return { rows: rows as ActivityRowWithOperator[], total: Number(totalRow[0]?.c ?? 0) }
   }
 
-  static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<ActivityRow | null> {
+  static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<ActivityRowWithOperator | null> {
     const [row] = await db
-      .select(activityPublicColumns)
+      .select({ ...activityPublicColumns, operatorUserName: operatorUserNameExpr })
       .from(crmActivity)
+      .leftJoin(sysUser, eq(sysUser.id, crmActivity.operatorUserId))
       .where(and(eq(crmActivity.id, id), isNull(crmActivity.deletedAt)))
       .limit(1)
-    return (row as ActivityRow | undefined) ?? null
+    return (row as ActivityRowWithOperator | undefined) ?? null
   }
 
   static async create(
     input: CreateActivityInput,
     db: AppQueryDb = drizzleDb,
-  ): Promise<ActivityRow> {
+  ): Promise<ActivityRowWithOperator> {
     const [inserted] = await db
       .insert(crmActivity)
       .values({
@@ -248,10 +272,13 @@ export class ActivityRepository {
         entityType: input.entityType,
         entityId: input.entityId,
         entityRefType: input.entityRefType ?? input.entityType,
+        category: input.category ?? inferActivityCategory(input.type),
         type: input.type,
         content: input.content,
         occurredAt: input.occurredAt ?? new Date(),
         nextFollowUpAt: input.nextFollowUpAt ?? null,
+        result: input.result ?? null,
+        nextFollowUpPlan: input.nextFollowUpPlan ?? null,
         attachmentIds: input.attachmentIds ?? null,
         metadata: input.metadata ?? null,
         plannedAt: input.plannedAt ?? null,
@@ -274,10 +301,15 @@ export class ActivityRepository {
   ): Promise<ActivityRow | null> {
     const patch: Record<string, unknown> = { updatedAt: new Date() }
     if (input.contactId !== undefined) patch.contactId = input.contactId
-    if (input.type !== undefined) patch.type = input.type
+    if (input.type !== undefined) {
+      patch.type = input.type
+      patch.category = inferActivityCategory(input.type)
+    }
     if (input.content !== undefined) patch.content = input.content
     if (input.occurredAt !== undefined) patch.occurredAt = input.occurredAt
     if (input.nextFollowUpAt !== undefined) patch.nextFollowUpAt = input.nextFollowUpAt
+    if (input.result !== undefined) patch.result = input.result
+    if (input.nextFollowUpPlan !== undefined) patch.nextFollowUpPlan = input.nextFollowUpPlan
     if (input.attachmentIds !== undefined) patch.attachmentIds = input.attachmentIds
     if (input.metadata !== undefined) patch.metadata = input.metadata
     if (input.plannedAt !== undefined) patch.plannedAt = input.plannedAt
@@ -322,6 +354,7 @@ export class ActivityRepository {
       eq(crmActivity.entityType, 'customer'),
       eq(crmActivity.entityId, customerId),
       isNull(crmActivity.deletedAt),
+      inArray(crmActivity.type, FOLLOW_UP_TYPE_VALUES),
     )
 
     const [latest, latestWithNext] = await Promise.all([

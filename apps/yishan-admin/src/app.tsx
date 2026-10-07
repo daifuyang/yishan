@@ -60,6 +60,7 @@ const getRelativePath = (pathname: string) => {
 };
 
 const isLoginRoute = (pathname: string) => getRelativePath(pathname) === loginPath;
+const isPublicQuoteRoute = (pathname: string) => /^\/q\/[^/]+\/?$/.test(getRelativePath(pathname));
 
 const IconMap: Record<string, LucideIcon> = {
   appstore: LayoutDashboard,
@@ -167,7 +168,7 @@ export async function getInitialState(): Promise<{
   // 如果不是登录页面，执行
   const { location } = history;
   const currentPath = getRelativePath(location.pathname);
-  if (![loginPath, "/user/register"].includes(currentPath)) {
+  if (![loginPath, "/user/register"].includes(currentPath) && !isPublicQuoteRoute(location.pathname)) {
     const currentUser = await fetchUserInfo();
     if (!currentUser) {
       return {
@@ -265,7 +266,7 @@ export const layout: RunTimeLayoutConfig = ({
     onPageChange: () => {
       const { location } = history;
       const currentPath = getRelativePath(location.pathname);
-      if (!initialState?.currentUser && currentPath !== loginPath) {
+      if (!initialState?.currentUser && currentPath !== loginPath && !isPublicQuoteRoute(location.pathname)) {
         history.push(loginPath);
       }
     },
@@ -482,9 +483,9 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
 export function render(oldRender: () => void) {
   const currentPath = window.location.pathname;
   const loginUrl = `${ADMIN_BASE}/user/login`;
-  // 认证态由 HttpOnly cookie 承载（JS 不可读），登录页直接渲染；
+  // 认证态由 HttpOnly cookie 承载（JS 不可读），登录页和公开报价页直接渲染；
   // 其余路由先尝试拉取授权菜单树，未认证时后端返回 401 -> 跳转登录页。
-  if (isLoginRoute(currentPath)) {
+  if (isLoginRoute(currentPath) || isPublicQuoteRoute(currentPath)) {
     oldRender();
     return;
   }

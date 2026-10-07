@@ -68,9 +68,10 @@ export const CrmPermissions: { readonly [k: string]: PermissionRef } = Object.fr
   QUOTATION_UPDATE: { code: 'crm:quotation:update', label: 'CRM-报价-编辑', group: 'crm' },
   QUOTATION_DELETE: { code: 'crm:quotation:delete', label: 'CRM-报价-删除', group: 'crm' },
   QUOTATION_SEND: { code: 'crm:quotation:send', label: 'CRM-报价-发送', group: 'crm' },
-  QUOTATION_ACCEPT: { code: 'crm:quotation:accept', label: 'CRM-报价-接受', group: 'crm' },
+  QUOTATION_ACCEPT: { code: 'crm:quotation:accept', label: 'CRM-报价-确认', group: 'crm' },
   QUOTATION_REJECT: { code: 'crm:quotation:reject', label: 'CRM-报价-拒绝', group: 'crm' },
   QUOTATION_VOID: { code: 'crm:quotation:void', label: 'CRM-报价-作废', group: 'crm' },
+  PUBLIC_QUOTE_VIEW: { code: 'crm:public-quote:view', label: 'CRM-公开报价查看', group: 'crm' },
 
   /* ─── Opportunity (Phase 2) ─────────────── */
   OPPORTUNITY_LIST: { code: 'crm:opportunity:list', label: 'CRM-商机-查看', group: 'crm' },

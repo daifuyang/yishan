@@ -14,7 +14,7 @@ import {
   listOpportunities,
   listQuotations,
   type OpportunityRow,
-  type QuotationRow,
+  type QuoteSeriesSummary,
 } from '@/services/crm';
 import { usePermission } from '@/utils/permission';
 import ContractCreateModal from './ContractCreateModal';
@@ -206,7 +206,7 @@ export function ContractsTabStandalone({
 }: ContractsTabStandaloneProps) {
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
-  const [quotations, setQuotations] = useState<QuotationRow[]>([]);
+  const [quotations, setQuotations] = useState<QuoteSeriesSummary[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
 
   // 拉联系人 / 商机 / 报价单（用于 Modal 入参）。

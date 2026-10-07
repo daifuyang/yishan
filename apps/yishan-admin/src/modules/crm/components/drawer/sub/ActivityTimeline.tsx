@@ -6,6 +6,7 @@ import {
 import { Button, Empty, Skeleton, Timeline, Typography } from 'antd';
 import dayjs from 'dayjs';
 import React, { useMemo, useState } from 'react';
+import { FOLLOW_UP_TYPES } from '@/modules/crm/domain/statuses';
 import type { ActivityRow } from '@/services/crm';
 import DrawerFilterBar from '../_shared/DrawerFilterBar';
 import { groupByDate as groupItemsByDate } from '../_shared/groupByDate';
@@ -13,13 +14,17 @@ import { groupByDate as groupItemsByDate } from '../_shared/groupByDate';
 type ActivityCategory = 'followup' | 'system';
 type ActivityTypeConfig = { label: string; category: ActivityCategory };
 
+const followUpTypeLabels: Record<string, string> = Object.fromEntries(
+  FOLLOW_UP_TYPES.map((item) => [item.value, item.label]),
+);
+
 export const activityTypeConfig: Record<string, ActivityTypeConfig> = {
-  customer_created: { label: '系统', category: 'system' },
-  phone: { label: '电话', category: 'followup' },
-  wechat: { label: '微信', category: 'followup' },
-  visit: { label: '拜访', category: 'followup' },
-  meeting: { label: '面谈', category: 'followup' },
-  email: { label: '邮件', category: 'followup' },
+  customer_created: { label: '客户创建', category: 'system' },
+  phone: { label: '电话跟进', category: 'followup' },
+  wechat: { label: '微信跟进', category: 'followup' },
+  visit: { label: '拜访跟进', category: 'followup' },
+  meeting: { label: '会议跟进', category: 'followup' },
+  email: { label: '邮件跟进', category: 'followup' },
   other: { label: '其他跟进', category: 'followup' },
   status_change: { label: '状态变更', category: 'system' },
   owner_changed: { label: '负责人变更', category: 'system' },
@@ -28,6 +33,12 @@ export const activityTypeConfig: Record<string, ActivityTypeConfig> = {
   opportunity_stage_changed: { label: '商机阶段变更', category: 'system' },
   opportunity_won: { label: '商机成交', category: 'system' },
   opportunity_lost: { label: '商机失败', category: 'system' },
+  quote_created: { label: '创建报价', category: 'system' },
+  quote_version_created: { label: '创建报价新版本', category: 'system' },
+  quote_confirmed: { label: '确认报价', category: 'system' },
+  quote_confirmation_revoked: { label: '撤销报价确认', category: 'system' },
+  quote_contract_created: { label: '基于报价创建合同', category: 'system' },
+  quote_sent: { label: '发送报价', category: 'system' },
   quotation_created: { label: '报价创建', category: 'system' },
   contract_created: { label: '合同签署', category: 'system' },
   payment_received: { label: '回款', category: 'system' },
@@ -41,26 +52,43 @@ const customerStatusLabels: Record<string, string> = {
   customer: '已成交',
   lost: '已流失',
 };
-const followupTypes = new Set([
-  'phone',
-  'wechat',
-  'visit',
-  'meeting',
-  'email',
-  'other',
-]);
+const followupTypes = new Set<string>(
+  FOLLOW_UP_TYPES.map((item) => item.value),
+);
 const getEventType = (activity: ActivityRow) =>
   typeof activity.metadata?.eventType === 'string'
     ? activity.metadata.eventType
     : activity.type;
 
-export const getActivityCategory = (activity: ActivityRow): ActivityCategory =>
-  activityTypeConfig[getEventType(activity)]?.category ??
-  (followupTypes.has(activity.type) ? 'followup' : 'system');
+export const getActivityCategory = (activity: ActivityRow): ActivityCategory => {
+  if (activity.category === 'follow_up') return 'followup';
+  if (activity.category === 'system' || activity.category === 'business') {
+    return 'system';
+  }
+  return (
+    activityTypeConfig[getEventType(activity)]?.category ??
+    (followupTypes.has(activity.type) ? 'followup' : 'system')
+  );
+};
 
-const getActivityLabel = (activity: ActivityRow) =>
-  activityTypeConfig[getEventType(activity)]?.label ??
-  (getActivityCategory(activity) === 'system' ? '系统' : '其他跟进');
+const getActivityLabel = (activity: ActivityRow) => {
+  if (getActivityCategory(activity) === 'followup') {
+    return `${followUpTypeLabels[activity.type] ?? '其他'}跟进`;
+  }
+  return (
+    activityTypeConfig[getEventType(activity)]?.label ??
+    (getActivityCategory(activity) === 'system' ? '系统' : '其他跟进')
+  );
+};
+
+const formatRelativeOccurredAt = (value: string) => {
+  const date = dayjs(value);
+  const diffMin = dayjs().diff(date, 'minute');
+  if (diffMin < 1) return '刚刚';
+  if (diffMin < 60) return `${diffMin}分钟前`;
+  if (diffMin < 60 * 24) return `${Math.floor(diffMin / 60)}小时前`;
+  return date.format('MM-DD HH:mm');
+};
 
 const metadataText = (
   metadata: Record<string, unknown> | null | undefined,
@@ -90,7 +118,7 @@ const formatFollowUpTime = (value: string) => {
   if (date.isSame(dayjs(), 'day')) return `今天 ${date.format('HH:mm')}`;
   if (date.isSame(dayjs().add(1, 'day'), 'day'))
     return `明天 ${date.format('HH:mm')}`;
-  return date.format('MM-DD HH:mm');
+  return date.format('M月DD日 HH:mm');
 };
 
 const dateGroupLabel = (date: string) => {
@@ -110,6 +138,11 @@ const TimelineItem: React.FC<{ activity: ActivityRow }> = ({ activity }) => {
     metadataText(activity.metadata, 'intent') ??
     metadataText(activity.metadata, 'intention');
   const nextStep =
+    (typeof activity.nextFollowUpPlan === 'string' &&
+    activity.nextFollowUpPlan.trim()
+      ? activity.nextFollowUpPlan.trim()
+      : null) ??
+    metadataText(activity.metadata, 'nextFollowUpPlan') ??
     metadataText(activity.metadata, 'nextStep') ??
     metadataText(activity.metadata, 'next_step');
   const collapsible = content.length > 140 || content.split('\n').length > 4;
@@ -138,7 +171,7 @@ const TimelineItem: React.FC<{ activity: ActivityRow }> = ({ activity }) => {
           <span>· {activity.operatorUserName}</span>
         )}
         <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-          {dayjs(activity.occurredAt).format('HH:mm')}
+          {formatRelativeOccurredAt(activity.occurredAt)}
         </span>
       </div>
       {title && (
@@ -196,11 +229,15 @@ const TimelineItem: React.FC<{ activity: ActivityRow }> = ({ activity }) => {
           }}
         >
           {intent && <span>意向：{intent}</span>}
-          {nextStep && (
-            <span style={{ color: '#1677ff' }}>下一步：{nextStep}</span>
-          )}
-          {activity.nextFollowUpAt && (
-            <span>下次跟进：{formatFollowUpTime(activity.nextFollowUpAt)}</span>
+          {(nextStep || activity.nextFollowUpAt) && (
+            <span style={{ color: '#1677ff' }}>
+              下一步：
+              {activity.nextFollowUpAt
+                ? formatFollowUpTime(activity.nextFollowUpAt)
+                : ''}
+              {activity.nextFollowUpAt && nextStep ? ' ' : ''}
+              {nextStep ?? ''}
+            </span>
           )}
         </div>
       )}

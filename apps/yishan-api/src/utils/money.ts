@@ -154,10 +154,16 @@ export function computeLineAmountCents(args: {
   if (taxRateBp < 0 || taxRateBp > 10000) {
     throw new RangeError(`Money.computeLineAmountCents: taxRateBp out of range ${taxRateBp}`)
   }
-  const qtyFactor = qty / 10000 // qty 用 ×10000 表达的精度
-  const lineBeforeTax = unitPriceCents * qtyFactor * (10000 - discountBp) / 10000
-  const line = lineBeforeTax * (10000 + taxRateBp) / 10000
-  const cents = Math.round(line)
+  assertSafeInteger(qty, 'computeLineAmountCents.qty')
+  assertSafeInteger(discountBp, 'computeLineAmountCents.discountBp')
+  assertSafeInteger(taxRateBp, 'computeLineAmountCents.taxRateBp')
+  const numerator = BigInt(qty) * BigInt(unitPriceCents) * BigInt(10000 - discountBp) * BigInt(10000 + taxRateBp)
+  const denominator = 10000n ** 3n
+  // Math.round semantics: ties round towards positive infinity, including negative values.
+  const quotient = numerator / denominator
+  const remainder = numerator % denominator
+  const rounded = quotient + (remainder >= denominator / 2n ? 1n : remainder < -denominator / 2n ? -1n : 0n)
+  const cents = Number(rounded)
   assertSafeInteger(cents, 'computeLineAmountCents')
   return cents
 }

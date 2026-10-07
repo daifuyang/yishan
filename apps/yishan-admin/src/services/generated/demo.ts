@@ -2,7 +2,7 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
-/** 插件健康检查 返回模块自身与运行环境的只读信息，用于演示 plugin 不读 db 的纯函数 service。 GET /api/demo/v1/info */
+/** 插件健康检查 返回模块自身与运行环境的只读信息，用于演示 plugin 不读 db 的纯函数 service。 GET /api/demo/v1/info/ */
 export async function demoInfo(options?: { [key: string]: any }) {
   return request<{
     module: "demo";
@@ -16,13 +16,13 @@ export async function demoInfo(options?: { [key: string]: any }) {
     pid: number;
     env: string;
     timestamp: string;
-  }>("/api/demo/v1/info", {
+  }>("/api/demo/v1/info/", {
     method: "GET",
     ...(options || {}),
   });
 }
 
-/** Todo 列表 GET /api/demo/v1/todos */
+/** Todo 列表 GET /api/demo/v1/todos/ */
 export async function demoTodosList(options?: { [key: string]: any }) {
   return request<{
     total: number;
@@ -35,13 +35,13 @@ export async function demoTodosList(options?: { [key: string]: any }) {
       createdAt: string;
       updatedAt: string;
     }[];
-  }>("/api/demo/v1/todos", {
+  }>("/api/demo/v1/todos/", {
     method: "GET",
     ...(options || {}),
   });
 }
 
-/** Todo 新建 POST /api/demo/v1/todos */
+/** Todo 新建 POST /api/demo/v1/todos/ */
 export async function demoTodosCreate(
   body: {
     title: string;
@@ -59,7 +59,7 @@ export async function demoTodosCreate(
     dueAt: string | null;
     createdAt: string;
     updatedAt: string;
-  }>("/api/demo/v1/todos", {
+  }>("/api/demo/v1/todos/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

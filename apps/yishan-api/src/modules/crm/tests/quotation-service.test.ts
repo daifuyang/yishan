@@ -1,4 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { OpportunityRepository, type OpportunityRow } from '../repositories/opportunity.repository.js'
+import { ContactRepository } from '../repositories/contact.repository.js'
+import { CustomerRepository } from '../repositories/customer.repository.js'
+import { ActivityRepository } from '../repositories/activity.repository.js'
+import { CustomerLifecycleService } from '../services/customer-lifecycle.service.js'
 import { dbManager } from '@/db'
 import { Money, computeLineAmountCents } from '@/utils/money.js'
 import { QuotationService } from '../services/quotation.service.js'
@@ -11,6 +16,15 @@ import {
 } from '../repositories/quotation.repository.js'
 import type { QuotationStatus } from '../schemas/quotation.schema.js'
 
+beforeEach(() => {
+  vi.spyOn(OpportunityRepository, 'findByIdWithLock').mockResolvedValue({ id: 200, customerId: 100, ownerId: 7, stage: 'solution', name: '商机' } as OpportunityRow)
+  vi.spyOn(CustomerRepository, 'findById').mockResolvedValue({ id: 100, statusCode: 'potential' } as Awaited<ReturnType<typeof CustomerRepository.findById>>)
+  vi.spyOn(ContactRepository, 'findById').mockResolvedValue({ id: 15, customerId: 100 } as Awaited<ReturnType<typeof ContactRepository.findById>>)
+  vi.spyOn(OpportunityRepository, 'updateStage').mockResolvedValue({ id: 200, stage: 'quotation', customerId: 100 } as OpportunityRow)
+  vi.spyOn(CustomerLifecycleService, 'recalculate').mockResolvedValue('potential')
+  vi.spyOn(ActivityRepository, 'create').mockResolvedValue({ id: 1 } as Awaited<ReturnType<typeof ActivityRepository.create>>)
+})
+
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
 afterEach(() => {
@@ -22,18 +36,22 @@ function buildQuotation(overrides: Partial<QuotationRow> = {}): QuotationRow {
     id: 1,
     quotationNo: 'Q-20260908-0001',
     name: '示例报价单',
-    version: 1,
+    version: 1, rootQuoteId: 1, sourceQuoteId: null,
+    quoteDate: new Date('2026-10-01T00:00:00Z'),
+    opportunityName: '商机',
+    contactName: '联系人',
     customerId: 100,
     customerName: '上海示例有限公司',
     opportunityId: 200,
-    contactId: null,
+    contactId: 15,
     ownerUserId: salesperson.id,
     ownerUserName: '销售',
+    ownerDepartmentId: 10,
     status: 'draft',
-    validUntil: null,
+    validUntil: new Date('2099-10-20T00:00:00Z'),
     netCents: 0,
     taxCents: 0,
-    totalCents: 0,
+    totalCents: 1234,
     discountAmountCents: 0,
     remark: null,
     creatorId: salesperson.id,
@@ -52,6 +70,7 @@ function _buildQuotationItem(): QuotationItemRow {
     id: 1,
     quotationId: 1,
     productId: 1,
+    description: '',
     productNameSnapshot: 'A',
     unitSnapshot: null,
     quantityCents: 10000,
@@ -115,6 +134,7 @@ describe('QuotationService.createDraft', () => {
     const result = await new QuotationService().createDraft(
       {
         customerId: 100,
+        opportunityId: 200, contactId: 15, quoteDate: '2026-10-01T00:00:00Z', validUntil: '2099-10-20T00:00:00Z',
         name: '示例报价单',
         items: [
           {
@@ -136,7 +156,7 @@ describe('QuotationService.createDraft', () => {
       creatorId: salesperson.id,
       updaterId: salesperson.id,
       status: 'draft',
-    }))
+    }), expect.anything())
     expect(replaceItems).toHaveBeenCalledTimes(1)
     expect(result.head.id).toBe(99)
     expect(result.head.status).toBe('draft')
@@ -147,6 +167,7 @@ describe('QuotationService.createDraft', () => {
       new QuotationService().createDraft(
         {
           customerId: 100,
+          opportunityId: 200, contactId: 15, quoteDate: '2026-10-01T00:00:00Z', validUntil: '2099-10-20T00:00:00Z',
           name: '空 items 测试',
           items: [],
         },
@@ -165,12 +186,14 @@ describe('QuotationService.createDraft', () => {
 
     return new QuotationService().createDraft(
       {
-        customerId: 1,
+        customerId: 100,
+        opportunityId: 200, contactId: 15, quoteDate: '2026-10-01T00:00:00Z', validUntil: '2099-10-20T00:00:00Z',
         name: '一致性测试',
         items: [
           {
             productId: 1,
-            productNameSnapshot: 'A',
+            description: '',
+    productNameSnapshot: 'A',
             quantityCents: 10000,
             unitPriceCents: 10000, // 100.00 元
             discountBp: 0,
@@ -209,13 +232,15 @@ describe('QuotationService.createDraft', () => {
 
     return new QuotationService().createDraft(
       {
-        customerId: 1,
+        customerId: 100,
+        opportunityId: 200, contactId: 15, quoteDate: '2026-10-01T00:00:00Z', validUntil: '2099-10-20T00:00:00Z',
         name: '整单优惠测试',
         discountAmountCents: 500, // -¥5.00
         items: [
           {
             productId: 1,
-            productNameSnapshot: 'A',
+            description: '',
+    productNameSnapshot: 'A',
             quantityCents: 10000,
             unitPriceCents: 10000, // 100.00 元，无折扣无税
           },
@@ -233,35 +258,10 @@ describe('QuotationService.createDraft', () => {
     })
   })
 
-  it('clamps total to 0 when discountAmountCents exceeds items sum', () => {
-    vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
-    vi.spyOn(QuotationRepository, 'countTodayByNoPrefix').mockResolvedValue(0)
-    const createSpy = vi.spyOn(QuotationRepository, 'create').mockResolvedValue({ id: 1 })
-    vi.spyOn(QuotationRepository, 'replaceItems').mockResolvedValue([])
-    vi.spyOn(QuotationRepository, 'findDetailById').mockResolvedValue({ head: buildQuotation(), items: [] })
-
-    return new QuotationService().createDraft(
-      {
-        customerId: 1,
-        name: '极端优惠测试',
-        discountAmountCents: 99999, // 大于商品金额
-        items: [
-          {
-            productId: 1,
-            productNameSnapshot: 'A',
-            quantityCents: 10000,
-            unitPriceCents: 1000, // ¥10.00
-          },
-        ],
-      },
-      salesperson,
-    ).then(() => {
-      const args = createSpy.mock.calls[0]?.[0] as unknown as Record<string, unknown>
-      // itemsTotal = 1000；discountAmountCents = 99999 → totalCents = 0（clamp）
-      expect(args.totalCents).toBe(0)
-      expect(args.discountAmountCents).toBe(99999)
-    })
+  it('rejects discounts exceeding the subtotal', async () => {
+    await expect(new QuotationService().createDraft({ customerId: 100, opportunityId: 200, contactId: 15, name: '优惠测试', quoteDate: '2026-10-01T00:00:00Z', validUntil: '2099-10-20T00:00:00Z', discountAmountCents: 99999, items: [{ productNameSnapshot: 'A', quantityCents: 10000, unitPriceCents: 1000 }] }, salesperson)).rejects.toThrow('优惠')
   })
+
 })
 
 describe('QuotationService.sendQuotation', () => {
@@ -301,7 +301,8 @@ describe('QuotationService.sendQuotation', () => {
         id: 1,
         quotationId: 1,
         productId: 1,
-        productNameSnapshot: 'A',
+        description: '',
+    productNameSnapshot: 'A',
         unitSnapshot: null,
         quantityCents: 10000,
         unitPriceCents: 1234,
@@ -338,7 +339,7 @@ describe('QuotationService.updateDraft', () => {
     vi.spyOn(QuotationRepository, 'findByIdWithLock').mockResolvedValue(buildQuotation({ status: 'sent' }))
 
     await expect(
-      new QuotationService().updateDraft(1, { items: [{ productId: 1, quantityCents: 10000, unitPriceCents: 100 }] }, salesperson),
+      new QuotationService().updateDraft(1, { items: [{ productId: 1, productNameSnapshot: 'A', quantityCents: 10000, unitPriceCents: 100 }] }, salesperson),
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_QUOTATION_NOT_EDITABLE })
   })
 
@@ -418,7 +419,7 @@ describe('QuotationService.softDelete', () => {
   })
 })
 
-describe('QuotationService.acceptQuotation (supersede 旧 accepted)', () => {
+describe('QuotationService.acceptQuotation (保留历史版本)', () => {
   beforeEach(() => {
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
   })
@@ -431,48 +432,24 @@ describe('QuotationService.acceptQuotation (supersede 旧 accepted)', () => {
     ).rejects.toMatchObject({ code: CrmErrorCode.CRM_QUOTATION_NOT_SENT })
   })
 
-  it('refuses double-accept', async () => {
+  it('returns an already confirmed quote without duplicating writes', async () => {
     vi.spyOn(QuotationRepository, 'findByIdWithLock').mockResolvedValue(buildQuotation({ status: 'accepted' }))
-
-    await expect(
-      new QuotationService().acceptQuotation(1, salesperson),
-    ).rejects.toMatchObject({ code: CrmErrorCode.CRM_QUOTATION_ACCEPTED_IMMUTABLE })
+    vi.spyOn(QuotationRepository, 'listItemsByQuotationId').mockResolvedValue([])
+    const update = vi.spyOn(QuotationRepository, 'update')
+    await expect(new QuotationService().acceptQuotation(1, salesperson)).resolves.toMatchObject({ head: { status: 'accepted' } })
+    expect(update).not.toHaveBeenCalled()
   })
 
-  it('supersedes older accepted quotations under the same opportunity', async () => {
-    vi.spyOn(QuotationRepository, 'findByIdWithLock').mockResolvedValue(
-      buildQuotation({ id: 5, status: 'sent', opportunityId: 200 }),
-    )
+  it('does not supersede older confirmed quotations', async () => {
+    vi.spyOn(QuotationRepository, 'findByIdWithLock').mockResolvedValue(buildQuotation({ id: 5, status: 'sent', opportunityId: 200 }))
     vi.spyOn(QuotationRepository, 'listItemsByQuotationId').mockResolvedValue([])
-    const update = vi.spyOn(QuotationRepository, 'update').mockResolvedValue(
-      buildQuotation({ id: 5, status: 'accepted', opportunityId: 200 }),
-    )
+    const update = vi.spyOn(QuotationRepository, 'update').mockResolvedValue(buildQuotation({ id: 5, status: 'accepted' }))
     const log = vi.spyOn(QuotationRepository, 'createStatusLog').mockResolvedValue()
-    vi.spyOn(QuotationRepository, 'findAcceptedIdsByOpportunity').mockResolvedValue([3, 4])
-
+    const findAccepted = vi.spyOn(QuotationRepository, 'findAcceptedIdsByOpportunity')
     await new QuotationService().acceptQuotation(5, salesperson)
-
-    // update 主表 → accepted；update 旧 accepted #3, #4 → superseded
-    expect(update).toHaveBeenCalledWith(5, expect.objectContaining({ status: 'accepted' }), expect.anything())
-    expect(update).toHaveBeenCalledWith(3, expect.objectContaining({ status: 'superseded' }), expect.anything())
-    expect(update).toHaveBeenCalledWith(4, expect.objectContaining({ status: 'superseded' }), expect.anything())
-
-    // log: sent → accepted, accepted → superseded × 2
-    expect(log).toHaveBeenCalledWith(expect.objectContaining({
-      fromStatus: 'sent',
-      toStatus: 'accepted',
-      quotationId: 5,
-    }), expect.anything())
-    expect(log).toHaveBeenCalledWith(expect.objectContaining({
-      fromStatus: 'accepted',
-      toStatus: 'superseded',
-      quotationId: 3,
-    }), expect.anything())
-    expect(log).toHaveBeenCalledWith(expect.objectContaining({
-      fromStatus: 'accepted',
-      toStatus: 'superseded',
-      quotationId: 4,
-    }), expect.anything())
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(log).toHaveBeenCalledTimes(1)
+    expect(findAccepted).not.toHaveBeenCalled()
   })
 
   it('accepting a quotation without opportunityId does not touch other accepted rows', async () => {
@@ -576,12 +553,19 @@ describe('QuotationService.voidQuotation', () => {
 })
 
 describe('QuotationService.list / data scope', () => {
+  it('applies the same data scope to duplicate lookup as the quotation list', async () => {
+    const listSeries = vi.spyOn(QuotationRepository, 'listSeries').mockResolvedValue({ rows: [], total: 0 })
+    await new QuotationService().findDuplicateSeries(200, '商机报价', salesperson)
+    expect(listSeries).toHaveBeenCalledWith(expect.objectContaining({
+      opportunityId: 200, ownerUserIds: [salesperson.id], ownerDepartmentIds: null,
+    }))
+  })
   it('passes ownerUserIds scope to repository for non-super_admin user', async () => {
-    const list = vi.spyOn(QuotationRepository, 'list').mockResolvedValue({ rows: [], total: 0 })
+    const listSeries = vi.spyOn(QuotationRepository, 'listSeries').mockResolvedValue({ rows: [], total: 0 })
 
     await new QuotationService().list({ page: 1, pageSize: 10 } as QuotationListQuery, salesperson)
 
-    expect(list).toHaveBeenCalledWith(expect.objectContaining({
+    expect(listSeries).toHaveBeenCalledWith(expect.objectContaining({
       ownerUserIds: [salesperson.id],
       ownerDepartmentIds: null,
     }))

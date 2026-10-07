@@ -89,10 +89,7 @@ const LEVEL_COLOR: Record<string, string> = {
   D: 'default',
 };
 
-const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
-  customer,
-  onFollowUpSaved,
-}) => {
+const BasicInfoTab: React.FC<BasicInfoTabProps> = ({ customer }) => {
   const isDesktop = useDrawerBreakpoint();
 
   const ownerValue =
@@ -281,10 +278,7 @@ const BasicInfoTab: React.FC<BasicInfoTabProps> = ({
           paddingLeft: isDesktop ? 28 : 0,
         }}
       >
-        <CustomerActivityRail
-          customer={customer}
-          onFollowUpSaved={onFollowUpSaved}
-        />
+        <CustomerActivityRail customer={customer} />
       </div>
     </div>
   );

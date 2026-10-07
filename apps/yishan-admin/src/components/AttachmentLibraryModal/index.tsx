@@ -504,7 +504,7 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
       okText={`确定 ${selectedKeys.length ? `(${selectedKeys.length})` : ''}`}
       cancelText="取消"
       width="80%"
-      style={{ maxWidth: '95vw', top: 20 }}
+      style={{ maxWidth: '95vw' }}
     >
       <div
         style={{

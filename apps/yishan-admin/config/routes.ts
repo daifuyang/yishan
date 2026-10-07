@@ -17,6 +17,11 @@
 
 export default [
   {
+    path: '/q/:token',
+    layout: false,
+    component: './q/[token]',
+  },
+  {
     path: '/user',
     layout: false,
     routes: [

@@ -46,8 +46,8 @@ export class ContractRepository {
     await db.execute(sql`SELECT id FROM ${crmContract} WHERE id = ${id} AND deleted_at IS NULL FOR UPDATE`)
     return ContractRepository.findById(id, db)
   }
-  static async findByQuotationId(quotationId: number, db: AppQueryDb = drizzleDb): Promise<ContractRow | null> {
-    const rows = await db.select().from(crmContract).where(and(eq(crmContract.quotationId, quotationId), isNull(crmContract.deletedAt))).limit(1)
+  static async findByQuotationId(quotationId: number, db: AppQueryDb = drizzleDb, includeDeleted = false): Promise<ContractRow | null> {
+    const rows = await db.select().from(crmContract).where(and(eq(crmContract.quotationId, quotationId), includeDeleted ? undefined : isNull(crmContract.deletedAt))).limit(1)
     return (rows[0] as ContractRow | undefined) ?? null
   }
   static async existsByCustomerId(customerId: number, db: AppQueryDb = drizzleDb): Promise<boolean> {

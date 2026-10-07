@@ -156,6 +156,7 @@ const CustomerDetailPage: React.FC = () => {
 
   const handleDelete = async () => {
     Modal.confirm({
+      centered: true,
       title: `确认删除「${customer.name}」？`,
       okText: '删除',
       okButtonProps: { danger: true },

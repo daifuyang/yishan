@@ -10,7 +10,7 @@ import { CrmErrorCode } from '../schemas/error-codes.js'
 
 const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
-function opportunity(stage: 'won' | 'proposal' = 'won') {
+function opportunity(stage: 'won' | 'quotation' = 'won') {
   return {
     id: 21,
     customerId: 11,
@@ -51,7 +51,7 @@ afterEach(() => vi.restoreAllMocks())
 
 describe('DirectCloseService', () => {
   it('rejects confirmation from an opportunity that is not won', async () => {
-    vi.spyOn(OpportunityRepository, 'findByIdForUpdate').mockResolvedValue(opportunity('proposal'))
+    vi.spyOn(OpportunityRepository, 'findByIdForUpdate').mockResolvedValue(opportunity('quotation'))
 
     await expect(new DirectCloseService().confirm(21, {
       amountCents: 50_000,

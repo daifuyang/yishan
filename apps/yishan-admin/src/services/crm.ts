@@ -8,6 +8,7 @@
  */
 
 import { request } from '@umijs/max'
+import { crmQuotationsCreate, crmQuotationsGet, crmQuotationsList, crmQuotationsUpdate, crmQuotationsVoid, crmQuotationsDelete, crmQuotationsRevise, crmQuotationsAccept, crmQuotationsRevokeConfirmation } from '@/services/generated/crm'
 import type { CustomerStatusCode } from '@/modules/crm/domain/statuses'
 
 /* ─── 通用包装 ────────────────────────────────────────── */
@@ -165,15 +166,25 @@ export interface ContactUpdateInput extends Partial<Omit<ContactCreateInput, 'cu
 /* ─── 跟进 ────────────────────────────────────────── */
 
 export type ActivityType = 'phone' | 'wechat' | 'visit' | 'meeting' | 'email' | 'other'
+export type ActivityCategory = 'follow_up' | 'system' | 'business'
+export type FollowUpResult =
+  | 'continue'
+  | 'interested'
+  | 'not_now'
+  | 'unreachable'
+  | 'invalid'
 
 export interface ActivityRow {
   id: number
   customerId: number
   contactId: number | null
+  category?: ActivityCategory | null
   type: string
   content: string
   occurredAt: string
   nextFollowUpAt: string | null
+  result?: string | null
+  nextFollowUpPlan?: string | null
   attachmentIds?: number[] | null
   metadata?: Record<string, unknown> | null
   operatorUserId: number
@@ -194,10 +205,13 @@ export interface ActivityResp {
   entityType: 'customer' | 'opportunity' | 'contract' | null
   entityId: number | null
   entityRefType: string | null
+  category?: ActivityCategory | null
   type: string
   content: string
   occurredAt: string
   nextFollowUpAt: string | null
+  result?: string | null
+  nextFollowUpPlan?: string | null
   attachmentIds?: number[] | null
   metadata?: Record<string, unknown> | null
   plannedAt: string | null
@@ -217,99 +231,97 @@ export interface ActivityCreateInput {
   content: string
   occurredAt?: string
   nextFollowUpAt?: string | null
+  result?: FollowUpResult | null
+  nextFollowUpPlan?: string | null
   attachmentIds?: number[] | null
   metadata?: Record<string, unknown> | null
 }
 
 /* ─── 销售与工作台 ─────────────────────────────────────── */
 
+export type OpportunityStage =
+  | 'needs_confirmation'
+  | 'solution'
+  | 'quotation'
+  | 'negotiation'
+  | 'won'
+  | 'lost'
+
 export interface OpportunityRow {
   id: number
+  opportunityNo: string
   name: string
   customerId: number
-  stage: 'requirement' | 'proposal' | 'negotiation' | 'won' | 'lost'
+  customerName?: string | null
+  stage: OpportunityStage
   amountCents: number | null
   expectedCloseDate: string | null
+  sourceId?: number | null
   ownerName: string | null
   ownerId: number | null
   primaryContactId: number | null
   products: Array<{ id: number; code: string; name: string }>
   requirement?: string | null
+  competition?: string | null
   nextAction?: string | null
   nextFollowUpAt?: string | null
+  lastFollowUpAt?: string | null
   remark?: string | null
   stageEnteredAt?: string
+  updatedAt?: string
 }
 
-export interface QuotationRow {
-  id: number
-  quotationNo: string
-  name: string
+export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected' | 'voided' | 'superseded'
+export interface QuoteSeriesSummary {
+  seriesId?: string
+  seriesNo?: string
+  title?: string
   customerId: number
   customerName?: string | null
   opportunityId?: number | null
   opportunityName?: string | null
-  contactId?: number | null
-  contactName?: string | null
-  status: string
-  totalCents: number
-  discountAmountCents: number
-  netCents?: number
-  taxCents?: number
-  validUntil: string | null
-  createdAt?: string
-  sentAt?: string | null
-  acceptedAt?: string | null
-  closedAt?: string | null
-}
-
-export interface QuotationItemInput {
-  /** null 表示自定义项（不绑定 Product 主数据）。 */
-  productId?: number | null
-  productNameSnapshot: string
-  unitSnapshot?: string | null
-  /** ×10000 倍精度整数（例：12.3456 件 → 123456）。 */
-  quantityCents: number
-  /** cents。 */
-  unitPriceCents: number
-  /** 万分位基础点（1300 = 13%）。MVP 流程不暴露给 UI。 */
-  discountBp?: number
-  taxRateBp?: number
-}
-
-export interface QuotationCreateInput {
-  customerId: number
-  opportunityId?: number | null
-  contactId?: number | null
+  opportunityNo?: string | null
+  currentQuoteId?: number
+  currentVersion?: number
+  versionCount?: number
+  currentStatus?: QuotationStatus
+  currentAmount?: number
+  quoteDate?: string | null
   validUntil?: string | null
-  /** 报价单名称（业务可见），必填。 */
-  name: string
-  /** 整单优惠（cents）。 */
-  discountAmountCents?: number
-  remark?: string | null
-  items: QuotationItemInput[]
-}
-
-export interface QuotationResp extends QuotationRow {
-  ownerUserId: number
+  customerViewStatus?: 'viewed' | 'unviewed'
+  lastViewedAt?: string | null
+  viewCount?: number
+  ownerUserId?: number
   ownerUserName?: string | null
-  remark: string | null
-  items: Array<{
-    id: number
-    quotationId: number
-    productId: number | null
-    productNameSnapshot: string
-    unitSnapshot: string | null
-    quantityCents: number
-    unitPriceCents: number
-    discountBp: number
-    taxRateBp: number
-    lineAmountCents: number
-    sortOrder: number
-    createdAt: string
-    updatedAt: string
-  }>
+  hasActiveShare?: boolean
 }
+export interface QuotationVersionSummary {
+  id: number
+  quotationNo: string
+  version: number
+  status: QuotationStatus
+  totalCents: number
+  quoteDate: string | null
+  createdAt: string
+  shareFirstViewedAt?: string | null
+  shareViewCount?: number
+  hasShare?: boolean
+}
+export type QuotationRow = Omit<QuotationResp, 'items'>
+export interface QuotationShareInfo {
+  id: number
+  url?: string
+  status: 'active' | 'revoked'
+  expiresAt: string
+  sentAt: string | null
+  firstViewedAt: string | null
+  lastViewedAt: string | null
+  viewCount: number
+}
+type GeneratedQuotationResp = Awaited<ReturnType<typeof crmQuotationsGet>>['data']
+export type QuotationResp = Omit<GeneratedQuotationResp, 'acceptedBy' | 'contractId' | 'shareFirstViewedAt' | 'shareViewCount' | 'share' | 'hasShare' | 'seriesId' | 'seriesNo' | 'seriesTitle' | 'currentVersion' | 'versionCount' | 'versions' | 'publicDiscountDescription' | 'internalDiscountReason'> & { acceptedBy?: number | null; contractId?: number | null; shareFirstViewedAt?: string | null; shareViewCount?: number; publicDiscountDescription?: string | null; internalDiscountReason?: string | null; share?: QuotationShareInfo | null; hasShare?: boolean; seriesId?: string; seriesNo?: string; seriesTitle?: string; opportunityNo?: string | null; currentVersion?: number; versionCount?: number; versions?: QuotationVersionSummary[] }
+export type QuotationCreateInput = Parameters<typeof crmQuotationsCreate>[0]
+export type QuotationItemInput = QuotationCreateInput['items'][number]
 
 export interface ContractRow {
   id: number
@@ -761,8 +773,19 @@ export async function createActivity(customerId: number, input: ActivityCreateIn
   return unwrap(r)
 }
 
-export async function listOpportunities(query: PageQuery & { customerId?: number }): Promise<{ data: OpportunityRow[]; total: number }> {
-  const r = await request<ApiResp<OpportunityRow[]>>('/api/crm/v1/opportunities', { method: 'GET', params: query as any })
+export async function listOpportunities(
+  query: PageQuery & {
+    customerId?: number
+    stage?: OpportunityStage
+    ownerId?: number
+    expectedCloseFrom?: string
+    expectedCloseTo?: string
+  },
+): Promise<{ data: OpportunityRow[]; total: number }> {
+  const r = await request<ApiResp<OpportunityRow[]>>('/api/crm/v1/opportunities', {
+    method: 'GET',
+    params: query,
+  })
   return { data: unwrap(r), total: r.pagination?.total ?? 0 }
 }
 
@@ -771,14 +794,17 @@ export interface OpportunityCreateInput {
   customerId: number
   primaryContactId?: number | null
   ownerId: number
-  stage?: 'requirement' | 'proposal' | 'negotiation'
+  stage?: Exclude<OpportunityStage, 'won' | 'lost'>
   amountCents?: number | null
   expectedCloseDate?: string | null
+  sourceId?: number | null
   productIds?: number[]
-  requirement?: string
+  requirement: string
+  competition?: string | null
   remark?: string
   nextAction?: string
   nextFollowUpAt?: string | null
+  creationKey?: string
 }
 
 export async function createOpportunity(input: OpportunityCreateInput): Promise<OpportunityRow> {
@@ -786,17 +812,80 @@ export async function createOpportunity(input: OpportunityCreateInput): Promise<
   return unwrap(r)
 }
 
-export async function listQuotations(query: PageQuery & { customerId?: number }): Promise<{ data: QuotationRow[]; total: number }> {
-  const r = await request<ApiResp<QuotationRow[]>>('/api/crm/v1/quotations', { method: 'GET', params: query as any })
-  return { data: unwrap(r), total: r.pagination?.total ?? 0 }
+export async function checkOpportunityDuplicates(customerId: number, name: string): Promise<OpportunityRow[]> {
+  const r = await request<ApiResp<OpportunityRow[]>>('/api/crm/v1/opportunities/duplicate-check', {
+    method: 'GET',
+    params: { customerId, name },
+  })
+  return unwrap(r)
+}
+
+export async function advanceOpportunityStage(id: number, input: { toStage: 'solution' | 'quotation' | 'negotiation'; reason?: string }): Promise<OpportunityRow> {
+  const r = await request<ApiResp<OpportunityRow>>(`/api/crm/v1/opportunities/${id}/advance`, { method: 'POST', data: input });
+  return unwrap(r);
+}
+
+export async function listQuotations(query: PageQuery & { customerId?: number; opportunityId?: number; status?: QuotationStatus }): Promise<{ data: QuoteSeriesSummary[]; total: number }> {
+  const r = await crmQuotationsList(query as Parameters<typeof crmQuotationsList>[0])
+  return { data: unwrap(r) as unknown as QuoteSeriesSummary[], total: r.pagination?.total ?? 0 }
+}
+
+export async function getQuotationDuplicates(opportunityId: number, name: string): Promise<QuoteSeriesSummary[]> {
+  const r = await request<ApiResp<QuoteSeriesSummary[]>>('/api/crm/v1/quotations/duplicates', {
+    method: 'GET', params: { opportunityId, name },
+  })
+  return unwrap(r)
+}
+
+export async function getQuotation(id: number): Promise<QuotationResp> {
+  return unwrap(await crmQuotationsGet({ id })) as unknown as QuotationResp
+}
+
+export async function reviseQuotation(id: number): Promise<QuotationResp> {
+  return unwrap(await crmQuotationsRevise({ id })) as unknown as QuotationResp
+}
+
+export interface QuoteShareCreateResult {
+  shareId: number
+  url: string
+  expiresAt: string
+}
+
+export async function createQuotationShare(id: number, input: { durationDays?: 3 | 7 | 14 | 30; followQuoteValidUntil?: boolean; customDate?: string; replaceShareId?: number }): Promise<QuoteShareCreateResult> {
+  return unwrap(await request<ApiResp<QuoteShareCreateResult>>(`/api/crm/v1/quotations/${id}/shares`, { method: 'POST', data: input }))
+}
+
+export async function confirmQuotation(id: number): Promise<QuotationResp> {
+  return unwrap(await crmQuotationsAccept({ id })) as unknown as QuotationResp
+}
+
+export interface RevokeQuotationConfirmationInput { reason: 'mistake' | 'customer_unconfirmed' | 'other'; remark?: string }
+export async function revokeQuotationConfirmation(id: number, input: RevokeQuotationConfirmationInput): Promise<QuotationResp> {
+  return unwrap(await crmQuotationsRevokeConfirmation({ id }, input)) as unknown as QuotationResp
+}
+
+export async function sendQuotation(id: number, shareId: number): Promise<QuotationResp> {
+  return unwrap(await request<ApiResp<QuotationResp>>(`/api/crm/v1/quotations/${id}/send`, { method: 'POST', data: { shareId } }))
+}
+
+export async function revokeQuotationShare(id: number, shareId: number): Promise<void> {
+  await request(`/api/crm/v1/quotations/${id}/shares/${shareId}/revoke`, { method: 'POST' })
 }
 
 export async function createQuotation(input: QuotationCreateInput): Promise<QuotationResp> {
-  const r = await request<ApiResp<QuotationResp>>('/api/crm/v1/quotations', {
-    method: 'POST',
-    data: input,
-  })
-  return unwrap(r)
+  return unwrap(await crmQuotationsCreate(input)) as unknown as QuotationResp
+}
+
+export async function updateQuotation(id: number, input: Parameters<typeof crmQuotationsUpdate>[1]): Promise<QuotationResp> {
+  return unwrap(await crmQuotationsUpdate({ id }, input)) as unknown as QuotationResp
+}
+
+export async function voidQuotation(id: number, reason: string): Promise<QuotationResp> {
+  return unwrap(await crmQuotationsVoid({ id }, { reason })) as unknown as QuotationResp
+}
+
+export async function deleteQuotation(id: number): Promise<void> {
+  await crmQuotationsDelete({ id })
 }
 
 export async function listContracts(query: PageQuery & { customerId?: number; status?: string }): Promise<{ data: ContractRow[]; total: number }> {

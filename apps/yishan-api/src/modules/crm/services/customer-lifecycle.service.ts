@@ -13,14 +13,11 @@ export class CustomerLifecycleService {
     if (!customer) throw new Error(`CRM customer ${customerId} was not found during lifecycle recalculation`)
     const relationshipStatus = customer.relationshipStatus as RelationshipStatus
     const hasWonOpportunity = stages.includes('won')
-    const hasActiveOpportunity = stages.some((stage) => stage !== 'won' && stage !== 'lost')
     const statusCode: CustomerStatusCode = relationshipStatus === 'lost'
       ? 'lost'
       : hasWonOpportunity
         ? 'won'
-        : hasActiveOpportunity
-          ? 'opportunity'
-          : relationshipStatus
+        : relationshipStatus
     await CustomerRepository.updateLifecycle(customerId, { statusCode, updaterId }, db)
     return statusCode
   }

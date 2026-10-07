@@ -22,8 +22,8 @@ import {
   ProFormText,
   ProFormTextArea,
 } from '@ant-design/pro-components';
-import { App, Col, Row } from 'antd';
-import type { Dayjs } from 'dayjs';
+import { App, Col, Row, Table, Typography } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { QUOTATION_STATUSES, statusOf } from '@/modules/crm/domain/statuses';
 import {
@@ -31,8 +31,10 @@ import {
   type ContractInput,
   type ContractRow,
   createContract,
+  getQuotation,
   type OpportunityRow,
-  type QuotationRow,
+  type QuoteSeriesSummary,
+  type QuotationResp,
 } from '@/services/crm';
 import { CRM_DIALOG_Z_INDEX } from '../_shared/crmDialogZIndex';
 
@@ -43,8 +45,10 @@ export interface ContractCreateModalProps {
   customerName?: string;
   existingContacts: ContactRow[];
   existingOpportunities: OpportunityRow[];
-  existingQuotations: QuotationRow[];
+  existingQuotations: QuoteSeriesSummary[];
   onSuccess?: (contract: ContractRow) => void;
+  sourceQuotation?: QuotationResp;
+  zIndex?: number;
 }
 
 interface FormValues {
@@ -59,6 +63,17 @@ interface FormValues {
   description?: string;
 }
 
+function quotationFormValues(quotation: QuotationResp): Partial<FormValues> {
+  return {
+    name: `${quotation.opportunityName || quotation.name}合同`,
+    quotationId: quotation.id,
+    opportunityId: quotation.opportunityId ?? undefined,
+    contactId: quotation.contactId ?? undefined,
+    amountCents: quotation.totalCents / 100,
+    description: quotation.remark ?? undefined,
+  };
+}
+
 const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
   open,
   onOpenChange,
@@ -68,71 +83,58 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
   existingOpportunities,
   existingQuotations,
   onSuccess,
+  sourceQuotation,
+  zIndex = CRM_DIALOG_Z_INDEX,
 }) => {
   const { message } = App.useApp();
   const formRef = useRef<ProFormInstance<FormValues>>(undefined);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [selectedQuotationId, setSelectedQuotationId] = useState<number>();
+  const [selectedQuotation, setSelectedQuotation] = useState<QuotationResp>();
+  const [quotationLoading, setQuotationLoading] = useState(false);
+  const contractQuotation = sourceQuotation ?? selectedQuotation;
+  const quotationPending =
+    !sourceQuotation &&
+    selectedQuotationId != null &&
+    selectedQuotation?.id !== selectedQuotationId;
+  const quotationLinked =
+    Boolean(sourceQuotation) || selectedQuotationId != null;
 
-  // 只展示「有效状态」的报价单（draft / sent / accepted），过滤掉已作废 / 已被新版替代
+  // 合同来源只能选择已确认的当前报价版本。
   const activeQuotations = useMemo(
     () =>
       existingQuotations.filter((q) => {
-        const s = statusOf(q.status, QUOTATION_STATUSES);
-        return s.value !== 'voided' && s.value !== 'superseded';
+        const s = statusOf(q.currentStatus ?? 'draft', QUOTATION_STATUSES);
+        return s.value === 'accepted';
       }),
     [existingQuotations],
   );
 
-  const quotationOptions = useMemo(
-    () =>
-      activeQuotations.map((q) => {
-        const amount =
-          q.totalCents == null
-            ? ''
-            : `¥${(q.totalCents / 100).toLocaleString('zh-CN')}`;
-        const statusLabel = statusOf(q.status, QUOTATION_STATUSES).label;
-        const oppPart = q.opportunityName ? ` · ${q.opportunityName}` : '';
-        return {
-          value: q.id,
-          label: `${q.quotationNo ?? ''} · ${q.name ?? ''}${oppPart} · ${amount} · ${statusLabel}`,
-        };
-      }),
-    [activeQuotations],
-  );
-
-  const opportunityOptions = useMemo(
-    () =>
-      existingOpportunities
+  const quotationOptions = sourceQuotation
+    ? [{ value: sourceQuotation.id, label: sourceQuotation.name }]
+    : activeQuotations.map((q) => ({
+        value: q.currentQuoteId,
+        label: q.title ?? '',
+      }));
+  const opportunityOptions = contractQuotation?.opportunityId
+    ? [
+        {
+          value: contractQuotation.opportunityId,
+          label: contractQuotation.opportunityName ?? '',
+        },
+      ]
+    : existingOpportunities
         .filter((o) => o.stage !== 'won' && o.stage !== 'lost')
-        .map((o) => {
-          const amount =
-            o.amountCents == null
-              ? ''
-              : `¥${(o.amountCents / 100).toLocaleString('zh-CN')}`;
-          const stageLabel =
-            o.stage === 'requirement'
-              ? '需求确认'
-              : o.stage === 'proposal'
-                ? '方案报价'
-                : o.stage === 'negotiation'
-                  ? '商务谈判'
-                  : o.stage;
-          return {
-            value: o.id,
-            label: `${o.name} · ${amount}${stageLabel}`,
-          };
-        }),
-    [existingOpportunities],
-  );
-
-  const contactOptions = useMemo(
-    () =>
-      existingContacts.map((c) => ({
-        value: c.id,
-        label: [c.name, c.position].filter(Boolean).join(' · '),
-      })),
-    [existingContacts],
-  );
+        .map((o) => ({ value: o.id, label: o.name }));
+  const contactOptions = contractQuotation?.contactId
+    ? [
+        {
+          value: contractQuotation.contactId,
+          label: contractQuotation.contactName ?? '',
+        },
+      ]
+    : existingContacts.map((c) => ({ value: c.id, label: c.name }));
 
   // 智能默认 contactId：报价单 → 客户主联系人 → 第一联系人
   const defaultContactId = useMemo<number | undefined>(() => {
@@ -145,7 +147,7 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
   // 智能默认 name：第一个有效报价单 → 第一个商机 → 客户名
   const defaultName = useMemo<string | undefined>(() => {
     const firstQuote = activeQuotations[0];
-    if (firstQuote?.name) return `${firstQuote.name}合同`;
+    if (firstQuote?.title) return `${firstQuote.title}合同`;
     const firstOpp = existingOpportunities[0];
     if (firstOpp?.name) return `${firstOpp.name}合同`;
     if (customerName) return `${customerName}合同`;
@@ -153,23 +155,47 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
   }, [activeQuotations, existingOpportunities, customerName]);
 
   const initialValues = useMemo<FormValues>(
-    () => ({
-      name: defaultName,
-      quotationId: undefined,
-      opportunityId: undefined,
-      contactId: defaultContactId,
-      amountCents: undefined,
-      signedAt: undefined,
-      dateRange: undefined,
-      description: undefined,
-    }),
-    [defaultName, defaultContactId],
+    () =>
+      sourceQuotation
+        ? quotationFormValues(sourceQuotation)
+        : {
+            name: defaultName,
+            contactId: defaultContactId,
+          },
+    [defaultName, defaultContactId, sourceQuotation],
   );
 
   useEffect(() => {
     if (open) return;
+    setSelectedQuotationId(undefined);
+    setSelectedQuotation(undefined);
+    setQuotationLoading(false);
     formRef.current?.resetFields();
   }, [open]);
+
+  useEffect(() => {
+    if (!open || sourceQuotation || selectedQuotationId == null) return;
+    let cancelled = false;
+    setQuotationLoading(true);
+    getQuotation(selectedQuotationId)
+      .then((quotation) => {
+        if (cancelled) return;
+        setSelectedQuotation(quotation);
+        formRef.current?.setFieldsValue(quotationFormValues(quotation));
+      })
+      .catch((err: unknown) => {
+        if (!cancelled)
+          message.error(
+            err instanceof Error ? err.message : '报价单读取失败，请重新选择',
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setQuotationLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, sourceQuotation, selectedQuotationId, message]);
 
   return (
     <ModalForm<FormValues>
@@ -185,15 +211,25 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
       modalProps={{
         destroyOnHidden: true,
         maskClosable: false,
-        zIndex: CRM_DIALOG_Z_INDEX,
+        zIndex,
         width: 720,
         style: { maxWidth: 'calc(100vw - 48px)' },
+        // Row 的负边距会触发横向滚动条，导致悬停时弹窗尺寸反复切换。
+        styles: { body: { overflowX: 'hidden' } },
       }}
       submitter={{
         searchConfig: { submitText: '创建', resetText: '取消' },
-        submitButtonProps: { loading: submitting },
+        submitButtonProps: { loading: submitting, disabled: quotationPending },
       }}
       onFinish={async (raw) => {
+        if (submittingRef.current) return false;
+        if (
+          raw.quotationId != null &&
+          contractQuotation?.id !== raw.quotationId
+        ) {
+          message.error('请等待报价单读取完成，读取失败时请重新选择');
+          return false;
+        }
         const name = (raw.name ?? '').trim();
         if (!name) {
           message.error('请填写合同名称');
@@ -206,7 +242,7 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
         }
         if (raw.dateRange && raw.dateRange.length === 2) {
           const [start, end] = raw.dateRange;
-          if (end.isBefore(start)) {
+          if (dayjs(end).isBefore(dayjs(start))) {
             message.error('合同结束日期不能早于开始日期');
             return false;
           }
@@ -216,19 +252,26 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
         const input: ContractInput = {
           customerId,
           name,
-          quotationId: raw.quotationId ?? null,
-          opportunityId: raw.opportunityId ?? null,
-          contactId: raw.contactId ?? null,
+          quotationId: contractQuotation?.id ?? raw.quotationId ?? null,
+          opportunityId: contractQuotation
+            ? contractQuotation.opportunityId
+            : (raw.opportunityId ?? null),
+          contactId: contractQuotation
+            ? contractQuotation.contactId
+            : (raw.contactId ?? null),
           amountCents,
           signedAt: raw.signedAt
-            ? raw.signedAt.startOf('day').toISOString()
+            ? dayjs(raw.signedAt).startOf('day').toISOString()
             : undefined,
-          effectiveAt: start ? start.startOf('day').toISOString() : undefined,
-          expiresAt: end ? end.endOf('day').toISOString() : undefined,
+          effectiveAt: start
+            ? dayjs(start).startOf('day').toISOString()
+            : undefined,
+          expiresAt: end ? dayjs(end).endOf('day').toISOString() : undefined,
           description: raw.description?.trim() || undefined,
         };
 
         setSubmitting(true);
+        submittingRef.current = true;
         try {
           const saved = await createContract(input);
           message.success('合同创建成功');
@@ -240,6 +283,7 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
           return false;
         } finally {
           setSubmitting(false);
+          submittingRef.current = false;
         }
       }}
     >
@@ -263,23 +307,22 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
             }
             options={quotationOptions}
             allowClear
-            disabled={quotationOptions.length === 0}
+            fieldProps={{ loading: quotationLoading }}
+            disabled={Boolean(sourceQuotation) || quotationOptions.length === 0}
             onChange={(quotationId) => {
-              const q = activeQuotations.find((x) => x.id === quotationId);
-              if (!q) return;
-              const patch: Partial<FormValues> = {};
-              if (q.opportunityId != null)
-                patch.opportunityId = q.opportunityId;
-              if (q.contactId != null) patch.contactId = q.contactId;
-              if (q.totalCents != null) {
-                patch.amountCents = Math.round(q.totalCents / 100);
-              }
-              // 名称仅当与当前 default name 一致时（或用户没改过）才覆盖
-              const currentName = formRef.current?.getFieldValue('name');
-              if (!currentName || currentName === defaultName) {
-                if (q.name) patch.name = `${q.name}合同`;
-              }
-              formRef.current?.setFieldsValue(patch);
+              const nextQuotationId =
+                typeof quotationId === 'number' ? quotationId : undefined;
+              setSelectedQuotationId(nextQuotationId);
+              setSelectedQuotation(undefined);
+              setQuotationLoading(nextQuotationId != null);
+              formRef.current?.setFieldsValue({
+                name: defaultName,
+                opportunityId: undefined,
+                contactId:
+                  nextQuotationId == null ? defaultContactId : undefined,
+                amountCents: undefined,
+                description: undefined,
+              });
             }}
           />
         </Col>
@@ -292,7 +335,7 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
             }
             options={opportunityOptions}
             allowClear
-            disabled={opportunityOptions.length === 0}
+            disabled={quotationLinked || opportunityOptions.length === 0}
             onChange={(opportunityId) => {
               const o = existingOpportunities.find(
                 (x) => x.id === opportunityId,
@@ -341,7 +384,7 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
             }
             options={contactOptions}
             allowClear
-            disabled={contactOptions.length === 0}
+            disabled={quotationLinked || contactOptions.length === 0}
           />
         </Col>
       </Row>
@@ -375,6 +418,42 @@ const ContractCreateModal: React.FC<ContractCreateModalProps> = ({
           showCount: true,
         }}
       />
+      {contractQuotation && (
+        <>
+          <Typography.Paragraph>
+            客户：{contractQuotation.customerName} · 负责人：
+            {contractQuotation.ownerUserName || '—'}
+          </Typography.Paragraph>
+          <Table<QuotationResp['items'][number]>
+            rowKey="id"
+            size="small"
+            pagination={false}
+            dataSource={contractQuotation.items}
+            columns={[
+              { title: '来源报价明细', dataIndex: 'productNameSnapshot' },
+              {
+                title: '数量',
+                dataIndex: 'quantityCents',
+                render: (value: number) => value / 10000,
+              },
+              {
+                title: '单价',
+                dataIndex: 'unitPriceCents',
+                align: 'right',
+                render: (value: number) =>
+                  `¥${(value / 100).toLocaleString('zh-CN')}`,
+              },
+              {
+                title: '金额',
+                dataIndex: 'lineAmountCents',
+                align: 'right',
+                render: (value: number) =>
+                  `¥${(value / 100).toLocaleString('zh-CN')}`,
+              },
+            ]}
+          />
+        </>
+      )}
     </ModalForm>
   );
 };

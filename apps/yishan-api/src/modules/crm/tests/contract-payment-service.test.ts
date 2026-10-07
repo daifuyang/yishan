@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OpportunityRepository } from '../repositories/opportunity.repository.js'
 import { dbManager } from '@/db'
+import { ActivityRepository } from '../repositories/activity.repository.js'
 import { ContractService } from '../services/contract.service.js'
 import { PaymentService } from '../services/payment.service.js'
 import { ContractRepository } from '../repositories/contract.repository.js'
@@ -18,6 +19,7 @@ const salesperson = { id: 7, roleCodes: ['sales'], deptIds: [10] }
 
 afterEach(() => vi.restoreAllMocks())
 beforeEach(() => {
+  vi.spyOn(ActivityRepository, 'create').mockResolvedValue({ id: 1 } as Awaited<ReturnType<typeof ActivityRepository.create>>)
   vi.spyOn(OpportunityRepository, 'listStagesByCustomerId').mockResolvedValue([])
   vi.spyOn(ContractRepository, 'hasQualifyingContractByCustomerId').mockResolvedValue(false)
   vi.spyOn(DirectCloseRepository, 'hasActiveByCustomerId').mockResolvedValue(false)
@@ -97,7 +99,7 @@ describe('CRM contract and payment lifecycle', () => {
     vi.spyOn(ContractRepository, 'findByQuotationId').mockResolvedValue(null)
     vi.mocked(CustomerRepository.updateLifecycle).mockResolvedValue({ id: 11, statusCode: 'following' } as any)
 
-    const contract = await new ContractService().createFromQuotation(23, salesperson)
+    const contract = await new ContractService().createFromQuotation(23, salesperson, { name: '项目合同', customerId: 11, opportunityId: 12, quotationId: 23, contactId: null, amountCents: 100_000, signedAt: null, effectiveAt: null, expiresAt: null, status: 'draft', ownerUserId: 7, ownerDepartmentId: 10, attachmentIds: null, description: null })
 
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
       customerId: 11,
@@ -113,12 +115,12 @@ describe('CRM contract and payment lifecycle', () => {
   it('returns the existing contract when the quotation was already converted', async () => {
     vi.spyOn(CustomerService.prototype, 'detail').mockResolvedValue({ id: 11 } as any)
     vi.spyOn(dbManager, 'transaction').mockImplementation(async (callback: any) => callback({} as any))
-    vi.spyOn(QuotationRepository, 'findByIdWithLock').mockResolvedValue({ id: 23, ownerUserId: 7, status: 'accepted' } as any)
+    vi.spyOn(QuotationRepository, 'findByIdWithLock').mockResolvedValue({ id: 23, customerId: 11, opportunityId: 12, ownerUserId: 7, status: 'accepted' } as any)
     const existing = { id: 31, quotationId: 23, customerId: 11, ownerUserId: 7, ownerDepartmentId: 10, amountCents: 100_000 }
     vi.spyOn(ContractRepository as any, 'findByQuotationId').mockResolvedValue(existing)
     const create = vi.spyOn(ContractRepository, 'create')
 
-    await expect(new ContractService().createFromQuotation(23, salesperson)).resolves.toBe(existing)
+    await expect(new ContractService().createFromQuotation(23, salesperson, { name: '项目合同', customerId: 11, opportunityId: 12, quotationId: 23, contactId: null, amountCents: 100_000, signedAt: null, effectiveAt: null, expiresAt: null, status: 'draft', ownerUserId: 7, ownerDepartmentId: 10, attachmentIds: null, description: null })).resolves.toBe(existing)
     expect(create).not.toHaveBeenCalled()
   })
 

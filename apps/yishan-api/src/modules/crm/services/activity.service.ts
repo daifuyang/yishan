@@ -1,7 +1,7 @@
 import { BusinessError } from '@/exceptions/business-error.js'
 import { dbManager, type AppQueryDb } from '@/db'
 import { CrmErrorCode } from '../schemas/error-codes.js'
-import { ACTIVITY_TYPES } from '../schemas/activity.schema.js'
+import { FOLLOW_UP_RESULT_VALUES, FOLLOW_UP_TYPE_VALUES } from '../schemas/activity.schema.js'
 import type { DataScopeUser } from '../schemas/data-scope.js'
 import { computeDataScope } from '../schemas/data-scope.js'
 import {
@@ -13,7 +13,7 @@ import {
 } from '../repositories/activity.repository.js'
 import { CustomerRepository, type CustomerRow } from '../repositories/customer.repository.js'
 import { CustomerMemberRepository } from '../repositories/member.repository.js'
-import { CustomerLifecycleService } from './customer-lifecycle.service.js'
+
 
 /**
  * ActivityService —— 跟进记录业务编排。
@@ -122,32 +122,6 @@ export class ActivityService {
     )
   }
 
-  /** The first recorded follow-up is a relationship fact, not a generic customer edit. */
-  private static async promotePotentialCustomerAfterFollowUp(
-    customerId: number,
-    updaterId: number,
-    tx: AppQueryDb,
-  ): Promise<void> {
-    const customer = await CustomerRepository.findById(customerId, tx)
-    if (!customer || customer.relationshipStatus !== 'potential') return
-    await CustomerRepository.updateLifecycle(customerId, {
-      statusCode: customer.statusCode ?? 'potential',
-      relationshipStatus: 'following',
-      updaterId,
-    }, tx)
-    const statusCode = await CustomerLifecycleService.recalculate(customerId, updaterId, tx)
-    await ActivityRepository.create({
-      customerId,
-      entityType: 'customer',
-      entityId: customerId,
-      entityRefType: 'customer',
-      type: 'status_change',
-      content: '客户关系状态变更：potential -> following',
-      metadata: { from: 'potential', to: 'following', reasonCode: null, remark: null, source: 'follow_up', statusCode },
-      operatorUserId: updaterId,
-    }, tx)
-  }
-
   async listByCustomerId(
     customerId: number,
     currentUser: DataScopeUser,
@@ -174,8 +148,16 @@ export class ActivityService {
   ): Promise<ActivityRowWithOperator> {
     await this.assertCanWrite(customerId, currentUser)
 
-    if (!(ACTIVITY_TYPES as readonly string[]).includes(input.type)) {
+    if (!(FOLLOW_UP_TYPE_VALUES as readonly string[]).includes(input.type)) {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_TYPE_INVALID, '跟进方式不合法')
+    }
+    if (input.result != null && input.result !== '' && !(FOLLOW_UP_RESULT_VALUES as readonly string[]).includes(input.result)) {
+      throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_TYPE_INVALID, '跟进结果不合法')
+    }
+
+    const content = input.content.trim()
+    if (!content) {
+      throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_TYPE_INVALID, '请填写跟进内容')
     }
 
     return dbManager.transaction(async (tx) => {
@@ -185,10 +167,13 @@ export class ActivityService {
           entityId: customerId,
           entityRefType: 'customer',
           contactId: input.contactId ?? null,
+          category: 'follow_up',
           type: input.type,
-          content: input.content,
+          content,
           occurredAt: typeof input.occurredAt === 'string' ? new Date(input.occurredAt) : input.occurredAt ?? new Date(),
           nextFollowUpAt: typeof input.nextFollowUpAt === 'string' ? new Date(input.nextFollowUpAt) : input.nextFollowUpAt ?? null,
+          result: input.result ?? null,
+          nextFollowUpPlan: input.nextFollowUpPlan?.trim() ? input.nextFollowUpPlan.trim() : null,
           attachmentIds: input.attachmentIds ?? null,
           metadata: input.metadata ?? null,
           plannedAt: input.plannedAt ?? null,
@@ -202,10 +187,8 @@ export class ActivityService {
       )
 
       await ActivityService.syncCustomerFollowUp(customerId, currentUser.id, tx)
-      await ActivityService.promotePotentialCustomerAfterFollowUp(customerId, currentUser.id, tx)
 
-      const list = await ActivityRepository.listByCustomerId(customerId, { limit: 1 }, tx)
-      return list[0] ?? { ...activity, operatorUserName: null }
+      return { ...activity, operatorUserName: activity.operatorUserName ?? null }
     })
   }
 
@@ -225,8 +208,11 @@ export class ActivityService {
     const customerId = ActivityService.customerIdOf(activity)
     await this.assertCanWrite(customerId, currentUser)
 
-    if (input.type !== undefined && !(ACTIVITY_TYPES as readonly string[]).includes(input.type)) {
+    if (input.type !== undefined && !(FOLLOW_UP_TYPE_VALUES as readonly string[]).includes(input.type)) {
       throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_TYPE_INVALID, '跟进方式不合法')
+    }
+    if (input.result != null && input.result !== '' && !(FOLLOW_UP_RESULT_VALUES as readonly string[]).includes(input.result)) {
+      throw new BusinessError(CrmErrorCode.CRM_ACTIVITY_TYPE_INVALID, '跟进结果不合法')
     }
 
     return dbManager.transaction(async (tx) => {

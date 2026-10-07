@@ -270,6 +270,20 @@ export class CustomerService {
       if (input.tagIds && input.tagIds.length > 0) {
         await CustomerRepository.setCustomerTags(customer.id, input.tagIds, tx)
       }
+      await ActivityRepository.create(
+        {
+          customerId: customer.id,
+          entityType: 'customer',
+          entityId: customer.id,
+          entityRefType: 'customer',
+          category: 'system',
+          type: 'customer_created',
+          content: '客户创建',
+          metadata: { eventType: 'customer_created', category: 'SYSTEM' },
+          operatorUserId: currentUser.id,
+        },
+        tx,
+      )
       return customer
     })
 

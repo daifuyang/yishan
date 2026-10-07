@@ -106,13 +106,13 @@ const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({
 
 const OverviewTab: React.FC<{
   customer: CustomerDetail;
-  followUpRequest?: number;
-  onFollowUpSaved?: () => void;
+  activityRefreshKey?: number;
+  onCreateFollowUp?: () => void;
   onRelationshipStatusChanged?: () => void;
 }> = ({
   customer,
-  followUpRequest,
-  onFollowUpSaved,
+  activityRefreshKey,
+  onCreateFollowUp,
   onRelationshipStatusChanged,
 }) => {
   const isDesktop = useDrawerBreakpoint();
@@ -434,8 +434,8 @@ const OverviewTab: React.FC<{
         >
           <CustomerActivityRail
             customer={customer}
-            followUpRequest={followUpRequest}
-            onFollowUpSaved={onFollowUpSaved}
+            refreshKey={activityRefreshKey}
+            onCreateFollowUp={onCreateFollowUp}
           />
         </aside>
       </div>

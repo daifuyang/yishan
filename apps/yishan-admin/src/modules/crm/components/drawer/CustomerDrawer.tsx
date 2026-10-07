@@ -27,11 +27,13 @@ import {
   listEnumByType,
   updateContact,
 } from '@/services/crm';
+import { QUOTATION_CHANGED_EVENT } from '../../utils/crmEvents';
 import DrawerChrome from './_shared/DrawerChrome';
 import { useResizableDrawer } from './_shared/useResizableDrawer';
 import CustomerDrawerHeader, {
   type CreateEntityKey,
 } from './CustomerDrawerHeader';
+import CustomerFollowUpModal from './CustomerFollowUpModal';
 import AttachmentsTab from './tabs/AttachmentsTab';
 import ContactCreateModal from './tabs/ContactCreateModal';
 import ContactsTab from './tabs/ContactsTab';
@@ -90,7 +92,8 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
 }) => {
   const [size, setSize] = useResizableDrawer();
   const [activeTab, setActiveTab] = useState<CustomerDrawerTabKey>(initialTab);
-  const [followUpRequest, setFollowUpRequest] = useState(0);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const [customerRefreshKey, setCustomerRefreshKey] = useState(0);
 
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
@@ -123,14 +126,8 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
     setCreateOpportunityOpen(next);
   }, []);
 
-  // 报价单新建 Modal 开关（Drawer + ModalForm 模式，与联系 / 商机 Modal 对齐）。
-  const [createQuotationOpen, setCreateQuotationOpen] = useState(false);
-  const requestOpenCreateQuotation = useCallback(() => {
-    setCreateQuotationOpen(true);
-  }, []);
-  const handleQuotationModalOpenChange = useCallback((next: boolean) => {
-    setCreateQuotationOpen(next);
-  }, []);
+  const [quotationCreateRequest, setQuotationCreateRequest] = useState(0);
+  const requestOpenCreateQuotation = () => setQuotationCreateRequest(value => value + 1);
 
   // 合同新建 Modal 开关（Drawer + ModalForm 模式，与联系 / 商机 / 报价单 Modal 对齐）。
   const [createContractOpen, setCreateContractOpen] = useState(false);
@@ -165,7 +162,7 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
       setCustomer(null);
       setCustomerError(null);
       setCustomerLoading(false);
-      setFollowUpRequest(0);
+      setFollowUpOpen(false);
       return;
     }
     let cancelled = false;
@@ -203,12 +200,17 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   }, [open, customerId, initialTab]);
 
   const handleFollowUpSaved = () => {
-    // 跟进写完后，可能改了 statusId；主动重拉详情同步头部 MetaRow 与 status tag
     if (!customerId) return;
     getCustomer(customerId)
       .then((c) => setCustomer(c))
       .catch(() => undefined);
+    setActivityRefreshKey((value) => value + 1);
     onChanged?.();
+  };
+
+  const openFollowUpModal = () => {
+    setActiveTab('overview');
+    setFollowUpOpen(true);
   };
 
   const handleCreateEntity = (entity: CreateEntityKey) => {
@@ -259,11 +261,22 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
   const handleOpportunityCreated = async () => {
     // 商机创建成功：刷新客户详情（status / lifecycle 可能变化）+ 商机列表 refreshKey++。
     if (!customerId) return;
+    setActivityRefreshKey((value) => value + 1);
+    setCustomerRefreshKey((value) => value + 1);
     const refreshed = await getCustomer(customerId);
     setCustomer(refreshed);
-    setCustomerRefreshKey((value) => value + 1);
     onChanged?.();
   };
+
+  useEffect(() => {
+    const refreshQuotation = (event: Event) => {
+      const changedCustomerId: unknown = event instanceof CustomEvent ? event.detail?.customerId : undefined;
+      if (changedCustomerId !== customerId) return;
+      void handleOpportunityCreated().catch(() => antdMessage.warning('报价已更新，客户信息刷新失败'));
+    };
+    window.addEventListener(QUOTATION_CHANGED_EVENT, refreshQuotation);
+    return () => window.removeEventListener(QUOTATION_CHANGED_EVENT, refreshQuotation);
+  }, [customerId]);
 
   const handleTransfer = () => {
     if (!customer) return;
@@ -346,8 +359,8 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
         return (
           <OverviewTab
             customer={current}
-            followUpRequest={followUpRequest}
-            onFollowUpSaved={handleFollowUpSaved}
+            activityRefreshKey={activityRefreshKey}
+            onCreateFollowUp={openFollowUpModal}
             onRelationshipStatusChanged={handleFollowUpSaved}
           />
         );
@@ -379,9 +392,8 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           <QuotationsTabStandalone
             customer={current}
             refreshKey={customerRefreshKey}
-            createOpen={createQuotationOpen}
-            onCreateRequest={requestOpenCreateQuotation}
-            onModalOpenChange={handleQuotationModalOpenChange}
+            createRequestKey={quotationCreateRequest}
+            onCreateRequestHandled={() => setQuotationCreateRequest(0)}
             onQuotationCreated={handleOpportunityCreated}
           />
         );
@@ -452,10 +464,15 @@ const CustomerDrawer: React.FC<CustomerDrawerProps> = ({
           onTransfer={handleTransfer}
           onRelease={handleRelease}
           onDelete={handleDelete}
-          onFollowUp={() => {
-            setActiveTab('overview');
-            setFollowUpRequest((request) => request + 1);
-          }}
+          onFollowUp={openFollowUpModal}
+        />
+      )}
+      {customer && (
+        <CustomerFollowUpModal
+          open={followUpOpen}
+          onOpenChange={setFollowUpOpen}
+          customerId={customer.id}
+          onSuccess={handleFollowUpSaved}
         />
       )}
       {renderBody()}

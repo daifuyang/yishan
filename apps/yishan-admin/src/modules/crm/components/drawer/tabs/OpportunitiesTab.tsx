@@ -1,160 +1,150 @@
 import { PlusOutlined } from '@ant-design/icons';
-import type { ProColumns } from '@ant-design/pro-components';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { Button, Empty, Skeleton, Tag, Tooltip } from 'antd';
+import { Button, Flex, Typography } from 'antd';
 import dayjs from 'dayjs';
-import React, { useEffect, useMemo, useState } from 'react';
-import { OPPORTUNITY_STAGES, statusOf } from '@/modules/crm/domain/statuses';
+import React, { useEffect, useRef, useState } from 'react';
+import { OPPORTUNITY_STAGES } from '@/modules/crm/domain/statuses';
 import type { CustomerDetail, OpportunityRow } from '@/services/crm';
 import { listContactsByCustomer, listOpportunities } from '@/services/crm';
 import { usePermission } from '@/utils/permission';
+import OpportunityAdvanceModal from '../../opportunity/OpportunityAdvanceModal';
+import OpportunityDetailModal from '../../opportunity/OpportunityDetailModal';
 import OpportunityCreateModal from './OpportunityCreateModal';
-
-const money = (cents: number | null) =>
-  cents === null
-    ? '-'
-    : new Intl.NumberFormat('zh-CN', {
-        style: 'currency',
-        currency: 'CNY',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(cents / 100);
-
-const closeDate = (value: string | null) =>
-  !value
-    ? '-'
-    : dayjs(value).year() === dayjs().year()
-      ? dayjs(value).format('MM-DD')
-      : dayjs(value).format('YYYY-MM-DD');
 
 export interface OpportunitiesTabProps {
   customer: CustomerDetail;
   refreshKey: number;
-  /**
-   * 「+ 新建商机」按钮的回调 —— 由父组件（CustomerDrawer）控制 Modal 打开。
-   * 独立页面通过 `createAction` 走 `OpportunitySave` trigger 模式，不传本回调。
-   */
   onCreateRequest?: () => void;
-  /** 点击商机行的回调（跳详情）。 */
-  onOpportunityClick?: (id: number) => void;
+  onRefresh?: () => void | Promise<void>;
 }
 
 export default function OpportunitiesTab({
   customer,
   refreshKey,
   onCreateRequest,
-  onOpportunityClick,
+  onRefresh,
 }: OpportunitiesTabProps) {
   const can = usePermission();
-  const canCreate = can('crm:opportunity:create');
-
-  const [rows, setRows] = useState<OpportunityRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const actionRef = useRef<ActionType | undefined>(undefined);
+  const requestVersion = useRef(0);
+  const [selected, setSelected] = useState<OpportunityRow | null>(null);
+  const [total, setTotal] = useState(0);
   useEffect(() => {
-    setLoading(true);
-    void listOpportunities({ customerId: customer.id, page: 1, pageSize: 100 })
-      .then((result) => setRows(result.data))
-      .finally(() => setLoading(false));
-  }, [customer.id, refreshKey]);
-
-  const summary = useMemo(() => {
-    const active = rows.filter(
-      (row) => row.stage !== 'won' && row.stage !== 'lost',
-    );
-    const today = dayjs().startOf('day');
-    const deadline = dayjs().add(30, 'day').endOf('day');
-    return {
-      activeCount: active.length,
-      total: active.reduce((sum, row) => sum + (row.amountCents ?? 0), 0),
-      next30: active
-        .filter(
-          (row) =>
-            row.expectedCloseDate &&
-            !dayjs(row.expectedCloseDate).isBefore(today) &&
-            dayjs(row.expectedCloseDate).isBefore(deadline),
-        )
-        .reduce((sum, row) => sum + (row.amountCents ?? 0), 0),
-    };
-  }, [rows]);
-
-  const columns: ProColumns<OpportunityRow>[] = useMemo(
-    () => [
-      {
-        title: '商机名称',
-        dataIndex: 'name',
-        width: 220,
-        render: (_, row) => (
-          <a onClick={() => onOpportunityClick?.(row.id)}>{row.name}</a>
+    actionRef.current?.reload();
+  }, [refreshKey, customer.id]);
+  const refresh = async (updated?: OpportunityRow) => {
+    requestVersion.current += 1;
+    if (updated)
+      setSelected((current) =>
+        current?.id === updated.id
+          ? {
+              ...current,
+              ...updated,
+              customerName: updated.customerName || current.customerName,
+              ownerName: updated.ownerName || current.ownerName,
+            }
+          : current,
+      );
+    const results = await Promise.allSettled([
+      actionRef.current?.reload(),
+      onRefresh?.(),
+    ]);
+    if (results.some((result) => result.status === 'rejected'))
+      throw new Error('商机或客户信息刷新失败');
+  };
+  const columns: ProColumns<OpportunityRow>[] = [
+    {
+      title: '商机名称',
+      dataIndex: 'name',
+      width: 220,
+      ellipsis: true,
+      render: (_, row) => (
+        <Flex vertical gap={2} style={{ minWidth: 0 }}>
+          <Typography.Link
+            ellipsis
+            title={row.name}
+            onClick={() => setSelected({ ...row, customerName: customer.name })}
+          >
+            {row.name}
+          </Typography.Link>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            {row.opportunityNo || `OPP-${row.id}`}
+          </Typography.Text>
+        </Flex>
+      ),
+    },
+    {
+      title: '阶段',
+      dataIndex: 'stage',
+      width: 110,
+      valueEnum: Object.fromEntries(
+        OPPORTUNITY_STAGES.map((item) => [
+          item.value,
+          { text: item.label, status: item.semantic },
+        ]),
+      ),
+    },
+    {
+      title: '预计金额',
+      dataIndex: 'amountCents',
+      width: 140,
+      align: 'right',
+      render: (_, row) =>
+        row.amountCents == null
+          ? '—'
+          : `¥${(row.amountCents / 100).toLocaleString('zh-CN')}`,
+    },
+    {
+      title: '预计成交',
+      dataIndex: 'expectedCloseDate',
+      width: 110,
+      render: (_, row) =>
+        row.expectedCloseDate
+          ? dayjs(row.expectedCloseDate).format(
+              dayjs(row.expectedCloseDate).year() === dayjs().year()
+                ? 'MM-DD'
+                : 'YYYY-MM-DD',
+            )
+          : '—',
+    },
+    {
+      title: '负责人',
+      dataIndex: 'ownerName',
+      width: 88,
+      renderText: (value) => value || '—',
+    },
+    {
+      title: '操作',
+      valueType: 'option',
+      width: 104,
+      fixed: 'right',
+      render: (_, row) =>
+        ['negotiation', 'won', 'lost'].includes(row.stage) ? (
+          '—'
+        ) : (
+          <OpportunityAdvanceModal
+            compact
+            opportunity={row}
+            onRefresh={refresh}
+          />
         ),
-      },
-      {
-        title: '销售阶段',
-        dataIndex: 'stage',
-        width: 110,
-        render: (_, row) => {
-          const stage = statusOf(row.stage, OPPORTUNITY_STAGES);
-          return (
-            <Tag
-              color={stage.semantic === 'default' ? undefined : stage.semantic}
-            >
-              {stage.label}
-            </Tag>
-          );
-        },
-      },
-      {
-        title: '预计金额',
-        dataIndex: 'amountCents',
-        width: 140,
-        align: 'right',
-        render: (_, row) => (
-          <span style={{ fontWeight: 500 }}>{money(row.amountCents)}</span>
-        ),
-      },
-      {
-        title: '预计成交',
-        dataIndex: 'expectedCloseDate',
-        width: 110,
-        render: (_, row) => closeDate(row.expectedCloseDate),
-      },
-      {
-        title: '负责人',
-        dataIndex: 'ownerName',
-        width: 120,
-        renderText: (value) => value || '-',
-      },
-      {
-        title: '下一步',
-        dataIndex: 'nextAction',
-        width: 140,
-        ellipsis: true,
-        render: (_, row) =>
-          row.nextAction ? (
-            <Tooltip title={row.nextAction}>{row.nextAction}</Tooltip>
-          ) : (
-            '-'
-          ),
-      },
-    ],
-    [onOpportunityClick],
-  );
-
+    },
+  ];
   return (
     <>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          minHeight: 40,
-          marginBottom: rows.length ? 8 : 0,
-        }}
+      <Flex
+        align="center"
+        justify="space-between"
+        style={{ minHeight: 40, marginBottom: 8 }}
       >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>商机</span>
-          <span style={{ fontSize: 13, color: '#8c8c8c' }}>{rows.length}</span>
-        </div>
-        {canCreate && onCreateRequest && (
+        <Flex align="baseline" gap={8}>
+          <Typography.Text strong style={{ fontSize: 16 }}>
+            商机
+          </Typography.Text>
+          <Typography.Text type="secondary">{total}</Typography.Text>
+        </Flex>
+        {can('crm:opportunity:create') && onCreateRequest && (
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -163,56 +153,50 @@ export default function OpportunitiesTab({
             新建商机
           </Button>
         )}
-      </div>
-      {loading ? (
-        <Skeleton active paragraph={{ rows: 4 }} />
-      ) : rows.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无商机" />
-      ) : (
-        <>
-          <div
-            style={{
-              height: 36,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 24,
-              color: '#8c8c8c',
-              fontSize: 13,
-            }}
-          >
-            <span>
-              有效商机{' '}
-              <b style={{ color: '#262626', fontWeight: 500 }}>
-                {summary.activeCount}
-              </b>
-            </span>
-            <span>
-              预计金额{' '}
-              <b style={{ color: '#262626', fontWeight: 500 }}>
-                {money(summary.total)}
-              </b>
-            </span>
-            <span>
-              未来30天预计成交{' '}
-              <b style={{ color: '#262626', fontWeight: 500 }}>
-                {money(summary.next30)}
-              </b>
-            </span>
-          </div>
-          <ProTable<OpportunityRow>
-            rowKey="id"
-            columns={columns}
-            dataSource={rows}
-            search={false}
-            pagination={false}
-            options={false}
-            toolBarRender={false}
-            cardBordered={false}
-            scroll={{ x: 760 }}
-            size="small"
-          />
-        </>
-      )}
+      </Flex>
+      <ProTable<OpportunityRow>
+        actionRef={actionRef}
+        rowKey="id"
+        columns={columns}
+        request={async () => {
+          const version = ++requestVersion.current;
+          const result = await listOpportunities({
+            customerId: customer.id,
+            page: 1,
+            pageSize: 100,
+          });
+          if (version === requestVersion.current) setTotal(result.total);
+          setSelected((current) => {
+            if (!current || version !== requestVersion.current) return current;
+            const row = result.data.find((item) => item.id === current.id);
+            return row ? { ...row, customerName: customer.name } : null;
+          });
+          return { ...result, success: true };
+        }}
+        search={false}
+        pagination={false}
+        options={false}
+        toolBarRender={false}
+        cardBordered={false}
+        scroll={{ x: 760 }}
+        size="small"
+      />
+      <OpportunityDetailModal
+        opportunity={selected}
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        primaryContactName={
+          selected?.primaryContactId === customer.primaryContactId
+            ? customer.primaryContactName
+            : null
+        }
+        sourceName={
+          selected?.sourceId != null && selected.sourceId === customer.sourceId
+            ? customer.sourceName
+            : null
+        }
+        onRefresh={refresh}
+      />
     </>
   );
 }
@@ -272,6 +256,7 @@ export function OpportunitiesTabStandalone({
         customer={customer}
         refreshKey={refreshKey}
         onCreateRequest={onCreateRequest}
+        onRefresh={onOpportunityCreated}
       />
       <OpportunityCreateModal
         open={createOpen}

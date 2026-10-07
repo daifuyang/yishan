@@ -8,14 +8,17 @@
  *   - findByIdWithLock：行级锁，供 acceptQuotation 等状态机关键迁移使用，
  *     避免「两笔并发 accept 把同 opportunity 下旧 accepted 同时改写」的竞态。
  */
-import { and, asc, count, desc, eq, inArray, isNull, like, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull, like, max, or, sql, type SQL } from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@/db'
 import { sysUser } from '@/db/schema'
 import {
   crmCustomer,
+  crmOpportunity,
+  crmContact,
   crmQuotation,
   crmQuotationItem,
   crmQuotationStatusLog,
+  crmQuotationShare,
 } from '../db/schema.js'
 import type {
   QuotationStatus,
@@ -28,20 +31,30 @@ import type {
 export interface QuotationRow {
   id: number
   quotationNo: string
+  seriesId?: string
+  seriesNo?: string
   name: string
   version: number
+  rootQuoteId: number | null
+  sourceQuoteId: number | null
   customerId: number
   customerName: string | null
   opportunityId: number | null
   contactId: number | null
   ownerUserId: number
   ownerUserName: string | null
+  ownerDepartmentId: number | null
   status: QuotationStatus
+  quoteDate: Date | null
+  opportunityName: string | null
+  contactName: string | null
   validUntil: Date | null
   netCents: number
   taxCents: number
   totalCents: number
   discountAmountCents: number
+  publicDiscountDescription?: string | null
+  internalDiscountReason?: string | null
   remark: string | null
   creatorId: number | null
   createdAt: Date
@@ -49,13 +62,19 @@ export interface QuotationRow {
   updatedAt: Date
   sentAt: Date | null
   acceptedAt: Date | null
+  acceptedBy?: number | null
+  contractId?: number | null
   closedAt: Date | null
+  shareFirstViewedAt?: Date | null
+  shareViewCount?: number
+  hasShare?: boolean
 }
 
 export interface QuotationItemRow {
   id: number
   quotationId: number
   productId: number | null
+  description: string | null
   productNameSnapshot: string
   unitSnapshot: string | null
   quantityCents: number
@@ -79,6 +98,26 @@ export interface QuotationStatusLogRow {
   createdAt: Date
 }
 
+export type QuotationShareStatus = 'active' | 'revoked'
+
+export interface QuotationShareRow {
+  id: number
+  quotationId: number
+  tokenHash: string
+  status: QuotationShareStatus
+  expiresAt: Date
+  durationDays: number | null
+  followQuoteValidUntil: number
+  createdAt: Date
+  createdBy: number
+  sentAt: Date | null
+  firstViewedAt: Date | null
+  lastViewedAt: Date | null
+  viewCount: number
+  revokedAt: Date | null
+  updatedAt: Date
+}
+
 export interface QuotationListQuery {
   page?: number
   pageSize?: number
@@ -91,19 +130,51 @@ export interface QuotationListQuery {
   ownerDepartmentIds?: number[] | null
 }
 
+export interface QuoteSeriesSummary {
+  seriesId: string
+  seriesNo: string
+  title: string
+  customerId: number
+  customerName: string | null
+  opportunityId: number | null
+  opportunityName: string | null
+  opportunityNo: string | null
+  currentQuoteId: number
+  currentVersion: number
+  versionCount: number
+  currentStatus: QuotationStatus
+  currentAmount: number
+  quoteDate: Date | null
+  validUntil: Date | null
+  customerViewStatus: 'viewed' | 'unviewed'
+  lastViewedAt: Date | null
+  viewCount: number
+  ownerUserId: number
+  ownerUserName: string | null
+  hasActiveShare: boolean
+}
+
 export interface CreateQuotationInput {
+  version?: number
+  rootQuoteId?: number | null
+  sourceQuoteId?: number | null
   quotationNo: string
+  seriesId?: string
+  seriesNo?: string
   name: string
   customerId: number
   opportunityId?: number | null
   contactId?: number | null
   ownerUserId: number
   status: QuotationStatus
+  quoteDate?: Date | null
   validUntil?: Date | null
   netCents: number
   taxCents: number
   totalCents: number
   discountAmountCents: number
+  publicDiscountDescription?: string | null
+  internalDiscountReason?: string | null
   remark?: string | null
   creatorId: number
   updaterId: number
@@ -113,23 +184,28 @@ export interface UpdateQuotationInput {
   customerId?: number
   opportunityId?: number | null
   contactId?: number | null
+  quoteDate?: Date | null
   validUntil?: Date | null
   name?: string
   netCents?: number
   taxCents?: number
   totalCents?: number
   discountAmountCents?: number
+  publicDiscountDescription?: string | null
+  internalDiscountReason?: string | null
   remark?: string | null
   updaterId: number
   status?: QuotationStatus
   sentAt?: Date | null
   acceptedAt?: Date | null
+  acceptedBy?: number | null
   closedAt?: Date | null
 }
 
 export interface CreateQuotationItemInput {
   quotationId: number
   productId: number | null
+  description: string | null
   productNameSnapshot: string
   unitSnapshot?: string | null
   quantityCents: number
@@ -156,18 +232,26 @@ const quotationColumns = {
   quotationNo: crmQuotation.quotationNo,
   name: crmQuotation.name,
   version: crmQuotation.version,
+  rootQuoteId: crmQuotation.rootQuoteId,
+  sourceQuoteId: crmQuotation.sourceQuoteId,
   customerId: crmQuotation.customerId,
   customerName: customer.name,
   opportunityId: crmQuotation.opportunityId,
   contactId: crmQuotation.contactId,
+  opportunityName: crmOpportunity.name,
+  contactName: crmContact.name,
+  quoteDate: crmQuotation.quoteDate,
   ownerUserId: crmQuotation.ownerUserId,
   ownerUserName: ownerUser.realName,
+  ownerDepartmentId: crmOpportunity.ownerDepartmentId,
   status: crmQuotation.status,
   validUntil: crmQuotation.validUntil,
   netCents: crmQuotation.netCents,
   taxCents: crmQuotation.taxCents,
   totalCents: crmQuotation.totalCents,
   discountAmountCents: crmQuotation.discountAmountCents,
+  publicDiscountDescription: crmQuotation.publicDiscountDescription,
+  internalDiscountReason: crmQuotation.internalDiscountReason,
   remark: crmQuotation.remark,
   creatorId: crmQuotation.creatorId,
   createdAt: crmQuotation.createdAt,
@@ -175,7 +259,13 @@ const quotationColumns = {
   updatedAt: crmQuotation.updatedAt,
   sentAt: crmQuotation.sentAt,
   acceptedAt: crmQuotation.acceptedAt,
+  acceptedBy: crmQuotation.acceptedBy,
   closedAt: crmQuotation.closedAt,
+  shareFirstViewedAt: sql<Date | null>`(SELECT first_viewed_at FROM crm_quotation_share WHERE quotation_id = ${crmQuotation.id} ORDER BY created_at DESC LIMIT 1)`.mapWith(crmQuotationShare.firstViewedAt),
+  shareViewCount: sql<number>`COALESCE((SELECT view_count FROM crm_quotation_share WHERE quotation_id = ${crmQuotation.id} ORDER BY created_at DESC LIMIT 1), 0)`,
+  hasShare: sql<boolean>`EXISTS(SELECT 1 FROM crm_quotation_share WHERE quotation_id = ${crmQuotation.id})`.mapWith(Boolean),
+  seriesId: crmQuotation.seriesId,
+  seriesNo: crmQuotation.seriesNo,
 }
 
 const itemColumns = {
@@ -183,6 +273,7 @@ const itemColumns = {
   quotationId: crmQuotationItem.quotationId,
   productId: crmQuotationItem.productId,
   productNameSnapshot: crmQuotationItem.productNameSnapshot,
+  description: crmQuotationItem.description,
   unitSnapshot: crmQuotationItem.unitSnapshot,
   quantityCents: crmQuotationItem.quantityCents,
   unitPriceCents: crmQuotationItem.unitPriceCents,
@@ -205,6 +296,24 @@ const statusLogColumns = {
   createdAt: crmQuotationStatusLog.createdAt,
 }
 
+const shareColumns = {
+  id: crmQuotationShare.id,
+  quotationId: crmQuotationShare.quotationId,
+  tokenHash: crmQuotationShare.tokenHash,
+  status: crmQuotationShare.status,
+  expiresAt: crmQuotationShare.expiresAt,
+  durationDays: crmQuotationShare.durationDays,
+  followQuoteValidUntil: crmQuotationShare.followQuoteValidUntil,
+  createdAt: crmQuotationShare.createdAt,
+  createdBy: crmQuotationShare.createdBy,
+  sentAt: crmQuotationShare.sentAt,
+  firstViewedAt: crmQuotationShare.firstViewedAt,
+  lastViewedAt: crmQuotationShare.lastViewedAt,
+  viewCount: crmQuotationShare.viewCount,
+  revokedAt: crmQuotationShare.revokedAt,
+  updatedAt: crmQuotationShare.updatedAt,
+}
+
 export function buildQuotationListWhere(q: QuotationListQuery): SQL | undefined {
   const c: SQL[] = [isNull(crmQuotation.deletedAt)]
   if (q.keyword) {
@@ -216,12 +325,38 @@ export function buildQuotationListWhere(q: QuotationListQuery): SQL | undefined 
   if (q.opportunityId !== undefined) c.push(eq(crmQuotation.opportunityId, q.opportunityId))
   if (q.ownerUserId !== undefined) c.push(eq(crmQuotation.ownerUserId, q.ownerUserId))
   if (q.ownerUserIds !== null && q.ownerUserIds !== undefined) {
-    if (q.ownerUserIds.length === 0) {
-      // 没有可见 owner：返回「不可能命中」的恒假条件，保证不漏数据也不越权。
-      c.push(sql`1 = 0`)
-    } else {
-      c.push(inArray(crmQuotation.ownerUserId, q.ownerUserIds))
-    }
+    const visible: SQL[] = []
+    if (q.ownerUserIds.length) visible.push(inArray(crmQuotation.ownerUserId, q.ownerUserIds))
+    if (q.ownerDepartmentIds?.length) visible.push(inArray(crmOpportunity.ownerDepartmentId, q.ownerDepartmentIds))
+    c.push(visible.length ? or(...visible)! : sql`1 = 0`)
+
+  }
+  return and(...c)
+}
+
+export function buildQuotationSeriesWhere(q: QuotationListQuery): SQL | undefined {
+  const c: SQL[] = [isNull(crmQuotation.deletedAt)]
+  if (q.status) c.push(eq(crmQuotation.status, q.status))
+  if (q.customerId !== undefined) c.push(eq(crmQuotation.customerId, q.customerId))
+  if (q.opportunityId !== undefined) c.push(eq(crmQuotation.opportunityId, q.opportunityId))
+  if (q.ownerUserId !== undefined) c.push(eq(crmQuotation.ownerUserId, q.ownerUserId))
+  if (q.ownerUserIds !== null && q.ownerUserIds !== undefined) {
+    const visible: SQL[] = []
+    if (q.ownerUserIds.length) visible.push(inArray(crmQuotation.ownerUserId, q.ownerUserIds))
+    if (q.ownerDepartmentIds?.length) visible.push(inArray(crmOpportunity.ownerDepartmentId, q.ownerDepartmentIds))
+    c.push(visible.length ? or(...visible)! : sql`1 = 0`)
+  }
+  if (q.keyword) {
+    const v = `%${q.keyword}%`
+    c.push(or(
+      like(crmQuotation.seriesNo, v),
+      like(crmQuotation.quotationNo, v),
+      like(crmQuotation.name, v),
+      like(customer.name, v),
+      like(crmOpportunity.name, v),
+      like(crmOpportunity.opportunityNo, v),
+      sql`EXISTS (SELECT 1 FROM crm_quotation history WHERE history.series_id = ${crmQuotation.seriesId} AND history.quotation_no LIKE ${v})`,
+    )!)
   }
   return and(...c)
 }
@@ -239,6 +374,8 @@ export class QuotationRepository {
       .select(quotationColumns)
       .from(crmQuotation)
       .leftJoin(ownerUser, eq(ownerUser.id, crmQuotation.ownerUserId))
+      .leftJoin(crmOpportunity, eq(crmOpportunity.id, crmQuotation.opportunityId))
+      .leftJoin(crmContact, eq(crmContact.id, crmQuotation.contactId))
       .leftJoin(customer, and(eq(customer.id, crmQuotation.customerId), isNull(customer.deletedAt)))
       .where(where)
     const [rows, total] = await Promise.all([
@@ -246,12 +383,65 @@ export class QuotationRepository {
         .orderBy(desc(crmQuotation.updatedAt))
         .limit(pageSize)
         .offset((page - 1) * pageSize),
-      db.select({ c: count() }).from(crmQuotation).where(where),
+      db.select({ c: count() }).from(crmQuotation).leftJoin(customer, eq(customer.id, crmQuotation.customerId)).leftJoin(crmOpportunity, eq(crmOpportunity.id, crmQuotation.opportunityId)).where(where),
     ])
     return {
       rows: rows as unknown as QuotationRow[],
       total: Number(total[0]?.c ?? 0),
     }
+  }
+
+  /** 一行一个报价系列；当前版本由 series.version 最大值决定。 */
+  static async listSeries(q: QuotationListQuery, db: AppQueryDb = drizzleDb): Promise<{ rows: QuoteSeriesSummary[]; total: number }> {
+    const page = q.page ?? 1
+    const pageSize = q.pageSize ?? 10
+    const latest = db.select({
+      seriesId: crmQuotation.seriesId,
+      currentVersion: max(crmQuotation.version).as('currentVersion'),
+      versionCount: count(crmQuotation.id).as('versionCount'),
+    }).from(crmQuotation).where(isNull(crmQuotation.deletedAt)).groupBy(crmQuotation.seriesId).as('quote_series_summary')
+    const where = buildQuotationSeriesWhere(q)
+    const rows = await db.select({
+      seriesId: latest.seriesId,
+      seriesNo: crmQuotation.seriesNo,
+      title: crmQuotation.name,
+      customerId: crmQuotation.customerId,
+      customerName: customer.name,
+      opportunityId: crmQuotation.opportunityId,
+      opportunityName: crmOpportunity.name,
+      opportunityNo: crmOpportunity.opportunityNo,
+      currentQuoteId: crmQuotation.id,
+      currentVersion: latest.currentVersion,
+      versionCount: latest.versionCount,
+      currentStatus: crmQuotation.status,
+      currentAmount: crmQuotation.totalCents,
+      quoteDate: crmQuotation.quoteDate,
+      validUntil: crmQuotation.validUntil,
+      lastViewedAt: sql<Date | null>`(SELECT last_viewed_at FROM crm_quotation_share WHERE quotation_id = ${crmQuotation.id} ORDER BY created_at DESC LIMIT 1)`.mapWith(crmQuotationShare.lastViewedAt),
+      viewCount: sql<number>`COALESCE((SELECT view_count FROM crm_quotation_share WHERE quotation_id = ${crmQuotation.id} ORDER BY created_at DESC LIMIT 1), 0)`,
+      hasActiveShare: sql<boolean>`EXISTS(SELECT 1 FROM crm_quotation_share WHERE quotation_id = ${crmQuotation.id} AND status = 'active')`,
+      ownerUserId: crmQuotation.ownerUserId,
+      ownerUserName: ownerUser.realName,
+    }).from(latest)
+      .innerJoin(crmQuotation, and(eq(crmQuotation.seriesId, latest.seriesId), eq(crmQuotation.version, latest.currentVersion), isNull(crmQuotation.deletedAt)))
+      .leftJoin(ownerUser, eq(ownerUser.id, crmQuotation.ownerUserId))
+      .leftJoin(crmOpportunity, eq(crmOpportunity.id, crmQuotation.opportunityId))
+      .leftJoin(customer, and(eq(customer.id, crmQuotation.customerId), isNull(customer.deletedAt)))
+      .where(where)
+      .orderBy(desc(crmQuotation.updatedAt)).limit(pageSize).offset((page - 1) * pageSize)
+    const totals = await db.select({ total: count() }).from(latest)
+      .innerJoin(crmQuotation, and(eq(crmQuotation.seriesId, latest.seriesId), eq(crmQuotation.version, latest.currentVersion), isNull(crmQuotation.deletedAt)))
+      .leftJoin(crmOpportunity, eq(crmOpportunity.id, crmQuotation.opportunityId))
+      .leftJoin(customer, and(eq(customer.id, crmQuotation.customerId), isNull(customer.deletedAt)))
+      .where(where)
+    const mapped = (rows as unknown as Array<Omit<QuoteSeriesSummary, 'customerViewStatus'>>).map((row) => ({
+      ...row,
+      currentVersion: Number(row.currentVersion),
+      versionCount: Number(row.versionCount),
+      customerViewStatus: (row.lastViewedAt ? 'viewed' : 'unviewed') as 'viewed' | 'unviewed',
+      hasActiveShare: Boolean(row.hasActiveShare),
+    }))
+    return { rows: mapped, total: Number(totals[0]?.total ?? 0) }
   }
 
   /**
@@ -262,6 +452,8 @@ export class QuotationRepository {
       .select(quotationColumns)
       .from(crmQuotation)
       .leftJoin(ownerUser, eq(ownerUser.id, crmQuotation.ownerUserId))
+      .leftJoin(crmOpportunity, eq(crmOpportunity.id, crmQuotation.opportunityId))
+      .leftJoin(crmContact, eq(crmContact.id, crmQuotation.contactId))
       .leftJoin(customer, and(eq(customer.id, crmQuotation.customerId), isNull(customer.deletedAt)))
       .where(and(eq(crmQuotation.id, id), isNull(crmQuotation.deletedAt)))
       .limit(1)
@@ -284,12 +476,37 @@ export class QuotationRepository {
    * 仍走 findById 拿最新字段，FOR UPDATE 只为锁住这一行。
    */
   static async findByIdWithLock(id: number, db: AppQueryDb): Promise<QuotationRow | null> {
-    try {
-      await db.execute(sql`SELECT id FROM ${crmQuotation} WHERE id = ${id} AND deleted_at IS NULL FOR UPDATE`)
-    } catch {
-      // query builder 的 .execute 可能在某些驱动上抛错；忽略后用 findById 走正常逻辑。
-    }
+    await db.execute(sql`SELECT id FROM ${crmQuotation} WHERE id = ${id} AND deleted_at IS NULL FOR UPDATE`)
     return QuotationRepository.findById(id, db)
+  }
+
+  /** 根行锁由 service 先取得；当前读包含已软删版本，避免重复或复用版本号。 */
+  static async maxVersionWithLock(rootQuoteId: number, db: AppQueryDb): Promise<number> {
+    const [row] = await db.select({ version: crmQuotation.version }).from(crmQuotation)
+      .where(eq(crmQuotation.rootQuoteId, rootQuoteId))
+      .orderBy(desc(crmQuotation.version)).limit(1).for('update')
+    return row?.version ?? 0
+  }
+
+  static async maxVersionBySeriesWithLock(seriesId: string, db: AppQueryDb): Promise<number> {
+    const [row] = await db.select({ version: crmQuotation.version }).from(crmQuotation)
+      .where(eq(crmQuotation.seriesId, seriesId))
+      .orderBy(desc(crmQuotation.version)).limit(1).for('update')
+    return row?.version ?? 0
+  }
+
+  static async latestBySeriesWithLock(seriesId: string, db: AppQueryDb): Promise<QuotationRow | null> {
+    const [row] = await db.select(quotationColumns)
+      .from(crmQuotation)
+      .leftJoin(ownerUser, eq(ownerUser.id, crmQuotation.ownerUserId))
+      .leftJoin(crmOpportunity, eq(crmOpportunity.id, crmQuotation.opportunityId))
+      .leftJoin(crmContact, eq(crmContact.id, crmQuotation.contactId))
+      .leftJoin(customer, eq(customer.id, crmQuotation.customerId))
+      .where(and(eq(crmQuotation.seriesId, seriesId), isNull(crmQuotation.deletedAt)))
+      .orderBy(desc(crmQuotation.version))
+      .limit(1)
+      .for('update')
+    return (row as unknown as QuotationRow) ?? null
   }
 
   static async listItemsByQuotationId(quotationId: number, db: AppQueryDb = drizzleDb): Promise<QuotationItemRow[]> {
@@ -299,6 +516,17 @@ export class QuotationRepository {
       .where(eq(crmQuotationItem.quotationId, quotationId))
       .orderBy(asc(crmQuotationItem.sortOrder), asc(crmQuotationItem.id))
     return rows as unknown as QuotationItemRow[]
+  }
+
+  static async listVersions(seriesId: string, db: AppQueryDb = drizzleDb): Promise<QuotationRow[]> {
+    const rows = await db.select(quotationColumns).from(crmQuotation)
+      .leftJoin(ownerUser, eq(ownerUser.id, crmQuotation.ownerUserId))
+      .leftJoin(crmOpportunity, eq(crmOpportunity.id, crmQuotation.opportunityId))
+      .leftJoin(crmContact, eq(crmContact.id, crmQuotation.contactId))
+      .leftJoin(customer, eq(customer.id, crmQuotation.customerId))
+      .where(and(eq(crmQuotation.seriesId, seriesId), isNull(crmQuotation.deletedAt)))
+      .orderBy(desc(crmQuotation.version))
+    return rows as unknown as QuotationRow[]
   }
 
   /**
@@ -313,6 +541,7 @@ export class QuotationRepository {
       quotationId: it.quotationId,
       productId: it.productId,
       productNameSnapshot: it.productNameSnapshot,
+      description: it.description,
       unitSnapshot: it.unitSnapshot ?? null,
       quantityCents: it.quantityCents,
       unitPriceCents: it.unitPriceCents,
@@ -320,6 +549,8 @@ export class QuotationRepository {
       taxRateBp: it.taxRateBp,
       lineAmountCents: it.lineAmountCents,
       sortOrder: it.sortOrder,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }))
     await db.insert(crmQuotationItem).values(insertRows)
     return QuotationRepository.listItemsByQuotationId(quotationId, db)
@@ -328,22 +559,34 @@ export class QuotationRepository {
   static async create(input: CreateQuotationInput, db: AppQueryDb = drizzleDb): Promise<{ id: number }> {
     const [inserted] = await db.insert(crmQuotation).values({
       quotationNo: input.quotationNo,
+      seriesId: input.seriesId ?? `legacy-${input.quotationNo}`.slice(0, 36),
+      seriesNo: input.seriesNo ?? input.quotationNo,
       name: input.name,
-      version: 1,
+      version: input.version ?? 1,
+      rootQuoteId: input.rootQuoteId ?? null,
+      sourceQuoteId: input.sourceQuoteId ?? null,
       customerId: input.customerId,
       opportunityId: input.opportunityId ?? null,
       contactId: input.contactId ?? null,
       ownerUserId: input.ownerUserId,
       status: input.status,
+      quoteDate: input.quoteDate ?? null,
       validUntil: input.validUntil ?? null,
       netCents: input.netCents,
       taxCents: input.taxCents,
       totalCents: input.totalCents,
       discountAmountCents: input.discountAmountCents,
+      publicDiscountDescription: input.publicDiscountDescription ?? null,
+      internalDiscountReason: input.internalDiscountReason ?? null,
       remark: input.remark ?? null,
       creatorId: input.creatorId,
       updaterId: input.updaterId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }).$returningId()
+    if (input.rootQuoteId == null) {
+      await db.update(crmQuotation).set({ rootQuoteId: inserted.id }).where(eq(crmQuotation.id, inserted.id))
+    }
     return { id: inserted.id }
   }
 
@@ -352,16 +595,20 @@ export class QuotationRepository {
     if (input.customerId !== undefined) patch.customerId = input.customerId
     if (input.opportunityId !== undefined) patch.opportunityId = input.opportunityId
     if (input.contactId !== undefined) patch.contactId = input.contactId
+    if (input.quoteDate !== undefined) patch.quoteDate = input.quoteDate
     if (input.validUntil !== undefined) patch.validUntil = input.validUntil
     if (input.name !== undefined) patch.name = input.name
     if (input.netCents !== undefined) patch.netCents = input.netCents
     if (input.taxCents !== undefined) patch.taxCents = input.taxCents
     if (input.totalCents !== undefined) patch.totalCents = input.totalCents
     if (input.discountAmountCents !== undefined) patch.discountAmountCents = input.discountAmountCents
+    if (input.publicDiscountDescription !== undefined) patch.publicDiscountDescription = input.publicDiscountDescription
+    if (input.internalDiscountReason !== undefined) patch.internalDiscountReason = input.internalDiscountReason
     if (input.remark !== undefined) patch.remark = input.remark
     if (input.status !== undefined) patch.status = input.status
     if (input.sentAt !== undefined) patch.sentAt = input.sentAt
     if (input.acceptedAt !== undefined) patch.acceptedAt = input.acceptedAt
+    if (input.acceptedBy !== undefined) patch.acceptedBy = input.acceptedBy
     if (input.closedAt !== undefined) patch.closedAt = input.closedAt
     await db.update(crmQuotation).set(patch).where(and(eq(crmQuotation.id, id), isNull(crmQuotation.deletedAt)))
     return QuotationRepository.findById(id, db)
@@ -403,6 +650,11 @@ export class QuotationRepository {
     return Number(row?.c ?? 0)
   }
 
+  static async countSeriesTodayByNoPrefix(prefix: string, db: AppQueryDb = drizzleDb): Promise<number> {
+    const [row] = await db.select({ c: sql<number>`COUNT(DISTINCT ${crmQuotation.seriesNo})` }).from(crmQuotation).where(like(crmQuotation.seriesNo, `${prefix}%`))
+    return Number(row?.c ?? 0)
+  }
+
   /**
    * 状态日志写入。
    */
@@ -413,6 +665,7 @@ export class QuotationRepository {
       toStatus: input.toStatus,
       operatorUserId: input.operatorUserId,
       reason: input.reason ?? null,
+      createdAt: new Date(),
     })
   }
 
@@ -424,5 +677,60 @@ export class QuotationRepository {
       .where(eq(crmQuotationStatusLog.quotationId, quotationId))
       .orderBy(desc(crmQuotationStatusLog.createdAt))
     return rows as unknown as QuotationStatusLogRow[]
+  }
+
+  static async createShare(input: {
+    quotationId: number
+    tokenHash: string
+    expiresAt: Date
+    durationDays?: number | null
+    followQuoteValidUntil?: boolean
+    createdBy: number
+  }, db: AppQueryDb = drizzleDb): Promise<QuotationShareRow> {
+    const [inserted] = await db.insert(crmQuotationShare).values({
+      quotationId: input.quotationId,
+      tokenHash: input.tokenHash,
+      status: 'active',
+      expiresAt: input.expiresAt,
+      durationDays: input.durationDays ?? null,
+      followQuoteValidUntil: input.followQuoteValidUntil ? 1 : 0,
+      createdAt: new Date(),
+      createdBy: input.createdBy,
+      viewCount: 0,
+      updatedAt: new Date(),
+    }).$returningId()
+    const row = await QuotationRepository.findShareById(inserted.id, db)
+    if (!row) throw new Error('报价分享创建失败')
+    return row
+  }
+
+  static async findShareById(id: number, db: AppQueryDb = drizzleDb): Promise<QuotationShareRow | null> {
+    const [row] = await db.select(shareColumns).from(crmQuotationShare).where(eq(crmQuotationShare.id, id)).limit(1)
+    return (row as unknown as QuotationShareRow) ?? null
+  }
+
+  static async findShareByTokenHash(tokenHash: string, db: AppQueryDb = drizzleDb): Promise<QuotationShareRow | null> {
+    const [row] = await db.select(shareColumns).from(crmQuotationShare).where(eq(crmQuotationShare.tokenHash, tokenHash)).limit(1)
+    return (row as unknown as QuotationShareRow) ?? null
+  }
+
+  static async findLatestShare(quotationId: number, db: AppQueryDb = drizzleDb): Promise<QuotationShareRow | null> {
+    const [row] = await db.select(shareColumns).from(crmQuotationShare)
+      .where(eq(crmQuotationShare.quotationId, quotationId))
+      .orderBy(desc(crmQuotationShare.createdAt), desc(crmQuotationShare.id)).limit(1)
+    return (row as unknown as QuotationShareRow) ?? null
+  }
+
+  static async updateShare(id: number, patch: {
+    expiresAt?: Date
+    sentAt?: Date | null
+    status?: QuotationShareStatus
+    revokedAt?: Date | null
+    firstViewedAt?: Date | null
+    lastViewedAt?: Date | null
+    viewCount?: number
+  }, db: AppQueryDb = drizzleDb): Promise<QuotationShareRow | null> {
+    await db.update(crmQuotationShare).set({ ...patch, updatedAt: new Date() }).where(eq(crmQuotationShare.id, id))
+    return QuotationRepository.findShareById(id, db)
   }
 }

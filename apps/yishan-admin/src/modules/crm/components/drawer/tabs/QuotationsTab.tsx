@@ -1,258 +1,197 @@
 import { PlusOutlined } from '@ant-design/icons';
-import type { ProColumns } from '@ant-design/pro-components';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import { Button, Empty, Skeleton, Tag } from 'antd';
+import { Button, Flex, Typography } from 'antd';
 import dayjs from 'dayjs';
-import React, { useEffect, useMemo, useState } from 'react';
-import { QUOTATION_STATUSES, statusOf } from '@/modules/crm/domain/statuses';
+import React, { useEffect, useRef, useState } from 'react';
+import { QUOTATION_STATUSES } from '@/modules/crm/domain/statuses';
 import {
-  type ContactRow,
-  type CustomerDetail,
-  listContactsByCustomer,
-  listOpportunities,
-  listProducts,
   listQuotations,
-  type OpportunityRow,
-  type ProductRow,
-  type QuotationRow,
+  type CustomerDetail,
+  type QuoteSeriesSummary,
 } from '@/services/crm';
-import { usePermission } from '@/utils/permission';
-import QuotationCreateModal from './QuotationCreateModal';
-
-const money = (cents: number | null | undefined) =>
-  cents == null
-    ? '—'
-    : new Intl.NumberFormat('zh-CN', {
-        style: 'currency',
-        currency: 'CNY',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(cents / 100);
-
-const dateOnly = (value: string | null) =>
-  !value ? '—' : dayjs(value).format('YYYY-MM-DD');
+import QuoteCreateModal from '../../quotation/QuoteCreateModal';
+import QuoteActions from '../../quotation/QuoteActions';
+import QuoteDetailModal, {
+  QUOTATION_CHANGED_EVENT,
+} from '../../quotation/QuoteDetailModal';
+import { formatQuoteMoney } from '../../../utils/quotationMoney';
 
 export interface QuotationsTabProps {
   customer: CustomerDetail;
   refreshKey: number;
-  /** 「+ 新建报价单」按钮回调 —— 由父级（CustomerDrawer）控制 Modal 打开。 */
-  onCreateRequest?: () => void;
-  /** 点击报价单行 → 进入详情（Phase 后续接）。 */
-  onQuotationClick?: (id: number) => void;
+  createRequestKey?: number;
+  onCreateRequestHandled?: () => void;
+  onQuotationCreated?: () => void | Promise<void>;
 }
-
 export default function QuotationsTab({
   customer,
   refreshKey,
-  onCreateRequest,
-  onQuotationClick,
-}: QuotationsTabProps) {
-  const can = usePermission();
-  const canCreate = can('crm:quotation:create');
-
-  const [rows, setRows] = useState<QuotationRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    void listQuotations({ customerId: customer.id, page: 1, pageSize: 100 })
-      .then((result) => setRows(result.data))
-      .finally(() => setLoading(false));
-  }, [customer.id, refreshKey]);
-
-  const columns: ProColumns<QuotationRow>[] = useMemo(
-    () => [
-      {
-        title: '报价单号',
-        dataIndex: 'quotationNo',
-        width: 160,
-      },
-      {
-        title: '报价单名称',
-        dataIndex: 'name',
-        width: 240,
-        render: (_, row) => (
-          <a onClick={() => onQuotationClick?.(row.id)}>
-            {row.name || row.quotationNo}
-          </a>
-        ),
-      },
-      {
-        title: '关联商机',
-        dataIndex: 'opportunityName',
-        width: 200,
-        renderText: (value) => value || '—',
-      },
-      {
-        title: '报价金额',
-        dataIndex: 'totalCents',
-        width: 140,
-        align: 'right',
-        render: (_, row) => (
-          <Text style={{ fontWeight: 500 }}>{money(row.totalCents)}</Text>
-        ),
-      },
-      {
-        title: '状态',
-        dataIndex: 'status',
-        width: 100,
-        render: (_, row) => {
-          const s = statusOf(row.status, QUOTATION_STATUSES);
-          return (
-            <Tag color={s.semantic === 'default' ? undefined : s.semantic}>
-              {s.label}
-            </Tag>
-          );
-        },
-      },
-      {
-        title: '有效期',
-        dataIndex: 'validUntil',
-        width: 110,
-        render: (_, row) => dateOnly(row.validUntil),
-      },
-      {
-        title: '创建时间',
-        dataIndex: 'createdAt',
-        width: 140,
-        render: (_, row) =>
-          row.createdAt ? dayjs(row.createdAt).format('YYYY-MM-DD') : '—',
-      },
-    ],
-    [onQuotationClick],
-  );
-
-  return (
-    <>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          minHeight: 40,
-          marginBottom: rows.length ? 8 : 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-          <span style={{ fontSize: 16, fontWeight: 600 }}>报价单</span>
-          <span style={{ fontSize: 13, color: '#8c8c8c' }}>{rows.length}</span>
-        </div>
-        {canCreate && onCreateRequest && (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={onCreateRequest}
-          >
-            新建报价单
-          </Button>
-        )}
-      </div>
-      {loading ? (
-        <Skeleton active paragraph={{ rows: 4 }} />
-      ) : rows.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无报价单" />
-      ) : (
-        <ProTable<QuotationRow>
-          rowKey="id"
-          columns={columns}
-          dataSource={rows}
-          search={false}
-          pagination={false}
-          options={false}
-          toolBarRender={false}
-          cardBordered={false}
-          scroll={{ x: 880 }}
-          size="small"
-        />
-      )}
-    </>
-  );
-}
-
-// keep JSX happy with antd `Text` reference (used inside ProTable column render)
-const Text = ({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
-}) => <span style={style}>{children}</span>;
-
-/**
- * QuotationsTab 的 standalone 包装：拉联系人 / 商机 / 商品作为 Modal 入参，
- * 由父级（CustomerDrawer）通过 createOpen / onCreateRequest 控制 Modal 开关。
- *
- * 写操作（create）走父级提供的 ModalForm，刷新通过 refreshKey 触发。
- */
-interface QuotationsTabStandaloneProps {
-  customer: CustomerDetail;
-  refreshKey: number;
-  createOpen: boolean;
-  onCreateRequest: () => void;
-  onModalOpenChange: (open: boolean) => void;
-  /** 创建成功回调：父级用它刷新客户详情 + 报价单 refreshKey。 */
-  onQuotationCreated?: () => void | Promise<void>;
-}
-
-export function QuotationsTabStandalone({
-  customer,
-  refreshKey,
-  createOpen,
-  onCreateRequest,
-  onModalOpenChange,
+  createRequestKey,
+  onCreateRequestHandled,
   onQuotationCreated,
-}: QuotationsTabStandaloneProps) {
-  const [contacts, setContacts] = useState<ContactRow[]>([]);
-  const [opportunities, setOpportunities] = useState<OpportunityRow[]>([]);
-  const [products, setProducts] = useState<ProductRow[]>([]);
-  const [optionsLoading, setOptionsLoading] = useState(false);
-
-  // 拉联系人 / 商机 / 商品（用于 Modal 入参）。
+}: QuotationsTabProps) {
+  const actionRef = useRef<ActionType | undefined>(undefined);
+  const [total, setTotal] = useState(0);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [detailAction, setDetailAction] = useState<'generate'>();
   useEffect(() => {
-    let cancelled = false;
-    setOptionsLoading(true);
-    Promise.all([
-      listContactsByCustomer(customer.id).catch(() => [] as ContactRow[]),
-      listOpportunities({
-        customerId: customer.id,
-        page: 1,
-        pageSize: 100,
-      }).then((r) => r.data),
-      listProducts({ page: 1, pageSize: 100 }).then((r) => r.data),
-    ])
-      .then(([c, o, p]) => {
-        if (cancelled) return;
-        setContacts(c);
-        setOpportunities(o);
-        setProducts(p);
-      })
-      .finally(() => {
-        if (!cancelled) setOptionsLoading(false);
-      });
-    return () => {
-      cancelled = true;
+    void actionRef.current?.reload();
+  }, [refreshKey, customer.id]);
+  useEffect(() => {
+    const reload = () => {
+      void actionRef.current?.reload();
     };
-  }, [customer.id]);
-
+    window.addEventListener(QUOTATION_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(QUOTATION_CHANGED_EVENT, reload);
+  }, []);
+  const columns: ProColumns<QuoteSeriesSummary>[] = [
+    {
+      title: '报价名称',
+      dataIndex: 'title',
+      width: 380,
+      ellipsis: true,
+      render: (_, row) => (
+        <Flex vertical gap={2} style={{ minWidth: 0 }}>
+          <Typography.Link
+            title={row.title || row.seriesNo || ''}
+            ellipsis
+            onClick={() => {
+              setDetailAction(undefined);
+              if (row.currentQuoteId != null) setSelectedId(row.currentQuoteId);
+            }}
+          >
+            {row.title || row.seriesNo || '报价'}
+          </Typography.Link>
+          <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>
+            {row.seriesNo ?? '—'} · V{row.currentVersion ?? 1} · 共{row.versionCount ?? 1}版
+          </Typography.Text>
+        </Flex>
+      ),
+    },
+    {
+      title: '状态',
+      dataIndex: 'currentStatus',
+      width: 72,
+      valueEnum: Object.fromEntries(
+        QUOTATION_STATUSES.map((item) => [
+          item.value,
+          { text: item.label, status: item.semantic },
+        ]),
+      ),
+    },
+    {
+      title: '金额',
+      dataIndex: 'currentAmount',
+      align: 'right',
+      width: 96,
+      render: (_, row) => formatQuoteMoney(row.currentAmount ?? 0),
+    },
+    {
+      title: '有效期',
+      dataIndex: 'validUntil',
+      width: 84,
+      render: (_, row) =>
+        row.validUntil ? (
+          <span title={dayjs(row.validUntil).format('YYYY-MM-DD')}>
+            {dayjs(row.validUntil).format(
+              dayjs(row.validUntil).year() === dayjs().year()
+                ? 'MM-DD'
+                : 'YYYY-MM-DD',
+            )}
+          </span>
+        ) : (
+          '—'
+        ),
+    },
+    {
+      title: '客户查看',
+      dataIndex: 'customerViewStatus',
+      width: 158,
+      ellipsis: true,
+      render: (_, row) => row.customerViewStatus === 'viewed'
+        ? `已查看${row.viewCount ? ` · 共${row.viewCount}次` : ''}`
+        : '未查看',
+    },
+    { title: '负责人', dataIndex: 'ownerUserName', width: 72, ellipsis: true },
+    {
+      title: '操作',
+      valueType: 'option',
+      width: 140,
+      fixed: 'right',
+      render: (_, row) => (
+        <QuoteActions
+          quote={row}
+          onDetail={() => {
+            setDetailAction(undefined);
+            if (row.currentQuoteId != null) setSelectedId(row.currentQuoteId);
+          }}
+          onGenerate={() => {
+            setDetailAction('generate');
+            if (row.currentQuoteId != null) setSelectedId(row.currentQuoteId);
+          }}
+          onChanged={() => {
+            void actionRef.current?.reload();
+            return onQuotationCreated?.();
+          }}
+        />
+      ),
+    },
+  ];
   return (
     <>
-      <QuotationsTab
-        customer={customer}
-        refreshKey={refreshKey}
-        onCreateRequest={onCreateRequest}
-      />
-      <QuotationCreateModal
-        open={createOpen}
-        onOpenChange={onModalOpenChange}
-        customerId={customer.id}
-        customerName={customer.name}
-        existingContacts={optionsLoading ? [] : contacts}
-        existingOpportunities={optionsLoading ? [] : opportunities}
-        existingProducts={optionsLoading ? [] : products}
-        onSuccess={() => {
-          void onQuotationCreated?.();
+      <Flex
+        align="center"
+        justify="space-between"
+        style={{ minHeight: 40, marginBottom: 8 }}
+      >
+        <Flex align="baseline" gap={8}>
+          <Typography.Text strong style={{ fontSize: 16 }}>
+            报价单
+          </Typography.Text>
+          <Typography.Text type="secondary">{total}</Typography.Text>
+        </Flex>
+        <QuoteCreateModal
+          customerId={customer.id}
+          customerName={customer.name}
+          requestKey={createRequestKey}
+          onRequestHandled={onCreateRequestHandled}
+          onChanged={onQuotationCreated}
+          renderTrigger={(open) => (
+            <Button type="primary" icon={<PlusOutlined />} onClick={open}>
+              新建报价
+            </Button>
+          )}
+        />
+      </Flex>
+      <ProTable<QuoteSeriesSummary>
+        actionRef={actionRef}
+        rowKey="seriesId"
+        columns={columns}
+        search={false}
+        options={false}
+        toolBarRender={false}
+        size="small"
+        scroll={{ x: 1060 }}
+        locale={{ emptyText: '暂无报价' }}
+        pagination={{ defaultPageSize: 10 }}
+        request={async (params) => {
+          const result = await listQuotations({
+            customerId: customer.id,
+            page: params.current,
+            pageSize: params.pageSize,
+          });
+          setTotal(result.total);
+          return { ...result, success: true };
         }}
+      />
+      <QuoteDetailModal
+        quotationId={selectedId}
+        initialAction={detailAction}
+        onClose={() => setSelectedId(null)}
+        onChanged={onQuotationCreated}
       />
     </>
   );
 }
+export const QuotationsTabStandalone = QuotationsTab;

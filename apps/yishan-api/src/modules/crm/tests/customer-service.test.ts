@@ -9,6 +9,7 @@ import { BusinessError } from '@/exceptions/business-error.js'
 import { CustomerService } from '../services/customer.service.js'
 import { CustomerFlowService } from '../actions/customer-flow.js'
 import { CustomerRepository } from '../repositories/customer.repository.js'
+import { ActivityRepository } from '../repositories/activity.repository.js'
 import { TransferRepository } from '../repositories/transfer.repository.js'
 import { UserRepository } from '@/core/repositories/user.repository.js'
 import { dbManager } from '@/db'
@@ -98,6 +99,7 @@ describe('CustomerService.create', () => {
     vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
     vi.spyOn(UserRepository, 'findById').mockResolvedValue({ id: 8, status: 1, deptIds: [10] } as any)
     vi.spyOn(CustomerRepository, 'create').mockResolvedValue({ ...baseCustomer, id: 101, ownerUserId: 8, poolStatus: 'owned' })
+    vi.spyOn(ActivityRepository, 'create').mockResolvedValue({ id: 1 } as any)
 
     await expect(
       new CustomerService().create({
@@ -129,6 +131,7 @@ describe('CustomerService.create', () => {
       .spyOn(CustomerRepository, 'create')
       .mockResolvedValue({ ...baseCustomer, id: 99, name: 'XYZ' })
     vi.spyOn(CustomerRepository, 'setCustomerTags').mockResolvedValue(undefined)
+    vi.spyOn(ActivityRepository, 'create').mockResolvedValue({ id: 1 } as any)
 
     const service = new CustomerService()
     const result = await service.create({
@@ -152,6 +155,7 @@ describe('CustomerService.create', () => {
     const createSpy = vi
       .spyOn(CustomerRepository, 'create')
       .mockResolvedValue({ ...baseCustomer, id: 100 })
+    vi.spyOn(ActivityRepository, 'create').mockResolvedValue({ id: 1 } as any)
 
     const service = new CustomerService()
     await service.create({
@@ -167,6 +171,7 @@ describe('CustomerService.create', () => {
   it('ignores a statusCode injected outside the generic create contract', async () => {
     vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
     const create = vi.spyOn(CustomerRepository, 'create').mockResolvedValue({ ...baseCustomer, id: 100 } as any)
+    vi.spyOn(ActivityRepository, 'create').mockResolvedValue({ id: 1 } as any)
     const service = new CustomerService()
     await service.create({
       input: { name: 'Z', type: 'enterprise', statusCode: 'customer' } as any,
@@ -174,6 +179,27 @@ describe('CustomerService.create', () => {
     })
     expect(create).toHaveBeenCalled()
     expect(create.mock.calls[0]?.[0]).not.toHaveProperty('statusCode')
+  })
+
+  it('writes a system customer_created activity without changing customer status', async () => {
+    vi.spyOn(CustomerRepository, 'findDuplicate').mockResolvedValue(null)
+    vi.spyOn(CustomerRepository, 'create').mockResolvedValue({ ...baseCustomer, id: 88, name: '禾味' })
+    const activityCreate = vi.spyOn(ActivityRepository, 'create').mockResolvedValue({ id: 9 } as any)
+
+    await new CustomerService().create({
+      input: { name: '禾味', type: 'enterprise' },
+      currentUser: normalSales,
+    })
+
+    expect(activityCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerId: 88,
+        category: 'system',
+        type: 'customer_created',
+        content: '客户创建',
+      }),
+      expect.anything(),
+    )
   })
 })
 

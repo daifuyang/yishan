@@ -96,7 +96,7 @@ jest.mock('@/components/AttachmentSelect', () => ({
 }));
 
 describe('CustomerDrawer', () => {
-  it('renders the V0.1 customer lifecycle tabs and places 跟进 first in 新增', async () => {
+  it('renders the V0.1 customer lifecycle tabs and keeps 新增跟进 as the primary action', async () => {
     render(
       React.createElement(CustomerDrawer, {
         open: true,
@@ -119,8 +119,9 @@ describe('CustomerDrawer', () => {
       '任务',
       '附件',
     ]);
-    expect(screen.getAllByText('新增跟进').length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: /新增/ }).length).toBeGreaterThan(1);
+    expect(
+      screen.getAllByRole('button', { name: '新增跟进' }).length,
+    ).toBeGreaterThan(0);
   });
 
   it('shows the customer lifecycle steps above the overview details', async () => {
@@ -216,9 +217,8 @@ describe('CustomerDrawer', () => {
     await waitFor(() =>
       expect(screen.getAllByText('上海示例客户').length).toBeGreaterThan(0),
     );
-    fireEvent.click(screen.getByRole('button', { name: '新增 down' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '跟进' }));
-    await waitFor(() => expect(screen.getByText('写跟进')).toBeTruthy());
+    fireEvent.click(screen.getAllByRole('button', { name: '新增跟进' })[0]);
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
 
     rerender(React.createElement(CustomerDrawer, { ...props, open: false }));
     rerender(React.createElement(CustomerDrawer, { ...props, open: true }));
@@ -226,6 +226,6 @@ describe('CustomerDrawer', () => {
     await waitFor(() =>
       expect(screen.getAllByText('上海示例客户').length).toBeGreaterThan(0),
     );
-    expect(screen.queryByText('写跟进')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
