@@ -28,7 +28,8 @@
 | R-11 | 被禁用用户的 JWT 请求返回 HTTP 200 + `success:false`（30003），锁定为 403 | OPEN | `app.e2e.test.ts` 按现状断言；是否改为 401/403 需人工决定 | 待决定 |
 | J3 | main 未提交 Core `drizzle/meta`，CI 运行时 `db:generate` | OPEN（已加漂移检查） | CI 现校验生成 SQL 与已提交 `0000_init.sql` 一致（忽略行尾）；生成的 journal `when` 仍随运行时间变化 | P4 |
 | J1 | demo 的 `0000_snapshot.json` 与 SQL 不一致（P0：`drizzle-kit generate` 报 malformed 仍退出 0） | OPEN | 未在 main 上重新验证生成行为（P1-A 未执行 demo generate） | P4 |
-| N-05 | 新 CI 工作流尚未在 GitHub Actions 上运行过 | OPEN | 只在本机以相同步骤回放（Windows + Git Bash + 临时容器），见 ci-validation.md；首次推送后需确认 | 推送后 |
+| N-05 | 新 CI 工作流尚未在 GitHub Actions 上运行过 | **RESOLVED** | PR #9 的 pull_request（run 37774486426）与 push（run 37774423525）运行全部步骤成功，结果与本地回放一致，见 p1a-acceptance.md §2 | — |
+| N-10 | PR #9 上 GitGuardian Security Checks 失败：3 条“硬编码密码”告警（`migration-repro.sh:25` 实为读取环境变量；`api-baseline-probe.mjs:96` 与 main 既有 `app.auth.routes.test.ts:39` 为公开的开发种子默认密码 `admin123`） | OPEN | 均非真实凭据；消除需改写历史（禁止）。需维护者在 GitGuardian 标记为测试凭据/误报；后续新增脚本可改为从环境变量读取开发密码以减少噪音 | 维护者分诊 |
 
 ## Low
 
