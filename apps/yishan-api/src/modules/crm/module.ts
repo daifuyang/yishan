@@ -6,5 +6,5 @@
  */
 export const meta = {
   id: 'crm',
-  enabled: true,
+  enabled: false,
 }
