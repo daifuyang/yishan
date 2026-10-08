@@ -5,7 +5,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start --port 4000",
-    "build": "CI=true BROWSERSLIST_IGNORE_OLD_DATA=1 NODE_OPTIONS=\"--require ./scripts/silence-build-warnings.cjs\" docusaurus build",
+    "build": "cross-env CI=true BROWSERSLIST_IGNORE_OLD_DATA=1 NODE_OPTIONS=\"--require ./scripts/silence-build-warnings.cjs\" docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
@@ -66,7 +66,8 @@
     "@types/ws": "^8.18.1",
     "@types/yargs": "^17.0.35",
     "@types/yargs-parser": "^21.0.3",
-    "typescript": "~5.6.2"
+    "typescript": "~5.6.2",
+    "cross-env": "^10.1.0"
   },
   "browserslist": {
     "production": [

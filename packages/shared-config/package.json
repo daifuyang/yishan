@@ -1,0 +1,18 @@
+{
+  "name": "@yishan/shared-config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monorepo-shared config constants. Source-only workspace package consumed by apps via bundler module resolution; no build step.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src"
+  ]
+}

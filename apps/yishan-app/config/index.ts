@@ -1,4 +1,5 @@
 import { defineConfig, type UserConfigExport } from '@tarojs/cli'
+import { API_TARGET } from '@yishan/shared-config'
 import path from 'node:path'
 
 import devConfig from './dev'
@@ -72,11 +73,11 @@ export default defineConfig(async (merge, _env) => {
         https: false,
         // 代理：仅当 dev 端用户直连访问时使用。
         // 注意：若通过反向代理（如 nginx）访问 /api，
-        // 请在外层 nginx 中配置 /api → 3000 转发，不要依赖此处代理。
+        // 请在外层 nginx 中配置 /api → 后端 API 转发，不要依赖此处代理。
         proxy: [
           {
             context: ['/api'],
-            target: process.env.YISHAN_API_TARGET || 'http://127.0.0.1:3000',
+            target: API_TARGET,
             changeOrigin: true,
             secure: false,
           },

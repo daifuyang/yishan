@@ -51,7 +51,8 @@
     "react-dom": "^19.2.5",
     "react-easy-crop": "^6.2.2",
     "swagger-ui-dist": "^5.32.5",
-    "yishan-tiptap": "workspace:^"
+    "yishan-tiptap": "workspace:^",
+    "@yishan/shared-config": "workspace:*"
   },
   "devDependencies": {
     "@ant-design/pro-cli": "^3.3.0",

@@ -9,20 +9,22 @@
  *
  * @doc https://umijs.org/docs/guides/proxy
  */
+import { API_TARGET } from '@yishan/shared-config';
+
 export default {
   // 本地开发代理配置
   dev: {
-    // localhost:8100/api/** -> http://localhost:3100/api/**
+    // 通过 YISHAN_API_TARGET 配置开发 API 代理目标
     '/api/': {
       // 要代理的地址
-      target: 'http://localhost:3100',
+      target: API_TARGET,
       // 配置了这个可以从 http 代理到 https
       // 依赖 origin 的功能可能需要这个，比如 cookie
       changeOrigin: true,
     },
     '/uploads/': {
       // 要代理的地址
-      target: 'http://localhost:3100',
+      target: API_TARGET,
       // 配置了这个可以从 http 代理到 https
       // 依赖 origin 的功能可能需要这个，比如 cookie
       changeOrigin: true,
