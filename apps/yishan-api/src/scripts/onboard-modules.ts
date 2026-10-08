@@ -1,7 +1,7 @@
 /**
  * onboard-modules.ts — 模块入驻编排脚本。
  *
- * 对 src/modules/<id>/ 下的每个模块依次执行三步：
+ * 对 src/modules/<id>/ 下已装载（meta.enabled !== false）的模块依次执行三步：
  *   1. 迁移：调用 drizzle-kit migrate（应用模块 drizzle/ 下的 SQL 到 DB）。
  *      迁移完成后把 _journal.json 中的所有 tag 同步进 sys_module_migration。
  *   2. seed：执行模块自带的 seed 入口（seed.ts / scripts/seed.ts / db/seed.ts）。
@@ -20,6 +20,7 @@
 import 'dotenv/config'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { spawn } from 'node:child_process'
 import { inArray } from 'drizzle-orm'
 import { drizzleDb, pool } from '@/db'
@@ -47,16 +48,27 @@ interface ModuleResult {
   menuAppend: StepOutcome
 }
 
+async function loadPackHelper() {
+  const url = pathToFileURL(join(__dirname, '..', '..', 'scripts', 'module-pack.mjs')).href
+  return import(url) as Promise<{ isPackedModuleDir: (dir: string) => boolean }>
+}
+
 async function listModules(): Promise<string[]> {
   if (!existsSync(MODULES_SRC)) return []
+  const { isPackedModuleDir } = await loadPackHelper()
   const ids: string[] = []
   for (const id of readdirSync(MODULES_SRC)) {
     const dir = join(MODULES_SRC, id)
     if (!statSync(dir).isDirectory()) continue
     const moduleEntry = join(dir, 'module.ts')
-    if (existsSync(moduleEntry) || existsSync(join(MODULES_DIST, id, 'module.js'))) {
-      ids.push(id)
+    if (!(existsSync(moduleEntry) || existsSync(join(MODULES_DIST, id, 'module.js')))) {
+      continue
     }
+    if (!isPackedModuleDir(dir)) {
+      console.log(`[onboard] 跳过 ${id}：meta.enabled=false`)
+      continue
+    }
+    ids.push(id)
   }
   return ids.sort()
 }

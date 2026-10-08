@@ -1,8 +1,8 @@
 /**
  * 商城模块 meta。
  *
- * - `id`：模块唯一标识，路由 prefix 硬约定为 `/api/${id}`，由 core 推导。
- * - `enabled`：首次 sync 进 sys_module 时作为 `enabled` 列的兜底值（缺省 true）。
+ * - `id`：模块唯一标识，路由 prefix 硬约定为 `/api/${id}`。
+ * - `enabled`：装载开关。false 时启动跳过 sync/mount。流量开关是 `sys_module.enabled`。
  */
 export const meta = {
   id: 'shop',

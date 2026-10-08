@@ -620,106 +620,6 @@ export const sysAttachment = mysqlTable(
   })
 )
 
-export const sysPlugin = mysqlTable(
-  'sys_plugin',
-  {
-  id: int('id').primaryKey().autoincrement().notNull(),
-  pluginId: varchar('plugin_id', { length: 100 }),
-  org: varchar('org', { length: 50 }),
-  slug: varchar('slug', { length: 50 }),
-  source: varchar('source', { length: 30 }),
-  name: varchar('name', { length: 100 }),
-  currentVersion: varchar('current_version', { length: 50 }).notNull(),
-  coreCompatibility: varchar('core_compatibility', { length: 50 }),
-  compatRange: varchar('compat_range', { length: 100 }),
-  routeBase: varchar('route_base', { length: 255 }),
-  lifecycleState: varchar('lifecycle_state', { length: 30 }).notNull().default('discovered'),
-  enabled: boolean('enabled').notNull().default(false),
-  installedAt: datetime('installed_at', { mode: 'date' }),
-  lastSyncedAt: datetime('last_synced_at', { mode: 'date' }),
-  lastError: varchar('last_error', { length: 500 }),
-  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-  updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-  },
-  (t) => ({
-    sysPluginPluginIdKey: uniqueIndex('sys_plugin_plugin_id_key').on(t.pluginId),
-    idxSysPluginEnabled: index('idx_sys_plugin_enabled').on(t.enabled),
-    idxSysPluginLifecycleState: index('idx_sys_plugin_lifecycle_state').on(t.lifecycleState),
-    idxSysPluginUpdatedAt: index('idx_sys_plugin_updated_at').on(t.updatedAt),
-    idxSysPluginPluginId: index('idx_sys_plugin_plugin_id').on(t.pluginId),
-  })
-)
-
-export const sysPluginVersion = mysqlTable(
-  'sys_plugin_version',
-  {
-  id: int('id').primaryKey().autoincrement().notNull(),
-  pluginId: int('plugin_id').notNull(),
-  version: varchar('version', { length: 50 }).notNull(),
-  manifest: json('manifest'),
-  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-  },
-  (t) => ({
-    idxSysPluginVersionPluginId: index('idx_sys_plugin_version_plugin_id').on(t.pluginId),
-    uniqSysPluginVersion: uniqueIndex('uniq_sys_plugin_version').on(t.pluginId, t.version),
-  })
-)
-
-export const sysPluginInstall = mysqlTable(
-  'sys_plugin_install',
-  {
-  id: int('id').primaryKey().autoincrement().notNull(),
-  pluginId: int('plugin_id').notNull(),
-  lifecycleState: varchar('lifecycle_state', { length: 30 }).notNull(),
-  enabled: boolean('enabled').notNull().default(false),
-  installedAt: datetime('installed_at', { mode: 'date' }),
-  uninstalledAt: datetime('uninstalled_at', { mode: 'date' }),
-  lastError: varchar('last_error', { length: 500 }),
-  syncStrategy: varchar('sync_strategy', { length: 20 }).default('safe'),
-  updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-  },
-  (t) => ({
-    sysPluginInstallPluginIdKey: uniqueIndex('sys_plugin_install_plugin_id_key').on(t.pluginId),
-    idxSysPluginInstallPluginId: index('idx_sys_plugin_install_plugin_id').on(t.pluginId),
-    idxSysPluginInstallEnabled: index('idx_sys_plugin_install_enabled').on(t.enabled),
-  })
-)
-
-export const sysPluginConfigSnapshot = mysqlTable(
-  'sys_plugin_config_snapshot',
-  {
-  id: int('id').primaryKey().autoincrement().notNull(),
-  pluginId: int('plugin_id').notNull(),
-  version: varchar('version', { length: 50 }).notNull(),
-  config: json('config'),
-  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-  },
-  (t) => ({
-    idxSysPluginConfigSnapshotPluginId: index('idx_sys_plugin_config_snapshot_plugin_id').on(t.pluginId),
-  })
-)
-
-export const sysPluginSyncLog = mysqlTable(
-  'sys_plugin_sync_log',
-  {
-  id: int('id').primaryKey().autoincrement().notNull(),
-  pluginInstallId: int('plugin_install_id').notNull(),
-  strategy: varchar('strategy', { length: 20 }).notNull().default('safe'),
-  status: varchar('status', { length: 20 }).notNull().default('success'),
-  created: int('created').notNull().default(0),
-  updated: int('updated').notNull().default(0),
-  skipped: int('skipped').notNull().default(0),
-  conflicted: int('conflicted').notNull().default(0),
-  conflictDetails: json('conflict_details'),
-  errorMessage: varchar('error_message', { length: 500 }),
-  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-  },
-  (t) => ({
-    idxSysPluginSyncLogPluginInstallId: index('idx_sys_plugin_sync_log_plugin_install_id').on(t.pluginInstallId),
-    idxSysPluginSyncLogCreatedAt: index('idx_sys_plugin_sync_log_created_at').on(t.createdAt),
-  })
-)
-
 export const sysApiToken = mysqlTable(
   'sys_api_token',
   {
@@ -747,17 +647,13 @@ export const sysApiToken = mysqlTable(
 // ---------------------------------------------------------------------------
 // Module control tables (managed by Yishan Core, not by individual modules).
 //
-// `sys_module` is the single source of truth for module lifecycle:
-//   - id / table_prefix / version come from disk (`meta` in module.ts).
-//   - 路由 prefix 硬约定为 `/api/${id}`（见 core/module-loader/module-loader.ts moduleRoutePrefix），
-//     不再由模块 meta 声明，也不存到 sys_module。
-//   - `enabled` is the runtime switch, mutated by /api/dev/modules/:id/toggle.
-//   - `installed_at` records when the row was first inserted (first sync).
+// `sys_module.enabled` is the traffic switch for already-packed modules.
+// Pack/load switch is `meta.enabled` in module.ts (false → skip scan/sync/mount).
 //
-// Boot-time sync (`core/module-loader.ts` → `syncModulesFromDisk`) INSERTs
-// missing rows (defaulting `enabled = 1`) and UPDATEs the structural columns
-// from disk. It MUST NEVER touch `enabled` — an admin explicitly disabling a
-// module must not be silently re-enabled by a restart.
+//   - id / table_prefix / version come from disk (`meta` in module.ts).
+//   - 路由 prefix 硬约定为 `/api/${id}`，不存到 sys_module。
+//   - 表上 `enabled` 由 /api/dev/modules/:id/toggle 修改；sync 永不覆盖。
+//   - 首次 INSERT 流量默认开启（enabled = 1）。
 // ---------------------------------------------------------------------------
 
 export const sysModule = mysqlTable(

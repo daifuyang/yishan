@@ -490,7 +490,7 @@ modules/crm/
   - repository 层是唯一允许 `@/db` 的层。
   - service 层做编排，跨模块信息走 HTTP 或 Core 扩展，不 join 别人的表。
 - **数据范围**：模块内 `data-scope.ts` 自实现 `computeDataScope`，未来 Core 抽出通用能力时对齐。
-- **模块启停**：由 `sys_module.enabled` 控制；首次 sync 用 `meta.enabled`，后续永不被覆盖。运行时切换通过 dev-only API。
+- **模块启停**：装载看 `meta.enabled`；流量看 `sys_module.enabled`（dev-only toggle，sync 不覆盖）。
 
 详见根 `CLAUDE.md` / `docs/module-onboarding.md`。
 

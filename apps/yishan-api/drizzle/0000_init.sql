@@ -299,76 +299,6 @@ CREATE TABLE `sys_option` (
 	CONSTRAINT `sys_option_key_key` UNIQUE(`key`)
 );
 --> statement-breakpoint
-CREATE TABLE `sys_plugin` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`plugin_id` varchar(100),
-	`org` varchar(50),
-	`slug` varchar(50),
-	`source` varchar(30),
-	`name` varchar(100),
-	`current_version` varchar(50) NOT NULL,
-	`core_compatibility` varchar(50),
-	`compat_range` varchar(100),
-	`route_base` varchar(255),
-	`lifecycle_state` varchar(30) NOT NULL DEFAULT 'discovered',
-	`enabled` boolean NOT NULL DEFAULT false,
-	`installed_at` datetime,
-	`last_synced_at` datetime,
-	`last_error` varchar(500),
-	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-	`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-	CONSTRAINT `sys_plugin_id` PRIMARY KEY(`id`),
-	CONSTRAINT `sys_plugin_plugin_id_key` UNIQUE(`plugin_id`)
-);
---> statement-breakpoint
-CREATE TABLE `sys_plugin_config_snapshot` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`plugin_id` int NOT NULL,
-	`version` varchar(50) NOT NULL,
-	`config` json,
-	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-	CONSTRAINT `sys_plugin_config_snapshot_id` PRIMARY KEY(`id`)
-);
---> statement-breakpoint
-CREATE TABLE `sys_plugin_install` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`plugin_id` int NOT NULL,
-	`lifecycle_state` varchar(30) NOT NULL,
-	`enabled` boolean NOT NULL DEFAULT false,
-	`installed_at` datetime,
-	`uninstalled_at` datetime,
-	`last_error` varchar(500),
-	`sync_strategy` varchar(20) DEFAULT 'safe',
-	`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-	CONSTRAINT `sys_plugin_install_id` PRIMARY KEY(`id`),
-	CONSTRAINT `sys_plugin_install_plugin_id_key` UNIQUE(`plugin_id`)
-);
---> statement-breakpoint
-CREATE TABLE `sys_plugin_sync_log` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`plugin_install_id` int NOT NULL,
-	`strategy` varchar(20) NOT NULL DEFAULT 'safe',
-	`status` varchar(20) NOT NULL DEFAULT 'success',
-	`created` int NOT NULL DEFAULT 0,
-	`updated` int NOT NULL DEFAULT 0,
-	`skipped` int NOT NULL DEFAULT 0,
-	`conflicted` int NOT NULL DEFAULT 0,
-	`conflict_details` json,
-	`error_message` varchar(500),
-	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-	CONSTRAINT `sys_plugin_sync_log_id` PRIMARY KEY(`id`)
-);
---> statement-breakpoint
-CREATE TABLE `sys_plugin_version` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`plugin_id` int NOT NULL,
-	`version` varchar(50) NOT NULL,
-	`manifest` json,
-	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-	CONSTRAINT `sys_plugin_version_id` PRIMARY KEY(`id`),
-	CONSTRAINT `uniq_sys_plugin_version` UNIQUE(`plugin_id`,`version`)
-);
---> statement-breakpoint
 CREATE TABLE `sys_post` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`name` varchar(100) NOT NULL,
@@ -602,16 +532,6 @@ CREATE INDEX `idx_sys_module_migration_module_id` ON `sys_module_migration` (`mo
 CREATE INDEX `idx_option_key` ON `sys_option` (`key`);--> statement-breakpoint
 CREATE INDEX `idx_option_status` ON `sys_option` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_option_deleted_at` ON `sys_option` (`deleted_at`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_enabled` ON `sys_plugin` (`enabled`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_lifecycle_state` ON `sys_plugin` (`lifecycle_state`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_updated_at` ON `sys_plugin` (`updated_at`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_plugin_id` ON `sys_plugin` (`plugin_id`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_config_snapshot_plugin_id` ON `sys_plugin_config_snapshot` (`plugin_id`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_install_plugin_id` ON `sys_plugin_install` (`plugin_id`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_install_enabled` ON `sys_plugin_install` (`enabled`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_sync_log_plugin_install_id` ON `sys_plugin_sync_log` (`plugin_install_id`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_sync_log_created_at` ON `sys_plugin_sync_log` (`created_at`);--> statement-breakpoint
-CREATE INDEX `idx_sys_plugin_version_plugin_id` ON `sys_plugin_version` (`plugin_id`);--> statement-breakpoint
 CREATE INDEX `idx_post_status` ON `sys_post` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_post_created_at` ON `sys_post` (`created_at`);--> statement-breakpoint
 CREATE INDEX `idx_post_deleted_at` ON `sys_post` (`deleted_at`);--> statement-breakpoint

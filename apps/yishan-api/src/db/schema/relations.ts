@@ -1,6 +1,6 @@
 // Generated from drizzle/*.sql. Do not edit manually.
 import { relations } from 'drizzle-orm'
-import { sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysEnum, sysFormData, sysFormField, sysLoginLog, sysMenu, sysMenuPermission, sysModule, sysModuleMigration, sysOption, sysPlugin, sysPluginConfigSnapshot, sysPluginInstall, sysPluginSyncLog, sysPluginVersion, sysPost, sysRole, sysRoleMenu, sysRolePermission, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
+import { sysApiToken, sysApp, sysAppMenu, sysAppResource, sysAttachment, sysAttachmentFolder, sysDept, sysDictData, sysDictType, sysEnum, sysFormData, sysFormField, sysLoginLog, sysMenu, sysMenuPermission, sysModule, sysModuleMigration, sysOption, sysPost, sysRole, sysRoleMenu, sysRolePermission, sysUser, sysUserDept, sysUserRole, sysUserToken } from './tables'
 
 export const sysAppRelations = relations(sysApp, ({ one, many }) => ({
   creator: one(sysUser, { fields: [sysApp.creatorId], references: [sysUser.id], relationName: 'sysApp_creatorId' }),
@@ -175,31 +175,6 @@ export const sysAttachmentRelations = relations(sysAttachment, ({ one, many }) =
   folderId: one(sysAttachmentFolder, { fields: [sysAttachment.folderId], references: [sysAttachmentFolder.id], relationName: 'sysAttachment_folderId' }),
   creator: one(sysUser, { fields: [sysAttachment.creatorId], references: [sysUser.id], relationName: 'sysAttachment_creatorId' }),
   updater: one(sysUser, { fields: [sysAttachment.updaterId], references: [sysUser.id], relationName: 'sysAttachment_updaterId' })
-}))
-
-export const sysPluginRelations = relations(sysPlugin, ({ one, many }) => ({
-  pluginId: one(sysPlugin, { fields: [sysPlugin.pluginId], references: [sysPlugin.id], relationName: 'sysPlugin_pluginId' }),
-  sysPlugin_plugin_id: many(sysPlugin, { relationName: 'sysPlugin_pluginId' }),
-  sysPluginVersion_plugin_id: many(sysPluginVersion, { relationName: 'sysPluginVersion_pluginId' }),
-  sysPluginInstall_plugin_id: many(sysPluginInstall, { relationName: 'sysPluginInstall_pluginId' }),
-  sysPluginConfigSnapshot_plugin_id: many(sysPluginConfigSnapshot, { relationName: 'sysPluginConfigSnapshot_pluginId' })
-}))
-
-export const sysPluginVersionRelations = relations(sysPluginVersion, ({ one, many }) => ({
-  pluginId: one(sysPlugin, { fields: [sysPluginVersion.pluginId], references: [sysPlugin.id], relationName: 'sysPluginVersion_pluginId' })
-}))
-
-export const sysPluginInstallRelations = relations(sysPluginInstall, ({ one, many }) => ({
-  pluginId: one(sysPlugin, { fields: [sysPluginInstall.pluginId], references: [sysPlugin.id], relationName: 'sysPluginInstall_pluginId' }),
-  sysPluginSyncLog_plugin_install_id: many(sysPluginSyncLog, { relationName: 'sysPluginSyncLog_pluginInstallId' })
-}))
-
-export const sysPluginConfigSnapshotRelations = relations(sysPluginConfigSnapshot, ({ one, many }) => ({
-  pluginId: one(sysPlugin, { fields: [sysPluginConfigSnapshot.pluginId], references: [sysPlugin.id], relationName: 'sysPluginConfigSnapshot_pluginId' })
-}))
-
-export const sysPluginSyncLogRelations = relations(sysPluginSyncLog, ({ one, many }) => ({
-  pluginInstallId: one(sysPluginInstall, { fields: [sysPluginSyncLog.pluginInstallId], references: [sysPluginInstall.id], relationName: 'sysPluginSyncLog_pluginInstallId' })
 }))
 
 export const sysApiTokenRelations = relations(sysApiToken, ({ one }) => ({

@@ -16,7 +16,7 @@
 | `portal` | `portal` | `/api/portal` | 4 | 5 | 20 |
 | `shop` | `shop` | `/api/shop` | 5 | 8 | 20 |
 
-启用 / 停用的源头是 `sys_module.enabled`；首次 sync 用 `meta.enabled` 兜底，之后行内 `enabled` 永不被覆盖。dev-only 的 `/admin/system/module-management` 页面可以 toggle。
+装载看 `meta.enabled`（false 则不挂模块）。流量看 `sys_module.enabled`，dev-only「模块管理」页可以 toggle，sync 永不覆盖表上的值。
 
 ---
 
