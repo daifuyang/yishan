@@ -41,7 +41,10 @@ pnpm test      # admin (Jest) + api (Vitest)
 
 # Backend DB (Drizzle)
 pnpm --filter yishan-api db:generate      # generate migrations from schema
-pnpm --filter yishan-api db:migrate       # apply migrations
+pnpm --filter yishan-api db:migrate       # apply Core migrations (drizzle-kit)
+pnpm --filter yishan-api db:migrate:all   # Core + every packed module, verified (non-zero exit on failure)
+pnpm --filter yishan-api db:migrate:modules [id...]
+pnpm --filter yishan-api db:migrations:bridge   # pre-per-module-history databases: dry-run diagnosis (-- --apply to write)
 pnpm --filter yishan-api db:seed          # run seed scripts (builds TS first)
 pnpm --filter yishan-api db:reset         # rebuild DB
 ```
@@ -74,20 +77,24 @@ The most distinctive thing in this repo is the business-module plugin system in 
 ### Layout
 - Each business capability lives at `apps/yishan-api/src/modules/<id>/`
 - A module owns: `module.ts` (entry), `db/schema.ts` (Drizzle tables), `drizzle.config.ts`, `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`, `repositories/`, `services/`, `schemas/`, `routes/`, `tests/`, `config/system-menu.json`, `permissions.ts`, optional `seed.ts`
-- `module.ts` exports `meta = { id, enabled? }`. `enabled` is the pack/load switch (false → skip mount). Traffic uses `sys_module.enabled`.
-- Current modules: `demo` (1 table, reference), `portal` (5 tables: categories/articles/pages/templates), `shop` (8 tables: categories/attributes/products/skus/orders)
+- `module.ts` exports a flat `meta = { id, enabled?, name?, description? }`. `enabled` is the pack/load switch (false → skip mount). Traffic uses `sys_module.enabled`. `description` becomes the module's OpenAPI tag description.
+- Current modules on this branch: `demo` (1 table, reference). `portal` / `shop` exist only on the `all` branch.
 
 ### Lifecycle
-1. **Boot scan** — `scanDiskModules()` reads each `module.ts` / `module.js`. `meta.enabled === false` modules are skipped (not synced, not mounted).
+1. **Boot scan** — `scanDiskModules()` reads each `module.ts` / `module.js`. `meta.enabled === false` modules are skipped (not synced, not mounted). A packed module whose `meta.id` is invalid or differs from its directory name fails the boot.
 2. **DB sync** — upsert packed modules into `sys_module` (`name`, `table_prefix`, `version`). First insert sets traffic `enabled = 1`. Existing `enabled` is never overwritten.
 3. **Mount** — `@fastify/autoload` registers packed modules' `routes/` under `/api/<id>`.
 4. **Gate** — root `onRequest` checks `sys_module.enabled` (Redis + 1s memo) and returns 404 for traffic-disabled modules.
 
 ### Hard invariants (enforced by `scripts/check-module-naming.mjs` + review)
-- `meta.id` is globally unique; lower-case + digits + underscores; ≤ 24 chars. Duplicates fail-fast at boot.
+- `meta.id` equals the directory name, matches `/^[a-z][a-z0-9_]{0,23}$/` (checked at boot and by `check-module-naming`).
 - Route prefix is hardcoded to `/api/${id}` — modules don't declare it.
 - Module **table names must start with `<id>_`** (e.g. `demo_documents`). Cross-module duplicate table names also fail lint.
 - **Core never imports module source. Modules never import each other.** Modules join across their own tables only; cross-module reads go through HTTP or Core extensions.
+- **Modules import Yishan code only through `core/module-api.ts` (kernel contracts) and `core/system-api.ts` (System capabilities such as `seedModuleMenus`).** Runtime deps come from Fastify: `app.drizzleDb`, `request.currentUser`. Enforced by `check:boundaries` (`module-imports-internal`).
+- **Kernel/platform never import System** (`core/services`, `repositories`, `schemas`, `mappers`, `routes/api`, `plugins/app`, `scripts`); kernel files use relative imports only. Identity and permissions come from `fastify.authProvider` (`core/auth/identity.ts`; default System implementation `core/services/auth-provider.ts`, wired in `app.ts`).
+- Anonymous routes declare `public: true` on their permission; permission-group display names are registered by their owner (`registerPermissionGroups`). Core never lists business modules, groups or tags.
+- Each module has its own migration history table `<id>_drizzle_migrations`; Core + System keep `__drizzle_migrations`. Published SQL never changes (`check:migrations`).
 - **Routes never import drizzle tables or write SQL directly.** Only `repositories/` may import the Drizzle schema and execute queries. Services orchestrate; routes validate and shape.
 - Don't create `sys_*` tables in modules; don't modify existing `sys_*` Core tables.
 - Frontend menu paths use `/<id>/...` at root — **no `/modules/` prefix** in URLs (the `/modules/` segment is only a source directory convention).
@@ -117,9 +124,9 @@ Per `CONTRIBUTING.md` and CI (`.github/workflows/yishan-fullstack-ci.yml`):
 Gates added in P1-A (`docs/verification/yishan-source-first-p1a/`):
 - `pnpm check:toolchain` — Node/pnpm must match `.tool-versions` (machine default may be Node 24).
 - `pnpm build` now includes the API (`build:ts`) and the App (`build:weapp`).
-- `pnpm lint` runs `typecheck:baseline` (App and TipTap `tsc` ratchet against `scripts/baselines/tsc/*.json`: new errors fail, fixed errors must be removed from the baseline) and `check:boundaries` (`scripts/baselines/architecture-boundaries.json`: Core must not import or name business modules; new violations fail).
+- `pnpm lint` runs `typecheck:baseline` (App and TipTap `tsc` ratchet against `scripts/baselines/tsc/*.json`: new errors fail, fixed errors must be removed from the baseline), `check:boundaries` (`scripts/baselines/architecture-boundaries.json`, currently empty: Core must not import or name business modules, modules only use the public entries, kernel/platform never import System) and `check:migrations` (`scripts/baselines/migrations.json`: journal/SQL consistency, monotonic `when`, published SQL immutable, per-module history table).
 - `pnpm check:openapi <runtime.json>` compares the committed `apps/yishan-api/openapi.json` with a runtime dump (`apps/yishan-api/scripts/dump-openapi-from-build.mjs`); `scripts/openapi-diff.mjs` classifies every change and only accepts entries listed in `scripts/baselines/openapi-allowed-changes.json`.
-- `pnpm test:integration` needs a disposable MySQL/Redis (`apps/yishan-api/test/integration/README.md`). Known migration defect R-01 is tracked there as `it.fails`; do not delete it — fix the mechanism in P4.
+- `pnpm test:integration` needs a disposable MySQL/Redis (`apps/yishan-api/test/integration/README.md`). R-01 is fixed (per-module history); `module-migration.r01.test.ts` keeps both the fixed path and the root-cause reproduction — do not delete either.
 
 ## Frontend page conventions (admin / Ant Design Pro 6)
 
@@ -150,7 +157,8 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 ## Other things worth knowing
 
 - **Module naming lint**: `scripts/check-module-naming.mjs` parses each module's `db/schema.ts` with regex; runs as part of `pnpm lint`. Add new tables here and the linter will catch missing `<id>_` prefixes.
-- **Drizzle per-module**: each module ships its own `drizzle.config.ts` + `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`. To regenerate migrations after schema changes, `cd src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts`. Migrations are not auto-applied at boot — operators run them via `pnpm --filter yishan-api db:migrate`.
+- **Drizzle per-module**: each module ships its own `drizzle.config.ts` (with `migrations: { table: moduleMigrationsTable('<id>') }`) + `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`. Core's `drizzle/meta` is committed too. To regenerate migrations after schema changes, `cd src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts`, then record the new SQL with `node scripts/check-migrations.mjs --update`. Migrations are not auto-applied at boot — operators run `pnpm --filter yishan-api db:migrate:all` (or `db:seed` on first deploy). SQL is checked out with LF (`.gitattributes`) because Drizzle hashes raw bytes.
+- **Source distribution**: downstream projects copy source and follow upstream with `scripts/yishan-upstream.mjs` + `YISHAN_UPSTREAM.json` (see `docs/distribution.md`). Tests that need an optional module are gated with `test/_modules.ts#hasModule` so deleting a module keeps the suite green.
 - **FC deploy**: `.github/workflows/yishan-fc-migrate.yml` and `yishan-fullstack-cd-fc.yml` deploy to Alibaba Function Compute. `apps/yishan-api/deploy/` and `apps/yishan-api/dockerfile` cover the prod image build (which excludes devDeps).
 - **Cert rotation**: `yishan-cert-rotate-fc.yml` rotates FC certs.
 - **No real credentials in repo**: demo creds intentionally not committed; per README, request from the maintainer.

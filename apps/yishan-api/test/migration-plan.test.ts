@@ -46,7 +46,10 @@ describe('integration migration plan', () => {
   })
 
   it('the repository core history resolves from its committed journal', () => {
-    expect(resolveMigrationPlan(join(process.cwd(), 'drizzle'))).toMatchObject({ source: 'journal', tags: ['0000_init'] })
+    const plan = resolveMigrationPlan(join(process.cwd(), 'drizzle'))
+    expect(plan.source).toBe('journal')
+    // 0000_init 是与已部署库共享的起点；之后的 Core 迁移只能追加。
+    expect(plan.tags[0]).toBe('0000_init')
   })
 
   it.runIf(hasModule('demo'))('the demo module history resolves', () => {

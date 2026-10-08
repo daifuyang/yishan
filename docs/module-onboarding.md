@@ -57,18 +57,17 @@ export const <id>Sample = mysqlTable('<id>_sample', {
 ```ts
 import 'dotenv/config'
 import { defineConfig } from 'drizzle-kit'
-
-const url =
-  process.env.DATABASE_URL ??
-  `mysql://${process.env.DATABASE_USER ?? 'root'}:${process.env.DATABASE_PASSWORD ?? ''}@${
-    process.env.DATABASE_HOST ?? 'localhost'
-  }:${process.env.DATABASE_PORT ?? '3306'}/${process.env.DATABASE_NAME ?? 'yishan'}`
+import { LOCAL_DEV_DATABASE_URL, resolveDatabaseUrl } from '../../db/database-url'
+import { moduleMigrationsTable } from '../../db/migrations-table'
 
 export default defineConfig({
   dialect: 'mysql',
   schema: './db/schema.ts',
   out: './drizzle',
-  dbCredentials: { url },
+  // 每个模块独立的迁移历史表 `<id>_drizzle_migrations`（不与 Core / 其他模块共享，P0 R-01）。
+  // `pnpm check:migrations` 会检查这一行。
+  migrations: { table: moduleMigrationsTable('<id>') },
+  dbCredentials: { url: resolveDatabaseUrl() ?? LOCAL_DEV_DATABASE_URL },
 })
 ```
 
@@ -78,12 +77,13 @@ loader 只读 `meta`，不会 register 这个文件里的其它导出。路由�
 
 ```ts
 export const meta = {
-  id: '<id>',
-  enabled: true, // 装载开关；false 则不编译、不 sync、不 mount。缺省 true
+  id: '<id>',          // 必须等于目录名；/^[a-z][a-z0-9_]{0,23}$/，不合法启动即失败
+  enabled: true,       // 装载开关；false 则不编译、不 sync、不 mount、不迁移。缺省 true
+  description: '...',  // 可选：OpenAPI 中 `<id>` tag 的描述（Core 不再硬编码模块 tag）
 }
 ```
 
-> 路由 prefix 硬约定为 `/api/${meta.id}`，由 `moduleRoutePrefix()` 生成，模块不再声明。
+> 路由 prefix 硬约定为 `/api/${meta.id}`，由 `moduleRoutePrefix()` 生成，模块不再声明。保持 meta 为扁平对象（构建脚本用正则读取 `enabled`）。
 
 ### `drizzle/0000_init.sql` —— 建表 SQL
 
@@ -98,7 +98,7 @@ CREATE TABLE `<id>_sample` (
 );
 ```
 
-加一份 `drizzle/meta/_journal.json`（drizzle-kit 格式）。
+加一份 `drizzle/meta/_journal.json`（drizzle-kit 格式）。已发布的 SQL 永远不改；新迁移只追加，且 `when` 必须严格递增（`pnpm check:migrations` 校验，新文件评审后 `node scripts/check-migrations.mjs --update` 登记）。
 
 ## 步骤 3：装上 repositories / services / schemas / tests
 
@@ -106,19 +106,21 @@ CREATE TABLE `<id>_sample` (
 
 | 文件 | 装什么 |
 | --- | --- |
-| `repositories/*.ts` | 该模块**唯一**允许 import drizzleDb 与 `db/schema` 的层 |
-| `services/*.ts` | 业务编排；拿 db 句柄、调 repository |
+| `repositories/*.ts` | 该模块**唯一**执行 SQL、import 本模块 `db/schema` 的层；db 句柄由调用方传入 |
+| `services/*.ts` | 业务编排；构造注入 db 句柄（路由里 `new XService(app.drizzleDb)`）、调 repository |
+| `seed.ts` | 可选；default 导出 `(ctx: ModuleSeedContext) => Promise<void>`，菜单用 `seedModuleMenus(tree, ctx.db)` 登记 |
 | `schemas/*.ts` | TypeBox HTTP schema |
 | `tests/*.ts` | vitest 单测；service 用 `vi.spyOn` 拦 repository |
 
-## 步骤 4：跑 migration（手动）
+## 步骤 4：生成与执行 migration（手动）
 
 ```bash
-npx drizzle-kit --config=apps/yishan-api/src/modules/<id>/drizzle.config.ts generate
-npx drizzle-kit --config=apps/yishan-api/src/modules/<id>/drizzle.config.ts migrate
+cd apps/yishan-api/src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts   # 改 schema 后
+pnpm --filter yishan-api db:migrate:modules <id>   # 执行：独立历史表 + 历史核对 + 真实表结构核对，失败退出码 1
 ```
 
-> 这两步由你手敲。模块启动时**不**自动跑迁移；服务启动也是**不**自动检查 pending。
+> 模块启动时**不**自动跑迁移。`db:migrate:modules` 与 `drizzle-kit migrate --config=...` 读写同一张历史表，但前者会核对结果。
+> 已部署过旧版本（共享 `__drizzle_migrations`）的库，先跑 `pnpm --filter yishan-api db:migrations:bridge`（默认 dry-run）。
 
 ## 步骤 5：装载与流量
 
@@ -139,7 +141,8 @@ pnpm --filter yishan-api dev
 
 ## 关键约束清单
 
-- ✖ 不许在 `db/schema.ts` 之外 import `drizzleDb` 或 `@/db`
+- ✖ 模块只能从 `@/core/module-api`（kernel 契约：`registerPermissions`、`registerPermissionGroups`、`createRouteRegistrar`、`ResponseUtil`、`BusinessError`、`AppDb` 类型等）与 `@/core/system-api`（system 开放能力：`seedModuleMenus`）导入 Yishan 代码；不许 import `@/db`、`core/services`、`core/repositories` 等内部文件（`pnpm check:boundaries` 的 `module-imports-internal` 规则）。数据库句柄用 `app.drizzleDb`，当前用户用 `request.currentUser`（模块只应依赖 `id`）
+- ✔ 匿名接口在权限声明上写 `public: true`；权限分组展示名用 `registerPermissionGroups({ id: '<id>', label })` 自己登记
 - ✖ 不许在 `services/` / `module.ts` 直接写 SQL —— 走 `repositories/`
 - ✖ 不许改 Core 表（`sys_*` 全部不许动）
 - ✖ 不许跨模块 join 别的模块的表 —— 走 HTTP / Core extension
@@ -159,7 +162,7 @@ schema 生成、迁移、seed、reset 都不暴露 HTTP，全部走 CLI。理由
 | --- | --- | --- |
 | 启停模块 | HTTP（toggle） | 低：只改 `sys_module.enabled`，即时 gate 拦截，无副作用 |
 | 生成迁移文件 | CLI（`npx drizzle-kit --config=... generate`） | 写源码，多人并发会冲突 |
-| 应用迁移 | CLI（`pnpm --filter yishan-api db:seed` 走 onboard-modules） | 改表结构，受控流程 |
+| 应用迁移 | CLI（`db:migrate:all` / `db:migrate:modules`，或 `db:seed` 走 onboard-modules） | 改表结构，受控流程 |
 | seed 数据 | CLI（同上，onboard-modules 第二步） | 写业务数据，受控流程 |
 | DROP / 重建 | CLI（`pnpm --filter yishan-api db:reset`，仅 dev） | 毁数据，必须显式 + NODE_ENV≠production |
 
@@ -169,7 +172,9 @@ dev-only 路由树（`core/routes/_dev/`）在 `NODE_ENV=production` 时整棵�
 CI / 部署侧用：
 
 ```bash
-pnpm --filter yishan-api db:generate   # 改 schema 后生成迁移
+pnpm --filter yishan-api db:generate   # 改 Core schema 后生成迁移（Core drizzle/meta 已提交）
+pnpm --filter yishan-api db:migrate:all            # Core + 全部已打包模块，执行后核对
+pnpm --filter yishan-api db:migrations:bridge      # 旧版本已部署库：只读诊断 + 衔接计划（--apply 才写）
 pnpm --filter yishan-api db:seed       # 上线首次部署：migrate + seed + sync sys_module
 pnpm --filter yishan-api db:reset      # 仅 dev：重建数据库
 ```
