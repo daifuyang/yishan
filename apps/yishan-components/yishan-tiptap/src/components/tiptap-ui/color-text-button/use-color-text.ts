@@ -206,6 +206,7 @@ export function useColorText(config: UseColorTextConfig) {
       }
       return success;
     }, 0);
+    return undefined;
   }, [canColorTextState, textColor, editor, label, onApplied]);
 
   const handleRemoveTextColor = React.useCallback(() => {

@@ -208,6 +208,7 @@ export function useColorHighlight(config: UseColorHighlightConfig) {
       }
       return success;
     }, 0);
+    return undefined;
   }, [canColorHighlightState, highlightColor, editor, label, onApplied]);
 
   const handleRemoveHighlight = React.useCallback(() => {
