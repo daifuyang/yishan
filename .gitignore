@@ -41,7 +41,7 @@ tmp/
 artifacts/
 apps/yishan-api/openapi.json
 
-# drizzle-kit generated metadata (rebuilt by `db:generate`)
-apps/yishan-api/drizzle/meta/
+# Core drizzle/meta（journal + snapshot）是迁移历史的一部分，必须提交（P0 J3）：
+# journal 的 `when` 决定 created_at，随运行时 generate 会让各环境 Core 历史不可复现。
 
 # Local dev module enable/disable overrides — 已废弃。启停事实迁入 sys_module 表。

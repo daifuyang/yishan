@@ -25,8 +25,8 @@ import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import AutoLoad from '@fastify/autoload'
 import type { FastifyInstance, FastifyPluginAsync, FastifyBaseLogger } from 'fastify'
-import { drizzleDb, type AppDb } from '@/db'
-import { sysModule } from '@/db/schema/tables'
+import type { AppDb } from '../../db/client.js'
+import { sysModule } from '../../db/schema/tables.js'
 
 const REDIS_ENABLED_KEY = 'yishan:modules:enabled'
 const REDIS_CACHE_TTL_SECONDS = 60
@@ -34,6 +34,24 @@ const REDIS_CACHE_TTL_SECONDS = 60
 /** 模块路由 prefix 硬约定;不再由模块 meta 声明。 */
 export function moduleRoutePrefix(id: string): string {
   return `/api/${id}`
+}
+
+/** meta.id：小写字母开头，仅小写字母 / 数字 / 下划线，≤ 24 字符（同时用作表前缀与 URL 段）。 */
+export const MODULE_ID_PATTERN = /^[a-z][a-z0-9_]{0,23}$/
+
+/**
+ * 校验 meta.id；不合法时抛错（启动 fail-fast，而不是静默挂到奇怪的 URL / 表前缀上）。
+ * meta.id 必须与模块目录名一致：挂载、迁移、seed 都按目录定位，二者不一致会挂错目录。
+ */
+export function assertValidModuleId(id: unknown, dirName: string): asserts id is string {
+  if (typeof id !== 'string' || !MODULE_ID_PATTERN.test(id)) {
+    throw new Error(
+      `module '${dirName}': invalid meta.id ${JSON.stringify(id)}; expected ${MODULE_ID_PATTERN} (lower-case letters, digits, underscores, ≤ 24 chars)`,
+    )
+  }
+  if (id !== dirName) {
+    throw new Error(`module '${dirName}': meta.id '${id}' must equal its directory name`)
+  }
 }
 
 /**
@@ -92,9 +110,13 @@ export async function scanDiskModulesPure(
       logger?.info({ module: id }, 'module skipped: meta.enabled=false')
       continue
     }
+    assertValidModuleId(meta.id, id)
     out.push({
       id: meta.id,
       name: typeof meta.name === 'string' && meta.name.length > 0 ? meta.name : meta.id,
+      ...(typeof meta.description === 'string' && meta.description.length > 0
+        ? { description: meta.description }
+        : {}),
       tablePrefix: typeof meta.tablePrefix === 'string' && meta.tablePrefix.length > 0
         ? meta.tablePrefix
         : `${meta.id}_`,
@@ -160,6 +182,8 @@ export interface ModuleDiskMeta {
   name: string
   tablePrefix: string
   version: string
+  /** 可选的模块说明；用作 OpenAPI 中该模块 tag（tag 名 = id）的描述。 */
+  description?: string
   /** 模块目录绝对路径,便于 re-import。 */
   moduleDir: string
 }
@@ -181,6 +205,8 @@ export class ModuleLoader {
   /** 编译产物根(绝对路径),用于 `import('module.js')`。 */
   private readonly distRoot: string
   private mounted = new Set<string>()
+  /** 已挂载模块的 meta（按 id），供 OpenAPI tag 等元数据使用。 */
+  private mountedMeta = new Map<string, ModuleDiskMeta>()
   private dbCache: AppDb | undefined
   /** enabled 集合的进程内短 TTL 缓存,避免 gate 每请求打 redis/DB。 */
   private enabledMemo: { ids: Set<string>; at: number } | undefined
@@ -193,14 +219,18 @@ export class ModuleLoader {
     fastify: FastifyInstance,
     srcRoot: string,
     distRoot: string,
+    /** sys_module 所在库的句柄；缺省时使用 Fastify 装饰器 `fastify.drizzleDb`（database 插件提供）。 */
+    db?: AppDb,
   ) {
     this.fastify = fastify
     this.srcRoot = srcRoot
     this.distRoot = distRoot
+    this.dbCache = db
   }
 
   private get db(): AppDb {
-    if (!this.dbCache) this.dbCache = drizzleDb
+    if (!this.dbCache) this.dbCache = this.fastify.drizzleDb
+    if (!this.dbCache) throw new Error('ModuleLoader: no database handle (fastify.drizzleDb is not decorated)')
     return this.dbCache
   }
 
@@ -316,6 +346,13 @@ export class ModuleLoader {
     return [...this.mounted].sort()
   }
 
+  /** 已挂载模块贡献的 OpenAPI tag：`{ name: id, description: meta.description ?? meta.name }`，按 id 排序。 */
+  listOpenapiTags(): { name: string; description: string }[] {
+    return [...this.mountedMeta.values()]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((m) => ({ name: m.id, description: m.description ?? m.name }))
+  }
+
   /**
    * 用标准 @fastify/autoload 挂载单个模块的 routes/ 目录,prefix 硬约定 /api/<id>。
    * 与 scanDiskModulesPure 入口策略一致:dist 优先,src 兜底。
@@ -341,6 +378,7 @@ export class ModuleLoader {
       options: { prefix },
     })
     this.mounted.add(meta.id)
+    this.mountedMeta.set(meta.id, meta)
     this.fastify.log.info({ module: meta.id, prefix }, 'module mounted')
   }
 

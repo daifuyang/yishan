@@ -5,7 +5,7 @@ import {
   type TodoStatus,
   type UpdateTodoInput,
 } from '../repositories/todos.repository.js'
-import type { AppQueryDb } from '@/db'
+import type { AppQueryDb } from '@/core/module-api.js'
 
 /**
  * Todos Service：业务编排。

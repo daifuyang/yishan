@@ -1,9 +1,7 @@
 import { type FastifyPluginAsync } from 'fastify'
 import { Type } from '@sinclair/typebox'
-import { registerPermissions, type PermissionRef } from '@/core/permissions/catalog.js'
-import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
+import { createRouteRegistrar, registerPermissions, type PermissionRef } from '@/core/module-api.js'
 import { TodosService } from '../../../services/todos.service.js'
-import { drizzleDb } from '@/db'
 import {
   TodoCreateReqSchema,
   TodoUpdateReqSchema,
@@ -33,7 +31,7 @@ function TypeIdParams() {
 
 export default (async (app) => {
   const route = createRouteRegistrar(app)
-  const todos = new TodosService(drizzleDb)
+  const todos = new TodosService(app.drizzleDb)
 
   // Todo 列表
   route.get(

@@ -17,6 +17,7 @@ import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { applyMigrations, CORE_MIGRATIONS, resolveMigrationPlan } from './_migrations'
 import { createTempDatabase, type TempDatabase } from './_setup'
+import { hasModule } from '../_modules'
 
 const enabled = process.env.YISHAN_RUN_INTEGRATION === '1'
 const ADMIN_PASSWORD = 'admin123'
@@ -141,7 +142,8 @@ describe.runIf(enabled)('integration: real app assembly', () => {
   })
 
   it('unauthenticated requests to core and module routes → 401/22001', async () => {
-    for (const url of ['/api/v1/auth/me', '/api/v1/admin/users', '/api/demo/v1/info']) {
+    const urls = ['/api/v1/auth/me', '/api/v1/admin/users', ...(hasModule('demo') ? ['/api/demo/v1/info'] : [])]
+    for (const url of urls) {
       const res = await call('GET', url)
       expect(res.statusCode, `${url} ${res.body}`).toBe(401)
       expect(res.json().code, url).toBe(22001)
@@ -204,7 +206,8 @@ describe.runIf(enabled)('integration: real app assembly', () => {
     })
   })
 
-  it('module gate: disable demo → 404/40400 (also after restart); re-enable → reachable', async () => {
+  // 需要仓库自带的 demo 模块；下游删除 demo 后跳过（模块启停机制本身由 module-lifecycle 单测覆盖）。
+  it.runIf(hasModule('demo'))('module gate: disable demo → 404/40400 (also after restart); re-enable → reachable', async () => {
     try {
     const { token } = await login('admin', ADMIN_PASSWORD)
     expect((await call('GET', '/api/demo/v1/info', { token })).statusCode).toBe(200)

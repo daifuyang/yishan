@@ -11,6 +11,18 @@ export interface PermissionRef {
   readonly label: string;
   readonly group: string;
   readonly description?: string;
+  /**
+   * 公开权限点：只登记（OpenAPI、展示），运行时不挂 authenticate / requirePermission。
+   * 用于登录、刷新令牌、健康检查等匿名接口。由声明它的路由文件（Core 或模块）自己标注，
+   * Core 不维护业务码清单。
+   */
+  readonly public?: boolean;
+}
+
+/** 权限分组的展示元数据。分组由声明权限的一方（system 或模块）自己登记。 */
+export interface PermissionGroupRef {
+  readonly id: string;
+  readonly label: string;
 }
 
 const REGISTRY: PermissionRef[] = [];
@@ -34,6 +46,7 @@ export const registerPermissions = (...defs: readonly PermissionRef[]): void => 
       throw new Error(`duplicate permission declaration: ${def.code}`);
     }
     CODES.add(def.code);
+    if (def.public === true) PUBLIC_CODES.add(def.code);
     REGISTRY.push(def);
   }
 };
@@ -49,24 +62,34 @@ export const PERMISSION_CODES: ReadonlySet<string> = CODES;
 export const listPermissions = (): ReadonlyArray<PermissionRef> =>
   Object.freeze([...REGISTRY]);
 
-/**
- * 已知不需要 RBAC 角色持有的"公共"code：login / refresh / 定时任务回调 / 健康检查等。
- * 这些 code 仍然 catalog 注册（用于 OpenAPI、admin UI 展示），但运行时 rbac 跳过权限校验。
- * 仅认证身份，不强制要求 perm。
- *
- * 注意：'auth:logout' 不在本集合中。logout 必须携带有效 token 才能撤销当前用户
- * 会话，鉴权由 route-registrar 自动注入的 authenticate + requirePermission 链完成。
- */
-export const BYPASS_CODES: ReadonlySet<string> = Object.freeze(
-  new Set([
-    'auth:login',
-    'auth:refresh',
-    'app:auth:login',
-    'app:auth:refresh',
-    'system:cron',
-    'system:health',
-    'system:options:public',
-  ]),
-);
+const PUBLIC_CODES = new Set<string>();
+const GROUPS = new Map<string, PermissionGroupRef>();
 
-export const isBypassCode = (code: string): boolean => BYPASS_CODES.has(code);
+/**
+ * 登记权限分组的展示名（如 PAT 可授予范围的分组标题）。同一分组可重复登记，
+ * 但 label 必须一致；未登记的分组展示时回退为分组 id。
+ */
+export const registerPermissionGroups = (...defs: readonly PermissionGroupRef[]): void => {
+  for (const def of defs) {
+    if (!def.id || !def.label) {
+      throw new Error(`permission group requires id and label: ${JSON.stringify(def)}`);
+    }
+    const existing = GROUPS.get(def.id);
+    if (existing && existing.label !== def.label) {
+      throw new Error(`conflicting permission group label for ${def.id}: ${existing.label} vs ${def.label}`);
+    }
+    GROUPS.set(def.id, def);
+  }
+};
+
+/** 已登记分组的展示名；未登记时返回 undefined。 */
+export const getPermissionGroupLabel = (id: string): string | undefined => GROUPS.get(id)?.label;
+
+/**
+ * 是否为公开权限点（声明时 `public: true`）。公开 code 仍登记在目录中（OpenAPI、
+ * admin 展示），但 route-registrar 不为其挂鉴权，rbac 也不做权限校验。
+ *
+ * 注意：'auth:logout' 不是公开权限。logout 必须携带有效 token 才能撤销当前用户
+ * 会话，鉴权由 route-registrar 自动注入的 softAuthenticate + requirePermission 链完成。
+ */
+export const isBypassCode = (code: string): boolean => PUBLIC_CODES.has(code);

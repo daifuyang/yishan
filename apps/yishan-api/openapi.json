@@ -5436,36 +5436,8 @@
             "type": "string"
           },
           "system": {
-            "anyOf": [
-              {
-                "description": "系统管理",
-                "type": "string",
-                "enum": [
-                  "system"
-                ]
-              },
-              {
-                "description": "商城管理",
-                "type": "string",
-                "enum": [
-                  "shop"
-                ]
-              },
-              {
-                "description": "门户管理",
-                "type": "string",
-                "enum": [
-                  "portal"
-                ]
-              },
-              {
-                "description": "特殊权限",
-                "type": "string",
-                "enum": [
-                  "special"
-                ]
-              }
-            ]
+            "description": "分组 id：权限声明的 group（如 system、auth 或模块自己的分组）；PAT 专用分组为 special",
+            "type": "string"
           },
           "options": {
             "type": "array",
@@ -10091,6 +10063,7 @@
             }
           }
         },
+        "security": [],
         "x-permission-code": "app:auth:login",
         "x-permission-label": "移动端-登录",
         "x-permission-group": "app-auth",
@@ -10169,6 +10142,7 @@
             }
           }
         },
+        "security": [],
         "x-permission-code": "app:auth:refresh",
         "x-permission-label": "移动端-刷新令牌",
         "x-permission-group": "app-auth",
@@ -11149,7 +11123,7 @@
         "tags": [
           "me-api-tokens"
         ],
-        "description": "返回当前用户可授予的权限列表，按 system/shop/portal/special 分组。仅返回用户当前持有的且在系统中已登记的权限码。",
+        "description": "返回当前用户可授予的权限列表，按权限声明的 group 分组（system 在前，PAT 专用 special 在后）。仅返回用户当前持有的且在系统中已登记的权限码。",
         "security": [
           {
             "bearerAuth": []

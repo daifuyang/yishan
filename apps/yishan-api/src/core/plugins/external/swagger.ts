@@ -30,7 +30,6 @@ export default fp(async function (fastify) {
         { name: 'system', description: 'System endpoints' },
         { name: 'attachments', description: 'System attachments' },
         { name: 'storage', description: 'Storage endpoints' },
-        { name: 'demo', description: 'Demo module endpoints（src/modules/demo/）' },
       ],
       components: {
         securitySchemes: {
@@ -40,6 +39,17 @@ export default fp(async function (fastify) {
             bearerFormat: 'JWT'
           }
         }
+      }
+    },
+    // 业务模块的 tag 不在这里硬编码：已挂载模块各自贡献一个 `{ name: id, description }`
+    // （来自模块 meta），在首次生成文档时追加到全局 tags 末尾。
+    transformObject: ({ openapiObject }: any) => {
+      const moduleTags = fastify.moduleLoader?.listOpenapiTags() ?? []
+      if (moduleTags.length === 0) return openapiObject
+      const known = new Set((openapiObject.tags ?? []).map((t: { name: string }) => t.name))
+      return {
+        ...openapiObject,
+        tags: [...(openapiObject.tags ?? []), ...moduleTags.filter((t) => !known.has(t.name))],
       }
     },
     refResolver: {

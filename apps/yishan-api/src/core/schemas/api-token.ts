@@ -132,12 +132,9 @@ export const AvailableScopeItemSchema = Type.Object(
 export const AvailableScopeGroupSchema = Type.Object(
   {
     label: Type.String({ description: "分组名称，如 系统管理" }),
-    system: Type.Union([
-      Type.Literal("system", { description: "系统管理" }),
-      Type.Literal("shop", { description: "商城管理" }),
-      Type.Literal("portal", { description: "门户管理" }),
-      Type.Literal("special", { description: "特殊权限" }),
-    ]),
+    system: Type.String({
+      description: "分组 id：权限声明的 group（如 system、auth 或模块自己的分组）；PAT 专用分组为 special",
+    }),
     options: Type.Array(Type.Ref("availableScopeItem")),
   },
   { $id: "availableScopeGroup" },

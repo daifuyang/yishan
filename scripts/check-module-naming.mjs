@@ -64,7 +64,27 @@ function fail(msg) {
 let errorCount = 0
 const seenTables = new Map()
 
+// 与 core/module-loader 的 MODULE_ID_PATTERN 一致（启动时同样校验，这里提前在 lint 失败）。
+const MODULE_ID_PATTERN = /^[a-z][a-z0-9_]{0,23}$/
+const META_ID_RE = /export\s+const\s+meta\s*=\s*\{[\s\S]*?\bid\s*:\s*['"]([^'"]+)['"]/
+
 for (const id of listModuleDirs()) {
+  if (!MODULE_ID_PATTERN.test(id)) {
+    fail(`module directory '${id}' is not a valid module id (${MODULE_ID_PATTERN})`)
+    errorCount++
+  }
+  let moduleSrc = ''
+  try {
+    moduleSrc = readFileSync(join(MODULES_ROOT, id, 'module.ts'), 'utf8')
+  } catch {
+    // 没有 module.ts 的目录不是模块，启动扫描会跳过
+  }
+  const metaId = moduleSrc.match(META_ID_RE)?.[1]
+  if (moduleSrc && metaId !== id) {
+    fail(`module '${id}': meta.id ${JSON.stringify(metaId)} must equal its directory name`)
+    errorCount++
+  }
+
   const schemaPath = join(MODULES_ROOT, id, 'db/schema.ts')
   const tables = extractTablesFromSchema(schemaPath)
 

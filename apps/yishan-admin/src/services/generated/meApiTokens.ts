@@ -53,7 +53,7 @@ export async function meRevokeApiToken(
   });
 }
 
-/** 获取当前用户可授予的权限范围 返回当前用户可授予的权限列表，按 system/shop/portal/special 分组。仅返回用户当前持有的且在系统中已登记的权限码。 GET /api/v1/me/api-tokens/available-scopes */
+/** 获取当前用户可授予的权限范围 返回当前用户可授予的权限列表，按权限声明的 group 分组（system 在前，PAT 专用 special 在后）。仅返回用户当前持有的且在系统中已登记的权限码。 GET /api/v1/me/api-tokens/available-scopes */
 export async function meListAvailableScopes(options?: { [key: string]: any }) {
   return request<API.availableScopesResp>(
     "/api/v1/me/api-tokens/available-scopes",

@@ -2,21 +2,7 @@ import 'dotenv/config'
 import { drizzle } from 'drizzle-orm/mysql2'
 import { createPool, type Pool } from 'mysql2/promise'
 import { schema } from './schema/index.js'
-
-/**
- * Build a MySQL connection URL from the available env vars. Returns undefined
- * if neither DATABASE_URL nor DATABASE_HOST is configured (caller decides).
- */
-function buildDatabaseUrl(): string | undefined {
-  if (process.env.DATABASE_URL) return process.env.DATABASE_URL
-  if (!process.env.DATABASE_HOST) return undefined
-  const user = process.env.DATABASE_USER ?? 'root'
-  const password = process.env.DATABASE_PASSWORD ?? ''
-  const host = process.env.DATABASE_HOST
-  const port = process.env.DATABASE_PORT ?? '3306'
-  const database = process.env.DATABASE_NAME ?? ''
-  return `mysql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
-}
+import { resolveDatabaseUrl as buildDatabaseUrl } from './database-url.js'
 
 /**
  * Shared mysql2 connection pool. The Drizzle client and the DbManager both

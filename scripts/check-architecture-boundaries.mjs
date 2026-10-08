@@ -8,6 +8,13 @@
  *   package-imports-app    packages/** 或 apps/yishan-components/** import 了 apps/<app>/ 内的源码
  *   business-literal       公共代码（API src/modules 之外、Admin src/modules 之外）出现业务模块 id
  *                          作为字符串字面量（含权限码前缀、URL、Swagger tag、i18n key、import 路径）
+ *   module-imports-internal API 模块 import 了自身目录之外的 API 源码，且不是公开入口
+ *                          （core/module-api、core/system-api；drizzle.config.ts 另可用 db/database-url、
+ *                          db/migrations-table）
+ *   kernel-imports-system  kernel / platform（module-loader、permissions、auth、route-registrar、
+ *                          module-api、plugins/external）import 了 system 实现（services、repositories、
+ *                          schemas、mappers、routes/api、routes/_dev、plugins/app、scripts）
+ *   kernel-alias-import    kernel 文件使用 `@/` 别名（kernel 需保持可包化：只用相对导入）
  *
  * 已知违规记录在 scripts/baselines/architecture-boundaries.json（每项带 reason）。
  *   新违规 → 失败；基线中已消失的违规 → 失败（要求同步删除，防止悄悄回归）。
@@ -98,6 +105,20 @@ export function businessLiterals(code, ids) {
   return [...hits]
 }
 
+const API_SRC = APPS.api.src
+/** kernel：可包化的公共机制，只允许相对导入。 */
+const KERNEL = ['core/module-loader/', 'core/permissions/', 'core/auth/', 'core/routes/route-registrar.ts', 'core/module-api.ts'].map((p) => `${API_SRC}/${p}`)
+/** platform：Fastify 插件装配。与 kernel 一样不得依赖 system 实现，但可以使用 `@/` 别名。 */
+const PLATFORM = [`${API_SRC}/core/plugins/external/`]
+/** system：可替换的默认实现。 */
+const SYSTEM = ['core/services/', 'core/repositories/', 'core/schemas/', 'core/mappers/', 'core/routes/api/', 'core/routes/_dev/', 'core/plugins/app/', 'scripts/'].map((p) => `${API_SRC}/${p}`)
+/** 模块可以导入的 API 公开入口（去掉扩展名后比较）。 */
+const MODULE_PUBLIC = ['core/module-api', 'core/system-api'].map((p) => `${API_SRC}/${p}`)
+const MODULE_TOOLING_PUBLIC = ['db/database-url', 'db/migrations-table'].map((p) => `${API_SRC}/${p}`)
+
+const under = (rel, prefixes) => prefixes.some((p) => (p.endsWith('/') ? rel.startsWith(p) : rel === p))
+const stripExt = (p) => p.replace(/\.(ts|tsx|js|mjs|cjs)$/, '').replace(/\/index$/, '')
+
 const moduleOf = (rel, appSrc) => {
   const prefix = `${appSrc}/modules/`
   return rel.startsWith(prefix) ? rel.slice(prefix.length).split('/')[0] : null
@@ -117,10 +138,18 @@ export function collectViolations(root = ROOT) {
       const rel = posix(relative(root, abs))
       const code = stripComments(readFileSync(abs, 'utf8'))
       const owner = moduleOf(rel, app.src)
+      const isKernel = app === APPS.api && under(rel, KERNEL)
+      const isPlatform = app === APPS.api && under(rel, PLATFORM)
       for (const spec of importSpecifiers(code)) {
+        if (isKernel && spec.startsWith('@/')) violations.push(`kernel-alias-import|${rel}|${spec}`)
         const target = resolveSpec(root, rel, spec, app.aliases)
         if (!target) continue
+        if ((isKernel || isPlatform) && under(target, SYSTEM)) violations.push(`kernel-imports-system|${rel}|${spec}`)
         const targetModule = moduleOf(target, app.src)
+        if (app === APPS.api && owner && !targetModule && target.startsWith(`${app.src}/`)) {
+          const allowed = rel.endsWith('/drizzle.config.ts') ? [...MODULE_PUBLIC, ...MODULE_TOOLING_PUBLIC] : MODULE_PUBLIC
+          if (!allowed.includes(stripExt(target))) violations.push(`module-imports-internal|${rel}|${spec}`)
+        }
         if (!targetModule) continue
         if (!owner) violations.push(`core-imports-module|${rel}|${spec}`)
         else if (owner !== targetModule) violations.push(`cross-module-import|${rel}|${spec}`)

@@ -128,10 +128,30 @@ describe('module lifecycle baseline', () => {
     await app.close()
   })
 
-  it('current baseline: meta.id format is not validated at scan time (P1 scope)', async () => {
+  // P0 baseline recorded that `Bad-Id` was accepted (R-16). Source-First Goal A makes the
+  // scan fail fast instead; these cases replace the old "not validated" snapshot.
+  it('rejects a meta.id that is not lower-case letters/digits/underscores (R-16 fixed)', async () => {
     const { srcRoot, distRoot } = tmpRoot()
     writeDistModule(distRoot, 'Bad-Id', `{ id: 'Bad-Id' }`)
-    const scanned = await scanDiskModulesPure(srcRoot, distRoot)
-    expect(scanned.map((m) => m.id)).toEqual(['Bad-Id'])
+    await expect(scanDiskModulesPure(srcRoot, distRoot)).rejects.toThrow(/invalid meta\.id "Bad-Id"/)
+  })
+
+  it('rejects a meta.id longer than 24 characters', async () => {
+    const { srcRoot, distRoot } = tmpRoot()
+    const long = 'a'.repeat(25)
+    writeDistModule(distRoot, long, `{ id: '${long}' }`)
+    await expect(scanDiskModulesPure(srcRoot, distRoot)).rejects.toThrow(/invalid meta\.id/)
+  })
+
+  it('rejects a meta.id that differs from its directory name', async () => {
+    const { srcRoot, distRoot } = tmpRoot()
+    writeDistModule(distRoot, 'alpha', `{ id: 'beta' }`)
+    await expect(scanDiskModulesPure(srcRoot, distRoot)).rejects.toThrow(/must equal its directory name/)
+  })
+
+  it('does not validate modules that are not packed (meta.enabled=false is skipped first)', async () => {
+    const { srcRoot, distRoot } = tmpRoot()
+    writeDistModule(distRoot, 'Legacy-Off', `{ id: 'Legacy-Off', enabled: false }`)
+    expect(await scanDiskModulesPure(srcRoot, distRoot)).toEqual([])
   })
 })
