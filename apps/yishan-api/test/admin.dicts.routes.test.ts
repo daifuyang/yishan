@@ -51,6 +51,52 @@ beforeEach(() => {
   vi.restoreAllMocks()
 })
 
+describe('Dictionary CRUD factory routes', () => {
+  it('POST /types forwards the type payload and returns the success envelope', async () => {
+    const app = await buildApp()
+    const payload = { name: 'Order status', type: 'order_status', status: 1, sort_order: 5 }
+    const now = new Date().toISOString()
+    const created = { id: 101, ...payload, createdAt: now, updatedAt: now }
+    const createDictType = vi.spyOn(DictService, 'createDictType').mockResolvedValue(created as any)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `${PREFIX}/types`,
+      headers: { Authorization: 'Bearer test-token' },
+      payload,
+    })
+
+    expect(createDictType).toHaveBeenCalledOnce()
+    expect(createDictType.mock.calls[0][0]).toEqual(payload)
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ success: true, code: 10000, data: created })
+
+    await app.close()
+  })
+
+  it('POST /data forwards the data payload and returns the success envelope', async () => {
+    const app = await buildApp()
+    const payload = { typeId: 101, label: 'Paid', value: 'paid', status: 1, sort_order: 10, isDefault: false }
+    const now = new Date().toISOString()
+    const created = { id: 201, type: 'order_status', ...payload, createdAt: now, updatedAt: now }
+    const createDictData = vi.spyOn(DictService, 'createDictData').mockResolvedValue(created as any)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `${PREFIX}/data`,
+      headers: { Authorization: 'Bearer test-token' },
+      payload,
+    })
+
+    expect(createDictData).toHaveBeenCalledOnce()
+    expect(createDictData.mock.calls[0][0]).toEqual(payload)
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ success: true, code: 10000, data: created })
+
+    await app.close()
+  })
+})
+
 describe('N2: 字典 not-found 业务错误码', () => {
   it('GET /types/:id 不存在的字典类型应返回 32501(DICT_TYPE_NOT_FOUND) 非 21001', async () => {
     const app = await buildApp()

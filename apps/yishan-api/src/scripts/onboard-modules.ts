@@ -34,7 +34,6 @@ const DRIZZLE_KIT = join(APP_ROOT_DIST, '..', 'node_modules', '.bin', 'drizzle-k
 // Windows 上 .bin/drizzle-kit 是 shell wrapper，没有 .exe 后缀。
 // Node spawn 不直接执行 .cmd/.bat，需显式走 shell。
 const DRIZZLE_KIT_CMD = process.platform === 'win32' ? `${DRIZZLE_KIT}.CMD` : DRIZZLE_KIT
-const SPAWN_OPTS = { cwd: undefined as string | undefined, env: process.env, shell: process.platform === 'win32' }
 
 interface StepOutcome {
   ok: boolean
@@ -223,16 +222,12 @@ async function main() {
   // 这里用 loader 暴露的纯函数版，避免再启一次 app。
   console.log('\n[sync] 同步 sys_module 行（loader.syncModulesFromDiskPure）...')
   try {
-    const { scanDiskModulesPure, shouldPreferSrc, syncModulesFromDiskPure } = await import(
+    const { scanDiskModulesPure, syncModulesFromDiskPure } = await import(
       '../core/module-loader/module-loader.js'
     )
-    const diskModules = await scanDiskModulesPure(
-      APP_ROOT_SRC,
-      APP_ROOT_DIST,
-      shouldPreferSrc(),
-    )
+    const diskModules = await scanDiskModulesPure(APP_ROOT_SRC, APP_ROOT_DIST)
     const { inserted, updated } = await syncModulesFromDiskPure(drizzleDb, diskModules)
-    console.log(`[sync] sys_module 完成：inserted=${inserted} updated=${updated} （preferSrc=${shouldPreferSrc()}）`)
+    console.log(`[sync] sys_module 完成：inserted=${inserted} updated=${updated}`)
   } catch (err) {
     console.error('[sync] 同步 sys_module 失败:', (err as Error).message)
     process.exitCode = 1

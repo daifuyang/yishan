@@ -61,6 +61,8 @@ export const BYPASS_CODES: ReadonlySet<string> = Object.freeze(
   new Set([
     'auth:login',
     'auth:refresh',
+    'app:auth:login',
+    'app:auth:refresh',
     'system:cron',
     'system:health',
     'system:options:public',
