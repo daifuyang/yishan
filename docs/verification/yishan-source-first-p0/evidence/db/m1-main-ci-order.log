@@ -1,0 +1,81 @@
+---- migrate WITHOUT generate (journal absent)
+$ (cwd=<repo>/tmp/p0/main-src/apps/yishan-api) pnpm db:migrate
+
+> yishan-api@1.0.0 db:migrate <repo>\tmp\p0\main-src\apps\yishan-api
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '<repo>\tmp\p0\main-src\apps\yishan-api\drizzle.config.ts'
+ ELIFECYCLE  Command failed with exit code 1.
+EXIT=1
+---- CI step: db:generate (scratch copy only)
+$ (cwd=<repo>/tmp/p0/main-src/apps/yishan-api) pnpm db:generate
+
+> yishan-api@1.0.0 db:generate <repo>\tmp\p0\main-src\apps\yishan-api
+> drizzle-kit generate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '<repo>\tmp\p0\main-src\apps\yishan-api\drizzle.config.ts'
+Reading schema files:
+<repo>\tmp\p0\main-src\apps\yishan-api\src\db\schema\index.ts
+
+26 tables
+sys_api_token 12 columns 4 indexes 0 fks
+sys_app 13 columns 7 indexes 0 fks
+sys_app_menu 20 columns 10 indexes 0 fks
+sys_app_resource 15 columns 8 indexes 0 fks
+sys_attachment 25 columns 10 indexes 0 fks
+sys_attachment_folder 13 columns 9 indexes 0 fks
+sys_dept 13 columns 9 indexes 0 fks
+sys_dict_data 15 columns 8 indexes 0 fks
+sys_dict_type 12 columns 7 indexes 0 fks
+sys_form_data 10 columns 6 indexes 0 fks
+sys_form_field 15 columns 7 indexes 0 fks
+sys_login_log 11 columns 7 indexes 0 fks
+sys_menu 19 columns 9 indexes 0 fks
+sys_menu_permission 4 columns 3 indexes 0 fks
+sys_module 7 columns 1 indexes 0 fks
+sys_module_migration 4 columns 2 indexes 0 fks
+sys_option 11 columns 4 indexes 0 fks
+sys_post 11 columns 7 indexes 0 fks
+sys_region 8 columns 3 indexes 0 fks
+sys_role 13 columns 7 indexes 0 fks
+sys_role_menu 6 columns 3 indexes 0 fks
+sys_role_permission 7 columns 3 indexes 0 fks
+sys_user 20 columns 10 indexes 0 fks
+sys_user_dept 6 columns 3 indexes 0 fks
+sys_user_role 6 columns 3 indexes 0 fks
+sys_user_token 13 columns 5 indexes 0 fks
+
+[✓] Your SQL migration file ➜ drizzle\0000_colorful_namor.sql 🚀
+EXIT=0
+drizzle:
+0000_colorful_namor.sql
+0000_init.sql
+meta
+
+drizzle/meta:
+_journal.json
+0000_snapshot.json
+generated 0000_init.sql IDENTICAL to committed
+generated journal [{"tag":"0000_colorful_namor","when":1791451941979,"iso":"2026-10-08T09:32:21.979Z"}]
+$ (cwd=<repo>/tmp/p0/main-src/apps/yishan-api) pnpm db:migrate
+
+> yishan-api@1.0.0 db:migrate <repo>\tmp\p0\main-src\apps\yishan-api
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '<repo>\tmp\p0\main-src\apps\yishan-api\drizzle.config.ts'
+[✓] migrations applied successfully!EXIT=0
+$ (cwd=<repo>/tmp/p0/main-src/apps/yishan-api/src/modules/demo) <repo>/tmp/p0/main-src/apps/yishan-api/node_modules/.bin/drizzle-kit --config=./drizzle.config.ts migrate
+Reading config file '<repo>\tmp\p0\main-src\apps\yishan-api\src\modules\demo\drizzle.config.ts'
+[✓] migrations applied successfully!EXIT=0
+---- main after core(generate+migrate) then demo
+## tables (27)
+  __meta: 1 -> __drizzle_migrations
+  sys: 26 -> sys_api_token, sys_app, sys_app_menu, sys_app_resource, sys_attachment, sys_attachment_folder, sys_dept, sys_dict_data, sys_dict_type, sys_form_data, sys_form_field, sys_login_log, sys_menu, sys_menu_permission, sys_module, sys_module_migration, sys_option, sys_post, sys_region, sys_role, sys_role_menu, sys_role_permission, sys_user, sys_user_dept, sys_user_role, sys_user_token
+## __drizzle_migrations columns: id, hash, created_at
+## __drizzle_migrations rows (1)
+  id=1 created_at=1791451941979 (2026-10-08T09:32:21.979Z) hash=e222dffa6be3… -> core/0000_colorful_namor when=1791451941979 (2026-10-08T09:32:21.979Z)
+## sys_module_migration rows (0)
+## sys_module rows (0)

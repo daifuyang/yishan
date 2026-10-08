@@ -1,7 +1,7 @@
 /**
  * onboard-modules.ts — 模块入驻编排脚本。
  *
- * 对 src/modules/<id>/ 下的每个模块依次执行三步：
+ * 对 src/modules/<id>/ 下已装载（meta.enabled !== false）的模块依次执行三步：
  *   1. 迁移：调用 drizzle-kit migrate（应用模块 drizzle/ 下的 SQL 到 DB）。
  *      迁移完成后把 _journal.json 中的所有 tag 同步进 sys_module_migration。
  *   2. seed：执行模块自带的 seed 入口（seed.ts / scripts/seed.ts / db/seed.ts）。
@@ -20,6 +20,7 @@
 import 'dotenv/config'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { spawn } from 'node:child_process'
 import { inArray } from 'drizzle-orm'
 import { drizzleDb, pool } from '@/db'
@@ -34,7 +35,6 @@ const DRIZZLE_KIT = join(APP_ROOT_DIST, '..', 'node_modules', '.bin', 'drizzle-k
 // Windows 上 .bin/drizzle-kit 是 shell wrapper，没有 .exe 后缀。
 // Node spawn 不直接执行 .cmd/.bat，需显式走 shell。
 const DRIZZLE_KIT_CMD = process.platform === 'win32' ? `${DRIZZLE_KIT}.CMD` : DRIZZLE_KIT
-const SPAWN_OPTS = { cwd: undefined as string | undefined, env: process.env, shell: process.platform === 'win32' }
 
 interface StepOutcome {
   ok: boolean
@@ -48,16 +48,27 @@ interface ModuleResult {
   menuAppend: StepOutcome
 }
 
+async function loadPackHelper() {
+  const url = pathToFileURL(join(__dirname, '..', '..', 'scripts', 'module-pack.mjs')).href
+  return import(url) as Promise<{ isPackedModuleDir: (dir: string) => boolean }>
+}
+
 async function listModules(): Promise<string[]> {
   if (!existsSync(MODULES_SRC)) return []
+  const { isPackedModuleDir } = await loadPackHelper()
   const ids: string[] = []
   for (const id of readdirSync(MODULES_SRC)) {
     const dir = join(MODULES_SRC, id)
     if (!statSync(dir).isDirectory()) continue
     const moduleEntry = join(dir, 'module.ts')
-    if (existsSync(moduleEntry) || existsSync(join(MODULES_DIST, id, 'module.js'))) {
-      ids.push(id)
+    if (!(existsSync(moduleEntry) || existsSync(join(MODULES_DIST, id, 'module.js')))) {
+      continue
     }
+    if (!isPackedModuleDir(dir)) {
+      console.log(`[onboard] 跳过 ${id}：meta.enabled=false`)
+      continue
+    }
+    ids.push(id)
   }
   return ids.sort()
 }
@@ -223,16 +234,12 @@ async function main() {
   // 这里用 loader 暴露的纯函数版，避免再启一次 app。
   console.log('\n[sync] 同步 sys_module 行（loader.syncModulesFromDiskPure）...')
   try {
-    const { scanDiskModulesPure, shouldPreferSrc, syncModulesFromDiskPure } = await import(
+    const { scanDiskModulesPure, syncModulesFromDiskPure } = await import(
       '../core/module-loader/module-loader.js'
     )
-    const diskModules = await scanDiskModulesPure(
-      APP_ROOT_SRC,
-      APP_ROOT_DIST,
-      shouldPreferSrc(),
-    )
+    const diskModules = await scanDiskModulesPure(APP_ROOT_SRC, APP_ROOT_DIST)
     const { inserted, updated } = await syncModulesFromDiskPure(drizzleDb, diskModules)
-    console.log(`[sync] sys_module 完成：inserted=${inserted} updated=${updated} （preferSrc=${shouldPreferSrc()}）`)
+    console.log(`[sync] sys_module 完成：inserted=${inserted} updated=${updated}`)
   } catch (err) {
     console.error('[sync] 同步 sys_module 失败:', (err as Error).message)
     process.exitCode = 1

@@ -8,6 +8,7 @@
  *   会被视为违规。非 main 目标时自动跳过。
  *
  * 检测逻辑(优先级)：
+ *   0. YISHAN_BASELINE_TARGET（显式指定目标基线；CI 对非 all 目标设为 main）
  *   1. CI: GITHUB_BASE_REF（PR 目标分支）
  *   2. CI: GITHUB_REF_NAME（push 到的分支）
  *   3. 本地: git rev-parse --abbrev-ref HEAD
@@ -24,6 +25,8 @@ const MODULES_ROOT = 'apps/yishan-api/src/modules'
 const ALLOWED = new Set(['demo'])
 
 function currentBranch() {
+  // 显式目标：从 main 拉出的功能分支（如 refactor/*）按将要合入的基线检查
+  if (process.env.YISHAN_BASELINE_TARGET) return process.env.YISHAN_BASELINE_TARGET
   // CI: PR 的目标分支
   if (process.env.GITHUB_BASE_REF) return process.env.GITHUB_BASE_REF
   // CI: push 到的分支 (GITHUB_REF 是 refs/heads/<name>)

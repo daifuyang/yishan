@@ -1,0 +1,8 @@
+step	exit	duration	command
+root-lint	0	22s	pnpm lint
+root-test	0	14s	pnpm test
+root-build	0	38s	pnpm build
+app-lint	2	2s	pnpm --filter yishan-app lint
+admin-lint	0	15s	pnpm --filter yishan-admin lint
+api-test	0	6s	pnpm --filter yishan-api test
+tiptap-build	0	12s	pnpm --filter yishan-tiptap build

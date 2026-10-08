@@ -325,8 +325,10 @@ const AttachmentsPage: React.FC = () => {
         width={640}
       >
         {folder.mediaPreviewKind === 'audio' ? (
+          // biome-ignore lint/a11y/useMediaCaption: previews arbitrary user uploads; the attachment store holds no caption tracks
           <audio src={folder.mediaPreviewSrc} controls autoPlay style={{ width: '100%' }} />
         ) : folder.mediaPreviewKind === 'video' ? (
+          // biome-ignore lint/a11y/useMediaCaption: previews arbitrary user uploads; the attachment store holds no caption tracks
           <video src={folder.mediaPreviewSrc} controls autoPlay style={{ width: '100%', maxHeight: '60vh' }} />
         ) : null}
       </Modal>

@@ -1,0 +1,50 @@
+$ (cwd=<repo>/apps/yishan-api) node dist/scripts/seed/index.js
+========== yishan seed 编排开始 ==========
+Step 1/2: core migrate + seed
+[seed] drizzle-kit migrate
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '<repo>\apps\yishan-api\drizzle.config.ts'
+[✓] migrations applied successfully![seed] core migrate 完成
+管理员用户已存在，跳过创建
+系统默认角色已准备: { superAdmin: '超级管理员', normalAdmin: '普通管理员' }
+开始创建树形部门结构...
+树形部门结构创建完成
+岗位数据创建完成
+系统菜单结构创建完成
+角色-菜单默认绑定完成: { superAdmin: 16, admin: 14 }
+系统字典数据创建完成
+系统参数初始化完成
+省市区数据导入完成: 3429 条
+  core seed 完成
+Step 2/2: module migrate + seed (onboard-modules)
+onboard-modules 异常退出: Error: Cannot find module 'file:///<repo>/apps/yishan-api/scripts/module-pack.mjs'
+Require stack:
+- <repo>\apps\yishan-api\dist\scripts\onboard-modules.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Function._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at <repo>\apps\yishan-api\dist\scripts\onboard-modules.js:52:61 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\dfy\\workspace\\products\\yishan\\.claude\\worktrees\\goofy-skipping-biscuit\\apps\\yishan-api\\dist\\scripts\\onboard-modules.js'
+  ]
+}
+[seed] 异常退出: Error: onboard-modules 退出码 1
+    at runSeed (<repo>\apps\yishan-api\dist\scripts\seed\index.js:127:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+EXIT=1
+---- after db:seed (run 2, same DB)
+## tables (28)
+  __meta: 1 -> __drizzle_migrations
+  sys: 27 -> sys_api_token, sys_app, sys_app_menu, sys_app_resource, sys_attachment, sys_attachment_folder, sys_dept, sys_dict_data, sys_dict_type, sys_enum, sys_form_data, sys_form_field, sys_login_log, sys_menu, sys_menu_permission, sys_module, sys_module_migration, sys_option, sys_post, sys_region, sys_role, sys_role_menu, sys_role_permission, sys_user, sys_user_dept, sys_user_role, sys_user_token
+## __drizzle_migrations columns: id, hash, created_at
+## __drizzle_migrations rows (2)
+  id=1 created_at=1787238284270 (2026-08-20T15:04:44.270Z) hash=0068524c1db6… -> core/0000_init when=1787238284270 (2026-08-20T15:04:44.270Z)
+  id=2 created_at=1788881192896 (2026-09-08T15:26:32.896Z) hash=307d0ebe081d… -> core/0002_init when=1788881192896 (2026-09-08T15:26:32.896Z)
+## sys_module_migration rows (0)
+## sys_module rows (0)

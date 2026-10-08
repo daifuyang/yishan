@@ -125,7 +125,7 @@ export function ColorHighlightPopoverContent({
     items: allTextItems,
     orientation: "both",
     onSelect: (item) => {
-      if (!containerRef.current) return false;
+      if (!containerRef.current) return;
       const colorElement = containerRef.current.querySelector(
         '[data-color="true"]'
       ) as HTMLElement;
@@ -140,7 +140,7 @@ export function ColorHighlightPopoverContent({
     items: allBgItems,
     orientation: "both",
     onSelect: (item) => {
-      if (!containerRef.current) return false;
+      if (!containerRef.current) return;
       const highlightedElement = containerRef.current.querySelector(
         '[data-highlighted="true"]'
       ) as HTMLElement;

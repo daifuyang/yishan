@@ -1,0 +1,9 @@
+case	exit	output
+tsc-baseline: new App type error	exit=1	[tsc-baseline] app: 1 NEW type error(s):
+tsc-baseline: TipTap error fixed but still in baseline	exit=1	[tsc-baseline] tiptap: 1 recorded error(s) no longer occur; remove them from the baseline:
+boundaries: core imports module	exit=1	[boundaries] NEW violation: business-literal|apps/yishan-api/src/core/p1a-mutation.ts|demo:../modules/demo/module | [boundaries] NEW violation: core-imports-module|apps/yishan-api/src/core/p1a-mutation.ts|../modules/demo/module
+boundaries: business literal in core	exit=1	[boundaries] NEW violation: business-literal|apps/yishan-api/src/core/p1a-mutation.ts|crm:crm
+openapi: committed spec drifts from runtime	exit=1	[openapi-diff] 1 change(s), 0 allowed, 1 unapproved, 0 unused allow entries
+[check-main-baseline] 发现非法模块目录: shop
+[check-main-baseline] 请将这些模块移到 all 分支,不要在 main 上提交
+main-baseline: extra module on main	exit=1

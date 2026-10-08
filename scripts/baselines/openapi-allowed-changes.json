@@ -1,0 +1,4 @@
+{
+  "description": "Explicitly approved API contract changes relative to docs/verification/yishan-source-first-p0/evidence/openapi/main-6a5c62a-development.json. Each entry is one change key printed by scripts/openapi-diff.mjs plus a reason and the phase/PR that introduced it. P1-A introduced none.",
+  "allowed": []
+}

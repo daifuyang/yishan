@@ -146,14 +146,20 @@ export const errorConfig: RequestConfig = {
     },
     // 错误接收及处理
     errorHandler: async (error: any, opts: any) => {
-      if (opts?.skipErrorHandler) throw error;
+      // Umi 忽略 handler 的 Promise，原请求会自行拒绝，避免额外的未处理拒绝。
+      if (opts?.skipErrorHandler) return;
 
       // 处理401未授权错误 - 尝试自动刷新token
-      if (error.response?.status === 401) {
+      // Umi 将 URL 和 options 分开传入，Axios 错误保留实际请求 URL。
+      const requestConfig = error.config as { url?: string } | undefined;
+      const requestPath = (opts?.url ?? requestConfig?.url ?? "").split("?")[0];
+      const isAuthLoginEndpoint =
+        requestPath === "/api/v1/auth/login" ||
+        requestPath === "/api/v1/app/auth/login";
+      if (error.response?.status === 401 && !isAuthLoginEndpoint) {
         // 跳过刷新token的请求，避免无限循环。
         // 注意：用 URL 路径段匹配而非 includes，避免未来出现路径中含
         // "/auth/refresh" 子串的端点被误判。
-        const requestPath = (opts?.url ?? "").split("?")[0];
         if (requestPath === "/api/v1/auth/refresh") {
           await logout();
           return;
@@ -253,27 +259,27 @@ export const errorConfig: RequestConfig = {
         // 所以这里优先展示信封里的业务 message，取不到才回退按 status 的固定文案。
         const status = error.response.status;
         const envelopeMessage = pickEnvelopeMessage(error.response.data);
-        let errorMessage = envelopeMessage ?? `请求错误 ${status}`;
+        let errorMessage = envelopeMessage ?? `操作失败，请稍后再试（${status}）`;
 
         if (!envelopeMessage) {
           switch (status) {
             case 400:
-              errorMessage = "请求参数错误";
+              errorMessage = "提交的内容有误，请检查后重试";
               break;
             case 404:
-              errorMessage = "请求的资源不存在";
+              errorMessage = "找不到相关内容，可能已被删除";
               break;
             case 500:
-              errorMessage = "服务器内部错误";
+              errorMessage = "服务暂时无法处理，请稍后再试";
               break;
             case 502:
-              errorMessage = "网关错误";
+              errorMessage = "服务暂时无法连接，请稍后再试";
               break;
             case 503:
-              errorMessage = "服务暂时不可用";
+              errorMessage = "服务正在维护中，请稍后再试";
               break;
             default:
-              errorMessage = `请求错误 ${status}`;
+              errorMessage = `操作失败，请稍后再试（${status}）`;
           }
         }
 
@@ -284,10 +290,10 @@ export const errorConfig: RequestConfig = {
         message[level](errorMessage);
       } else if (error.request) {
         // 网络错误
-        message.error("网络错误，请检查网络连接");
+        message.error("网络好像不太通畅，请检查连接后重试");
       } else {
         // 发送请求时出了点问题
-        message.error("请求错误，请重试");
+        message.error("操作没成功，请稍后再试");
       }
     },
   },

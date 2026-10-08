@@ -195,6 +195,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -874,6 +875,33 @@
           }
         }
       },
+      "tokenCategoryStats": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "总数（未软删）"
+          },
+          "active": {
+            "type": "integer",
+            "description": "活跃数（未过期 / 未撤销）"
+          },
+          "expired": {
+            "type": "integer",
+            "description": "过期数（未撤销但已过期）"
+          },
+          "revoked": {
+            "type": "integer",
+            "description": "已撤销 / 已软删数"
+          }
+        },
+        "required": [
+          "total",
+          "active",
+          "expired",
+          "revoked"
+        ]
+      },
       "tokenStatsResp": {
         "type": "object",
         "properties": {
@@ -892,23 +920,37 @@
           "data": {
             "type": "object",
             "properties": {
+              "apiTokens": {
+                "$ref": "#/components/schemas/tokenCategoryStats"
+              },
+              "userTokens": {
+                "$ref": "#/components/schemas/tokenCategoryStats"
+              },
               "totalTokens": {
                 "type": "integer",
-                "description": "总token数量"
+                "description": "@deprecated 请改用 userTokens.total；保留以兼容旧客户端",
+                "deprecated": true
               },
               "activeTokens": {
                 "type": "integer",
-                "description": "活跃token数量"
+                "description": "@deprecated 请改用 userTokens.active",
+                "deprecated": true
               },
               "expiredTokens": {
                 "type": "integer",
-                "description": "过期token数量"
+                "description": "@deprecated 请改用 userTokens.expired",
+                "deprecated": true
               },
               "revokedTokens": {
                 "type": "integer",
-                "description": "已撤销token数量"
+                "description": "@deprecated 请改用 userTokens.revoked",
+                "deprecated": true
               }
-            }
+            },
+            "required": [
+              "apiTokens",
+              "userTokens"
+            ]
           }
         }
       },
@@ -1458,6 +1500,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -1813,6 +1856,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -2266,6 +2310,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -2625,6 +2670,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -3298,6 +3344,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -3606,6 +3653,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -3999,6 +4047,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -4355,6 +4404,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -4893,6 +4943,7 @@
         "properties": {
           "page": {
             "minimum": 1,
+            "maximum": 100000,
             "default": 1,
             "description": "页码",
             "type": "integer"
@@ -5539,7 +5590,7 @@
     }
   },
   "paths": {
-    "/api/demo/v1/info": {
+    "/api/demo/v1/info/": {
       "get": {
         "operationId": "demoInfo",
         "summary": "插件健康检查",
@@ -5547,6 +5598,11 @@
           "demo"
         ],
         "description": "返回模块自身与运行环境的只读信息，用于演示 plugin 不读 db 的纯函数 service。",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "x-permission-code": "demo:health:read",
         "x-permission-label": "示例插件-健康检查",
         "x-permission-group": "demo",
@@ -5628,12 +5684,17 @@
         }
       }
     },
-    "/api/demo/v1/todos": {
+    "/api/demo/v1/todos/": {
       "get": {
         "operationId": "demoTodosList",
         "summary": "Todo 列表",
         "tags": [
           "demo"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
         ],
         "x-permission-code": "demo:todos:list",
         "x-permission-label": "示例插件-Todo 示例-查看",
@@ -5747,6 +5808,11 @@
           },
           "required": true
         },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "x-permission-code": "demo:todos:create",
         "x-permission-label": "示例插件-Todo 示例-新建",
         "x-permission-group": "demo",
@@ -5821,6 +5887,11 @@
             "in": "path",
             "name": "id",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
           }
         ],
         "x-permission-code": "demo:todos:list",
@@ -5933,6 +6004,11 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "x-permission-code": "demo:todos:update",
         "x-permission-label": "示例插件-Todo 示例-编辑",
         "x-permission-group": "demo",
@@ -6007,6 +6083,11 @@
             "required": true
           }
         ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "x-permission-code": "demo:todos:delete",
         "x-permission-label": "示例插件-Todo 示例-删除",
         "x-permission-group": "demo",
@@ -6074,6 +6155,7 @@
           "system"
         ],
         "description": "返回服务的健康状态、版本号、当前时间和数据库连通性（Section 7）。",
+        "security": [],
         "x-permission-code": "system:health",
         "x-permission-label": "系统-健康检查",
         "x-permission-group": "system",
@@ -6151,6 +6233,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -6478,6 +6561,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -6935,6 +7019,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -7248,6 +7333,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -7515,6 +7601,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -7828,6 +7915,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -8241,6 +8329,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -8512,6 +8601,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -8785,6 +8875,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -9554,6 +9645,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -9932,6 +10024,11 @@
           "app"
         ],
         "description": "返回移动端基座的基本信息",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "x-permission-code": "app:root",
         "x-permission-label": "移动端根信息",
         "x-permission-group": "app",
@@ -10259,7 +10356,7 @@
     },
     "/api/v1/app/dashboard/stats": {
       "get": {
-        "operationId": "appDashboardStatsDetail",
+        "operationId": "appDashboardStats",
         "summary": "获取仪表盘统计",
         "tags": [
           "app-dashboard"
@@ -10715,6 +10812,7 @@
           {
             "schema": {
               "minimum": 1,
+              "maximum": 100000,
               "default": 1,
               "type": "integer"
             },
@@ -10773,6 +10871,7 @@
             }
           }
         },
+        "security": [],
         "x-permission-code": "auth:login",
         "x-permission-label": "认证-登录",
         "x-permission-group": "auth",
@@ -10881,6 +10980,7 @@
             }
           }
         },
+        "security": [],
         "x-permission-code": "auth:refresh",
         "x-permission-label": "认证-刷新令牌",
         "x-permission-group": "auth",
@@ -11089,6 +11189,11 @@
             }
           }
         },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "x-permission-code": "system:cron:cleanup-tokens",
         "x-permission-label": "系统-CRON 清理过期 token",
         "x-permission-group": "system",
@@ -11328,6 +11433,11 @@
       }
     }
   },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "tags": [
     {
       "name": "auth",
@@ -11380,11 +11490,6 @@
     {
       "name": "demo",
       "description": "Demo module endpoints（src/modules/demo/）"
-    }
-  ],
-  "security": [
-    {
-      "bearerAuth": []
     }
   ]
 }

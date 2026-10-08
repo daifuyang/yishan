@@ -2,7 +2,7 @@
  * 默认角色的后端功能/API 权限。
  *
  * 角色菜单与角色权限是两套独立关联：前者只控制导航可见性，后者才决定
- * requirePermission() 是否放行。权限码始终来自 Core 目录或插件 manifest，
+ * requirePermission() 是否放行。权限码始终来自 Core 目录，
  * 种子不创建自由配置的权限定义。
  */
 
@@ -45,10 +45,9 @@ export async function bindRolePermissionsByDefault(db: SeedDb, adminUserId: numb
     findRoleByCode(db, ROLE_CODES.ADMIN),
   ]);
   const allCodes = listPermissions().map((item) => item.code);
-  const adminCodes = allCodes.filter((code) => !code.startsWith('system:plugin:'));
 
   await Promise.all([
     replaceRolePermissions(db, superAdmin.id, allCodes, adminUserId),
-    replaceRolePermissions(db, admin.id, adminCodes, adminUserId),
+    replaceRolePermissions(db, admin.id, allCodes, adminUserId),
   ]);
 }

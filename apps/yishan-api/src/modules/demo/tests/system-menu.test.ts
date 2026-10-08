@@ -6,6 +6,8 @@ import {
 } from '../seed.js'
 import systemMenu from '../config/system-menu.json'
 
+const REGION_PAGE = '/demo/region'
+
 /**
  * 验证 seed 入口从 ./config/system-menu.json 解析菜单树的核心行为。
  * 这里只测纯函数部分（flattenMenuTree / toBool / JSON 字段保留）；
@@ -29,17 +31,17 @@ describe('flattenMenuTree', () => {
 
   it('铺平后节点总数 === 顶级 + 所有后代', () => {
     const flat = flattenMenuTree(tree)
-    // demo JSON 共 1 顶级 + 3 页面 + 6 按钮 = 10
-    // (quickstart 1 + health 1 + todos 4)
-    expect(flat.length).toBe(10)
+    // demo JSON 共 1 顶级 + 4 页面 + 7 按钮 = 12
+    // (quickstart 1 + health 1 + todos 4 + region 1)
+    expect(flat.length).toBe(12)
   })
 
   it('深度按层级递增：顶级 depth=0，页面 depth=1，按钮 depth=2', () => {
     const flat = flattenMenuTree(tree)
     const depths = flat.map((f) => f.depth)
     expect(depths.filter((d) => d === 0).length).toBe(1)
-    expect(depths.filter((d) => d === 1).length).toBe(3)
-    expect(depths.filter((d) => d === 2).length).toBe(6)
+    expect(depths.filter((d) => d === 1).length).toBe(4)
+    expect(depths.filter((d) => d === 2).length).toBe(7)
   })
 
   it('铺平顺序与 JSON 出现顺序一致（深度优先）', () => {
@@ -111,10 +113,11 @@ describe('flattenMenuTree', () => {
   it('permissionCodes 字段在铺平后仍可访问', () => {
     const flat = flattenMenuTree(tree)
     const withCodes = flat.filter((f) => f.node.permissionCodes && f.node.permissionCodes.length > 0)
-    // demo JSON 里每个按钮节点都有一个 permissionCode
-    expect(withCodes.length).toBeGreaterThanOrEqual(6)
+    // demo JSON 里每个按钮节点都带 permissionCodes
+    expect(withCodes.length).toBe(7)
     for (const f of withCodes) {
-      expect(f.node.permissionCodes![0]).toMatch(/^demo:/)
+      const expected = f.parentPath === REGION_PAGE ? /^region:/ : /^demo:/
+      for (const code of f.node.permissionCodes!) expect(code).toMatch(expected)
     }
   })
 
@@ -125,7 +128,7 @@ describe('flattenMenuTree', () => {
     expect(buttons.every((b) => b.node.hideInMenu === 1)).toBe(true)
     // isDefaultAction 只在「查看」按钮上为 1
     const defaultActions = buttons.filter((b) => b.node.isDefaultAction === 1)
-    expect(defaultActions.length).toBe(3) // 3 个查看按钮
+    expect(defaultActions.length).toBe(4) // 4 个查看按钮
   })
 })
 
@@ -168,10 +171,17 @@ describe('按钮节点（type=2）', () => {
   })
 
   it('按钮都带 permissionCodes，且形如 demo:<area>:<action>', () => {
-    for (const b of buttons) {
+    for (const b of buttons.filter((b) => b.parentPath !== REGION_PAGE)) {
       expect(b.node.permissionCodes).toBeDefined()
       expect(b.node.permissionCodes!.length).toBe(1)
       expect(b.node.permissionCodes![0]).toMatch(/^demo:[a-z]+:[a-z]+$/)
     }
+  })
+
+  // 省市级联示例页演示的是 Core 的地区接口，因此按钮绑定 Core 的 region:* 权限而非 demo:*。
+  it('省市级联页的查看按钮绑定 Core 地区权限', () => {
+    const regionButtons = buttons.filter((b) => b.parentPath === REGION_PAGE)
+    expect(regionButtons).toHaveLength(1)
+    expect(regionButtons[0].node.permissionCodes).toEqual(['region:list', 'region:tree', 'region:path', 'region:read'])
   })
 })

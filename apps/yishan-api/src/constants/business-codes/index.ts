@@ -146,8 +146,11 @@ export class BusinessCode {
     // 认证授权错误 (22xxx) - 未授权错误
     if (code >= 22000 && code < 23000) return 401;
 
-    // 用户 / 业务相关错误 (30xxx / 32xxx) - 返回200
+    // 用户 / 业务相关错误 (30xxx / 32xxx) - 返回200。
     if (code >= 30000 && code < 33000) return 200;
+
+    // 模块业务校验 (33xxx) - 与路由的200成功响应结构分离。
+    if (code >= 33000 && code < 34000) return 400;
 
     return 500;
   }
@@ -179,7 +182,7 @@ export class BusinessCode {
     if (code >= 20000 && code < 21000) return "系统错误";
     if (code >= 21000 && code < 22000) return "参数错误";
     if (code >= 22000 && code < 23000) return "权限错误";
-    if (code >= 30000 && code < 33000) return "业务错误";
+    if (code >= 30000 && code < 34000) return "业务错误";
     return "未知错误";
   }
 
@@ -192,7 +195,7 @@ export class BusinessCode {
     if (code >= 20000 && code < 21000) return "system";
     if (code >= 21000 && code < 22000) return "validation";
     if (code >= 22000 && code < 23000) return "auth";
-    if (code >= 30000 && code < 33000) return "business";
+    if (code >= 30000 && code < 34000) return "business";
     return "unknown";
   }
 
@@ -202,7 +205,9 @@ export class BusinessCode {
    * @returns 是否有效
    */
   static isValidCode(code: number): boolean {
-    return code === SUCCESS_CODE || ErrorMessages.hasOwnProperty(code);
+    // 33xxx 的消息由业务模块维护，核心只识别预留编号段。
+    return code === SUCCESS_CODE || ErrorMessages.hasOwnProperty(code) ||
+      (Number.isInteger(code) && code >= 33000 && code < 34000);
   }
 }
 

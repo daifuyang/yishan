@@ -72,30 +72,15 @@ export default defineConfig({
 })
 ```
 
-### `module.ts` —— 入口插件
+### `module.ts` —— 只导出 meta
+
+loader 只读 `meta`，不会 register 这个文件里的其它导出。路由放在 `routes/`。
 
 ```ts
-import fp from 'fastify-plugin'
-import { <id>Sample } from './db/schema.js'
-
 export const meta = {
   id: '<id>',
-  enabled: true,                            // 可选；缺省 true。首次 sync 进 sys_module 的兜底值
+  enabled: true, // 装载开关；false 则不编译、不 sync、不 mount。缺省 true
 }
-
-export default fp<{ moduleId: string }>(async (app, opts) => {
-  const moduleId = opts.moduleId
-
-  // 把 moduleId 写到每条路由的 config，供 Core 的 onRoute 拦截器用
-  app.addHook('onRoute', (route) => {
-    route.config = { ...(route.config ?? {}), moduleId }
-  })
-
-  // 业务路由：通过 app.drizzleDb 访问数据库
-  app.get('/list', async () => {
-    return app.drizzleDb.select().from(<id>Sample)
-  })
-})
 ```
 
 > 路由 prefix 硬约定为 `/api/${meta.id}`，由 `moduleRoutePrefix()` 生成，模块不再声明。
@@ -135,14 +120,14 @@ npx drizzle-kit --config=apps/yishan-api/src/modules/<id>/drizzle.config.ts migr
 
 > 这两步由你手敲。模块启动时**不**自动跑迁移；服务启动也是**不**自动检查 pending。
 
-## 步骤 5：开启模块（开发期）
+## 步骤 5：装载与流量
 
-模块默认装载，启停事实源是 `sys_module.enabled`：
+两层开关：
 
-- 首次 sync 该模块到 sys_module 时，若行不存在则用 `meta.enabled`（缺省 `true`）INSERT。
-- 已有行的 `enabled` 永不被覆盖；运行时通过后台「模块管理」页或 toggle 接口切换。
+- `meta.enabled`：装载。`false` 时启动跳过该模块（不写 `sys_module`、不挂路由）。改完要重新发版。
+- `sys_module.enabled`：流量。只对已装载模块生效；toggle 即时 404，重启不覆盖。
 
-如需「出厂默认关闭」，把 `meta.enabled = false`。
+首次 INSERT 流量默认开启。不装这个模块，把 `meta.enabled` 设为 `false`。
 
 ## 步骤 6：启动与验证
 
@@ -195,3 +180,36 @@ pnpm --filter yishan-api db:reset      # 仅 dev：重建数据库
 - `GET  /api/demo/server-info` — 不读库，拿到当前进程信息
 - `GET  /api/demo/documents` — 读库
 - `POST /api/demo/documents` — 写库（TypeBox 校验）
+
+## 前端模块页面约定（admin）
+
+每个后端模块对应一个 admin 子目录，路径硬约定：
+
+```
+apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx
+```
+
+`apps/yishan-admin/plugin.ts` 编译期扫描这个目录，生成 `moduleComponentsMap`：注册 key `./modules/<id>/<page>` → 真实 import `@/modules/<id>/pages/<page>`。
+
+菜单 JSON 的 `component` 字段用虚拟路径，例如：
+
+```json
+{
+  "type": 1,
+  "name": "文章管理",
+  "path": "/portal/articles",
+  "sortOrder": 2,
+  "component": "./portal/articles",
+  "children": [
+    { "type": 2, "name": "查看", "permissionCodes": ["portal:article:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 }
+  ]
+}
+```
+
+页面写法参考 `apps/yishan-admin/src/modules/demo/pages/todos/index.tsx`：ProTable + ModalForm + Popconfirm 三件套。调用 `@/services/generated/<module>.ts` 里的 openapi 自动生成函数，类型与后端 schema 同步。
+
+**关键点**：
+- 虚拟路径 `./modules/<id>/<page>` 必须带 `./modules/` 前缀（demo 已用此写法；portal/shop 早期漏了导致 404，见 commit `0023d2f` 的修复）
+- URL 路由 (`path`) 仍是 `/<id>/<page>`，不带 `./modules/`——`modules/` 只是源码目录约定 + 组件虚拟路径前缀，不出现在 URL 里
+- 新增页面后无需手动注册——`plugin.ts` 自动发现 `src/modules/<id>/pages/<page>/index.tsx`
+- 改后端 schema 后需要 `pnpm --filter yishan-admin openapi` 重新生成 services，否则页面 TS 报错
