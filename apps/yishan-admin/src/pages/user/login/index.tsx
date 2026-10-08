@@ -246,7 +246,7 @@ const Login: React.FC = () => {
 
     try {
       // 登录
-      const msg = await userLogin({ ...values });
+      const msg = await userLogin({ ...values }, { skipErrorHandler: true });
 
       // 完全依赖API返回的success字段判断成功或失败
       if (msg.success) {
@@ -273,16 +273,28 @@ const Login: React.FC = () => {
       }
 
       // 登录失败，直接使用API返回的错误信息
-      const errorMessage = msg.message || "登录失败，请重试";
-      message.error(errorMessage);
+      const errorMessage = msg.message || "登录失败，请稍后再试";
       setLoginError(errorMessage);
-    } catch (_error: any) {
-      const defaultLoginFailureMessage = intl.formatMessage({
-        id: "pages.login.failure",
-        defaultMessage: "登录失败，请重试！",
-      });
-      message.error(defaultLoginFailureMessage);
-      setLoginError(defaultLoginFailureMessage);
+    } catch (error: unknown) {
+      const loginFailure = error as {
+        response?: { data?: unknown };
+        message?: unknown;
+      } | null;
+      const data = loginFailure?.response?.data;
+      const envelope = data && typeof data === 'object'
+        ? data as { message?: unknown }
+        : null;
+      const envelopeMessage = typeof envelope?.message === 'string'
+        ? envelope.message.trim()
+        : '';
+      setLoginError(
+        envelopeMessage ||
+        (typeof loginFailure?.message === 'string' && loginFailure.message.trim()) ||
+        intl.formatMessage({
+          id: 'pages.login.failure',
+          defaultMessage: '登录失败，请稍后再试',
+        }),
+      );
     } finally {
       setLoading(false);
     }

@@ -27,6 +27,8 @@ if (publicPathInput !== undefined && !isValidPublicPath(publicPathInput)) {
 const PUBLIC_PATH = normalizePublicPath(publicPathInput || '/');
 
 export default defineConfig({
+  // Mako 开发产物也会落盘，避免生产构建覆盖运行中的开发资源。
+  outputPath: process.env.NODE_ENV === 'development' ? 'node_modules/.cache/yishan-admin-dev' : 'dist',
   define: {
     __APP_BASE__: PUBLIC_PATH,
   },

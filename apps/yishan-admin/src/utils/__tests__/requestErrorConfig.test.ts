@@ -36,7 +36,8 @@ jest.mock('@/utils/auth', () => ({
 }));
 
 jest.mock('@/utils/token', () => ({
-  getAuthorizationHeader: (...args: unknown[]) => mockGetAuthorizationHeader(...args),
+  getAuthorizationHeader: (...args: unknown[]) =>
+    mockGetAuthorizationHeader(...args),
   clearTokens: (...args: unknown[]) => mockClearTokens(...args),
 }));
 
@@ -95,7 +96,10 @@ beforeEach(() => {
     data: { token: 'new-at', refreshToken: 'new-rt', expiresIn: 3600 },
   });
   // 默认让重放请求成功
-  mockRequest.mockResolvedValue({ success: true, data: { id: 1, username: 'admin' } });
+  mockRequest.mockResolvedValue({
+    success: true,
+    data: { id: 1, username: 'admin' },
+  });
   // logout 默认 resolve
   mockLogout.mockResolvedValue(undefined);
   // setCurrentUser 默认无副作用
@@ -252,6 +256,93 @@ describe('requestErrorConfig.errorHandler —— 401 refresh 流程', () => {
 });
 
 /**
+ * 登录类接口返回 401 是**业务级 401**（用户名/密码错误、账号被禁用/锁定等），
+ * 后端会带统一信封 message。这种 401 **绝对不能** 走 refresh token 流程：
+ *   1. 调 /auth/refresh 也会 401，触发 logout 守卫把未登录会话清掉；
+ *   2. 后端的友好 message 被全局 401 流程吞掉，用户只能看到兜底文案。
+ *
+ * 正确行为：登录 401 直接走 envelope 分支，message.error 展示后端给的友好文案，
+ * 不触发 refresh、不触发 logout、不触发 clearTokens。
+ */
+describe('requestErrorConfig.errorHandler —— 登录接口 401 不走 refresh', () => {
+  it('web 端 /api/v1/auth/login 401：展示后端 message，不调 refresh、不 logout', async () => {
+    await handler(
+      {
+        response: {
+          status: 401,
+          data: {
+            success: false,
+            code: 22007,
+            message: '用户名或密码错误',
+          },
+        },
+      },
+      { url: '/api/v1/auth/login', method: 'POST' },
+    );
+
+    // 关键：refresh 流程完全没被触发
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+    expect(mockLogout).not.toHaveBeenCalled();
+    expect(mockClearTokens).not.toHaveBeenCalled();
+    // 也没有"登录状态已刷新"这种成功 toast（会误导用户）
+    expect(mockMessageSuccess).not.toHaveBeenCalledWith('登录状态已刷新');
+    // 展示后端的友好 message
+    expect(mockMessageError).toHaveBeenCalledWith('用户名或密码错误');
+  });
+
+  it('移动端 /api/v1/app/auth/login 401：同样不调 refresh、不 logout', async () => {
+    await handler(
+      {
+        response: {
+          status: 401,
+          data: {
+            success: false,
+            code: 22008,
+            message: '账号已被锁定',
+          },
+        },
+      },
+      { url: '/api/v1/app/auth/login', method: 'POST' },
+    );
+
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+    expect(mockLogout).not.toHaveBeenCalled();
+    expect(mockClearTokens).not.toHaveBeenCalled();
+    expect(mockMessageError).toHaveBeenCalledWith('账号已被锁定');
+  });
+
+  it('登录 401 即便没有 envelope message，也不调 refresh 兜底', async () => {
+    // 极端场景：网关/反代把信封吞了，后端只回 401 + 空 body。
+    // 仍然不能误走 refresh，否则会触发 logout 把会话清掉。
+    await handler(
+      { response: { status: 401, data: null } },
+      { url: '/api/v1/auth/login', method: 'POST' },
+    );
+
+    expect(mockRefreshToken).not.toHaveBeenCalled();
+    expect(mockLogout).not.toHaveBeenCalled();
+    expect(mockClearTokens).not.toHaveBeenCalled();
+    // 走兜底文案，仍然不出现"异常"等生硬措辞
+    expect(mockMessageError).toHaveBeenCalledWith(
+      '操作失败，请稍后再试（401）',
+    );
+  });
+
+  it('与登录路径形态相近但不是登录接口的端点，仍走 refresh 流程', async () => {
+    // 反向回归：isAuthLoginEndpoint 必须用精确路径匹配，不能用 includes。
+    // 例如 /api/v1/admin/auth/login-logs（含 /auth/login 子串）应走 refresh，
+    // 不应被误判为登录端点。
+    await handler(
+      { response: { status: 401 } },
+      { url: '/api/v1/admin/auth/login-logs', method: 'GET' },
+    );
+
+    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mockLogout).not.toHaveBeenCalled();
+  });
+});
+
+/**
  * 后端在 4xx/5xx 上仍返回统一信封 `{success,code,message,...}`，但此时 umi 的
  * errorThrower 不会触发（走 axios reject 分支），错误处理只能看到 error.response。
  * 这里验证：可信信封优先展示后端 message，不可信则回退到既有的按 status 固定文案。
@@ -269,7 +360,11 @@ describe('pickEnvelopeMessage —— 只信任可信的失败信封', () => {
 
   it('message 前后有空白时 trim', () => {
     expect(
-      pickEnvelopeMessage({ success: false, code: 21001, message: '  参数错误  ' }),
+      pickEnvelopeMessage({
+        success: false,
+        code: 21001,
+        message: '  参数错误  ',
+      }),
     ).toBe('参数错误');
   });
 
@@ -330,7 +425,9 @@ describe('requestErrorConfig.errorHandler —— HTTP 错误分支的文案与�
       { url: '/api/v1/admin/users', method: 'POST' },
     );
 
-    expect(mockMessageWarning).toHaveBeenCalledWith('password:长度不能少于 6 位');
+    expect(mockMessageWarning).toHaveBeenCalledWith(
+      'password:长度不能少于 6 位',
+    );
     expect(mockMessageError).not.toHaveBeenCalled();
   });
 
@@ -355,7 +452,9 @@ describe('requestErrorConfig.errorHandler —— HTTP 错误分支的文案与�
       { url: '/api/v1/admin/users', method: 'POST' },
     );
 
-    expect(mockMessageError).toHaveBeenCalledWith('请求参数错误');
+    expect(mockMessageError).toHaveBeenCalledWith(
+      '提交的内容有误，请检查后重试',
+    );
     expect(mockMessageWarning).not.toHaveBeenCalled();
   });
 
@@ -373,44 +472,52 @@ describe('requestErrorConfig.errorHandler —— HTTP 错误分支的文案与�
     expect(mockMessageError).toHaveBeenCalledWith('数据库连接失败');
   });
 
-  it('500 无信封：回退到「服务器内部错误」', async () => {
+  it('500 无信封：回退到友好的系统级文案', async () => {
     await handler(
       { response: { status: 500, data: undefined } },
       { url: '/api/v1/admin/users', method: 'GET' },
     );
 
-    expect(mockMessageError).toHaveBeenCalledWith('服务器内部错误');
+    expect(mockMessageError).toHaveBeenCalledWith(
+      '服务暂时无法处理，请稍后再试',
+    );
   });
 
-  it('404 无信封：回退到「请求的资源不存在」', async () => {
+  it('404 无信封：回退到友好的 404 文案', async () => {
     await handler(
       { response: { status: 404, data: null } },
       { url: '/x', method: 'GET' },
     );
 
-    expect(mockMessageError).toHaveBeenCalledWith('请求的资源不存在');
+    expect(mockMessageError).toHaveBeenCalledWith(
+      '找不到相关内容，可能已被删除',
+    );
   });
 
-  it('502 / 503 / 未枚举 status 的回退文案不变', async () => {
+  it('502 / 503 / 未枚举 status 的回退文案保持友好', async () => {
     await handler(
       { response: { status: 502, data: null } },
       { url: '/x', method: 'GET' },
     );
-    expect(mockMessageError).toHaveBeenCalledWith('网关错误');
+    expect(mockMessageError).toHaveBeenCalledWith(
+      '服务暂时无法连接，请稍后再试',
+    );
 
     mockMessageError.mockClear();
     await handler(
       { response: { status: 503, data: null } },
       { url: '/x', method: 'GET' },
     );
-    expect(mockMessageError).toHaveBeenCalledWith('服务暂时不可用');
+    expect(mockMessageError).toHaveBeenCalledWith('服务正在维护中，请稍后再试');
 
     mockMessageError.mockClear();
     await handler(
       { response: { status: 418, data: null } },
       { url: '/x', method: 'GET' },
     );
-    expect(mockMessageError).toHaveBeenCalledWith('请求错误 418');
+    expect(mockMessageError).toHaveBeenCalledWith(
+      '操作失败，请稍后再试（418）',
+    );
   });
 
   it('网络错误（有 request 无 response）不受信封逻辑影响', async () => {
@@ -419,14 +526,16 @@ describe('requestErrorConfig.errorHandler —— HTTP 错误分支的文案与�
       { url: '/api/v1/admin/users', method: 'GET' },
     );
 
-    expect(mockMessageError).toHaveBeenCalledWith('网络错误，请检查网络连接');
+    expect(mockMessageError).toHaveBeenCalledWith(
+      '网络好像不太通畅，请检查连接后重试',
+    );
     expect(mockMessageWarning).not.toHaveBeenCalled();
   });
 
   it('既无 response 也无 request 时走最后兜底', async () => {
     await handler({}, { url: '/api/v1/admin/users', method: 'GET' });
 
-    expect(mockMessageError).toHaveBeenCalledWith('请求错误，请重试');
+    expect(mockMessageError).toHaveBeenCalledWith('操作没成功，请稍后再试');
   });
 
   it('403 仍由专门分支处理，不进入信封逻辑', async () => {
