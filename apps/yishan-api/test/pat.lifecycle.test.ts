@@ -20,6 +20,7 @@ import authPlugin from '../src/core/routes/api/v1/auth/index.ts'
 import registerAuthSchemas from '../src/core/schemas/auth.ts'
 import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
 import jwtAuthPlugin from '../src/core/plugins/external/jwt-auth.ts'
+import { defaultAuthProvider } from '../src/core/services/auth-provider.ts'
 import { ApiTokenRepository } from '../src/core/repositories/api-token.repository.ts'
 import { UserService } from '../src/core/services/user.service.ts'
 import { MenuService } from '../src/core/services/menu.service.ts'
@@ -73,6 +74,7 @@ async function buildPatAuthApp(overrides?: {
   app.decorate('rateLimit', () => async () => undefined)
   await app.register(errorHandlerPlugin)
   await app.register(fastifyCookie)
+  app.decorate('authProvider', defaultAuthProvider)
   await app.register(jwtAuthPlugin)
   registerAuthSchemas(app)
 

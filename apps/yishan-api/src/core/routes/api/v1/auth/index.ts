@@ -19,8 +19,8 @@ import {
 import { registerPermissions, type PermissionRef } from '../../../../permissions/catalog.js';
 
 const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  LOGIN:    { code: 'auth:login',    label: '认证-登录', group: 'auth' },
-  REFRESH:  { code: 'auth:refresh',  label: '认证-刷新令牌', group: 'auth' },
+  LOGIN:    { code: 'auth:login',    label: '认证-登录', group: 'auth', public: true },
+  REFRESH:  { code: 'auth:refresh',  label: '认证-刷新令牌', group: 'auth', public: true },
   LOGOUT:   { code: 'auth:logout',   label: '认证-登出', group: 'auth' },
   PROFILE:  { code: 'auth:profile',  label: '认证-当前会话', group: 'auth' },
 });

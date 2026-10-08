@@ -210,7 +210,8 @@ declare namespace API {
   type availableScopeGroup = {
     /** 分组名称，如 系统管理 */
     label: string;
-    system: "system" | "shop" | "portal" | "special";
+    /** 分组 id：权限声明的 group（如 system、auth 或模块自己的分组）；PAT 专用分组为 special */
+    system: string;
     options: availableScopeItem[];
   };
 

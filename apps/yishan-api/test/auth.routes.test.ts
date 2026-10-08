@@ -4,6 +4,7 @@ import authPlugin from '../src/core/routes/api/v1/auth/index.ts'
 import registerAuthSchemas from '../src/core/schemas/auth.ts'
 import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
 import jwtAuthPlugin from '../src/core/plugins/external/jwt-auth.ts'
+import { defaultAuthProvider } from '../src/core/services/auth-provider.ts'
 import { AuthService } from '../src/core/services/auth.service.ts'
 import { MenuService } from '../src/core/services/menu.service.ts'
 import { UserService } from '../src/core/services/user.service.ts'
@@ -67,6 +68,7 @@ async function buildRealAuthApp({
   app.decorate('rateLimit', () => async (_request: any, _reply: any) => undefined)
   await app.register(errorHandlerPlugin)
   await app.register(fastifyCookie)
+  app.decorate('authProvider', defaultAuthProvider)
   await app.register(jwtAuthPlugin)
   registerAuthSchemas(app)
 
@@ -438,6 +440,7 @@ describe('Auth routes (/me + /logout, real jwt-auth plugin)', () => {
       .mockResolvedValue([])
 
     const forgeApp = Fastify({ logger: false })
+    forgeApp.decorate('authProvider', defaultAuthProvider)
     await forgeApp.register(jwtAuthPlugin)
     // 用任意 secret 自签 id=999 的 JWT；jwt-auth 用真实 secret verify 时签名不匹配。
     const forgedWithOtherSecret = forgeApp.jwt.sign(

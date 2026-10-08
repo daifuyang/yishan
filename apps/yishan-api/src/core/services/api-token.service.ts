@@ -31,7 +31,12 @@ import {
   SUPER_ADMIN_BYPASS,
 } from "../../constants/permission-codes.js";
 import { PermissionService } from "./permission.service.js";
-import { PERMISSION_CODES as ACTIVE_CODES, listPermissions } from '../permissions/catalog.js';
+import {
+  PERMISSION_CODES as ACTIVE_CODES,
+  getPermissionGroupLabel,
+  listPermissions,
+  registerPermissionGroups,
+} from '../permissions/catalog.js';
 
 // ============================================================================
 // Duration handling (moved from route)
@@ -230,7 +235,11 @@ export class ApiTokenService {
 // Available Scopes Types
 // ============================================================================
 
-export type ScopeSystem = "system" | "shop" | "portal" | "special";
+/**
+ * 分组 id：即权限声明中的 `group`（如 `system`、`auth`、模块自己的 `demo`），
+ * 外加 PAT 专用的 `special`（通配符与超管旁路）。Core 不枚举业务分组。
+ */
+export type ScopeSystem = string;
 
 export interface AvailableScopeItem {
   value: string;
@@ -248,15 +257,23 @@ export interface AvailableScopeGroup {
 // Available Scopes Helpers
 // ============================================================================
 
-const SYSTEM_LABELS: Record<string, string> = {
-  system: "系统管理",
-  shop: "商城管理",
-  portal: "门户管理",
-  special: "特殊权限",
-};
+/** PAT 专用分组：通配符 `*` 与 `__super_admin__` 旁路，不对应任何权限声明。 */
+const SPECIAL_GROUP = "special";
+const SPECIAL_GROUP_LABEL = "特殊权限";
+
+// 默认 system 实现自有分组的展示名。模块在自己的路由文件中调用
+// registerPermissionGroups 登记自己的分组，Core 不为业务模块预置任何名称。
+registerPermissionGroups(
+  { id: "system", label: "系统管理" },
+  { id: "auth", label: "认证" },
+  { id: "app", label: "移动端" },
+  { id: "app-auth", label: "移动端认证" },
+  { id: "region", label: "行政区划" },
+  { id: "module-management", label: "模块管理" },
+);
 
 /**
- * 获取当前用户可授予的权限范围，按 system/shop/portal/special 分组。
+ * 获取当前用户可授予的权限范围，按权限声明的 `group` 动态分组。
  *
  * 严格展示适配器：本函数只消费 `getGrantableScopeCodes(userId)` 的结果与
  * 活动权限目录的展示元数据（label/description/group）。
@@ -266,43 +283,29 @@ const SYSTEM_LABELS: Record<string, string> = {
  * isSuperAdmin 判断、sentinel 展示条件）都必须由 `getGrantableScopeCodes`
  * 负责，避免创建校验与展示列表出现两套独立计算。
  *
- * 新方案约束（2026-07-14）：
- *   - 合并 Core 静态权限定义与活动插件 manifest 权限
- *   - 非活动插件权限不出现在 available-scopes
- *   - 固定 group 排序：`system` → `shop` → `portal` → `special`
- *   - 其他插件 group 按 catalog 出现顺序追加在 fixed groups 之后
+ * 分组规则：
+ *   - 分组 id = 权限声明的 `group`；展示名取 registerPermissionGroups 登记值，未登记回退为 id
+ *   - 顺序：`system` 在最前；其余分组按 catalog 首次出现顺序；PAT 专用 `special` 在最后
+ *   - 未装载模块的权限不在 catalog 中，自然不出现
  */
 export async function getAvailableScopesForUser(userId: number): Promise<AvailableScopeGroup[]> {
   // Step 1: 获取纯授权数据 + 活动目录元数据
   const { codes: grantableCodes, isSuperAdmin } = await getGrantableScopeCodes(userId);
   const catalog = listPermissions();
 
-  // Step 2: 一次遍历 catalog，按 group 收集授权允许的条目
-  const fixedOrder: ScopeSystem[] = ["system", "shop", "portal", "special"];
-  const fixedGroups = new Map<ScopeSystem, AvailableScopeItem[]>();
-  const pluginGroups = new Map<string, AvailableScopeItem[]>();
-
+  // Step 2: 一次遍历 catalog，按 group 收集授权允许的条目（Map 保留首次出现顺序）
+  const groups = new Map<string, AvailableScopeItem[]>();
   for (const item of catalog) {
     if (!grantableCodes.has(item.code)) continue;
-    const option: AvailableScopeItem = {
-      value: item.code,
-      label: item.label,
-      description: item.description,
-    };
-    if ((fixedOrder as string[]).includes(item.group)) {
-      const bucket = fixedGroups.get(item.group as ScopeSystem) ?? [];
-      bucket.push(option);
-      fixedGroups.set(item.group as ScopeSystem, bucket);
-    } else {
-      const bucket = pluginGroups.get(item.group) ?? [];
-      bucket.push(option);
-      pluginGroups.set(item.group, bucket);
-    }
+    const bucket = groups.get(item.group) ?? [];
+    bucket.push({ value: item.code, label: item.label, description: item.description });
+    groups.set(item.group, bucket);
   }
 
-  // Step 3: 添加特殊权限（`*` 由 isSuperAdmin 决定；
+  // Step 3: PAT 特殊权限（`*` 由 isSuperAdmin 决定；
   // `__super_admin__` 仅在 grantableCodes 含 sentinel 时展示）
-  const specialOptions = fixedGroups.get("special") ?? [];
+  const specialOptions: AvailableScopeItem[] = [...(groups.get(SPECIAL_GROUP) ?? [])];
+  groups.delete(SPECIAL_GROUP);
   if (isSuperAdmin) {
     specialOptions.push({
       value: PAT_WILDCARD,
@@ -317,31 +320,22 @@ export async function getAvailableScopesForUser(userId: number): Promise<Availab
       description: "仅保留 super_admin 旁路标记，无其他权限",
     });
   }
+
+  // Step 4: 拼装响应：system 在前，其余按首次出现顺序，special 最后
+  const order = [...groups.keys()];
+  const systemIdx = order.indexOf("system");
+  if (systemIdx > 0) order.unshift(...order.splice(systemIdx, 1));
+  const result: AvailableScopeGroup[] = order.map((group) => ({
+    label: getPermissionGroupLabel(group) ?? group,
+    system: group,
+    options: groups.get(group)!.sort((a, b) => a.label.localeCompare(b.label)),
+  }));
   if (specialOptions.length > 0) {
-    fixedGroups.set("special", specialOptions);
-  }
-
-  // Step 4: 拼装响应 — 固定 group 按固定顺序输出，其他 group 按 catalog 出现顺序追加
-  const result: AvailableScopeGroup[] = [];
-  for (const system of fixedOrder) {
-    const options = fixedGroups.get(system);
-    if (options && options.length > 0) {
-      result.push({
-        label: SYSTEM_LABELS[system],
-        system,
-        options: options.sort((a, b) => a.label.localeCompare(b.label)),
-      });
-    }
-  }
-
-  for (const [group, options] of pluginGroups) {
-    if (options.length === 0) continue;
     result.push({
-      label: group,
-      system: group as ScopeSystem,
-      options: options.sort((a, b) => a.label.localeCompare(b.label)),
+      label: SPECIAL_GROUP_LABEL,
+      system: SPECIAL_GROUP,
+      options: specialOptions.sort((a, b) => a.label.localeCompare(b.label)),
     });
   }
-
   return result;
 }

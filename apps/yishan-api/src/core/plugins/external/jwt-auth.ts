@@ -3,13 +3,12 @@ import fastifyJwt from '@fastify/jwt'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { ValidationErrorCode } from '../../../constants/business-codes/validation.js'
 import { AuthErrorCode } from '../../../constants/business-codes/auth.js'
-import { UserErrorCode } from '../../../constants/business-codes/user.js'
 import { BusinessError } from '../../../exceptions/business-error.js'
 import { JWT_CONFIG } from '../../../config/index.js'
-import { UserTokenRepository } from '../../repositories/user-token.repository.js'
-import { UserService } from '../../services/user.service.js'
-import { ApiTokenRepository } from '../../repositories/api-token.repository.js'
-import { SysUserResp } from '../../schemas/user.js'
+import type { AuthProvider } from '../../auth/identity.js'
+
+/** PAT 明文前缀：带此前缀的 token 走 AuthProvider.resolveApiToken，不做 JWT 校验。 */
+export const API_TOKEN_PREFIX = 'yishan_pat_'
 
 export const autoConfig = {
   secret: JWT_CONFIG.secret,
@@ -77,29 +76,42 @@ async function verifyJwtOrThrow(request: FastifyRequest): Promise<void> {
 }
 
 /**
- * 检查用户状态（禁用 / 锁定）。失败时抛 BusinessError。
+ * PAT（GitHub PAT 风格的 opaque token）鉴权：交给 AuthProvider.resolveApiToken。
+ * opaque token 不能落入 JWT 校验分支。
  */
-async function ensureUserAccessible(currentUser: SysUserResp): Promise<void> {
-  if (currentUser.status === "0") {
+async function authenticateApiToken(
+  provider: AuthProvider,
+  request: FastifyRequest,
+  token: string,
+): Promise<void> {
+  const resolved = provider.resolveApiToken
+    ? await provider.resolveApiToken({ token, ip: request.ip ?? null, log: request.log })
+    : null
+  if (!resolved) {
     throw new BusinessError(
-      UserErrorCode.USER_DISABLED,
-      '账号已被禁用，无法访问。'
+      AuthErrorCode.API_TOKEN_NOT_FOUND,
+      'API Token 不存在、已过期或已被撤销。'
     )
   }
-  if (currentUser.status === "2") {
-    throw new BusinessError(
-      AuthErrorCode.ACCOUNT_LOCKED,
-      '账号已被锁定，请联系管理员。'
-    )
-  }
+  request.currentUser = resolved.user
+  // PAT 用户必须仅在 tokenScope 范围内有权限：`requirePermission` 在校验时会与用户权限取交集。
+  request.tokenScope = resolved.scopes
 }
 
 export default fp(async (fastify) => {
   fastify.register(fastifyJwt, autoConfig)
 
+  // 身份来源在请求期读取：组合根（app.ts）在注册本插件前装饰 `fastify.authProvider`。
+  const provider = (): AuthProvider => {
+    if (!fastify.hasDecorator('authProvider')) {
+      throw new Error('jwt-auth: fastify.authProvider is not decorated; register an AuthProvider in the composition root')
+    }
+    return fastify.authProvider
+  }
+
   /**
-   * 标准 JWT 鉴权 preHandler。强制要求 access token 类型；token 必须存在于
-   * sys_user_token 中且未被撤销。挂载 currentUser。
+   * 标准 JWT 鉴权 preHandler。强制要求 access token 类型；token 对应的会话必须
+   * 仍然有效（默认实现：存在于 sys_user_token 中且未被撤销）。挂载 currentUser。
    */
   fastify.decorate('authenticate', async function authenticate(request: FastifyRequest, reply: FastifyReply) {
     const { token } = extractStandardToken(request)
@@ -110,40 +122,8 @@ export default fp(async (fastify) => {
       )
     }
 
-    // API Token (GitHub PAT style) 鉴权： opaque token 不能落入 JWT 校验分支
-    if (token.startsWith('yishan_pat_')) {
-      const apiToken = await ApiTokenRepository.findByRawToken(token)
-      if (!apiToken) {
-        throw new BusinessError(
-          AuthErrorCode.API_TOKEN_NOT_FOUND,
-          'API Token 不存在、已过期或已被撤销。'
-        )
-      }
-
-      const currentUser = await UserService.getUserById(apiToken.userId)
-      if (!currentUser) {
-        throw new BusinessError(
-          AuthErrorCode.API_TOKEN_REVOKED,
-          'API Token 关联用户不存在或已不可用。'
-        )
-      }
-
-      if (currentUser.status === "0" || currentUser.status === "2") {
-        throw new BusinessError(
-          AuthErrorCode.API_TOKEN_REVOKED,
-          'API Token 关联用户已被禁用或锁定。'
-        )
-      }
-
-      request.currentUser = currentUser
-      // Section 2 — PAT 用户必须仅在 tokenScope 范围内有权限：
-      // `requirePermission` 在校验时会与 role-based perms 取交集。
-      ;(request as any).tokenScope = apiToken.scopes ?? []
-      setImmediate(() => {
-        ApiTokenRepository.touch(apiToken.id, request.ip ?? null).catch((err) => {
-          request.log.warn({ err, apiTokenId: apiToken.id }, 'Failed to update API token last-used metadata')
-        })
-      })
+    if (token.startsWith(API_TOKEN_PREFIX)) {
+      await authenticateApiToken(provider(), request, token)
       return
     }
 
@@ -158,23 +138,13 @@ export default fp(async (fastify) => {
       )
     }
 
-    const record = await UserTokenRepository.findByAccessToken(token)
-    if (!record) {
+    const currentUser = await provider().resolveSession({ token, kind: 'access_token', claims: userPayload })
+    if (!currentUser) {
       throw new BusinessError(
         AuthErrorCode.TOKEN_INVALID,
         '当前访问令牌已失效或已被注销，请重新登录。'
       )
     }
-
-    const currentUser = await UserService.getUserById(record.userId)
-    if (!currentUser) {
-      throw new BusinessError(
-        AuthErrorCode.TOKEN_INVALID,
-        '当前用户不存在，请联系管理员处理。'
-      )
-    }
-
-    await ensureUserAccessible(currentUser)
     request.currentUser = currentUser
   })
 
@@ -214,62 +184,23 @@ export default fp(async (fastify) => {
     }
 
     // API Token 路径：与标准 authenticate 完全一致。
-    if (token.startsWith('yishan_pat_')) {
-      const apiToken = await ApiTokenRepository.findByRawToken(token)
-      if (!apiToken) {
-        throw new BusinessError(
-          AuthErrorCode.API_TOKEN_NOT_FOUND,
-          'API Token 不存在、已过期或已被撤销。'
-        )
-      }
-      const currentUser = await UserService.getUserById(apiToken.userId)
-      if (!currentUser) {
-        throw new BusinessError(
-          AuthErrorCode.API_TOKEN_REVOKED,
-          'API Token 关联用户不存在或已不可用。'
-        )
-      }
-      if (currentUser.status === "0" || currentUser.status === "2") {
-        throw new BusinessError(
-          AuthErrorCode.API_TOKEN_REVOKED,
-          'API Token 关联用户已被禁用或锁定。'
-        )
-      }
-      request.currentUser = currentUser
-      ;(request as any).tokenScope = apiToken.scopes ?? []
-      setImmediate(() => {
-        ApiTokenRepository.touch(apiToken.id, request.ip ?? null).catch((err) => {
-          request.log.warn({ err, apiTokenId: apiToken.id }, 'Failed to update API token last-used metadata')
-        })
-      })
+    if (token.startsWith(API_TOKEN_PREFIX)) {
+      await authenticateApiToken(provider(), request, token)
       return
     }
 
     await verifyJwtOrThrow(request)
 
     // softAuthenticate 接受 access_token 与 refresh_token 两种类型。
-    // 根据 JWT payload 中的 type 字段选择对应的 DB 校验路径。
     const userPayload = request.user
-    const isRefresh = userPayload?.type === 'refresh_token'
-    const record = isRefresh
-      ? await UserTokenRepository.findByRefreshToken(token)
-      : await UserTokenRepository.findByAccessToken(token)
-    if (!record) {
+    const kind = userPayload?.type === 'refresh_token' ? 'refresh_token' : 'access_token'
+    const currentUser = await provider().resolveSession({ token, kind, claims: userPayload })
+    if (!currentUser) {
       throw new BusinessError(
         AuthErrorCode.TOKEN_INVALID,
         '当前令牌已失效或已被注销，请重新登录。'
       )
     }
-
-    const currentUser = await UserService.getUserById(record.userId)
-    if (!currentUser) {
-      throw new BusinessError(
-        AuthErrorCode.TOKEN_INVALID,
-        '当前用户不存在，请联系管理员处理。'
-      )
-    }
-
-    await ensureUserAccessible(currentUser)
     request.currentUser = currentUser
   })
 }, {
@@ -284,13 +215,6 @@ declare module 'fastify' {
      * 并接受 refresh_token。用于 logout 等"鸡生蛋"场景：客户端可能因 token 过期才想 logout。
      */
     softAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
-  }
-}
-
-// 扩展 FastifyRequest 类型以包含错误上下文
-declare module 'fastify' {
-  interface FastifyRequest {
-    currentUser: SysUserResp
   }
 }
 

@@ -1,6 +1,10 @@
 import { type FastifyPluginAsync } from 'fastify'
-import { registerPermissions, type PermissionRef } from '@/core/permissions/catalog.js'
-import { createRouteRegistrar } from '@/core/routes/route-registrar.js'
+import {
+  createRouteRegistrar,
+  registerPermissionGroups,
+  registerPermissions,
+  type PermissionRef,
+} from '@/core/module-api.js'
 import { getServerInfo } from '../../../services/server-info.service.js'
 import { ROUTE_TAG, ServerInfoRespSchema } from '../../../schemas/routes.schema.js'
 
@@ -14,6 +18,8 @@ export const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
   QUICKSTART: { code: 'demo:quickstart:read', label: '示例插件-快速入门', group: 'demo' },
 })
 registerPermissions(...Object.values(PERMS))
+// 模块自己登记权限分组的展示名（PAT 可授予范围等处使用），Core 不预置业务分组。
+registerPermissionGroups({ id: 'demo', label: '示例插件' })
 
 export default (async (app) => {
   const route = createRouteRegistrar(app)

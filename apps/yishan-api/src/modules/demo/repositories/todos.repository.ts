@@ -1,11 +1,11 @@
 import { desc, eq } from 'drizzle-orm'
-import { drizzleDb, type AppQueryDb } from '@/db'
+import type { AppQueryDb } from '@/core/module-api.js'
 import { demoTodos } from '../db/schema.js'
 
 /**
  * Todos Repository。
  *
- * 整个 demo 模块内**唯一**允许访问 demoTodos / drizzleDb 的层。
+ * 整个 demo 模块内**唯一**允许访问 demoTodos（执行 SQL）的层；db 句柄由调用方注入。
  * module.ts 与 todos.service.ts 都禁止直接导入 @/db 或 db/schema。
  */
 
@@ -36,7 +36,7 @@ export interface UpdateTodoInput {
 }
 
 export class TodosRepository {
-  static async list(db: AppQueryDb = drizzleDb): Promise<TodoRow[]> {
+  static async list(db: AppQueryDb): Promise<TodoRow[]> {
     const rows = await db
       .select()
       .from(demoTodos)
@@ -44,7 +44,7 @@ export class TodosRepository {
     return rows as TodoRow[]
   }
 
-  static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<TodoRow | null> {
+  static async findById(id: number, db: AppQueryDb): Promise<TodoRow | null> {
     const [row] = await db
       .select()
       .from(demoTodos)
@@ -53,7 +53,7 @@ export class TodosRepository {
     return (row as TodoRow | undefined) ?? null
   }
 
-  static async create(input: CreateTodoInput, db: AppQueryDb = drizzleDb): Promise<TodoRow> {
+  static async create(input: CreateTodoInput, db: AppQueryDb): Promise<TodoRow> {
     const [inserted] = await db.insert(demoTodos).values({
       title: input.title,
       description: input.description ?? '',
@@ -68,7 +68,7 @@ export class TodosRepository {
     return created
   }
 
-  static async update(id: number, input: UpdateTodoInput, db: AppQueryDb = drizzleDb): Promise<TodoRow> {
+  static async update(id: number, input: UpdateTodoInput, db: AppQueryDb): Promise<TodoRow> {
     const patch: Record<string, unknown> = {}
     if (input.title !== undefined) patch.title = input.title
     if (input.description !== undefined) patch.description = input.description
@@ -83,7 +83,7 @@ export class TodosRepository {
     return updated
   }
 
-  static async remove(id: number, db: AppQueryDb = drizzleDb): Promise<void> {
+  static async remove(id: number, db: AppQueryDb): Promise<void> {
     await db.delete(demoTodos).where(eq(demoTodos.id, id))
   }
 }

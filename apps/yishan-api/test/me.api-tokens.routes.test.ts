@@ -5,6 +5,7 @@ import { registerApiToken } from "../src/core/schemas/api-token.ts";
 import errorHandlerPlugin from "../src/core/plugins/external/error-handler.ts";
 import { ApiTokenRepository } from "../src/core/repositories/api-token.repository.ts";
 import { PermissionService } from "../src/core/services/permission.service.ts";
+import { registerPermissionGroups, registerPermissions } from "../src/core/permissions/catalog.ts";
 import { AuthErrorCode } from "../src/constants/business-codes/auth.ts";
 import { ValidationErrorCode } from "../src/constants/business-codes/validation.ts";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -349,6 +350,36 @@ describe("Me API token routes", () => {
       expect(allValues).toContain("system:user:list");
       expect(allValues).not.toContain("plugin:custom:action");
       expect(allValues).not.toContain("unknown:code");
+
+      await app.close();
+    });
+
+    // R-04：权限分组曾被响应 Schema 限定为 system|shop|portal|special，任何其他 group
+    // （Core 自己的 auth / app，或模块分组）都会让序列化失败 → 恒 500。
+    it("serializes groups outside system/special (R-04 regression: was HTTP 500)", async () => {
+      registerPermissions({ code: "r04mod:item:read", label: "R04 模块-查看", group: "r04mod" });
+      registerPermissionGroups({ id: "r04mod", label: "R04 模块" });
+      const app = await buildApp();
+      vi.spyOn(PermissionService, "loadRoleIdsForUser").mockResolvedValueOnce([2]);
+      vi.spyOn(PermissionService, "loadForRoleIds").mockResolvedValueOnce({
+        perms: new Set(["system:user:list", "auth:profile", "r04mod:item:read", "__super_admin__"]),
+        roleCodes: new Set(["super_admin"]),
+      });
+
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/v1/me/api-tokens/available-scopes",
+        headers: { Authorization: "Bearer access-token" },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const groups = res.json().data.groups as { system: string; label: string }[];
+      const ids = groups.map((g) => g.system);
+      expect(ids[0]).toBe("system");
+      expect(ids[ids.length - 1]).toBe("special");
+      expect(ids).toEqual(expect.arrayContaining(["auth", "r04mod"]));
+      expect(groups.find((g) => g.system === "r04mod")!.label).toBe("R04 模块");
+      expect(groups.find((g) => g.system === "auth")!.label).toBe("认证");
 
       await app.close();
     });

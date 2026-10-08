@@ -129,7 +129,7 @@ const apiTokens: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       access: { permission: PERMS.MANAGE },
       schema: {
         summary: "获取当前用户可授予的权限范围",
-        description: "返回当前用户可授予的权限列表，按 system/shop/portal/special 分组。仅返回用户当前持有的且在系统中已登记的权限码。",
+        description: "返回当前用户可授予的权限列表，按权限声明的 group 分组（system 在前，PAT 专用 special 在后）。仅返回用户当前持有的且在系统中已登记的权限码。",
         operationId: "meListAvailableScopes",
         tags: ["me-api-tokens"],
         security: [{ bearerAuth: [] }],

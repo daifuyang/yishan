@@ -17,7 +17,7 @@ import { drizzleDb } from "../../../db/index.js";
 import { registerPermissions, type PermissionRef } from '../../permissions/catalog.js';
 
 const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  HEALTH: { code: 'system:health', label: '系统-健康检查', group: 'system' },
+  HEALTH: { code: 'system:health', label: '系统-健康检查', group: 'system', public: true },
 });
 registerPermissions(...Object.values(PERMS));
 

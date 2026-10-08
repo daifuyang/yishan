@@ -10,6 +10,7 @@ import fastifyCookie from '@fastify/cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
 import jwtAuthPlugin from '../src/core/plugins/external/jwt-auth.ts'
+import { defaultAuthProvider } from '../src/core/services/auth-provider.ts'
 import { UserTokenRepository } from '../src/core/repositories/user-token.repository.ts'
 import { UserService } from '../src/core/services/user.service.ts'
 import { AuthErrorCode } from '../src/constants/business-codes/auth.ts'
@@ -35,6 +36,7 @@ async function buildApp(opts: { session?: boolean; user?: typeof ACTIVE_USER | n
   const app = Fastify({ logger: false })
   await app.register(errorHandlerPlugin)
   await app.register(fastifyCookie)
+  app.decorate('authProvider', defaultAuthProvider)
   await app.register(jwtAuthPlugin)
   app.get('/probe', { preHandler: app.authenticate }, async (req) => ({ userId: req.currentUser?.id }))
   await app.ready()

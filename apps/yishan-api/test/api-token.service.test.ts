@@ -21,6 +21,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiTokenService, getAvailableScopesForUser } from "../src/core/services/api-token.service.js";
 import { ApiTokenRepository } from "../src/core/repositories/api-token.repository.js";
 import { PermissionService } from "../src/core/services/permission.service.js";
+import { listPermissions } from "../src/core/permissions/catalog.js";
 import { ValidationErrorCode } from "../src/constants/business-codes/validation.js";
 import { SUPER_ADMIN_BYPASS } from "../src/constants/permission-codes.js";
 
@@ -487,21 +488,22 @@ describe("getAvailableScopesForUser — 展示适配器", () => {
     expect(groups).toEqual([]);
   });
 
-  it("固定 group 顺序：system → shop → portal → special", async () => {
-    // 用真实 catalog（system 路径由 setup.ts 注册），断言四个 fixed group 的相对顺序。
+  it("group 顺序：system 在前，其余按 catalog 出现顺序，special 在最后", async () => {
+    // 用真实 catalog（system 路径由 setup.ts 注册）。Core 不再枚举 shop/portal 等业务分组。
     vi.spyOn(PermissionService, "loadRoleIdsForUser").mockResolvedValueOnce([6]);
     vi.spyOn(PermissionService, "loadForRoleIds").mockResolvedValueOnce({
-      perms: new Set(["system:user:list", SUPER_ADMIN_BYPASS]),
+      perms: new Set(["auth:profile", "system:user:list", "app:user:update-me", SUPER_ADMIN_BYPASS]),
       roleCodes: new Set(["super_admin"]),
     });
 
     const groups = await getAvailableScopesForUser(6);
-    const systemOrder = groups.map(g => g.system);
-    // 验证 fixed group 在返回结果中的相对顺序（它们是否都在场取决于 catalog 注册情况，
-    // 但相对顺序 system → shop → portal → special 必须保持）。
-    const fixedOrder = ["system", "shop", "portal", "special"];
-    const presentFixed = systemOrder.filter(s => fixedOrder.includes(s));
-    const expectedOrder = fixedOrder.filter(s => presentFixed.includes(s));
-    expect(presentFixed).toEqual(expectedOrder);
+    const order = groups.map(g => g.system);
+    expect(order[0]).toBe("system");
+    expect(order[order.length - 1]).toBe("special");
+    const catalogOrder = [...new Set(listPermissions().map(p => p.group))].filter(g => g !== "system");
+    const middle = order.slice(1, -1);
+    expect(middle).toEqual(catalogOrder.filter(g => middle.includes(g)));
+    // 未登记展示名的分组回退为 id；已登记的使用登记值。
+    expect(groups.find(g => g.system === "system")!.label).toBe("系统管理");
   });
 });

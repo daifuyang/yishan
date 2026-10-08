@@ -5,6 +5,7 @@ import authPlugin from '../src/core/routes/api/v1/app/auth/index.ts'
 import registerAuthSchemas from '../src/core/schemas/auth.ts'
 import errorHandlerPlugin from '../src/core/plugins/external/error-handler.ts'
 import jwtAuthPlugin from '../src/core/plugins/external/jwt-auth.ts'
+import { defaultAuthProvider } from '../src/core/services/auth-provider.ts'
 import { AuthService } from '../src/core/services/auth.service.ts'
 
 async function buildApp() {
@@ -12,6 +13,7 @@ async function buildApp() {
   app.decorate('rateLimit', () => async () => undefined)
   await app.register(errorHandlerPlugin)
   await app.register(fastifyCookie)
+  app.decorate('authProvider', defaultAuthProvider)
   await app.register(jwtAuthPlugin)
   registerAuthSchemas(app)
   await app.register(authPlugin, { prefix: '/api/v1/app/auth' })

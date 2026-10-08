@@ -14,9 +14,9 @@ import { PermissionService } from "../../../../../services/permission.service.js
 import { registerPermissions, type PermissionRef } from '../../../../../permissions/catalog.js';
 
 const PERMS: { readonly [k: string]: PermissionRef } = Object.freeze({
-  LOGIN:    { code: 'app:auth:login',    label: '移动端-登录', group: 'app-auth' },
+  LOGIN:    { code: 'app:auth:login',    label: '移动端-登录', group: 'app-auth', public: true },
   LOGOUT:   { code: 'app:auth:logout',   label: '移动端-登出', group: 'app-auth' },
-  REFRESH:  { code: 'app:auth:refresh',  label: '移动端-刷新令牌', group: 'app-auth' },
+  REFRESH:  { code: 'app:auth:refresh',  label: '移动端-刷新令牌', group: 'app-auth', public: true },
   PROFILE:  { code: 'app:auth:profile',  label: '移动端-当前用户', group: 'app-auth' },
 });
 registerPermissions(...Object.values(PERMS));

@@ -42,6 +42,36 @@ test('detects every rule and ignores comments, tests and near-miss words', () =>
   }
 })
 
+test('modules only reach the public entries; kernel/platform never reach system code', () => {
+  const root = fixture({
+    'apps/yishan-api/src/modules/alpha/module.ts': "export const meta = { id: 'alpha' }\n",
+    'apps/yishan-api/src/modules/alpha/routes/x.ts': [
+      "import { createRouteRegistrar } from '@/core/module-api.js'",
+      "import { seedModuleMenus } from '@/core/system-api'",
+      "import { drizzleDb } from '@/db'",
+      "import { UserService } from '../../../core/services/user.service.js'",
+      "import { own } from '../lib/own.js'",
+    ].join('\n'),
+    'apps/yishan-api/src/modules/alpha/drizzle.config.ts': "import { resolveDatabaseUrl } from '../../db/database-url'\nimport { moduleMigrationsTable } from '../../db/migrations-table'\n",
+    'apps/yishan-api/src/modules/alpha/seed.ts': "import { moduleMigrationsTable } from '../../db/migrations-table'\n",
+    'apps/yishan-api/src/core/auth/identity.ts': "import { UserService } from '../services/user.service.js'\nimport { x } from '@/utils/x'\n",
+    'apps/yishan-api/src/core/plugins/external/jwt-auth.ts': "import { UserTokenRepository } from '../../repositories/user-token.repository.js'\nimport { JWT } from '@/config'\n",
+    'apps/yishan-api/src/core/services/auth-provider.ts': "import { UserService } from './user.service.js'\n",
+  })
+  try {
+    assert.deepEqual(collectViolations(root), [
+      'kernel-alias-import|apps/yishan-api/src/core/auth/identity.ts|@/utils/x',
+      'kernel-imports-system|apps/yishan-api/src/core/auth/identity.ts|../services/user.service.js',
+      'kernel-imports-system|apps/yishan-api/src/core/plugins/external/jwt-auth.ts|../../repositories/user-token.repository.js',
+      'module-imports-internal|apps/yishan-api/src/modules/alpha/routes/x.ts|../../../core/services/user.service.js',
+      'module-imports-internal|apps/yishan-api/src/modules/alpha/routes/x.ts|@/db',
+      'module-imports-internal|apps/yishan-api/src/modules/alpha/seed.ts|../../db/migrations-table',
+    ])
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('helpers', () => {
   assert.equal(stripComments("a // 'x'\nb /* 'y' */ 'c // kept'"), "a \nb  'c // kept'")
   assert.deepEqual(importSpecifiers("import x from 'a'\nexport * from \"b\"\nconst y = require('c')\nimport('d')\nimport 'e'"), ['a', 'b', 'c', 'd', 'e'])

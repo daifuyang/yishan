@@ -1,4 +1,21 @@
 {
   "description": "Explicitly approved API contract changes relative to docs/verification/yishan-source-first-p0/evidence/openapi/main-6a5c62a-development.json. Each entry is one change key printed by scripts/openapi-diff.mjs plus a reason and the phase/PR that introduced it. P1-A introduced none.",
-  "allowed": []
+  "allowed": [
+    {
+      "key": "metadata-changed|GET /api/v1/me/api-tokens/available-scopes",
+      "reason": "Source-First Goal A (R-04): description no longer names the shop/portal business groups; groups are the permission declarations' own `group` values."
+    },
+    {
+      "key": "response-changed|GET /api/v1/me/api-tokens/available-scopes",
+      "reason": "Source-First Goal A (R-04): availableScopeGroup.system was an enum system|shop|portal|special, so any other group (auth, app, module groups) failed response serialization and the endpoint always returned 500. It is now a string (group id; `special` for PAT-only options). Success responses that were possible before keep the same shape."
+    },
+    {
+      "key": "security-changed|POST /api/v1/app/auth/login",
+      "reason": "Source-First Goal A (R-13): anonymous at runtime but inherited the global bearer requirement in OpenAPI. route-registrar now writes `security: []` for permissions declared `public: true`. Runtime behaviour unchanged."
+    },
+    {
+      "key": "security-changed|POST /api/v1/app/auth/refresh",
+      "reason": "Source-First Goal A (R-13): same as app login — public route now declares `security: []` instead of inheriting bearer. Runtime behaviour unchanged."
+    }
+  ]
 }

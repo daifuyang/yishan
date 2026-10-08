@@ -4,8 +4,9 @@
  * 单一职责：
  *   1. 装饰器 `requirePermission(permRef)` 返回一个 preHandler；
  *   2. 该 preHandler 校验当前 JWT/PAT 身份是否持有 perm.code；
- *   3. BYPASS_CODES 中的 code 仅做身份校验；
- *   4. super_admin 旁路与 PAT scope 交集由 PermissionService.computeEffectivePerms 承担。
+ *   3. 公开权限点（声明 `public: true`）只做身份校验；
+ *   4. 用户权限集合来自 `fastify.authProvider.loadPermissions`；超管哨兵与 PAT scope 交集由
+ *      core/auth/effective-permissions.ts 计算。
  *
  * 不参与：
  *   - schema 元数据注入（route-registrar.ts）；
@@ -17,10 +18,7 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { BusinessError } from '../../../exceptions/business-error.js';
 import { AuthErrorCode } from '../../../constants/business-codes/auth.js';
-import {
-  PermissionService,
-  computeEffectivePerms,
-} from '../../services/permission.service.js';
+import { computeEffectivePerms, hasPermission } from '../../auth/effective-permissions.js';
 import {
   isBypassCode,
   PERMISSION_CODES,
@@ -34,12 +32,12 @@ declare module 'fastify' {
 }
 
 export const makeRequirePermissionHandler = (
-  _fastify: FastifyInstance,
+  fastify: FastifyInstance,
 ): ((permission: PermissionRef) => (request: FastifyRequest, reply: FastifyReply) => Promise<void> | void) =>
   (permission) => async (request, _reply) => {
     const permCode = permission.code;
-    const currentUser = (request as any).currentUser;
-    const tokenScope: string[] | undefined = (request as any).tokenScope;
+    const currentUser = request.currentUser;
+    const tokenScope = request.tokenScope;
 
     if (!currentUser?.id) {
       throw new BusinessError(AuthErrorCode.UNAUTHORIZED, '缺少认证身份，无法进行权限校验');
@@ -55,7 +53,8 @@ export const makeRequirePermissionHandler = (
       throw new BusinessError(AuthErrorCode.FORBIDDEN, `当前用户没有权限访问要求 ${permCode} 的接口`);
     }
 
-    const { perms: rolePerms } = await PermissionService.loadForRoleIds(roleIds);
+    // 用户权限来源由 AuthProvider 决定（默认：角色 → sys_role_permission，超管追加哨兵）。
+    const rolePerms = await fastify.authProvider.loadPermissions(currentUser);
 
     // EARLY GATE：目标 code 不在活动目录中（已被禁用 / 不存在）→ 直接拒
     if (!PERMISSION_CODES.has(permCode)) {
@@ -65,7 +64,7 @@ export const makeRequirePermissionHandler = (
     // PAT scope 交集：JWT/cookie 时 tokenScope === undefined
     const effectivePerms = computeEffectivePerms(rolePerms, tokenScope, PERMISSION_CODES);
 
-    if (!PermissionService.has(effectivePerms, permCode)) {
+    if (!hasPermission(effectivePerms, permCode)) {
       throw new BusinessError(AuthErrorCode.FORBIDDEN, `当前用户没有权限访问要求 ${permCode} 的接口`);
     }
 

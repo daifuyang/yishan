@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator.js'
 import { ModuleLoader } from './core/module-loader/module-loader.js'
 import { SystemManageErrorCode } from './constants/business-codes/system.js'
+import type { AuthProvider } from './core/auth/identity.js'
+import { defaultAuthProvider } from './core/services/auth-provider.js'
 
 // 应用根目录（dist/）和源码根目录（src/）。dev 路由需要扫描 src/modules/ 读迁移 journal；
 // 用装饰器挂出来，避免每个 dev 路由文件自己数 '../'。
@@ -27,10 +29,17 @@ try {
   process.exit(1)
 }
 
-export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> { }
+export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {
+  /** 身份与权限来源；缺省为 system 默认实现（sys_user / sys_user_token / sys_api_token / 角色权限）。 */
+  authProvider?: AuthProvider
+}
 const options: AppOptions = {}
 
 const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void> => {
+  // 0. 组合根：选择身份与权限来源。jwt-auth / rbac 只依赖 core/auth/identity.ts 的契约，
+  //    在请求期读取 fastify.authProvider；替换身份体系只需在这里换实现。
+  fastify.decorate('authProvider', opts.authProvider ?? defaultAuthProvider)
+
   // 1. External Fastify plugins (cors / jwt / redis / multipart / ...) — registered first
   //    so application routes can rely on their decorators and preHandlers.
   await fastify.register(AutoLoad, {
@@ -38,7 +47,7 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
     options: {},
   })
 
-  // 2. Reusable application helpers shared across routes.
+  // 2. System 的应用级插件（TypeBox 公共 schema 注册、字典映射、密码工具等）。
   fastify.register(AutoLoad, {
     dir: join(__dirname, 'core/plugins/app'),
     options: { ...opts },
@@ -86,23 +95,8 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
     }
   })
 
-  // 3.6 onRoute hook：自动为鉴权路由注入 security 声明。
-  //     这个 hook 必须在挂载模块路由之前注册，并且要在 app 上下文（route 的公共祖先）
-  //     而非兄弟上下文中，才能被 module/autoload 子上下文中的路由触发。
-  //     restish 等 OpenAPI 客户端不解析全局 security 继承（OpenAPI 3.0 规范承认但
-  //     客户端实现参差不齐），因此需要每个 operation 显式声明 security。
-  //     逻辑：检查 route.preHandler 中是否存在 authenticate 或 softAuthenticate
-  //     （函数名来自 jwt-auth.ts 中 decorate 的 named function），如果存在且
-  //     schema 没有 security 字段，注入 [{ bearerAuth: [] }]。
-  fastify.addHook('onRoute', (route) => {
-    const handlers: any[] = Array.isArray(route.preHandler) ? route.preHandler : []
-    const names = handlers.map((h: any) => h?.name ?? h?.toString?.()?.slice(0, 30) ?? '?')
-    const hasAuth = names.includes('authenticate')
-    const hasSoftAuth = names.includes('softAuthenticate')
-    if ((hasAuth || hasSoftAuth) && route.schema && !route.schema.security) {
-      route.schema.security = [{ bearerAuth: [] }]
-    }
-  })
+  // 3.6 每个 operation 的 OpenAPI `security` 由 route-registrar 按 access.permission 直接写入
+  //     （鉴权路由 bearerAuth，公开路由 []），不再由 onRoute 按 preHandler 函数名推断。
 
   // 3.7 挂载模块路由（gate 已就位）。
   await fastify.moduleLoader.mountAllOnDisk(diskModules)
