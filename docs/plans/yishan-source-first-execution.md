@@ -40,8 +40,8 @@ A 清除 Core 业务泄漏 · B 公共机制与 System 解耦（身份/权限可
 
 ## 未完成 / 下一步最小行动
 
-1. 推送分支、建 PR（基于 PR #9 分支），核对 GitHub CI。
-2. 写最终报告 `docs/verification/yishan-source-first-final.md`。
+1. ✅ PR #11（base = PR #9 分支）已建，GitHub CI 全部通过（runs 37795252615 / 37795193097）。
+2. ✅ 最终报告 `docs/verification/yishan-source-first-final.md`：PASS WITH RESTRICTIONS。剩余事项只能由人工处理（见报告 §10）。
 
 ## 验证命令与最近结果
 
