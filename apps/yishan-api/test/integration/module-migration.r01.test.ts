@@ -15,13 +15,14 @@
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import * as coreTables from '../../src/db/schema/tables'
-import * as demoSchema from '../../src/modules/demo/db/schema'
 import { CORE_MIGRATIONS_TABLE, moduleMigrationsTable } from '../../src/db/migrations-table'
 import { runMigrationStream, tablesFromSchema } from '../../src/scripts/lib/migration-streams'
 import { applyMigrations, CORE_MIGRATIONS, moduleMigrations, resolveMigrationPlan } from './_migrations'
 import { createTempDatabase, type TempDatabase } from './_setup'
+import { hasModule } from '../_modules'
 
-const enabled = process.env.YISHAN_RUN_INTEGRATION === '1'
+// 依赖 demo 模块的迁移；下游删除 demo 后整组跳过。
+const enabled = process.env.YISHAN_RUN_INTEGRATION === '1' && hasModule('demo')
 
 async function tableExists(db: TempDatabase, table: string): Promise<boolean> {
   const [rows] = await db.pool.query('SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?', [table])
@@ -47,7 +48,7 @@ describe.runIf(enabled)('integration: module migrations vs core history (R-01)',
       label: 'module demo',
       folder: moduleMigrations('demo'),
       table: moduleMigrationsTable('demo'),
-      expectedTables: tablesFromSchema(demoSchema),
+      expectedTables: tablesFromSchema(await import('../../src/modules/demo/db/schema')),
     })
     expect(await tableExists(db, 'sys_user')).toBe(true)
     expect(await tableExists(db, 'demo_todos')).toBe(true)

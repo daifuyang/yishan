@@ -13,9 +13,8 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Pool } from 'mysql2/promise'
-import { afterAll, afterEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import * as coreTables from '../../src/db/schema/tables'
-import * as demoSchema from '../../src/modules/demo/db/schema'
 import { CORE_MIGRATIONS_TABLE, moduleMigrationsTable } from '../../src/db/migrations-table'
 import {
   readHistoryHashes,
@@ -27,8 +26,13 @@ import {
 import { applyPlan, planModule } from '../../src/scripts/migrations-bridge'
 import { applyMigrations, CORE_MIGRATIONS, moduleMigrations, resolveMigrationPlan } from './_migrations'
 import { createTempDatabase, type TempDatabase } from './_setup'
+import { hasModule } from '../_modules'
 
 const enabled = process.env.YISHAN_RUN_INTEGRATION === '1'
+// 用到仓库自带 demo 模块的用例；下游删除 demo 后只跳过这些，夹具用例照常运行。
+const withDemo = hasModule('demo')
+const itDemo = it.runIf(withDemo)
+let demoSchema: Record<string, unknown> = {}
 
 const coreStream = (): MigrationStream => ({
   label: 'core',
@@ -87,11 +91,14 @@ describe.runIf(enabled)('integration: per-stream migration history (Goal D)', ()
     await db?.drop()
     db = undefined
   })
+  beforeAll(async () => {
+    if (withDemo) demoSchema = await import('../../src/modules/demo/db/schema')
+  })
   afterAll(() => {
     for (const dir of fixtureDirs) rmSync(dir, { recursive: true, force: true })
   })
 
-  it('empty database: core then demo (the R-01 order) creates every table; re-running is a no-op', async () => {
+  itDemo('empty database: core then demo (the R-01 order) creates every table; re-running is a no-op', async () => {
     db = await createTempDatabase()
     const core = await runMigrationStream(db.pool, coreStream())
     const demo = await runMigrationStream(db.pool, demoStream())
@@ -126,7 +133,7 @@ describe.runIf(enabled)('integration: per-stream migration history (Goal D)', ()
     expect(await tables(db.pool, 'sys_user')).toEqual(['sys_user'])
   })
 
-  it('a failing migration throws, is not recorded, and does not disturb other streams', async () => {
+  itDemo('a failing migration throws, is not recorded, and does not disturb other streams', async () => {
     db = await createTempDatabase()
     const bad = fixtureStream('broken', [['0000_init', 2_000, 'CREATE TABLE `broken_items` (`id` int NOT NULL, BOGUS);']], { broken_items: ['id'] })
     await expect(runMigrationStream(db.pool, bad)).rejects.toThrow()
@@ -159,7 +166,7 @@ describe.runIf(enabled)('integration: per-stream migration history (Goal D)', ()
     await expect(runMigrationStream(db.pool, drift)).rejects.toThrow(/delta_items\.missing_col/)
   })
 
-  it('refuses to migrate a database whose tables predate the per-module history (needs bridge)', async () => {
+  itDemo('refuses to migrate a database whose tables predate the per-module history (needs bridge)', async () => {
     db = await createTempDatabase()
     await db.pool.query(createTable('demo_todos'))
     await expect(runMigrationStream(db.pool, demoStream())).rejects.toThrow(/db:migrations:bridge/)
@@ -178,7 +185,7 @@ describe.runIf(enabled)('integration: per-stream migration history (Goal D)', ()
     ])
   })
 
-  describe('bridging databases created with the shared history (deployed-database rehearsal)', () => {
+  describe.runIf(withDemo)('bridging databases created with the shared history (deployed-database rehearsal)', () => {
     it('copy-from-shared: legacy module-first database is bridged without touching old rows', async () => {
       db = await createTempDatabase()
       // 旧机制：demo 与 Core 共用 __drizzle_migrations（模块先于 Core，表都存在）。
@@ -249,7 +256,7 @@ describe.runIf(enabled)('integration: per-stream migration history (Goal D)', ()
     })
   })
 
-  describe.runIf(existsSync(join(process.cwd(), 'dist', 'scripts', 'migrate.js')))('CLI exit codes (dist build)', () => {
+  describe.runIf(withDemo && existsSync(join(process.cwd(), 'dist', 'scripts', 'migrate.js')))('CLI exit codes (dist build)', () => {
     const run = (script: string, url: string, args: string[] = []) =>
       spawnSync(process.execPath, [join('dist', 'scripts', script), ...args], {
         cwd: process.cwd(),

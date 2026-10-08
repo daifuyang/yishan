@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveMigrationPlan } from './integration/_migrations'
+import { hasModule } from './_modules'
 
 /**
  * 集成测试建库只按已记录的迁移历史执行（P0 R-05：旧装置执行目录下全部 SQL，
@@ -44,8 +45,11 @@ describe('integration migration plan', () => {
     expect(() => resolveMigrationPlan(folder({ '0000_init.sql': 'x', '0010_extra.sql': 'y' }))).toThrow(/ambiguous/)
   })
 
-  it('the repository core and demo histories resolve', () => {
-    expect(resolveMigrationPlan(join(process.cwd(), 'drizzle')).tags).toEqual(['0000_init'])
+  it('the repository core history resolves from its committed journal', () => {
+    expect(resolveMigrationPlan(join(process.cwd(), 'drizzle'))).toMatchObject({ source: 'journal', tags: ['0000_init'] })
+  })
+
+  it.runIf(hasModule('demo'))('the demo module history resolves', () => {
     expect(resolveMigrationPlan(join(process.cwd(), 'src', 'modules', 'demo', 'drizzle'))).toMatchObject({ source: 'journal', tags: ['0000_init'] })
   })
 })
