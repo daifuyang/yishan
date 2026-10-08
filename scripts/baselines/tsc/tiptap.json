@@ -1,0 +1,9 @@
+{
+  "project": "apps/yishan-components/yishan-tiptap",
+  "errors": [
+    "src/components/tiptap-templates/simple/form-editor.tsx|TS2769|No overload matches this call.",
+    "src/components/tiptap-templates/simple/simple-editor.tsx|TS2769|No overload matches this call.",
+    "src/components/tiptap-ui/link-popover/use-link-popover.ts|TS2339|Property 'setLink' does not exist on type 'ChainedCommands'.",
+    "src/components/tiptap-ui/link-popover/use-link-popover.ts|TS2339|Property 'unsetLink' does not exist on type 'ChainedCommands'."
+  ]
+}

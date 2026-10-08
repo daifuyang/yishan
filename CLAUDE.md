@@ -114,6 +114,13 @@ Per `CONTRIBUTING.md` and CI (`.github/workflows/yishan-fullstack-ci.yml`):
 3. Architecture-affecting changes must update root docs (TODO files, README, this file).
 4. Don't stage scratch/plan docs in `tmp/` — they're gitignored.
 
+Gates added in P1-A (`docs/verification/yishan-source-first-p1a/`):
+- `pnpm check:toolchain` — Node/pnpm must match `.tool-versions` (machine default may be Node 24).
+- `pnpm build` now includes the API (`build:ts`) and the App (`build:weapp`).
+- `pnpm lint` runs `typecheck:baseline` (App and TipTap `tsc` ratchet against `scripts/baselines/tsc/*.json`: new errors fail, fixed errors must be removed from the baseline) and `check:boundaries` (`scripts/baselines/architecture-boundaries.json`: Core must not import or name business modules; new violations fail).
+- `pnpm check:openapi <runtime.json>` compares the committed `apps/yishan-api/openapi.json` with a runtime dump (`apps/yishan-api/scripts/dump-openapi-from-build.mjs`); `scripts/openapi-diff.mjs` classifies every change and only accepts entries listed in `scripts/baselines/openapi-allowed-changes.json`.
+- `pnpm test:integration` needs a disposable MySQL/Redis (`apps/yishan-api/test/integration/README.md`). Known migration defect R-01 is tracked there as `it.fails`; do not delete it — fix the mechanism in P4.
+
 ## Frontend page conventions (admin / Ant Design Pro 6)
 
 These rules were hardened while iterating the `demo` module pages (`/demo/quickstart`, `/demo/health`, `/demo/todos`). New module pages should follow them by default.

@@ -1,0 +1,101 @@
+{
+  "description": "Known architecture boundary violations on main (P1-A baseline, 2026-10-08). New violations fail; fixed ones must be removed. Each entry names the phase expected to remove it.",
+  "violations": [
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/en-US/menu.ts|demo:menu.system.demo-documents",
+      "reason": "P1-B: legacy i18n key for a removed demo-documents page lives in the Admin shell locale; move module menu keys into the module or drop the key (no static reference found on main)."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/en-US/menu.ts|portal:menu.portal",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/en-US/menu.ts|portal:menu.portal.articles",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/en-US/menu.ts|portal:menu.portal.categories",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/en-US/menu.ts|portal:menu.portal.pages",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/zh-CN/menu.ts|demo:menu.system.demo-documents",
+      "reason": "P1-B: legacy i18n key for a removed demo-documents page lives in the Admin shell locale; move module menu keys into the module or drop the key (no static reference found on main)."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/zh-CN/menu.ts|portal:menu.portal",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/zh-CN/menu.ts|portal:menu.portal.article-templates",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/zh-CN/menu.ts|portal:menu.portal.articles",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/zh-CN/menu.ts|portal:menu.portal.categories",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/zh-CN/menu.ts|portal:menu.portal.page-templates",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-admin/src/locales/zh-CN/menu.ts|portal:menu.portal.pages",
+      "reason": "P1-B: Portal menu i18n keys remain in the Admin shell locale on main although the portal module was removed; no static reference found on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/core/plugins/external/swagger.ts|demo:Demo module endpoints（src/modules/demo/）",
+      "reason": "P1-B: Swagger global tag list hard-codes the demo module (V2 §3 business leak); tags should come from mounted modules."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/core/plugins/external/swagger.ts|demo:demo",
+      "reason": "P1-B: Swagger global tag list hard-codes the demo module (V2 §3 business leak); tags should come from mounted modules."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/core/routes/api/v1/me/api-tokens/index.ts|portal:返回当前用户可授予的权限列表，按 system/shop/portal/special 分组。仅返回用户当前持有的且在系统中已登记的权限码。",
+      "reason": "P1-B: OpenAPI description of available-scopes names shop/portal groups (R-04 PAT grouping)."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/core/routes/api/v1/me/api-tokens/index.ts|shop:返回当前用户可授予的权限列表，按 system/shop/portal/special 分组。仅返回用户当前持有的且在系统中已登记的权限码。",
+      "reason": "P1-B: OpenAPI description of available-scopes names shop/portal groups (R-04 PAT grouping)."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/core/schemas/api-token.ts|portal:portal",
+      "reason": "P1-B: PAT scope grouping hard-codes system|shop|portal|special (R-04; causes the available-scopes 500)."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/core/schemas/api-token.ts|shop:shop",
+      "reason": "P1-B: PAT scope grouping hard-codes system|shop|portal|special (R-04; causes the available-scopes 500)."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/core/services/api-token.service.ts|portal:portal",
+      "reason": "P1-B: PAT scope grouping hard-codes system|shop|portal|special (R-04; causes the available-scopes 500)."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/core/services/api-token.service.ts|shop:shop",
+      "reason": "P1-B: PAT scope grouping hard-codes system|shop|portal|special (R-04; causes the available-scopes 500)."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/scripts/seed/config.ts|portal:./config/portal-articles.json",
+      "reason": "P1-B: dead Portal seed fixtures (portal-*.json) imported by the Core seed config; no consumer on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/scripts/seed/config.ts|portal:./config/portal-categories.json",
+      "reason": "P1-B: dead Portal seed fixtures (portal-*.json) imported by the Core seed config; no consumer on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/scripts/seed/config.ts|portal:./config/portal-pages.json",
+      "reason": "P1-B: dead Portal seed fixtures (portal-*.json) imported by the Core seed config; no consumer on main."
+    },
+    {
+      "key": "business-literal|apps/yishan-api/src/scripts/seed/config.ts|portal:./config/portal-templates.json",
+      "reason": "P1-B: dead Portal seed fixtures (portal-*.json) imported by the Core seed config; no consumer on main."
+    }
+  ]
+}
