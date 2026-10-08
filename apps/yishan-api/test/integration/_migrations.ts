@@ -3,7 +3,7 @@
  *
  * 只按仓库记录的有效迁移历史建库，不执行目录下的全部 SQL：
  *   - 存在 meta/_journal.json → 只取 journal 登记的条目（tag 对应的 .sql 必须存在）。
- *   - 不存在 journal（main 的 Core：drizzle/meta 被 .gitignore 排除，CI 在运行时 generate）
+ *   - 不存在 journal（历史兼容：早期 main 的 Core 未提交 drizzle/meta）
  *     → 目录中必须恰好只有一个 .sql，即唯一的已提交迁移；否则视为历史不明确并报错。
  *
  * 执行使用 drizzle-orm 官方 migrator（与 `drizzle-kit migrate` 同一实现），因此会真实写入

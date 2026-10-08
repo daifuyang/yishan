@@ -1,0 +1,7 @@
+{
+  "description": "sha256 (LF-normalised) of every published migration SQL. Published SQL must never change; add new files with --update after review.",
+  "files": {
+    "apps/yishan-api/drizzle/0000_init.sql": "e222dffa6be38a48ebecde3f284c5ba77291a92ed3f98c17c5ddd2c6b7ca3c76",
+    "apps/yishan-api/src/modules/demo/drizzle/0000_init.sql": "05b53181a78f81a5e98121c929829f0fcbb18a42c435354ff895ba24c16c39a5"
+  }
+}

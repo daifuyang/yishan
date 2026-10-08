@@ -23,8 +23,8 @@ YISHAN_TEST_REDIS_URL='redis://127.0.0.1:36379/1' \
 ## 数据库隔离与迁移历史
 
 - `YISHAN_TEST_MYSQL_URL` 只用于定位实例；每个测试文件新建一个随机命名的库 `<库名>_<随机后缀>`，结束时只删除该库（`_setup.ts#createTempDatabase`）。文件之间不共享库，可并行运行。
-- 建表只按仓库记录的迁移历史（`_migrations.ts`）：有 `meta/_journal.json` 时只执行 journal 登记的条目；没有 journal 时（main 的 Core，`drizzle/meta` 未提交）要求目录中恰好只有一个 SQL 文件，否则报错。不会执行未登记的 SQL，也不吞掉任何建表错误。
-- 执行使用 drizzle-orm 官方 migrator，因此与 `drizzle-kit migrate` 一样写入 `__drizzle_migrations`。
+- 建表只按仓库记录的迁移历史（`_migrations.ts`）：只执行 journal 登记的条目（Core 的 `drizzle/meta` 已提交）。不会执行未登记的 SQL，也不吞掉任何建表错误。
+- 执行使用 drizzle-orm 官方 migrator。`_migrations.ts#applyMigrations` 默认写共享的 `__drizzle_migrations`（用于复现旧机制与构造“已部署库”）；生产路径（每个模块独立历史表 + 核对）由 `src/scripts/lib/migration-streams.ts` 提供，`migration-streams.test.ts` 直接测试它。
 
 ## 当前覆盖范围
 
@@ -34,7 +34,8 @@ YISHAN_TEST_REDIS_URL='redis://127.0.0.1:36379/1' \
 | `pat-lifecycle.test.ts` | PAT 仓库：创建、scopes JSON、过期、撤销、touch、按用户列出 |
 | `user.lifecycle.test.ts` | 用户字段持久化、部门/角色关联去重、软删除并撤销令牌 |
 | `app.e2e.test.ts` | 启动 `dist/app.js` 全量装配：登录、JWT 会话（me/refresh/logout）、未登录 401、PAT scope 交集与撤销、无角色用户 403、禁用/锁定用户、模块启停 gate（40400）与重启后保持 |
-| `module-migration.r01.test.ts` | P0 R-01：Core 先迁移后模块表缺失（`it.fails`，标记 BLOCKED BY R-01，P4 修复后需去掉标记）；对照组：模块先迁移则表存在 |
+| `module-migration.r01.test.ts` | P0 R-01 已修复：经生产迁移流（独立历史表）Core 先迁移后 demo 表存在；同时保留根因复现（共享历史表时 demo 仍被跳过）与对照组 |
+| `migration-streams.test.ts` | Goal D：空库初始化与幂等、多模块任意顺序、失败不污染、静默跳过检测、结构核对、已部署库前置守卫、`sys_module_migration` 按模块记账、衔接（copy / repair / adopt / CRLF hash / needs-review）、CLI 退出码 |
 
 ## 设计原则
 

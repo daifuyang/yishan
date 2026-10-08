@@ -1,40 +1,30 @@
 /**
  * onboard-modules.ts — 模块入驻编排脚本。
  *
- * 对 src/modules/<id>/ 下已装载（meta.enabled !== false）的模块依次执行三步：
- *   1. 迁移：调用 drizzle-kit migrate（应用模块 drizzle/ 下的 SQL 到 DB）。
- *      迁移完成后把 _journal.json 中的所有 tag 同步进 sys_module_migration。
- *   2. seed：执行模块自带的 seed 入口（seed.ts / scripts/seed.ts / db/seed.ts）。
- *      业务数据、菜单声明、权限码注册都在这里完成。
- *   3. 占位：早期版本在这里处理 sys_menu 写入，模块自描述后改为由 seed.ts 负责。
+ * 对已装载（meta.enabled !== false）的模块依次执行：
+ *   1. 迁移：Drizzle 官方 migrator，模块独立历史表 `<id>_drizzle_migrations`；执行后核对
+ *      journal 全部记录、schema 声明的表与列真实存在，再把 tag 按 (module_id, tag)
+ *      同步进 sys_module_migration（见 lib/migration-streams.ts）。
+ *   2. seed：执行模块自带的 seed 入口（seed.ts / scripts/seed.ts / db/seed.ts）的 default 导出。
+ * 全部完成后同步 sys_module 行（与启动时同一纯函数）。
  *
- * 入口：被 `pnpm db:seed` 的 Step 2/2 通过 spawnOnboard() 调用；
- *      不再有独立的 `db:seed:modules` 脚本——core seed 与模块入驻是一体编排。
+ * 入口：被 `pnpm db:seed` 的 Step 2/2 通过 spawnOnboard() 调用。
  *
  * 设计约束：
- *   - 单步失败不阻断后续模块。
+ *   - 单个模块失败不阻断后续模块，但最终退出码为 1。
+ *   - 迁移失败的模块不执行 seed。
  *   - 只写 DB；不写源码。
- *   - 菜单追加由模块 seed.ts 自管理。
  */
 
 import 'dotenv/config'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { spawn } from 'node:child_process'
-import { inArray } from 'drizzle-orm'
+import { createRequire } from 'node:module'
 import { drizzleDb, pool } from '@/db'
-import { sysModuleMigration } from '@/db/schema'
-
-const APP_ROOT_DIST = join(__dirname, '..')
-const APP_ROOT_SRC = join(APP_ROOT_DIST, '..', 'src')
-const MODULES_SRC = join(APP_ROOT_SRC, 'modules')
-const MODULES_DIST = join(APP_ROOT_DIST, 'modules')
-const DRIZZLE_KIT = join(APP_ROOT_DIST, '..', 'node_modules', '.bin', 'drizzle-kit')
-
-// Windows 上 .bin/drizzle-kit 是 shell wrapper，没有 .exe 后缀。
-// Node spawn 不直接执行 .cmd/.bat，需显式走 shell。
-const DRIZZLE_KIT_CMD = process.platform === 'win32' ? `${DRIZZLE_KIT}.CMD` : DRIZZLE_KIT
+import { syncModulesFromDiskPure, type ModuleDiskMeta } from '../core/module-loader/module-loader.js'
+import type { ModuleSeedContext } from '../core/module-loader/module-contract.js'
+import { recordModuleMigrations, runMigrationStream } from './lib/migration-streams.js'
+import { moduleStream, packedModules, rootsFromDist, type AppRoots } from './lib/streams.js'
 
 interface StepOutcome {
   ok: boolean
@@ -45,219 +35,103 @@ interface ModuleResult {
   id: string
   migrate: StepOutcome
   seed: StepOutcome
-  menuAppend: StepOutcome
 }
 
-async function loadPackHelper() {
-  const url = pathToFileURL(join(__dirname, '..', '..', 'scripts', 'module-pack.mjs')).href
-  return import(url) as Promise<{ isPackedModuleDir: (dir: string) => boolean }>
-}
-
-async function listModules(): Promise<string[]> {
-  if (!existsSync(MODULES_SRC)) return []
-  const { isPackedModuleDir } = await loadPackHelper()
-  const ids: string[] = []
-  for (const id of readdirSync(MODULES_SRC)) {
-    const dir = join(MODULES_SRC, id)
-    if (!statSync(dir).isDirectory()) continue
-    const moduleEntry = join(dir, 'module.ts')
-    if (!(existsSync(moduleEntry) || existsSync(join(MODULES_DIST, id, 'module.js')))) {
-      continue
-    }
-    if (!isPackedModuleDir(dir)) {
-      console.log(`[onboard] 跳过 ${id}：meta.enabled=false`)
-      continue
-    }
-    ids.push(id)
-  }
-  return ids.sort()
-}
-
-async function runDrizzleKit(
-  cwd: string,
-  configFlag: string,
-  args: string[],
-): Promise<StepOutcome> {
-  return new Promise((resolve) => {
-    const child = spawn(DRIZZLE_KIT_CMD, [configFlag, ...args], { cwd, env: process.env, shell: process.platform === 'win32' })
-    let stdout = ''
-    let stderr = ''
-    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString() })
-    child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString() })
-    child.on('error', (err) => {
-      resolve({ ok: false, message: `drizzle-kit 启动失败: ${err.message}` })
-    })
-    child.on('close', (code) => {
-      resolve({
-        ok: code === 0,
-        message: code === 0 ? '迁移完成' : `drizzle-kit exit ${code}\n${stderr || stdout}`.trim(),
-      })
-    })
-  })
-}
-
-async function syncModuleMigrationJournal(id: string): Promise<{ applied: number }> {
-  const journalPath = join(MODULES_SRC, id, 'drizzle', 'meta', '_journal.json')
-  if (!existsSync(journalPath)) return { applied: 0 }
-  type Journal = { entries: { tag: string }[] }
-  const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as Journal
-  const tags = journal.entries.map((e) => e.tag)
-  if (tags.length === 0) return { applied: 0 }
-  const existing = await drizzleDb
-    .select({ hash: sysModuleMigration.hash })
-    .from(sysModuleMigration)
-    .where(inArray(sysModuleMigration.hash, tags))
-  const existingSet = new Set(existing.map((r) => r.hash))
-  const newTags = tags.filter((t) => !existingSet.has(t))
-  if (newTags.length === 0) return { applied: 0 }
-  await drizzleDb.insert(sysModuleMigration).values(
-    newTags.map((tag) => ({ moduleId: id, hash: tag })),
-  )
-  return { applied: newTags.length }
-}
-
-async function migrateModule(id: string): Promise<StepOutcome> {
-  const moduleSrcDir = join(MODULES_SRC, id)
-  const moduleDistDir = join(MODULES_DIST, id)
-  const configTs = join(moduleSrcDir, 'drizzle.config.ts')
-  const configJs = join(moduleDistDir, 'drizzle.config.js')
-  if (!existsSync(configTs) && !existsSync(configJs)) {
-    return { ok: true, message: '无 drizzle.config，跳过迁移' }
-  }
-  const cwd = existsSync(configTs) ? moduleSrcDir : moduleDistDir
-  const configFlag = existsSync(configTs)
-    ? '--config=./drizzle.config.ts'
-    : '--config=./drizzle.config.js'
-
-  const runResult = await runDrizzleKit(cwd, configFlag, ['migrate'])
-  if (!runResult.ok) return runResult
+async function migrateModule(roots: AppRoots, meta: ModuleDiskMeta): Promise<StepOutcome> {
   try {
-    const { applied } = await syncModuleMigrationJournal(id)
+    const stream = moduleStream(roots, meta)
+    if (!stream) return { ok: true, message: '无 drizzle/ 目录，跳过迁移' }
+    const result = await runMigrationStream(pool, stream)
+    const recorded = await recordModuleMigrations(pool, meta.id, result.recorded)
+    const applied = result.applied.length > 0 ? `执行 ${result.applied.join(', ')}` : '无待执行迁移'
     return {
       ok: true,
-      message: applied > 0 ? `迁移完成，新增 ${applied} 条 journal 记录` : '迁移完成（journal 已全部记录）',
+      message: `${applied}；历史表 ${result.table}；校验表 ${result.verifiedTables.join(', ') || '（无）'}；sys_module_migration +${recorded}`,
     }
   } catch (err) {
-    return { ok: false, message: `迁移成功但同步 sys_module_migration 失败: ${(err as Error).message}` }
+    return { ok: false, message: (err as Error).message }
   }
 }
 
-function resolveSeedEntry(id: string): { src: string; dist: string } | null {
-  const moduleSrcDir = join(MODULES_SRC, id)
-  const moduleDistDir = join(MODULES_DIST, id)
-  const candidates = [
-    join(moduleSrcDir, 'seed.ts'),
-    join(moduleSrcDir, 'scripts', 'seed.ts'),
-    join(moduleSrcDir, 'db', 'seed.ts'),
-  ]
-  const sourceEntry = candidates.find((p) => existsSync(p))
-  if (!sourceEntry) return null
-  const rel = sourceEntry.slice(moduleSrcDir.length + 1)
-  const distEntry = join(moduleDistDir, rel.replace(/\.ts$/, '.js'))
-  return { src: sourceEntry, dist: distEntry }
+function resolveSeedEntry(roots: AppRoots, id: string): { src: string; dist: string } | null {
+  const moduleSrcDir = join(roots.srcRoot, 'modules', id)
+  const moduleDistDir = join(roots.distRoot, 'modules', id)
+  const candidates = ['seed.ts', join('scripts', 'seed.ts'), join('db', 'seed.ts')]
+  const rel = candidates.find((p) => existsSync(join(moduleSrcDir, p)) || existsSync(join(moduleDistDir, p.replace(/\.ts$/, '.js'))))
+  if (!rel) return null
+  return { src: join(moduleSrcDir, rel), dist: join(moduleDistDir, rel.replace(/\.ts$/, '.js')) }
 }
 
-async function seedModule(id: string): Promise<StepOutcome> {
-  const entry = resolveSeedEntry(id)
+async function seedModule(roots: AppRoots, id: string): Promise<StepOutcome> {
+  const entry = resolveSeedEntry(roots, id)
   if (!entry) return { ok: true, message: '无 seed 入口，跳过' }
   if (!existsSync(entry.dist)) {
-    return { ok: false, message: `seed 已写源码（${entry.src}）但未编译：${entry.dist}（先 npm run build:ts）` }
+    return { ok: false, message: `seed 已写源码（${entry.src}）但未编译：${entry.dist}（先 pnpm build:ts）` }
   }
-
-  // 动态 import 编译产物的 default export：
-  //   - 不再 spawn 子进程，stderr/stdout 不会因 pipe 缓冲丢失
-  //   - 复用进程内同一个 drizzleDb 连接池，不存在"子进程持连接、父进程已 close"的竞态
-  //   - demo seed 顶层有 `require.main === module` 守卫，import 不会触发副作用
-  //
-  // 用 createRequire + require 直接同步加载：CJS 模块顶层 (`require.main === module`
-  // 守卫) 在 require 时立即执行；如果模块是 ESM 编译产物，import() 会因 file:// 路径
-  // 在 Node 不同版本下的解析差异报"找不到模块"，require 是更稳的同进程注入路径。
+  // 同进程 require 编译产物（CommonJS）的 default 导出，复用同一个连接池。
+  // 不用 import(pathToFileURL(...))：CommonJS 编译会把它降级为 require('file://...') 而失败（P0 R-02）。
   try {
-    const { createRequire } = require('node:module') as typeof import('node:module')
-    const req = createRequire(__filename)
-    const mod = req(entry.dist) as { default?: () => Promise<void> }
+    const mod = createRequire(__filename)(entry.dist) as { default?: (ctx: ModuleSeedContext) => Promise<void> }
     if (typeof mod.default !== 'function') {
       return { ok: false, message: `seed 入口 ${entry.dist} 未导出 default 函数` }
     }
-    await mod.default()
+    await mod.default({ db: drizzleDb })
     return { ok: true, message: 'seed 完成' }
   } catch (err) {
-    return {
-      ok: false,
-      message: `seed 异常: ${(err as Error).message}`,
-    }
+    return { ok: false, message: `seed 异常: ${(err as Error).message}` }
   }
 }
 
-async function appendModuleMenu(id: string): Promise<StepOutcome> {
-  // 菜单由模块自带的 seed.ts 负责写入（"插件自描述"形式）。
-  void id
-  return { ok: true, message: '菜单由模块 seed.ts 负责' }
-}
-
-async function onboardOne(id: string): Promise<ModuleResult> {
-  console.log(`\n=== 模块 ${id} ===`)
-  const migrate = await migrateModule(id)
-  console.log(`  [1/3 migrate] ${migrate.ok ? 'OK' : 'FAIL'}  ${migrate.message}`)
+async function onboardOne(roots: AppRoots, meta: ModuleDiskMeta): Promise<ModuleResult> {
+  console.log(`\n=== 模块 ${meta.id} ===`)
+  const migrate = await migrateModule(roots, meta)
+  console.log(`  [1/2 migrate] ${migrate.ok ? 'OK' : 'FAIL'}  ${migrate.message}`)
   if (!migrate.ok) {
-    return {
-      id,
-      migrate,
-      seed: { ok: true, message: '迁移失败，跳过 seed' },
-      menuAppend: { ok: true, message: '迁移失败，跳过菜单追加' },
-    }
+    return { id: meta.id, migrate, seed: { ok: false, message: '迁移失败，未执行 seed' } }
   }
-  const seed = await seedModule(id)
-  console.log(`  [2/3 seed]    ${seed.ok ? 'OK' : 'FAIL'}  ${seed.message}`)
-  const menuAppend = await appendModuleMenu(id)
-  console.log(`  [3/3 menu]    ${menuAppend.ok ? 'OK' : 'FAIL'}  ${menuAppend.message}`)
-  return { id, migrate, seed, menuAppend }
+  const seed = await seedModule(roots, meta.id)
+  console.log(`  [2/2 seed]    ${seed.ok ? 'OK' : 'FAIL'}  ${seed.message}`)
+  return { id: meta.id, migrate, seed }
 }
 
 async function main() {
-  const ids = await listModules()
-  if (ids.length === 0) {
-    console.log('未发现任何模块（src/modules/ 为空）。')
+  const roots = rootsFromDist(join(__dirname, '..'))
+  const modules = await packedModules(roots)
+  if (modules.length === 0) {
+    console.log('未发现任何已装载模块（src/modules/ 为空或全部 meta.enabled=false）。')
     return
   }
-  console.log(`发现 ${ids.length} 个模块：${ids.join(', ')}`)
-  console.log('开始按模块执行 migrate → seed → 菜单追加 ...')
+  console.log(`发现 ${modules.length} 个模块：${modules.map((m) => m.id).join(', ')}`)
 
   const results: ModuleResult[] = []
-  for (const id of ids) {
-    results.push(await onboardOne(id))
+  for (const meta of modules) {
+    results.push(await onboardOne(roots, meta))
   }
 
-  // 所有模块的 migrate/seed 完成后，强制做一次 sys_module sync。
-  // 否则首次 db:seed 后访问 /admin/system/module-management/list 接口会看到空表
-  // —— 因为 loader.syncModulesFromDisk 只在 app boot 时跑，seed 进程不经过 fastify。
-  // 这里用 loader 暴露的纯函数版，避免再启一次 app。
-  console.log('\n[sync] 同步 sys_module 行（loader.syncModulesFromDiskPure）...')
+  // seed 进程不经过 fastify，sys_module 行在这里用启动时同一个纯函数同步。
+  console.log('\n[sync] 同步 sys_module 行（syncModulesFromDiskPure）...')
   try {
-    const { scanDiskModulesPure, syncModulesFromDiskPure } = await import(
-      '../core/module-loader/module-loader.js'
-    )
-    const diskModules = await scanDiskModulesPure(APP_ROOT_SRC, APP_ROOT_DIST)
-    const { inserted, updated } = await syncModulesFromDiskPure(drizzleDb, diskModules)
+    const { inserted, updated } = await syncModulesFromDiskPure(drizzleDb, modules)
     console.log(`[sync] sys_module 完成：inserted=${inserted} updated=${updated}`)
   } catch (err) {
     console.error('[sync] 同步 sys_module 失败:', (err as Error).message)
     process.exitCode = 1
   }
 
-  const failed = results.filter((r) => !r.migrate.ok || !r.seed.ok || !r.menuAppend.ok)
+  const failed = results.filter((r) => !r.migrate.ok || !r.seed.ok)
   console.log('\n=== 汇总 ===')
   for (const r of results) {
     const tag = failed.includes(r) ? 'FAIL' : 'OK'
-    console.log(`  [${tag}] ${r.id}: migrate=${r.migrate.ok ? 'ok' : 'fail'}  seed=${r.seed.ok ? 'ok' : 'fail'}  menu=${r.menuAppend.ok ? 'ok' : 'fail'}`)
+    console.log(`  [${tag}] ${r.id}: migrate=${r.migrate.ok ? 'ok' : 'fail'}  seed=${r.seed.ok ? 'ok' : 'fail'}`)
   }
   if (failed.length > 0) {
     process.exitCode = 1
   }
-  await pool.end()
 }
 
-main().catch((err) => {
-  console.error('onboard-modules 异常退出:', err)
-  process.exit(1)
-})
+main()
+  .catch((err) => {
+    console.error('onboard-modules 异常退出:', err)
+    process.exitCode = 1
+  })
+  .finally(() => pool.end())

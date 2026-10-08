@@ -1,28 +1,27 @@
 import 'dotenv/config'
 import { defineConfig } from 'drizzle-kit'
+import { LOCAL_DEV_DATABASE_URL, resolveDatabaseUrl } from '../../db/database-url'
+import { moduleMigrationsTable } from '../../db/migrations-table'
 
 /**
  * demo 模块专属的 drizzle-kit 配置。
  *
- * 每个 module 自带一份该文件，指向自己目录下的 db/schema.ts 与 drizzle/ 输出。
+ * 每个 module 自带一份该文件，指向自己目录下的 db/schema.ts 与 drizzle/ 输出，
+ * 并使用独立的迁移历史表 `demo_drizzle_migrations`（不与 Core 或其他模块共享，见 P0 R-01）。
  *
- * 跑迁移（手工）：
- *   npx drizzle-kit --config=apps/yishan-api/src/modules/demo/drizzle.config.ts generate
- *   npx drizzle-kit --config=apps/yishan-api/src/modules/demo/drizzle.config.ts migrate
+ * 生成迁移（开发期）：
+ *   cd src/modules/demo && npx drizzle-kit generate --config=./drizzle.config.ts
+ * 执行迁移（推荐，含表结构校验与 sys_module_migration 记账）：
+ *   pnpm --filter yishan-api db:migrate:modules demo
  *
- * 程序从不自动调用这些命令。模块的 module.ts 也不会执行 SQL 迁移。
+ * 程序启动时从不自动执行迁移。
  */
-const url =
-  process.env.DATABASE_URL ??
-  `mysql://${process.env.DATABASE_USER ?? 'root'}:${process.env.DATABASE_PASSWORD ?? ''}@${
-    process.env.DATABASE_HOST ?? 'localhost'
-  }:${process.env.DATABASE_PORT ?? '3306'}/${process.env.DATABASE_NAME ?? 'yishan'}`
-
 export default defineConfig({
   dialect: 'mysql',
   schema: './db/schema.ts',
   out: './drizzle',
+  migrations: { table: moduleMigrationsTable('demo') },
   dbCredentials: {
-    url,
+    url: resolveDatabaseUrl() ?? LOCAL_DEV_DATABASE_URL,
   },
 })

@@ -10,6 +10,7 @@ on:
       - "scripts/**"
       - "docs/verification/**"
       - ".tool-versions"
+      - ".gitattributes"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -21,6 +22,7 @@ on:
       - "scripts/**"
       - "docs/verification/**"
       - ".tool-versions"
+      - ".gitattributes"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -116,31 +118,24 @@ jobs:
       - name: Docs Build
         run: pnpm --filter yishan-docs build
 
-      # main 未提交 Core 的 drizzle/meta（P0 J3），这里在 CI 工作区临时 generate 以便迁移临时库；
-      # 生成结果必须与已提交的 0000_init.sql 完全一致，否则说明 schema 与已提交迁移漂移。
+      # Core 的 drizzle/meta 已提交（P0 J3 修复）：schema 与已提交的迁移/快照一致时 generate 不产生任何文件。
       - name: Core schema matches committed migration
         working-directory: apps/yishan-api
         shell: bash
         run: |
           pnpm db:generate
-          generated="$(ls drizzle/*.sql | grep -v '/0000_init.sql$')"
-          test "$(echo "$generated" | wc -l)" -eq 1
-          diff -q --strip-trailing-cr "$generated" drizzle/0000_init.sql
+          test -z "$(git status --porcelain -- drizzle)" || { git status --porcelain -- drizzle; exit 1; }
 
-      # P0 R-01：Core 与模块共用迁移历史，Core 先迁移会让模块迁移被静默跳过。
-      # 本临时库刻意先迁移模块再迁移 Core，并用只读诊断确认模块表真实存在；
-      # R-01 本身由 test/integration/module-migration.r01.test.ts 以 it.fails 跟踪，P4 修复。
+      # P0 R-01 已修复：每个模块使用独立历史表。这里刻意按曾经出错的顺序执行——
+      # 先用 drizzle-kit 迁移 Core，再用迁移脚本迁移模块（执行后核对历史与真实表结构，失败即非零退出）；
+      # 最后整体重跑一次验证幂等。
       - name: Migrate disposable CI database
         working-directory: apps/yishan-api
         shell: bash
         run: |
-          for dir in src/modules/*/; do
-            # 与 onboard / build:ts 相同的装载判定（meta.enabled !== false）
-            if node --input-type=module -e "import { isPackedModuleDir } from './scripts/module-pack.mjs'; process.exit(isPackedModuleDir('$dir') ? 0 : 1)"; then
-              (cd "$dir" && ../../../node_modules/.bin/drizzle-kit --config=./drizzle.config.ts migrate)
-            fi
-          done
           pnpm db:migrate
+          node dist/scripts/migrate.js --modules-only
+          node dist/scripts/migrate.js
 
       - name: Module tables exist (read-only diagnostic)
         run: node apps/yishan-api/scripts/check-module-tables.mjs

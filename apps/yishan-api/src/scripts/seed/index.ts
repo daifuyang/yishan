@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import {
   accountMenusSeed,
   assertSeedEnvironment,
@@ -12,6 +12,8 @@ import {
 } from './config.js';
 import type { SeedDb } from './context.js';
 import { drizzleDb, pool } from '@/db';
+import { runMigrationStream } from '../lib/migration-streams.js';
+import { coreStream, rootsFromDist } from '../lib/streams.js';
 import { ensureAdminUser } from './modules/system-user.js';
 import { bindUserRole, ensureSystemRoles } from './modules/system-role.js';
 import { seedDepartments } from './modules/system-dept.js';
@@ -98,16 +100,15 @@ export async function runSeed() {
   console.log('========== yishan seed 编排开始 ==========');
   console.log('Step 1/2: core migrate + seed');
 
-  // drizzle-kit migrate 在 Windows 上有两个已知问题：
-  //   1) meta 缺失时静默 exit 1
-  //   2) mysql2 + drizzle-kit 0.31.x 偶发不可见失败
-  // 本地开发可通过 SKIP_DRIZZLE_MIGRATE=1 跳过该步（SQL 已直接灌入）；
-  // 生产环境默认仍按原样调 drizzle-kit migrate。
+  // Core 迁移：drizzle-orm 官方 migrator（与 drizzle-kit migrate 同一实现，但不依赖 devDependencies），
+  // 执行后核对 journal 已全部记录、Core 表与列真实存在（lib/migration-streams.ts）。
+  // SKIP_DRIZZLE_MIGRATE=1 仍保留给“SQL 已手工灌入”的本地库；这类库没有迁移历史，
+  // 之后执行 db:migrate:all 会被前置守卫拒绝，需要先运行 db:migrations:bridge。
   if (process.env.SKIP_DRIZZLE_MIGRATE === '1') {
-    console.log('[seed] drizzle-kit migrate (skipped: SKIP_DRIZZLE_MIGRATE=1, tables pre-applied)');
+    console.warn('[seed] core migrate skipped: SKIP_DRIZZLE_MIGRATE=1 (tables pre-applied, no migration history recorded)');
   } else {
-    console.log('[seed] drizzle-kit migrate');
-    execSync('npx drizzle-kit migrate', { stdio: 'inherit' });
+    const result = await runMigrationStream(pool, coreStream(rootsFromDist(join(__dirname, '..', '..'))));
+    console.log(`[seed] core migrate: ${result.applied.length > 0 ? `applied ${result.applied.join(', ')}` : 'up to date'}`);
   }
   console.log('[seed] core migrate 完成');
 
