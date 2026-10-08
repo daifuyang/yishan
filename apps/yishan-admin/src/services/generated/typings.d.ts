@@ -1675,12 +1675,25 @@ declare namespace API {
     id: string;
   };
 
+  type tokenCategoryStats = {
+    /** 总数（未软删） */
+    total: number;
+    /** 活跃数（未过期 / 未撤销） */
+    active: number;
+    /** 过期数（未撤销但已过期） */
+    expired: number;
+    /** 已撤销 / 已软删数 */
+    revoked: number;
+  };
+
   type tokenStatsResp = {
     success?: boolean;
     code?: number;
     message?: string;
     timestamp?: string;
     data?: {
+      apiTokens: tokenCategoryStats;
+      userTokens: tokenCategoryStats;
       totalTokens?: number;
       activeTokens?: number;
       expiredTokens?: number;
