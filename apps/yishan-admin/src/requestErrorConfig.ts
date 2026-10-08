@@ -146,10 +146,13 @@ export const errorConfig: RequestConfig = {
     },
     // 错误接收及处理
     errorHandler: async (error: any, opts: any) => {
-      if (opts?.skipErrorHandler) throw error;
+      // Umi 忽略 handler 的 Promise，原请求会自行拒绝，避免额外的未处理拒绝。
+      if (opts?.skipErrorHandler) return;
 
       // 处理401未授权错误 - 尝试自动刷新token
-      const requestPath = (opts?.url ?? "").split("?")[0];
+      // Umi 将 URL 和 options 分开传入，Axios 错误保留实际请求 URL。
+      const requestConfig = error.config as { url?: string } | undefined;
+      const requestPath = (opts?.url ?? requestConfig?.url ?? "").split("?")[0];
       const isAuthLoginEndpoint =
         requestPath === "/api/v1/auth/login" ||
         requestPath === "/api/v1/app/auth/login";

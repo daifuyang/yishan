@@ -242,16 +242,20 @@ describe('requestErrorConfig.errorHandler —— 401 refresh 流程', () => {
     expect(mockLogout).not.toHaveBeenCalled();
   });
 
-  it('skipErrorHandler: true 的请求不应进入错误处理（避免递归）', async () => {
-    await expect(
-      handler(
-        { response: { status: 401 }, message: 'inner' },
-        { url: '/api/v1/admin/users', method: 'GET', skipErrorHandler: true },
-      ),
-    ).rejects.toBeDefined();
-
+  it('skipErrorHandler 跳过全局处理，Umi 原请求仍向调用方拒绝', async () => {
+    const originalError = { response: { status: 401 }, message: 'inner' };
+    let handlerResult: Promise<void> | undefined;
+    // 安装版本 Umi 同步调用 handler，忽略返回值并拒绝原请求。
+    const caller = new Promise<never>((_resolve, reject) => {
+      handlerResult = handler(originalError, { skipErrorHandler: true });
+      reject(originalError);
+    });
+    const callerAssertion = expect(caller).rejects.toBe(originalError);
+    await expect(handlerResult).resolves.toBeUndefined();
+    await callerAssertion;
     expect(mockRefreshToken).not.toHaveBeenCalled();
     expect(mockLogout).not.toHaveBeenCalled();
+    expect(mockMessageError).not.toHaveBeenCalled();
   });
 });
 
@@ -265,6 +269,34 @@ describe('requestErrorConfig.errorHandler —— 401 refresh 流程', () => {
  * 不触发 refresh、不触发 logout、不触发 clearTokens。
  */
 describe('requestErrorConfig.errorHandler —— 登录接口 401 不走 refresh', () => {
+  it.each(['/api/v1/auth/login', '/api/v1/app/auth/login?source=app'])(
+    'Umi options 不含 URL 时使用 Axios config：%s 不刷新会话',
+    async (url) => {
+      await handler(
+        {
+          config: { url },
+          response: {
+            status: 401,
+            data: { success: false, code: 22007, message: '用户名或密码错误' },
+          },
+        },
+        {},
+      );
+      expect(mockRefreshToken).not.toHaveBeenCalled();
+      expect(mockLogout).not.toHaveBeenCalled();
+      expect(mockClearTokens).not.toHaveBeenCalled();
+      expect(mockMessageError).toHaveBeenCalledWith('用户名或密码错误');
+    },
+  );
+
+  it('Axios config 中形态相似的受保护路径仍刷新会话', async () => {
+    await handler(
+      { config: { url: '/api/v1/admin/auth/login-logs' }, response: { status: 401 } },
+      {},
+    );
+    expect(mockRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mockLogout).not.toHaveBeenCalled();
+  });
   it('web 端 /api/v1/auth/login 401：展示后端 message，不调 refresh、不 logout', async () => {
     await handler(
       {
