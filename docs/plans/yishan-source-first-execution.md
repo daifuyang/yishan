@@ -15,7 +15,7 @@ A 清除 Core 业务泄漏 · B 公共机制与 System 解耦（身份/权限可
 | origin/main | `0dc03c7`；本地 main `6a5c62a`；all 为现网部署来源（不改） |
 | 架构参考 | V2：主 checkout 中未跟踪的 `docs/plans/yishan-source-first-architecture-review.md`（未纳入本分支） |
 | 工具链 | Node 22.22.1（`/c/Users/dfy/AppData/Roaming/fnm/node-versions/v22.22.1/installation` 置于 PATH 前）、pnpm 8.15.9 |
-| 临时库 | `docker run --rm --label purpose=yishan-p0-temp --name yishan-sf-mysql --tmpfs /var/lib/mysql -e MYSQL_ROOT_PASSWORD=root -p 127.0.0.1:33306:3306 mysql:8.4`；redis 同理 `36379`（Git Bash 需 `MSYS_NO_PATHCONV=1`） |
+| 临时库 | 一次性容器 `yishan-sf-mysql`（mysql:8.4，tmpfs，`127.0.0.1:33306`）与 `yishan-sf-redis`（`36379`），标签 `purpose=yishan-p0-temp`，启动方式同 `apps/yishan-api/test/integration/README.md`（Git Bash 需 `MSYS_NO_PATHCONV=1`） |
 
 ## 关键决策（依据）
 
@@ -33,14 +33,15 @@ A 清除 Core 业务泄漏 · B 公共机制与 System 解耦（身份/权限可
 - [x] Goal D：Core journal/snapshot 提交（J3）；模块独立历史表；`scripts/lib/migration-streams.ts`、`migrate.ts`、`migrations-bridge.ts`；onboard 修复（R-02、M4）；seed 不再依赖 drizzle-kit；`check-migrations.mjs` + 基线；CI 改为按 R-01 顺序迁移。
 - [x] 新规则：`module-imports-internal`、`kernel-imports-system`、`kernel-alias-import`、模块 id lint、`check:migrations`。
 
+- [x] Goal C：原型（`tmp/proto-kernel`）证明源码包在 API 的 tsc rootDir 构建下报 TS6059；预构建包可行但需额外构建链且 FC 运行时层 `npm install` 无法解析 `workspace:*` → 维持 App 内 kernel + 守卫，触发条件写入 `docs/distribution.md`。
+- [x] Goal E：`scripts/yishan-upstream.mjs`（status/diff/apply）+ 自动化测试；`tmp/e2e/{upstream,consumer}` 实际演练：复制 → 删 demo → 改 kernel/system → 自建 notes 模块 → 断开上游后构建/测试/迁移/启动 → v2 升级（冲突保护、回滚、原子失败）→ v3 升级。演练发现并修复“删 demo 后上游测试失败”。
+- [x] Goal F：portal/shop（取自 all）叠加到本分支：tsc 0 错误、模块单测 4/4、空库 Core 先迁移后三模块全部建表且 seed 成功、路由 200/401、OpenAPI 自动出现 portal/shop tag。门禁适配为机械修改（约 50 处 import、2 个 drizzle.config、2 个 seed）。
+- [x] 已部署库衔接演练：用 all 的迁移文件构造共享历史库（模块先 / Core 先两种），守卫拒绝 → dry-run → 备份 → apply → migrate 幂等 → 旧历史与业务表校验和不变 → 回滚数据一致。
+
 ## 未完成 / 下一步最小行动
 
-1. 提交 A+B、D 两组改动（本地提交）。
-2. 全量 `pnpm lint` / `pnpm test` / `pnpm build`（含 Admin、App、Docs）。
-3. Goal C：workspace 包原型评估（临时目录），记录结论与触发条件。
-4. Goal E：临时消费项目演练（复制 → 删除模块 → 改公共源码 → 来源标记 → 预览上游 → 3-way 合并 → 冲突保护 → 回滚）；编写 `docs/distribution.md` 与可能的薄脚本。
-5. Goal F：portal/shop（仅存在于 all）在新契约下的兼容性评估。
-6. 推送分支、建 PR、核对 GitHub CI；写最终报告。
+1. 推送分支、建 PR（基于 PR #9 分支），核对 GitHub CI。
+2. 写最终报告 `docs/verification/yishan-source-first-final.md`。
 
 ## 验证命令与最近结果
 
