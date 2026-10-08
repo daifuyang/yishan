@@ -1,23 +1,24 @@
 /**
- * module-loader.ts — 单一职责：管理业务模块的装载与卸载。
+ * module-loader.ts — 管理业务模块的装载。
  *
- * 模块启停的事实源是 MySQL `sys_module.enabled`。本文件封装三件事：
- *   1. `syncModulesFromDisk`：扫 src/modules/<id>/,INSERT 缺失行(默认 enabled = 1)、
- *      UPDATE 结构字段(name / table_prefix / version)。永远不动 `enabled` 列。
- *   2. `loadEnabledModuleIds`：从 DB 读取 enabled = 1 的 id 集合,带 Redis 缓存。
- *   3. `mountAllOnDisk`：boot 期用标准 @fastify/autoload 挂载所有【已打包在盘上】的模块,
- *      prefix 硬约定 /api/<id>。运行时启停不改挂载,由 app.ts 的 onRequest gate 按
- *      sys_module.enabled 拦截实现(即时、零重启)。
+ * 两层开关：
+ *   - `meta.enabled`（module.ts）：装载开关。false 则扫盘时跳过，不 sync、不 mount。
+ *     改这个字段需要重新发版。缺省 true。
+ *   - `sys_module.enabled`（数据库）：流量开关。只对已装载模块生效；gate 按它 404。
+ *     toggle 即时生效，重启不覆盖。
+ *
+ * 本文件封装三件事：
+ *   1. `syncModulesFromDisk`：对已装载模块 INSERT 缺失行（流量默认开）或
+ *      UPDATE name / table_prefix / version。永远不动表上的 `enabled`。
+ *   2. `loadEnabledModuleIds`：从 DB 读流量开启的 id，带 Redis 缓存。
+ *   3. `mountAllOnDisk`：autoload 已装载模块的 routes/，prefix `/api/<id>`。
  *
  * 不变量：
- *   - 路由 prefix 硬约定为 `/api/${id}`,不再由模块 meta 声明,也不做 prefix 唯一性校验
- *     (id 唯一性由文件系统保证)。
- *   - fastify 插件树 boot 后不可变：不做运行时 register/unregister;启停走 gate 拦截。
- *   - syncModulesFromDisk 不允许覆盖 enabled;运维显式停用的模块,重启后必须保持停用。
+ *   - 路由 prefix 硬约定为 `/api/${id}`。
+ *   - fastify 插件树 boot 后不可变；流量启停走 gate，不 unregister。
+ *   - sync 不允许覆盖表上的 enabled。
  *
- * 入口策略：模块入口固定从编译产物 dist/<id>/module.js 加载（项目
- * package.json 是 "type": "commonjs",Node 无法直接 import .ts);dist 缺失时
- * 退回 src/<id>/module.ts 作为兜底,方便 source-only 检出场景。
+ * 入口策略：优先 `dist/modules/<id>/module.js`，缺失时退回 `src/modules/<id>/module.ts`。
  */
 import { eq, inArray } from 'drizzle-orm'
 import { existsSync, readdirSync, statSync } from 'node:fs'
@@ -87,10 +88,13 @@ export async function scanDiskModulesPure(
       logger?.warn({ module: id }, 'module skipped: meta.id missing')
       continue
     }
+    if (meta.enabled === false) {
+      logger?.info({ module: id }, 'module skipped: meta.enabled=false')
+      continue
+    }
     out.push({
       id: meta.id,
       name: typeof meta.name === 'string' && meta.name.length > 0 ? meta.name : meta.id,
-      enabled: meta.enabled === undefined ? true : Boolean(meta.enabled),
       tablePrefix: typeof meta.tablePrefix === 'string' && meta.tablePrefix.length > 0
         ? meta.tablePrefix
         : `${meta.id}_`,
@@ -109,9 +113,9 @@ export async function scanDiskModulesPure(
  * 任何能拿到 drizzle db 句柄的地方都能调用(onboard-modules.ts、reset 脚本等)。
  *
  * 行为：
- *   - 行不存在 → INSERT(默认 enabled = m.enabled ? 1 : 0)
+ *   - 行不存在 → INSERT（流量 enabled = 1）
  *   - 行已存在 → UPDATE name / tablePrefix / version / updated_at;enabled 列永不动
- *   - 磁盘不存在但 DB 里存在 → 不处理,留给运维手动卸载
+ *   - 未装载（meta.enabled=false 或目录不在）但 DB 里存在 → 不处理
  */
 export async function syncModulesFromDiskPure(
   db: AppDb,
@@ -143,7 +147,7 @@ export async function syncModulesFromDiskPure(
         name: m.name,
         tablePrefix: m.tablePrefix,
         version: m.version,
-        enabled: m.enabled ? 1 : 0,
+        enabled: 1,
       })
       inserted++
     }
@@ -154,7 +158,6 @@ export async function syncModulesFromDiskPure(
 export interface ModuleDiskMeta {
   id: string
   name: string
-  enabled: boolean
   tablePrefix: string
   version: string
   /** 模块目录绝对路径,便于 re-import。 */
@@ -342,7 +345,7 @@ export class ModuleLoader {
   }
 
   /**
-   * boot 时挂载所有磁盘模块(不看 enabled)。运行时启停交给 gate。
+   * boot 时挂载已装载模块。流量启停交给 gate。
    *
    * 各模块互不依赖（fastify.register 隔离上下文），并发起 register 不需要
    * 串行等待——并行挂载在 20+ 模块规模下能把 boot 时间从 O(N) 砍到 O(1)。

@@ -3,7 +3,7 @@
  *
  * 将 sys_role 与 sys_menu 通过 sys_role_menu 关联起来。默认绑定策略：
  *   - super_admin  → 全部菜单
- *   - admin        → 全部菜单（除系统级敏感路径：插件管理、站点配置、云存储）
+ *   - admin        → 全部菜单（除系统级敏感路径：站点配置、云存储）
  *   - normal_user  → 仅 account 菜单（个人中心、API Token）
  *
  * 写入前清空每个 role 的旧绑定（幂等）。
@@ -15,7 +15,6 @@ import { ROLE_CODES } from '@/constants/permission-codes.js';
 import type { SeedDb } from '../context.js';
 
 const ADMIN_EXCLUDED_PATH_PATTERNS = [
-  '/system/plugins%',
   '/system/site%',
   '/system/storage%',
 ];

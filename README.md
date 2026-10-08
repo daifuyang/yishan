@@ -12,7 +12,7 @@
 
 Yishan（移山）是一个开箱即用的中后台管理系统基座，提供：
 
-- 🧩 **可插拔业务模块** —— `apps/yishan-api/src/modules/<id>/` 自包含的 Fastify 插件，`meta.enabled` 控制运行时启停，无需重新部署
+- 🧩 **可插拔业务模块** —— `apps/yishan-api/src/modules/<id>/` 自包含；`meta.enabled` 控制是否装载，`sys_module.enabled` 控制流量
 - 🎨 **现代化前端** —— React 19 + UmiJS 4（@umijs/max）+ Ant Design 6 + ProTable，从 OpenAPI 自动生成 API 客户端
 - 🗄️ **类型安全后端** —— Fastify 5 + TypeBox（运行时校验）+ Drizzle ORM + JWT，强类型贯穿请求/响应全链路
 - 📱 **多端覆盖** —— Web 管理后台、微信小程序（[Taro 4](https://docs.taro.zone/)）、H5 共享同一套后端 API
@@ -164,10 +164,10 @@ modules/<id>/
 
 **生命周期**：
 
-1. **Boot 扫描** —— `app.ts` 调用 `moduleLoader.scanDiskModules()` 读取每个模块
-2. **DB 同步** —— upsert 到 `sys_module` 表（`enabled` 字段首次用 `meta.enabled`，之后永不覆盖）
-3. **挂载** —— `@fastify/autoload` 把每个模块的 `routes/` 注册到 `/api/<id>` 前缀
-4. **Gate** —— 根实例的 `onRequest` hook 检查 `sys_module.enabled`（Redis 缓存 + 5s 进程内 memo），disabled 模块返回 404
+1. **Boot 扫描** —— `scanDiskModules()` 读每个模块的 `meta`；`meta.enabled === false` 的跳过
+2. **DB 同步** —— 已装载模块 upsert 到 `sys_module`（首次流量 `enabled = 1`，之后永不覆盖）
+3. **挂载** —— `@fastify/autoload` 把已装载模块的 `routes/` 注册到 `/api/<id>`
+4. **Gate** —— `onRequest` 按 `sys_module.enabled` 拦截流量，关掉返回 404
 
 当前内置模块：`demo`（参考实现）、`portal`（文章/页面/模板）、`shop`（商品/订单/SKU）。完整开发指南见 [`docs/module-onboarding.md`](docs/module-onboarding.md)。
 

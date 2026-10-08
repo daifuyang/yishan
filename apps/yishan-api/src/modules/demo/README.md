@@ -46,19 +46,18 @@ modules/demo/
 ```ts
 export const meta = {
   id: 'demo',        // 必填，模块唯一标识
-  enabled: true,     // 可选；缺省 true。首次 sync 进 sys_module 时作为 enabled 列兜底值
+  enabled: true,     // 装载开关；false 则不 sync、不 mount。缺省 true
 }
 ```
 
 - `id`：与目录名一致；core 推导路由 prefix 为 `/api/${id}`。
-- `enabled`：仅在「首次 sync 该模块到 sys_module 表」时生效一次——行不存在则 INSERT，enabled 取此值。已有行 sync 永不覆盖 `enabled`。
+- `enabled`：装载开关。`false` 时启动跳过该模块。流量开关是表 `sys_module.enabled`。
 - 表名、版本号由 core 从 `<id>_` / `0.0.0` 兜底推导，不再需要在 meta 里声明。
 
 ## 启停模块
 
-事实源是 `sys_module.enabled`。所有模块一律进 dist，运行时启停由后台「模块管理」页或 toggle 接口切换，写 DB + 清缓存，全局 `onRequest` gate 即时拦截，无需重启。停用的模块请求直接 404。
-
-> 此前还存在一个构建期 `module.json.build` 开关用于"不把某模块编进 dist"——已删除。模块要不要出厂默认开启由 `meta.enabled` 控制；模块要不要随产品一起发布由「目录是否存在于 src/modules/」控制。
+- 不装载：`meta.enabled = false`，重新发版。
+- 挡流量：后台「模块管理」toggle `sys_module.enabled`，写 DB + 清缓存，gate 即时 404，无需重启。
 
 ## 跑迁移（手工）
 
@@ -98,7 +97,7 @@ npx drizzle-kit --config=apps/yishan-api/src/modules/demo/drizzle.config.ts migr
 demo 模块的菜单由 `config/system-menu.json` 声明、`seed.ts` 写入 `sys_menu`（通过 `pnpm db:seed` 触发）：
 
 - 顶级目录「示例插件」下挂 3 个页面：`/demo/quickstart`、`/demo/health`、`/demo/todos`
-- `component` 字段使用虚拟路径 `./modules/demo/<page>`，由 [apps/yishan-admin/src/utils/moduleComponents.ts](file:///home/dfy/workspace/products/yishan/apps/yishan-admin/src/utils/moduleComponents.ts) 在运行时映射到 `apps/yishan-admin/src/modules/demo/pages/<page>/index.tsx`
+- `component` 字段使用虚拟路径 `./modules/demo/<page>`，由 [apps/yishan-admin/src/utils/moduleComponents.ts](../../../../yishan-admin/src/utils/moduleComponents.ts) 在运行时映射到 `apps/yishan-admin/src/modules/demo/pages/<page>/index.tsx`
 - 按钮对应的权限码统一在 `config/system-menu.json` 声明（页面 → `children[].permissionCodes`），`seed.ts` 把它们绑到 `sys_menu_permission`
 
 修改菜单：只动 `config/system-menu.json`，重跑 `pnpm db:seed` 即可。不需要碰 core，也不需要重建 core seed。
@@ -122,7 +121,7 @@ cd apps/yishan-api && npx vitest run src/modules/demo/tests
 1. 在 `src/modules/<id>/` 拷贝本目录
 2. 把所有 `demo` 全局替换为你的 `id`
 3. 改 `db/schema.ts`：把表名从 `demo_documents` 改成 `<id>_<entity>`
-4. 改 `module.ts`：把 `meta.id` 改成自己的，`meta.enabled` 视需要保留或省略（默认 true）
+4. 改 `module.ts`：把 `meta.id` 改成自己的；不装这个模块就设 `meta.enabled: false`
 5. `npx drizzle-kit --config=.../<id>/drizzle.config.ts generate`
 6. `npx drizzle-kit --config=.../<id>/drizzle.config.ts migrate`
 7. `pnpm --filter yishan-api build:ts` 后启动服务；在后台「模块管理」页启用（运行时启停即时生效）

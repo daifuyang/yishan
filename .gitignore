@@ -37,7 +37,7 @@ apps/yishan-app/.swc/
 tmp/
 .worktrees/
 
-# Generated artifacts (release output, plugin catalog from profiles/*.yaml)
+# Generated local artifacts
 artifacts/
 apps/yishan-api/openapi.json
 

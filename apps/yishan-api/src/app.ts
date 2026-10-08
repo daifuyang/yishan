@@ -56,9 +56,8 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
   fastify.decorate('appRootDist', APP_ROOT_DIST)
   fastify.decorate('appRootSrc', APP_ROOT_SRC)
 
-  // 3. 业务模块：sync DB → 无条件挂载所有【已打包在盘上】的模块。
-  //    运行时启停不改挂载（fastify 插件树 boot 后不可变），由 onRequest gate
-  //    按 sys_module.enabled 拦截实现，即时生效、零重启。
+  // 3. 业务模块：扫盘（跳过 meta.enabled=false）→ sync DB → 挂载。
+  //    流量启停不改挂载，由 onRequest gate 按 sys_module.enabled 拦截。
   const diskModules = await fastify.moduleLoader.scanDiskModules()
   fastify.log.info({ count: diskModules.length }, 'disk modules scanned')
   await fastify.moduleLoader.syncModulesFromDisk(diskModules)
