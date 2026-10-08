@@ -1,0 +1,20 @@
+ FAIL  test/integration/pat-lifecycle.test.ts [ test/integration/pat-lifecycle.test.ts ]
+Error: Duplicate key name 'idx_api_token_user_id'
+ ❯ PromisePool.query ../../node_modules/.pnpm/mysql2@3.15.3/node_modules/mysql2/lib/promise/pool.js:36:22
+ ❯ runMigrations test/integration/_setup.ts:58:20
+ ❯ setupIntegration test/integration/_setup.ts:123:3
+ ❯ test/integration/pat-lifecycle.test.ts:19:33
+ FAIL  test/integration/rbac.test.ts [ test/integration/rbac.test.ts ]
+Error: Duplicate key name 'idx_sys_enum_type_enabled_sort'
+ ❯ PromisePool.query ../../node_modules/.pnpm/mysql2@3.15.3/node_modules/mysql2/lib/promise/pool.js:36:22
+ ❯ runMigrations test/integration/_setup.ts:58:20
+ ❯ setupIntegration test/integration/_setup.ts:123:3
+ ❯ test/integration/rbac.test.ts:19:33
+ FAIL  test/integration/user.lifecycle.test.ts [ test/integration/user.lifecycle.test.ts ]
+Error: Duplicate key name 'idx_api_token_user_id'
+ ❯ PromisePool.query ../../node_modules/.pnpm/mysql2@3.15.3/node_modules/mysql2/lib/promise/pool.js:36:22
+ ❯ runMigrations test/integration/_setup.ts:58:20
+ ❯ setupIntegration test/integration/_setup.ts:123:3
+ ❯ test/integration/user.lifecycle.test.ts:10:33
+ Test Files  3 failed (3)
+      Tests  no tests

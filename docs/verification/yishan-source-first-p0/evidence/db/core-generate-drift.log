@@ -1,0 +1,36 @@
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '<repo>\tmp\p0\gen-scratch\drizzle.config.ts'
+Reading schema files:
+<repo>\tmp\p0\gen-scratch\src\db\schema\index.ts
+
+27 tables
+sys_api_token 12 columns 4 indexes 0 fks
+sys_app 13 columns 7 indexes 0 fks
+sys_app_menu 20 columns 10 indexes 0 fks
+sys_app_resource 15 columns 8 indexes 0 fks
+sys_attachment 25 columns 10 indexes 0 fks
+sys_attachment_folder 13 columns 9 indexes 0 fks
+sys_dept 13 columns 9 indexes 0 fks
+sys_dict_data 15 columns 8 indexes 0 fks
+sys_dict_type 12 columns 7 indexes 0 fks
+sys_enum 12 columns 3 indexes 0 fks
+sys_form_data 10 columns 6 indexes 0 fks
+sys_form_field 15 columns 7 indexes 0 fks
+sys_login_log 11 columns 7 indexes 0 fks
+sys_menu 19 columns 9 indexes 0 fks
+sys_menu_permission 4 columns 3 indexes 0 fks
+sys_module 7 columns 1 indexes 0 fks
+sys_module_migration 4 columns 2 indexes 0 fks
+sys_option 11 columns 4 indexes 0 fks
+sys_post 11 columns 7 indexes 0 fks
+sys_region 8 columns 3 indexes 0 fks
+sys_role 13 columns 7 indexes 0 fks
+sys_role_menu 6 columns 3 indexes 0 fks
+sys_role_permission 7 columns 3 indexes 0 fks
+sys_user 20 columns 10 indexes 0 fks
+sys_user_dept 6 columns 3 indexes 0 fks
+sys_user_role 6 columns 3 indexes 0 fks
+sys_user_token 13 columns 5 indexes 0 fks
+
+No schema changes, nothing to migrate 😴
+EXIT=0

@@ -1,0 +1,33 @@
+$ (cwd=<repo>/apps/yishan-api/src/modules/demo) <repo>/apps/yishan-api/node_modules/.bin/drizzle-kit --config=./drizzle.config.ts migrate
+Reading config file '<repo>\apps\yishan-api\src\modules\demo\drizzle.config.ts'
+[✓] migrations applied successfully!EXIT=0
+$ (cwd=<repo>/apps/yishan-api/src/modules/portal) <repo>/apps/yishan-api/node_modules/.bin/drizzle-kit --config=./drizzle.config.ts migrate
+Reading config file '<repo>\apps\yishan-api\src\modules\portal\drizzle.config.ts'
+[✓] migrations applied successfully!EXIT=0
+$ (cwd=<repo>/apps/yishan-api/src/modules/shop) <repo>/apps/yishan-api/node_modules/.bin/drizzle-kit --config=./drizzle.config.ts migrate
+Reading config file '<repo>\apps\yishan-api\src\modules\shop\drizzle.config.ts'
+[✓] migrations applied successfully!EXIT=0
+$ (cwd=<repo>/apps/yishan-api) pnpm db:migrate
+
+> yishan-api@1.0.0 db:migrate <repo>\apps\yishan-api
+> drizzle-kit migrate
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '<repo>\apps\yishan-api\drizzle.config.ts'
+[✓] migrations applied successfully!EXIT=0
+---- after modules-first then core
+## tables (42)
+  __meta: 1 -> __drizzle_migrations
+  demo: 1 -> demo_todos
+  portal: 5 -> portal_article_categories, portal_articles, portal_categories, portal_pages, portal_templates
+  shop: 8 -> shop_attribute_values, shop_attributes, shop_categories, shop_order_items, shop_orders, shop_product_skus, shop_products, shop_sku_attributes
+  sys: 27 -> sys_api_token, sys_app, sys_app_menu, sys_app_resource, sys_attachment, sys_attachment_folder, sys_dept, sys_dict_data, sys_dict_type, sys_enum, sys_form_data, sys_form_field, sys_login_log, sys_menu, sys_menu_permission, sys_module, sys_module_migration, sys_option, sys_post, sys_region, sys_role, sys_role_menu, sys_role_permission, sys_user, sys_user_dept, sys_user_role, sys_user_token
+## __drizzle_migrations columns: id, hash, created_at
+## __drizzle_migrations rows (5)
+  id=1 created_at=1784622315878 (2026-07-21T08:25:15.878Z) hash=f8f697fec267… -> demo/0000_init when=1784622315878 (2026-07-21T08:25:15.878Z)
+  id=2 created_at=1784788345316 (2026-07-23T06:32:25.316Z) hash=2b42ba79cccb… -> portal/0000_init when=1784788345316 (2026-07-23T06:32:25.316Z)
+  id=3 created_at=1784788356475 (2026-07-23T06:32:36.475Z) hash=85fe83f783a7… -> shop/0000_init when=1784788356475 (2026-07-23T06:32:36.475Z)
+  id=4 created_at=1787238284270 (2026-08-20T15:04:44.270Z) hash=0068524c1db6… -> core/0000_init when=1787238284270 (2026-08-20T15:04:44.270Z)
+  id=5 created_at=1788881192896 (2026-09-08T15:26:32.896Z) hash=307d0ebe081d… -> core/0002_init when=1788881192896 (2026-09-08T15:26:32.896Z)
+## sys_module_migration rows (0)
+## sys_module rows (0)
