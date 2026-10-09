@@ -69,10 +69,12 @@ pnpm --filter @yishan/demo-admin openapi
 - `pnpm --filter @yishan/demo-admin lint`、`pnpm typecheck:admin`：通过。Biome 保留迁移前已有告警（System 11、Demo 21），没有新增错误。
 - Demo Admin Jest：29 suites / 211 tests 通过；Core Admin Node tests：5/5 通过。
 - `pnpm test:scripts`：29/29 通过；`pnpm check:boundaries`、`git diff --check` 通过。
+- `pnpm test`：通过；Core Database 单元测试 43、Core API 17、System API 322、Demo API 294。默认单元命令跳过的 13 个数据库集成用例已由隔离集成命令实际执行；CRM 1 个需独立业务数据库的集成用例继续按原基线跳过。
 - `pnpm typecheck:api`、API build、`pnpm build`：通过；Docs build 通过。
-- API/System/Demo 隔离集成：System 20/20、Demo 1/1；Core Database MySQL 13/13。测试只使用 loopback MySQL、随机 schema/user 和 Redis namespace，并审计确认无残留。
+- 最终串行 `pnpm test:integration`：通过，Core Database MySQL 13/13、System 20/20、Demo 1/1。测试只使用 loopback MySQL、随机 schema/user 和 Redis namespace，并审计确认无残留。
+- 共享配置的两个小程序消费者仅调整默认 API 地址归属，页面架构未改；`pnpm --filter yishan-app test` 74/74 与 `pnpm build:app` 通过。Taro 保留既有 Browserslist/webpack 缓存告警。
 - Playwright 实际页面：7/7 通过，覆盖登录、11 个 System 页面及用户弹窗、Demo/Portal/Shop 菜单和直接 URL/刷新、匿名跳转、无权限 404/403、模块禁用/恢复、Portal 分类真实 CRUD、媒体上传和下载。7 个用例结束后数据库、账号、Redis key、临时上传目录均为 0。
-- 独立复用验证：[scripts/verify-admin-reuse.mjs](../../scripts/verify-admin-reuse.mjs) 在 OS 临时目录构建两个独立产品消费者；Mako、TypeScript、React singleton、`/reuse/` JS/CSS、未安装模块排除、Catalog HMR 和复制的 System 包 Region HMR 均通过。实际 Demo-only 与 Demo+Portal+Shop 两种构建分别通过，System 12 页面始终存在；`ADMIN_PORT` 优先级和 `/admin/` 资产均通过。证据：[report.json](file:///C:/Users/dfy/AppData/Local/Temp/yishan-admin-reuse-IMv70u/report.json)。
+- 独立复用验证：[scripts/verify-admin-reuse.mjs](../../scripts/verify-admin-reuse.mjs) 在 OS 临时目录构建两个独立产品消费者；Mako、TypeScript、React singleton、`/reuse/` JS/CSS、未安装模块排除、Catalog HMR 和复制的 System 包 Region HMR 均通过。实际 Demo-only 与 Demo+Portal+Shop 两种构建分别通过，System 12 页面始终存在；`ADMIN_PORT` 优先级和 `/admin/` 资产均通过。证据位于 `C:/Users/dfy/AppData/Local/Temp/yishan-admin-reuse-IMv70u/report.json`。
 - 独立产物命令：
 
   ```bash
@@ -80,7 +82,9 @@ pnpm --filter @yishan/demo-admin openapi
   node scripts/verify-api-main.cjs --artifact <external-temp-directory>
   ```
 
-  产物在仓库外运行，健康检查、登录、`/api/docs/json`、`/admin/`、入口及懒加载 JS/CSS、嵌套路由刷新、无源码地图/环境文件/仓库绝对路径泄漏、SIGINT 优雅退出均通过；最近一次摘要为 health/login/docs/admin `200`、生产未安装模块 `404`。
+  产物在仓库外运行，健康检查、登录、`/api/docs/json`、`/admin/`、42 个入口及懒加载 JS/CSS、嵌套路由刷新、无源码地图/环境文件/仓库绝对路径泄漏、SIGINT 优雅退出均通过；最近一次摘要为 health/login/docs/admin `200`、生产开发接口 `404`。独立目录为 `C:/Users/dfy/AppData/Local/Temp/yishan-admin-v2-final-0f298329`。
+
+中途 `pnpm test:integration` 一次重跑曾出现 Core Database 测试超时，随后产生异步清理断言失败；另一次与独立打包并行触发 API dist 的 Windows EBUSY 文件锁。没有为此放宽检查或修改数据库实现。停止共享构建操作后最终串行运行整条命令通过；13 个数据库集成、20 个 System 集成和 Demo 集成全部通过。历史 CRM 空库迁移失败是其中明确断言的原有已知限制，仍未修复。
 
 ## 提交与限制
 
@@ -89,5 +93,9 @@ pnpm --filter @yishan/demo-admin openapi
 1. `b8bcc6a refactor(admin): move demo admin into product workspace`
 2. `8943180 refactor(admin): decouple shared kernel and system capabilities`
 
-没有 PR，因为用户要求禁止自动推送/合并且未要求创建评审 PR。CI Workflow 已增加 Linux Chromium、浏览器隔离验收、复用验证和客户端 drift gate，但 GitHub runner 尚未在本地执行；这是本报告保留 `PASS WITH RESTRICTIONS` 的主要原因。Biome 的既有未使用导入告警仍可在后续独立清理。CRM 历史迁移冲突保持 API V2 已知基线，没有在本任务中改写。
+报告提交为 `6324ff1 docs(admin): record v2 product migration`，后续报告补充只记录最终验证证据；完整列表可执行 `git log 684e4f3..HEAD --oneline`。
+
+没有推送或 PR；本轮以本地提交交付。原工作区仍在 `refactor/api-v2-product-first` 的 `684e4f3`，已有修改、删除和未跟踪文件均保留；本轮只写独立 worktree。CI Workflow 已增加 Linux Chromium、浏览器隔离验收、复用验证和客户端 drift gate，但 GitHub runner 尚未实际执行；这是本报告保留 `PASS WITH RESTRICTIONS` 的主要原因。Biome 的既有未使用导入告警仍可在后续独立清理。CRM 历史迁移冲突保持 API V2 已知基线，没有在本任务中改写。
+
+后续人工操作：推送评审分支并运行 GitHub CI；评审后单独授权部署 Workflow、七牛上传和线上迁移。本轮本地工程验收已经满足目录、公共边界、装配、功能与独立产物目标，但不宣称已验证真实线上环境或 GitHub runner。
 
