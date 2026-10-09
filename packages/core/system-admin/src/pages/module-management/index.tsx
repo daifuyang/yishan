@@ -5,12 +5,12 @@ import {
   ProTable,
 } from '@ant-design/pro-components'
 import { Badge, Switch, Tag, message } from 'antd'
-import { history } from '@umijs/max'
+import { useSystemAdmin } from '../../runtime'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   getModuleManagementList,
   toggleModuleManagement,
-} from '@/services/generated/moduleManagement'
+} from '../../services/generated/moduleManagement'
 
 // 后台模块管理页面只做启停（list + toggle）。
 // schema 生成 / migrate / seed 全部走 CLI（db:seed / npx drizzle-kit / db:reset），
@@ -36,15 +36,17 @@ interface RowItem {
 }
 
 const DevModules: React.FC = () => {
+  const { initialState } = useSystemAdmin()
   const actionRef = useRef<ActionType>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
   // 兜底：prod 下 render hook 一进来就 replace 到 /404。
   useEffect(() => {
     if (process.env.NODE_ENV === 'production' && window.location.pathname !== '/404') {
-      history.replace('/404')
+      if (initialState.navigate) initialState.navigate('/404')
+      else window.location.replace('/404')
     }
-  }, [])
+  }, [initialState.navigate])
 
   const handleToggle = async (id: string, enabled: boolean) => {
     setBusyId(id)

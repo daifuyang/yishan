@@ -1,5 +1,6 @@
+import type {} from '../../types/index';
 export type FormValues = {
-  provider: API.storageProvider;
-  qiniu: API.qiniuConfigSchema;
-  aliyunOss: API.aliyunOssConfigSchema;
+  provider: SystemAPI.storageProvider;
+  qiniu: SystemAPI.qiniuConfigSchema;
+  aliyunOss: SystemAPI.aliyunOssConfigSchema;
 };

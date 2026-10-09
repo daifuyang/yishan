@@ -18,7 +18,7 @@ import { Cascader, Form, type CascaderProps } from 'antd';
 import {
   getSystemRegionTree,
   getSystemRegionList,
-} from '@/services/generated/systemRegions';
+} from '../../services/generated/systemRegions';
 
 /** 后端原始节点 */
 type RegionNode = {

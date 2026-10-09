@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
@@ -5,14 +6,14 @@ import {
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import { Button, Dropdown, message, Popconfirm, Space, Tag } from 'antd';
 import React, { useRef, useState } from 'react';
 import {
   deleteRole,
   getRoleList,
   updateRole,
-} from '@/services/generated/sysRoles';
+} from '../../services/generated/sysRoles';
 import RoleForm from './components/RoleForm';
 
 const IsSystem = {
@@ -35,7 +36,7 @@ const SystemRoleTag: React.FC<{ isSystem?: number }> = ({ isSystem }) => {
   return <Tag color="green">自定义角色</Tag>;
 };
 
-const DataScopeTag: React.FC<{ dataScope?: API.sysRole['dataScope'] }> = ({
+const DataScopeTag: React.FC<{ dataScope?: SystemAPI.sysRole['dataScope'] }> = ({
   dataScope,
 }) => {
   const label =
@@ -55,7 +56,7 @@ const RoleList: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
 
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> =
     dictDataMap.default_status || [];
@@ -112,7 +113,7 @@ const RoleList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  const columns: ProColumns<API.sysRole>[] = [
+  const columns: ProColumns<SystemAPI.sysRole>[] = [
     {
       title: 'ID',
       dataIndex: 'id',
@@ -229,7 +230,7 @@ const RoleList: React.FC = () => {
 
   return (
     <PageContainer>
-      <ProTable<API.sysRole>
+      <ProTable<SystemAPI.sysRole>
         headerTitle="角色列表"
         actionRef={actionRef}
         rowKey="id"

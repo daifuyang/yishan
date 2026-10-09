@@ -68,6 +68,6 @@ pnpm dev:api
 
 ## Admin 与文档站
 
-Admin 默认端口8000，`config/proxy.ts` 把 API 代理到 `http://localhost:3100`。从根目录执行 `pnpm dev:admin`；需要自定义端口时在环境中设置 `PORT` 后运行 `pnpm --filter yishan-admin start:dev`。
+Admin 默认端口8000，Demo 产品 `config/proxy.ts` 调用共享 `resolveApiTarget`，把 API 代理到产品默认 `http://localhost:3100`。共享包不包含默认产品地址。从根目录执行 `pnpm dev:admin`；需要另一端口时设置 `ADMIN_PORT`，启动入口将它传给 Umi dev-server 的 `PORT`。API 代理覆盖优先级为 `API_TARGET` → `YISHAN_API_TARGET` → `YISHAN_API_PORT` → 产品默认，完整 URL 优先于仅端口覆盖。
 
 文档站默认端口4000，执行 `pnpm dev:docs`。API 启动后的 Swagger 位于 `http://127.0.0.1:3100/api/docs`。

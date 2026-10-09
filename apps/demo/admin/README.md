@@ -1,6 +1,6 @@
-# Yishan Admin
+# Demo Admin（@yishan/demo-admin）
 
-基于 Ant Design Pro 构建的企业级中后台管理系统前端项目。
+Demo 产品管理后台，位于 `apps/demo/admin`。产品拥有 Umi 配置、运行时装配、API 客户端和业务页面；`@yishan/core-admin` 提供公共运行时与构建插件，`@yishan/core-system-admin` 提供系统管理贡献。两个 Core 包通过公开 exports 直接消费源码。
 
 ## 技术栈
 
@@ -13,85 +13,84 @@
 
 ## 环境要求
 
-- Node.js >= 20.0.0
-- pnpm >= 8.0.0
+- Node.js 22.22.1（遵循根 `.tool-versions`）
+- pnpm 8.15.9（遵循根 `package.json#packageManager`）
 
 ## 快速开始
 
 ### 安装依赖
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 ### 开发环境启动
 
 ```bash
-# 启动开发服务器（包含 mock 数据）
-pnpm --filter yishan-admin start
+# 默认连接同产品 Demo API（根目录命令）
+pnpm dev:admin
 
 # 启动开发服务器（不包含 mock 数据）
-pnpm --filter yishan-admin start:no-mock
+pnpm --filter @yishan/demo-admin start:no-mock
 
 # 测试环境启动
-pnpm --filter yishan-admin start:test
+pnpm --filter @yishan/demo-admin start:test
 
 # 预发布环境启动
-pnpm --filter yishan-admin start:pre
+pnpm --filter @yishan/demo-admin start:pre
 ```
 
 ### 构建项目
 
 ```bash
-# 先构建 workspace 组件库依赖
-pnpm --filter yishan-tiptap build
-
-# 生产环境构建
-pnpm --filter yishan-admin build
+# 根目录执行；自动先构建共享 TipTap
+pnpm build:admin
 
 # 构建并预览
-pnpm --filter yishan-admin preview
+pnpm --filter @yishan/demo-admin preview
 ```
 
 ## 开发脚本
+
+以下短命令在 `apps/demo/admin` 执行。根目录可使用 `pnpm typecheck:admin` 检查产品与两个公共 Admin 包；测试前先运行 `pnpm --filter @yishan/demo-admin exec max setup`，新检出先构建 TipTap。
 
 ### 代码质量检查
 
 ```bash
 # 代码规范检查
-npm run lint
+pnpm lint
 
-# 自动修复代码规范问题
-npm run biome:lint
+# 单独检查 Biome 规则
+pnpm biome:lint
 
 # TypeScript 类型检查
-npm run tsc
+pnpm typecheck
 ```
 
 ### 测试
 
 ```bash
 # 运行测试
-npm test
+pnpm test
 
 # 运行测试并生成覆盖率报告
-npm run test:coverage
+pnpm test:coverage
 
 # 更新测试快照
-npm run test:update
+pnpm test:update
 ```
 
 ### 其他脚本
 
 ```bash
 # 代码分析
-npm run analyze
+pnpm analyze
 
 # 部署到 GitHub Pages
-npm run deploy
+pnpm deploy
 
 # 生成 API 文档
-npm run openapi
+pnpm openapi
 ```
 
 ## 项目结构
@@ -100,6 +99,7 @@ npm run openapi
 src/
 ├── components/          # 公共组件
 ├── pages/              # 页面组件
+├── modules/            # 产品业务模块页面与本地 UI
 ├── services/           # API 服务
 ├── utils/              # 工具函数
 ├── locales/            # 国际化资源
@@ -129,18 +129,35 @@ config/
 
 新页面分两类，处理方式不同：
 
-- **Core 页面**（系统管理、登录等）：在 `src/pages/<area>/<page>/index.tsx` 写组件，然后在 `config/routes.ts` 加路由
-- **模块页面**（业务模块）：在 `src/modules/<id>/pages/<page>/index.tsx` 写组件，**不需要**改 `config/routes.ts` —— `plugin.ts` 编译期自动扫描。详见 [module-pages.md](./docs/module-pages.md)
+- **框架页面**（登录、404、公开报价等）：由产品 `config/routes.ts` 显式声明。
+- **系统管理页面**：通过 `@yishan/core-system-admin` 的公开页面贡献参与组件映射。
+- **模块页面**（业务模块）：位于 `src/modules/<id>/pages/<page>/index.tsx`，构建插件仅纳入已安装模块。菜单组件键保持 `./modules/<id>/<page>`。详见 [module-pages.md](./docs/module-pages.md)
 
 权限控制：模块页面对应权限码在 `[apps/demo/api] modules/<id>/permissions.ts` 集中注册。
 
 ### 添加 API 接口
 
 1. 后端在 `apps/demo/api/src/modules/<id>/routes/v1/index.ts` 用 `createRouteRegistrar` 数组驱动注册
-2. 跑 `pnpm --filter yishan-admin openapi` 重新生成 `src/services/generated/<module>.ts`
-3. 前端 `import { ... } from '@/services/generated/<module>'` 直接使用，类型完全同步
+2. 先 dump 并审查同产品 `../api/openapi.json`，再运行 `pnpm --filter @yishan/demo-admin openapi`
+3. 产品业务从 `@/services/generated/<module>` 导入；系统服务从 `@yishan/core-system-admin/services/<service>` 的公开 export 导入
 
-详情见 [模块开发规范（后端）](../yishan-api/docs/module-pattern.md)。
+详情见 [模块接入（后端与 Admin）](../../../docs/module-onboarding.md)。
+
+### OpenAPI 生成所有权
+
+包命令运行 `scripts/generate-openapi.cjs`，调用官方 `@umijs/openapi.generateService`，按当前安装清单与接口路径分区。
+
+| 归属 | 生成目录 | 类型命名空间 |
+|---|---|---|
+| System 公共管理接口 | `packages/core/system-admin/src/services/generated/` | `SystemAPI` |
+| 已安装产品模块 | `apps/demo/admin/src/services/generated/` | `API` |
+| 未安装 CRM 的保留快照 | `apps/demo/admin/src/modules/crm/services/generated/` | `CrmAPI` |
+
+输入来自当前产品 API 的 `openapi.json`。产品分区缓存位于 `node_modules/.cache/admin-openapi/product.json`，Umi OpenAPI 配置消费该分区，避免直接 `max openapi` 重复生成 System 客户端。完整重新生成使用包命令，生成服务与对应 typings 一起提交。保留 CRM 快照不注册未安装模块页面。
+
+### 本地多实例端口
+
+`config/proxy.ts` 调用公共 `resolveApiTarget`，Demo 默认 API 地址为 `http://localhost:3100`。覆盖优先级为 `API_TARGET` → `YISHAN_API_TARGET` → `YISHAN_API_PORT` → 产品默认。`ADMIN_PORT` 控制产品启动时的 Umi dev-server 端口；为另一 API 实例设置对应完整代理 URL 或端口。构建的 `/admin/` base 与 API 的 `ADMIN_BASE_PATH` 仍需一致。
 
 ### 自定义主题
 
@@ -168,42 +185,14 @@ config/
 
 ## 项目文档
 
-- [模块页面注册机制](./docs/module-pages.md) — `plugin.ts` 编译期扫描 + 0 配置新增流程
+- [模块页面注册机制](./docs/module-pages.md) — 公开构建插件、安装清单与菜单组件映射
 - [表单模式（DrawerForm + FormEditor）](./docs/form-pattern.md) — CRUD 页面骨架与字段约定
 
 ## 部署
 
-项目支持多种部署方式，具体配置请参考 `deploy/` 目录下的部署脚本。
+构建时 `PUBLIC_PATH` 必须与 API 的 `ADMIN_BASE_PATH` 一致，线上沿用 `/admin/`。从根目录以 `PUBLIC_PATH=/admin/` 运行 `pnpm build:admin`（PowerShell：`$env:PUBLIC_PATH='/admin/'`），通过 `node scripts/package-api.mjs --output <external-temp-directory> --admin apps/demo/admin/dist` 打包到 API 静态目录。
 
-### 函数计算（FC3）部署
-
-项目支持部署到阿里云函数计算（FC3），部署脚本位于 `deploy/fc3/deploy.sh`。
-
-**重要：部署脚本必须在项目根目录执行**
-
-```bash
-# 在项目根目录执行部署脚本
-./deploy/fc3/deploy.sh
-```
-
-部署脚本执行以下步骤：
-
-1. **安装依赖**：使用 pnpm 安装项目依赖
-2. **构建项目**：执行生产环境构建
-3. **配置 Nginx**：复制 Nginx 配置文件到构建目录
-4. **部署配置**：复制 s.yaml 部署配置文件到根目录
-5. **部署到 FC3**：使用 s 命令部署到函数计算
-6. **清理**：删除临时部署配置文件
-
-**前置条件**：
-- 已安装并配置阿里云函数计算 CLI 工具（s 命令）
-- 已配置阿里云访问凭证
-- 确保在项目根目录执行脚本
-
-**注意事项**：
-- 部署脚本会自动处理依赖安装和构建过程
-- 部署完成后会自动清理临时文件
-- 确保有足够的权限执行部署操作
+正式 FC3 发布由人工触发的 fullstack workflow 完成，部署入口与环境要求见 [Demo API 部署说明](../api/deploy/fc3/README.md)。构建和打包不发布生产、不执行数据库迁移。
 
 ## 许可证
 

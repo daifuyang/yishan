@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
 
 const require = createRequire(import.meta.url)
 const { collectArchitectureErrors } = require('./check-api-architecture.cjs')
-const { readInstalledModules } = require('./module-manifest.cjs')
+const { readInstalledModules } = require('@yishan/core-admin/manifest')
 
 function repository() {
   const root = mkdtempSync(join(tmpdir(), 'yishan-architecture-'))
@@ -143,19 +143,34 @@ test('contracts reject platform runtime imports and dependency declarations', ()
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
-test('Core cannot import legacy applications and future product web packages cannot cross products', () => {
+test('Core cannot import applications and future product web packages cannot cross products', () => {
   const root = repository()
   try {
-    for (const [directory, name] of [['apps/yishan-admin', 'yishan-admin'], ['apps/crm/web', '@yishan/crm-web'], ['apps/axis/web', '@yishan/axis-web'], ['apps/crm/contracts', '@yishan/crm-contracts']]) {
+    for (const [directory, name] of [['apps/demo/admin', '@yishan/demo-admin'], ['apps/crm/web', '@yishan/crm-web'], ['apps/axis/web', '@yishan/axis-web'], ['apps/crm/contracts', '@yishan/crm-contracts']]) {
       mkdirSync(join(root, directory, 'src'), { recursive: true })
       writeFileSync(join(root, directory, 'package.json'), JSON.stringify({ name, exports: { '.': './dist/index.js' } }))
     }
-    writeFileSync(join(root, 'packages/core/api/src/index.ts'), "import admin from 'yishan-admin'")
-    assert.match(collectArchitectureErrors(root).join('\n'), /forbidden dependency.*yishan-admin/)
+    writeFileSync(join(root, 'packages/core/api/src/index.ts'), "import admin from '@yishan/demo-admin'")
+    assert.match(collectArchitectureErrors(root).join('\n'), /forbidden dependency.*demo-admin/)
     writeFileSync(join(root, 'packages/core/api/src/index.ts'), '')
     writeFileSync(join(root, 'apps/crm/web/src/index.ts'), "import web from '@yishan/axis-web'")
     assert.match(collectArchitectureErrors(root).join('\n'), /cross-product/)
     writeFileSync(join(root, 'apps/crm/web/src/index.ts'), "import type { Contract } from '@yishan/crm-contracts'")
     assert.deepEqual(collectArchitectureErrors(root), [])
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test('Admin packages are checked separately while API reverse dependencies remain forbidden', () => {
+  const root = repository()
+  try {
+    for (const [directory, name] of [['packages/core/admin', '@yishan/core-admin'], ['packages/core/system-admin', '@yishan/core-system-admin'], ['apps/demo/admin', '@yishan/demo-admin']]) {
+      mkdirSync(join(root, directory, 'src'), { recursive: true })
+      writeFileSync(join(root, directory, 'package.json'), JSON.stringify({ name, exports: { '.': './src/index.ts' } }))
+    }
+    writeFileSync(join(root, 'packages/core/system-admin/src/index.ts'), "export * from '@yishan/core-admin'")
+    writeFileSync(join(root, 'apps/demo/admin/src/index.ts'), "export * from '@yishan/core-system-admin'")
+    assert.deepEqual(collectArchitectureErrors(root), [])
+    writeFileSync(join(root, 'packages/core/api/src/index.ts'), "export * from '@yishan/core-admin'")
+    assert.match(collectArchitectureErrors(root).join('\n'), /forbidden dependency.*core-admin/)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })

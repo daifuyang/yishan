@@ -52,3 +52,9 @@ pnpm db:seed
 参考 `apps/demo/api/src/extensions/`：通过公开用户目录取得基本资料，在 `demo_user_profile` 独立表存储产品资料；`UserExtension.validate` 在系统写入前验证，`onEvent` 接收创建/更新生命周期事件。系统事件失败处理由 runtime 配置，不能用扩展替换 JWT/RBAC。
 
 编写必要单元/Inject 测试，运行 `pnpm test:api`、`pnpm check:boundaries`、`pnpm check:migrations` 和 `pnpm build:api`。真实数据库测试只在隔离 schema 中运行。
+
+## Admin 页面接入
+
+业务页面位于 `apps/<product>/admin/src/modules/<id>/pages/<page>/index.tsx`，菜单组件值沿用 `./modules/<id>/<page>`。产品 Admin 的显式安装清单声明模块与页面贡献；构建插件只生成已安装页面的组件映射。后端 `sys_menu.component` 选择该映射中的组件，不能安装前端代码。系统管理贡献来自 `@yishan/core-system-admin` 的公开 exports，通用装配来自 `@yishan/core-admin`。
+
+产品业务客户端留在 `apps/<product>/admin/src/services/generated/`（`API`），系统公共客户端归 `packages/core/system-admin/src/services/generated/`（`SystemAPI`）。OpenAPI 变化时先 dump 并审查，再运行 `pnpm --filter @yishan/demo-admin openapi`；产品 Node 入口使用官方生成器，按当前同产品 API schema 与安装清单生成两类客户端，客户端与 typings 一起提交。未安装 CRM 的历史快照留在产品模块自己的 `src/modules/crm/services/generated/`（`CrmAPI`），保留源码不注册页面。保留已有权限、公开报价页面和菜单路径。先运行 `pnpm build:tiptap` 与 `pnpm --filter @yishan/demo-admin exec max setup`，再执行 `pnpm typecheck:admin`、`pnpm --filter @yishan/demo-admin lint`、`pnpm --filter @yishan/demo-admin test`、`pnpm build:admin` 和 `pnpm check:boundaries`。

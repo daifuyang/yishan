@@ -91,7 +91,7 @@ jest.mock('./_shared/useBreakpoint', () => () => true);
 
 jest.mock('./tabs/AttachmentsTab', () => () => null);
 
-jest.mock('@/components/AttachmentSelect', () => ({
+jest.mock('@yishan/core-system-admin/components/AttachmentSelect', () => ({
   AttachmentSelect: () => null,
 }));
 

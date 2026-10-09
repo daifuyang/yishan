@@ -13,7 +13,7 @@
  */
 import { Form, type FormInstance } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getSystemRegionPath } from '@/services/generated/systemRegions'
+import { getSystemRegionPath } from '@yishan/core-system-admin/services/systemRegions'
 
 type RegionPathNode = { code: number; name: string; level: number }
 

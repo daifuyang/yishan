@@ -1,7 +1,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { createRequire } = require('node:module')
-const ts = createRequire(path.join(__dirname, '../packages/core/api/package.json'))('typescript')
+const ts = require('typescript')
 
 function parse(file) {
   return ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true)

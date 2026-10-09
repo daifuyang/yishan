@@ -1,4 +1,4 @@
-import type { Attachment, AttachmentFolder } from '@/types/sdk';
+import type { Attachment, AttachmentFolder } from '../../types/index';
 
 export type AttachmentKind = Attachment['kind'];
 export type KindTab = AttachmentKind | 'all';

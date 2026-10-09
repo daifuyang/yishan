@@ -1,5 +1,6 @@
+import type {} from '../../../types/index';
 import { useState, useEffect, useRef } from 'react';
-import { getStorageConfig, upsertStorageConfig, exportStorageConfig, importStorageConfig } from '@/services/generated/storage';
+import { getStorageConfig, upsertStorageConfig, exportStorageConfig, importStorageConfig } from '../../../services/generated/storage';
 import type { FormValues } from '../types';
 import { defaultQiniuValues, defaultAliyunOssValues } from '../constants';
 
@@ -9,7 +10,7 @@ export function useStorageConfig(message: any) {
   const [exporting, setExporting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importPayload, setImportPayload] = useState<API.storageConfigExportPayload | null>(null);
+  const [importPayload, setImportPayload] = useState<SystemAPI.storageConfigExportPayload | null>(null);
   const [initialValues, setInitialValues] = useState<FormValues>({
     provider: 'disabled',
     qiniu: defaultQiniuValues,

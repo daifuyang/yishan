@@ -4,9 +4,10 @@ import { defineConfig } from '@umijs/max';
 import path from 'node:path';
 import defaultSettings from './defaultSettings';
 import proxy from './proxy';
-import { isValidPublicPath, normalizePublicPath } from '../shared/publicPath';
+import { isValidPublicPath, normalizePublicPath } from '@yishan/core-admin/public-path';
 
 import routes from './routes';
+import { productSchemaPath, installedModuleIds } from './product';
 
 const { UMI_ENV = 'dev' } = process.env;
 
@@ -28,9 +29,11 @@ const PUBLIC_PATH = normalizePublicPath(publicPathInput || '/');
 
 export default defineConfig({
   // Mako 开发产物也会落盘，避免生产构建覆盖运行中的开发资源。
-  outputPath: process.env.NODE_ENV === 'development' ? 'node_modules/.cache/yishan-admin-dev' : 'dist',
+  outputPath: process.env.NODE_ENV === 'development' ? 'node_modules/.cache/admin-dev' : 'dist',
   define: {
     __APP_BASE__: PUBLIC_PATH,
+    __API_BASE_URL__: process.env.API_BASE_URL || "",
+    __INSTALLED_MODULE_IDS__: installedModuleIds,
   },
   /**
    * @name 路由前缀
@@ -45,6 +48,7 @@ export default defineConfig({
    * @doc https://umijs.org/docs/api/config#hash
    */
   hash: true,
+  devtool: process.env.NODE_ENV === 'development' ? 'source-map' : false,
 
   publicPath: PUBLIC_PATH,
   alias: {
@@ -186,7 +190,7 @@ export default defineConfig({
       requestLibPath: "import { request } from '@umijs/max'",
       // 或者使用在线的版本
       // schemaPath: "https://gw.alipayobjects.com/os/antfincdn/M%24jrzTTYJN/oneapi.json"
-      schemaPath: path.resolve(__dirname, '../../demo/api/openapi.json'),
+      schemaPath: productSchemaPath,
       projectName: 'generated',
       mock: false,
     },

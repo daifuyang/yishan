@@ -1,5 +1,6 @@
-/** Stable attachment types. Mirrors generated `API.sysAttachment`,
- * `API.sysAttachmentFolder`, and `API.uploadAttachmentsResp`. */
+import type {} from './index';
+/** Stable attachment types. Mirrors generated `SystemAPI.sysAttachment`,
+ * `SystemAPI.sysAttachmentFolder`, and `SystemAPI.uploadAttachmentsResp`. */
 
 export type AttachmentKind = 'image' | 'audio' | 'video' | 'other'
 

@@ -9,7 +9,7 @@ title: 简介
 
 本网站为项目文档中心，涵盖快速开始、架构与规范、前端说明、后端说明、系统模块、部署运维与常见问题。
 
-• 前端代码：`apps/yishan-admin`
+• 前端代码：`apps/demo/admin`
 
 • 产品后端：`apps/demo/api`；共享后端：`packages/core/{api,system-api,database,contracts}`
 

@@ -1,12 +1,13 @@
+import type {} from '../../../types/index';
 import React, { useRef } from 'react';
 import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
-import { getPositionDetail, createPosition, updatePosition } from '@/services/generated/sysPositions';
+import { useSystemAdmin } from '../../../runtime';
+import { getPositionDetail, createPosition, updatePosition } from '../../../services/generated/sysPositions';
 
 export interface PositionFormProps {
   title: string;
   trigger?: React.JSX.Element;
-  initialValues?: Partial<API.sysPosition>;
+  initialValues?: Partial<SystemAPI.sysPosition>;
   onFinish?: () => Promise<void>;
 }
 
@@ -18,7 +19,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
 }) => {
   const formRef = useRef<any>(undefined);
 
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
@@ -47,7 +48,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
         }
       }}
       onFinish={async (values) => {
-        const basePayload: API.savePositionReq = {
+        const basePayload: SystemAPI.savePositionReq = {
           name: values.name,
           status: values.status,
           sort_order: Number(values.sort_order ?? 0),
@@ -61,7 +62,7 @@ const PositionForm: React.FC<PositionFormProps> = ({
           }
           return false;
         }
-        const res = await updatePosition({ id: String(initialValues.id) }, basePayload as API.updatePositionReq);
+        const res = await updatePosition({ id: String(initialValues.id) }, basePayload as SystemAPI.updatePositionReq);
         if (res.success) {
           await onFinish?.();
           return true;

@@ -7,7 +7,7 @@ import {
   ProFormTextArea,
 } from "@ant-design/pro-components";
 import { App, Card } from "antd";
-import { batchGetSystemOption, batchSetSystemOption } from "@/services/generated/system";
+import { batchGetSystemOption, batchSetSystemOption } from "../../services/generated/system";
 
 type BasicConfig = {
   siteName: string;

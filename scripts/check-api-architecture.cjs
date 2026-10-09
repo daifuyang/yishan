@@ -92,6 +92,9 @@ function collectArchitectureErrors(repositoryRoot) {
     'system-api': new Set(['@yishan/core-contracts', '@yishan/core-api', '@yishan/core-database']),
   }
   for (const owner of packages) {
+    // Frontend runtime, build plugins and product Admin source have their own checker.
+    // Keep them in byName so backend reverse dependencies remain visible.
+    if (['admin', 'system-admin'].includes(owner.core) || (!owner.core && path.basename(owner.directory) === 'admin')) continue
     if (!owner.core && !owner.inspect) continue
     for (const dependency of Object.keys(owner.manifest.dependencies ?? {})) {
       if (owner.core === 'contracts') errors.push(`${owner.manifest.name}/package.json: contracts cannot depend on platform packages (${dependency})`)

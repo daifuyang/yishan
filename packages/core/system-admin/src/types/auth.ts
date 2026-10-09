@@ -1,4 +1,5 @@
-/** Stable auth/identity types. Mirrors generated `API.currentUser`. */
+import type {} from './index';
+/** Stable auth/identity types. Mirrors generated `SystemAPI.currentUser`. */
 export interface CurrentUser {
   /** 用户ID */
   id: number

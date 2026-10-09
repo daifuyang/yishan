@@ -24,11 +24,11 @@ import { FormEditor } from '@zerocmf/yishan-tiptap'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   deleteShopV1ProductsId,
-  deleteShopV1SkusId,
+  deleteShopV1ProductsSkusId,
   getShopV1Products,
   getShopV1ProductsIdSkus,
   patchShopV1ProductsId,
-  patchShopV1SkusId,
+  patchShopV1ProductsSkusId,
   postShopV1Products,
   postShopV1ProductsIdSkus,
 } from '@/services/generated/shop'
@@ -236,7 +236,7 @@ const Products: React.FC = () => {
   const handleSkuUpdate = async (values: SkuFormValues) => {
     if (!skuEditing) return false
     const productId = skuProduct?.id
-    await patchShopV1SkusId(
+    await patchShopV1ProductsSkusId(
       { id: skuEditing.id },
       {
         skuCode: values.skuCode.trim(),
@@ -257,7 +257,7 @@ const Products: React.FC = () => {
   }
 
   const handleSkuDelete = async (id: number) => {
-    await deleteShopV1SkusId({ id }, {})
+    await deleteShopV1ProductsSkusId({ id }, {})
     message.success('SKU 已删除')
     if (skuProduct) await loadSkus(skuProduct.id)
   }

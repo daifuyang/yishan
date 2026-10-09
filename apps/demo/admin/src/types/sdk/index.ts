@@ -12,8 +12,8 @@
  * package is reconciled — not every consuming page.
  *
  *   import type { Attachment } from '@/types/sdk'   // do this
- *   type Attachment = API.sysAttachment                   // not this
+ *   type Attachment = SystemAPI.sysAttachment                   // not this
  */
 export * from './auth.js'
 export * from './attachment.js'
-export * from './menu.js'
+export * from '@yishan/core-admin/menu/types'

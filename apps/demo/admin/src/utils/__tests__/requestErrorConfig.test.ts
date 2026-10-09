@@ -35,13 +35,13 @@ jest.mock('@/utils/auth', () => ({
   setCurrentUser: (...args: unknown[]) => mockSetCurrentUser(...args),
 }));
 
-jest.mock('@/utils/token', () => ({
+jest.mock('@yishan/core-admin/token', () => ({
   getAuthorizationHeader: (...args: unknown[]) =>
     mockGetAuthorizationHeader(...args),
   clearTokens: (...args: unknown[]) => mockClearTokens(...args),
 }));
 
-jest.mock('@/services/generated/auth', () => ({
+jest.mock('@yishan/core-system-admin/services/auth', () => ({
   authRefreshToken: (...args: unknown[]) => mockRefreshToken(...args),
 }));
 
@@ -72,6 +72,18 @@ const handler = (errorConfig.errorConfig as any).errorHandler as (
   error: any,
   opts: any,
 ) => Promise<void>;
+
+describe('requestErrorConfig.errorThrower — existing raw and envelope API contracts', () => {
+  const thrower = errorConfig.errorConfig?.errorThrower;
+  if (!thrower) throw new Error('Production request config must provide errorThrower');
+  it.each([{ total: 1, items: [{ id: 1 }] }, { id: 1, name: 'category' }, null])('accepts successful raw response %p without reshaping it', (body) => {
+    expect(() => thrower(body)).not.toThrow();
+  });
+  it('retains explicit envelope failures and successful envelopes', () => {
+    expect(() => thrower({ success: false, code: 21001, message: '校验失败' })).toThrow('校验失败');
+    expect(() => thrower({ success: true, data: { id: 1 } })).not.toThrow();
+  });
+});
 
 // 把 globalThis.localStorage 显式替换为带 jest.fn() 的对象，便于断言 setItem 调用。
 // tests/setupTests.jsx 已设置了一份 mock，但被测代码直接读 globalThis.localStorage，

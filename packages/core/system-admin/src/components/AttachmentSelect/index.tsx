@@ -3,22 +3,22 @@ import {
   PictureOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import type { UploadFile, UploadProps } from 'antd';
 import { App, Button, Image, Space, Upload } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AttachmentLibraryModal } from '@/components/AttachmentLibraryModal';
+import { AttachmentLibraryModal } from '../AttachmentLibraryModal';
 import {
   normalizeAttachmentStoredValue,
   resolveAttachmentPublicUrl,
-} from '@/utils/attachmentUpload';
+} from '../../utils/attachmentUpload';
 import type {
   AttachmentKind,
   AttachmentSelectProps,
   AttachmentSelectValue,
   KindTab,
   ValueType,
-} from '@/components/AttachmentLibraryModal/types';
+} from '../AttachmentLibraryModal/types';
 
 const getKindFromFile = (file: File): AttachmentKind => {
   const mime = file.type || '';
@@ -53,7 +53,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
   beforeUpload,
 }) => {
   const { message } = App.useApp();
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');

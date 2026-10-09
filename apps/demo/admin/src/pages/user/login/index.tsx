@@ -9,8 +9,8 @@ import { flushSync } from 'react-dom';
 import {
   authGetCurrentUser,
   authLogin as userLogin,
-} from '@/services/generated/auth';
-import { saveTokens } from '@/utils/token';
+} from '@yishan/core-system-admin/services/auth';
+import { saveTokens } from '@yishan/core-admin/token';
 
 const useStyles = createStyles(({ css }) => {
   return {
@@ -245,7 +245,7 @@ const Login: React.FC = () => {
     window.location.href = `${basePrefix}${targetPath}`;
   };
 
-  const handleSubmit = async (values: API.loginReq) => {
+  const handleSubmit = async (values: SystemAPI.loginReq) => {
     setLoading(true);
     setLoginError('');
 

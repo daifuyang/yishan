@@ -2,7 +2,7 @@
 
 The function ships a complete pnpm production dependency closure, including all compiled Core packages. It does not require a runtime Layer or copy source paths from the workspace.
 
-After building the Admin SPA, run from `apps/demo/api`:
+Build the Admin SPA from the repository root with `PUBLIC_PATH=/admin/ pnpm build:admin` (PowerShell: `$env:PUBLIC_PATH='/admin/'; pnpm build:admin`). The artifact comes from `apps/demo/admin/dist`, and `PUBLIC_PATH` must match the API's `ADMIN_BASE_PATH`. Then run from `apps/demo/api`:
 
 ```sh
 bash deploy/fc3/scripts/pre-deploy.sh

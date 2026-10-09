@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import type { FormValues } from './types';
 
 export const regionOptions = [
@@ -13,13 +14,13 @@ export const boolOptions = [
   { label: "否", value: false },
 ];
 
-export const providerOptions: Array<{ label: string; value: API.storageProvider }> = [
+export const providerOptions: Array<{ label: string; value: SystemAPI.storageProvider }> = [
   { label: "不启用", value: "disabled" },
   { label: "七牛云", value: "qiniu" },
   { label: "阿里云 OSS", value: "aliyunOss" },
 ];
 
-export const defaultQiniuValues: API.qiniuConfigSchema = {
+export const defaultQiniuValues: SystemAPI.qiniuConfigSchema = {
   provider: "qiniu",
   accessKey: "",
   secretKey: "",
@@ -33,7 +34,7 @@ export const defaultQiniuValues: API.qiniuConfigSchema = {
   uploadHost: "",
 };
 
-export const defaultAliyunOssValues: API.aliyunOssConfigSchema = {
+export const defaultAliyunOssValues: SystemAPI.aliyunOssConfigSchema = {
   provider: "aliyunOss",
   accessKeyId: "",
   accessKeySecret: "",

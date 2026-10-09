@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
@@ -5,14 +6,14 @@ import {
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import { Button, message, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
 import {
   deleteUser,
   getUserList,
   updateUser,
-} from '@/services/generated/sysUsers';
+} from '../../services/generated/sysUsers';
 import UserForm from './components/UserForm';
 
 /**
@@ -23,7 +24,7 @@ const UserList: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // 获取全局字典数据
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
 
   // 获取用户状态字典
@@ -93,7 +94,7 @@ const UserList: React.FC = () => {
   /**
    * 表格列定义
    */
-  const columns: ProColumns<API.sysUser>[] = [
+  const columns: ProColumns<SystemAPI.sysUser>[] = [
     {
       title: 'ID',
       dataIndex: 'id',
@@ -200,7 +201,7 @@ const UserList: React.FC = () => {
 
   return (
     <PageContainer>
-      <ProTable<API.sysUser>
+      <ProTable<SystemAPI.sysUser>
         headerTitle="用户列表"
         actionRef={actionRef}
         rowKey="id"

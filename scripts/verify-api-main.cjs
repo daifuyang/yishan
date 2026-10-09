@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict')
 const { randomBytes } = require('node:crypto')
-const { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } = require('node:fs')
+const { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } = require('node:fs')
 const { createRequire } = require('node:module')
 const net = require('node:net')
 const { tmpdir } = require('node:os')
@@ -148,7 +148,7 @@ async function verifyMain() {
     const development = await request('/api/v1/admin/system/module-management/list/', { headers })
     assert.equal(development.status, 404)
     const adminIndex = join(artifact, 'public/admin/index.html')
-    let adminStatus
+    let adminStatus, adminAssetCount, adminRefreshStatus
     if (existsSync(adminIndex)) {
       const adminResponse = await request('/admin/')
       assert.equal(adminResponse.status, 200)
@@ -164,6 +164,27 @@ async function verifyMain() {
         assert.equal(response.status, 200, `Admin asset is missing: ${asset.pathname}`)
         assert(!response.headers.get('content-type')?.includes('text/html'), `Admin SPA fallback served instead of asset: ${asset.pathname}`)
       }
+      const adminRoot = dirname(adminIndex)
+      const walk = directory => readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+        const path = join(directory, entry.name)
+        return entry.isDirectory() ? walk(path) : [path]
+      })
+      const files = walk(adminRoot)
+      assert(!files.some(file => /(?:\.map|\.tsx?|\/\.env(?:\.|$))$/.test(file.replaceAll('\\', '/'))), 'Published Admin includes source maps, source files or environment files')
+      const builtAssets = files.filter(file => /\.(js|css)$/.test(file))
+      for (const file of builtAssets) {
+        const path = `/admin/${relative(adminRoot, file).split(sep).join('/')}`
+        const response = await request(path)
+        assert.equal(response.status, 200, `Lazy Admin asset missing: ${path}`)
+        assert(!response.headers.get('content-type')?.includes('text/html'), `SPA fallback served for asset: ${path}`)
+        const body = await response.text()
+        assert(!body.includes(repositoryRoot) && !body.includes(repositoryRoot.replaceAll('\\', '/')), 'Published Admin leaks repository source paths')
+      }
+      const refresh = await request('/admin/system/user')
+      assert.equal(refresh.status, 200)
+      assert.equal(await refresh.text(), html, 'Nested Admin refresh does not serve the SPA entry')
+      adminAssetCount = builtAssets.length
+      adminRefreshStatus = refresh.status
       adminStatus = adminResponse.status
     }
     child.send('SIGINT')
@@ -172,6 +193,7 @@ async function verifyMain() {
     assert.equal(shutdown.signal, null)
     console.log(JSON.stringify({ node: process.version, artifact, health: health.status, login: login.status, jwtMe: me.status,
       openapi: docs.status, paths: Object.keys(spec.paths).length, productionDevGate: development.status, admin: adminStatus,
+      adminAssetCount, adminRefreshStatus,
       migrationMetadata,
       shutdown: { mechanism: 'main SIGINT handler via IPC', ...shutdown } }))
   } finally {

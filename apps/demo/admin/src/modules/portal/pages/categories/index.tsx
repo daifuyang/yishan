@@ -44,15 +44,6 @@ interface Category {
   updatedAt: string;
 }
 
-interface ListResp {
-  total: number;
-  items: Category[];
-}
-
-interface ServiceResp<T> {
-  data: T;
-}
-
 interface CategoryTreeNode {
   id: number;
   name: string;
@@ -91,14 +82,16 @@ const Categories: React.FC = () => {
   });
 
   const loadTree = async () => {
-    const res = await getPortalV1Categories({
-      page: 1,
-      pageSize: 500,
-    });
-    const data = (res as unknown as ServiceResp<ListResp>).data ?? null;
-    if (data?.items) {
-      setTreeData(buildTree(data.items));
+    const categories: Category[] = [];
+    let page = 1;
+    // The API caps each page at 100; parent selection still needs every category.
+    for (;;) {
+      const data = await getPortalV1Categories({ page, pageSize: 100 });
+      categories.push(...data.items);
+      if (categories.length >= data.total || data.items.length === 0) break;
+      page += 1;
     }
+    setTreeData(buildTree(categories));
   };
 
   const handleSuccess = () => {
@@ -110,22 +103,17 @@ const Categories: React.FC = () => {
 
   const handleEdit = async (id: number) => {
     await loadTree();
-    const res = await getPortalV1CategoriesId({ id });
-    const data = (res as unknown as ServiceResp<Category>).data;
-    if (data) {
-      setFormValues({
-        name: data.name,
-        slug: data.slug ?? undefined,
-        parentId: data.parentId ?? undefined,
-        status: String(data.status),
-        sortOrder: data.sortOrder,
-        description: data.description ?? undefined,
-      });
-      setEditingId(id);
-      setFormVisible(true);
-    } else {
-      message.error('获取分类详情失败');
-    }
+    const data = await getPortalV1CategoriesId({ id });
+    setFormValues({
+      name: data.name,
+      slug: data.slug ?? undefined,
+      parentId: data.parentId ?? undefined,
+      status: String(data.status),
+      sortOrder: data.sortOrder,
+      description: data.description ?? undefined,
+    });
+    setEditingId(id);
+    setFormVisible(true);
   };
 
   const handleStatusToggle = async (record: Category) => {
@@ -214,7 +202,7 @@ const Categories: React.FC = () => {
         ]}
         request={async (params) => {
           const { current, pageSize, name, ...restParams } = params as Record<string, unknown>;
-          const res = await getPortalV1Categories({
+          const data = await getPortalV1Categories({
             page: (current as number) ?? 1,
             pageSize: (pageSize as number) ?? 10,
             keyword: typeof name === 'string' ? name.trim() || undefined : undefined,
@@ -223,11 +211,10 @@ const Categories: React.FC = () => {
                 ? Number(restParams.status)
                 : undefined,
           });
-          const data = (res as unknown as ServiceResp<ListResp>).data ?? null;
           return {
-            data: data?.items ?? [],
+            data: data.items,
             success: true,
-            total: data?.total ?? 0,
+            total: data.total,
           };
         }}
         columns={columns}

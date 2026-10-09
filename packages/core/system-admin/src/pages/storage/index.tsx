@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import { DownloadOutlined, ReloadOutlined, UploadOutlined } from "@ant-design/icons";
 import { App, Button, Card, Modal, Space, Typography, Upload } from "antd";
 import type { UploadProps } from "antd";
@@ -11,7 +12,7 @@ import {
   ProFormRadio,
   ProFormDependency,
 } from "@ant-design/pro-components";
-import { upsertStorageConfig } from "@/services/generated/storage";
+import { upsertStorageConfig } from "../../services/generated/storage";
 import { regionOptions, boolOptions, providerOptions, defaultQiniuValues, defaultAliyunOssValues } from "./constants";
 import type { FormValues } from "./types";
 import { useStorageConfig } from "./hooks/useStorageConfig";
@@ -31,7 +32,7 @@ const CloudConfigPage: React.FC = () => {
       try {
         const text = await readFileText(file);
         const payload = JSON.parse(text);
-        setImportPayload(payload as API.storageConfigExportPayload);
+        setImportPayload(payload as SystemAPI.storageConfigExportPayload);
         setImportModalOpen(true);
       } catch (e: any) {
         message.error("文件解析失败: " + (e.message || ""));

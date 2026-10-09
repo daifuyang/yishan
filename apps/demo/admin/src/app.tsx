@@ -28,7 +28,7 @@ import {
 import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
 import { PageLoading, SettingDrawer } from "@ant-design/pro-components";
 import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
-import { history, Link, Navigate } from "@umijs/max";
+import { history, Link, Navigate, useModel } from "@umijs/max";
 import {
   AvatarDropdown,
   AvatarName,
@@ -36,20 +36,35 @@ import {
   Question,
   SelectLang,
 } from "@/components";
-import { authGetCurrentUser } from "@/services/generated/auth";
+import { authGetCurrentUser } from "@yishan/core-system-admin/services/auth";
 import { App as AntdApp } from "antd";
 import defaultSettings from "../config/defaultSettings";
 import { errorConfig } from "./requestErrorConfig";
-import { getAuthorizedMenuTree } from "@/services/generated/sysMenus";
-import { getDictDataMap } from "@/services/generated/sysDictData";
-import type { CloudStorageConfig } from "@/utils/attachmentUpload";
-import { fetchCloudStorageConfig, uploadAttachmentFile } from "@/utils/attachmentUpload";
+import { appGetCapabilities } from '@yishan/core-system-admin/services/appAuth';
+import { filterAvailableMenus } from '@yishan/core-admin/menu/availability';
+import { getAuthorizedMenuTree } from "@yishan/core-system-admin/services/sysMenus";
+import { getDictDataMap } from "@yishan/core-system-admin/services/sysDictData";
+import type { CloudStorageConfig } from "@yishan/core-system-admin/attachment-upload";
+import { fetchCloudStorageConfig, uploadAttachmentFile } from "@yishan/core-system-admin/attachment-upload";
 import type { AttachmentKind, CurrentUser, MenuTreeList, MenuTreeNode, UploadAttachmentsResp } from "@/types/sdk";
 const avatarFallback = '/icons/avatar.png';
 import queryString from "query-string";
-import { getBasePrefixFromPublicPath, stripBasePrefix } from "../shared/publicPath";
-import { menuTreeToRoutes } from "@/utils/menuRoutes";
-import { flattenPathlessDirectories } from "@/utils/dynamicRoutes";
+import { getBasePrefixFromPublicPath, stripBasePrefix } from "@yishan/core-admin/public-path";
+import { menuTreeToRoutes } from "@yishan/core-admin/menu";
+import { resolve as resolveComponent } from "@/utils/moduleComponents";
+import { flattenPathlessDirectories } from "@yishan/core-admin/dynamic-routes";
+
+import { SystemAdminProvider } from '@yishan/core-system-admin';
+
+function SystemRuntimeBridge({ children }: React.PropsWithChildren) {
+  const { initialState } = useModel('@@initialState');
+  return <SystemAdminProvider value={{ ...initialState, navigate: history.replace }}>{children}</SystemAdminProvider>;
+}
+
+// Umi renders innerProvider inside its model provider; rootContainer cannot read useModel.
+export function innerProvider(container: React.ReactNode) {
+  return <SystemRuntimeBridge>{container}</SystemRuntimeBridge>;
+}
 
 const isDev = process.env.NODE_ENV === "development";
 const loginPath = "/user/login";
@@ -60,7 +75,7 @@ const getRelativePath = (pathname: string) => {
 };
 
 const isLoginRoute = (pathname: string) => getRelativePath(pathname) === loginPath;
-const isPublicQuoteRoute = (pathname: string) => /^\/q\/[^/]+\/?$/.test(getRelativePath(pathname));
+const isPublicQuoteRoute = (pathname: string) => __INSTALLED_MODULE_IDS__.includes('crm') && /^\/q\/[^/]+\/?$/.test(getRelativePath(pathname));
 
 const IconMap: Record<string, LucideIcon> = {
   appstore: LayoutDashboard,
@@ -148,7 +163,7 @@ export async function getInitialState(): Promise<{
   const fetchUserInfo = async () => {
     const response = await authGetCurrentUser();
     if (response.success && response.data) {
-      return response.data;
+      return { ...response.data, permissions: currentCapabilities?.permissions };
     }
     return undefined;
   };
@@ -209,6 +224,7 @@ export async function getInitialState(): Promise<{
 }
 
 let extraRoutes: MenuTreeList = [];
+let currentCapabilities: SystemAPI.mobileCapabilities | undefined;
 const clickableRoutePaths = new Set<string>();
 
 const normalizeRoutePath = (path?: string) => {
@@ -376,6 +392,7 @@ export const request: RequestConfig = {
   // 允许跨域请求携带 HttpOnly 认证 cookie（同源请求默认即会携带，此项对同源无副作用）。
   // 跨域场景（admin.* -> api.*）下后端需回显具体 origin 并返回 Access-Control-Allow-Credentials: true。
   withCredentials: true,
+  baseURL: __API_BASE_URL__,
   paramsSerializer(params) {
     return queryString.stringify(params);
   },
@@ -437,7 +454,7 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
 
     // 后端 sys_menu 驱动的业务路由：单一真相源，无需在 routes.ts 重复声明。
     // 按 path 去重，保留 routes.ts 中已声明的条目优先。
-    const dynamicRoutes = menuTreeToRoutes(extraRoutes || []);
+    const dynamicRoutes = menuTreeToRoutes(extraRoutes || [], resolveComponent);
     const existingPaths = new Set(
       rootRoute.children.map((c: any) => c?.path).filter(Boolean),
     );
@@ -469,7 +486,7 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
           path: devPath,
           // 跟 menuTreeToRoutes 一样用 React.createElement 包一下,
           // 避免 umi 4 + React 19 把 lazy 函数当 Route children 渲染。
-          element: React.createElement(lazy(() => import('@/pages/system/module-management'))) as unknown as JSX.Element,
+          element: React.createElement(lazy(() => import('@yishan/core-system-admin/pages/module-management'))) as unknown as JSX.Element,
         } as any)
         existingPaths.add(devPath)
       }
@@ -490,10 +507,10 @@ export function render(oldRender: () => void) {
     return;
   }
 
-  getAuthorizedMenuTree()
-    .then((res) => {
-      const menus = res.data || [];
-      extraRoutes = menus;
+  Promise.all([getAuthorizedMenuTree(), appGetCapabilities()])
+    .then(([res, capabilities]) => {
+      currentCapabilities = capabilities.data;
+      extraRoutes = filterAvailableMenus(res.data || [], __INSTALLED_MODULE_IDS__, capabilities.data?.enabledModuleIds ?? [], key => resolveComponent(key) !== null);
       oldRender();
     })
     .catch((error: any) => {

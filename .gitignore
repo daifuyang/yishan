@@ -1,6 +1,11 @@
 node_modules/
 dist/
 build/
+# These packages ship handwritten Umi build tools; these directories are source.
+!packages/core/admin/build/
+!packages/core/admin/build/**
+!packages/core/system-admin/build/
+!packages/core/system-admin/build/**
 coverage/
 .cache/
 

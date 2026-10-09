@@ -6,12 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Yishan (移山通用管理系统) is a pnpm monorepo for a generic admin baseline used at zerocmf.com:
 
-- `apps/yishan-admin` — React 19 + Ant Design Pro 6 + UmiJS 4 (`@umijs/max`) admin frontend
+- `apps/demo/admin` — React 19 + Ant Design Pro 6 + UmiJS 4 (`@umijs/max`) admin frontend
 - `apps/demo/api` — Fastify 5 + Drizzle + TypeBox + JWT backend
 - `apps/yishan-app` — WeChat mini-program (Taro/uni-app style, see `apps/yishan-app/`)
 - `apps/yishan-docs` — Docusaurus 3 docs site
 - `apps/yishan-components/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
-- `packages/shared-config` — monorepo-shared config constants (e.g. `API_TARGET`); source-only workspace package, no build step
+- `packages/core/admin` / `packages/core/system-admin` — source-only public Admin runtime, Umi build plugin and system management contributions
+- `packages/shared-config` — product-neutral configuration resolver (`resolveApiTarget`); source-only workspace package, no build step
 
 Toolchain pinned in `.tool-versions` / root `package.json#packageManager`: Node 22.22.1, pnpm 8.15.9. Use asdf / mise / fnm to honor `.tool-versions` automatically.
 
@@ -26,19 +27,20 @@ pnpm install
 # Full build (API packages → tiptap → admin → docs)
 pnpm build
 # Equivalent to:
+#   pnpm build:api
 #   pnpm --filter yishan-tiptap build
-#   pnpm --filter yishan-admin build
+#   pnpm --filter @yishan/demo-admin build
 #   pnpm --filter yishan-docs build
 
 # Per-app dev (run in separate terminals)
 pnpm --filter yishan-tiptap build         # admin depends on built tiptap
-pnpm --filter yishan-admin dev            # Umi dev server (port 8000 by default for preview)
+pnpm --filter @yishan/demo-admin dev            # Umi dev server (port 8000 by default for preview)
 pnpm dev:api              # TypeScript watch + Fastify auto-reload
 pnpm --filter yishan-docs start           # Docusaurus dev
 
 # Quality gate (matches CI)
-pnpm lint      # admin (Biome + tsc) + docs (typecheck) + app + check-module-naming
-pnpm test      # admin (Jest) + api (Vitest)
+pnpm lint      # Admin packages + product (Biome/tsc) + docs/app + boundary checks
+pnpm test      # Core Admin registry + product Admin (Jest) + API (Vitest)
 
 # Backend DB (Drizzle)
 pnpm --filter @yishan/demo-api db:generate      # generate migrations from schema
@@ -47,7 +49,7 @@ pnpm --filter @yishan/demo-api db:migrate --apply   # explicit writes
 pnpm --filter @yishan/demo-api db:seed          # explicit seed; build API first
 ```
 
-### Admin-specific scripts (cd into `apps/yishan-admin`)
+### Admin-specific scripts (cd into `apps/demo/admin`)
 ```bash
 pnpm start              # alias for start:dev (UMI_ENV=dev, MOCK=none)
 pnpm openapi            # regenerate API client from backend OpenAPI
@@ -85,9 +87,9 @@ Public userDirectory and controlled user extensions support independent product 
 
 ## Architecture: admin / api / shared
 
-- **Admin** uses Umi Max's `plugin.ts` to register Ant Design Pro blocks. `apps/yishan-admin/config/routes.ts` is intentionally lean — menu structure is **driven by backend `sys_menu.component`** (post July 2026 refactor; see root `TODO.md`).
-- **Admin module pages** live under `apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx`. `plugin.ts` scans this directory at build time and generates `moduleComponentsMap` (key `./modules/<id>/<page>` → `@/modules/<id>/pages/<page>`). The `component` field in menu JSON must use this exact `./modules/<id>/<page>` form.
-- **OpenAPI sync**: `pnpm --filter yishan-admin openapi` regenerates `src/services/generated/<module>.ts` from `apps/demo/api/openapi.json`. The generated `typings.d.ts` (committed) provides the `API.*Params` ambient namespace. **Both files must be committed together** for fresh checkouts to compile. The backend also serves Swagger UI live at `/api/docs`.
+- **Admin V2** uses `@yishan/core-admin` for runtime composition and the public `@yishan/core-admin/umi-plugin` build plugin. Demo owns the product adapter in `plugin.ts`; `@yishan/core-system-admin` contributes system management pages. `apps/demo/admin/config/routes.ts` is intentionally lean — menu structure is **driven by backend `sys_menu.component`** (post July 2026 refactor; see root `TODO.md`).
+- **Admin module pages** live under `apps/demo/admin/src/modules/<id>/pages/<page>/index.tsx`. The public build plugin includes installed product modules at build time and generates `moduleComponentsMap` (key `./modules/<id>/<page>` → `@/modules/<id>/pages/<page>`). The `component` field in menu JSON must use this exact `./modules/<id>/<page>` form.
+- **OpenAPI sync**: `pnpm --filter @yishan/demo-admin openapi` runs the product Node entry using official `@umijs/openapi.generateService` and the current sibling API schema. System endpoints generate into `packages/core/system-admin/src/services/generated/` with `SystemAPI`; installed product endpoints generate into `apps/demo/admin/src/services/generated/` with `API`. Uninstalled CRM retains its module-owned snapshot under `src/modules/crm/services/generated/` with `CrmAPI`, without contributing runtime pages. Commit each owned generated client and typings together. The Umi OpenAPI config consumes the cached product partition rather than duplicating shared System clients; use the package command for both partitions. Swagger remains at `/api/docs`.
 - **JWT secret gate**: production refuses to boot with a default/weak `JWT_SECRET` (see System API `src/core/plugins/external/jwt-secret-validator.ts`). Dev/CI only warn.
 - **Auth bypass codes**: `BYPASS_CODES` in admin allows local testing of specific routes; `auth:logout` was removed (bugfix in July 2026) — don't add it back.
 - **TipTap**: builds to `dist/` with both CJS and ESM; admin imports it as `workspace:^` and **must rebuild tiptap after tipTap source changes** before re-running admin.
@@ -97,7 +99,7 @@ Public userDirectory and controlled user extensions support independent product 
 Per `CONTRIBUTING.md` and CI (`.github/workflows/yishan-fullstack-ci.yml`):
 
 1. Run the lint/test/build for the apps you touched (root `pnpm lint`, `pnpm test`, `pnpm build`).
-2. Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`. Husky + lint-staged are wired in `yishan-admin`.
+2. Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`. Husky + lint-staged are wired in `@yishan/demo-admin`.
 3. Architecture-affecting changes must update root docs (TODO files, README, this file).
 4. Don't stage scratch/plan docs in `tmp/` — they're gitignored.
 
@@ -118,13 +120,13 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 - Operation column: `dataIndex: 'option'`, `valueType: 'option'`, `fixed: 'right'`, `width: 160`, and wrap the action links in `<Space size={16}>` using `<a>` (not `<Button type="link">`). Match the `system/user` reference exactly.
 
 ### Time formatting
-- Use `dayjs` (already in `apps/yishan-admin/package.json` dependencies, used by `system/user` and `account/center`). It's the project-standard formatter.
+- Use `dayjs` (already in `apps/demo/admin/package.json` dependencies, used by `system/user` and `account/center`). It's the project-standard formatter.
 - For CN-locale pages, format with `dayjs(value).format('YYYY-MM-DD HH:mm:ss')`. dayjs defaults to the runtime's local timezone, which matches the user's expectation in CN deployments. Avoid `toLocaleString()` (browser default) and the raw `Intl.DateTimeFormat` boilerplate.
 - `valueType: 'dateTime'` columns don't need any of the above — let ProTable render.
 
 ### CRM drawer 共享原子
 
-`apps/yishan-admin/src/modules/crm/components/drawer/_shared/` 下放线索 / 客户两个 drawer
+`apps/demo/admin/src/modules/crm/components/drawer/_shared/` 下放线索 / 客户两个 drawer
 的共享 UI 原子。新建 drawer 或扩展现有 drawer 时**先查这里**，避免重写：
 
 | 原子 | 职责 |
@@ -160,10 +162,11 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 - **No real credentials in repo**: demo creds intentionally not committed; per README, request from the maintainer.
 - **sys_region seed data**: 省市区三级（~3400 条）由 `sys_region` 表承载，数据源是 modood/Administrative-divisions-of-China 的 `pca-code.json`，嵌在 `packages/core/system-api/src/scripts/seed/config/`。`pnpm --filter @yishan/demo-api db:seed` 自动跑 `system-region.ts` 把数据灌进 MySQL（INSERT ... ON DUPLICATE KEY UPDATE，幂等）。前端复用 `<ProFormRegionCascader name="area" />` 即可拿到三段级联选择器，无需另写 service。
 
-## Cross-app config: `API_TARGET`
+## Cross-app config: resolveApiTarget
 
-`packages/shared-config` 导出 `API_TARGET`（后端 base URL），admin 的 `config/proxy.ts`、app 的 `config/dev.ts` 和 `config/index.ts` 统一从这里 import。默认 `http://localhost:3100`，与 `apps/demo/api/.env` 的 `PORT` 对齐。
+`@yishan/shared-config` exports `resolveApiTarget(defaultTarget, env = process.env)`. This pure resolver owns no product address. Demo Admin and the mini-program keep their existing `http://localhost:3100` fallback in their product configuration.
 
-- 改后端端口：同步 `apps/demo/api/.env` 的 `PORT` 和 `packages/shared-config/src/index.ts` 的 `DEFAULT_API_TARGET`
-- 需要指向非默认 host/port：设 `YISHAN_API_TARGET=http://host:port`（完整 URL 最高优先级）
-- **禁止** 在 admin/app 的 config 里再次硬编码默认 URL——统一走 `API_TARGET`
+- Precedence: `API_TARGET` → `YISHAN_API_TARGET` → `YISHAN_API_PORT` → caller default. Complete target URLs override port-only settings; a port override preserves the caller protocol, host and path.
+- Demo API listens on its configured `PORT`; Demo Admin startup accepts `ADMIN_PORT`, mapped to the Umi dev-server `PORT`. Set backend and proxy ports consistently for independent instances.
+- Mini-program `YISHAN_APP_API_BASE_URL` remains an explicit gateway override; H5 defaults to same-origin requests and uses the configured development proxy.
+- Change product defaults in product configuration. Do not introduce a shared default product address.

@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import { DownOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
@@ -11,7 +12,7 @@ import {
   deleteDictType,
   getDictTypeList,
   updateDictType,
-} from '@/services/generated/sysDictTypes';
+} from '../../services/generated/sysDictTypes';
 import DictDataManager from './components/DictDataManager';
 import DictTypeForm from './components/DictTypeForm';
 
@@ -30,7 +31,7 @@ const DictTypeList: React.FC = () => {
     undefined,
   );
 
-  const openDataManager = (record: API.sysDictType) => {
+  const openDataManager = (record: SystemAPI.sysDictType) => {
     setDataTypeId(record.id);
     setDataTypeKey(record.type);
     setDataTypeName(record.name);
@@ -76,7 +77,7 @@ const DictTypeList: React.FC = () => {
     actionRef.current?.reload();
   };
 
-  const columns: ProColumns<API.sysDictType>[] = [
+  const columns: ProColumns<SystemAPI.sysDictType>[] = [
     { title: '字典编号', dataIndex: 'id', search: false, width: 90 },
     { title: '字典名称', dataIndex: 'name', width: 160 },
     {
@@ -161,7 +162,7 @@ const DictTypeList: React.FC = () => {
 
   return (
     <PageContainer>
-      <ProTable<API.sysDictType>
+      <ProTable<SystemAPI.sysDictType>
         headerTitle="字典类型列表"
         actionRef={actionRef}
         rowKey="id"

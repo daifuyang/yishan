@@ -1,14 +1,15 @@
 import { defineConfig, type UserConfigExport } from '@tarojs/cli'
-import { API_TARGET } from '@yishan/shared-config'
+import { resolveApiTarget } from '@yishan/shared-config'
 import path from 'node:path'
 
 import devConfig from './dev'
 import prodConfig from './prod'
 
 export default defineConfig(async (merge, _env) => {
+  const apiTarget = resolveApiTarget('http://localhost:3100')
   const outputRoot = `dist/${process.env.TARO_ENV || 'weapp'}`
   const apiBaseUrl =
-    process.env.YISHAN_APP_API_BASE_URL ?? (process.env.TARO_ENV === 'h5' ? '' : API_TARGET)
+    process.env.YISHAN_APP_API_BASE_URL ?? (process.env.TARO_ENV === 'h5' ? '' : apiTarget)
   if (apiBaseUrl && !/^https?:\/\//.test(apiBaseUrl))
     throw new Error('YISHAN_APP_API_BASE_URL must be an absolute HTTP(S) URL')
   const baseConfig: UserConfigExport<'webpack5'> = {
@@ -85,11 +86,11 @@ export default defineConfig(async (merge, _env) => {
         allowedHosts: 'all',
         // 代理：仅当 dev 端用户直连访问时使用。
         // 注意：若通过反向代理（如 nginx）访问 /api，
-        // 请在外层 nginx 中配置 /api → API_TARGET 转发。
+        // 请在外层 nginx 中配置 /api → apiTarget 转发。
         proxy: [
           {
             context: ['/api'],
-            target: API_TARGET,
+            target: apiTarget,
             changeOrigin: true,
             secure: false,
           },

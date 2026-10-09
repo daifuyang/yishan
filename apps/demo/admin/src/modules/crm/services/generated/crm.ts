@@ -5,7 +5,7 @@ import { request } from "@umijs/max";
 /** 按 id 获取跟进记录 GET /api/crm/v1/activities/${param0} */
 export async function crmActivityGet(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmActivityGetParams,
+  params: CrmAPI.crmActivityGetParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -50,7 +50,7 @@ export async function crmActivityGet(
 /** 删除跟进记录（软删） DELETE /api/crm/v1/activities/${param0} */
 export async function crmActivityDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmActivityDeleteParams,
+  params: CrmAPI.crmActivityDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -70,7 +70,7 @@ export async function crmActivityDelete(
 /** 编辑跟进记录 PATCH /api/crm/v1/activities/${param0} */
 export async function crmActivityUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmActivityUpdateParams,
+  params: CrmAPI.crmActivityUpdateParams,
   body: {
     contactId?: number | null;
     type?: "phone" | "wechat" | "visit" | "email" | "meeting" | "other";
@@ -141,7 +141,7 @@ export async function crmActivityUpdate(
 /** 此处后端没有提供注释 GET /api/crm/v1/attachments/ */
 export async function getCrmV1Attachments(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1AttachmentsParams,
+  params: CrmAPI.getCrmV1AttachmentsParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -204,7 +204,7 @@ export async function postCrmV1Attachments(
 /** 此处后端没有提供注释 DELETE /api/crm/v1/attachments/${param0} */
 export async function deleteCrmV1AttachmentsId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.deleteCrmV1AttachmentsIdParams,
+  params: CrmAPI.deleteCrmV1AttachmentsIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -224,7 +224,7 @@ export async function deleteCrmV1AttachmentsId(
 /** 联系人列表 GET /api/crm/v1/contacts/ */
 export async function crmContactsList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmContactsListParams,
+  params: CrmAPI.crmContactsListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -326,7 +326,7 @@ export async function crmContactsCreate(
 /** 联系人详情 GET /api/crm/v1/contacts/${param0} */
 export async function crmContactsDetail(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmContactsDetailParams,
+  params: CrmAPI.crmContactsDetailParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -364,7 +364,7 @@ export async function crmContactsDetail(
 /** 删除联系人 DELETE /api/crm/v1/contacts/${param0} */
 export async function crmContactsDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmContactsDeleteParams,
+  params: CrmAPI.crmContactsDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -384,7 +384,7 @@ export async function crmContactsDelete(
 /** 更新联系人 PATCH /api/crm/v1/contacts/${param0} */
 export async function crmContactsUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmContactsUpdateParams,
+  params: CrmAPI.crmContactsUpdateParams,
   body: {
     name?: string;
     gender?: number;
@@ -439,7 +439,7 @@ export async function crmContactsUpdate(
 /** 此处后端没有提供注释 GET /api/crm/v1/contracts/ */
 export async function getCrmV1Contracts(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1ContractsParams,
+  params: CrmAPI.getCrmV1ContractsParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -538,7 +538,7 @@ export async function postCrmV1Contracts(
 /** 此处后端没有提供注释 GET /api/crm/v1/contracts/${param0} */
 export async function getCrmV1ContractsId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1ContractsIdParams,
+  params: CrmAPI.getCrmV1ContractsIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -575,7 +575,7 @@ export async function getCrmV1ContractsId(
 /** 此处后端没有提供注释 DELETE /api/crm/v1/contracts/${param0} */
 export async function deleteCrmV1ContractsId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.deleteCrmV1ContractsIdParams,
+  params: CrmAPI.deleteCrmV1ContractsIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -595,7 +595,7 @@ export async function deleteCrmV1ContractsId(
 /** 此处后端没有提供注释 PATCH /api/crm/v1/contracts/${param0} */
 export async function patchCrmV1ContractsId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.patchCrmV1ContractsIdParams,
+  params: CrmAPI.patchCrmV1ContractsIdParams,
   body: {
     name?: string;
     opportunityId?: number | null;
@@ -647,7 +647,7 @@ export async function patchCrmV1ContractsId(
 /** 客户列表 GET /api/crm/v1/customers/ */
 export async function crmCustomersList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersListParams,
+  params: CrmAPI.crmCustomersListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -777,7 +777,7 @@ export async function crmCustomersCreate(
 /** 客户详情 GET /api/crm/v1/customers/${param0} */
 export async function crmCustomersDetail(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersDetailParams,
+  params: CrmAPI.crmCustomersDetailParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -828,7 +828,7 @@ export async function crmCustomersDetail(
 /** 删除客户 DELETE /api/crm/v1/customers/${param0} */
 export async function crmCustomersDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersDeleteParams,
+  params: CrmAPI.crmCustomersDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -848,7 +848,7 @@ export async function crmCustomersDelete(
 /** 更新客户 PATCH /api/crm/v1/customers/${param0} */
 export async function crmCustomersUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersUpdateParams,
+  params: CrmAPI.crmCustomersUpdateParams,
   body: {
     name?: string;
     type?: "enterprise" | "individual";
@@ -913,7 +913,7 @@ export async function crmCustomersUpdate(
 /** 客户跟进记录 GET /api/crm/v1/customers/${param0}/activities */
 export async function crmCustomerActivitiesList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomerActivitiesListParams,
+  params: CrmAPI.crmCustomerActivitiesListParams,
   options?: { [key: string]: any }
 ) {
   const { customerId: param0, ...queryParams } = params;
@@ -961,7 +961,7 @@ export async function crmCustomerActivitiesList(
 /** 新建跟进记录 POST /api/crm/v1/customers/${param0}/activities */
 export async function crmCustomerActivitiesCreate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomerActivitiesCreateParams,
+  params: CrmAPI.crmCustomerActivitiesCreateParams,
   body: {
     contactId?: number | null;
     type: "phone" | "wechat" | "visit" | "email" | "meeting" | "other";
@@ -1032,7 +1032,7 @@ export async function crmCustomerActivitiesCreate(
 /** 认领公海客户 POST /api/crm/v1/customers/${param0}/claim */
 export async function crmCustomersClaim(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersClaimParams,
+  params: CrmAPI.crmCustomersClaimParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -1077,7 +1077,7 @@ export async function crmCustomersClaim(
 /** 客户下的联系人 GET /api/crm/v1/customers/${param0}/contacts */
 export async function crmCustomerContactsList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomerContactsListParams,
+  params: CrmAPI.crmCustomerContactsListParams,
   options?: { [key: string]: any }
 ) {
   const { customerId: param0, ...queryParams } = params;
@@ -1115,7 +1115,7 @@ export async function crmCustomerContactsList(
 /** 客户下新建联系人 POST /api/crm/v1/customers/${param0}/contacts */
 export async function crmCustomerContactsCreate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomerContactsCreateParams,
+  params: CrmAPI.crmCustomerContactsCreateParams,
   body: {
     name: string;
     gender?: number;
@@ -1170,7 +1170,7 @@ export async function crmCustomerContactsCreate(
 /** 客户协同人列表 GET /api/crm/v1/customers/${param0}/members */
 export async function crmCustomerMembersList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomerMembersListParams,
+  params: CrmAPI.crmCustomerMembersListParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -1199,7 +1199,7 @@ export async function crmCustomerMembersList(
 /** 添加客户协同人 POST /api/crm/v1/customers/${param0}/members */
 export async function crmCustomerMembersAdd(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomerMembersAddParams,
+  params: CrmAPI.crmCustomerMembersAddParams,
   body: {
     userId: number;
   },
@@ -1235,7 +1235,7 @@ export async function crmCustomerMembersAdd(
 /** 移除客户协同人 DELETE /api/crm/v1/customers/${param0}/members/${param1} */
 export async function crmCustomerMembersRemove(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomerMembersRemoveParams,
+  params: CrmAPI.crmCustomerMembersRemoveParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, userId: param1, ...queryParams } = params;
@@ -1264,7 +1264,7 @@ export async function crmCustomerMembersRemove(
 /** 永久删除客户（仅回收站内） DELETE /api/crm/v1/customers/${param0}/purge */
 export async function crmCustomersPurge(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersPurgeParams,
+  params: CrmAPI.crmCustomersPurgeParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -1284,7 +1284,7 @@ export async function crmCustomersPurge(
 /** 变更客户关系状态 POST /api/crm/v1/customers/${param0}/relationship-status-transitions */
 export async function crmCustomersTransitionRelationshipStatus(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersTransitionRelationshipStatusParams,
+  params: CrmAPI.crmCustomersTransitionRelationshipStatusParams,
   body: {
     target: "potential" | "following" | "lost";
     reasonCode?: string;
@@ -1338,7 +1338,7 @@ export async function crmCustomersTransitionRelationshipStatus(
 /** 释放客户到公海 POST /api/crm/v1/customers/${param0}/release */
 export async function crmCustomersRelease(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersReleaseParams,
+  params: CrmAPI.crmCustomersReleaseParams,
   body: {
     reason?: string;
   },
@@ -1390,7 +1390,7 @@ export async function crmCustomersRelease(
 /** 从回收站恢复客户 POST /api/crm/v1/customers/${param0}/restore */
 export async function crmCustomersRestore(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersRestoreParams,
+  params: CrmAPI.crmCustomersRestoreParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -1435,7 +1435,7 @@ export async function crmCustomersRestore(
 /** 转交客户 POST /api/crm/v1/customers/${param0}/transfer */
 export async function crmCustomersTransfer(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersTransferParams,
+  params: CrmAPI.crmCustomersTransferParams,
   body: {
     targetUserId: number;
     reason?: string;
@@ -1488,7 +1488,7 @@ export async function crmCustomersTransfer(
 /** 客户流转日志 GET /api/crm/v1/customers/${param0}/transfers */
 export async function crmCustomersTransfers(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersTransfersParams,
+  params: CrmAPI.crmCustomersTransfersParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -1534,7 +1534,7 @@ export async function crmCustomersOptions(options?: { [key: string]: any }) {
 /** 客户回收站列表 GET /api/crm/v1/customers/trash */
 export async function crmCustomersTrashList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmCustomersTrashListParams,
+  params: CrmAPI.crmCustomersTrashListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -1635,7 +1635,7 @@ export async function crmDashboard(options?: { [key: string]: any }) {
 /** 撤销无合同成交确认 POST /api/crm/v1/direct-closes/${param0}/revoke */
 export async function crmDirectCloseRevoke(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmDirectCloseRevokeParams,
+  params: CrmAPI.crmDirectCloseRevokeParams,
   body: {
     reason: string;
   },
@@ -1680,7 +1680,7 @@ export async function crmDirectCloseRevoke(
 /** 此处后端没有提供注释 GET /api/crm/v1/opportunities/ */
 export async function getCrmV1Opportunities(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1OpportunitiesParams,
+  params: CrmAPI.getCrmV1OpportunitiesParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -1825,7 +1825,7 @@ export async function postCrmV1Opportunities(
 /** 此处后端没有提供注释 GET /api/crm/v1/opportunities/${param0} */
 export async function getCrmV1OpportunitiesId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1OpportunitiesIdParams,
+  params: CrmAPI.getCrmV1OpportunitiesIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -1883,7 +1883,7 @@ export async function getCrmV1OpportunitiesId(
 /** 此处后端没有提供注释 DELETE /api/crm/v1/opportunities/${param0} */
 export async function deleteCrmV1OpportunitiesId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.deleteCrmV1OpportunitiesIdParams,
+  params: CrmAPI.deleteCrmV1OpportunitiesIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -1903,7 +1903,7 @@ export async function deleteCrmV1OpportunitiesId(
 /** 此处后端没有提供注释 PATCH /api/crm/v1/opportunities/${param0} */
 export async function patchCrmV1OpportunitiesId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.patchCrmV1OpportunitiesIdParams,
+  params: CrmAPI.patchCrmV1OpportunitiesIdParams,
   body: {
     name?: string;
     primaryContactId?: number | null;
@@ -1979,7 +1979,7 @@ export async function patchCrmV1OpportunitiesId(
 /** 此处后端没有提供注释 POST /api/crm/v1/opportunities/${param0}/advance */
 export async function postCrmV1OpportunitiesIdAdvance(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.postCrmV1OpportunitiesIdAdvanceParams,
+  params: CrmAPI.postCrmV1OpportunitiesIdAdvanceParams,
   body: {
     toStage: "solution" | "quotation" | "negotiation";
     reason?: string;
@@ -2045,7 +2045,7 @@ export async function postCrmV1OpportunitiesIdAdvance(
 /** 此处后端没有提供注释 POST /api/crm/v1/opportunities/${param0}/lost */
 export async function postCrmV1OpportunitiesIdLost(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.postCrmV1OpportunitiesIdLostParams,
+  params: CrmAPI.postCrmV1OpportunitiesIdLostParams,
   body: {
     lostReason:
       | "price"
@@ -2118,7 +2118,7 @@ export async function postCrmV1OpportunitiesIdLost(
 /** 此处后端没有提供注释 POST /api/crm/v1/opportunities/${param0}/won */
 export async function postCrmV1OpportunitiesIdWon(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.postCrmV1OpportunitiesIdWonParams,
+  params: CrmAPI.postCrmV1OpportunitiesIdWonParams,
   body: {
     reason?: string;
   },
@@ -2183,7 +2183,7 @@ export async function postCrmV1OpportunitiesIdWon(
 /** 此处后端没有提供注释 GET /api/crm/v1/opportunities/duplicate-check */
 export async function getCrmV1OpportunitiesDuplicateCheck(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1OpportunitiesDuplicateCheckParams,
+  params: CrmAPI.getCrmV1OpportunitiesDuplicateCheckParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -2242,7 +2242,7 @@ export async function getCrmV1OpportunitiesDuplicateCheck(
 /** 此处后端没有提供注释 GET /api/crm/v1/payments/ */
 export async function getCrmV1Payments(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1PaymentsParams,
+  params: CrmAPI.getCrmV1PaymentsParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -2295,7 +2295,7 @@ export async function getCrmV1Payments(
 /** 此处后端没有提供注释 DELETE /api/crm/v1/payments/${param0} */
 export async function deleteCrmV1PaymentsId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.deleteCrmV1PaymentsIdParams,
+  params: CrmAPI.deleteCrmV1PaymentsIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -2315,7 +2315,7 @@ export async function deleteCrmV1PaymentsId(
 /** 此处后端没有提供注释 PATCH /api/crm/v1/payments/${param0} */
 export async function patchCrmV1PaymentsId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.patchCrmV1PaymentsIdParams,
+  params: CrmAPI.patchCrmV1PaymentsIdParams,
   body: {
     amountCents?: number;
     paidAt?: string;
@@ -2373,7 +2373,7 @@ export async function patchCrmV1PaymentsId(
 /** 此处后端没有提供注释 GET /api/crm/v1/payments/contracts/${param0} */
 export async function getCrmV1PaymentsContractsContractId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1PaymentsContractsContractIdParams,
+  params: CrmAPI.getCrmV1PaymentsContractsContractIdParams,
   options?: { [key: string]: any }
 ) {
   const { contractId: param0, ...queryParams } = params;
@@ -2387,7 +2387,7 @@ export async function getCrmV1PaymentsContractsContractId(
 /** 此处后端没有提供注释 POST /api/crm/v1/payments/contracts/${param0} */
 export async function postCrmV1PaymentsContractsContractId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.postCrmV1PaymentsContractsContractIdParams,
+  params: CrmAPI.postCrmV1PaymentsContractsContractIdParams,
   body: {
     amountCents: number;
     paidAt: string;
@@ -2445,7 +2445,7 @@ export async function postCrmV1PaymentsContractsContractId(
 /** 客户公海 GET /api/crm/v1/pool/ */
 export async function crmPoolList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmPoolListParams,
+  params: CrmAPI.crmPoolListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -2506,7 +2506,7 @@ export async function crmPoolList(
 /** 产品列表 GET /api/crm/v1/products/ */
 export async function crmProductsList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductsListParams,
+  params: CrmAPI.crmProductsListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -2600,7 +2600,7 @@ export async function crmProductsCreate(
 /** 产品详情 GET /api/crm/v1/products/${param0} */
 export async function crmProductsDetail(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductsDetailParams,
+  params: CrmAPI.crmProductsDetailParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -2636,7 +2636,7 @@ export async function crmProductsDetail(
 /** 软删除产品 DELETE /api/crm/v1/products/${param0} */
 export async function crmProductsDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductsDeleteParams,
+  params: CrmAPI.crmProductsDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -2656,7 +2656,7 @@ export async function crmProductsDelete(
 /** 更新产品 PATCH /api/crm/v1/products/${param0} */
 export async function crmProductsUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductsUpdateParams,
+  params: CrmAPI.crmProductsUpdateParams,
   body: {
     name?: string;
     categoryCode?: string | null;
@@ -2705,7 +2705,7 @@ export async function crmProductsUpdate(
 /** 停用产品 POST /api/crm/v1/products/${param0}/disable */
 export async function crmProductsDisable(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductsDisableParams,
+  params: CrmAPI.crmProductsDisableParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -2741,7 +2741,7 @@ export async function crmProductsDisable(
 /** 启用产品 POST /api/crm/v1/products/${param0}/enable */
 export async function crmProductsEnable(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductsEnableParams,
+  params: CrmAPI.crmProductsEnableParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -2777,7 +2777,7 @@ export async function crmProductsEnable(
 /** 产品分类列表 GET /api/crm/v1/products/categories */
 export async function crmProductCategoriesList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductCategoriesListParams,
+  params: CrmAPI.crmProductCategoriesListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -2854,7 +2854,7 @@ export async function crmProductCategoriesCreate(
 /** 软删除产品分类 DELETE /api/crm/v1/products/categories/${param0} */
 export async function crmProductCategoriesDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductCategoriesDeleteParams,
+  params: CrmAPI.crmProductCategoriesDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -2874,7 +2874,7 @@ export async function crmProductCategoriesDelete(
 /** 更新产品分类 PATCH /api/crm/v1/products/categories/${param0} */
 export async function crmProductCategoriesUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductCategoriesUpdateParams,
+  params: CrmAPI.crmProductCategoriesUpdateParams,
   body: {
     name?: string;
     parentCode?: string | null;
@@ -2943,7 +2943,7 @@ export async function crmProductCategoriesOptions(options?: {
 /** 计量单位列表 GET /api/crm/v1/products/units */
 export async function crmProductUnitsList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductUnitsListParams,
+  params: CrmAPI.crmProductUnitsListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -3017,7 +3017,7 @@ export async function crmProductUnitsCreate(
 /** 软删除计量单位 DELETE /api/crm/v1/products/units/${param0} */
 export async function crmProductUnitsDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductUnitsDeleteParams,
+  params: CrmAPI.crmProductUnitsDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -3037,7 +3037,7 @@ export async function crmProductUnitsDelete(
 /** 更新计量单位 PATCH /api/crm/v1/products/units/${param0} */
 export async function crmProductUnitsUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmProductUnitsUpdateParams,
+  params: CrmAPI.crmProductUnitsUpdateParams,
   body: {
     name?: string;
     sort?: number;
@@ -3101,7 +3101,7 @@ export async function crmProductUnitsOptions(options?: { [key: string]: any }) {
 /** 公开报价查看 GET /api/crm/v1/public/quotes/${param0} */
 export async function crmPublicQuoteGet(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmPublicQuoteGetParams,
+  params: CrmAPI.crmPublicQuoteGetParams,
   options?: { [key: string]: any }
 ) {
   const { token: param0, ...queryParams } = params;
@@ -3148,7 +3148,7 @@ export async function crmPublicQuoteGet(
 /** 报价单列表 GET /api/crm/v1/quotations/ */
 export async function crmQuotationsList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsListParams,
+  params: CrmAPI.crmQuotationsListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -3337,7 +3337,7 @@ export async function crmQuotationsCreate(
 /** 报价单详情 GET /api/crm/v1/quotations/${param0} */
 export async function crmQuotationsGet(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsGetParams,
+  params: CrmAPI.crmQuotationsGetParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -3444,7 +3444,7 @@ export async function crmQuotationsGet(
 /** 软删除报价单（仅 draft 阶段生效） DELETE /api/crm/v1/quotations/${param0} */
 export async function crmQuotationsDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsDeleteParams,
+  params: CrmAPI.crmQuotationsDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -3464,7 +3464,7 @@ export async function crmQuotationsDelete(
 /** 编辑报价单（仅 draft 阶段生效） PATCH /api/crm/v1/quotations/${param0} */
 export async function crmQuotationsUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsUpdateParams,
+  params: CrmAPI.crmQuotationsUpdateParams,
   body: {
     customerId?: number;
     opportunityId?: number;
@@ -3597,7 +3597,7 @@ export async function crmQuotationsUpdate(
 /** 销售确认报价（sent → accepted） POST /api/crm/v1/quotations/${param0}/accept */
 export async function crmQuotationsAccept(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsAcceptParams,
+  params: CrmAPI.crmQuotationsAcceptParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -3704,7 +3704,7 @@ export async function crmQuotationsAccept(
 /** 提交已确认报价的合同表单 POST /api/crm/v1/quotations/${param0}/contract */
 export async function crmQuotationsCreateContract(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsCreateContractParams,
+  params: CrmAPI.crmQuotationsCreateContractParams,
   body: {
     name: string;
     customerId: number;
@@ -3758,7 +3758,7 @@ export async function crmQuotationsCreateContract(
 /** 内部预览报价（不计入客户查看） GET /api/crm/v1/quotations/${param0}/preview */
 export async function crmQuotationsPreview(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsPreviewParams,
+  params: CrmAPI.crmQuotationsPreviewParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -3802,7 +3802,7 @@ export async function crmQuotationsPreview(
 /** 拒绝报价单（sent → rejected） POST /api/crm/v1/quotations/${param0}/reject */
 export async function crmQuotationsReject(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsRejectParams,
+  params: CrmAPI.crmQuotationsRejectParams,
   body: {
     reason?: string;
   },
@@ -3916,7 +3916,7 @@ export async function crmQuotationsReject(
 /** 基于报价创建新版本草稿 POST /api/crm/v1/quotations/${param0}/revise */
 export async function crmQuotationsRevise(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsReviseParams,
+  params: CrmAPI.crmQuotationsReviseParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -4023,7 +4023,7 @@ export async function crmQuotationsRevise(
 /** 撤销报价确认（未生成合同） POST /api/crm/v1/quotations/${param0}/revoke-confirmation */
 export async function crmQuotationsRevokeConfirmation(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsRevokeConfirmationParams,
+  params: CrmAPI.crmQuotationsRevokeConfirmationParams,
   body: {
     reason: "mistake" | "customer_unconfirmed" | "other";
     remark?: string;
@@ -4138,7 +4138,7 @@ export async function crmQuotationsRevokeConfirmation(
 /** 发送报价单（draft → sent） POST /api/crm/v1/quotations/${param0}/send */
 export async function crmQuotationsSend(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsSendParams,
+  params: CrmAPI.crmQuotationsSendParams,
   body: {
     shareId: number;
   },
@@ -4252,7 +4252,7 @@ export async function crmQuotationsSend(
 /** 生成报价公开分享链接 POST /api/crm/v1/quotations/${param0}/shares */
 export async function crmQuotationsCreateShare(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsCreateShareParams,
+  params: CrmAPI.crmQuotationsCreateShareParams,
   body: {
     replaceShareId?: number;
     durationDays?: 3 | 7 | 14 | 30;
@@ -4282,7 +4282,7 @@ export async function crmQuotationsCreateShare(
 /** 停用报价公开分享链接 POST /api/crm/v1/quotations/${param0}/shares/${param1}/revoke */
 export async function crmQuotationsRevokeShare(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsRevokeShareParams,
+  params: CrmAPI.crmQuotationsRevokeShareParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, shareId: param1, ...queryParams } = params;
@@ -4302,7 +4302,7 @@ export async function crmQuotationsRevokeShare(
 /** 报价单状态变更审计 GET /api/crm/v1/quotations/${param0}/status-logs */
 export async function crmQuotationsStatusLogs(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsStatusLogsParams,
+  params: CrmAPI.crmQuotationsStatusLogsParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -4346,7 +4346,7 @@ export async function crmQuotationsStatusLogs(
 /** 作废报价单（draft/sent → voided） POST /api/crm/v1/quotations/${param0}/void */
 export async function crmQuotationsVoid(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsVoidParams,
+  params: CrmAPI.crmQuotationsVoidParams,
   body: {
     reason?: string;
   },
@@ -4460,7 +4460,7 @@ export async function crmQuotationsVoid(
 /** 查询同商机同名进行中报价系列 GET /api/crm/v1/quotations/duplicates */
 export async function crmQuotationsDuplicates(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmQuotationsDuplicatesParams,
+  params: CrmAPI.crmQuotationsDuplicatesParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -4508,7 +4508,7 @@ export async function crmQuotationsDuplicates(
 /** CRM 客户来源列表 GET /api/crm/v1/settings/sources */
 export async function crmSettingsSourcesList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmSettingsSourcesListParams,
+  params: CrmAPI.crmSettingsSourcesListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -4581,7 +4581,7 @@ export async function crmSettingsSourcesCreate(
 /** 删除 CRM 客户来源 DELETE /api/crm/v1/settings/sources/${param0} */
 export async function crmSettingsSourcesDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmSettingsSourcesDeleteParams,
+  params: CrmAPI.crmSettingsSourcesDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -4601,7 +4601,7 @@ export async function crmSettingsSourcesDelete(
 /** 更新 CRM 客户来源 PATCH /api/crm/v1/settings/sources/${param0} */
 export async function crmSettingsSourcesUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmSettingsSourcesUpdateParams,
+  params: CrmAPI.crmSettingsSourcesUpdateParams,
   body: {
     name?: string;
     sort?: number;
@@ -4638,7 +4638,7 @@ export async function crmSettingsSourcesUpdate(
 /** CRM 标签列表 GET /api/crm/v1/settings/tags */
 export async function crmSettingsTagsList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmSettingsTagsListParams,
+  params: CrmAPI.crmSettingsTagsListParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -4708,7 +4708,7 @@ export async function crmSettingsTagsCreate(
 /** 删除 CRM 标签 DELETE /api/crm/v1/settings/tags/${param0} */
 export async function crmSettingsTagsDelete(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmSettingsTagsDeleteParams,
+  params: CrmAPI.crmSettingsTagsDeleteParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -4728,7 +4728,7 @@ export async function crmSettingsTagsDelete(
 /** 更新 CRM 标签 PATCH /api/crm/v1/settings/tags/${param0} */
 export async function crmSettingsTagsUpdate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmSettingsTagsUpdateParams,
+  params: CrmAPI.crmSettingsTagsUpdateParams,
   body: {
     name?: string;
     color?: string | null;
@@ -4764,7 +4764,7 @@ export async function crmSettingsTagsUpdate(
 /** 此处后端没有提供注释 GET /api/crm/v1/tasks/ */
 export async function getCrmV1Tasks(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1TasksParams,
+  params: CrmAPI.getCrmV1TasksParams,
   options?: { [key: string]: any }
 ) {
   return request<{
@@ -4855,7 +4855,7 @@ export async function postCrmV1Tasks(
 /** 此处后端没有提供注释 GET /api/crm/v1/tasks/${param0} */
 export async function getCrmV1TasksId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.getCrmV1TasksIdParams,
+  params: CrmAPI.getCrmV1TasksIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -4890,7 +4890,7 @@ export async function getCrmV1TasksId(
 /** 此处后端没有提供注释 DELETE /api/crm/v1/tasks/${param0} */
 export async function deleteCrmV1TasksId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.deleteCrmV1TasksIdParams,
+  params: CrmAPI.deleteCrmV1TasksIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
@@ -4910,7 +4910,7 @@ export async function deleteCrmV1TasksId(
 /** 此处后端没有提供注释 PATCH /api/crm/v1/tasks/${param0} */
 export async function patchCrmV1TasksId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.patchCrmV1TasksIdParams,
+  params: CrmAPI.patchCrmV1TasksIdParams,
   body: {
     title?: string;
     status?: "todo" | "in_progress" | "completed" | "cancelled";
@@ -4957,7 +4957,7 @@ export async function patchCrmV1TasksId(
 /** 拜访独立列表（按 planned_at 排序） GET /api/crm/v1/visits/ */
 export async function crmVisitsList(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.crmVisitsListParams,
+  params: CrmAPI.crmVisitsListParams,
   options?: { [key: string]: any }
 ) {
   return request<{

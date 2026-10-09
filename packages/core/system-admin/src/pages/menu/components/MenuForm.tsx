@@ -1,11 +1,12 @@
+import type {} from '../../../types/index';
 import React, { useMemo, useState, useRef } from 'react';
 import {
   getMenuTree,
   getMenuDetail,
   createMenu,
   updateMenu,
-} from '@/services/generated/sysMenus';
-import { getPermissionCatalog } from '@/services/generated/sysPermissions';
+} from '../../../services/generated/sysMenus';
+import { getPermissionCatalog } from '../../../services/generated/sysPermissions';
 import {
   ModalForm,
   ProFormText,
@@ -16,10 +17,10 @@ import {
   ProFormDependency,
   ProFormSwitch,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../../runtime';
 
 type MenuType = 0 | 1 | 2;
-type MenuTreeData = Omit<API.menuTreeNode, 'children'> & {
+type MenuTreeData = Omit<SystemAPI.menuTreeNode, 'children'> & {
   children?: MenuTreeData[];
 };
 type MenuFormValues = {
@@ -41,7 +42,7 @@ type MenuFormValues = {
 export interface MenuFormProps {
   title: string;
   trigger?: React.JSX.Element;
-  initialValues?: Partial<API.sysMenu>;
+  initialValues?: Partial<SystemAPI.sysMenu>;
   onFinish?: () => Promise<void>;
 }
 
@@ -54,7 +55,7 @@ const MenuForm: React.FC<MenuFormProps> = ({
   const [treeLoading, setTreeLoading] = useState(false);
   const formRef = useRef<any>(undefined);
 
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> =
     dictDataMap.default_status || [];
@@ -63,7 +64,7 @@ const MenuForm: React.FC<MenuFormProps> = ({
     { label: string; value: string }[]
   >([]);
 
-  const buildTree = (nodes: API.menuTreeNode[] = []): MenuTreeData[] => {
+  const buildTree = (nodes: SystemAPI.menuTreeNode[] = []): MenuTreeData[] => {
     return nodes.map((n) => ({
       ...n,
       children: n.children ? buildTree(n.children) : undefined,
@@ -161,7 +162,7 @@ const MenuForm: React.FC<MenuFormProps> = ({
         }
       }}
       onFinish={async (values) => {
-        const basePayload: API.saveMenuReq = {
+        const basePayload: SystemAPI.saveMenuReq = {
           name: values.name,
           type: values.type,
           parentId: values.parentId === 0 ? undefined : values.parentId,
@@ -186,7 +187,7 @@ const MenuForm: React.FC<MenuFormProps> = ({
         }
         const res = await updateMenu(
           { id: String(initialValues.id) },
-          basePayload as API.updateMenuReq,
+          basePayload as SystemAPI.updateMenuReq,
         );
         if (res.success) {
           await onFinish?.();

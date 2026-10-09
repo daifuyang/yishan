@@ -2,7 +2,7 @@
  * 按钮级权限工具。
  *
  * 设计原则：
- * 1. 优先读 `currentUser.permissions: string[]`（后端 /me 返回的权限码列表）。
+ * 1. 优先读 `currentUser.permissions: string[]`（初始化从 capabilities 契约补充）。
  *    这是按钮级权限的权威来源 —— 颗粒度比菜单粒度细。
  * 2. 当 `permissions` 字段缺失（后端暂未发送，旧版本兼容）时，回退为"全通过"，
  *    不去基于菜单路径硬猜。避免误把所有按钮隐藏掉导致页面空。
@@ -25,10 +25,8 @@ const SUPER_ADMIN_ROLE = 'super_admin'
  * 检查一个权限码是否在用户的权限集合内。
  * 不读 model —— 用于 store / 工具函数等无 hook context 的场景。
  */
-export function checkPermission(permissions: string[] | undefined, code: string): boolean {
-  if (!permissions) return true
-  return permissions.includes(code)
-}
+export { checkPermission } from '@yishan/core-admin/permission'
+import { checkPermission } from '@yishan/core-admin/permission'
 
 /**
  * 读 currentUser 的 permissions 数组。

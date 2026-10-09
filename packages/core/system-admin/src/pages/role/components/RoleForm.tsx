@@ -1,3 +1,4 @@
+import type {} from '../../../types/index';
 import React, {
   useDeferredValue,
   useEffect,
@@ -13,19 +14,19 @@ import {
   ProFormText,
   ProFormTextArea,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../../runtime';
 import type { DataNode } from 'antd/es/tree';
-import { getMenuTree } from '@/services/generated/sysMenus';
+import { getMenuTree } from '../../../services/generated/sysMenus';
 import {
   createRole,
   getRoleDetail,
   updateRole,
-} from '@/services/generated/sysRoles';
+} from '../../../services/generated/sysRoles';
 
 export interface RoleFormProps {
   title: string;
   trigger?: React.JSX.Element;
-  initialValues?: Partial<API.sysRole>;
+  initialValues?: Partial<SystemAPI.sysRole>;
   onFinish?: () => Promise<void>;
 }
 
@@ -37,12 +38,12 @@ const DATA_SCOPE_OPTIONS = [
   { label: '自定义数据', value: '5' },
 ];
 
-function flattenMenuTree(nodes: API.menuTreeNode[]): API.menuTreeNode[] {
+function flattenMenuTree(nodes: SystemAPI.menuTreeNode[]): SystemAPI.menuTreeNode[] {
   return nodes.flatMap((node) => [node, ...flattenMenuTree(node.children || [])]);
 }
 
 interface MenuAuthorizationTitleProps {
-  node: API.menuTreeNode;
+  node: SystemAPI.menuTreeNode;
 }
 
 const MenuAuthorizationTitle: React.FC<MenuAuthorizationTitleProps> = ({
@@ -58,7 +59,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const formRef = useRef<any>(undefined);
   const [activeTab, setActiveTab] = useState('basic');
   const [menuTreeLoading, setMenuTreeLoading] = useState(false);
-  const [menuTree, setMenuTree] = useState<API.menuTreeNode[]>([]);
+  const [menuTree, setMenuTree] = useState<SystemAPI.menuTreeNode[]>([]);
   const [checkedMenuKeys, setCheckedMenuKeys] = useState<React.Key[]>([]);
   const [expandedMenuKeys, setExpandedMenuKeys] = useState<React.Key[]>([]);
   const [expandAll, setExpandAll] = useState(true);
@@ -72,7 +73,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
     authorizationSearch.trim().toLowerCase(),
   );
 
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const defaultStatusDict: Array<{ label: string; value: string }> =
     initialState?.dictDataMap?.default_status || [];
   const allNodes = useMemo(() => flattenMenuTree(menuTree), [menuTree]);
@@ -130,7 +131,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
     setCheckedMenuKeys(nextKeys);
     syncActionPermissions(nextKeys);
   };
-  const collectDescendantNodes = (node: API.menuTreeNode): API.menuTreeNode[] =>
+  const collectDescendantNodes = (node: SystemAPI.menuTreeNode): SystemAPI.menuTreeNode[] =>
     (node.children || []).flatMap((child) => [child, ...collectDescendantNodes(child)]);
   const handleMenuCheck = (checked: React.Key[] | { checked: React.Key[] }) => {
     const nextCheckedIds = new Set(
@@ -168,11 +169,11 @@ const RoleForm: React.FC<RoleFormProps> = ({
     setCheckedMenuKeys((current) => [...new Set([...current, ...actionIds])]);
   }, [actionNodes, checkedPermissionCodes]);
   const authorizationTreeData = useMemo(() => {
-    const matches = (node: API.menuTreeNode) =>
+    const matches = (node: SystemAPI.menuTreeNode) =>
       `${node.name} ${(node.permissionCodes || []).join(' ')}`
         .toLowerCase()
         .includes(deferredSearch);
-    const build = (nodes: API.menuTreeNode[]): DataNode[] =>
+    const build = (nodes: SystemAPI.menuTreeNode[]): DataNode[] =>
       nodes
         .flatMap((node) => {
           const visibleChildren = build(node.children || []);
@@ -260,9 +261,9 @@ const RoleForm: React.FC<RoleFormProps> = ({
         const response = initialValues.id
           ? await updateRole(
               { id: Number(initialValues.id) },
-              payload as API.updateRoleReq,
+              payload as SystemAPI.updateRoleReq,
             )
-          : await createRole(payload as API.saveRoleReq);
+          : await createRole(payload as SystemAPI.saveRoleReq);
         if (!response.success) return false;
         await onFinish?.();
         return true;

@@ -16,7 +16,7 @@
  */
 import { PageContainer, type ProColumns, ProTable } from '@ant-design/pro-components';
 import React, { useEffect, useMemo, useState } from 'react';
-import { getSystemRegionTree } from '@/services/generated/systemRegions';
+import { getSystemRegionTree } from '../../services/generated/systemRegions';
 
 /** 后端返回的树节点，children 由 Cascader / 本表格递归渲染。 */
 type RegionTreeNode = {

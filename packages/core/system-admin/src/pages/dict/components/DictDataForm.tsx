@@ -1,12 +1,13 @@
+import type {} from '../../../types/index';
 import React, { useMemo, useRef } from 'react';
 import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormSwitch } from '@ant-design/pro-components';
-import { getDictDataDetail, createDictData, updateDictData } from '@/services/generated/sysDictData';
+import { getDictDataDetail, createDictData, updateDictData } from '../../../services/generated/sysDictData';
 
 export interface DictDataFormProps {
   title: string;
   trigger?: React.JSX.Element;
   typeId: number;
-  initialValues?: Partial<API.sysDictData>;
+  initialValues?: Partial<SystemAPI.sysDictData>;
   onFinish?: () => Promise<void>;
 }
 
@@ -54,7 +55,7 @@ const DictDataForm: React.FC<DictDataFormProps> = ({
         }
       }}
       onFinish={async (values) => {
-        const basePayload: API.saveDictDataReq = {
+        const basePayload: SystemAPI.saveDictDataReq = {
           typeId,
           label: values.label,
           value: String(values.value ?? ''),
@@ -72,7 +73,7 @@ const DictDataForm: React.FC<DictDataFormProps> = ({
           }
           return false;
         }
-        const res = await updateDictData({ id: Number(initialValues.id) }, basePayload as API.updateDictDataReq);
+        const res = await updateDictData({ id: Number(initialValues.id) }, basePayload as SystemAPI.updateDictDataReq);
         if (res.success) {
           await onFinish?.();
           return true;

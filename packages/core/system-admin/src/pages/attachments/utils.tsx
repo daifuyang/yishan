@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 
 import type { FolderItem } from './types';
 
@@ -15,9 +16,9 @@ export const formatBytes = (value?: number) => {
 };
 
 export const findFolderById = (
-  nodes: API.sysAttachmentFolder[] = [],
+  nodes: SystemAPI.sysAttachmentFolder[] = [],
   id: number,
-): API.sysAttachmentFolder | undefined => {
+): SystemAPI.sysAttachmentFolder | undefined => {
   for (const n of nodes) {
     if (n.id === id) return n;
     if (Array.isArray(n.children) && n.children.length > 0) {
@@ -29,7 +30,7 @@ export const findFolderById = (
 };
 
 export const flattenFolders = (
-  nodes: API.sysAttachmentFolder[] = [],
+  nodes: SystemAPI.sysAttachmentFolder[] = [],
   prefix: string[] = [],
   level = 1,
   parentIds: number[] = [],

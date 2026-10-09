@@ -4,9 +4,10 @@ on:
   push:
     paths:
       - ".github/workflows/**"
-      - "apps/yishan-admin/**"
+      - "apps/demo/admin/**"
       - "apps/demo/api/**"
       - "packages/core/**"
+      - "packages/shared-config/**"
       - "scripts/**"
       - "apps/yishan-components/yishan-tiptap/**"
       - "pnpm-lock.yaml"
@@ -15,9 +16,10 @@ on:
   pull_request:
     paths:
       - ".github/workflows/**"
-      - "apps/yishan-admin/**"
+      - "apps/demo/admin/**"
       - "apps/demo/api/**"
       - "packages/core/**"
+      - "packages/shared-config/**"
       - "scripts/**"
       - "apps/yishan-components/yishan-tiptap/**"
       - "pnpm-lock.yaml"
@@ -79,25 +81,36 @@ jobs:
           pnpm --filter yishan-tiptap build
 
       - name: Admin Setup
-        run: pnpm --filter yishan-admin exec max setup
+        run: pnpm --filter @yishan/demo-admin exec max setup
+
+      - name: Admin public package lint and typechecks
+        run: |
+          pnpm --filter @yishan/core-admin lint
+          pnpm --filter @yishan/core-system-admin lint
+
+      - name: Core Admin build registry tests
+        run: pnpm --filter @yishan/core-admin test
 
       - name: Admin Lint
-        run: pnpm --filter yishan-admin lint
+        run: pnpm --filter @yishan/demo-admin lint
 
-      - name: API architecture and product manifests
+      - name: API and Admin architecture and product manifests
         run: |
           node scripts/check-api-architecture.cjs
           node scripts/check-main-baseline.mjs
           node scripts/check-module-naming.mjs
+          node scripts/check-admin-boundaries.mjs
           node --test scripts/*.test.mjs scripts/test/*.test.mjs
 
       - name: Admin Build
-        run: pnpm --filter yishan-admin build
+        env:
+          PUBLIC_PATH: /admin/
+        run: pnpm --filter @yishan/demo-admin build
 
       # Admin Test 依赖 Admin Setup 生成的 .umi/ 产物；Max 不在 pretest 钩子上，
       # 必须显式依赖 setup 步骤，确保 jest 能解析 .umi/plugin-initialState 等。
       - name: Admin Test
-        run: pnpm --filter yishan-admin test
+        run: pnpm --filter @yishan/demo-admin test
 
       - name: Prepare API .env
         working-directory: apps/demo/api
@@ -128,7 +141,7 @@ jobs:
         run: pnpm --filter @yishan/demo-api db:migrate --apply
 
       - name: Verify standalone API artifact
-        run: node scripts/package-api.mjs --output /tmp/yishan-api-artifact
+        run: node scripts/package-api.mjs --output /tmp/yishan-api-artifact --admin apps/demo/admin/dist
 
       - name: Verify OpenAPI spec is in sync
         shell: bash
@@ -154,6 +167,30 @@ jobs:
 
           pnpm --filter @yishan/demo-api openapi:dump
           pnpm check:openapi
+
+      - name: Verify generated Admin clients are in sync
+        run: |
+          pnpm --filter @yishan/demo-admin openapi
+          git diff --exit-code -- \
+            packages/core/system-admin/src/services/generated \
+            apps/demo/admin/src/services/generated \
+            apps/demo/admin/src/modules/crm/services/generated
+          if [ -n "$(git ls-files --others --exclude-standard -- packages/core/system-admin/src/services/generated apps/demo/admin/src/services/generated apps/demo/admin/src/modules/crm/services/generated)" ]; then
+            git status --short -- packages/core/system-admin/src/services/generated apps/demo/admin/src/services/generated apps/demo/admin/src/modules/crm/services/generated
+            echo "Generated Admin clients contain uncommitted files." >&2
+            exit 1
+          fi
+
+      - name: Install Chromium for isolated Admin verification
+        run: pnpm --filter @yishan/demo-admin exec playwright install --with-deps chromium
+
+      - name: Admin browser suite with disposable local resources
+        env:
+          YISHAN_TEST_MYSQL_PASSWORD: root
+        run: pnpm --filter @yishan/demo-admin exec playwright test e2e/product-v2.spec.ts --reporter=list
+
+      - name: Independent Admin package consumers and product module combinations
+        run: node scripts/verify-admin-reuse.mjs --mode all
 
       - name: API Test
         run: pnpm test:api

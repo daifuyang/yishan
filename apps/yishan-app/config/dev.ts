@@ -1,8 +1,9 @@
 import type { UserConfigExport } from '@tarojs/cli'
-import { API_TARGET } from '@yishan/shared-config'
+import { resolveApiTarget } from '@yishan/shared-config'
 import path from 'node:path'
 
 const APP_ROOT = path.resolve(__dirname, '..')
+const apiTarget = resolveApiTarget('http://localhost:3100')
 
 export default {
   mini: {},
@@ -11,7 +12,7 @@ export default {
       proxy: [
         {
           context: ['/api'],
-          target: API_TARGET,
+          target: apiTarget,
           changeOrigin: true,
           secure: false,
         },

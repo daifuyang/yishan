@@ -22,6 +22,32 @@ export async function demoInfo(options?: { [key: string]: any }) {
   });
 }
 
+/** 当前用户的 Demo 业务资料 GET /api/demo/v1/me/profile */
+export async function demoUserProfile(options?: { [key: string]: any }) {
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    timestamp: string;
+    data: {
+      user: {
+        id: number;
+        username: string | null;
+        realName: string | null;
+      } | null;
+      profile: {
+        userId: number;
+        theme: string;
+        lastEvent: string;
+        updatedAt: string;
+      } | null;
+    };
+  }>("/api/demo/v1/me/profile", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
 /** Todo 列表 GET /api/demo/v1/todos/ */
 export async function demoTodosList(options?: { [key: string]: any }) {
   return request<{

@@ -2,7 +2,7 @@ import { LockOutlined } from '@ant-design/icons';
 import { useIntl } from '@umijs/max';
 import { App, Button, Card, Form, Input } from 'antd';
 import React, { useState } from 'react';
-import { appChangeMyPassword } from '@/services/generated/appUsers';
+import { appChangeMyPassword } from '@yishan/core-system-admin/services/appUsers';
 import { logout } from '@/utils/auth';
 import { PASSWORD_PATTERN } from '../constants';
 

@@ -1,3 +1,4 @@
+import type {} from '../../../types/index';
 import React, { useRef } from 'react';
 import {
   ModalForm,
@@ -8,24 +9,24 @@ import {
   ProFormTextArea,
   ProFormTreeSelect,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../../runtime';
 import {
   createAttachmentFolder,
   getAttachmentFolderDetail,
   getAttachmentFolderTree,
   updateAttachmentFolder,
-} from '@/services/generated/attachments';
+} from '../../../services/generated/attachments';
 
 export interface AttachmentFolderFormProps {
   title: string;
   trigger?: React.JSX.Element;
-  initialValues?: Partial<API.sysAttachmentFolder>;
+  initialValues?: Partial<SystemAPI.sysAttachmentFolder>;
   onFinish?: () => Promise<void>;
 }
 
-type AttachmentFolderKind = API.sysAttachmentFolder['kind'];
+type AttachmentFolderKind = SystemAPI.sysAttachmentFolder['kind'];
 
-const topFolder: API.sysAttachmentFolder = {
+const topFolder: SystemAPI.sysAttachmentFolder = {
   id: 0,
   name: '顶级分组',
   kind: 'all',
@@ -51,7 +52,7 @@ const AttachmentFolderForm: React.FC<AttachmentFolderFormProps> = ({
   onFinish,
 }) => {
   const formRef = useRef<any>(undefined);
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
@@ -80,7 +81,7 @@ const AttachmentFolderForm: React.FC<AttachmentFolderFormProps> = ({
         }
       }}
       onFinish={async (values) => {
-        const payload: API.createAttachmentFolderReq = {
+        const payload: SystemAPI.createAttachmentFolderReq = {
           name: values.name || '',
           parentId: values.parentId === 0 ? undefined : Number(values.parentId),
           kind: values.kind as AttachmentFolderKind,
@@ -98,7 +99,7 @@ const AttachmentFolderForm: React.FC<AttachmentFolderFormProps> = ({
           return false;
         }
 
-        const updatePayload: API.updateAttachmentFolderReq = { ...payload };
+        const updatePayload: SystemAPI.updateAttachmentFolderReq = { ...payload };
         const res = await updateAttachmentFolder({ id: Number(initialValues.id) }, updatePayload);
         if (res.success) {
           await onFinish?.();

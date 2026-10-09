@@ -6,7 +6,7 @@
  * 布局组件
  */
 
-import { AttachmentLibraryModal } from './AttachmentLibraryModal';
+import { AttachmentLibraryModal } from '@yishan/core-system-admin/components/AttachmentLibraryModal';
 import {
   AttachmentAudioSelect,
   AttachmentFileSelect,
@@ -15,23 +15,23 @@ import {
   AttachmentSelect,
   AttachmentSingleSelect,
   AttachmentVideoSelect,
-} from './AttachmentSelect';
+} from '@yishan/core-system-admin/components/AttachmentSelect';
 /**
  * 部门树选择组件
  */
-import { ProFormDeptTreeSelect } from './DeptTreeSelect';
+import { ProFormDeptTreeSelect } from '@yishan/core-system-admin/components/DeptTreeSelect';
 import Footer from './Footer';
-import QiniuUpload from './QiniuUpload';
-import { ProFormRegionCascader } from './RegionCascader';
+import QiniuUpload from '@yishan/core-system-admin/components/QiniuUpload';
+import { ProFormRegionCascader } from '@yishan/core-system-admin/components/RegionCascader';
 import { Question, SelectLang } from './RightContent';
 import { AvatarDropdown, AvatarName } from './RightContent/AvatarDropdown';
 
-export type { AttachmentLibraryModalProps } from './AttachmentLibraryModal/types';
+export type { AttachmentLibraryModalProps } from '@yishan/core-system-admin/components/AttachmentLibraryModal/types';
 export type {
   ImageCropperModalProps,
   ImageCropperShape,
-} from './ImageCropperModal';
-export { default as ImageCropperModal } from './ImageCropperModal';
+} from '@yishan/core-system-admin/components/ImageCropperModal';
+export { default as ImageCropperModal } from '@yishan/core-system-admin/components/ImageCropperModal';
 
 export {
   AttachmentAudioSelect,

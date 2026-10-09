@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import {
   CustomerServiceOutlined,
   DeleteOutlined,
@@ -8,7 +9,7 @@ import {
   VideoCameraOutlined,
 } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import type { UploadProps } from 'antd';
 import {
   App,
@@ -31,9 +32,9 @@ import {
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import React, { useCallback, useMemo, useRef } from 'react';
-import { AttachmentEditForm } from '@/components/AttachmentEditForm';
-import { deleteAttachmentFolder, uploadAttachments } from '@/services/generated/attachments';
-import { resolveAttachmentPublicUrl } from '@/utils/attachmentUpload';
+import { AttachmentEditForm } from '../../components/AttachmentEditForm';
+import { deleteAttachmentFolder, uploadAttachments } from '../../services/generated/attachments';
+import { resolveAttachmentPublicUrl } from '../../utils/attachmentUpload';
 import { attachmentKindMeta } from './constants';
 import { getKindFromFile, highlightText, flattenFolders as _ff } from './utils';
 import { useAttachmentFolders } from './hooks/useAttachmentFolders';
@@ -43,7 +44,7 @@ import styles from './index.module.less';
 
 const AttachmentsPage: React.FC = () => {
   const { message } = App.useApp();
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
 
   const folder = useAttachmentFolders(message);
@@ -88,7 +89,7 @@ const AttachmentsPage: React.FC = () => {
   }, []);
 
   const treeData: DataNode[] = useMemo(() => {
-    const build = (nodes: API.sysAttachmentFolder[] = [], level = 1): DataNode[] =>
+    const build = (nodes: SystemAPI.sysAttachmentFolder[] = [], level = 1): DataNode[] =>
       nodes.map((n) => ({
         key: n.id,
         title: (

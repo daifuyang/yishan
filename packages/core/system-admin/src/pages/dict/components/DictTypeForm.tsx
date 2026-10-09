@@ -1,11 +1,12 @@
+import type {} from '../../../types/index';
 import React, { useMemo, useRef } from 'react';
 import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea } from '@ant-design/pro-components';
-import { getDictTypeDetail, createDictType, updateDictType } from '@/services/generated/sysDictTypes';
+import { getDictTypeDetail, createDictType, updateDictType } from '../../../services/generated/sysDictTypes';
 
 export interface DictTypeFormProps {
   title: string;
   trigger?: React.JSX.Element;
-  initialValues?: Partial<API.sysDictType>;
+  initialValues?: Partial<SystemAPI.sysDictType>;
   onFinish?: () => Promise<void>;
 }
 
@@ -56,7 +57,7 @@ const DictTypeForm: React.FC<DictTypeFormProps> = ({
           status: values.status,
           sort_order: Number(values.sort_order ?? 0),
           remark: values.remark,
-        } as API.saveDictTypeReq;
+        } as SystemAPI.saveDictTypeReq;
         if (!initialValues?.id) {
           const res = await createDictType(payload);
           if (res.success) {
@@ -65,7 +66,7 @@ const DictTypeForm: React.FC<DictTypeFormProps> = ({
           }
           return false;
         }
-        const res = await updateDictType({ id: Number(initialValues.id) }, payload as API.updateDictTypeReq);
+        const res = await updateDictType({ id: Number(initialValues.id) }, payload as SystemAPI.updateDictTypeReq);
         if (res.success) {
           await onFinish?.();
           return true;

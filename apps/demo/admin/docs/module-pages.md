@@ -1,109 +1,48 @@
 # 模块页面注册机制
 
-> 本文讲清楚一件事：把一个新模块页面从无到有挂到 admin 后台，**总共需要改哪些地方**。
->
-> 配套文档：
-> - 表单模板（DrawerForm + FormEditor + ProTable 骨架）→ 本目录 `form-pattern.md`
-> - 后端模块规范 → `docs/module-onboarding.md`
+业务页面位于产品 `apps/demo/admin`，系统管理页面由 `@yishan/core-system-admin` 公开贡献。表单约定见 [form-pattern.md](form-pattern.md)，后端与安装规则见 [模块接入](../../../../docs/module-onboarding.md)。
 
-## 1. 核心机制
+## 构建与运行时
 
-`apps/yishan-admin/plugin.ts` 是 admin **唯一**的模块扩展点。它在编译期跑 `onGenerateFiles`，扫描两处目录：
+产品 `plugin.ts` 通过公开 `@yishan/core-admin/umi-plugin` 创建 Umi 插件。产品传入自己的 API 根目录和系统页面贡献；公共插件不硬编码 Demo 或扫描其它产品。安装事实来自同产品 API 的显式 `src/manifest.ts`，由 `@yishan/core-admin/manifest` 静态解析，不执行后端模块代码或连接数据库。
 
-```
-src/pages/         →  ./xxx/yyy            →  @/pages/xxx/yyy
-src/modules/<id>/pages/<page>/index.tsx  →  ./modules/<id>/<page>  →  @/modules/<id>/pages/<page>
-```
+构建期 `onGenerateFiles` 生成 `src/.umi/module-components.ts`。它包含产品框架页面、公开系统页面贡献以及已安装业务模块的页面。未安装模块即使保留源码，也不会加入页面组件映射。运行时菜单的 `sys_menu.component` 只选择组件映射中的页面。
 
-把扫到的虚拟路径写到 `.umi/module-components.ts`，运行时由 `moduleComponentsMap` 解析。
+插件生成动态 `import()` 加载工厂，避免依赖 Mako 浏览器运行时不可用的 `require.context`。Umi 临时目录由构建生成，不提交。
 
-> 为什么不直接 `require.context`？当前 Umi 集成的 Mako 0.11.10 在浏览器运行时会抛 `require.context is only available in Mako/webpack bundler runtime`。改用编译期生成 + `import()` 动态加载规避。
+## 路径约定
 
-## 2. 路径对照
-
-| 字段 | 形式 | 例 |
+| 字段 | 形式 | 示例 |
 |---|---|---|
-| **URL（前端菜单 `path`）** | `/<id>/<page>` | `/portal/articles` |
-| **源码物理路径** | `src/modules/<id>/pages/<page>/index.tsx` | `src/modules/portal/pages/articles/index.tsx` |
-| **菜单 `component` 字段** | `./modules/<id>/<page>` | `./modules/portal/articles` |
-| **运行时 import path** | `@/modules/<id>/pages/<page>` | `@/modules/portal/pages/articles` |
+| 菜单 URL | `/<id>/<page>` | `/portal/articles` |
+| 产品业务源码 | `src/modules/<id>/pages/<page>/index.tsx` | `src/modules/portal/pages/articles/index.tsx` |
+| 菜单 component | `./modules/<id>/<page>` | `./modules/portal/articles` |
+| 产品页面 import | `@/modules/<id>/pages/<page>` | `@/modules/portal/pages/articles` |
+| 系统菜单 component | 保留既有组件键 | `./system/user` |
 
-**重点**：
+URL 不带 `/modules/`；菜单 component 必须保留 `./modules/` 前缀。系统页面位置迁入公开包后，既有 `./system/user` 等菜单键仍有效。
 
-- URL **不要**带 `/modules/` 前缀（`/modules/` 只是源码目录约定）
-- 菜单 `component` **必须**带 `./modules/` 前缀（不能漏，否则 404，参 commit `0023d2f` 的修复）
-- Core 页面用 `src/pages/system/user/index.tsx` 这种形式，模块页面用 `src/modules/<id>/pages/<page>/index.tsx` 这种形式，**两类并存**
+## 新增业务页面
 
-## 3. 新增一个模块页面，0 配置流程
+以已安装的 portal 模块新增 tags 页面为例：
 
-假设要给 `portal` 模块加一个 `tags` 页面。**只需要做一件事**：在 `src/modules/portal/pages/tags/index.tsx` 写文件。
+1. 在 `apps/demo/admin/src/modules/portal/pages/tags/index.tsx` 创建默认导出的 React 页面。页面组合沿用 PageContainer / ProTable。
+2. 在产品 API 的 `src/modules/portal/config/system-menu.json` 声明菜单节点，URL 为 `/portal/tags`，component 为 `./modules/portal/tags`。
+3. 在模块的 `permissions.ts` 集中声明权限，在 routes / services / repositories / schemas 实现接口；按 [模块接入](../../../../docs/module-onboarding.md) 安装模块。
+4. 需要接口契约时，先审查 OpenAPI，再运行 `pnpm --filter @yishan/demo-admin openapi`。生成客户端与 typings 一起提交。
+5. 运行 `pnpm --filter @yishan/demo-admin exec max setup` 与相关检查，确认组件映射包含新页面。开发服务器必要时重启。
 
-```tsx
-// apps/yishan-admin/src/modules/portal/pages/tags/index.tsx
-import { PageContainer } from '@ant-design/pro-components'
-import React from 'react'
+仅新增页面文件不会安装未安装模块。产品清单决定是否参与构建，后端菜单决定用户可见入口，权限决定实际访问行为。
 
-const TagsPage: React.FC = () => {
-  return <PageContainer>标签管理</PageContainer>
-}
+## 框架路由与排查
 
-export default TagsPage
-```
+`apps/demo/admin/config/routes.ts` 声明登录、首页容器、404 等框架路由；公开报价 `/q/:token` 仅在 CRM 安装时声明。菜单驱动的业务页面在运行时动态注入，通常无需重复添加静态路由。
 
-然后：
-
-1. **菜单 JSON 添加节点**（`apps/demo/api/src/modules/portal/config/system-menu.json`）
-   ```json
-   {
-     "type": 1,
-     "name": "标签管理",
-     "path": "/portal/tags",
-     "sortOrder": 6,
-     "icon": "TagsOutlined",
-     "component": "./modules/portal/tags",
-     "children": [
-       { "type": 2, "name": "查看", "permissionCodes": ["portal:tag:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 }
-     ]
-   }
-   ```
-2. **权限码集中注册**（`apps/demo/api/src/modules/portal/permissions.ts`）—— 加 `TAG_LIST: { code: 'portal:tag:list', ... }` 等
-3. **后端接口 + 服务 + 仓储 + schema** —— 走 `module-pattern.md` 第 3 节
-4. **跑 `pnpm --filter yishan-admin openapi`** 把新接口生成到 `src/services/generated/portal.ts`
-5. **重跑 `pnpm start`**，admin 自动识别 `tags/index.tsx` 文件，无需手改路由
-
-`plugin.ts` 重新 `onGenerateFiles` 触发条件是 `addTmpGenerateWatcherPaths` 添加的目录有变更：
-
-```ts
-api.addTmpGenerateWatcherPaths(() => [
-  join(api.paths.absSrcPath, 'pages'),
-  join(api.paths.absSrcPath, 'modules'),
-])
-```
-
-所以 `src/modules/<id>/pages/` 任何文件增减都会让 `.umi/module-components.ts` 重新生成。
-
-## 4. 排查清单
-
-| 现象 | 原因 |
+| 现象 | 检查 |
 |---|---|
-| 菜单点击跳 404 | 菜单 `component` 漏了 `./modules/` 前缀；或源码路径里少 `index.tsx` |
-| 菜单点击白屏 | 模块页面 default export 不是 React 组件或没 export |
-| 改了页面不生效 | `plugin.ts` watcher 没覆盖到；尝试 `rm -rf .umi && pnpm start` |
-| 新建模块目录没被识别 | 目录里没有 `pages/<page>/index.tsx` 形式；`plugin.ts` 只扫到 `index.tsx` 才记录 |
-| 编辑菜单崩溃 | `Access` 组件里读取 `initialState?.currentUser?.permissions` 为空，权限码未注册 |
+| 菜单跳 404 | component 键是否正确，模块是否安装，页面是否默认导出 |
+| 新页面未进入组件映射 | 产品安装清单、页面路径与公开插件配置 |
+| 改动未刷新 | 重新运行 max setup 或重启开发服务器 |
+| 权限不可见 | 后端权限声明、角色授权和当前用户权限数据 |
 
-## 5. 与 routes.ts 的关系
-
-`apps/yishan-admin/config/routes.ts` 是 **core 页面**（`src/pages/` 下）的路由表，**不**包含模块页面。
-
-```ts
-// config/routes.ts (节选)
-{ path: '/system/user', component: './system/user', ... }
-```
-
-- `component: './system/user'` 走 `src/pages/system/user/index.tsx`
-- `component: './modules/portal/articles'` 走 `src/modules/portal/pages/articles/index.tsx`
-
-两者机制一致，**路径前缀**不同是唯一区别。
-
-新增页面**不要**改 `config/routes.ts`——菜单 JSON 才是模块页面的入口。
+运行 `pnpm check:boundaries` 检查公开导入与包依赖；共享包不能跨产品读取页面或客户端。线上路径仍为 `/admin/`，不要手动重复拼接路由 base。

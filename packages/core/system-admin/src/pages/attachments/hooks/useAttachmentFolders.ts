@@ -1,30 +1,31 @@
+import type {} from '../../../types/index';
 import { useEffect, useMemo, useState } from 'react';
 import {
   getAttachmentFolderTree,
   getAttachmentList,
   deleteAttachment,
   batchDeleteAttachments,
-} from '@/services/generated/attachments';
+} from '../../../services/generated/attachments';
 import { findFolderById, flattenFolders } from '../utils';
 import type { FolderItem } from '../types';
 
 export function useAttachmentFolders(message: any) {
-  const [folderTree, setFolderTree] = useState<API.sysAttachmentFolder[]>([]);
+  const [folderTree, setFolderTree] = useState<SystemAPI.sysAttachmentFolder[]>([]);
   const [loadingFolders, setLoadingFolders] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number>(0);
   const [folderSearchValue, setFolderSearchValue] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const [autoExpandParent, setAutoExpandParent] = useState(true);
 
-  const [attachments, setAttachments] = useState<API.sysAttachment[]>([]);
+  const [attachments, setAttachments] = useState<SystemAPI.sysAttachment[]>([]);
   const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const [attachmentsPage, setAttachmentsPage] = useState(1);
   const [attachmentsPageSize, setAttachmentsPageSize] = useState(24);
   const [attachmentsTotal, setAttachmentsTotal] = useState(0);
-  const [kindTab, setKindTab] = useState<API.sysAttachment['kind'] | 'all'>('all');
+  const [kindTab, setKindTab] = useState<SystemAPI.sysAttachment['kind'] | 'all'>('all');
   const [selectedAttachmentIds, setSelectedAttachmentIds] = useState<number[]>([]);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
-  const [editingAttachment, setEditingAttachment] = useState<API.sysAttachment>();
+  const [editingAttachment, setEditingAttachment] = useState<SystemAPI.sysAttachment>();
 
   const [mediaPreviewOpen, setMediaPreviewOpen] = useState(false);
   const [mediaPreviewKind, setMediaPreviewKind] = useState<'audio' | 'video' | null>(null);
@@ -60,7 +61,7 @@ export function useAttachmentFolders(message: any) {
         page,
         pageSize,
         folderId: selectedFolderId > 0 ? selectedFolderId : undefined,
-        kind: kind === 'all' ? undefined : (kind as API.sysAttachment['kind']),
+        kind: kind === 'all' ? undefined : (kind as SystemAPI.sysAttachment['kind']),
         status: '1',
       });
       setAttachments(res.data || []);

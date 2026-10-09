@@ -1,3 +1,4 @@
+import type {} from '../../../types/index';
 import React, { useRef } from "react";
 import {
   ModalForm,
@@ -7,17 +8,17 @@ import {
   ProFormSelect,
 } from "@ant-design/pro-components";
 import type { Dayjs } from "dayjs";
-import { useModel } from "@umijs/max";
-import { getRoleList } from "@/services/generated/sysRoles";
-import { getUserDetail, createUser, updateUser } from "@/services/generated/sysUsers";
-import { ProFormDeptTreeSelect } from "@/components";
+import { useSystemAdmin } from '../../../runtime';
+import { getRoleList } from "../../../services/generated/sysRoles";
+import { getUserDetail, createUser, updateUser } from "../../../services/generated/sysUsers";
+import { ProFormDeptTreeSelect } from "../../../components/DeptTreeSelect";
 
 export interface UserFormProps {
   title: string;
   trigger?: React.JSX.Element;
-  initialValues?: Partial<API.sysUser>;
+  initialValues?: Partial<SystemAPI.sysUser>;
   onFinish?: () => Promise<void>;
-  onInit?: () => Promise<API.sysUser | undefined>;
+  onInit?: () => Promise<SystemAPI.sysUser | undefined>;
 }
 
 const UserForm: React.FC<UserFormProps> = ({
@@ -27,7 +28,7 @@ const UserForm: React.FC<UserFormProps> = ({
   onFinish,
 }) => {
   // 获取全局字典数据
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
 
   // 获取性别字典
@@ -46,7 +47,7 @@ const UserForm: React.FC<UserFormProps> = ({
   };
 
   const handleFinish = async (values: any) => {
-    const basePayload: API.updateUserReq = {
+    const basePayload: SystemAPI.updateUserReq = {
       username: values.username,
       realName: values.realName,
       nickname: values.nickname,
@@ -60,7 +61,7 @@ const UserForm: React.FC<UserFormProps> = ({
     };
 
     if (!initialValues?.id) {
-      const payload: API.createUserReq = {
+      const payload: SystemAPI.createUserReq = {
         ...basePayload,
         phone: values.phone,
         password: values.password,
@@ -73,7 +74,7 @@ const UserForm: React.FC<UserFormProps> = ({
       return false;
     }
 
-    const payload: API.updateUserReq = { ...basePayload };
+    const payload: SystemAPI.updateUserReq = { ...basePayload };
     if (values.password && String(values.password).trim().length > 0) {
       payload.password = values.password;
     }
@@ -195,7 +196,7 @@ const UserForm: React.FC<UserFormProps> = ({
             sortBy: "createdAt",
             sortOrder: "desc",
           });
-          return (res.data || []).map((r: API.sysRole) => ({
+          return (res.data || []).map((r: SystemAPI.sysRole) => ({
             label: r.name,
             value: r.id,
           }));

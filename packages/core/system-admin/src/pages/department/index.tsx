@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
@@ -5,17 +6,17 @@ import {
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import { Button, message, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
 import {
   deleteDept,
   getDeptTree,
   updateDept,
-} from '@/services/generated/sysDepts';
+} from '../../services/generated/sysDepts';
 import DepartmentForm from './components/DepartmentForm';
 
-type DeptTreeNode = API.deptTreeNode;
+type DeptTreeNode = SystemAPI.deptTreeNode;
 
 const DeptStatus = {
   ENABLED: '1',
@@ -28,7 +29,7 @@ const DepartmentList: React.FC = () => {
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
 
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> =
     dictDataMap.default_status || [];

@@ -10,7 +10,7 @@ import {
   UploadOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import type { UploadFile } from 'antd';
 import {
   App,
@@ -31,20 +31,20 @@ import {
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AttachmentEditForm } from '@/components/AttachmentEditForm';
+import { AttachmentEditForm } from '../AttachmentEditForm';
 import {
   deleteAttachment,
   getAttachmentFolderTree,
   getAttachmentList,
   importRemoteImages,
   uploadAttachments,
-} from '@/services/generated/attachments';
+} from '../../services/generated/attachments';
 import type {
   Attachment,
   AttachmentFolder,
   UploadAttachmentsResp,
-} from '@/types/sdk';
-import { resolveAttachmentPublicUrl } from '@/utils/attachmentUpload';
+} from '../../types/index';
+import { resolveAttachmentPublicUrl } from '../../utils/attachmentUpload';
 import type {
   AttachmentKind,
   AttachmentLibraryModalProps,
@@ -166,7 +166,7 @@ export const AttachmentLibraryModal: React.FC<AttachmentLibraryModalProps> = ({
 }) => {
   const { message } = App.useApp();
   const { token } = theme.useToken();
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const [folderTree, setFolderTree] = useState<AttachmentFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<number>(
     initialFolderId || 0,

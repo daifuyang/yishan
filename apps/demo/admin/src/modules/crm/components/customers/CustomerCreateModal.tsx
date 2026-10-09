@@ -24,7 +24,7 @@ import {
   type SourceRow,
   type TagRow,
 } from '@/services/crm';
-import { getSystemRegionList } from '@/services/generated/systemRegions';
+import { getSystemRegionList } from '@yishan/core-system-admin/services/systemRegions';
 
 const { Text } = Typography;
 

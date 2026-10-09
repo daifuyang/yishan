@@ -1,3 +1,7 @@
+import { installedModuleIds } from './product';
+
+const hasCrm = installedModuleIds.includes('crm');
+
 /**
  * @name umi 的路由配置
  * @description 只支持 path,component,routes,redirect,wrappers,name,icon 的配置
@@ -16,11 +20,7 @@
  */
 
 export default [
-  {
-    path: '/q/:token',
-    layout: false,
-    component: './q/[token]',
-  },
+  ...(hasCrm ? [{ path: '/q/:token', layout: false, component: '@/modules/crm/pages/public-quotation' }] : []),
   {
     path: '/user',
     layout: false,

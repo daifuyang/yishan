@@ -19,10 +19,10 @@ import {
 import { Button, message, Popconfirm, Select, Space, Tag } from 'antd'
 import React, { useEffect, useRef, useState } from 'react'
 import {
-  deleteShopV1SkusId,
+  deleteShopV1ProductsSkusId,
   getShopV1Products,
   getShopV1ProductsIdSkus,
-  patchShopV1SkusId,
+  patchShopV1ProductsSkusId,
   postShopV1ProductsIdSkus,
 } from '@/services/generated/shop'
 
@@ -117,7 +117,7 @@ const Skus: React.FC = () => {
     }
 
     if (editing) {
-      await patchShopV1SkusId({ id: editing.id }, payload, {})
+      await patchShopV1ProductsSkusId({ id: editing.id }, payload, {})
       message.success('更新成功')
     } else {
       if (productId === null) {
@@ -135,7 +135,7 @@ const Skus: React.FC = () => {
   }
 
   const handleDelete = async (id: number) => {
-    await deleteShopV1SkusId({ id }, {})
+    await deleteShopV1ProductsSkusId({ id }, {})
     message.success('删除成功')
     reload()
   }

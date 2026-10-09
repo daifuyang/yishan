@@ -9,7 +9,7 @@ import { Avatar, Card, Col, Descriptions, Row, Space, Spin, Tag } from 'antd';
 import { createStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import React, { useEffect, useMemo, useState } from 'react';
-import { authGetCurrentUser } from '@/services/generated/auth';
+import { authGetCurrentUser } from '@yishan/core-system-admin/services/auth';
 import { SecurityPanel } from './components/SecurityPanel';
 import { ApiTokenPanel } from './components/ApiTokenPanel';
 import { ProfilePanel } from './components/ProfilePanel';
@@ -63,9 +63,10 @@ const Center: React.FC = () => {
     };
   }, []);
 
-  const onSaved = (u: any) => {
+  const onSaved = (u: SystemAPI.currentUser) => {
     setUser(u);
-    setInitialState((s: any) => ({ ...s, currentUser: u }));
+    // Profile responses contain identity fields; capability permissions remain authoritative.
+    setInitialState((s) => ({ ...s, currentUser: { ...u, permissions: s?.currentUser?.permissions } }));
   };
 
   const tabList = useMemo(

@@ -13,7 +13,7 @@
 import {
   flattenPathlessDirectories,
   type FlattenableDynamicRoute,
-} from '@/utils/dynamicRoutes'
+} from '@yishan/core-admin/dynamic-routes'
 
 const leaf = (path: string): FlattenableDynamicRoute => ({
   path,

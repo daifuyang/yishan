@@ -1,6 +1,7 @@
 /**
  * @see https://umijs.org/docs/max/access#access
  * */
+import { canAccessPath } from '@yishan/core-admin/permission';
 import type { CurrentUser } from '@/types/sdk';
 
 export interface Route {
@@ -13,7 +14,7 @@ export default function access(
   const { currentUser } = initialState ?? {};
   return {
     canDo: (route: Route) => {
-      return currentUser?.accessPath?.includes(route.path);
+      return canAccessPath(currentUser, route.path);
     },
   };
 }

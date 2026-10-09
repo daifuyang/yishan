@@ -15,8 +15,8 @@ Before modifying code, MUST read the target implementation and the closest
 similar feature. Also check the API contract, existing types, and local tests
 when they are relevant.
 
-- Admin CRM: inspect `apps/yishan-admin/src/modules/crm/`,
-  `apps/yishan-admin/src/services/crm.ts`, and existing drawer primitives.
+- Admin CRM: inspect `apps/demo/admin/src/modules/crm/`,
+  `apps/demo/admin/src/services/crm.ts`, and existing drawer primitives.
 - API business modules: inspect the module's `README.md`, `module.ts`, schema,
   route, service, repository, migration, and tests.
 - Do not replace an established local pattern with a generic pattern from
@@ -29,28 +29,44 @@ or obsolete interface, correct the affected design rather than preserving the
 mistake. Its scope is still limited to the requested business area.
 
 ## Repository Map
-- `apps/yishan-admin`: Umi Max, React 19, Ant Design 6, Ant Design Pro.
+- `apps/demo/admin`: `@yishan/demo-admin`, Umi Max, React 19, Ant Design 6, Ant Design Pro; product configuration, composition and business UI.
 - `apps/demo/api`: Fastify 5, Drizzle, TypeBox, JWT; business modules live
   under `src/modules/<id>/`.
 - `apps/yishan-app`: mini-program application. Follow its local conventions.
 - `apps/yishan-docs`: Docusaurus documentation site.
 - `apps/yishan-components/yishan-tiptap`: shared TipTap component package.
 - `packages/shared-config`: source-only shared configuration.
+- `packages/core/admin`: public Admin runtime, module composition and Umi build plugin.
+- `packages/core/system-admin`: system management pages and module contributions.
 
 Use `pnpm`, honoring the pinned package manager and Node version in the root
 configuration. Do not commit generated release artifacts.
 
 ## Admin and CRM
 
+### Admin V2 Boundaries
+Products own their Admin configuration, explicit module manifest, API clients
+and business pages under `apps/<product>/admin`. Core Admin and System Admin
+are source-only public packages: import only declared package exports, never
+another package's relative/private/source path. Core does not depend on any
+product; products do not import another product's internals. Shared runtime
+capabilities receive product dependencies through the public composition API.
+Backend runtime packages are not frontend dependencies.
+
+The product manifest determines installed page contributions. Backend menus
+select from the installed component registry; they do not install missing
+frontend code. Preserve menu component keys, permission semantics and online
+`/admin/` paths. Check `pnpm check:boundaries` after changing composition.
+
 ### Organization
 Admin module pages are resolved from:
 
 ```text
-apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx
+apps/demo/admin/src/modules/<id>/pages/<page>/index.tsx
 ```
 
 For CRM, keep business-specific UI near
-`apps/yishan-admin/src/modules/crm/`:
+`apps/demo/admin/src/modules/crm/`:
 
 ```text
 pages/<business>/index.tsx       page composition
@@ -63,8 +79,10 @@ utils/                           small pure CRM helpers
 SHOULD add files only when the feature needs them. Do not manufacture empty
 `types.ts`, `constants.ts`, hooks, providers, or generic folders for symmetry.
 
-The current CRM request types and API calls are in `@/services/crm.ts`; the
-long-term generated-client location is `@/services/generated/`. Do not add a
+The current CRM request types and API calls are in `@/services/crm.ts`; CRM's
+uninstalled snapshot lives under `@/modules/crm/services/generated/` (`CrmAPI`).
+Installed product clients live under `@/services/generated/` (`API`), and shared
+System clients belong to `@yishan/core-system-admin` (`SystemAPI`). Do not add a
 per-page `service.ts` merely to mirror a generic frontend convention. When an
 API contract changes, regenerate the admin OpenAPI client and commit generated
 client code and typings together.
@@ -207,9 +225,10 @@ impact. Do not claim a command passed unless it was run successfully.
 
 ```bash
 # Admin: formatting/lint and strict typecheck
-pnpm --filter yishan-admin lint
-pnpm --filter yishan-admin test
-pnpm --filter yishan-admin build
+pnpm --filter @yishan/demo-admin lint
+pnpm typecheck:admin
+pnpm --filter @yishan/demo-admin test
+pnpm build:admin
 
 # API
 pnpm test:api
@@ -222,7 +241,7 @@ pnpm build
 ```
 
 Run relevant focused Jest or Vitest tests when they exist. For new or changed
-API contracts, run `pnpm --filter yishan-admin openapi` when appropriate and
+API contracts, run `pnpm --filter @yishan/demo-admin openapi` when appropriate and
 verify the generated output. State plainly when a relevant test command is not
 configured or could not be run.
 

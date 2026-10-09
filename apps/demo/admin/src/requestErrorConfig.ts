@@ -2,9 +2,9 @@ import type { RequestOptions } from '@@/plugin-request/request';
 import type { RequestConfig } from '@umijs/max';
 import { request } from '@umijs/max';
 import { message, notification } from 'antd';
-import { authRefreshToken as apiRefreshToken } from '@/services/generated/auth';
+import { authRefreshToken as apiRefreshToken } from '@yishan/core-system-admin/services/auth';
 import { logout, setCurrentUser } from '@/utils/auth';
-import { clearTokens, getAuthorizationHeader } from '@/utils/token';
+import { clearTokens, getAuthorizationHeader } from '@yishan/core-admin/token';
 
 // 401 refresh 单飞锁：多个并发 401 共享同一次 /auth/refresh 调用。
 // 当前为 CSR 模块级单实例，足够覆盖单页签内的并发刷新。
@@ -139,38 +139,8 @@ interface ResponseStructure {
  */
 
 /** 业务码区间：参数/校验类错误。与后端 constants/business-codes/validation.ts 的 21xxx 对齐。 */
-const VALIDATION_CODE_MIN = 21000;
-const VALIDATION_CODE_MAX = 22000;
-
-/**
- * 从 axios 错误响应体里取出可信的业务 message。
- *
- * 只信任「对象形态 + success === false + message 是非空字符串」的响应；
- * 其余（HTML 错误页、网关纯文本、字段缺失的畸形 JSON）一律返回 null，
- * 由调用方回退到按 HTTP status 的既有文案。
- */
-export function pickEnvelopeMessage(body: unknown): string | null {
-  if (typeof body !== 'object' || body === null) return null;
-  const envelope = body as { success?: unknown; message?: unknown };
-  if (envelope.success !== false) return null;
-  if (typeof envelope.message !== 'string') return null;
-  const trimmed = envelope.message.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-/**
- * 决定提示等级。
- *
- * 规则按业务码区间划分，不针对单个码特判：
- *   - 21xxx（参数/校验类，用户改一下输入就能过）→ warning，不用红色打断；
- *   - 其余（系统错误、认证、业务冲突、码缺失或非法）→ error。
- */
-export function resolveMessageLevel(code: unknown): 'warning' | 'error' {
-  if (typeof code !== 'number' || !Number.isFinite(code)) return 'error';
-  return code >= VALIDATION_CODE_MIN && code < VALIDATION_CODE_MAX
-    ? 'warning'
-    : 'error';
-}
+export { pickEnvelopeMessage, resolveMessageLevel } from '@yishan/core-admin/request';
+import { pickEnvelopeMessage, resolveMessageLevel } from '@yishan/core-admin/request';
 
 /**
  * @name 错误处理
@@ -182,6 +152,9 @@ export const errorConfig: RequestConfig = {
   errorConfig: {
     // 错误抛出
     errorThrower: (res) => {
+      // Portal/Shop success schemas return raw entities/lists. Only envelopes
+      // carry the success discriminator; HTTP failures still use errorHandler.
+      if (typeof res !== 'object' || res === null || !('success' in res)) return;
       const {
         success,
         code,

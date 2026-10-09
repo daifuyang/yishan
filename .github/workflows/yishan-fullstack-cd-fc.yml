@@ -117,14 +117,14 @@ jobs:
           pnpm build --filter yishan-tiptap
 
       - name: Generate Admin plugin routes
-        run: pnpm --filter yishan-admin exec max setup
+        run: pnpm --filter @yishan/demo-admin exec max setup
 
-      - name: Build yishan-admin
+      - name: Build Demo Admin
         env:
           # 与 API 端的 ADMIN_BASE_PATH（默认 /admin/）保持一致，让 admin 静态资源
           # 也以 /admin/ 路径前缀打包，CDN/函数挂载在 /admin/* 时才能正确命中。
           PUBLIC_PATH: ${{ vars.ADMIN_BASE_PATH || '/admin/' }}
-        run: pnpm --filter yishan-admin build
+        run: pnpm --filter @yishan/demo-admin build
 
       - name: Install qshell
         env:
@@ -170,7 +170,7 @@ jobs:
           EOF
           chmod 600 "$HOME/.qshell.json"
           qshell qupload2 \
-            --src-dir apps/yishan-admin/dist \
+            --src-dir apps/demo/admin/dist \
             --bucket "${QINIU_BUCKET}" \
             --key-prefix admin/ \
             --overwrite \

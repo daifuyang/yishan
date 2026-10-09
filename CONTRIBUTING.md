@@ -37,7 +37,7 @@ API V2 通过 pnpm check:boundaries 和负面测试强制检查 Package exports�
 Run apps individually:
 
 ```bash
-pnpm --filter yishan-admin dev
+pnpm --filter @yishan/demo-admin dev
 pnpm dev:api
 pnpm --filter yishan-docs start
 ```

@@ -4,9 +4,9 @@ import { Alert, App, Button, Card, Empty, Form, Input, Modal, Popconfirm, Select
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import React, { useEffect, useMemo, useState } from 'react';
-import { authGetCurrentUser } from '@/services/generated/auth';
-import { meCreateApiToken, meListApiTokens, meListAvailableScopes, meRevokeApiToken } from '@/services/generated/meApiTokens';
-import { AttachmentImageSelect } from '@/components/AttachmentSelect';
+import { authGetCurrentUser } from '@yishan/core-system-admin/services/auth';
+import { meCreateApiToken, meListApiTokens, meListAvailableScopes, meRevokeApiToken } from '@yishan/core-system-admin/services/meApiTokens';
+import { AttachmentImageSelect } from '@yishan/core-system-admin/components/AttachmentSelect';
 import { DATE_FMT, DURATION_OPTIONS } from '../constants';
 import type { ApiTokenRecord, AvailableScopeGroup, ApiTokenDurationValue, ApiTokenFormValues } from '../types';
 
@@ -117,7 +117,7 @@ export const ApiTokenPanel: React.FC<ApiTokenPanelProps> = ({ intl }) => {
     try {
       const res = await meCreateApiToken({
         name: values.name,
-        duration: values.duration as unknown as API.apiTokenDuration,
+        duration: values.duration as unknown as SystemAPI.apiTokenDuration,
         scopes: values.scopes,
       });
       if (res.success && res.data) {
@@ -407,7 +407,7 @@ export const ApiTokenPanel: React.FC<ApiTokenPanelProps> = ({ intl }) => {
               options={availableScopeGroups.map(
                 (group: AvailableScopeGroup) => ({
                   label: group.label,
-                  options: group.options.map((opt: API.availableScopeItem) => ({
+                  options: group.options.map((opt: SystemAPI.availableScopeItem) => ({
                     value: opt.value,
                     label: opt.description ? (
                       <Tooltip title={opt.description}>

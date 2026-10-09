@@ -1,5 +1,5 @@
 import type { ProLayoutProps } from '@ant-design/pro-components';
-import { normalizePublicPath } from '../shared/publicPath';
+import { normalizePublicPath } from '@yishan/core-admin/public-path';
 
 // 配置文件在构建阶段由 Node 执行，运行时则由 Umi 注入 __APP_BASE__。
 // 两个入口均从同一个 PUBLIC_PATH 推导，避免 public 资源在 /admin/ 部署时回退到站点根目录。

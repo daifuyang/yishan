@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
@@ -5,14 +6,14 @@ import {
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import { App, Button, Popconfirm, Space, Tag } from 'antd';
 import React, { useRef, useState } from 'react';
 import {
   deleteMenu,
   getMenuTree,
   updateMenu,
-} from '@/services/generated/sysMenus';
+} from '../../services/generated/sysMenus';
 import MenuForm from './components/MenuForm';
 
 const MenuStatus = { ENABLED: '1', DISABLED: '0' } as const;
@@ -30,7 +31,7 @@ const MenuList: React.FC = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
 
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> =
     dictDataMap.default_status || [];
@@ -86,7 +87,7 @@ const MenuList: React.FC = () => {
     setBatchDeleteLoading(false);
   };
 
-  const columns: ProColumns<API.menuTreeNode>[] = [
+  const columns: ProColumns<SystemAPI.menuTreeNode>[] = [
     {
       title: 'ID',
       dataIndex: 'id',
@@ -180,7 +181,7 @@ const MenuList: React.FC = () => {
 
   return (
     <PageContainer>
-      <ProTable<API.menuTreeNode>
+      <ProTable<SystemAPI.menuTreeNode>
         headerTitle="菜单列表"
         actionRef={actionRef}
         rowKey="id"
@@ -205,8 +206,8 @@ const MenuList: React.FC = () => {
         request={async () => {
           const result = await getMenuTree();
           const normalize = (
-            nodes: API.menuTreeNode[] | null | undefined,
-          ): API.menuTreeNode[] => {
+            nodes: SystemAPI.menuTreeNode[] | null | undefined,
+          ): SystemAPI.menuTreeNode[] => {
             if (!nodes) return [];
             return nodes.map((n) => ({
               ...n,
@@ -214,15 +215,15 @@ const MenuList: React.FC = () => {
             }));
           };
           const collectIds = (
-            nodes: API.menuTreeNode[] | null | undefined,
+            nodes: SystemAPI.menuTreeNode[] | null | undefined,
           ): number[] => {
             if (!nodes) return [];
             const acc: number[] = [];
-            const walk = (list: API.menuTreeNode[]) => {
+            const walk = (list: SystemAPI.menuTreeNode[]) => {
               list.forEach((n) => {
                 acc.push(n.id || 0);
                 if (Array.isArray(n.children)) {
-                  walk(n.children as API.menuTreeNode[]);
+                  walk(n.children as SystemAPI.menuTreeNode[]);
                 }
               });
             };

@@ -8,7 +8,7 @@ import {
 import { request, useLocation, useParams } from '@umijs/max';
 import React from 'react';
 import { usePermission } from '@/utils/permission';
-import PublicQuotePage from './[token]';
+import PublicQuotePage from './index';
 
 jest.mock('@/utils/permission', () => ({ usePermission: jest.fn() }));
 jest.mock('@umijs/max', () => ({

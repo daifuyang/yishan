@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { createRequire, isBuiltin } from 'node:module'
 import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import manifest from './module-manifest.cjs'
+import manifest from '@yishan/core-admin/manifest'
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 

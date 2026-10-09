@@ -24,7 +24,7 @@ PageContainer
         └── ProFormList      ← 动态键值对（attributes 类）
 ```
 
-完整参考：`apps/yishan-admin/src/modules/portal/pages/articles/index.tsx`。
+完整参考：`apps/demo/admin/src/modules/portal/pages/articles/index.tsx`。
 
 ## 2. 标配 props
 
@@ -269,7 +269,7 @@ import {
 修改后端 schema 后必须跑：
 
 ```bash
-pnpm --filter yishan-admin openapi
+pnpm --filter @yishan/demo-admin openapi
 ```
 
 否则 TS 编译会失配。

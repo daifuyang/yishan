@@ -1,3 +1,4 @@
+import type {} from '../../types/index';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
@@ -5,15 +6,15 @@ import {
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import { Button, message, Popconfirm, Space } from 'antd';
 import React, { useRef, useState } from 'react';
 import {
   deletePosition,
   getPositionList,
   updatePosition,
-} from '@/services/generated/sysPositions';
-import { createProTableRequest } from '@/utils/proTable';
+} from '../../services/generated/sysPositions';
+import { createProTableRequest } from '@yishan/core-admin/pro-table';
 import PositionForm from './components/PositionForm';
 
 const PositionStatus = {
@@ -29,7 +30,7 @@ const PositionList: React.FC = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // 获取全局字典数据
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
 
   // 获取岗位状态字典
@@ -99,7 +100,7 @@ const PositionList: React.FC = () => {
   /**
    * 表格列定义
    */
-  const columns: ProColumns<API.sysPosition>[] = [
+  const columns: ProColumns<SystemAPI.sysPosition>[] = [
     {
       title: 'ID',
       dataIndex: 'id',
@@ -187,7 +188,7 @@ const PositionList: React.FC = () => {
 
   return (
     <PageContainer>
-      <ProTable<API.sysPosition>
+      <ProTable<SystemAPI.sysPosition>
         headerTitle="岗位列表"
         actionRef={actionRef}
         rowKey="id"

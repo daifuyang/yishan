@@ -9,4 +9,4 @@ cd "$REPO_ROOT"
 pnpm -r --filter @yishan/demo-api... build
 node scripts/package-api.mjs \
   --output "$FC_DIR/.build/function-code" \
-  --admin "$REPO_ROOT/apps/yishan-admin/dist"
+  --admin "$REPO_ROOT/apps/demo/admin/dist"

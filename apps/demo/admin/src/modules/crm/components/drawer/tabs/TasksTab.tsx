@@ -24,7 +24,7 @@ import {
   TASK_PRIORITY_OPTIONS,
   type TaskRow,
 } from '@/services/crm';
-import { getUserList } from '@/services/generated/sysUsers';
+import { getUserList } from '@yishan/core-system-admin/services/sysUsers';
 import { usePermission } from '@/utils/permission';
 import TaskCreateModal from './TaskCreateModal';
 

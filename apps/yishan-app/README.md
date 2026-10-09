@@ -14,7 +14,7 @@ pnpm --filter yishan-app build:h5
 pnpm --filter yishan-app build:weapp
 ```
 
-H5 开发端口为 `21003`，`/api` 通过共享配置中的 `API_TARGET` 代理。构建产物分别位于 `dist/h5` 和 `dist/weapp`；微信开发者工具打开本应用目录，`project.config.json` 已指向 `dist/weapp/`。
+H5 开发端口为 `21003`，`/api` 通过产品配置调用 `resolveApiTarget` 解析代理地址。本应用保留本地默认 `http://localhost:3100`；覆盖优先级为 `API_TARGET` → `YISHAN_API_TARGET` → `YISHAN_API_PORT` → 本地默认，共享包不拥有默认地址。构建产物分别位于 `dist/h5` 和 `dist/weapp`；微信开发者工具打开本应用目录，`project.config.json` 已指向 `dist/weapp/`。
 
 修改 `config/` 中的构建配置、路径别名或 API 环境变量后，重启 `dev:h5` / `dev:weapp`。源码热更新不会重新加载这些启动配置；旧开发进程可能出现常量未定义或新别名无法解析。
 

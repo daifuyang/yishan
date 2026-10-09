@@ -21,8 +21,7 @@
  */
 
 import React from 'react'
-import type { MenuTreeList, MenuTreeNode } from '@/types/sdk'
-import { resolve as resolveComponent } from '@/utils/moduleComponents'
+import type { MenuTreeList, MenuTreeNode } from './types'
 
 export interface UmiRouteFromMenu {
   id?: string
@@ -32,7 +31,7 @@ export interface UmiRouteFromMenu {
   routes?: UmiRouteFromMenu[]
 }
 
-export function menuTreeToRoutes(nodes: MenuTreeList = []): UmiRouteFromMenu[] {
+export function menuTreeToRoutes(nodes: MenuTreeList = [], resolveComponent: (key: string | undefined) => React.LazyExoticComponent<React.ComponentType> | null): UmiRouteFromMenu[] {
   const visit = (n: MenuTreeNode): UmiRouteFromMenu | null => {
     if (n.type === 2) return null
     if (n.isExternalLink) return null

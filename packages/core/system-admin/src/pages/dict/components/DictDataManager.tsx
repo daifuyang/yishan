@@ -1,3 +1,4 @@
+import type {} from '../../../types/index';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
@@ -10,7 +11,7 @@ import {
   deleteDictData,
   getDictDataList,
   updateDictData,
-} from '@/services/generated/sysDictData';
+} from '../../../services/generated/sysDictData';
 import DictDataForm from './DictDataForm';
 
 export interface DictDataManagerProps {
@@ -72,7 +73,7 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({
     actionRef.current?.reload();
   };
 
-  const columns: ProColumns<API.sysDictData>[] = [
+  const columns: ProColumns<SystemAPI.sysDictData>[] = [
     { title: '字典编号', dataIndex: 'id', search: false, width: 90 },
     { title: '字典标签', dataIndex: 'label' },
     { title: '字典键值', dataIndex: 'value', width: 160 },
@@ -158,7 +159,7 @@ const DictDataManager: React.FC<DictDataManagerProps> = ({
       onClose={onClose}
       destroyOnClose
     >
-      <ProTable<API.sysDictData>
+      <ProTable<SystemAPI.sysDictData>
         headerTitle="字典数据列表"
         actionRef={actionRef}
         rowKey="id"

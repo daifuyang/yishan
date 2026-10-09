@@ -2,7 +2,7 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
-/** 属性列表 GET /api/shop/v1/attributes */
+/** 属性列表 GET /api/shop/v1/attributes/ */
 export async function getShopV1Attributes(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getShopV1AttributesParams,
@@ -21,7 +21,7 @@ export async function getShopV1Attributes(
       createdAt: string;
       updatedAt: string;
     }[];
-  }>("/api/shop/v1/attributes", {
+  }>("/api/shop/v1/attributes/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -35,7 +35,7 @@ export async function getShopV1Attributes(
   });
 }
 
-/** 新建属性 POST /api/shop/v1/attributes */
+/** 新建属性 POST /api/shop/v1/attributes/ */
 export async function postShopV1Attributes(
   body: {
     name: string;
@@ -53,7 +53,7 @@ export async function postShopV1Attributes(
     status: number;
     createdAt: string;
     updatedAt: string;
-  }>("/api/shop/v1/attributes", {
+  }>("/api/shop/v1/attributes/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -92,7 +92,7 @@ export async function deleteShopV1AttributesId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(`/api/shop/v1/attributes/${param0}`, {
+  return request<{ success: boolean }>(`/api/shop/v1/attributes/${param0}`, {
     method: "DELETE",
     params: { ...queryParams },
     ...(options || {}),
@@ -192,7 +192,7 @@ export async function deleteShopV1AttributesIdValues(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(
+  return request<{ success: boolean }>(
     `/api/shop/v1/attributes/${param0}/values`,
     {
       method: "DELETE",
@@ -202,7 +202,7 @@ export async function deleteShopV1AttributesIdValues(
   );
 }
 
-/** 分类列表 GET /api/shop/v1/categories */
+/** 分类列表 GET /api/shop/v1/categories/ */
 export async function getShopV1Categories(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getShopV1CategoriesParams,
@@ -224,7 +224,7 @@ export async function getShopV1Categories(
       createdAt: string;
       updatedAt: string;
     }[];
-  }>("/api/shop/v1/categories", {
+  }>("/api/shop/v1/categories/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -238,7 +238,7 @@ export async function getShopV1Categories(
   });
 }
 
-/** 新建分类 POST /api/shop/v1/categories */
+/** 新建分类 POST /api/shop/v1/categories/ */
 export async function postShopV1Categories(
   body: {
     name: string;
@@ -262,7 +262,7 @@ export async function postShopV1Categories(
     status: number;
     createdAt: string;
     updatedAt: string;
-  }>("/api/shop/v1/categories", {
+  }>("/api/shop/v1/categories/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -304,7 +304,7 @@ export async function deleteShopV1CategoriesId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(`/api/shop/v1/categories/${param0}`, {
+  return request<{ success: boolean }>(`/api/shop/v1/categories/${param0}`, {
     method: "DELETE",
     params: { ...queryParams },
     ...(options || {}),
@@ -349,7 +349,7 @@ export async function patchShopV1CategoriesId(
   });
 }
 
-/** 订单列表 GET /api/shop/v1/orders */
+/** 订单列表 GET /api/shop/v1/orders/ */
 export async function getShopV1Orders(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getShopV1OrdersParams,
@@ -392,7 +392,7 @@ export async function getShopV1Orders(
       createdAt: string;
       updatedAt: string;
     }[];
-  }>("/api/shop/v1/orders", {
+  }>("/api/shop/v1/orders/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -406,7 +406,7 @@ export async function getShopV1Orders(
   });
 }
 
-/** 创建订单 POST /api/shop/v1/orders */
+/** 创建订单 POST /api/shop/v1/orders/ */
 export async function postShopV1Orders(
   body: {
     orderNo: string;
@@ -462,7 +462,7 @@ export async function postShopV1Orders(
     }[];
     createdAt: string;
     updatedAt: string;
-  }>("/api/shop/v1/orders", {
+  }>("/api/shop/v1/orders/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -525,7 +525,7 @@ export async function deleteShopV1OrdersId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(`/api/shop/v1/orders/${param0}`, {
+  return request<{ success: boolean }>(`/api/shop/v1/orders/${param0}`, {
     method: "DELETE",
     params: { ...queryParams },
     ...(options || {}),
@@ -618,7 +618,7 @@ export async function getShopV1OrdersIdItems(
   });
 }
 
-/** 商品列表 GET /api/shop/v1/products */
+/** 商品列表 GET /api/shop/v1/products/ */
 export async function getShopV1Products(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.getShopV1ProductsParams,
@@ -649,7 +649,7 @@ export async function getShopV1Products(
       createdAt: string;
       updatedAt: string;
     }[];
-  }>("/api/shop/v1/products", {
+  }>("/api/shop/v1/products/", {
     method: "GET",
     params: {
       // page has a default value: 1
@@ -663,7 +663,7 @@ export async function getShopV1Products(
   });
 }
 
-/** 新建商品 POST /api/shop/v1/products */
+/** 新建商品 POST /api/shop/v1/products/ */
 export async function postShopV1Products(
   body: {
     categoryId: number;
@@ -704,7 +704,7 @@ export async function postShopV1Products(
     clickCount: number;
     createdAt: string;
     updatedAt: string;
-  }>("/api/shop/v1/products", {
+  }>("/api/shop/v1/products/", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -755,7 +755,7 @@ export async function deleteShopV1ProductsId(
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(`/api/shop/v1/products/${param0}`, {
+  return request<{ success: boolean }>(`/api/shop/v1/products/${param0}`, {
     method: "DELETE",
     params: { ...queryParams },
     ...(options || {}),
@@ -887,24 +887,24 @@ export async function postShopV1ProductsIdSkus(
   });
 }
 
-/** 删除 SKU DELETE /api/shop/v1/skus/${param0} */
-export async function deleteShopV1SkusId(
+/** 删除 SKU DELETE /api/shop/v1/products/skus/${param0} */
+export async function deleteShopV1ProductsSkusId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.deleteShopV1SkusIdParams,
+  params: API.deleteShopV1ProductsSkusIdParams,
   options?: { [key: string]: any }
 ) {
   const { id: param0, ...queryParams } = params;
-  return request<{ success?: boolean }>(`/api/shop/v1/skus/${param0}`, {
+  return request<{ success: boolean }>(`/api/shop/v1/products/skus/${param0}`, {
     method: "DELETE",
     params: { ...queryParams },
     ...(options || {}),
   });
 }
 
-/** 更新 SKU PATCH /api/shop/v1/skus/${param0} */
-export async function patchShopV1SkusId(
+/** 更新 SKU PATCH /api/shop/v1/products/skus/${param0} */
+export async function patchShopV1ProductsSkusId(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.patchShopV1SkusIdParams,
+  params: API.patchShopV1ProductsSkusIdParams,
   body: {
     skuCode?: string;
     skuName?: string;
@@ -931,7 +931,7 @@ export async function patchShopV1SkusId(
     status: number;
     createdAt: string;
     updatedAt: string;
-  }>(`/api/shop/v1/skus/${param0}`, {
+  }>(`/api/shop/v1/products/skus/${param0}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

@@ -38,10 +38,10 @@ function loadTs(entry, mocks = {}) {
       if (!resolved) throw new Error(`Cannot resolve ${id} from ${file}`)
       return load(resolved)
     }
-    const factory = vm.runInThisContext(`(function(require,module,exports){${source}\n})`, {
+    const factory = vm.runInThisContext(`(function(require,module,exports,__filename,__dirname){${source}\n})`, {
       filename: absolute,
     })
-    factory(localRequire, module, module.exports)
+    factory(localRequire, module, module.exports, absolute, path.dirname(absolute))
     return module.exports
   }
   return load(entry)

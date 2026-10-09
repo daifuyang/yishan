@@ -1,5 +1,6 @@
+import type {} from '../../types/index';
 export const attachmentKindMeta: Record<
-  API.sysAttachment['kind'],
+  SystemAPI.sysAttachment['kind'],
   { color: string; text: string }
 > = {
   image: { color: 'blue', text: '图片' },

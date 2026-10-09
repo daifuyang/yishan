@@ -8,6 +8,6 @@ export type ApiTokenFormValues = {
   scopes: string[];
 };
 
-export type AvailableScopeGroup = API.availableScopeGroup;
+export type AvailableScopeGroup = SystemAPI.availableScopeGroup;
 
-export type ApiTokenRecord = API.apiTokenRecord;
+export type ApiTokenRecord = SystemAPI.apiTokenRecord;

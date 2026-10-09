@@ -4,14 +4,14 @@ import {
   ProFormText,
   ProFormTreeSelect,
 } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
+import { useSystemAdmin } from '../../runtime';
 import React, { useRef } from 'react';
 import {
   getAttachmentDetail,
   getAttachmentFolderTree,
   updateAttachment,
-} from '@/services/generated/attachments';
-import type { Attachment, AttachmentFolder } from '@/types/sdk';
+} from '../../services/generated/attachments';
+import type { Attachment, AttachmentFolder } from '../../types/index';
 
 export interface AttachmentEditFormProps {
   title?: string;
@@ -40,7 +40,7 @@ export const AttachmentEditForm: React.FC<AttachmentEditFormProps> = ({
   onOpenChange,
 }) => {
   const formRef = useRef<any>(undefined);
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const statusOptions: Array<{ label: string; value: string }> =
     initialState?.dictDataMap?.default_status || [];
 

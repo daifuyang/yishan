@@ -2,13 +2,13 @@
  * CRM 前端 API 客户端（手工类型）。
  *
  * 由 `pnpm --filter yishan-admin openapi` 重新生成 services 后，
- * 这部分可以替换为 `import * as crm from '@/services/generated/crm'`。
+ * 这部分可以替换为 `import * as crm from '@/modules/crm/services/generated/crm'`。
  *
  * 这里先以手工类型 + request() 的方式暴露，避免后端未跑时阻塞前端开发。
  */
 
 import { request } from '@umijs/max'
-import { crmQuotationsCreate, crmQuotationsGet, crmQuotationsList, crmQuotationsUpdate, crmQuotationsVoid, crmQuotationsDelete, crmQuotationsRevise, crmQuotationsAccept, crmQuotationsRevokeConfirmation } from '@/services/generated/crm'
+import { crmQuotationsCreate, crmQuotationsGet, crmQuotationsList, crmQuotationsUpdate, crmQuotationsVoid, crmQuotationsDelete, crmQuotationsRevise, crmQuotationsAccept, crmQuotationsRevokeConfirmation } from '@/modules/crm/services/generated/crm'
 import type { CustomerStatusCode } from '@/modules/crm/domain/statuses'
 
 /* ─── 通用包装 ────────────────────────────────────────── */

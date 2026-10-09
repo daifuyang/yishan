@@ -14,6 +14,8 @@
 
 // Umi define 全局变量
 declare const __APP_BASE__: string;
+declare const __API_BASE_URL__: string;
+declare const __INSTALLED_MODULE_IDS__: readonly string[];
 
 // 静态资源（src/pages/**、@public/** 等相对/alias 路径 import 得到 default string）
 declare module '*.png' {

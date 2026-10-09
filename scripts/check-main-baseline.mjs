@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { dirname, resolve, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import manifest from './module-manifest.cjs'
+import manifest from '@yishan/core-admin/manifest'
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const products = manifest.findProductApis(repositoryRoot)

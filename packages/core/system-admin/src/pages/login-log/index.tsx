@@ -1,7 +1,8 @@
+import type {} from '../../types/index';
 import { PageContainer, type ActionType, type ProColumns, ProTable } from "@ant-design/pro-components";
 import React, { useRef } from "react";
-import { getLoginLogList } from "@/services/generated/sysLoginLogs";
-import { createProTableRequest } from "@/utils/proTable";
+import { getLoginLogList } from "../../services/generated/sysLoginLogs";
+import { createProTableRequest } from "@yishan/core-admin/pro-table";
 import { Tag } from "antd";
 
 const statusEnum = {
@@ -12,7 +13,7 @@ const statusEnum = {
 const LoginLogList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
 
-  const columns: ProColumns<API.sysLoginLog>[] = [
+  const columns: ProColumns<SystemAPI.sysLoginLog>[] = [
     { title: "ID", dataIndex: "id", search: false, width: 80 },
     { title: "账号", dataIndex: "username", width: 140 },
     { title: "姓名", dataIndex: "realName", search: false, width: 140 },
@@ -35,7 +36,7 @@ const LoginLogList: React.FC = () => {
 
   return (
     <PageContainer>
-      <ProTable<API.sysLoginLog>
+      <ProTable<SystemAPI.sysLoginLog>
         headerTitle="登录日志"
         actionRef={actionRef}
         rowKey="id"

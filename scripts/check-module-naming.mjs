@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { dirname, resolve, join, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import manifest from './module-manifest.cjs'
+import manifest from '@yishan/core-admin/manifest'
 
 const toolingRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = resolve(process.argv[2] ?? toolingRoot)

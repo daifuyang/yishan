@@ -1,18 +1,21 @@
-/**
- * 单一来源：前端 dev 代理到后端 API 的 base URL。
- *
- * 默认 `http://localhost:3100`，与 `apps/yishan-api/.env` 的 `PORT` 对齐。
- * 改默认端口时同步更新两边；dev 期间需要换 host/port 也可设
- * `YISHAN_API_TARGET`（完整 URL，最高优先级）。
- *
- * 不变量：默认值与 `apps/yishan-api/.env` 中 `PORT` 字段保持一致，否则
- * 前端 dev 代理会 502。
- */
+/** Product configuration owns the default address; complete targets override port-only settings. */
+export function resolveApiTarget(
+  defaultTarget: string,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  const explicitTarget = env.API_TARGET?.trim() || env.YISHAN_API_TARGET?.trim()
+  if (explicitTarget) return explicitTarget
 
-/** 与 `apps/yishan-api/.env` 中默认 `PORT` 保持一致。 */
-const DEFAULT_API_TARGET = 'http://localhost:3100'
+  const port = env.YISHAN_API_PORT?.trim()
+  if (!port) return defaultTarget
+  if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+    throw new Error('YISHAN_API_PORT must be an integer between 1 and 65535')
+  }
 
-/**
- * 后端 API base URL。前端 dev 代理（admin / app）的 target 统一从这里读。
- */
-export const API_TARGET: string = process.env.YISHAN_API_TARGET ?? DEFAULT_API_TARGET
+  const target = new URL(defaultTarget)
+  target.port = port
+  // URL adds a slash to a bare origin; keep the caller's original address shape.
+  return !defaultTarget.endsWith('/') && !target.search && !target.hash
+    ? target.toString().replace(/\/$/, '')
+    : target.toString()
+}

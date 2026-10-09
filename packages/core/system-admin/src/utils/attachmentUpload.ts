@@ -1,6 +1,6 @@
-import { batchGetSystemOption, getQiniuUploadToken } from "@/services/generated/system";
-import { createCloudAttachment, uploadAttachments } from "@/services/generated/attachments";
-import type { Attachment, AttachmentKind, UploadAttachmentsResp } from "@/types/sdk";
+import { batchGetSystemOption, getQiniuUploadToken } from "../services/generated/system";
+import { createCloudAttachment, uploadAttachments } from "../services/generated/attachments";
+import type { Attachment, AttachmentKind, UploadAttachmentsResp } from "../types/index";
 
 export type StorageProvider = "disabled" | "qiniu" | "aliyunOss";
 

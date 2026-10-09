@@ -10,7 +10,7 @@
  * 6. 入参原样透传给 fetcher。
  */
 
-import { createProTableRequest } from '@/utils/proTable';
+import { createProTableRequest } from '@yishan/core-admin/pro-table';
 
 describe('createProTableRequest —— ProTable 信封适配器', () => {
   it('完整信封：data/success/total 正确解包', async () => {

@@ -1,12 +1,13 @@
+import type {} from '../../../types/index';
 import React, { useRef } from 'react';
 import { ModalForm, ProFormText, ProFormRadio, ProFormDigit, ProFormTextArea, ProFormTreeSelect } from '@ant-design/pro-components';
-import { getDeptTree, createDept, updateDept, getDeptDetail } from '@/services/generated/sysDepts';
-import { useModel } from '@umijs/max';
+import { getDeptTree, createDept, updateDept, getDeptDetail } from '../../../services/generated/sysDepts';
+import { useSystemAdmin } from '../../../runtime';
 
 export interface DepartmentFormProps {
   title: string;
   trigger?: React.JSX.Element;
-  initialValues?: Partial<API.sysDept>;
+  initialValues?: Partial<SystemAPI.sysDept>;
   onFinish?: () => Promise<void>;
 }
 
@@ -31,7 +32,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
 }) => {
   const formRef = useRef<any>(undefined);
 
-  const { initialState } = useModel('@@initialState');
+  const { initialState } = useSystemAdmin();
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
@@ -57,7 +58,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
           }
         }}
         onFinish={async (values) => {
-          const basePayload: API.createDeptReq = {
+          const basePayload: SystemAPI.createDeptReq = {
             name: values.name || '',
             parentId: values.parentId === 0 ? undefined : values.parentId,
             status: values.status,
@@ -73,7 +74,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
             }
             return false;
           }
-          const updatePayload: API.updateDeptReq = { ...basePayload };
+          const updatePayload: SystemAPI.updateDeptReq = { ...basePayload };
           const res = await updateDept({ id: Number(initialValues.id) }, updatePayload);
           if (res.success) {
             await onFinish?.();

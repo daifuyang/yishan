@@ -47,7 +47,7 @@ import {
   updateContact,
   updateCustomer,
 } from '@/services/crm';
-import { AttachmentSelect } from '@/components/AttachmentSelect';
+import { AttachmentSelect } from '@yishan/core-system-admin/components/AttachmentSelect';
 
 const ACTIVITY_OPTIONS = [
   { value: 'phone', label: '电话' },

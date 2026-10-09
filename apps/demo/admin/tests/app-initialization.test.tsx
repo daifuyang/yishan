@@ -35,20 +35,20 @@ const mockHandles: MockHandles = {
 
 ;(globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks = mockHandles
 
-jest.mock('@/services/generated/auth', () => ({
+jest.mock('@yishan/core-system-admin/services/auth', () => ({
   __esModule: true,
   authGetCurrentUser: (...args: unknown[]) =>
     (globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks.authGetCurrentUser(...(args as [])),
 }))
 
-jest.mock('@/services/generated/sysDictData', () => ({
+jest.mock('@yishan/core-system-admin/services/sysDictData', () => ({
   __esModule: true,
   default: (globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks,
   getDictDataMap: (...args: unknown[]) =>
     (globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks.getDictDataMap(...(args as [])),
 }))
 
-jest.mock('@/utils/attachmentUpload', () => ({
+jest.mock('@yishan/core-system-admin/attachment-upload', () => ({
   __esModule: true,
   fetchCloudStorageConfig: (...args: unknown[]) =>
     (globalThis as unknown as { __adminInitMocks: MockHandles }).__adminInitMocks.fetchCloudStorageConfig(...(args as [{ force?: boolean }?])),
@@ -76,7 +76,7 @@ jest.mock('query-string', () => ({
   stringify: () => '',
   parse: () => ({}),
 }))
-jest.mock('../shared/publicPath', () => ({
+jest.mock('@yishan/core-admin/public-path', () => ({
   __esModule: true,
   normalizePublicPath: (rawPath?: string) => (rawPath ? `/${rawPath.replace(/^\/+|\/+$/g, '')}/` : '/'),
   isValidPublicPath: () => true,
@@ -115,9 +115,12 @@ jest.mock('@/components', () => ({
   Question: () => null,
   SelectLang: () => null,
 }))
-jest.mock('@/services/generated/sysMenus', () => ({
+jest.mock('@yishan/core-system-admin/services/sysMenus', () => ({
   __esModule: true,
   getAuthorizedMenuTree: jest.fn(),
+}))
+jest.mock('@yishan/core-system-admin/services/appAuth', () => ({
+  appGetCapabilities: jest.fn(),
 }))
 jest.mock('../src/requestErrorConfig', () => ({
   __esModule: true,
@@ -126,7 +129,8 @@ jest.mock('../src/requestErrorConfig', () => ({
 
 // 必须在所有 jest.mock 之后再 import 生产函数
 import { getInitialState, render } from '../src/app'
-import { getAuthorizedMenuTree } from '@/services/generated/sysMenus'
+import { getAuthorizedMenuTree } from '@yishan/core-system-admin/services/sysMenus'
+import { appGetCapabilities } from '@yishan/core-system-admin/services/appAuth'
 
 interface Deferred<T> {
   promise: Promise<T>
@@ -158,6 +162,8 @@ beforeEach(() => {
   mockHandles.getDictDataMap.mockReset()
   mockHandles.fetchCloudStorageConfig.mockReset()
   jest.mocked(getAuthorizedMenuTree).mockReset()
+  jest.mocked(appGetCapabilities).mockReset()
+  jest.mocked(appGetCapabilities).mockResolvedValue({ success: true, code: 10000, message: '成功', data: { permissions: [], enabledModuleIds: ['demo', 'portal', 'shop'] }, timestamp: '2026-10-07T00:00:00.000Z' })
   mockHandles.pathname = '/admin/dashboard'
 })
 
@@ -167,6 +173,7 @@ beforeEach(() => {
 
 describe('getInitialState — 真实生产函数回归', () => {
   it.each(['/q/share-token', '/q/share-token/'])('公开报价页 %s：不读取后台用户、字典和存储配置', async (pathname) => {
+    Object.defineProperty(globalThis, '__INSTALLED_MODULE_IDS__', { value: ['demo', 'portal', 'shop', 'crm'], configurable: true, writable: true })
     mockHandles.pathname = pathname
     mockHandles.authGetCurrentUser.mockResolvedValue({ success: true, data: undefined })
 
@@ -176,6 +183,7 @@ describe('getInitialState — 真实生产函数回归', () => {
     expect(mockHandles.getDictDataMap).not.toHaveBeenCalled()
     expect(mockHandles.fetchCloudStorageConfig).not.toHaveBeenCalled()
     expect(state.currentUser).toBeUndefined()
+    Object.defineProperty(globalThis, '__INSTALLED_MODULE_IDS__', { value: ['demo', 'portal', 'shop'], configurable: true, writable: true })
   })
 
   it('登录页：不读取用户、字典、存储配置', async () => {
@@ -212,7 +220,7 @@ describe('getInitialState — 真实生产函数回归', () => {
      mockHandles.pathname = '/admin/dashboard'
      mockHandles.authGetCurrentUser.mockResolvedValue({
        success: true,
-       data: { id: 1, name: 'admin' } as unknown as API.currentUser,
+       data: { id: 1, name: 'admin' } as unknown as SystemAPI.currentUser,
      })
      mockHandles.getDictDataMap.mockResolvedValue({
        success: true,
@@ -242,7 +250,7 @@ describe('getInitialState — 真实生产函数回归', () => {
      mockHandles.pathname = '/admin/dashboard'
      mockHandles.authGetCurrentUser.mockResolvedValue({
       success: true,
-      data: { id: 1, name: 'admin' } as unknown as API.currentUser,
+      data: { id: 1, name: 'admin' } as unknown as SystemAPI.currentUser,
     })
 
     const dictStarted: number[] = []
@@ -275,7 +283,7 @@ describe('getInitialState — 真实生产函数回归', () => {
      mockHandles.pathname = '/admin/dashboard'
      mockHandles.authGetCurrentUser.mockResolvedValue({
       success: true,
-      data: { id: 1, name: 'admin' } as unknown as API.currentUser,
+      data: { id: 1, name: 'admin' } as unknown as SystemAPI.currentUser,
     })
     mockHandles.getDictDataMap.mockRejectedValue(new Error('dict boom'))
     mockHandles.fetchCloudStorageConfig.mockResolvedValue({ provider: 'local' })
@@ -292,6 +300,7 @@ describe('render — 公开报价与后台登录边界', () => {
   afterEach(() => window.history.replaceState({}, '', '/'))
 
   it('公开报价页直接渲染，不请求授权菜单', () => {
+    Object.defineProperty(globalThis, '__INSTALLED_MODULE_IDS__', { value: ['demo', 'portal', 'shop', 'crm'], configurable: true, writable: true })
     window.history.replaceState({}, '', '/q/share-token')
     jest.mocked(getAuthorizedMenuTree).mockResolvedValue({ success: true, code: 10000, message: '成功', data: [], timestamp: '2026-10-07T00:00:00.000Z' })
     const oldRender = jest.fn()
@@ -300,17 +309,31 @@ describe('render — 公开报价与后台登录边界', () => {
 
     expect(oldRender).toHaveBeenCalledTimes(1)
     expect(getAuthorizedMenuTree).not.toHaveBeenCalled()
+    expect(appGetCapabilities).not.toHaveBeenCalled()
+    Object.defineProperty(globalThis, '__INSTALLED_MODULE_IDS__', { value: ['demo', 'portal', 'shop'], configurable: true, writable: true })
   })
 
-  it.each(['/crm/opportunities', '/q/share-token/private'])('%s 仍请求后台授权菜单', async (pathname) => {
+  it.each(['/crm/opportunities', '/q/share-token/private', '/q/share-token'])('%s 在未安装 CRM 时仍请求后台授权菜单', async (pathname) => {
     window.history.replaceState({}, '', pathname)
     jest.mocked(getAuthorizedMenuTree).mockResolvedValue({ success: true, code: 10000, message: '成功', data: [], timestamp: '2026-10-07T00:00:00.000Z' })
     const oldRender = jest.fn()
 
-    render(oldRender)
-    await Promise.resolve()
+    await new Promise<void>(done => render(() => { oldRender(); done() }))
 
     expect(getAuthorizedMenuTree).toHaveBeenCalledTimes(1)
     expect(oldRender).toHaveBeenCalledTimes(1)
+    expect(appGetCapabilities).toHaveBeenCalledTimes(1)
+  })
+
+  it('现有 capabilities 契约提供按钮权限，初始化不从用户接口猜测权限', async () => {
+    window.history.replaceState({}, '', '/system/user')
+    jest.mocked(getAuthorizedMenuTree).mockResolvedValue({ success: true, code: 10000, message: '成功', data: [], timestamp: '2026-10-07T00:00:00.000Z' })
+    jest.mocked(appGetCapabilities).mockResolvedValue({ success: true, code: 10000, message: '成功', data: { permissions: ['system.user.create'], enabledModuleIds: ['demo'] }, timestamp: '2026-10-07T00:00:00.000Z' })
+    mockHandles.authGetCurrentUser.mockResolvedValue({ success: true, data: { id: 1, name: 'admin' } })
+    mockHandles.getDictDataMap.mockResolvedValue({ success: true, data: {} })
+    mockHandles.fetchCloudStorageConfig.mockResolvedValue({ provider: 'local' })
+    await new Promise<void>(done => render(done))
+    const state = await getInitialState()
+    expect(state.currentUser?.permissions).toEqual(['system.user.create'])
   })
 })
