@@ -2,7 +2,7 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 const { loadTs } = require('./helpers/load-ts.cjs')
 
-const sharedConfig = loadTs(require.resolve('@yishan/shared-config'))
+const sharedConfig = loadTs(require.resolve('@yishan/demo-config'))
 
 test('API target resolver uses caller defaults without mutating supplied environment', () => {
   const env = Object.freeze({})
@@ -55,7 +55,7 @@ async function withEnvironment(values, run) {
 
 function appConfig() {
   return loadTs('config/index.ts', {
-    '@yishan/shared-config': sharedConfig,
+    '@yishan/demo-config': sharedConfig,
     '@tarojs/cli': { defineConfig: (configuration) => configuration },
   }).default
 }
@@ -74,7 +74,7 @@ test('mini-program keeps its local fallback and explicit gateway override', asyn
 test('H5 keeps same-origin requests while both development proxy configs honor API overrides', async () => {
   await withEnvironment({ TARO_ENV: 'h5', YISHAN_API_PORT: '4600' }, async () => {
     const config = await appConfig()((_empty, base) => base, {})
-    const devConfig = loadTs('config/dev.ts', { '@yishan/shared-config': sharedConfig }).default
+    const devConfig = loadTs('config/dev.ts', { '@yishan/demo-config': sharedConfig }).default
     assert.equal(config.defineConstants.__YISHAN_API_BASE_URL__, '""')
     assert.equal(config.h5.devServer.proxy[0].target, 'http://localhost:4600')
     assert.equal(devConfig.h5.devServer.proxy[0].target, 'http://localhost:4600')

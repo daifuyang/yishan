@@ -1,5 +1,5 @@
 import type { UserConfigExport } from '@tarojs/cli'
-import { resolveApiTarget } from '@yishan/shared-config'
+import { resolveApiTarget } from '@yishan/demo-config'
 import path from 'node:path'
 
 const APP_ROOT = path.resolve(__dirname, '..')

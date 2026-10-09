@@ -57,7 +57,7 @@ pnpm --filter @yishan/demo-admin openapi
 
 ## 命令、代理与部署
 
-根脚本已对称指向 Demo：`dev:api`、`dev:admin`、`build:api`、`build:admin`、`typecheck:admin`、`test:api` 和 `check:boundaries`。Demo Admin 通过 `@yishan/shared-config` 的 `API_TARGET`、`YISHAN_API_TARGET`、`YISHAN_API_PORT` 配置代理，产品自己拥有 localhost 默认值。
+根脚本已对称指向 Demo：`dev:api`、`dev:admin`、`build:api`、`build:admin`、`typecheck:admin`、`test:api` 和 `check:boundaries`。Demo Admin 通过 `apps/demo/config` 的公开包 `@yishan/demo-config` 解析 `API_TARGET`、`YISHAN_API_TARGET`、`YISHAN_API_PORT` 配置代理，产品自己拥有 localhost 默认值。此包供 Demo Admin 与配套小程序使用，其他产品拥有自己的配置，Core 不依赖产品配置。
 
 `PUBLIC_PATH=/admin/` 保持支持。CI/CD 的路径过滤、FC Admin 源目录和包产物均改为 `apps/demo/admin/dist`；线上 `/admin/`、API 路径、七牛 key 和站点 URL 没有改变。开发启动器支持 `ADMIN_PORT` 优先于 `PORT`。Workflow 只修改源码和验证步骤，本次没有触发部署。
 

@@ -1,5 +1,5 @@
 import { defineConfig, type UserConfigExport } from '@tarojs/cli'
-import { resolveApiTarget } from '@yishan/shared-config'
+import { resolveApiTarget } from '@yishan/demo-config'
 import path from 'node:path'
 
 import devConfig from './dev'

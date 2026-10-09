@@ -16,7 +16,7 @@ packages/core/api/         @yishan/core-api：Fastify 平台与模块生命周�
 packages/core/system-api/  @yishan/core-system-api：身份、RBAC 与系统业务
 packages/core/admin/       @yishan/core-admin：Admin 运行时、模块装配和 Umi 构建插件
 packages/core/system-admin/ @yishan/core-system-admin：系统管理页面与模块贡献
-packages/shared-config/    现有前端共享配置
+apps/demo/config/          Demo 产品配置（Admin 与配套小程序）
 ```
 
 需要 Node **22.22.1**、pnpm **8.15.9**、MySQL 8；Redis 用于缓存与限流。版本见 `.tool-versions`。安装和运行：

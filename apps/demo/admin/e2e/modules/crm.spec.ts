@@ -5,7 +5,7 @@
  * 暴露后端 API 与前端渲染之间的契约问题（如缺字段、5xx）。
  *
  * 已知前置条件：
- *   - API 在 http://localhost:3100（项目 .env 默认 PORT=3100，shared-config DEFAULT_API_TARGET 也是 3100）。
+ *   - API 在 http://localhost:3100（Demo 客户端默认代理地址，支持 API_TARGET 覆盖）。
  *     ⚠️ 注意：仓库根的 `playwright.config.ts` 仍硬编码 baseURL='http://localhost:8000'，
  *        并由 `helpers/auth helper.ts` 的 DEFAULT_API 默认走 3000（错的）。
  *        所以这个 spec **必须**显式传 `apiBaseURL: 'http://localhost:3100'` 给登录 helper。

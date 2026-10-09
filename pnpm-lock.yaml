@@ -114,9 +114,9 @@ importers:
       '@tarojs/taro':
         specifier: ^4.0.0
         version: 4.2.0(@tarojs/components@4.2.0)(@tarojs/helper@4.2.0)(@tarojs/shared@4.2.0)(@types/react@18.3.27)(postcss@8.5.22)(webpack@5.91.0)
-      '@yishan/shared-config':
+      '@yishan/demo-config':
         specifier: workspace:*
-        version: link:../../packages/shared-config
+        version: link:../demo/config
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -588,7 +588,7 @@ importers:
         specifier: ^4.0.7
         version: 4.0.9(@types/node@22.19.1)(yaml@2.9.0)
 
-  packages/shared-config: {}
+  apps/demo/config: {}
   apps/demo/admin:
     dependencies:
       "@ant-design/icons":
@@ -603,9 +603,9 @@ importers:
       "@json-render/react":
         specifier: ^0.2.0
         version: 0.2.0(react@19.2.7)(zod@4.4.3)
-      "@yishan/shared-config":
+      "@yishan/demo-config":
         specifier: workspace:*
-        version: link:../../../packages/shared-config
+        version: link:../config
       "@zerocmf/yishan-tiptap":
         specifier: workspace:^
         version: link:../../yishan-components/yishan-tiptap

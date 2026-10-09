@@ -35,7 +35,7 @@ mistake. Its scope is still limited to the requested business area.
 - `apps/yishan-app`: mini-program application. Follow its local conventions.
 - `apps/yishan-docs`: Docusaurus documentation site.
 - `apps/yishan-components/yishan-tiptap`: shared TipTap component package.
-- `packages/shared-config`: source-only shared configuration.
+- `apps/demo/config`: source-only Demo product configuration, consumed by Demo Admin and its companion mini-program. Other products own their configuration; Core must not depend on it.
 - `packages/core/admin`: public Admin runtime, module composition and Umi build plugin.
 - `packages/core/system-admin`: system management pages and module contributions.
 

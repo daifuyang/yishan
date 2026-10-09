@@ -4,7 +4,7 @@ title: 工作空间与脚本
 
 # Workspace
 
-pnpm workspace 保留现有 Admin、App、文档站、共享编辑器和 shared-config，新增 apps/demo/api 与 `packages/core/{api,system-api,database,contracts}`。
+pnpm workspace 包含 Demo 产品的 `apps/demo/{api,admin,config}`、配套 App、文档站、共享编辑器与 `packages/core/{api,system-api,database,contracts,admin,system-admin}`。Demo 配置由 `@yishan/demo-config` 提供，其他产品独立拥有自己的配置。
 
 公开包名为 @yishan/demo-api、@yishan/core-api、@yishan/core-system-api、@yishan/core-database、@yishan/core-contracts。包内相对导入，跨包通过 exports 与 workspace:* 依赖。
 

@@ -12,7 +12,7 @@
  * Demo 默认 API 地址属于产品配置。API_TARGET / YISHAN_API_TARGET 覆盖
  * 完整地址，YISHAN_API_PORT 仅覆盖默认地址的端口。dev server 使用 PORT。
  */
-import { resolveApiTarget } from '@yishan/shared-config';
+import { resolveApiTarget } from '@yishan/demo-config';
 
 const apiTarget = resolveApiTarget('http://localhost:3100');
 

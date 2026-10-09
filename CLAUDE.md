@@ -12,7 +12,7 @@ Yishan (移山通用管理系统) is a pnpm monorepo for a generic admin baselin
 - `apps/yishan-docs` — Docusaurus 3 docs site
 - `apps/yishan-components/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
 - `packages/core/admin` / `packages/core/system-admin` — source-only public Admin runtime, Umi build plugin and system management contributions
-- `packages/shared-config` — product-neutral configuration resolver (`resolveApiTarget`); source-only workspace package, no build step
+- `apps/demo/config` — Demo product configuration (`@yishan/demo-config`); source-only workspace package for Demo Admin and its companion mini-program, no build step
 
 Toolchain pinned in `.tool-versions` / root `package.json#packageManager`: Node 22.22.1, pnpm 8.15.9. Use asdf / mise / fnm to honor `.tool-versions` automatically.
 
@@ -164,7 +164,7 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 
 ## Cross-app config: resolveApiTarget
 
-`@yishan/shared-config` exports `resolveApiTarget(defaultTarget, env = process.env)`. This pure resolver owns no product address. Demo Admin and the mini-program keep their existing `http://localhost:3100` fallback in their product configuration.
+`@yishan/demo-config` exports `resolveApiTarget(defaultTarget, env = process.env)`. It belongs to Demo and is consumed by Demo Admin and its companion mini-program. Other products own independent configuration packages; Core never imports product configuration. Demo clients retain their existing `http://localhost:3100` fallback and environment overrides.
 
 - Precedence: `API_TARGET` → `YISHAN_API_TARGET` → `YISHAN_API_PORT` → caller default. Complete target URLs override port-only settings; a port override preserves the caller protocol, host and path.
 - Demo API listens on its configured `PORT`; Demo Admin startup accepts `ADMIN_PORT`, mapped to the Umi dev-server `PORT`. Set backend and proxy ports consistently for independent instances.
