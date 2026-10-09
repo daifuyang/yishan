@@ -30,7 +30,7 @@ mistake. Its scope is still limited to the requested business area.
 
 ## Repository Map
 - `apps/yishan-admin`: Umi Max, React 19, Ant Design 6, Ant Design Pro.
-- `apps/yishan-api`: Fastify 5, Drizzle, TypeBox, JWT; business modules live
+- `apps/demo/api`: Fastify 5, Drizzle, TypeBox, JWT; business modules live
   under `src/modules/<id>/`.
 - `apps/yishan-app`: mini-program application. Follow its local conventions.
 - `apps/yishan-docs`: Docusaurus documentation site.
@@ -212,8 +212,8 @@ pnpm --filter yishan-admin test
 pnpm --filter yishan-admin build
 
 # API
-pnpm --filter yishan-api test
-pnpm --filter yishan-api build:ts
+pnpm test:api
+pnpm build:api
 
 # Full repository gates when the task spans apps or changes shared behavior
 pnpm lint

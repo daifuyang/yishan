@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Yishan (移山通用管理系统) is a pnpm monorepo for a generic admin baseline used at zerocmf.com:
 
 - `apps/yishan-admin` — React 19 + Ant Design Pro 6 + UmiJS 4 (`@umijs/max`) admin frontend
-- `apps/yishan-api` — Fastify 5 + Drizzle + TypeBox + JWT backend
+- `apps/demo/api` — Fastify 5 + Drizzle + TypeBox + JWT backend
 - `apps/yishan-app` — WeChat mini-program (Taro/uni-app style, see `apps/yishan-app/`)
 - `apps/yishan-docs` — Docusaurus 3 docs site
 - `apps/yishan-components/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
@@ -23,7 +23,7 @@ All commands run from the repo root unless noted.
 # Install
 pnpm install
 
-# Full build (order matters: tiptap → admin → docs)
+# Full build (API packages → tiptap → admin → docs)
 pnpm build
 # Equivalent to:
 #   pnpm --filter yishan-tiptap build
@@ -33,7 +33,7 @@ pnpm build
 # Per-app dev (run in separate terminals)
 pnpm --filter yishan-tiptap build         # admin depends on built tiptap
 pnpm --filter yishan-admin dev            # Umi dev server (port 8000 by default for preview)
-pnpm --filter yishan-api dev              # TypeScript watch + Fastify auto-reload
+pnpm dev:api              # TypeScript watch + Fastify auto-reload
 pnpm --filter yishan-docs start           # Docusaurus dev
 
 # Quality gate (matches CI)
@@ -41,10 +41,10 @@ pnpm lint      # admin (Biome + tsc) + docs (typecheck) + app + check-module-nam
 pnpm test      # admin (Jest) + api (Vitest)
 
 # Backend DB (Drizzle)
-pnpm --filter yishan-api db:generate      # generate migrations from schema
-pnpm --filter yishan-api db:migrate       # apply migrations
-pnpm --filter yishan-api db:seed          # run seed scripts (builds TS first)
-pnpm --filter yishan-api db:reset         # rebuild DB
+pnpm --filter @yishan/demo-api db:generate      # generate migrations from schema
+pnpm --filter @yishan/demo-api db:migrate --dry-run # inspect only
+pnpm --filter @yishan/demo-api db:migrate --apply   # explicit writes
+pnpm --filter @yishan/demo-api db:seed          # explicit seed; build API first
 ```
 
 ### Admin-specific scripts (cd into `apps/yishan-admin`)
@@ -59,50 +59,36 @@ pnpm preview            # build + serve on :8000
 ```
 The `lint` script runs `max setup` (via `prelint`) then Biome + `tsc --noEmit`. Jest needs `.umi/` artifacts — `max setup` must run first; CI does this explicitly.
 
-### API-specific scripts (cd into `apps/yishan-api`)
+### API-specific scripts (cd into `apps/demo/api`)
 ```bash
-pnpm dev                # TS watch + fastify-cli start with watch
+pnpm dev:api            # run from root; watch all Core + Demo sources
 pnpm test               # vitest run
 pnpm test:watch         # vitest watch
-pnpm test:integration   # vitest run test/integration
-pnpm build:ts           # build: gen-tsconfig + tsc + tsc-alias
+pnpm test:integration   # disposable local MySQL fixtures
+pnpm build              # tsc + tsc-alias + resource copy
 ```
 
-## Architecture: the module system
+## Architecture: API V2
 
-The most distinctive thing in this repo is the business-module plugin system in `apps/yishan-api`. Read `apps/yishan-api/src/core/module-loader/module-loader.ts` and `apps/yishan-api/src/app.ts` for the full picture; `docs/module-onboarding.md` is the developer onboarding guide.
+Read docs/architecture/api-v2.md, package-boundaries.md and database-ownership.md.
+Demo owns configuration, a static manifest and product modules. Four public Core packages
+provide contracts, connection/migration infrastructure, Fastify lifecycle and System services.
+Imports have no connection/startup side effects. Resources, JWT settings, RBAC/catalog and
+module caches belong to an explicitly created runtime. Scoped legacy facades throw without it.
 
-### Layout
-- Each business capability lives at `apps/yishan-api/src/modules/<id>/`
-- A module owns: `module.ts` (entry), `db/schema.ts` (Drizzle tables), `drizzle.config.ts`, `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`, `repositories/`, `services/`, `schemas/`, `routes/`, `tests/`, `config/system-menu.json`, `permissions.ts`, optional `seed.ts`
-- `module.ts` exports `meta = { id, enabled? }`. `enabled` is the pack/load switch (false → skip mount). Traffic uses `sys_module.enabled`.
-- Current modules: `demo` (1 table, reference), `portal` (5 tables: categories/articles/pages/templates), `shop` (8 tables: categories/attributes/products/skus/orders)
-
-### Lifecycle
-1. **Boot scan** — `scanDiskModules()` reads each `module.ts` / `module.js`. `meta.enabled === false` modules are skipped (not synced, not mounted).
-2. **DB sync** — upsert packed modules into `sys_module` (`name`, `table_prefix`, `version`). First insert sets traffic `enabled = 1`. Existing `enabled` is never overwritten.
-3. **Mount** — `@fastify/autoload` registers packed modules' `routes/` under `/api/<id>`.
-4. **Gate** — root `onRequest` checks `sys_module.enabled` (Redis + 1s memo) and returns 404 for traffic-disabled modules.
-
-### Hard invariants (enforced by `scripts/check-module-naming.mjs` + review)
-- `meta.id` is globally unique; lower-case + digits + underscores; ≤ 24 chars. Duplicates fail-fast at boot.
-- Route prefix is hardcoded to `/api/${id}` — modules don't declare it.
-- Module **table names must start with `<id>_`** (e.g. `demo_documents`). Cross-module duplicate table names also fail lint.
-- **Core never imports module source. Modules never import each other.** Modules join across their own tables only; cross-module reads go through HTTP or Core extensions.
-- **Routes never import drizzle tables or write SQL directly.** Only `repositories/` may import the Drizzle schema and execute queries. Services orchestrate; routes validate and shape.
-- Don't create `sys_*` tables in modules; don't modify existing `sys_*` Core tables.
-- Frontend menu paths use `/<id>/...` at root — **no `/modules/` prefix** in URLs (the `/modules/` segment is only a source directory convention).
-- Pack/load: `meta.enabled` in `module.ts` (redeploy to change). Traffic: `sys_module.enabled` (toggle, no restart).
-
-### Module enable/disable UX
-Dev-only routes under `core/routes/_dev/` (mounted only when `NODE_ENV !== 'production'`) drive the runtime toggle and invalidate Redis cache + in-process memo. Production hides these routes and they ship without devDeps (`deploy/fc3/scripts/build-runtime-layer.sh` strips them).
+Module definitions implement ApiModule with contractVersion 2, metadata, register, optional
+dependencies and lifecycle/seed/migration contributions. Core validates and topologically sorts
+them; it does not scan an app directory. Runtime traffic uses sys_module.enabled.
+Routes → services → repositories → schema remains the business layer direction.
+Only repositories execute SQL; modules cannot access private System repos or sys_* tables.
+Public userDirectory and controlled user extensions support independent product profile tables.
 
 ## Architecture: admin / api / shared
 
 - **Admin** uses Umi Max's `plugin.ts` to register Ant Design Pro blocks. `apps/yishan-admin/config/routes.ts` is intentionally lean — menu structure is **driven by backend `sys_menu.component`** (post July 2026 refactor; see root `TODO.md`).
 - **Admin module pages** live under `apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx`. `plugin.ts` scans this directory at build time and generates `moduleComponentsMap` (key `./modules/<id>/<page>` → `@/modules/<id>/pages/<page>`). The `component` field in menu JSON must use this exact `./modules/<id>/<page>` form.
-- **OpenAPI sync**: `pnpm --filter yishan-admin openapi` regenerates `src/services/generated/<module>.ts` from `apps/yishan-api/openapi.json`. The generated `typings.d.ts` (committed) provides the `API.*Params` ambient namespace. **Both files must be committed together** for fresh checkouts to compile. The backend also serves Swagger UI live at `/api/docs`.
-- **JWT secret gate**: production refuses to boot with a default/weak `JWT_SECRET` (see `core/plugins/external/jwt-secret-validator.ts`). Dev/CI only warn.
+- **OpenAPI sync**: `pnpm --filter yishan-admin openapi` regenerates `src/services/generated/<module>.ts` from `apps/demo/api/openapi.json`. The generated `typings.d.ts` (committed) provides the `API.*Params` ambient namespace. **Both files must be committed together** for fresh checkouts to compile. The backend also serves Swagger UI live at `/api/docs`.
+- **JWT secret gate**: production refuses to boot with a default/weak `JWT_SECRET` (see System API `src/core/plugins/external/jwt-secret-validator.ts`). Dev/CI only warn.
 - **Auth bypass codes**: `BYPASS_CODES` in admin allows local testing of specific routes; `auth:logout` was removed (bugfix in July 2026) — don't add it back.
 - **TipTap**: builds to `dist/` with both CJS and ESM; admin imports it as `workspace:^` and **must rebuild tiptap after tipTap source changes** before re-running admin.
 
@@ -163,21 +149,21 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 ## Tracking ongoing work
 
 - `TODO.md` is the index of current follow-ups. Completed or obsolete TODO records live under `docs/archive/todos/`.
-- The former architecture-doc-sync TODO is archived: `AGENTS.md` / `ARCHITECTURE.md` do not exist, and the relevant guidance is in `docs/module-onboarding.md` and this file.
+- The former architecture-doc-sync TODO is archived: `ARCHITECTURE.md` is superseded by docs/architecture/; AGENTS.md contains current engineering rules, and the relevant guidance is in `docs/module-onboarding.md` and this file.
 
 ## Other things worth knowing
 
 - **Module naming lint**: `scripts/check-module-naming.mjs` parses each module's `db/schema.ts` with regex; runs as part of `pnpm lint`. Add new tables here and the linter will catch missing `<id>_` prefixes.
-- **Drizzle per-module**: each module ships its own `drizzle.config.ts` + `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`. To regenerate migrations after schema changes, `cd src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts`. Migrations are not auto-applied at boot — operators run them via `pnpm --filter yishan-api db:migrate`.
-- **FC deploy**: `.github/workflows/yishan-fc-migrate.yml` and `yishan-fullstack-cd-fc.yml` deploy to Alibaba Function Compute. `apps/yishan-api/deploy/` and `apps/yishan-api/dockerfile` cover the prod image build (which excludes devDeps).
+- **Drizzle per-module**: each module ships its own `drizzle.config.ts` + `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`. To regenerate migrations after schema changes, `cd src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts`. Migrations are not auto-applied at boot — operators run them via `pnpm --filter @yishan/demo-api db:migrate`.
+- **FC deploy**: `.github/workflows/yishan-fc-migrate.yml` and `yishan-fullstack-cd-fc.yml` deploy to Alibaba Function Compute. `apps/demo/api/deploy/` and `apps/demo/api/dockerfile` cover the prod image build (which excludes devDeps).
 - **Cert rotation**: `yishan-cert-rotate-fc.yml` rotates FC certs.
 - **No real credentials in repo**: demo creds intentionally not committed; per README, request from the maintainer.
-- **sys_region seed data**: 省市区三级（~3400 条）由 `sys_region` 表承载，数据源是 modood/Administrative-divisions-of-China 的 `pca-code.json`，嵌在 `apps/yishan-api/src/scripts/seed/config/`。`pnpm --filter yishan-api db:seed` 自动跑 `system-region.ts` 把数据灌进 MySQL（INSERT ... ON DUPLICATE KEY UPDATE，幂等）。前端复用 `<ProFormRegionCascader name="area" />` 即可拿到三段级联选择器，无需另写 service。
+- **sys_region seed data**: 省市区三级（~3400 条）由 `sys_region` 表承载，数据源是 modood/Administrative-divisions-of-China 的 `pca-code.json`，嵌在 `packages/core/system-api/src/scripts/seed/config/`。`pnpm --filter @yishan/demo-api db:seed` 自动跑 `system-region.ts` 把数据灌进 MySQL（INSERT ... ON DUPLICATE KEY UPDATE，幂等）。前端复用 `<ProFormRegionCascader name="area" />` 即可拿到三段级联选择器，无需另写 service。
 
 ## Cross-app config: `API_TARGET`
 
-`packages/shared-config` 导出 `API_TARGET`（后端 base URL），admin 的 `config/proxy.ts`、app 的 `config/dev.ts` 和 `config/index.ts` 统一从这里 import。默认 `http://localhost:3100`，与 `apps/yishan-api/.env` 的 `PORT` 对齐。
+`packages/shared-config` 导出 `API_TARGET`（后端 base URL），admin 的 `config/proxy.ts`、app 的 `config/dev.ts` 和 `config/index.ts` 统一从这里 import。默认 `http://localhost:3100`，与 `apps/demo/api/.env` 的 `PORT` 对齐。
 
-- 改后端端口：同步 `apps/yishan-api/.env` 的 `PORT` 和 `packages/shared-config/src/index.ts` 的 `DEFAULT_API_TARGET`
+- 改后端端口：同步 `apps/demo/api/.env` 的 `PORT` 和 `packages/shared-config/src/index.ts` 的 `DEFAULT_API_TARGET`
 - 需要指向非默认 host/port：设 `YISHAN_API_TARGET=http://host:port`（完整 URL 最高优先级）
 - **禁止** 在 admin/app 的 config 里再次硬编码默认 URL——统一走 `API_TARGET`

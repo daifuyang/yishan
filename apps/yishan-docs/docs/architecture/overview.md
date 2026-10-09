@@ -4,66 +4,36 @@ title: 架构总览
 
 # 架构总览
 
-移山采用 monorepo 组织，核心应用如下：
+项目采用 pnpm monorepo，产品 API 与共享后端包分离：
 
-```text
+~~~text
 apps/
-├─ yishan-admin/                    # Umi Max + Ant Design 的管理后台
-├─ yishan-api/                      # Fastify + Prisma 的 API 服务
-├─ yishan-docs/                     # Docusaurus 文档站
-└─ yishan-components/yishan-tiptap/ # TipTap React 组件库
-```
+  demo/api/                       Fastify Demo 产品 API
+  yishan-admin/                   Umi Max / React 19 管理后台
+  yishan-app/                     小程序
+  yishan-docs/                    Docusaurus 文档站
+  yishan-components/yishan-tiptap/ 共享编辑器
+packages/core/
+  contracts/                      平台无关契约类型
+  api/                            Fastify 工厂、模块生命周期、公共插件
+  database/                       MySQL 连接、事务、迁移执行
+  system-api/                     系统身份、RBAC、sys_* 表和系统路由
+~~~
 
-## 分层关系
+## 产品装配
 
-- `yishan-admin` 负责后台页面、动态菜单渲染、权限拦截与 OpenAPI 服务调用。
-- `yishan-api` 负责认证、系统模块、插件模块、OpenAPI/Swagger、静态资源托管与数据持久化。
-- `yishan-tiptap` 是 admin 的 workspace 依赖，构建 admin 前应先构建该组件库。
-- `yishan-docs` 是团队文档唯一主入口，根目录与应用内 Markdown 作为源码附近说明或历史资料。
+Demo 的 main.ts 负责读取环境、监听与退出；app.ts 创建 Database 和 System runtime，并把 manifest.ts 的显式清单交给 createYishanApi。默认安装 demo、portal、shop，CRM 源码保留但默认不安装。Core 不导入应用或业务模块，也不通过目录扫描安装模块。
 
-## 后端结构现状
+System 保留 `/api/v1/...` 等现有路径；业务模块默认使用 `/api/<id>/v1/...`。模块内部按 routes → services → repositories → db/schema 分层，仓储独占 SQL 查询。业务模块不能读取 `sys_*` 或其他模块的表；用户身份与扩展通过 System 的公开能力获取。
 
-后端已经从 Fastify 初始目录演进为 core + plugins 的结构：
+## 数据和实例边界
 
-```text
-apps/yishan-api/src
-├─ core/
-│  ├─ plugins/      # 核心 Fastify 插件：数据库、JWT、Swagger、错误处理等
-│  ├─ routes/       # 核心 API 路由：认证、用户、角色、菜单、系统配置等
-│  ├─ schemas/      # TypeBox schema
-│  ├─ services/     # 核心领域服务
-│  └─ models/       # Prisma 访问封装
-├─ plugins-runtime/ # 插件运行时：发现、注册、生命周期、持久化
-├─ plugins/modules/ # 业务插件模块，如 portal、hello
-├─ config/
-├─ constants/
-├─ exceptions/
-├─ utils/
-└─ app.ts
-```
+MySQL schema 与查询使用 Drizzle。System 拥有 `sys_*` 表，各模块拥有 `<id>_` 表，产品用户资料使用独立扩展表。发布的 SQL 和 journal 保留历史字节、时间和账本归属；迁移必须显式执行，应用启动不迁移也不 seed。
 
-## 数据模型
+数据库连接、配置、权限目录、模块缓存和扩展监听属于应用实例。公开包的 import 不连接数据库、不启动服务。新增产品建立自己的 config/app/manifest 和独立数据库配置，通过公开 exports 组合 Core。
 
-Prisma 使用多文件 schema：
+## 构建和发布
 
-```text
-apps/yishan-api/prisma/schema/
-├─ base.prisma
-├─ system.prisma
-├─ app.prisma
-└─ portal.prisma
-```
+从根目录运行 pnpm build:api，按依赖顺序构建四个 Core 包和 Demo；pnpm dev:api 监听这些包的源码，成功构建后重启 Demo。
 
-生成客户端与迁移命令仍通过 `pnpm --filter yishan-api db:*` 执行。
-
-## 构建顺序
-
-推荐顺序：
-
-1. `pnpm --filter yishan-tiptap build`
-2. `pnpm --filter yishan-admin build`
-3. `pnpm --filter yishan-api db:generate`
-4. `pnpm --filter yishan-api build:ts`
-5. `pnpm --filter yishan-api test`
-
-部署到 FC3 时，admin 的 `dist/` 会同步到 `apps/yishan-api/public/admin/`，由 API 服务统一承载。
+前端构建前先构建 yishan-tiptap。pnpm build 包含 API、编辑器、Admin 和文档站。生产 API 使用 scripts/package-api.mjs 收集完整运行依赖并验证独立启动；FC3 同站部署把 Admin dist 放入产物 public/admin，不使用运行时 Layer，也不自动应用迁移。

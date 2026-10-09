@@ -1,0 +1,54 @@
+{
+  "name": "@yishan/demo-api",
+  "version": "1.0.0",
+  "description": "Yishan Demo product API",
+  "type": "commonjs",
+  "main": "dist/main.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:integration": "node scripts/test-integration.cjs",
+    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json && node scripts/copy-resources.cjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/main.js",
+    "dev": "node --watch dist/main.js",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node dist/scripts/migrate.js",
+    "db:seed": "node dist/scripts/seed.js",
+    "openapi:dump": "node scripts/dump-openapi.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@fastify/autoload": "^6.0.0",
+    "@sinclair/typebox": "^0.34.41",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.7",
+    "fastify": "^5.0.0",
+    "mysql2": "^3.15.3",
+    "@yishan/core-api": "workspace:*",
+    "@yishan/core-system-api": "workspace:*",
+    "@yishan/core-database": "workspace:*",
+    "@yishan/core-contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.1.0",
+    "drizzle-kit": "^0.31.7",
+    "fastify-tsconfig": "^3.0.0",
+    "tsc-alias": "^1.8.16",
+    "typescript": "~5.8.2",
+    "vitest": "^4.0.7"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/app.d.ts",
+      "default": "./dist/app.js"
+    }
+  }
+}

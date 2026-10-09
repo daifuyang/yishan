@@ -1,36 +1,16 @@
 name: yishan-fc-migrate
 
-# 独立迁移 workflow：SSH tunnel + 本地 drizzle-kit migrate（与 console-codecloud / opcos 一致）。
-#
-# 统一采用 SSH tunnel 模式（不用 FC migration runner function）：
-#   1) 更简单：不需要维护 src/infrastructure/migrations/server.js 入口，也不占 FC 资源
-#   2) 同样安全：迁移权限由 dbi 受限账号（无 DROP）+ ecs-deployer 受限 shell（白名单命令）双重兜底，
-#      SSH tunnel 本身不会"越权"——tunnel 只是端口转发，账号权限不随传输方式提升
-#   3) console/opcos 已验证，行为同构
-#
-# - 仅 workflow_dispatch 触发（不自动跑）
-# - 三个 mode：dry-run / apply / reset-and-seed
-# - apply / reset-and-seed 需要二次 confirm（输入 APPLY / RESET_AND_SEED）
-# - 通过 SSH tunnel (ecs-deployer + tunnel-dsh) 跳到 ECS 内部 127.0.0.1:3306
-# - 跑 drizzle-kit migrate 直接连 yishan 库（dbi 账号）
-#
-# 注意：reset-and-seed 需要 DROP，而 dbi 迁移账号无 DROP 权限（安全账号原则），
-#       因此该 mode 暂不支持（需 root/dfy 或专门的 reset 账号）。
-
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "dry-run inspects; apply runs pending migrations; reset-and-seed rebuilds the database"
+        description: "Inspect actual pending migrations or apply the checked-in plan"
         required: true
         default: dry-run
         type: choice
-        options:
-          - dry-run
-          - apply
-          - reset-and-seed
+        options: [dry-run, apply]
       confirm:
-        description: "For apply type APPLY; for reset-and-seed type RESET_AND_SEED."
+        description: "For apply type APPLY."
         required: false
         type: string
 
@@ -47,9 +27,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Require explicit apply confirmation
         env:
           MIGRATION_MODE: ${{ inputs.mode }}
@@ -60,80 +37,57 @@ jobs:
             echo "Refusing apply: enter APPLY in the confirm field." >&2
             exit 1
           fi
-          if [ "$MIGRATION_MODE" = "reset-and-seed" ] && [ "$MIGRATION_CONFIRM" != "RESET_AND_SEED" ]; then
-            echo "Refusing reset-and-seed: enter RESET_AND_SEED in the confirm field." >&2
-            exit 1
-          fi
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.14.0
-
+          node-version-file: .tool-versions
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.14.0
+          node-version-file: .tool-versions
           cache: pnpm
-
-      - name: Install dependencies
+      - name: Install and compile checked-in migration plan
         run: |
-          pnpm install --no-frozen-lockfile
-
+          pnpm install --frozen-lockfile
+          pnpm -r --filter @yishan/demo-api... build
+          pnpm --filter @yishan/demo-api db:migrate --check
       - name: Setup SSH tunnel to ECS internal MySQL
         env:
           ECS_DEPLOYER_SSH_KEY: ${{ secrets.ECS_DEPLOYER_SSH_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${ECS_DEPLOYER_SSH_KEY:-}" ]; then
-            echo "::error::Missing secret ECS_DEPLOYER_SSH_KEY (copy from ~/.ssh/ecs-deployer.pem)"
-            exit 1
-          fi
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          echo "$ECS_DEPLOYER_SSH_KEY" > ~/.ssh/ecs-deployer.pem
+          test -n "$ECS_DEPLOYER_SSH_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$ECS_DEPLOYER_SSH_KEY" > ~/.ssh/ecs-deployer.pem
           chmod 600 ~/.ssh/ecs-deployer.pem
-          # 跳到 ECS 内部，把 ECS 内的 127.0.0.1:3306 (MySQL) 转到本地 13306
-          # tunnel-dsh 是 ecs-deployer 受限 shell 提供的 SSH forward 子命令
           ssh -fN -o StrictHostKeyChecking=accept-new -o ExitOnForwardFailure=yes \
-              -i ~/.ssh/ecs-deployer.pem \
-              -L 13306:127.0.0.1:3306 \
-              ecs-deployer@139.196.89.64 tunnel-dsh
-          for i in 1 2 3 4 5; do
-            nc -z 127.0.0.1 13306 && break || sleep 1
+            -i ~/.ssh/ecs-deployer.pem -L 13306:127.0.0.1:3306 \
+            ecs-deployer@139.196.89.64 tunnel-dsh
+          for attempt in 1 2 3 4 5; do
+            if nc -z 127.0.0.1 13306; then break; fi
+            if [ "$attempt" -eq 5 ]; then exit 1; fi
+            sleep 1
           done
-          echo "Tunnel up"
-
-      - name: Run drizzle-kit migrate via tunnel
-        working-directory: apps/yishan-api
+      - name: Inspect or apply application migrations
+        working-directory: apps/demo/api
         env:
-          # 直接传 DATABASE_URL，避开 drizzle.config.ts 自己拼 URL（不 URL-encode 密码）
-          # password 含 '%' 等特殊字符时必须 encodeURIComponent
-          DATABASE_URL: 'mysql://${{ secrets.YISHAN_API_DATABASE_USER }}:${{ secrets.YISHAN_API_DATABASE_PASSWORD }}@127.0.0.1:13306/${{ secrets.YISHAN_API_DATABASE_NAME }}'
+          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 13306
           MIGRATION_MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
-          PASSWORD_ENCODED=$(node -e "console.log(encodeURIComponent(process.env.PASSWORD_RAW))" PASSWORD_RAW="${{ secrets.YISHAN_API_DATABASE_PASSWORD }}")
-          USER="${{ secrets.YISHAN_API_DATABASE_USER }}"
-          DB="${{ secrets.YISHAN_API_DATABASE_NAME }}"
-          export DATABASE_URL="mysql://${USER}:${PASSWORD_ENCODED}@127.0.0.1:13306/${DB}"
-          echo "DATABASE_URL user=$(echo $DATABASE_URL | cut -d: -f1-2 | head -c 30)..."
+          export DATABASE_URL="$(node -e 'process.stdout.write(`mysql://${encodeURIComponent(process.env.DATABASE_USER)}:${encodeURIComponent(process.env.DATABASE_PASSWORD)}@127.0.0.1:13306/${encodeURIComponent(process.env.DATABASE_NAME)}`)')"
           if [ "$MIGRATION_MODE" = "dry-run" ]; then
-            echo "Dry-run: printing pending migrations"
-            pnpm db:generate
-            ls drizzle/*.sql
-          elif [ "$MIGRATION_MODE" = "apply" ]; then
-            echo "Applying migrations..."
-            pnpm db:migrate
-            echo "✅ Migrations applied"
-          elif [ "$MIGRATION_MODE" = "reset-and-seed" ]; then
-            echo "Reset + seed not yet supported (would need drop + apply + seed)"
-            exit 1
+            pnpm db:migrate --dry-run
+          else
+            pnpm db:migrate --apply
           fi
-
       - name: Cleanup SSH tunnel
         if: always()
-        run: |
-          pkill -f 'ssh.*13306.*ecs-deployer.*tunnel-dsh' || true
+        run: pkill -f 'ssh.*13306.*ecs-deployer.*tunnel-dsh' || true

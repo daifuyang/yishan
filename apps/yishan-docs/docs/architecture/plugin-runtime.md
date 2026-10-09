@@ -2,59 +2,14 @@
 title: 插件体系
 ---
 
-# 插件体系
+# 模块体系
 
-当前项目已具备后端插件运行时与前端插件路由生成机制。插件不是简单的页面分组，而是包含 manifest、菜单、权限、路由、生命周期与持久化状态的一组扩展能力。
+应用 manifest 明确选择安装模块。Core 的 ModuleLoader 接收模块定义，校验 ID/前缀/契约/版本/依赖，确定性拓扑排序，不假设业务源码位置。模块可来自产品目录、Workspace 或发布 Package。
 
-## 后端插件
+默认路径 /api/`<id>`/v1/...；System 保留 /api/v1/... 等现有路径。模块内部可 AutoLoad 自己的 routes/，Core 不扫描产品模块目录。菜单仍使用 /`<id>`/...；Admin 页面组织不迁移。
 
-后端插件模块位于：
+安装层决定路由、权限、OpenAPI、迁移与 seed 是否参与。运行时 sys_module.enabled 控制已安装模块流量，禁用保留数据及安装信息，返回404/code40400；普通未知路由 code25005。开发模块管理使用显式安装清单，生产不暴露开发接口。
 
-```text
-apps/yishan-api/src/plugins/modules/<module-name>/
-├─ manifest.ts
-├─ routes/
-├─ schemas/
-└─ services/ 或 models/（按需）
-```
+接口通过 schema 元数据声明权限；public:true 明确公开，受保护注册缺少认证装饰器时失败。JWT、RBAC、PAT 撤销仍由 System 安全策略执行。
 
-启动时 `src/app.ts` 会：
-
-- 扫描 `src/plugins/modules/*/manifest.ts`
-- 注册 manifest 到 `plugins-runtime`
-- 执行 load/enable 生命周期
-- 同步插件菜单到系统菜单
-- 将插件状态持久化到插件相关表
-- 按模块加载 `routes/`，前缀为 `api/modules/<moduleName>`
-
-示例：`portal` 插件目录名为 `portal`，运行时自动挂载后的管理端文章接口位于 `/api/modules/portal/v1/admin/articles`。
-
-## 前端插件路由
-
-前端插件 manifest 位于：
-
-```text
-apps/yishan-admin/src/plugins/modules/*.manifest.ts
-```
-
-安装后或构建前会执行：
-
-```bash
-pnpm --filter yishan-admin exec node scripts/generate-plugin-routes.mjs
-```
-
-生成文件：
-
-```text
-apps/yishan-admin/config/generated/plugin-routes.ts
-```
-
-`config/routes.ts` 只保留页面挂载与访问控制，菜单数据以后端 `sys_menu` 和插件 manifest 同步结果为准。
-
-## 菜单路径约定
-
-- 核心系统功能使用 `/system/*`，如 `/system/user`、`/system/apps`。
-- 插件页面使用 `/plugins/<vendor>/<plugin>/*`，如 `/plugins/yishan/portal/articles`。
-- 插件 API 使用 `/api/modules/<module>/v1/*`，如 `/api/modules/portal/v1/admin/articles`。
-
-新增插件时，需要同时确认后端 manifest、前端 manifest、权限点、菜单同步和 OpenAPI 生成结果。
+模块 initialize 在 ready 后执行；close 逆序运行并释放应用资源。Seed 与迁移只通过操作命令协调，不随启动运行。源码开发使用 pnpm dev:api，编译包与独立生产产物使用 package exports。

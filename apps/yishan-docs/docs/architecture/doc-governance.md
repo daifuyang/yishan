@@ -4,7 +4,7 @@ title: 文档治理
 
 # 文档治理
 
-文档站 `apps/yishan-docs/docs` 是团队对外和对内的主文档入口。根目录、`apps/yishan-api/docs`、`apps/yishan-admin/docs` 下的 Markdown 可以保留为源码附近说明、历史设计或深度规范，但应避免与文档站重复维护同一事实。
+文档站 `apps/yishan-docs/docs` 是团队对外和对内的主文档入口。根目录、`apps/demo/api/docs`、`apps/yishan-admin/docs` 下的 Markdown 可以保留为源码附近说明、历史设计或深度规范，但应避免与文档站重复维护同一事实。
 
 ## 分层原则
 

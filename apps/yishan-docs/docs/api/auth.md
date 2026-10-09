@@ -8,7 +8,7 @@ title: 认证与授权
 
 ## JWT 插件
 
-`src/core/plugins/external/jwt-auth.ts` 注册 JWT，并提供 `fastify.authenticate` 作为路由前置校验：
+`packages/core/system-api/src/core/plugins/external/jwt-auth.ts` 注册 JWT，并提供 `fastify.authenticate` 作为路由前置校验：
 
 - 校验 `Authorization: Bearer <token>` 头格式与签名
 - 仅允许 `access_token` 类型访问接口
@@ -23,3 +23,5 @@ title: 认证与授权
 - `POST /api/v1/auth/refresh` 使用刷新令牌换取新的访问令牌
 
 前端在 401 时自动刷新令牌，失败则注销，详见“前端 · 认证与安全”。
+
+密钥、令牌状态查询、权限目录和缓存属于各应用的 System runtime。产品通过 `createSystemConfig` 与 `createSystemRuntime` 提供配置，导入包不会建立默认连接。业务路由显式声明访问策略；路由名称或处理函数名称不决定是否鉴权。

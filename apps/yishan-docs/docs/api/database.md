@@ -4,34 +4,18 @@ title: 数据库与模型
 
 # 数据库与模型
 
-使用 MySQL 与 Drizzle ORM 管理数据模型：
+继续使用 MySQL / Drizzle。Core Database 创建实例连接、事务和关闭能力，不拥有业务表。System API 拥有 sys_* schema；各模块拥有 `<id>`_ schema；产品扩展表独立存储用户业务资料。
 
-- DDL 真源：`drizzle/*.sql`
-- 生成的 Drizzle 表与关系：`src/db/schema/{tables,relations,index}.ts`（运行 `pnpm --filter yishan-api db:generate` 生成，不手工修改）
-- 数据库入口：`src/db/{client,manager,index}.ts`，业务代码从 `@/db` 导入 `drizzleDb`
-- 初始化数据：`pnpm --filter yishan-api db:seed`（需要先构建 API）
+发布 SQL/journal 是迁移历史；表 schema 用于类型化查询与生成新的迁移。System 保留 __drizzle_migrations，各模块使用 __drizzle_migrations_`<id>`。迁移按 journal 索引顺序，检查 SHA256/时间/历史归属、锁定单一会话，重复执行不重放历史。MySQL DDL 失败可能已部分生效，禁止吞错、自动 reset 或伪造完成记录。
 
-服务层通过 `src/core/models/*` 与 `src/core/services/*` 访问数据库；插件模块可在 `src/plugins/modules/*` 下维护自己的 schema、service 或 model，并在路由中进行业务校验与响应。
-
-## API 字段与 Drizzle 字段映射
-
-面向前端和外部调用方的 HTTP/OpenAPI 字段使用小驼峰；MySQL 列使用下划线；Drizzle 的 TypeScript 属性使用小驼峰。例如，API 参数与 Drizzle 表属性为 `sortOrder`，数据库列为 `sort_order`：
-
-```ts
-const postOrderColumns = {
-  sortOrder: sysPost.sortOrder,
-  createdAt: sysPost.createdAt,
-  updatedAt: sysPost.updatedAt,
-} as const;
-
-const sortBy = query.sortBy ?? 'sortOrder';
-const orderColumn = postOrderColumns[sortBy];
-const order = query.sortOrder === 'desc' ? desc : asc;
-
-const rows = await drizzleDb
-  .select()
-  .from(sysPost)
-  .orderBy(order(orderColumn));
+```bash
+pnpm build:api
+pnpm --filter @yishan/demo-api db:migrate --check
+pnpm --filter @yishan/demo-api db:migrate --dry-run
+pnpm --filter @yishan/demo-api db:migrate --apply
+pnpm db:seed
 ```
 
-不要将请求参数直接用作 `table[sortBy]`，也不要拼接到 SQL 中。动态排序、筛选和投影均应使用固定、类型化的列引用白名单；请求 Schema 只允许白名单中的小驼峰键，并且模型层要覆盖默认值及每个允许值的测试。
+仅 --apply 写迁移；启动不迁移、不 seed。旧混合共享历史需先 --reconcile-dry-run，再明确 --reconcile-apply；仅复制可唯一证实的模块连续历史，保留原 ledger 和业务数据。未知/跳跃历史需人工审查。
+
+HTTP 字段及 Drizzle 属性使用 lower camel case，数据库列使用 snake_case。动态排序、筛选和投影使用固定类型化列白名单，不能将用户字段拼入 SQL。具体限制见仓库 docs/architecture/database-ownership.md：CRM 旧空库迁移存在重复列，未被静默改写。

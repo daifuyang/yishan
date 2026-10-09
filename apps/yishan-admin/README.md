@@ -132,11 +132,11 @@ config/
 - **Core 页面**（系统管理、登录等）：在 `src/pages/<area>/<page>/index.tsx` 写组件，然后在 `config/routes.ts` 加路由
 - **模块页面**（业务模块）：在 `src/modules/<id>/pages/<page>/index.tsx` 写组件，**不需要**改 `config/routes.ts` —— `plugin.ts` 编译期自动扫描。详见 [module-pages.md](./docs/module-pages.md)
 
-权限控制：模块页面对应权限码在 `[apps/yishan-api] modules/<id>/permissions.ts` 集中注册。
+权限控制：模块页面对应权限码在 `[apps/demo/api] modules/<id>/permissions.ts` 集中注册。
 
 ### 添加 API 接口
 
-1. 后端在 `apps/yishan-api/src/modules/<id>/routes/v1/index.ts` 用 `createRouteRegistrar` 数组驱动注册
+1. 后端在 `apps/demo/api/src/modules/<id>/routes/v1/index.ts` 用 `createRouteRegistrar` 数组驱动注册
 2. 跑 `pnpm --filter yishan-admin openapi` 重新生成 `src/services/generated/<module>.ts`
 3. 前端 `import { ... } from '@/services/generated/<module>'` 直接使用，类型完全同步
 

@@ -1,0 +1,112 @@
+{
+  "name": "@yishan/core-system-api",
+  "version": "2.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test:integration": "node scripts/test-integration.cjs",
+    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json && node scripts/copy-resources.cjs",
+    "test": "pnpm build && vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/autoload": "^6.0.0",
+    "@fastify/cookie": "^11.1.1",
+    "@fastify/jwt": "^10.0.0",
+    "@fastify/redis": "^7.0.2",
+    "@fastify/static": "^8.0.0",
+    "@fastify/swagger": "^9.5.1",
+    "@sinclair/typebox": "^0.34.41",
+    "dayjs": "^1.11.18",
+    "drizzle-orm": "^0.44.7",
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0",
+    "mysql2": "^3.15.3",
+    "qiniu": "^7.14.0",
+    "@yishan/core-api": "workspace:*",
+    "@yishan/core-database": "workspace:*",
+    "@yishan/core-contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.2",
+    "tsc-alias": "^1.8.16",
+    "@types/node": "^22.1.0",
+    "fastify-tsconfig": "^3.0.0",
+    "vitest": "^4.0.7"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./database": {
+      "types": "./dist/db/index.d.ts",
+      "default": "./dist/db/index.js"
+    },
+    "./schema": {
+      "types": "./dist/db/schema/index.d.ts",
+      "default": "./dist/db/schema/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/create.d.ts",
+      "default": "./dist/config/create.js"
+    },
+    "./schemas/common": {
+      "types": "./dist/core/schemas/common.d.ts",
+      "default": "./dist/core/schemas/common.js"
+    },
+    "./schemas/auth": {
+      "types": "./dist/core/schemas/auth.d.ts",
+      "default": "./dist/core/schemas/auth.js"
+    },
+    "./schemas/user": {
+      "types": "./dist/core/schemas/user.d.ts",
+      "default": "./dist/core/schemas/user.js"
+    },
+    "./schemas/enum.schema": {
+      "types": "./dist/core/schemas/enum.schema.d.ts",
+      "default": "./dist/core/schemas/enum.schema.js"
+    },
+    "./schemas/attachment": {
+      "types": "./dist/core/schemas/attachment.d.ts",
+      "default": "./dist/core/schemas/attachment.js"
+    },
+    "./services/attachment.service": {
+      "types": "./dist/core/services/attachment.service.d.ts",
+      "default": "./dist/core/services/attachment.service.js"
+    },
+    "./services/enum.service": {
+      "types": "./dist/core/services/enum.service.d.ts",
+      "default": "./dist/core/services/enum.service.js"
+    },
+    "./services/system-option.service": {
+      "types": "./dist/core/services/system-option.service.d.ts",
+      "default": "./dist/core/services/system-option.service.js"
+    },
+    "./services/storage-config.service": {
+      "types": "./dist/core/services/storage-config.service.d.ts",
+      "default": "./dist/core/services/storage-config.service.js"
+    },
+    "./utils/money": {
+      "types": "./dist/utils/money.d.ts",
+      "default": "./dist/utils/money.js"
+    },
+    "./utils/date": {
+      "types": "./dist/utils/date.d.ts",
+      "default": "./dist/utils/date.js"
+    },
+    "./utils/date-range": {
+      "types": "./dist/utils/date-range.d.ts",
+      "default": "./dist/utils/date-range.js"
+    },
+    "./utils/password": {
+      "types": "./dist/utils/password.d.ts",
+      "default": "./dist/utils/password.js"
+    }
+  }
+}

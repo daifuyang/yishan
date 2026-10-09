@@ -4,28 +4,12 @@ title: 路由与菜单
 
 # 路由与菜单
 
-路由在 `config/routes.ts` 维护页面挂载与访问控制，菜单不再写死在前端，而是以后端授权菜单树与插件 manifest 同步结果为准。示例：
+config/routes.ts 只维护框架路由，包括登录、首页容器、公开报价页和 404。业务菜单与页面来自后端授权菜单树，由 src/app.tsx 的 patchClientRoutes 动态注入。
 
-```ts title="config/routes.ts 部分"
-// 核心系统页面直接挂载，菜单由后端返回
-{
-  path: '/system/user',
-  component: './system/user',
-  access: 'canDo',
-}
-```
-
-插件页面由 `src/plugins/modules/*.manifest.ts` 生成到 `config/generated/plugin-routes.ts`，例如 `/plugins/yishan/portal/articles`。
+后端菜单的 `component` 字段使用组件键，例如 `./system/user`、`./modules/portal/articles`。`plugin.ts` 在编译期为 `src/pages` 和已安装的 `src/modules/<id>/pages` 生成 `.umi/module-components.ts`，运行时据此动态 import 页面。
 
 ## 权限控制
 
-`src/access.ts` 提供 `canDo` 校验，根据当前用户的 `accessPath` 判断是否允许访问某个路径：
+src/access.ts 的 canDo 根据当前用户 accessPath 判断路由路径是否可访问。菜单和页面权限与后端授权保持一致；API 路由仍独立执行认证及权限校验。
 
-```ts title="src/access.ts"
-export default function access(initialState: { currentUser?: API.userProfile } | undefined) {
-  const { currentUser } = initialState ?? {};
-  return {
-    canDo: (route: { path: string }) => currentUser?.accessPath?.includes(route.path),
-  };
-}
-```
+组件键、菜单 URL 和权限码是不同字段。添加页面时，先确认 Demo manifest 已安装业务模块，再提供页面文件和模块菜单 seed；菜单 URL 遵循 `/<id>/...` 的模块约定。

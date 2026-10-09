@@ -1,0 +1,3 @@
+# Migration hashes depend on exact published bytes, including line endings.
+/packages/core/system-api/drizzle/*.sql -text
+/apps/demo/api/src/modules/*/drizzle/*.sql -text

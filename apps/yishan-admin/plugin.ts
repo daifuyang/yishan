@@ -13,20 +13,13 @@
  */
 
 import { join } from 'node:path'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import type { IApi } from '@umijs/max'
-
-/** 与 yishan-api/scripts/module-pack.mjs 同一规则：只有显式 enabled: false 才不算装载。 */
-function isModulePackedFromSource(src: string): boolean {
-  const block = src.match(/export\s+const\s+meta\s*=\s*\{([\s\S]*?)\}/)
-  if (!block) return true
-  return !/\benabled\s*:\s*false\b/.test(block[1])
-}
+import { readInstalledModules } from '../../scripts/module-manifest.cjs'
 
 function isApiModulePacked(projectRoot: string, moduleId: string): boolean {
-  const moduleTs = join(projectRoot, '..', 'yishan-api', 'src', 'modules', moduleId, 'module.ts')
-  if (!existsSync(moduleTs)) return true
-  return isModulePackedFromSource(readFileSync(moduleTs, 'utf8'))
+  const apiRoot = join(projectRoot, '..', 'demo', 'api')
+  return readInstalledModules(apiRoot).some(module => module.id === moduleId)
 }
 
 const PAGES_DIR = 'src/pages'
@@ -120,6 +113,7 @@ export default (api: IApi) => {
   api.addTmpGenerateWatcherPaths(() => [
     join(api.paths.absSrcPath ?? join(process.cwd(), 'src'), 'pages'),
     join(api.paths.absSrcPath ?? join(process.cwd(), 'src'), 'modules'),
-    join(process.cwd(), '..', 'yishan-api', 'src', 'modules'),
+    join(process.cwd(), '..', 'demo', 'api', 'src', 'manifest.ts'),
+    join(process.cwd(), '..', 'demo', 'api', 'src', 'modules'),
   ])
 }

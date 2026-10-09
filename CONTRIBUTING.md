@@ -30,18 +30,15 @@ pnpm build
 
 ## Architecture Rules
 
-仓库当前强制执行的架构规则（不在 CI 自动检查，依赖开发者自觉）：
+API V2 通过 pnpm check:boundaries 和负面测试强制检查 Package exports、Core依赖方向、产品/模块私有边界。应用显式manifest决定安装，Core不扫描产品代码；System拥有sys_*，模块拥有<id>_表。Route → Service → Repository → Schema 保持分层。迁移必须保留发布历史，启动不迁移、不seed。
 
-1. 模块只能有一份 `apps/yishan-api/src/modules/<id>/routes.ts`，禁止多 manifest。
-2. 模块前缀由 `meta.prefix` 派生，不得硬编码具体业务命名空间。
-3. Route 不得直接访问 DB；Repository 是唯一允许 import Drizzle 表与 SQL 的层。
-4. Core 不得 import 模块源码；模块不得跨模块 import。
+参见 docs/architecture/api-v2.md 与 docs/module-onboarding.md。
 
 Run apps individually:
 
 ```bash
 pnpm --filter yishan-admin dev
-pnpm --filter yishan-api dev
+pnpm dev:api
 pnpm --filter yishan-docs start
 ```
 

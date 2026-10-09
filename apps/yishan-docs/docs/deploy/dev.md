@@ -4,15 +4,8 @@ title: 本地开发
 
 # 本地开发
 
-## 一次性启动步骤
+先按 .tool-versions 准备 Node22.22.1 / pnpm8.15.9，安装 workspace 并运行 pnpm build:api。MySQL/Redis 的本地开发配置位于 infra/local-dev-stack.yml，禁止把该开发密码用于生产。
 
-1. 构建组件库：`pnpm --filter yishan-tiptap build`
-2. 启动后端：`pnpm --filter yishan-api dev`
-3. 启动前端：`pnpm --filter yishan-admin dev`
-4. 启动文档：`pnpm --filter yishan-docs start -- --port 4000`
+产品配置位于 apps/demo/api/.env。pnpm dev:api 监听 Core 与 Demo TS/JSON，合并变更并串行拓扑构建，只在成功后重启 dist/main.js；不手工复制包文件。
 
-## 联调说明
-
-- 前端通过 `config/proxy.ts` 将 `/api/` 代理到 `http://localhost:3000`
-- 后端开放 Swagger 便于联调与查看 schema
-- 如修改 `yishan-tiptap`，需重新构建或使用其 watch 模式
+数据库迁移与 seed 都是显式命令，见数据库文档。pnpm test:integration 创建自己的随机临时 schema；开发库和生产库都不作为实验对象。

@@ -1,0 +1,104 @@
+import { and, count, desc, eq, gte, isNull, like, lte, or, type SQL } from 'drizzle-orm'
+import { drizzleDb, type AppQueryDb } from '@yishan/core-system-api/database'
+import { userDirectory } from '@yishan/core-system-api'
+import { crmContract, crmCustomer, crmPayment } from '../db/schema.js'
+import { buildListWhere } from './customer.repository.js'
+import type { ScopeContext } from '../schemas/data-scope.js'
+
+export interface PaymentRow {
+  id: number
+  paymentNo: string
+  contractId: number
+  customerId: number
+  amountCents: number
+  paidAt: Date
+  methodCode: string
+  transactionNo: string | null
+  status: string
+  remark: string | null
+  creatorId: number | null
+  updaterId: number | null
+  createdAt: Date
+  updatedAt: Date
+  deletedAt: Date | null
+}
+export interface PaymentListRow extends PaymentRow {
+  contractNo: string
+  contractName: string
+  customerName: string
+  creatorName: string | null
+}
+export interface PaymentListQuery { page?: number; pageSize?: number; keyword?: string; contractId?: number; customerId?: number; methodCode?: string; paidFrom?: Date; paidTo?: Date }
+export type CreatePaymentInput = Omit<PaymentRow, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
+export type UpdatePaymentInput = Partial<Pick<PaymentRow, 'amountCents' | 'paidAt' | 'methodCode' | 'transactionNo' | 'remark'>> & { updaterId: number }
+
+export class PaymentRepository {
+  static async list(query: PaymentListQuery, scope: ScopeContext, db: AppQueryDb = drizzleDb): Promise<{ rows: PaymentListRow[]; total: number }> {
+    const page = query.page ?? 1
+    const pageSize = query.pageSize ?? 10
+    const conditions: (SQL | undefined)[] = [isNull(crmPayment.deletedAt), isNull(crmContract.deletedAt), buildListWhere(scope)]
+    if (query.contractId !== undefined) conditions.push(eq(crmPayment.contractId, query.contractId))
+    if (query.customerId !== undefined) conditions.push(eq(crmPayment.customerId, query.customerId))
+    if (query.methodCode) conditions.push(eq(crmPayment.methodCode, query.methodCode))
+    if (query.paidFrom) conditions.push(gte(crmPayment.paidAt, query.paidFrom))
+    if (query.paidTo) conditions.push(lte(crmPayment.paidAt, query.paidTo))
+    if (query.keyword) {
+      const value = `%${query.keyword}%`
+      conditions.push(or(like(crmPayment.remark, value), like(crmContract.contractNo, value), like(crmContract.name, value), like(crmCustomer.name, value)))
+    }
+    const where = and(...conditions)
+    const [rows, totals] = await Promise.all([
+      db.select().from(crmPayment)
+        .innerJoin(crmContract, eq(crmPayment.contractId, crmContract.id))
+        .innerJoin(crmCustomer, eq(crmPayment.customerId, crmCustomer.id))
+        .where(where)
+        .orderBy(desc(crmPayment.paidAt), desc(crmPayment.id))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      db.select({ total: count() }).from(crmPayment)
+        .innerJoin(crmContract, eq(crmPayment.contractId, crmContract.id))
+        .innerJoin(crmCustomer, eq(crmPayment.customerId, crmCustomer.id))
+        .where(where),
+    ])
+    const users = await userDirectory.findByIds(rows.map((row) => row.crm_payment.creatorId).filter((id): id is number => id !== null), { includeDeleted: true })
+    return {
+      rows: rows.map((row) => ({
+        ...row.crm_payment,
+        contractNo: row.crm_contract.contractNo,
+        contractName: row.crm_contract.name,
+        customerName: row.crm_customer.name,
+        creatorName: row.crm_payment.creatorId === null ? null : users.get(row.crm_payment.creatorId)?.realName ?? null,
+      })),
+      total: Number(totals[0]?.total ?? 0),
+    }
+  }
+  static async listByContractId(contractId: number, db: AppQueryDb = drizzleDb): Promise<PaymentRow[]> {
+    return (await db.select().from(crmPayment).where(and(eq(crmPayment.contractId, contractId), isNull(crmPayment.deletedAt))).orderBy(desc(crmPayment.paidAt))) as PaymentRow[]
+  }
+  static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<PaymentRow | null> {
+    const rows = await db.select().from(crmPayment).where(and(eq(crmPayment.id, id), isNull(crmPayment.deletedAt))).limit(1)
+    return (rows[0] as PaymentRow | undefined) ?? null
+  }
+  static async create(input: CreatePaymentInput, db: AppQueryDb = drizzleDb): Promise<PaymentRow> {
+    const result = await db.insert(crmPayment).values(input as any); const payment = await PaymentRepository.findById(Number(result[0].insertId), db)
+    if (!payment) throw new Error('Payment insert did not return a row'); return payment
+  }
+  static async update(id: number, input: UpdatePaymentInput, db: AppQueryDb = drizzleDb): Promise<PaymentRow | null> {
+    await db.update(crmPayment).set({ ...input, updatedAt: new Date() } as any).where(and(eq(crmPayment.id, id), isNull(crmPayment.deletedAt))); return PaymentRepository.findById(id, db)
+  }
+  static async softDelete(id: number, db: AppQueryDb = drizzleDb): Promise<number> {
+    const result = await db.update(crmPayment).set({ deletedAt: new Date() }).where(and(eq(crmPayment.id, id), isNull(crmPayment.deletedAt))); return Number(result[0].affectedRows ?? 0)
+  }
+  /**
+   * 生成回款单号：RC-yyyyMMdd-NNNN（与 ContractRepository.nextNo 同模式）。
+   * 不依赖 sequence；冲突由 uniq_crm_payment_no 兜底，重试一次。
+   */
+  static async nextPaymentNo(db: AppQueryDb): Promise<string> {
+    const now = new Date()
+    const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+    const prefix = `RC-${day}-`
+    const [row] = await db.select({ c: count() }).from(crmPayment).where(like(crmPayment.paymentNo, `${prefix}%`))
+    const next = Number(row?.c ?? 0) + 1
+    return `${prefix}${String(next).padStart(3, '0')}`
+  }
+}

@@ -4,7 +4,7 @@
 >
 > 配套文档：
 > - 表单模板（DrawerForm + FormEditor + ProTable 骨架）→ 本目录 `form-pattern.md`
-> - 后端模块规范 → `apps/yishan-api/docs/module-pattern.md`
+> - 后端模块规范 → `docs/module-onboarding.md`
 
 ## 1. 核心机制
 
@@ -52,7 +52,7 @@ export default TagsPage
 
 然后：
 
-1. **菜单 JSON 添加节点**（`apps/yishan-api/src/modules/portal/config/system-menu.json`）
+1. **菜单 JSON 添加节点**（`apps/demo/api/src/modules/portal/config/system-menu.json`）
    ```json
    {
      "type": 1,
@@ -66,7 +66,7 @@ export default TagsPage
      ]
    }
    ```
-2. **权限码集中注册**（`apps/yishan-api/src/modules/portal/permissions.ts`）—— 加 `TAG_LIST: { code: 'portal:tag:list', ... }` 等
+2. **权限码集中注册**（`apps/demo/api/src/modules/portal/permissions.ts`）—— 加 `TAG_LIST: { code: 'portal:tag:list', ... }` 等
 3. **后端接口 + 服务 + 仓储 + schema** —— 走 `module-pattern.md` 第 3 节
 4. **跑 `pnpm --filter yishan-admin openapi`** 把新接口生成到 `src/services/generated/portal.ts`
 5. **重跑 `pnpm start`**，admin 自动识别 `tags/index.tsx` 文件，无需手改路由

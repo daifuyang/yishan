@@ -12,7 +12,7 @@ title: 业务码与响应规范
 ```json
 {
   "success": true,
-  "code": 0,
+  "code": 10000,
   "message": "操作成功",
   "data": {},
   "timestamp": "2025-01-01T00:00:00.000Z"
@@ -33,7 +33,7 @@ title: 业务码与响应规范
 
 ## 业务码工具
 
-`src/constants/business-codes/index.ts` 聚合各模块业务码，并提供工具类 `BusinessCode`：
+`packages/core/api/src/constants/business-codes/index.ts` 聚合业务码，并通过公开 `@yishan/core-api/business-codes` 提供工具类 `BusinessCode`：
 
 - `getMessage(code)` 获取错误消息
 - `getHttpStatus(code)` 映射到合适的 HTTP 状态码
@@ -41,6 +41,6 @@ title: 业务码与响应规范
 
 ## 响应工具
 
-`src/utils/response.ts` 定义 `success`、`paginated`、`error` 三类响应，统一输出结构与时间戳。
+公开 `@yishan/core-api/response` 的 `ResponseUtil` 定义 `success`、`paginated`、`error` 三类响应，统一输出结构与时间戳。
 
 前端严格使用 `success` 字段判断是否成功，避免自行解析业务码。

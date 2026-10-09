@@ -5,7 +5,9 @@ on:
     paths:
       - ".github/workflows/**"
       - "apps/yishan-admin/**"
-      - "apps/yishan-api/**"
+      - "apps/demo/api/**"
+      - "packages/core/**"
+      - "scripts/**"
       - "apps/yishan-components/yishan-tiptap/**"
       - "pnpm-lock.yaml"
       - "package.json"
@@ -14,7 +16,9 @@ on:
     paths:
       - ".github/workflows/**"
       - "apps/yishan-admin/**"
-      - "apps/yishan-api/**"
+      - "apps/demo/api/**"
+      - "packages/core/**"
+      - "scripts/**"
       - "apps/yishan-components/yishan-tiptap/**"
       - "pnpm-lock.yaml"
       - "package.json"
@@ -67,15 +71,12 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm install --no-frozen-lockfile --force --prod=false
+        run: pnpm install --frozen-lockfile --prod=false
 
       - name: Prepare yishan-tiptap
         run: |
-          pnpm install --filter yishan-tiptap --no-frozen-lockfile --prod=false
+          pnpm install --filter yishan-tiptap --frozen-lockfile --prod=false
           pnpm --filter yishan-tiptap build
-
-      - name: Generate Admin plugin routes
-        run: pnpm --filter yishan-admin gen:plugin-routes
 
       - name: Admin Setup
         run: pnpm --filter yishan-admin exec max setup
@@ -83,8 +84,12 @@ jobs:
       - name: Admin Lint
         run: pnpm --filter yishan-admin lint
 
-      - name: Main Baseline Guard
-        run: node scripts/check-main-baseline.mjs
+      - name: API architecture and product manifests
+        run: |
+          node scripts/check-api-architecture.cjs
+          node scripts/check-main-baseline.mjs
+          node scripts/check-module-naming.mjs
+          node --test scripts/*.test.mjs scripts/test/*.test.mjs
 
       - name: Admin Build
         run: pnpm --filter yishan-admin build
@@ -95,7 +100,7 @@ jobs:
         run: pnpm --filter yishan-admin test
 
       - name: Prepare API .env
-        working-directory: apps/yishan-api
+        working-directory: apps/demo/api
         env:
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/yishan
           DATABASE_USER: root
@@ -111,19 +116,24 @@ jobs:
           printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
           printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
 
-      - name: API Schema Generate
-        run: pnpm --filter yishan-api db:generate
+      - name: API dependencies and TypeScript build
+        run: pnpm -r --filter @yishan/demo-api... build
+
+      - name: API strict typechecks and published migration history
+        run: |
+          pnpm typecheck:api
+          pnpm check:migrations
 
       - name: API Schema Migrate
-        run: pnpm --filter yishan-api db:migrate
+        run: pnpm --filter @yishan/demo-api db:migrate --apply
 
-      - name: API TypeScript Build
-        run: pnpm --filter yishan-api build:ts
+      - name: Verify standalone API artifact
+        run: node scripts/package-api.mjs --output /tmp/yishan-api-artifact
 
       - name: Verify OpenAPI spec is in sync
         shell: bash
         run: |
-          PORT=3100 pnpm --filter yishan-api exec fastify start -l error dist/app.js > /tmp/yishan-api.log 2>&1 &
+          PORT=3100 pnpm --filter @yishan/demo-api start > /tmp/yishan-api.log 2>&1 &
           API_PID=$!
           trap 'kill "$API_PID" 2>/dev/null || true' EXIT
 
@@ -142,8 +152,16 @@ jobs:
             sleep 1
           done
 
-          pnpm --filter yishan-api openapi:dump
+          pnpm --filter @yishan/demo-api openapi:dump
           pnpm check:openapi
 
       - name: API Test
-        run: pnpm --filter yishan-api test
+        run: pnpm test:api
+
+      - name: API isolated MySQL integration tests
+        env:
+          YISHAN_TEST_MYSQL_HOST: 127.0.0.1
+          YISHAN_TEST_MYSQL_PORT: '3306'
+          YISHAN_TEST_MYSQL_USER: root
+          YISHAN_TEST_MYSQL_PASSWORD: root
+        run: pnpm test:integration

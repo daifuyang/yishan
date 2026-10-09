@@ -1,215 +1,54 @@
-# Module 入门指南
+# 业务模块接入
 
-> 这份文档面向第一次在 Yishan 上写"按业务拆分的可插拔模块"的开发者。
->
-> 读完之后你应该能：自己照着 demo 模块的样子，30 分钟内新建一个业务模块并跑通。
+业务代码位于 `apps/<product>/api/src/modules/<id>/`。参考 Demo 中现有 demo、portal、shop、crm；只添加当前功能所需的文件。System 表与身份规则由 System API 所有，模块只操作自己的 `<id>_` 表。
 
-## 一句话总览
-
-每个业务能力 = `apps/yishan-api/src/modules/<id>/` 下一个目录。
-该目录自带：路由、表定义、drizzle 配置、drizzle 输出、repository、service、schema、测试、README。
-**程序不跑迁移**；表、路由、查询全是模块自己的事。
-Core 只提供三件基础设施：Fastify 实例、`app.drizzleDb` 句柄、几个 hook（用于命名校验）。
-
-## 命名约定（先记这个）
-
-| 项 | 规则 | 谁来校验 |
-| --- | --- | --- |
-| `meta.id` | 全局唯一；小写字母 + 数字 + 下划线；≤ 24 | 启动期 |
-| 路由 `prefix` | 默认 `/api/<id>`；自定义时必须全局唯一 | 启动期（Fastify `onRoute`） |
-| 表名 | 必须以 `<meta.id>_` 开头 | `scripts/check-module-naming.mjs` |
-| 前端菜单 `path` | `/<id>/...`,**不要**带 `/modules/` 前缀;`<id>` 段必须与 `meta.id` 严格对齐 | code review |
-
-违规后果：
-- 启动期撞 id 或 prefix → 服务起不来，`exit 1`
-- 表名不对 → `pnpm lint` 退 1
-- 跨模块表名重复 → `pnpm lint` 退 1
-
-## 步骤 1：创建模块目录
-
-```bash
-mkdir -p apps/yishan-api/src/modules/<id>/{db,drizzle/meta,repositories,services,schemas,tests}
-```
-
-`<id>` 用业务名（单数小写），决定：
-- meta.id = `<id>`
-- 默认 prefix = `/api/<id>`
-- 表前缀 = `<id>_`
-
-## 步骤 2：四个最小文件
-
-### `db/schema.ts` —— Drizzle 表定义
+## 定义与安装
 
 ```ts
-import { int, mysqlTable, varchar, datetime, sql } from 'drizzle-orm/mysql-core'
+import type { ApiModule } from '@yishan/core-api'
+import type { SystemRuntime } from '@yishan/core-system-api'
 
-export const <id>Sample = mysqlTable('<id>_sample', {
-  id: int().primaryKey().autoincrement().notNull(),
-  name: varchar({ length: 100 }).notNull(),
-  createdAt: datetime('created_at').notNull().default(sql`CURRENT_TIMESTAMP(0)`),
-})
-```
-
-> 表名必须以 `<id>_` 开头。
-
-### `drizzle.config.ts` —— module 自带 drizzle-kit 配置
-
-```ts
-import 'dotenv/config'
-import { defineConfig } from 'drizzle-kit'
-
-const url =
-  process.env.DATABASE_URL ??
-  `mysql://${process.env.DATABASE_USER ?? 'root'}:${process.env.DATABASE_PASSWORD ?? ''}@${
-    process.env.DATABASE_HOST ?? 'localhost'
-  }:${process.env.DATABASE_PORT ?? '3306'}/${process.env.DATABASE_NAME ?? 'yishan'}`
-
-export default defineConfig({
-  dialect: 'mysql',
-  schema: './db/schema.ts',
-  out: './drizzle',
-  dbCredentials: { url },
-})
-```
-
-### `module.ts` —— 只导出 meta
-
-loader 只读 `meta`，不会 register 这个文件里的其它导出。路由放在 `routes/`。
-
-```ts
-export const meta = {
-  id: '<id>',
-  enabled: true, // 装载开关；false 则不编译、不 sync、不 mount。缺省 true
+const reportsModule: ApiModule<SystemRuntime> = {
+  contractVersion: 2,
+  id: 'reports', name: 'Reports', version: '1.0.0', tablePrefix: 'reports_',
+  dependencies: [{ id: 'system', version: '^2.0.0' }],
+  async register(router, runtime) {
+    // 在模块自己的插件上下文注册路由；可以 AutoLoad 自己的 routes/。
+    // 认证与权限使用平台 registrar 和 runtime 的公开能力。
+  },
 }
+export default reportsModule
 ```
 
-> 路由 prefix 硬约定为 `/api/${meta.id}`，由 `moduleRoutePrefix()` 生成，模块不再声明。
+应用 `manifest.ts` 显式导入并导出安装清单，`app.ts` 使用 `createYishanApi({ modules: [systemModule, ...modules], ... })`。Core 不扫描应用目录。模块可以来自当前应用或另一个 Workspace Package，跨包仅允许正式 export。
 
-### `drizzle/0000_init.sql` —— 建表 SQL
+ID 为小写字母、数字、下划线且不超过 24 字符；默认前缀 `/api/<id>`，可显式指定唯一前缀。启动检查定义、重复 ID/前缀、依赖缺失、循环、契约版本和 semver，按确定性拓扑排序装配。
 
-模块自带 SQL，drizzle-kit 跑时直接执行：
+## HTTP 与权限
 
-```sql
-CREATE TABLE `<id>_sample` (
-  `id` int AUTO_INCREMENT NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
-  PRIMARY KEY (`id`)
-);
-```
+使用 `@yishan/core-api/routes/route-registrar` 声明接口权限，沿用模块 `permissions.ts`。公开接口显式 `access: { public: true }`；受保护接口缺少认证/权限装饰器时拒绝注册。不要通过函数名推断认证。保留 TypeBox 请求、响应 envelope、状态码和业务码。
 
-加一份 `drizzle/meta/_journal.json`（drizzle-kit 格式）。
+路由只负责校验和 HTTP 响应；Service 编排业务；Repository 查询模块自己的表。可通过 `@yishan/core-system-api` 的 `userDirectory` 获取公开身份资料，不能导入系统表、私有仓储或认证实现。
 
-## 步骤 3：装上 repositories / services / schemas / tests
+## 迁移、seed 和启停
 
-业务复杂了再装。可参见 `apps/yishan-api/src/modules/demo/`：
+模块的 `migrations` 声明唯一 ID、SQL/journal 资源目录及独立 `__drizzle_migrations_<id>` 表。目录定位基于模块自己的 `__dirname`，生产构建复制资源。历史 SQL/journal 不因移动改写。
 
-| 文件 | 装什么 |
-| --- | --- |
-| `repositories/*.ts` | 该模块**唯一**允许 import drizzleDb 与 `db/schema` 的层 |
-| `services/*.ts` | 业务编排；拿 db 句柄、调 repository |
-| `schemas/*.ts` | TypeBox HTTP schema |
-| `tests/*.ts` | vitest 单测；service 用 `vi.spyOn` 拦 repository |
-
-## 步骤 4：跑 migration（手动）
+生成新的迁移使用模块自己的 drizzle 配置；应用协调已安装清单的迁移与 seed：
 
 ```bash
-npx drizzle-kit --config=apps/yishan-api/src/modules/<id>/drizzle.config.ts generate
-npx drizzle-kit --config=apps/yishan-api/src/modules/<id>/drizzle.config.ts migrate
+pnpm --filter @yishan/demo-api db:migrate --check
+pnpm --filter @yishan/demo-api db:migrate --dry-run
+pnpm --filter @yishan/demo-api db:migrate --apply
+pnpm db:seed
 ```
 
-> 这两步由你手敲。模块启动时**不**自动跑迁移；服务启动也是**不**自动检查 pending。
+仅 `--apply` 允许写入迁移。缺少/未知参数失败，不默认执行。API 启动不迁移、不运行 seed。Seed 插入缺失记录，保留管理员已有密码和真实业务数据，菜单/枚举通过公开、校验 moduleId 所有权的贡献 API 注册。
 
-## 步骤 5：装载与流量
+安装清单是第一层开关，修改需重新构建部署。`sys_module.enabled` 是第二层流量开关；禁用返回 HTTP404 / code40400，普通未知路由为 code25005。未安装模块不注册路由、同步记录、seed、迁移或 OpenAPI。
 
-两层开关：
+## 扩展用户
 
-- `meta.enabled`：装载。`false` 时启动跳过该模块（不写 `sys_module`、不挂路由）。改完要重新发版。
-- `sys_module.enabled`：流量。只对已装载模块生效；toggle 即时 404，重启不覆盖。
+参考 `apps/demo/api/src/extensions/`：通过公开用户目录取得基本资料，在 `demo_user_profile` 独立表存储产品资料；`UserExtension.validate` 在系统写入前验证，`onEvent` 接收创建/更新生命周期事件。系统事件失败处理由 runtime 配置，不能用扩展替换 JWT/RBAC。
 
-首次 INSERT 流量默认开启。不装这个模块，把 `meta.enabled` 设为 `false`。
-
-## 步骤 6：启动与验证
-
-```bash
-pnpm --filter yishan-api dev
-```
-
-按 `/api/<id>` 暴露的路径调用即可。
-
-## 关键约束清单
-
-- ✖ 不许在 `db/schema.ts` 之外 import `drizzleDb` 或 `@/db`
-- ✖ 不许在 `services/` / `module.ts` 直接写 SQL —— 走 `repositories/`
-- ✖ 不许改 Core 表（`sys_*` 全部不许动）
-- ✖ 不许跨模块 join 别的模块的表 —— 走 HTTP / Core extension
-- ✖ 不许建 `sys_*` 表（即使模块内）
-- ✖ **schema 与数据初始化一律走 CLI，不暴露 HTTP**——参见下方「运维 / 开发工具边界」
-- ✔ 表名必须以 `<meta.id>_` 开头（`pnpm lint` 卡死）
-- ✔ `meta.id` 全局唯一（启动期 fail-fast），`prefix` 硬约定 `/api/${meta.id}` 不再声明
-- ✔ 入口只放在 `module.ts` 一个文件，业务复杂再做拆分
-- ✔ 前端菜单 `path` 用 `/<id>/...` 直挂在根下（例：`/demo/quickstart`），**禁止**再加 `/modules/` 命名空间——`modules/` 只是源码目录约定，不出现在 URL 里
-
-## 运维 / 开发工具边界
-
-模块管理后台（`/admin/system/module-management`，dev-only 页面）只做一件事：**启停**（list + toggle）。
-schema 生成、迁移、seed、reset 都不暴露 HTTP，全部走 CLI。理由：
-
-| 动作 | 入口 | 触发风险 |
-| --- | --- | --- |
-| 启停模块 | HTTP（toggle） | 低：只改 `sys_module.enabled`，即时 gate 拦截，无副作用 |
-| 生成迁移文件 | CLI（`npx drizzle-kit --config=... generate`） | 写源码，多人并发会冲突 |
-| 应用迁移 | CLI（`pnpm --filter yishan-api db:seed` 走 onboard-modules） | 改表结构，受控流程 |
-| seed 数据 | CLI（同上，onboard-modules 第二步） | 写业务数据，受控流程 |
-| DROP / 重建 | CLI（`pnpm --filter yishan-api db:reset`，仅 dev） | 毁数据，必须显式 + NODE_ENV≠production |
-
-dev-only 路由树（`core/routes/_dev/`）在 `NODE_ENV=production` 时整棵不挂载，但这一层只是兜底；
-分类标准（什么走 HTTP、什么走 CLI）必须显式遵守，不能依赖 prod 自动屏蔽作为安全护栏。
-
-CI / 部署侧用：
-
-```bash
-pnpm --filter yishan-api db:generate   # 改 schema 后生成迁移
-pnpm --filter yishan-api db:seed       # 上线首次部署：migrate + seed + sync sys_module
-pnpm --filter yishan-api db:reset      # 仅 dev：重建数据库
-```
-
-## 完整 demo
-
-参考 `apps/yishan-api/src/modules/demo/`：
-- `GET  /api/demo/server-info` — 不读库，拿到当前进程信息
-- `GET  /api/demo/documents` — 读库
-- `POST /api/demo/documents` — 写库（TypeBox 校验）
-
-## 前端模块页面约定（admin）
-
-每个后端模块对应一个 admin 子目录，路径硬约定：
-
-```
-apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx
-```
-
-`apps/yishan-admin/plugin.ts` 编译期扫描这个目录，生成 `moduleComponentsMap`：注册 key `./modules/<id>/<page>` → 真实 import `@/modules/<id>/pages/<page>`。
-
-菜单 JSON 的 `component` 字段用虚拟路径，例如：
-
-```json
-{
-  "type": 1,
-  "name": "文章管理",
-  "path": "/portal/articles",
-  "sortOrder": 2,
-  "component": "./portal/articles",
-  "children": [
-    { "type": 2, "name": "查看", "permissionCodes": ["portal:article:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 }
-  ]
-}
-```
-
-页面写法参考 `apps/yishan-admin/src/modules/demo/pages/todos/index.tsx`：ProTable + ModalForm + Popconfirm 三件套。调用 `@/services/generated/<module>.ts` 里的 openapi 自动生成函数，类型与后端 schema 同步。
-
-**关键点**：
-- 虚拟路径 `./modules/<id>/<page>` 必须带 `./modules/` 前缀（demo 已用此写法；portal/shop 早期漏了导致 404，见 commit `0023d2f` 的修复）
-- URL 路由 (`path`) 仍是 `/<id>/<page>`，不带 `./modules/`——`modules/` 只是源码目录约定 + 组件虚拟路径前缀，不出现在 URL 里
-- 新增页面后无需手动注册——`plugin.ts` 自动发现 `src/modules/<id>/pages/<page>/index.tsx`
-- 改后端 schema 后需要 `pnpm --filter yishan-admin openapi` 重新生成 services，否则页面 TS 报错
+编写必要单元/Inject 测试，运行 `pnpm test:api`、`pnpm check:boundaries`、`pnpm check:migrations` 和 `pnpm build:api`。真实数据库测试只在隔离 schema 中运行。

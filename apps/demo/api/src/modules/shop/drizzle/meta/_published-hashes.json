@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "commit": "46b151b134b46cf039388b6bb51a18391d8624ab",
+  "migrations": {
+    "0000_init": {
+      "sha256": "43b54798919b33e0305c3c60f45b88763fef6948e7325ce8ee3f61c5a31f5290",
+      "windowsSha256": "85fe83f783a7a90b9b496db7aee835c3f5ea719ac9f2f306f3c096828da8a4d2"
+    }
+  }
+}

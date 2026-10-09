@@ -2,42 +2,10 @@
 title: 工作空间与脚本
 ---
 
-# 工作空间与脚本（pnpm）
+# Workspace
 
-本项目使用 pnpm 工作空间进行依赖与脚本统一管理。
+pnpm workspace 保留现有 Admin、App、文档站、共享编辑器和 shared-config，新增 apps/demo/api 与 `packages/core/{api,system-api,database,contracts}`。
 
-## 统一安装
+公开包名为 @yishan/demo-api、@yishan/core-api、@yishan/core-system-api、@yishan/core-database、@yishan/core-contracts。包内相对导入，跨包通过 exports 与 workspace:* 依赖。
 
-```bash
-pnpm install # 或 pnpm i
-```
-
-## 过滤运行（子项目）
-
-```bash
-# 开发
-pnpm --filter yishan-admin dev
-pnpm --filter yishan-api dev
-pnpm --filter yishan-docs start
-
-# 构建
-pnpm --filter yishan-tiptap build
-pnpm --filter yishan-admin build
-pnpm --filter yishan-api build:ts
-pnpm --filter yishan-docs build
-
-# 仅安装某个子项目依赖
-pnpm --filter yishan-admin i
-pnpm --filter yishan-api i
-pnpm --filter yishan-docs i
-```
-
-## 批量运行
-
-```bash
-# 对所有工作空间运行某脚本（需各项目定义同名脚本）
-pnpm -r build       # 递归执行 build
-pnpm -r test        # 递归执行 test
-```
-
-建议始终在项目根目录运行安装与批量脚本，确保跨项目依赖一致。子项目特定操作使用 `--filter` 精准命中目标。构建 admin 前先构建 `yishan-tiptap`，避免 workspace 依赖产物缺失。
+新产品可以建立 apps/crm/api 或 apps/axis/api，提供独立环境、数据库/JWT/Redis namespace 和 manifest，以公开工厂组合同一 Core，不复制框架代码。不要提前创建空应用，不将业务 UI 或模块提升成通用包。

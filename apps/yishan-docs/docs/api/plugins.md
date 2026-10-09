@@ -4,16 +4,13 @@ title: 插件与中间件
 
 # 插件与中间件
 
-后端通过 Fastify 插件组织跨路由的能力，核心插件如下：
+Fastify 插件在应用装配时注册。通用协议能力由 @yishan/core-api/plugins 提供，System 专属能力由 packages/core/system-api/src/setup.ts 组合。
 
-- Swagger 文档：`src/core/plugins/external/swagger.ts`，UI 前缀为 `/api/docs`，JSON 为 `/api/docs/json`（前端 OpenAPI 生成使用）
-- TypeBox 类型提供：`src/core/plugins/external/typebox.ts`，提供运行时校验与 JSON Schema 生成
-- 全局错误处理：`src/core/plugins/external/error-handler.ts`，统一映射业务码与响应结构
-- JWT 鉴权：`src/core/plugins/external/jwt-auth.ts`，提供 `fastify.authenticate` 与令牌状态校验
-- Redis：`src/core/plugins/external/redis.ts`，支持 `REDIS_URL` 与主机/端口参数，包含测试环境优化
-- Sensible：`src/core/plugins/external/sensible.ts`，通用 HTTP 错误工具
-- 密码策略：`src/core/plugins/app/password-manager.ts`，提供 `passwordManager.hash/compare` 基于 scrypt
+- Swagger、TypeBox、Cookie、Multipart、Sensible：packages/core/api/src/plugins.ts。
+- 统一错误处理：packages/core/api/src/error-handler.ts。
+- JWT/PAT、RBAC、限流、安全、审计：packages/core/system-api/src/core/plugins/external/。
+- 密码策略和字典映射：packages/core/system-api/src/core/plugins/app/。
+- Redis：System setup 使用实例配置注册 @fastify/redis；公开 runtime 选项可以禁用连接。
+- 静态上传资源及 Admin SPA：System 的 static 插件使用产品提供的资源根目录。
 
-业务插件模块位于 `src/plugins/modules/*`，由 `src/plugins-runtime` 负责发现、注册、生命周期和持久化。
-
-结合这些插件，系统提供了统一的类型、鉴权、错误处理、缓存与文档能力。
+Swagger UI 为 /api/docs，JSON 为 /api/docs/json。业务模块由 apps/demo/api/src/manifest.ts 显式安装；模块可以 AutoLoad 自己的 routes/，Core 负责校验依赖、排序、注册、启停 gate 和关闭生命周期。

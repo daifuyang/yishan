@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
-const specPath = process.argv[2] ?? 'apps/yishan-api/openapi.json'
+const specPath = process.argv[2] ?? 'apps/demo/api/openapi.json'
 
 function git(args) {
   return spawnSync('git', args, { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 })

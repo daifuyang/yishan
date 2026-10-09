@@ -4,32 +4,21 @@ title: 目录结构
 
 # 目录结构
 
-核心结构如下：
+~~~text
+apps/yishan-admin/
+  config/routes.ts       框架路由
+  config/proxy.ts        开发代理
+  plugin.ts              编译期页面组件映射
+  src/pages/system/      系统页面
+  src/modules/<id>/        就近组织的业务页面与组件
+  src/services/generated/ OpenAPI 客户端和类型
+  src/services/crm.ts    现有 CRM 请求边界
+  src/types/sdk.ts       前端类型边界
+  src/utils/             认证与小型工具
+  src/requestErrorConfig.ts
+  src/access.ts
+~~~
 
-```text
-apps/yishan-admin
-├─ config/
-│  ├─ routes.ts            # 路由/菜单配置
-│  └─ proxy.ts             # 开发代理到 API
-├─ src/
-│  ├─ pages/
-│  │  └─ system/           # 系统管理模块页面
-│  ├─ services/yishan-admin/ # OpenAPI 接口封装
-│  ├─ plugins/modules/     # 前端插件 manifest
-│  ├─ utils/               # 认证、token 管理
-│  ├─ requestErrorConfig.ts# 请求/响应拦截
-│  └─ access.ts            # 路由权限控制
-└─ package.json
-```
+系统页面使用 user、role、menu、department、position、dict、region、site、storage、attachments、login-log 等目录。业务页面位于 `src/modules/<id>/pages/<page>/index.tsx`，组件与业务行为保留在对应模块。
 
-系统模块页面：
-- 用户管理：`src/pages/system/user`
-- 角色管理：`src/pages/system/role`
-- 菜单管理：`src/pages/system/menu`
-- 部门管理：`src/pages/system/department`
-- 岗位管理：`src/pages/system/post`
-- 应用管理：`src/pages/system/apps`
-- 插件管理：`src/pages/system/plugins`
-- 附件、存储、登录日志：`src/pages/system/attachments`、`storage`、`login-log`
-
-插件页面通过 `src/plugins/modules/*.manifest.ts` 生成路由，当前门户插件页面挂载到 `/plugins/yishan/portal/*`。
+plugin.ts 生成系统和已安装模块的组件映射，例如 ./system/user 与 ./modules/portal/articles。后端菜单给出 URL 与组件键；前端动态注入路由。模块安装清单位于 Demo API 的 src/manifest.ts，CRM 源码保留但默认不进入页面映射。

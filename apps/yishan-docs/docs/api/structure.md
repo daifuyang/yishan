@@ -4,20 +4,21 @@ title: 目录结构
 
 # 目录结构
 
-核心结构如下：
+API 使用 Product-First Monorepo。产品与共享框架真实分离：
 
 ```text
-apps/yishan-api
-├─ src/
-│  ├─ core/
-│  │  ├─ plugins/            # 数据库、JWT、Redis、Swagger、错误处理等
-│  │  ├─ routes/             # 核心路由：auth、admin、system
-│  │  ├─ schemas/            # TypeBox 定义与响应模型
-│  │  ├─ services/           # 核心业务服务层
-│  │  └─ models/             # Prisma 相关模型封装
-│  ├─ plugins-runtime/       # 插件发现、生命周期、持久化
-│  ├─ plugins/modules/       # 插件模块路由与 manifest
-│  ├─ utils/response.ts      # 统一响应工具
-│  └─ app.ts                 # 应用入口
-└─ prisma/schema/*.prisma    # 多文件数据模型
+apps/demo/api/src/
+  main.ts       环境、启动、退出
+  app.ts        资源创建与公开 Package API 组合
+  manifest.ts   显式安装清单
+  config/       实例配置
+  modules/      demo / portal / shop / crm
+  extensions/   产品用户资料独立表与生命周期监听
+packages/core/
+  contracts/    纯公共类型
+  database/     连接工厂与迁移执行
+  api/          Fastify、模块生命周期和公共插件
+  system-api/   系统身份、RBAC、sys_* 表及系统路由
 ```
+
+Module routes → services → repositories → db/schema。模块只查询自己的表；通过公开用户目录取得系统身份。跨包仅使用正式 exports。没有自动应用目录扫描或旧兼容入口。详细规范在仓库 `docs/architecture/`。

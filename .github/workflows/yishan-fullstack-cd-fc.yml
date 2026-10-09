@@ -1,19 +1,6 @@
 name: yishan-fullstack-cd-fc
 
 on:
-  push:
-    branches:
-      - all
-    paths:
-      # 与 yishan-fullstack-ci.yml 的 paths 保持一致：
-      # 只要 CD 被触发，同一 commit 的 CI 也一定会被触发，ci-gate 不会永久等待。
-      - ".github/workflows/**"
-      - "apps/yishan-admin/**"
-      - "apps/yishan-api/**"
-      - "apps/yishan-components/yishan-tiptap/**"
-      - "pnpm-lock.yaml"
-      - "package.json"
-      - "pnpm-workspace.yaml"
   workflow_dispatch:
     inputs:
       skip_ci_gate:
@@ -27,9 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # CI 必须先在同一 commit 上通过，才允许部署。
-  # 背景：此前 CD 与 CI 完全并行，CI 连续红 2 个月而 CD 照常下发。
-  # 注意：CD 的 paths 已收窄为 CI paths 的子集，故 push 触发 CD 时 CI 必然也在跑。
+  # 人工触发后等待同一 commit 的 CI；保留既有的显式紧急覆盖选项。
   ci-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -123,12 +108,12 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Prepare yishan-tiptap
         working-directory: apps/yishan-components/yishan-tiptap
         run: |
-          pnpm install --filter yishan-tiptap --no-frozen-lockfile
+          pnpm install --filter yishan-tiptap --frozen-lockfile
           pnpm build --filter yishan-tiptap
 
       - name: Generate Admin plugin routes
@@ -198,7 +183,7 @@ jobs:
           fi
 
       - name: Prepare .env
-        working-directory: apps/yishan-api
+        working-directory: apps/demo/api
         env:
           LOG_LEVEL: info
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
@@ -208,6 +193,7 @@ jobs:
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
           REDIS_HOST: ${{ vars.REDIS_HOST }}
+          CACHE_NAMESPACE: ${{ vars.CACHE_NAMESPACE || 'yishan:demo' }}
         run: |
           set -euo pipefail
           ENV_FILE="$(pwd)/.env"
@@ -236,6 +222,7 @@ jobs:
             `REDIS_PORT=${redisPort}`,
             `REDIS_PASSWORD=${redisPassword}`,
             `REDIS_DB=${redisDb}`,
+            `CACHE_NAMESPACE=${process.env.CACHE_NAMESPACE || 'yishan:demo'}`,
           ];
           process.stdout.write(lines.join('\n') + '\n');
           NODE
@@ -286,49 +273,12 @@ jobs:
           chmod 600 ~/.s/access.yaml
           echo "  STS issued OK, expires in 1h"
 
-      - name: Restore layer lock
-        uses: actions/cache@v4
-        with:
-          path: apps/yishan-api/deploy/fc3/layer-lock.json
-          key: yishan-api-layer-lock-fallback
-          restore-keys: |
-            yishan-api-layer-lock-fallback
+      - name: Build standalone API package
+        working-directory: apps/demo/api
+        run: bash ./deploy/fc3/scripts/pre-deploy.sh
 
-      - name: Build runtime layer
-        working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/scripts/build-runtime-layer.sh
-
-      - name: Publish runtime layer if needed
-        id: publish_layer
-        working-directory: apps/yishan-api
-        env:
-          YISHAN_FC_REGION: ${{ vars.FUNCTION_REGION || 'cn-shanghai' }}
-          YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
-          YISHAN_FC_ACCESS_ALIAS: default   # 与 OIDC 步骤写入的 ~/.s/access.yaml default profile 对齐
-          ALIBABA_CLOUD_ACCOUNT_ID: '1650595695532785'
-        run: |
-          set -euo pipefail
-          bash ./deploy/fc3/scripts/publish-runtime-layer.sh | tee /tmp/publish_layer.log
-          LAYER_ARN="$(grep -E '^YISHAN_API_RUNTIME_LAYER_ARN=' /tmp/publish_layer.log | tail -n1 | cut -d= -f2-)"
-          if [ -z "$LAYER_ARN" ]; then
-            echo "Unable to extract runtime layer ARN" >&2
-            exit 1
-          fi
-          echo "layer_arn=$LAYER_ARN" >> "$GITHUB_OUTPUT"
-
-      - name: Save layer lock
-        if: always() && hashFiles('apps/yishan-api/deploy/fc3/layer-lock.json') != ''
-        uses: actions/cache@v4
-        with:
-          path: apps/yishan-api/deploy/fc3/layer-lock.json
-          key: yishan-api-layer-lock-fallback
-
-      - name: Build Layered Package
-        working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/scripts/pre-deploy-layered.sh
-
-      - name: Deploy layered function
-        working-directory: apps/yishan-api
+      - name: Deploy API function
+        working-directory: apps/demo/api
         env:
           LOG_LEVEL: info
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
@@ -338,8 +288,8 @@ jobs:
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
           REDIS_HOST: ${{ vars.REDIS_HOST }}
+          CACHE_NAMESPACE: ${{ vars.CACHE_NAMESPACE || 'yishan:demo' }}
           JWT_SECRET: ${{ secrets.YISHAN_API_JWT_SECRET }}
-          YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
           FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
           FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
           FUNCTION_DESCRIPTION: ${{ vars.FUNCTION_DESCRIPTION }}
@@ -351,7 +301,7 @@ jobs:
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
-          node <<'NODE' > /tmp/yishan_layered_env.sh
+          node <<'NODE'
           const redisUrl = process.env.REDIS_URL || '';
           let redisPort = '6379';
           let redisHost = process.env.REDIS_HOST || '';
@@ -372,17 +322,17 @@ jobs:
             DATABASE_HOST: process.env.DATABASE_HOST || '',
             DATABASE_PORT: process.env.DATABASE_PORT || '3306',
             JWT_SECRET: process.env.JWT_SECRET || '',
+            REDIS_URL: redisUrl,
+            CACHE_NAMESPACE: process.env.CACHE_NAMESPACE || 'yishan:demo',
             REDIS_PORT: redisPort,
             REDIS_HOST: redisHost,
             REDIS_PASSWORD: redisPassword,
             REDIS_DB: redisDb,
           };
-          for (const [key, value] of Object.entries(entries)) {
-            console.log(`export ${key}=${JSON.stringify(value)}`);
-          }
+          const result = require('node:child_process').spawnSync('bash', ['./deploy/fc3/scripts/deploy-function.sh'], { env: { ...process.env, ...entries }, stdio: 'inherit' });
+          if (result.error) throw result.error;
+          process.exitCode = result.status ?? 1;
           NODE
-          . /tmp/yishan_layered_env.sh
-          bash ./deploy/fc3/scripts/deploy-layered-function.sh
 
       # 部署脚本自身只校验 CLI 退出码，无法证明函数真的在服务请求。
       # 这里补一次事实校验：健康检查 + DB 连通 + admin 静态资源可达。
