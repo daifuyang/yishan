@@ -2,6 +2,14 @@
 /* eslint-disable */
 import { request } from "@umijs/max";
 
+/** 获取移动端能力 返回当前用户实际权限及当前启用的业务模块 GET /api/v1/app/auth/capabilities */
+export async function appGetCapabilities(options?: { [key: string]: any }) {
+  return request<API.mobileCapabilitiesResp>("/api/v1/app/auth/capabilities", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
 /** 移动端登录 移动端通过用户名/邮箱和密码登录 POST /api/v1/app/auth/login */
 export async function appLogin(
   body: API.loginReq,

@@ -146,6 +146,33 @@ const auth: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       return ResponseUtil.success(reply, result, "获取成功");
     }
   );
+
+  // GET /api/v1/app/auth/capabilities
+  route.get(
+    "/capabilities",
+    {
+      // Reuse the authenticated profile permission so this endpoint does not
+      // introduce a second role grant for the same mobile session bootstrap.
+      access: { permission: PERMS.PROFILE },
+      schema: {
+        summary: "获取移动端能力",
+        description: "返回当前用户实际权限及当前启用的业务模块",
+        operationId: "appGetCapabilities",
+        tags: ["app-auth"],
+        security: [{ bearerAuth: [] }],
+        response: { 200: { $ref: "mobileCapabilitiesResp#" } },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const roleIds = request.currentUser?.roleIds ?? [];
+      const capabilities = await PermissionService.getMobileCapabilities(
+        roleIds,
+        fastify.moduleLoader,
+        request.tokenScope,
+      );
+      return ResponseUtil.success(reply, capabilities, "获取能力成功");
+    },
+  );
 };
 
 export default auth;

@@ -1694,6 +1694,21 @@ declare namespace API {
     id: number;
   };
 
+  type mobileCapabilities = {
+    /** 当前用户实际权限码 */
+    permissions: string[];
+    /** 已挂载且启用的业务模块 ID */
+    enabledModuleIds: string[];
+  };
+
+  type mobileCapabilitiesResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: mobileCapabilities;
+    timestamp: string;
+  };
+
   type paginationResponse = {
     page: number;
     pageSize: number;

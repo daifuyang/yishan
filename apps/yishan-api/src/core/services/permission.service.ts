@@ -13,6 +13,9 @@
 
 import { PermissionRepository } from "../repositories/permission.repository.js";
 import { ROLE_CODES } from "../../constants/permission-codes.js";
+import { PERMISSION_CODES } from "../permissions/catalog.js";
+import type { MobileCapabilities } from "../schemas/auth.js";
+import type { ModuleLoader } from "../module-loader/module-loader.js";
 
 interface PermissionCacheEntry {
   perms: Set<string>;
@@ -63,6 +66,25 @@ export class PermissionService {
 
   static async loadRoleIdsForUser(userId: number): Promise<number[]> {
     return PermissionRepository.loadActiveRoleIdsByUserId(userId);
+  }
+
+  static async getMobileCapabilities(
+    roleIds: number[],
+    moduleLoader: Pick<ModuleLoader, 'listModuleIds' | 'enabledIdsCached'>,
+    tokenScope?: readonly string[],
+  ): Promise<MobileCapabilities> {
+    const [{ perms }, enabledIds] = await Promise.all([
+      PermissionService.loadForRoleIds(roleIds),
+      moduleLoader.enabledIdsCached(),
+    ]);
+    const mountedIds = moduleLoader.listModuleIds();
+    const effectivePerms = computeEffectivePerms(perms, tokenScope, PERMISSION_CODES);
+    return {
+      permissions: [...PERMISSION_CODES]
+        .filter((code) => PermissionService.has(effectivePerms, code))
+        .sort(),
+      enabledModuleIds: [...enabledIds].filter((id) => mountedIds.has(id)).sort(),
+    };
   }
 
   /** Test whether the role set grants a permission code (with super-admin short-circuit). */

@@ -113,6 +113,21 @@ const CurrentUserRespSchema = successResponse({
 
 export type CurrentUserResp = Static<typeof CurrentUserRespSchema>;
 
+const MobileCapabilitiesSchema = Type.Object(
+  {
+    permissions: Type.Array(Type.String(), { description: "当前用户实际权限码" }),
+    enabledModuleIds: Type.Array(Type.String(), { description: "已挂载且启用的业务模块 ID" }),
+  },
+  { $id: "mobileCapabilities" },
+);
+
+export type MobileCapabilities = Static<typeof MobileCapabilitiesSchema>;
+
+const MobileCapabilitiesRespSchema = successResponse({
+  data: Type.Ref("mobileCapabilities"),
+  $id: "mobileCapabilitiesResp",
+});
+
 // 刷新令牌请求 Schema
 // refreshToken 设为可选：浏览器场景下从 HttpOnly cookie 读取，body 可为空；
 // 非浏览器客户端仍可通过 body 传入。缺失时由路由处理器返回业务错误码。
@@ -145,6 +160,8 @@ const registerAuth = (fastify: FastifyInstance) => {
   fastify.addSchema(LoginRespSchema);
   fastify.addSchema(CurrentUserSchema);
   fastify.addSchema(CurrentUserRespSchema);
+  fastify.addSchema(MobileCapabilitiesSchema);
+  fastify.addSchema(MobileCapabilitiesRespSchema);
   fastify.addSchema(RefreshTokenReqSchema);
   fastify.addSchema(RefreshTokenRespSchema);
 };

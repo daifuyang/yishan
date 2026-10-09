@@ -6,6 +6,10 @@ import '@fastify/redis'
  * Core 在 onRoute 钩子中读取该字段做 prefix 唯一性校验。
  */
 declare module 'fastify' {
+  interface FastifyRequest {
+    tokenScope?: string[]
+  }
+
   interface FastifyContextConfig {
     moduleId?: string
   }
