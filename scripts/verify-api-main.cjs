@@ -153,7 +153,17 @@ async function verifyMain() {
       const adminResponse = await request('/admin/')
       assert.equal(adminResponse.status, 200)
       assert.match(adminResponse.headers.get('content-type'), /text\/html/)
-      assert.equal(await adminResponse.text(), readFileSync(adminIndex, 'utf8'))
+      const html = await adminResponse.text()
+      assert.equal(html, readFileSync(adminIndex, 'utf8'))
+      const assets = [...html.matchAll(/<(?:script|link)\b[^>]*\b(?:src|href)="([^"]+)"[^>]*>/gi)]
+        .map(match => new URL(match[1], `${base}/admin/`))
+        .filter(url => url.origin === base)
+      assert(assets.length > 0, 'Compiled Admin has no local entry assets')
+      for (const asset of assets) {
+        const response = await request(asset.pathname + asset.search)
+        assert.equal(response.status, 200, `Admin asset is missing: ${asset.pathname}`)
+        assert(!response.headers.get('content-type')?.includes('text/html'), `Admin SPA fallback served instead of asset: ${asset.pathname}`)
+      }
       adminStatus = adminResponse.status
     }
     child.send('SIGINT')

@@ -89,3 +89,5 @@ Admin 仅调整后端 manifest/OpenAPI 路径工程配置和文档；组件、�
 真实 HTTP 写入暴露旧 portal/shop Handler 的既有错误：OpenAPI 声明直接返回实体，但 21 个新建/编辑 Handler 返回 `ResponseUtil.success` envelope，Fastify 因顶层缺少 `id` 在数据库写入后返回 500。修复仅让这些 Handler 直接返回实体，保留原 Schema、权限与业务服务。新增 21 项真实 Fastify 序列化回归，先全部复现 500，再全部通过；Demo 全部单元回归为 294 passed / 1 既有 skipped，API 全包 typecheck/build 通过。
 
 编译 Demo 的隔离 MySQL 集成测试增加 portal/shop 分类新建、编辑、读取、软删除验证并通过，原实际运行 OpenAPI 的兼容比较仍通过。预览实例的 27 项 HTTP 检查通过，包括管理员登录、匿名拒绝、普通用户 RBAC、系统列表、业务写入、受控用户校验/扩展事件、模块禁用与恢复、Swagger 101 paths 和 Admin 首页。重新打包使用 `--admin apps/yishan-admin/dist`，完整生产依赖闭包检查通过；浏览器自动化环境没有可用浏览器，因此本轮页面以真实 HTTP 验证，未宣称完成交互式 UI 验收。
+
+联合部署必须将 Admin 的 `PUBLIC_PATH=/admin/` 与 API 挂载路径对齐。默认根路径构建虽能返回首页 HTML，但其入口资源在 `/admin/` 部署时会 404。现有构建配置已支持该变量，无前端源码变更；预览已按此配置重新构建，首页与全部 3 个本地入口资源均返回 200。`verify-api-main.cjs` 增加真实资源 HTTP 检查，错误路径产物复现失败，正确产物通过 production main、认证、99-path OpenAPI、资源、迁移元数据与 SIGINT 退出验证；18 项脚本测试通过。
