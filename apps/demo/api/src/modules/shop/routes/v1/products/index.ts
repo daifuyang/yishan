@@ -64,10 +64,10 @@ const products: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.PRODUCT_CREATE },
       schema: { tags: [ROUTE_TAG], summary: '新建商品', body: ProductCreateReqSchema, response: { 200: ProductRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const userId = req.currentUser?.id ?? 1
       const created = await service.create({ ...req.body, creatorId: userId, updaterId: userId })
-      return ResponseUtil.success(reply, created, '商品创建成功')
+      return created
     },
   )
 
@@ -77,9 +77,9 @@ const products: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.PRODUCT_UPDATE },
       schema: { tags: [ROUTE_TAG], summary: '更新商品', params: IdParamsSchema, body: ProductUpdateReqSchema, response: { 200: ProductRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const updated = await service.update(req.params.id, { ...req.body, updaterId: req.currentUser?.id ?? 1 })
-      return ResponseUtil.success(reply, updated, '商品更新成功')
+      return updated
     },
   )
 
@@ -112,10 +112,10 @@ const products: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.SKU_CREATE },
       schema: { tags: [ROUTE_TAG], summary: '新增 SKU', params: IdParamsSchema, body: SkuCreateReqSchema, response: { 200: SkuRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const userId = req.currentUser?.id ?? 1
       const created = await service.createSku({ productId: req.params.id, ...req.body, creatorId: userId, updaterId: userId })
-      return ResponseUtil.success(reply, created, 'SKU 创建成功')
+      return created
     },
   )
 
@@ -125,9 +125,9 @@ const products: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.SKU_UPDATE },
       schema: { tags: [ROUTE_TAG], summary: '更新 SKU', params: IdParamsSchema, body: SkuUpdateReqSchema, response: { 200: SkuRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const updated = await service.updateSku(req.params.id, { ...req.body, updaterId: req.currentUser?.id ?? 1 })
-      return ResponseUtil.success(reply, updated, 'SKU 更新成功')
+      return updated
     },
   )
 

@@ -55,10 +55,10 @@ const articles: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.ARTICLE_CREATE },
       schema: { tags: [ROUTE_TAG], summary: '新建文章', body: ArticleCreateReqSchema, response: { 200: ArticleRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const userId = req.currentUser?.id ?? 1
       const created = await service.create({ ...req.body, creatorId: userId, updaterId: userId })
-      return ResponseUtil.success(reply, created, '文章创建成功')
+      return created
     },
   )
 
@@ -68,9 +68,9 @@ const articles: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.ARTICLE_UPDATE },
       schema: { tags: [ROUTE_TAG], summary: '更新文章', params: IdParamsSchema, body: ArticleUpdateReqSchema, response: { 200: ArticleRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const updated = await service.update(req.params.id, { ...req.body, updaterId: req.currentUser?.id ?? 1 })
-      return ResponseUtil.success(reply, updated, '文章更新成功')
+      return updated
     },
   )
 

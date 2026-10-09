@@ -112,6 +112,26 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
       expect(login.headers['x-request-id']).toBeDefined()
       expect((await app.inject({ url: '/api/v1/auth/me', headers })).statusCode).toBe(200)
       expect((await app.inject({ url: '/api/demo/v1/info', headers })).statusCode).toBe(200)
+      for (const module of ['portal', 'shop']) {
+        const url = `/api/${module}/v1/categories/`
+        const createdCategory = await app.inject({ method: 'POST', url, headers,
+          payload: { name: `${module} response contract`, description: 'Created through HTTP' } })
+        expect(createdCategory.statusCode, createdCategory.body).toBe(200)
+        const category = createdCategory.json<{ id: number; name: string; createdAt: string }>()
+        expect(category.id).toBeGreaterThan(0)
+        expect(category.createdAt).toEqual(expect.any(String))
+        expect(category).not.toHaveProperty('data')
+        const updatedCategory = await app.inject({ method: 'PATCH', url: `${url}${category.id}`, headers,
+          payload: { description: 'Updated through HTTP' } })
+        expect(updatedCategory.statusCode, updatedCategory.body).toBe(200)
+        expect(updatedCategory.json()).toMatchObject({ id: category.id, description: 'Updated through HTTP' })
+        const categoryDetail = await app.inject({ url: `${url}${category.id}`, headers })
+        expect(categoryDetail.statusCode, categoryDetail.body).toBe(200)
+        expect(categoryDetail.json()).toMatchObject({ id: category.id, description: 'Updated through HTTP' })
+        const removedCategory = await app.inject({ method: 'DELETE', url: `${url}${category.id}`, headers })
+        expect(removedCategory.statusCode, removedCategory.body).toBe(200)
+        expect(removedCategory.json()).toEqual({ success: true })
+      }
       const profileResponse = await app.inject({ url: '/api/demo/v1/me/profile', headers })
       expect(profileResponse.statusCode, profileResponse.body).toBe(200)
       expect(profileResponse.json().data.user).toMatchObject({ username: 'admin' })

@@ -54,10 +54,10 @@ const categories: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.CATEGORY_CREATE },
       schema: { tags: [ROUTE_TAG], summary: '新建分类', body: CategoryCreateReqSchema, response: { 200: CategoryRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const userId = req.currentUser?.id ?? 1
       const created = await service.create({ ...req.body, creatorId: userId, updaterId: userId })
-      return ResponseUtil.success(reply, created, '分类创建成功')
+      return created
     },
   )
 
@@ -67,9 +67,9 @@ const categories: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.CATEGORY_UPDATE },
       schema: { tags: [ROUTE_TAG], summary: '更新分类', params: IdParamsSchema, body: CategoryUpdateReqSchema, response: { 200: CategoryRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const updated = await service.update(req.params.id, { ...req.body, updaterId: req.currentUser?.id ?? 1 })
-      return ResponseUtil.success(reply, updated, '分类更新成功')
+      return updated
     },
   )
 

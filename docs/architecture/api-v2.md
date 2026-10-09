@@ -32,4 +32,4 @@ Core 先连接资源、初始化装饰器/插件，再同步已安装模块、�
 
 使用 `pnpm typecheck:api`、`pnpm test:api`、`pnpm test:integration`、`pnpm check:boundaries`、`pnpm check:migrations`、`pnpm check:openapi`。FC3 不需要运行开发工具，不随启动迁移。数据库执行约束见 [数据库所有权](database-ownership.md)，实际验证与限制见 [迁移报告](api-migration-report.md)。
 
-独立产物验证先运行 `pnpm build:api` 和 `pnpm build:admin`，再执行 `node scripts/package-api.mjs --output <external-temp-directory>`。`node scripts/verify-api-main.cjs --artifact <external-temp-directory>` 在 Node 22 下使用 loopback MySQL 随机隔离 schema 启动产物的真实 main，验证 HTTP、认证、文档、静态首页及优雅退出，并清理自身测试 schema。该验证需要本机测试 MySQL；不能指向产品或生产数据库。七牛 SDK 既有生产依赖包含 TypeScript 4.9，详见迁移报告的第三方限制。
+独立产物验证先运行 `pnpm build:api` 和 `pnpm build:admin`，再执行 `node scripts/package-api.mjs --output <external-temp-directory> --admin apps/yishan-admin/dist`；省略 `--admin` 时只打包 API。`node scripts/verify-api-main.cjs --artifact <external-temp-directory>` 在 Node 22 下使用 loopback MySQL 随机隔离 schema 启动产物的真实 main，验证 HTTP、认证、文档、静态首页及优雅退出，并清理自身测试 schema。该验证需要本机测试 MySQL；不能指向产品或生产数据库。七牛 SDK 既有生产依赖包含 TypeScript 4.9，详见迁移报告的第三方限制。

@@ -55,10 +55,10 @@ const pageTemplates: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.PAGE_TEMPLATE_CREATE },
       schema: { tags: [ROUTE_TAG], summary: '新建页面模板', body: TemplateCreateReqSchema, response: { 200: TemplateRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const userId = req.currentUser?.id ?? 1
       const created = await service.create({ ...req.body, type: TEMPLATE_TYPE, creatorId: userId, updaterId: userId })
-      return ResponseUtil.success(reply, created, '页面模板创建成功')
+      return created
     },
   )
 
@@ -68,9 +68,9 @@ const pageTemplates: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.PAGE_TEMPLATE_UPDATE },
       schema: { tags: [ROUTE_TAG], summary: '更新页面模板', params: IdParamsSchema, body: TemplateUpdateReqSchema, response: { 200: TemplateRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const updated = await service.update(req.params.id, { ...req.body, updaterId: req.currentUser?.id ?? 1 })
-      return ResponseUtil.success(reply, updated, '页面模板更新成功')
+      return updated
     },
   )
 

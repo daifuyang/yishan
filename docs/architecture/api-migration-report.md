@@ -81,3 +81,11 @@ Admin 仅调整后端 manifest/OpenAPI 路径工程配置和文档；组件、�
 有效后端脚本、CI、构建/部署、工作区和活跃文档使用新路径；历史基线保留旧路径证据，禁止修改的 UI 内旧指引文本未改，不能声称全仓旧字符串零出现。
 
 可以通过新增自己的 config/app/main/manifest 和四个公开 Core 依赖创建 `apps/crm/api` 或 `apps/axis/api`，使用独立数据库/JWT/cache namespace，无需侵入 Core。尚未创建这些正式应用，也未提供自动云资源配置；安装现有 CRM 模块前必须先解决上述历史基线问题。
+
+## 后续新库现场验证
+
+2026-10-09 按用户要求创建保留运行的本机预览实例：独立新 MySQL 数据库、仅有该库权限的账号、独立 Redis 命名空间，API 与编译后的 Admin 在 loopback 3200 端口提供服务。6 份已安装迁移从真实空库执行，重复迁移/Seed 后数量和管理员密码一致；未修改原产品数据库。实例凭据与日志存放用户目录的受限配置文件中，不进入 Git。
+
+真实 HTTP 写入暴露旧 portal/shop Handler 的既有错误：OpenAPI 声明直接返回实体，但 21 个新建/编辑 Handler 返回 `ResponseUtil.success` envelope，Fastify 因顶层缺少 `id` 在数据库写入后返回 500。修复仅让这些 Handler 直接返回实体，保留原 Schema、权限与业务服务。新增 21 项真实 Fastify 序列化回归，先全部复现 500，再全部通过；Demo 全部单元回归为 294 passed / 1 既有 skipped，API 全包 typecheck/build 通过。
+
+编译 Demo 的隔离 MySQL 集成测试增加 portal/shop 分类新建、编辑、读取、软删除验证并通过，原实际运行 OpenAPI 的兼容比较仍通过。预览实例的 27 项 HTTP 检查通过，包括管理员登录、匿名拒绝、普通用户 RBAC、系统列表、业务写入、受控用户校验/扩展事件、模块禁用与恢复、Swagger 101 paths 和 Admin 首页。重新打包使用 `--admin apps/yishan-admin/dist`，完整生产依赖闭包检查通过；浏览器自动化环境没有可用浏览器，因此本轮页面以真实 HTTP 验证，未宣称完成交互式 UI 验收。

@@ -66,10 +66,10 @@ const orders: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.ORDER_CREATE },
       schema: { tags: [ROUTE_TAG], summary: '创建订单', body: OrderCreateReqSchema, response: { 200: OrderRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const userId = req.currentUser?.id ?? 1
       const created = await service.create({ ...req.body, creatorId: userId, updaterId: userId })
-      return ResponseUtil.success(reply, created, '订单创建成功')
+      return created
     },
   )
 
@@ -79,9 +79,9 @@ const orders: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.ORDER_UPDATE },
       schema: { tags: [ROUTE_TAG], summary: '更新订单', params: IdParamsSchema, body: OrderUpdateReqSchema, response: { 200: OrderRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const updated = await service.update(req.params.id, { ...req.body, updaterId: req.currentUser?.id ?? 1 })
-      return ResponseUtil.success(reply, updated, '订单更新成功')
+      return updated
     },
   )
 

@@ -58,10 +58,10 @@ const attributes: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.ATTRIBUTE_CREATE },
       schema: { tags: [ROUTE_TAG], summary: '新建属性', body: AttributeCreateReqSchema, response: { 200: AttributeRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const userId = req.currentUser?.id ?? 1
       const created = await service.create({ ...req.body, creatorId: userId, updaterId: userId })
-      return ResponseUtil.success(reply, created, '属性创建成功')
+      return created
     },
   )
 
@@ -71,9 +71,9 @@ const attributes: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.ATTRIBUTE_UPDATE },
       schema: { tags: [ROUTE_TAG], summary: '更新属性', params: IdParamsSchema, body: AttributeUpdateReqSchema, response: { 200: AttributeRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const updated = await service.update(req.params.id, { ...req.body, updaterId: req.currentUser?.id ?? 1 })
-      return ResponseUtil.success(reply, updated, '属性更新成功')
+      return updated
     },
   )
 
@@ -106,12 +106,12 @@ const attributes: FastifyPluginAsync = async (app) => {
       access: { permission: PERMS.ATTRIBUTE_UPDATE },
       schema: { tags: [ROUTE_TAG], summary: '新增属性值', params: IdParamsSchema, body: AttributeValueCreateReqSchema, response: { 200: AttributeValueRespSchema } },
     },
-    async (req: any, reply: any) => {
+    async (req: any) => {
       const userId = req.currentUser?.id ?? 1
       const created = await service.createValue({
         attributeId: req.params.id, ...req.body, creatorId: userId, updaterId: userId,
       })
-      return ResponseUtil.success(reply, created, '属性值创建成功')
+      return created
     },
   )
 
