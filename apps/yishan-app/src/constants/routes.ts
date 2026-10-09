@@ -16,6 +16,10 @@ export const SECONDARY_PAGES = {
   profileEdit: 'pages/profile/edit/index',
   profilePassword: 'pages/profile/password/index',
   profileLoginLog: 'pages/profile/login-log/index',
+  messages: 'pages/messages/index',
+  settings: 'pages/settings/index',
+  security: 'pages/security/index',
+  about: 'pages/about/index',
   contactsIndex: 'pages/contacts/index/index',
   contactsDept: 'pages/contacts/dept/index',
 } as const
@@ -39,16 +43,19 @@ export const SYSTEM_PAGES = {
 export const PERMS = {
   // 用户管理
   userList: 'system:user:list',
-  userWrite: 'system:user:write',
+  userCreate: 'system:user:create',
+  userUpdate: 'system:user:update',
   userDelete: 'system:user:delete',
   // 部门管理
-  deptList: 'system:dept:list',
-  deptWrite: 'system:dept:write',
-  deptDelete: 'system:dept:delete',
+  deptList: 'system:department:list',
+  deptCreate: 'system:department:create',
+  deptUpdate: 'system:department:update',
+  deptDelete: 'system:department:delete',
   // 登录日志
   loginLogList: 'system:login-log:list',
   // 字典管理
   dictList: 'system:dict:list',
-  dictWrite: 'system:dict:write',
+  dictCreate: 'system:dict:create',
+  dictUpdate: 'system:dict:update',
   dictDelete: 'system:dict:delete',
 } as const

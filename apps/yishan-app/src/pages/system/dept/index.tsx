@@ -4,13 +4,16 @@ import { AppText, Tag } from '@/components/atoms'
 import { PageHeader, Card, ListItem } from '@/components/molecules'
 import { TabBar } from '@/components/organisms'
 import { useRequireAuth } from '@/utils/auth-guard'
+import { PageContainer } from '@/components/layout'
 import { TAB_PAGES } from '@/constants/routes'
 
 /**
  * 部门管理 · 列表（PR-1 占位 / PR-3 实装）
  */
 export default function DeptIndexPage() {
-  useRequireAuth()
+  const guard = useRequireAuth({ moduleId: 'system-dept' })
+
+  if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
 
   return (
     <View className="page-container">
@@ -39,7 +42,9 @@ export default function DeptIndexPage() {
       <View style={{ padding: '12px 16px' }}>
         <Card bordered padded>
           <View style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <AppText size={15} weight="semibold">部门管理</AppText>
+            <AppText size={15} weight="semibold">
+              部门管理
+            </AppText>
             <AppText size={13} variant="tertiary">
               以树形展示；点击节点进入详情，详情页内含基本信息 / 部门成员 / 子部门三个 Tab。
             </AppText>
@@ -51,11 +56,7 @@ export default function DeptIndexPage() {
 
         <View style={{ marginTop: 12 }}>
           <Card>
-            <ListItem
-              title="列表接口"
-              value="GET /api/v1/admin/departments"
-              showArrow={false}
-            />
+            <ListItem title="列表接口" value="GET /api/v1/admin/departments" showArrow={false} />
             <ListItem
               title="详情接口"
               value="GET /api/v1/admin/departments/:id"
@@ -66,12 +67,7 @@ export default function DeptIndexPage() {
               value="GET /api/v1/app/contacts/depts/:id/users"
               showArrow={false}
             />
-            <ListItem
-              title="写权限"
-              value="system:dept:write"
-              showArrow={false}
-              bordered={false}
-            />
+            <ListItem title="写权限" value="system:dept:write" showArrow={false} bordered={false} />
           </Card>
         </View>
       </View>

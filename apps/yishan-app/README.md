@@ -1,133 +1,71 @@
-# 移山小程序 (yishan-app)
+# Yishan Mobile 应用基座
 
-Taro 4 + React 18 微信小程序 + H5，**yishan 中后台的移动端基座**（与 admin 共享 system 域能力）。
+保留 Taro 4、React、TypeScript、Zustand；使用现有 Design Tokens、组件及服务端认证能力。没有新增业务模块、数据库表或生产 Mock。
 
-## 业务定位
-
-| 维度 | 决策 |
-|---|---|
-| 角色 | yishan 中后台的**移动端基座**（admin mobile client base） |
-| 数据源 | yishan-api **core 域 app 通道**（`/api/v1/app/...`） |
-| 业务扩展 | 后续通过 plugin 机制按需挂载（shop 商品/订单、portal 文章/页面） |
-| 设计 | 钉钉/飞书 ToB（钉钉蓝 `#1677FF` + 克制圆角） |
-| 端 | 微信小程序 + H5（首版 H5 走账号密码登录） |
-
-## Tab
-
-1. **首页** — 问候 + 最近登录 3 条 + 跳应用
-2. **应用** — 对齐 admin `system` 菜单，按已授权菜单树动态渲染
-3. **我的** — 个人资料 + 改密 + 登录日志 + 通讯录 + 退出
-
-## 快速开始
+## 运行
 
 ```bash
-# 启动 yishan-api（默认端口 3000）
-pnpm --filter yishan-api dev
-
-# H5 开发
 pnpm --filter yishan-app dev:h5
-# 访问 http://localhost:21003
-
-# 微信小程序开发（需要微信开发者工具打开 dist/ 预览）
 pnpm --filter yishan-app dev:weapp
-
-# 构建
-pnpm --filter yishan-app build:weapp
-pnpm --filter yishan-app build:h5
-
-# Lint + 类型检查
+pnpm --filter yishan-app tsc
 pnpm --filter yishan-app lint
+pnpm --filter yishan-app test
+pnpm --filter yishan-app build:h5
+pnpm --filter yishan-app build:weapp
 ```
 
-默认账号：`admin / admin123`
+H5 开发端口为 `21003`，`/api` 通过共享配置中的 `API_TARGET` 代理。构建产物分别位于 `dist/h5` 和 `dist/weapp`；微信开发者工具打开本应用目录，`project.config.json` 已指向 `dist/weapp/`。
 
-## 项目结构
+修改 `config/` 中的构建配置、路径别名或 API 环境变量后，重启 `dev:h5` / `dev:weapp`。源码热更新不会重新加载这些启动配置；旧开发进程可能出现常量未定义或新别名无法解析。
 
-```
-src/
-├── api/                       # API 客户端 + 业务模块
-│   ├── client.ts              # Taro.request + 401 拦截
-│   ├── auth.ts                # 登录/退出/refresh/me
-│   ├── user.ts                # me / password / login-logs
-│   ├── menu.ts                # authorized / flatten
-│   ├── contacts.ts            # 部门树 / 部门成员
-│   ├── dict.ts                # 按 type 查询
-│   ├── types.ts               # 通用类型 / ApiError
-│   └── index.ts
-├── stores/                    # 全局状态（zustand）
-│   └── auth.ts                # token + currentUser + bootstrap
-├── utils/
-│   ├── storage.ts             # Taro 存储封装
-│   ├── router.ts              # 401 → login
-│   ├── auth-guard.ts          # useRequireAuth hook
-│   └── format.ts              # 日期/首字
-├── constants/
-│   ├── routes.ts              # 路径常量
-│   └── index.ts               # TAB_BAR / THEME
-├── components/
-│   ├── atoms/                 # Button / Text / Avatar / Tag / Badge
-│   ├── molecules/             # Card / ListItem / SearchBar / GridItem / SectionHeader
-│   ├── organisms/             # HomeHeader / WorkbenchGrid / MineProfile / TabBar
-│   ├── feedback/              # EmptyState / Loading
-│   └── icons/
-├── pages/
-│   ├── index/                 # 首页
-│   ├── apps/                  # 应用
-│   ├── mine/                  # 我的
-│   ├── login/                 # 登录
-│   ├── profile/
-│   │   ├── edit/              # 改资料
-│   │   ├── password/          # 改密
-│   │   └── login-log/         # 登录日志列表
-│   └── contacts/
-│       ├── index/             # 部门树
-│       └── dept/              # 部门成员
-├── app.config.ts              # pages / window
-├── app.ts                     # 入口 + 启动拦截
-├── app.scss
-└── config.ts                  # API_BASE_URL
+生产 H5 默认使用同源 `/api`，需在部署层转发 API；跨域部署时设置 `YISHAN_APP_API_BASE_URL`。微信小程序生产构建必须设置真实 HTTPS API 地址，并在微信后台登记合法请求域名。环境变量在构建阶段注入，不在客户端读取 Node 环境。
+
+PowerShell 示例：
+
+```powershell
+$env:YISHAN_APP_API_BASE_URL = 'https://your-api.example.com'
+pnpm --filter yishan-app build:weapp
 ```
 
-## API 通道
+## 导航与页面
 
-`yishan-api` core 端 app 通道（`apps/yishan-api/src/core/routes/api/v1/app/`）：
+固定三个原生 Tab：首页、工作台、我的。Tab 使用 `switchTab`，设置、消息、个人资料等二级页使用正常导航栈；登录和二级页不显示 TabBar。登录失效使用 `reLaunch` 清理旧栈，登录成功可恢复本地白名单内的二级目的地；显式退出不保留目的地。
 
-| 端点 | 方法 | 说明 |
-|---|---|---|
-| `/api/v1/app` | GET | 根 |
-| `/api/v1/app/auth/login` | POST | 账号密码登录 |
-| `/api/v1/app/auth/logout` | POST | 退出 |
-| `/api/v1/app/auth/refresh` | POST | 刷新令牌 |
-| `/api/v1/app/auth/me` | GET | 当前用户（含 accessPath） |
-| `/api/v1/app/menus/authorized` | GET | 已授权菜单（树） |
-| `/api/v1/app/menus/flatten` | GET | 已授权菜单（扁平） |
-| `/api/v1/app/contacts/depts/tree` | GET | 部门树 |
-| `/api/v1/app/contacts/depts/:id/users` | GET | 部门成员 |
-| `/api/v1/app/dicts` | GET | 字典映射 |
-| `/api/v1/app/dicts/:type` | GET | 按 type 查询字典 |
-| `/api/v1/app/users/me` | PUT | 改资料 |
-| `/api/v1/app/users/me/password` | PUT | 改密（强制重登） |
-| `/api/v1/app/users/me/login-logs` | GET | 我的登录日志 |
+首页展示用户问候、授权快捷应用、消息入口及可关闭的真实登录活动；工作台支持分类、搜索和按用户保存的常用入口；我的提供现有资料修改、改密、登录日志、偏好设置及关于。消息页明确显示待接入，没有虚构消息或统计。
 
-**复用 core service**（`AuthService` / `UserService` / `MenuService` / `DeptService` / `DictService` / `LoginLogModel`），不强制 RBAC perm。
+共用 `PageContainer` 管理会话恢复、加载、错误重试和权限拒绝，复用已有 `PageHeader`、`EmptyState`、`Loading`、`StateView` 与原生确认弹窗 `confirmAction`，补充 `ErrorState`、`PermissionDenied`、`ListSkeleton`。颜色、字号、间距和安全区沿用 `src/styles/tokens.scss`。
 
-## 设计语言
+## 认证与服务端兼容
 
-钉钉/飞书 ToB 风格：
-- 主色：`#1677FF`（钉钉蓝）
-- 圆角克制：2/4/6/8/12px
-- 阴影克制：2 级
-- 间距 8 网格；字号 12-32
-- 按压反馈：`opacity: 0.6`
+复用 `/api/v1/app/auth/login`、`refresh`、`logout`、`me`、用户资料和菜单接口。请求统一注入身份凭证；并发 401 合并刷新并重试一次，旧请求不能恢复已退出的会话。刷新失败清理会话并跳转登录；普通网络错误保留会话并提供重试。退出优先使用 refresh token 撤销服务器会话，避免已过期 access token 阻止退出。
 
-完整 Token 在 `src/styles/tokens.scss`，不要在业务代码里硬编码色值/间距/字号。
+新增只读、向后兼容的 `GET /api/v1/app/auth/capabilities`，返回真实权限码与已挂载且启用的模块 ID，复用原 `app:auth:profile` 权限。原 `me` 和授权菜单只提供路径/关联权限，不能作为用户实际权限来源。API、OpenAPI 和 admin 生成客户端已同步；无数据库迁移，PC 功能不变。新版移动端要求服务端提供此接口；缺失时默认拒绝访问并展示恢复错误。
 
-## 后续工作
+## 模块扩展
 
-- [ ] 微信小程序登录（`Taro.login` + `jscode2session`）
-- [ ] 通知中心（plugin）
-- [ ] 头像上传
-- [ ] 应用点击 → 实际业务页（plugin 化扩展）
-- [ ] 替换占位 TabBar 图标为矢量导出的高质量 PNG
-- [ ] 单元测试 / Storybook
-- [ ] shop / portal 业务入口（plugin 化按需挂载）
+`src/modules/registry.ts` 是移动端静态实现注册表，声明 ID、名称、图标、页面入口、对应后端菜单路径、权限、分类和排序，不维护第二套菜单树。工作台展示服务端返回的有效功能菜单，分类、名称及顺序来自菜单接口；未适配的入口可搜索、加入常用，点击后提示建设中，不生成虚构路由。
+
+已实现页面的访问校验要求：
+
+- 后端菜单可见且启用；上级菜单也必须可见且启用。
+- 当前用户具有所需的全部真实权限，未取得权限时拒绝。
+- 对业务模块填写 `backendModuleId`，必须出现在服务端启用模块快照中。
+- 入口必须已实现且已注册；已有占位页的 `implemented: false` 拒绝直接访问。
+
+当前只复用已存在的通讯录和用户管理。CRM/客户旧页面源码保留，但已从应用构建注册中移除。服务端始终执行最终授权。
+
+新增模块时更新静态注册表，并在 `src/app.config.ts` 构建注册页面；需要分包时使用 Taro 的静态分包配置。模块子页访问关系在 `SECONDARY_MODULE_PAGES` 中声明，不把 PC 动态路由搬到小程序。
+
+## 用户详情
+
+用户详情使用摘要、基本信息、组织信息和账号记录分组，保留创建及更新记录。部门、角色名称通过已有详情接口按关联 ID 查询，遵循对应读取权限；名称无法获取时显示「名称暂不可用」，不直接显示关联 ID。
+
+底部编辑、启用／禁用、更多操作按权限等宽排列，内容高度 50px，安全区单独预留。重置密码和删除位于底部操作面板，写操作防重复提交，删除保留不可恢复确认及系统管理员保护。微信使用原生导航和密码输入确认，H5 保留现有导航并补充密码输入弹窗，重置失败保留输入；两端复用原编辑路由和用户操作 API。
+
+## 验证范围
+
+`tests/*.test.cjs` 使用仓库已有 TypeScript 编译器执行真实实现，仅替换平台请求、存储和导航边界；覆盖并发刷新、会话清理、恢复错误、权限交集、账号间状态隔离、静态路由、分页竞态及确认弹窗。没有新增测试依赖。
+
+`tests/browser/workbench.js` 是使用测试接口响应的 H5 手动回归脚本：先在 `http://127.0.0.1:21803` 提供 H5 静态构建，再打开独立 Playwright 会话并通过 `playwright-cli run-code --filename=apps/yishan-app/tests/browser/workbench.js` 执行。它不属于上述 Node 测试命令，也不代表真实服务端联调。
+
+微信产物构建通过不等于真机验收；发布前仍需开发者工具和真实 HTTPS 域名联调。消息服务、微信快捷登录和头像上传作为后续独立能力，不伪装成已提供的服务器功能。

@@ -1,12 +1,13 @@
-import { useState } from 'react'
-import { View, Text, Input } from '@tarojs/components'
+import { useRef, useState } from 'react'
+import { Button, View, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import { useAuthStore } from '@/stores/auth'
 import { userApi } from '@/api'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { ApiError } from '@/api'
-import { LOGIN_PATH } from '@/constants/routes'
+import { PageContainer } from '@/components/layout'
+import { redirectToLogin } from '@/utils/router'
 
 import styles from './index.module.scss'
 
@@ -16,10 +17,12 @@ export default function ProfilePassword() {
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const submitLocked = useRef(false)
 
-  useRequireAuth()
+  const auth = useRequireAuth()
 
   const handleSubmit = async () => {
+    if (!auth.ready || !auth.allowed || submitLocked.current) return
     if (!oldPwd) {
       Taro.showToast({ title: '请输入旧密码', icon: 'none' })
       return
@@ -36,28 +39,28 @@ export default function ProfilePassword() {
       Taro.showToast({ title: '两次新密码不一致', icon: 'none' })
       return
     }
+    submitLocked.current = true
     setSubmitting(true)
     try {
       await userApi.changeMyPassword({ oldPassword: oldPwd, newPassword: newPwd })
-      Taro.showModal({
+      await Taro.showModal({
         title: '密码已修改',
         content: '请使用新密码重新登录',
         showCancel: false,
-        success: async () => {
-          await logout()
-          Taro.reLaunch({ url: `/pages/${LOGIN_PATH}` })
-        },
       })
+      await logout()
+      await redirectToLogin(false)
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : (e as Error).message
       Taro.showToast({ title: msg || '修改失败', icon: 'none' })
     } finally {
+      submitLocked.current = false
       setSubmitting(false)
     }
   }
 
   return (
-    <View className={`page-container ${styles.pwd}`}>
+    <PageContainer className={styles.pwd}>
       <View className={styles.pwd__form}>
         <View className={styles.pwd__field}>
           <Text className={styles.pwd__label}>旧密码</Text>
@@ -99,16 +102,14 @@ export default function ProfilePassword() {
         </View>
       </View>
 
-      <View
-        className={`${styles.pwd__submit} ${
-          submitting ? styles['pwd__submit--disabled'] : ''
-        }`}
+      <Button
+        className={`${styles.pwd__submit} ${submitting ? styles['pwd__submit--disabled'] : ''}`}
+        disabled={submitting}
+        loading={submitting}
         onClick={handleSubmit}
       >
-        <Text className={styles.pwd__submitText}>
-          {submitting ? '提交中…' : '确 认'}
-        </Text>
-      </View>
-    </View>
+        <Text className={styles.pwd__submitText}>{submitting ? '提交中…' : '确 认'}</Text>
+      </Button>
+    </PageContainer>
   )
 }

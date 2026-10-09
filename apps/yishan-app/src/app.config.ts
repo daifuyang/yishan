@@ -1,30 +1,14 @@
+import { APP_NAME, TAB_BAR } from './constants'
+import { PAGE_CONFIG } from './constants/page-config'
+
 export default defineAppConfig({
-  pages: [
-    'pages/index/index',
-    'pages/customers/index',
-    'pages/apps/index',
-    'pages/mine/index',
-    'pages/crm/action/index',
-    'pages/login/index',
-    'pages/profile/edit/index',
-    'pages/profile/password/index',
-    'pages/profile/login-log/index',
-    'pages/contacts/index/index',
-    'pages/contacts/dept/index',
-    'pages/system/login-log/index',
-    'pages/system/dept/index',
-    'pages/system/dept/detail/index',
-    'pages/system/user/index',
-    'pages/system/user/detail/index',
-    'pages/system/user/edit/index',
-    'pages/system/dict/index',
-    'pages/system/dict/items/index',
-  ],
+  ...PAGE_CONFIG,
   window: {
     backgroundTextStyle: 'dark',
     navigationBarBackgroundColor: '#FFFFFF',
-    navigationBarTitleText: '移山',
+    navigationBarTitleText: APP_NAME,
     navigationBarTextStyle: 'black',
     backgroundColor: '#F7F8FA',
   },
+  tabBar: { ...TAB_BAR, list: TAB_BAR.list.map((tab) => ({ ...tab })) },
 })

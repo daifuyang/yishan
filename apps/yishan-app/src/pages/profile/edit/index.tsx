@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { View, Text, Input, Picker } from '@tarojs/components'
+import { useState, useEffect, useRef } from 'react'
+import { Button, View, Text, Input, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import { AppText } from '@/components/atoms'
@@ -9,6 +9,8 @@ import { useRequireAuth } from '@/utils/auth-guard'
 import { ApiError } from '@/api'
 import { dictApi } from '@/api'
 import type { DictItem } from '@/api/types'
+import { PageContainer } from '@/components/layout'
+import { navigateBack } from '@/utils/router'
 
 import styles from './index.module.scss'
 
@@ -29,26 +31,43 @@ export default function ProfileEdit() {
   const [gender, setGender] = useState<string>(user?.gender || '0')
   const [genderOptions, setGenderOptions] = useState<DictItem[]>(GENDER_OPTIONS)
   const [submitting, setSubmitting] = useState(false)
+  const initializedUserId = useRef<number | null>(null)
+  const submitLocked = useRef(false)
 
-  useRequireAuth()
+  const auth = useRequireAuth()
 
   useEffect(() => {
-    // 尝试从后端拉字典（如果存在 gender 类型）
+    if (!auth.ready || !auth.allowed || !user || initializedUserId.current === user.id) return
+    initializedUserId.current = user.id
+    setNickname(user.nickname || '')
+    setRealName(user.realName || '')
+    setEmail(user.email || '')
+    setGender(user.gender || '0')
+  }, [auth.ready, auth.allowed, user])
+
+  useEffect(() => {
+    if (!auth.ready || !auth.allowed) return
+    let active = true
     dictApi
       .getDictByType('gender')
       .then((data) => {
-        if (data && data.length > 0) setGenderOptions(data)
+        if (active && data && data.length > 0) setGenderOptions(data)
       })
       .catch(() => {
         // 忽略，使用本地默认
       })
-  }, [])
+    return () => {
+      active = false
+    }
+  }, [auth.ready, auth.allowed])
 
   const handleSave = async () => {
+    if (!auth.ready || !auth.allowed || submitLocked.current) return
     if (email && !/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(email)) {
       Taro.showToast({ title: '邮箱格式不正确', icon: 'none' })
       return
     }
+    submitLocked.current = true
     setSubmitting(true)
     try {
       await userApi.updateMe({
@@ -67,11 +86,12 @@ export default function ProfileEdit() {
       // 强制刷新 me 拉一次
       await refreshMe()
       Taro.showToast({ title: '保存成功', icon: 'success' })
-      setTimeout(() => Taro.navigateBack(), 600)
+      navigateBack()
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : (e as Error).message
       Taro.showToast({ title: msg || '保存失败', icon: 'none' })
     } finally {
+      submitLocked.current = false
       setSubmitting(false)
     }
   }
@@ -83,7 +103,7 @@ export default function ProfileEdit() {
   })()
 
   return (
-    <View className={`page-container ${styles.edit}`}>
+    <PageContainer className={styles.edit}>
       <View className={styles.edit__form}>
         <View className={styles.edit__field}>
           <Text className={styles.edit__label}>昵称</Text>
@@ -128,30 +148,26 @@ export default function ProfileEdit() {
             range={genderRange}
             value={genderValue}
             onChange={(e) => {
-              const idx = e.detail.value as number
+              const idx = Number(e.detail.value)
               setGender(genderOptions[idx]?.value || '0')
             }}
           >
             <View className={styles.edit__picker}>
-              <AppText>
-                {genderOptions.find((g) => g.value === gender)?.label || '未知'}
-              </AppText>
+              <AppText>{genderOptions.find((g) => g.value === gender)?.label || '未知'}</AppText>
               <Text className={styles.edit__pickerArrow}>›</Text>
             </View>
           </Picker>
         </View>
       </View>
 
-      <View
-        className={`${styles.edit__submit} ${
-          submitting ? styles['edit__submit--disabled'] : ''
-        }`}
+      <Button
+        className={`${styles.edit__submit} ${submitting ? styles['edit__submit--disabled'] : ''}`}
+        disabled={submitting}
+        loading={submitting}
         onClick={handleSave}
       >
-        <Text className={styles.edit__submitText}>
-          {submitting ? '保存中…' : '保 存'}
-        </Text>
-      </View>
-    </View>
+        <Text className={styles.edit__submitText}>{submitting ? '保存中…' : '保 存'}</Text>
+      </Button>
+    </PageContainer>
   )
 }

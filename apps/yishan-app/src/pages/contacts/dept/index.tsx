@@ -10,6 +10,7 @@ import { firstChar } from '@/utils/format'
 import type { DeptUser } from '@/api/types'
 
 import styles from './index.module.scss'
+import { PageContainer } from '@/components/layout'
 
 export default function ContactsDept() {
   const router = useRouter()
@@ -20,9 +21,10 @@ export default function ContactsDept() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useRequireAuth()
+  const guard = useRequireAuth()
 
   const load = async () => {
+    if (!guard.ready || !guard.allowed) return
     setLoading(true)
     setError(null)
     try {
@@ -36,14 +38,14 @@ export default function ContactsDept() {
   }
 
   useEffect(() => {
-    if (deptId) {
+    if (deptId && guard.ready && guard.allowed) {
       Taro.setNavigationBarTitle({ title: `${deptName}成员` })
       load()
     }
-  }, [deptId])
+  }, [deptId, guard.ready, guard.allowed])
 
   return (
-    <View className="page-container">
+    <PageContainer>
       <SectionHeader title={deptName} showMore={false} />
 
       {loading && users.length === 0 ? (
@@ -70,19 +72,14 @@ export default function ContactsDept() {
             <View key={u.id}>
               <ListItem
                 icon={
-                  <Avatar
-                    src={u.avatar}
-                    name={u.realName || u.username}
-                    size="sm"
-                    shape="circle"
-                  />
+                  <Avatar src={u.avatar} name={u.realName || u.username} size="sm" shape="circle" />
                 }
                 title={
                   <View className={styles.dept__title}>
-                    <Text className={styles.dept__name}>
-                      {u.realName || u.username || '-'}
+                    <Text className={styles.dept__name}>{u.realName || u.username || '-'}</Text>
+                    <Text className={styles.dept__initial}>
+                      {firstChar(u.realName || u.username)}
                     </Text>
-                    <Text className={styles.dept__initial}>{firstChar(u.realName || u.username)}</Text>
                   </View>
                 }
                 value={u.phone || u.email || '-'}
@@ -93,6 +90,6 @@ export default function ContactsDept() {
           ))}
         </View>
       )}
-    </View>
+    </PageContainer>
   )
 }

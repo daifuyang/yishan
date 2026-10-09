@@ -32,22 +32,14 @@ function UserPanelHeader({
     <View className={styles.oUserPanel__header} onClick={onToggle}>
       <View className={styles.oUserPanel__headerLeft}>
         <Text className={styles.oUserPanel__title}>用户管理</Text>
-        {count > 0 && (
-          <Text className={styles.oUserPanel__count}>({count})</Text>
-        )}
+        {count > 0 && <Text className={styles.oUserPanel__count}>({count})</Text>}
       </View>
       <Text className={arrowClass}>▼</Text>
     </View>
   )
 }
 
-function SearchBar({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (v: string) => void
-}) {
+function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <View className={styles.oUserPanel__filter}>
       <Input
@@ -66,13 +58,7 @@ function SearchBar({
   )
 }
 
-function StatusFilter({
-  active,
-  onChange,
-}: {
-  active: string
-  onChange: (v: string) => void
-}) {
+function StatusFilter({ active, onChange }: { active: string; onChange: (v: string) => void }) {
   return (
     <View
       style={{
@@ -91,13 +77,8 @@ function StatusFilter({
             borderRadius: '12px',
             fontSize: '12px',
             backgroundColor:
-              active === chip.key
-                ? 'var(--color-primary-bg)'
-                : 'var(--color-bg-secondary)',
-            color:
-              active === chip.key
-                ? 'var(--color-primary)'
-                : 'var(--color-text-secondary)',
+              active === chip.key ? 'var(--color-primary-bg)' : 'var(--color-bg-secondary)',
+            color: active === chip.key ? 'var(--color-primary)' : 'var(--color-text-secondary)',
           }}
         >
           {chip.label}
@@ -121,18 +102,9 @@ function UserListItem({
   const statusConfig = USER_STATUS_CONFIG[user.status as UserStatus] || USER_STATUS_CONFIG['0']
 
   return (
-    <View
-      className={styles.oUserPanel__item}
-      onClick={onClick}
-      onLongPress={onLongPress}
-    >
+    <View className={styles.oUserPanel__item} onClick={onClick} onLongPress={onLongPress}>
       <View className={styles.oUserPanel__avatar}>
-        <Avatar
-          src={user.avatar}
-          name={displayName}
-          size="sm"
-          shape="circle"
-        />
+        <Avatar src={user.avatar} name={displayName} size="sm" shape="circle" />
       </View>
       <View className={styles.oUserPanel__info}>
         <Text className={styles.oUserPanel__name}>{displayName}</Text>
@@ -148,36 +120,28 @@ function UserListItem({
 }
 
 export function WorkbenchUserPanel({ expanded, onToggle }: WorkbenchUserPanelProps) {
-  const canWrite = useCanWrite(PERMS.userWrite)
+  const canUpdate = useCanWrite(PERMS.userUpdate)
   const canDelete = useCanWrite(PERMS.userDelete)
 
   const [searchKeyword, setSearchKeyword] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
-  const {
-    list,
-    total,
-    loading,
-    loadingMore,
-    finished,
-    error,
-    refresh,
-    loadMore,
-  } = useListPagination<AdminUser>({
-    fetcher: async ({ page, pageSize, filters }) => {
-      const query: AdminUserListQuery = {
-        page,
-        pageSize,
-        keyword: searchKeyword || undefined,
-        status: (filters.status as '0' | '1' | '2' | undefined) || undefined,
-      }
-      const { data, pagination } = await adminUserApi.listAdminUsers(query)
-      return { list: data, total: pagination.total }
-    },
-    initialKeyword: '',
-    initialFilters: { status: '' },
-    keywordDebounce: 300,
-  })
+  const { list, total, loading, loadingMore, finished, error, refresh, loadMore } =
+    useListPagination<AdminUser>({
+      fetcher: async ({ page, pageSize, filters }) => {
+        const query: AdminUserListQuery = {
+          page,
+          pageSize,
+          keyword: searchKeyword || undefined,
+          status: (filters.status as '0' | '1' | '2' | undefined) || undefined,
+        }
+        const { data, pagination } = await adminUserApi.listAdminUsers(query)
+        return { list: data, total: pagination.total }
+      },
+      initialKeyword: '',
+      initialFilters: { status: '' },
+      keywordDebounce: 300,
+    })
 
   useEffect(() => {
     if (expanded && list.length === 0 && !loading) {
@@ -189,26 +153,20 @@ export function WorkbenchUserPanel({ expanded, onToggle }: WorkbenchUserPanelPro
     setSearchKeyword(value)
   }, [])
 
-  const handleStatusChange = useCallback(
-    (status: string) => {
-      setStatusFilter(status)
-    },
-    [],
-  )
+  const handleStatusChange = useCallback((status: string) => {
+    setStatusFilter(status)
+  }, [])
 
-  const handleItemClick = useCallback(
-    (user: AdminUser) => {
-      navigateTo(`/${SYSTEM_PAGES.userDetail}?id=${user.id}`)
-    },
-    [],
-  )
+  const handleItemClick = useCallback((user: AdminUser) => {
+    navigateTo(`/${SYSTEM_PAGES.userDetail}?id=${user.id}`)
+  }, [])
 
   const handleLongPress = useCallback(
     async (user: AdminUser) => {
-      if (!canWrite && !canDelete) return
+      if (!canUpdate && !canDelete) return
 
       const items: string[] = []
-      if (canWrite) {
+      if (canUpdate) {
         items.push(user.status === '1' ? '禁用' : '启用')
         items.push('重置密码')
       }
@@ -230,7 +188,7 @@ export function WorkbenchUserPanel({ expanded, onToggle }: WorkbenchUserPanelPro
         await deleteUser(user)
       }
     },
-    [canWrite, canDelete],
+    [canUpdate, canDelete],
   )
 
   const toggleStatus = async (user: AdminUser) => {
@@ -309,11 +267,7 @@ export function WorkbenchUserPanel({ expanded, onToggle }: WorkbenchUserPanelPro
 
   return (
     <View className={styles.oUserPanel}>
-      <UserPanelHeader
-        expanded={expanded}
-        onToggle={onToggle}
-        count={total}
-      />
+      <UserPanelHeader expanded={expanded} onToggle={onToggle} count={total} />
       <View className={bodyClass}>
         {expanded && (
           <>

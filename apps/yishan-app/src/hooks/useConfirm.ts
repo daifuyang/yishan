@@ -19,7 +19,7 @@ export async function confirmAction(opts: ConfirmOptions): Promise<boolean> {
     confirmText: opts.confirmText ?? '确定',
     cancelText: opts.cancelText ?? '取消',
     confirmColor: opts.confirmColor ?? '#1677FF',
-    cancelColor: opts.cancelColor,
+    cancelColor: opts.cancelColor ?? '#1D2129',
   })
   return res.confirm
 }

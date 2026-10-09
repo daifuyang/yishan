@@ -1,5 +1,7 @@
 /// <reference types="@tarojs/taro" />
 
+declare const __YISHAN_API_BASE_URL__: string
+
 declare module '*.png'
 declare module '*.gif'
 declare module '*.jpg'

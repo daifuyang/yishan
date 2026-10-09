@@ -4,6 +4,7 @@ import { AppText, Tag } from '@/components/atoms'
 import { PageHeader, Card, ListItem } from '@/components/molecules'
 import { TabBar } from '@/components/organisms'
 import { useRequireAuth } from '@/utils/auth-guard'
+import { PageContainer } from '@/components/layout'
 import { TAB_PAGES } from '@/constants/routes'
 
 /**
@@ -11,7 +12,9 @@ import { TAB_PAGES } from '@/constants/routes'
  *  - 占位说明：列表 / 筛选 / 详情待 PR-2 实装
  */
 export default function LoginLogPage() {
-  useRequireAuth()
+  const guard = useRequireAuth({ moduleId: 'system-login-log' })
+
+  if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
 
   return (
     <View className="page-container">
@@ -19,7 +22,9 @@ export default function LoginLogPage() {
       <View style={{ padding: '12px 16px' }}>
         <Card bordered padded>
           <View style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <AppText size={15} weight="semibold">登录日志</AppText>
+            <AppText size={15} weight="semibold">
+              登录日志
+            </AppText>
             <AppText size={13} variant="tertiary">
               支持按用户名、状态、时间范围筛选；点击条目查看详情。
             </AppText>
@@ -31,11 +36,7 @@ export default function LoginLogPage() {
 
         <View style={{ marginTop: 12 }}>
           <Card>
-            <ListItem
-              title="接口"
-              value="GET /api/v1/admin/system/login-logs"
-              showArrow={false}
-            />
+            <ListItem title="接口" value="GET /api/v1/admin/system/login-logs" showArrow={false} />
             <ListItem
               title="权限"
               value="system:login-log:list"

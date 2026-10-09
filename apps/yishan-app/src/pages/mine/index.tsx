@@ -1,70 +1,72 @@
-import { View } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import { useRef } from 'react'
+import { useDidShow } from '@tarojs/taro'
 
-import { MineProfile, TabBar, type MineMenuItem } from '@/components/organisms'
+import { IconFont } from '@/components/icons'
+import { PageContainer } from '@/components/layout'
+import { type MineMenuItem, MineProfile } from '@/components/organisms'
+import { APP_NAME } from '@/constants'
+import { SECONDARY_PAGES } from '@/constants/routes'
+import { confirmAction } from '@/hooks'
 import { useAuthStore } from '@/stores/auth'
-import { useRequireAuth } from '@/utils/auth-guard'
-import { navigateTo } from '@/utils/router'
-import { TAB_PAGES, SECONDARY_PAGES } from '@/constants/routes'
-import { ICONS } from '@/components/icons/icons'
+import { navigateTo, redirectToLogin } from '@/utils/router'
 
 export default function MinePage() {
-  const user = useAuthStore((s) => s.user)
-  const logout = useAuthStore((s) => s.logout)
+  const user = useAuthStore((state) => state.user)
+  const loggingOut = useRef(false)
 
-  useRequireAuth()
   useDidShow(() => {
-    useAuthStore.getState().refreshMe()
+    const auth = useAuthStore.getState()
+    if (auth.bootstrapped && auth.token && auth.user) void auth.refreshMe()
   })
 
-  const username = user?.realName || user?.username || '未登录'
-  const bio =
-    user?.email || (user?.phone ? `手机号 ${user.phone}` : '未设置简介')
-
-  const isAdmin = user?.roleIds && user.roleIds.length > 0
-
-  const handleItem = (key: string) => {
-    if (key === 'profile') {
-      navigateTo(`/${SECONDARY_PAGES.profileEdit}`)
-    } else if (key === 'password') {
-      navigateTo(`/${SECONDARY_PAGES.profilePassword}`)
-    } else if (key === 'loginLog') {
-      navigateTo(`/${SECONDARY_PAGES.profileLoginLog}`)
-    } else if (key === 'system') {
-      navigateTo('/pages/system/user/index')
-    } else if (key === 'logout') {
-      Taro.showModal({
-        title: '提示',
-        content: '确定要退出登录吗？',
-        success: async (res) => {
-          if (res.confirm) {
-            await logout()
-            Taro.reLaunch({ url: '/pages/login/index' })
-          }
-        },
-      })
+  const handleItem = async (key: string) => {
+    const routes: Record<string, string> = {
+      profile: SECONDARY_PAGES.profileEdit,
+      settings: SECONDARY_PAGES.settings,
+      security: SECONDARY_PAGES.security,
+      messages: SECONDARY_PAGES.messages,
+      about: SECONDARY_PAGES.about,
+    }
+    if (routes[key]) {
+      navigateTo(`/${routes[key]}`)
+      return
+    }
+    if (key !== 'logout' || loggingOut.current) return
+    loggingOut.current = true
+    try {
+      if (
+        await confirmAction({
+          title: '退出登录',
+          content: '确定要退出当前账号吗？',
+          confirmText: '退出',
+        })
+      ) {
+        await useAuthStore.getState().logout()
+        await redirectToLogin(false)
+      }
+    } finally {
+      loggingOut.current = false
     }
   }
 
   const menus: MineMenuItem[] = [
-    { key: 'profile', icon: ICONS.user, title: '个人资料' },
-    { key: 'password', icon: ICONS.settings, title: '修改密码' },
-    { key: 'loginLog', icon: ICONS.document, title: '登录日志' },
-    ...(isAdmin ? [{ key: 'system' as const, icon: ICONS.apps, title: '系统管理' }] : []),
-    { key: 'logout', icon: ICONS.logout, title: '退出登录' },
+    { key: 'profile', icon: <IconFont name="user" size={20} />, title: '个人资料' },
+    { key: 'security', icon: <IconFont name="settings" size={20} />, title: '账户安全' },
+    { key: 'messages', icon: <IconFont name="bell" size={20} />, title: '消息中心' },
+    { key: 'settings', icon: <IconFont name="settings" size={20} />, title: '设置' },
+    { key: 'about', icon: 'ⓘ', title: `关于${APP_NAME}` },
+    { key: 'logout', icon: '→', title: '退出登录' },
   ]
 
   return (
-    <View className="page-container">
+    <PageContainer>
       <MineProfile
-        username={username}
+        username={user?.realName || user?.nickname || user?.username || ''}
         avatar={user?.avatar}
-        bio={bio}
-        showStats={false}
+        bio={user?.email || user?.phone || '完善个人资料，方便同事联系'}
         menus={menus}
-        onItemClick={handleItem}
+        onItemClick={(key) => void handleItem(key)}
       />
-      <TabBar currentPath={TAB_PAGES.mine} />
-    </View>
+    </PageContainer>
   )
 }

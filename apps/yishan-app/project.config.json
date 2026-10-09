@@ -1,5 +1,5 @@
 {
-  "miniprogramRoot": "dist/",
+  "miniprogramRoot": "dist/weapp/",
   "projectname": "yishan-app",
   "appid": "wx7a01ad6bcd572f1c",
   "setting": {

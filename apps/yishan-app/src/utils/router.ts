@@ -1,43 +1,76 @@
-/**
- * 路由辅助：401 跳登录、TAB 切换
- */
 import Taro from '@tarojs/taro'
 
-import { LOGIN_PATH } from '../constants/routes'
+import { TAB_BAR } from '../constants'
+import { LOGIN_PATH, SECONDARY_PAGES, SYSTEM_PAGES, TAB_PAGES } from '../constants/routes'
 
-const LOGIN_URL = `/pages/${LOGIN_PATH}`
+const loginUrl = `/pages/${LOGIN_PATH}`
+const homeUrl = `/${TAB_PAGES.home}`
+const tabs = new Set<string>(TAB_BAR.list.map((item) => `/${item.pagePath}`))
+const secondaryPaths = new Set<string>(
+  [...Object.values(SECONDARY_PAGES), ...Object.values(SYSTEM_PAGES)].map((page) => `/${page}`),
+)
+let redirectFlight: Promise<unknown> | undefined
+let returnUrl: string | undefined
 
-let redirecting = false
+function normalize(path: string) {
+  return `/${path.replace(/^\/+/, '')}`
+}
 
-/**
- * 跳到登录页（用于 401 / 未登录拦截）
- * 防抖：避免多次并发 401 反复 push
- */
-export function redirectToLogin() {
-  if (redirecting) return
-  redirecting = true
-  try {
-    const pages = Taro.getCurrentPages()
-    const current = pages[pages.length - 1]
-    if (current && `/${current.route}` === LOGIN_URL) {
-      return
+export function redirectToLogin(rememberDestination = true): Promise<unknown> {
+  if (redirectFlight) return redirectFlight
+  const pages = Taro.getCurrentPages()
+  const current = pages[pages.length - 1]
+  const path = normalize(current?.route ?? '')
+  if (!rememberDestination) returnUrl = undefined
+  else if (secondaryPaths.has(path)) {
+    const options = current?.options ?? {}
+    const query = Object.entries(options)
+      .filter(([key]) => !key.startsWith('$'))
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+      .join('&')
+    returnUrl = `${path}${query ? `?${query}` : ''}`
+  }
+  if (path === loginUrl) return Promise.resolve()
+  const flight = Taro.reLaunch({ url: loginUrl })
+  redirectFlight = flight
+  void flight
+    .finally(() => {
+      if (redirectFlight === flight) redirectFlight = undefined
+    })
+    .catch(() => {})
+  return flight
+}
+
+export async function resumeAfterLogin() {
+  const destination = returnUrl
+  returnUrl = undefined
+  await Taro.reLaunch({ url: homeUrl })
+  if (destination && secondaryPaths.has(destination.split('?')[0])) {
+    // Taro H5 resolves reLaunch before its page transition has finished.
+    // Wait for the home route before mounting a secondary destination.
+    const timeoutAt = Date.now() + 1000
+    while (Date.now() < timeoutAt) {
+      const pages = Taro.getCurrentPages()
+      if (pages[pages.length - 1]?.route === TAB_PAGES.home) break
+      await new Promise((resolve) => setTimeout(resolve, 16))
     }
-    Taro.redirectTo({ url: LOGIN_URL })
-  } finally {
-    setTimeout(() => {
-      redirecting = false
-    }, 500)
+    await Taro.navigateTo({ url: destination })
   }
 }
 
 export function navigateTo(path: string) {
-  Taro.navigateTo({ url: path.startsWith('/') ? path : `/${path}` })
+  const url = normalize(path)
+  if (tabs.has(url.split('?')[0])) return switchTab(url.split('?')[0])
+  return Taro.navigateTo({ url })
 }
 
 export function navigateBack(delta = 1) {
-  Taro.navigateBack({ delta })
+  const pages = Taro.getCurrentPages()
+  if (pages.length <= delta) return Taro.reLaunch({ url: homeUrl })
+  return Taro.navigateBack({ delta })
 }
 
 export function switchTab(path: string) {
-  Taro.switchTab({ url: path.startsWith('/') ? path : `/${path}` })
+  const url = normalize(path).split('?')[0]
+  return Taro.switchTab({ url })
 }

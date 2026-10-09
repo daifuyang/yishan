@@ -7,7 +7,7 @@
       "!**/dist",
       "!**/node_modules",
       "!**/.taro",
-      "!**/fonts-subset/**",
+      "!**/fonts-subset",
       "!biome.json",
       "!src/index.html"
     ]

@@ -1,4 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: '功能',
-  navigationStyle: 'custom',
+  navigationBarTitleText: '工作台',
+  enablePullDownRefresh: true,
 })

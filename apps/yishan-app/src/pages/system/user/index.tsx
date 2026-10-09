@@ -1,14 +1,14 @@
 import { useMemo } from 'react'
-import { View, Text } from '@tarojs/components'
+import { View, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import { AppText, Avatar, Tag } from '@/components/atoms'
-import { PageHeader, ListFilter, ListItem } from '@/components/molecules'
 import { StateView } from '@/components/feedback'
 import { TabBar } from '@/components/organisms'
 import { useListPagination, useCanWrite, confirmAction } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
-import { navigateTo } from '@/utils/router'
+import { PageContainer } from '@/components/layout'
+import { navigateBack, navigateTo } from '@/utils/router'
 import { adminUserApi } from '@/api'
 import type { AdminUser, AdminUserListQuery } from '@/api/admin/types'
 import { PERMS, SYSTEM_PAGES, TAB_PAGES } from '@/constants/routes'
@@ -22,9 +22,59 @@ const STATUS_CHIPS = [
   { key: '2', label: '锁定' },
 ] as const
 
+const SKELETON_ROWS = ['first', 'second', 'third'] as const
+
+function UserPageHeader({ total, canCreate }: { total: number; canCreate: boolean }) {
+  return (
+    <View className={styles.userHeader}>
+      <View
+        className={styles.userHeader__back}
+        onClick={() => navigateBack(1)}
+        hoverClass={styles.userHeader__backHover}
+        aria-label="返回"
+      >
+        <Text className={styles.userHeader__backIcon}>‹</Text>
+      </View>
+      <View className={styles.userHeader__titleWrap}>
+        <Text className={styles.userHeader__title}>用户管理</Text>
+        <Text className={styles.userHeader__subtitle}>{total} 位成员</Text>
+      </View>
+      <View className={styles.userHeader__right}>
+        {canCreate ? (
+          <View
+            className={styles.userHeader__create}
+            onClick={() => navigateTo(`/${SYSTEM_PAGES.userEdit}`)}
+            hoverClass={styles.userHeader__createHover}
+          >
+            <Text className={styles.userHeader__createIcon}>+</Text>
+            <Text>新建</Text>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
+function UserListSkeleton() {
+  return (
+    <View className={styles.userList} aria-label="加载中">
+      {SKELETON_ROWS.map((row) => (
+        <View className={styles.userSkeleton} key={row}>
+          <View className={styles.userSkeleton__avatar} />
+          <View className={styles.userSkeleton__content}>
+            <View className={styles.userSkeleton__name} />
+            <View className={styles.userSkeleton__meta} />
+          </View>
+        </View>
+      ))}
+    </View>
+  )
+}
+
 export default function UserIndexPage() {
-  useRequireAuth()
-  const canWrite = useCanWrite(PERMS.userWrite)
+  const guard = useRequireAuth({ moduleId: 'system-user' })
+  const canCreate = useCanWrite(PERMS.userCreate)
+  const canUpdate = useCanWrite(PERMS.userUpdate)
   const canDelete = useCanWrite(PERMS.userDelete)
 
   const {
@@ -41,6 +91,7 @@ export default function UserIndexPage() {
     setFilters,
     refresh,
   } = useListPagination<AdminUser>({
+    enabled: guard.ready && guard.allowed,
     fetcher: async ({ page, pageSize, keyword: kw, filters: fs }) => {
       const query: AdminUserListQuery = {
         page,
@@ -67,10 +118,12 @@ export default function UserIndexPage() {
     navigateTo(`/${SYSTEM_PAGES.userDetail}?id=${user.id}`)
   }
 
+  if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
+
   const handleLongPress = async (user: AdminUser) => {
-    if (!canWrite && !canDelete) return
+    if (!canUpdate && !canDelete) return
     const items: string[] = []
-    if (canWrite) {
+    if (canUpdate) {
       items.push(user.status === '1' ? '禁用' : '启用')
       items.push('重置密码')
     }
@@ -165,97 +218,121 @@ export default function UserIndexPage() {
 
   return (
     <View className="page-container">
-      <PageHeader
-        title="用户管理"
-        subtitle={`共 ${total} 人`}
-        right={
-          canWrite ? (
+      <UserPageHeader total={total} canCreate={canCreate} />
+
+      <View className={styles.userFilters}>
+        <View className={styles.userSearch}>
+          <Text className={styles.userSearch__icon}>⌕</Text>
+          <Input
+            className={styles.userSearch__input}
+            value={keyword}
+            placeholder="搜索用户"
+            onInput={(event) => setKeyword(event.detail.value)}
+          />
+          {keyword ? (
             <View
-              style={{
-                padding: '0 12px',
-                height: 28,
-                lineHeight: '28px',
-                borderRadius: 4,
-                background: 'var(--color-primary-bg)',
-                color: 'var(--color-primary)',
-                fontSize: 12,
-              }}
-              onClick={() => navigateTo(`/${SYSTEM_PAGES.userEdit}`)}
+              className={styles.userSearch__clear}
+              onClick={() => setKeyword('')}
+              hoverClass={styles.userSearch__clearHover}
+              aria-label="清除搜索"
             >
-              + 新建
+              <Text className={styles.userSearch__clearIcon}>×</Text>
             </View>
-          ) : undefined
-        }
-      />
+          ) : null}
+        </View>
+        <View className={styles.userFilters__chips}>
+          {statusChips.map((chip) => (
+            <View
+              key={chip.key || 'all'}
+              className={[styles.userChip, chip.active ? styles['userChip--active'] : '']
+                .filter(Boolean)
+                .join(' ')}
+              onClick={() => setFilters({ status: chip.key })}
+              hoverClass={styles.userChip__hover}
+            >
+              <Text>{chip.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
 
-      <ListFilter
-        searchPlaceholder="搜索用户名 / 姓名 / 手机 / 邮箱"
-        keyword={keyword}
-        onSearchChange={setKeyword}
-        chips={statusChips}
-        onChipClick={(k) => setFilters({ status: k })}
-      />
-
-      <View className={styles.userList}>
+      {kind === 'loading' ? <UserListSkeleton /> : null}
+      {kind === 'empty' ? (
         <StateView
-          kind={kind}
-          text={error || (kind === 'empty' ? '暂无用户' : undefined)}
-          onRetry={refresh}
-          minHeight={300}
-        >
-          {list.map((u) => (
-            <ListItem
-              key={u.id}
-              icon={
+          kind="empty"
+          text={keyword ? '未找到相关用户' : '暂无用户'}
+          minHeight={220}
+        />
+      ) : null}
+      {kind === 'error' ? (
+        <StateView kind="error" text="加载失败，请重试" onRetry={refresh} minHeight={220} />
+      ) : null}
+      {kind === 'ready' ? (
+        <View className={styles.userList}>
+          {list.map((u, index) => {
+            const displayName = u.realName || u.username || u.phone
+            const metadata = [u.username ? `@${u.username}` : '', u.phone || '']
+              .filter(Boolean)
+              .join(' · ')
+            const status =
+              u.status === '1'
+                ? { label: '启用', variant: 'success' as const }
+                : u.status === '0'
+                  ? { label: '禁用', variant: 'default' as const }
+                  : { label: '锁定', variant: 'warning' as const }
+
+            const longPressProps =
+              process.env.TARO_ENV !== 'h5'
+                ? { onLongPress: () => handleLongPress(u) }
+                : undefined
+
+            return (
+              <View
+                key={u.id}
+                className={[styles.userRow, index < list.length - 1 ? styles['userRow--bordered'] : '']
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => handleItemClick(u)}
+                hoverClass={styles.userRow__hover}
+                {...longPressProps}
+              >
                 <Avatar
                   src={u.avatar}
-                  name={u.realName || u.username || u.phone}
-                  size="sm"
+                  name={displayName}
+                  size="md"
                   shape="circle"
+                  className={styles.userRow__avatar}
                 />
-              }
-              title={
-                <View className={styles.userList__title}>
-                  <Text className={styles.userList__name}>
-                    {u.realName || u.username || u.phone}
-                  </Text>
-                  <Text className={styles.userList__sub}>@{u.username || '-'} · {u.phone}</Text>
+                <View className={styles.userRow__content}>
+                  <View className={styles.userRow__nameLine}>
+                    <Text className={styles.userRow__name}>{displayName}</Text>
+                    <Tag variant={status.variant} size="sm" className={styles.userRow__status}>
+                      {status.label}
+                    </Tag>
+                  </View>
+                  {metadata ? <Text className={styles.userRow__meta}>{metadata}</Text> : null}
                 </View>
-              }
-              value={
-                <View className={styles.userList__value}>
-                  {u.status === '1' ? (
-                    <Tag variant="success">启用</Tag>
-                  ) : u.status === '0' ? (
-                    <Tag variant="default">禁用</Tag>
-                  ) : (
-                    <Tag variant="warning">锁定</Tag>
-                  )}
-                </View>
-              }
-              showArrow
-              bordered
-              onClick={() => handleItemClick(u)}
-              // 长按弹操作表
-              // @ts-expect-error onLongPress 在 Taro View 中存在
-              onLongPress={() => handleLongPress(u)}
-            />
-          ))}
-        </StateView>
+                <Text className={styles.userRow__arrow}>›</Text>
+              </View>
+            )
+          })}
+        </View>
+      ) : null}
 
-        {!finished && list.length > 0 ? (
-          <View className={styles.userList__loadingMore}>
-            <AppText size={12} variant="tertiary">
-              {loadingMore ? '加载中…' : '上拉加载更多'}
-            </AppText>
-          </View>
-        ) : null}
-        {refreshing ? (
-          <View className={styles.userList__loadingMore}>
-            <AppText size={12} variant="tertiary">刷新中…</AppText>
-          </View>
-        ) : null}
-      </View>
+      {kind === 'ready' && !finished && list.length > 0 ? (
+        <View className={styles.userList__loadingMore}>
+          <AppText size={12} variant="tertiary">
+            {loadingMore ? '加载中…' : '上拉加载更多'}
+          </AppText>
+        </View>
+      ) : null}
+      {refreshing && kind === 'ready' ? (
+        <View className={styles.userList__loadingMore}>
+          <AppText size={12} variant="tertiary">
+            刷新中…
+          </AppText>
+        </View>
+      ) : null}
 
       <TabBar currentPath={TAB_PAGES.apps} />
     </View>

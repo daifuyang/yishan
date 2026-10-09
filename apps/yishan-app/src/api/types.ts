@@ -48,6 +48,13 @@ export class UnauthorizedError extends ApiError {
   }
 }
 
+export class RequestCancelledError extends ApiError {
+  constructor() {
+    super(-3, '请求已取消')
+    this.name = 'RequestCancelledError'
+  }
+}
+
 /* ===================== 业务模型类型 ===================== */
 
 export interface LoginData {
@@ -80,10 +87,7 @@ export interface CurrentUser {
   deptIds?: number[]
   roleIds?: number[]
   accessPath?: string[]
-  /**
-   * 当前用户拥有的权限码列表（用于按权限控制写动作）
-   * TODO: 后端在 /api/v1/app/auth/me 暂未下发此字段，缺失时前端默认放行
-   */
+  /** 当前用户拥有的权限码列表（服务端未下发时前端默认拒绝） */
   permissions?: string[]
 }
 
@@ -101,6 +105,7 @@ export interface SysMenuNode {
   hideInMenu: boolean
   isExternalLink: boolean
   perm?: string
+  permissionCodes?: string[]
   keepAlive: boolean
   children?: SysMenuNode[] | null
   createdAt: string
@@ -148,4 +153,3 @@ export interface DashboardStats {
   todayLogin: number
   online: number
 }
-

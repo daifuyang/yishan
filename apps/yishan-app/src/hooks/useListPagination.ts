@@ -1,20 +1,7 @@
-/**
- * 通用列表分页 hook
- *  - 上拉加载更多：调用 onReachBottom
- *  - 下拉刷新：调用 onPullDownRefresh（Taro 页面需配 enablePullDownRefresh）
- *  - 关键词搜索：setKeyword 后自动重置到第 1 页
- *  - 返回：list / loading / refreshing / loadingMore / finished / error / refresh / loadMore / setKeyword / setFilters
- */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Taro, { usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 
-import { ApiError } from '@/api/types'
-
 export interface ListPaginationOptions<T> {
-  /** 拉取函数：返回 { list, total }
-   *  - 每次 keyword / filters 变化都会触发新请求
-   *  - 收到的 keyword / filters 总是最新值（避免闭包陷阱）
-   */
   fetcher: (params: {
     page: number
     pageSize: number
@@ -22,12 +9,10 @@ export interface ListPaginationOptions<T> {
     filters: Record<string, unknown>
   }) => Promise<{ list: T[]; total: number }>
   pageSize?: number
-  /** 防抖：搜索关键词变化后等待多少毫秒再请求 */
   keywordDebounce?: number
-  /** 初始 keyword */
   initialKeyword?: string
-  /** 初始 filters（会被合并到 fetcher 入参） */
   initialFilters?: Record<string, unknown>
+  enabled?: boolean
 }
 
 export interface ListPaginationResult<T> {
@@ -41,7 +26,7 @@ export interface ListPaginationResult<T> {
   error: string | null
   keyword: string
   filters: Record<string, unknown>
-  setKeyword: (k: string) => void
+  setKeyword: (keyword: string) => void
   setFilters: (patch: Record<string, unknown>) => void
   refresh: () => Promise<void>
   loadMore: () => Promise<void>
@@ -55,8 +40,8 @@ export function useListPagination<T>(opts: ListPaginationOptions<T>): ListPagina
     keywordDebounce = 300,
     initialKeyword = '',
     initialFilters = {},
+    enabled = true,
   } = opts
-
   const [list, setList] = useState<T[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -66,112 +51,138 @@ export function useListPagination<T>(opts: ListPaginationOptions<T>): ListPagina
   const [finished, setFinished] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [keyword, setKeywordState] = useState(initialKeyword)
-  const [filters, setFiltersState] = useState<Record<string, unknown>>(initialFilters)
-
-  const pageRef = useRef(page)
-  pageRef.current = page
-
+  const [filters, setFiltersState] = useState(initialFilters)
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
-
-  // 把 keyword / filters 放到 ref 中，避免 fetcher 闭包拿到旧值
+  const enabledRef = useRef(enabled)
+  enabledRef.current = enabled
   const keywordRef = useRef(keyword)
-  keywordRef.current = keyword
   const filtersRef = useRef(filters)
-  filtersRef.current = filters
+  const pageRef = useRef(0)
+  const finishedRef = useRef(false)
+  const generation = useRef(0)
+  const activeRequest = useRef<number | null>(null)
+  const mounted = useRef(true)
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const reset = useCallback(async () => {
+    generation.current++
+    activeRequest.current = null
+    if (debounce.current) clearTimeout(debounce.current)
+    pageRef.current = 0
+    finishedRef.current = false
     setList([])
     setTotal(0)
     setPage(1)
     setFinished(false)
     setError(null)
+    setLoading(false)
+    setRefreshing(false)
+    setLoadingMore(false)
   }, [])
 
   const fetchPage = useCallback(
-    async (target: number, isRefresh: boolean) => {
-      if (isRefresh) setRefreshing(true)
-      else setLoadingMore(true)
+    async (target: number) => {
+      if (!enabledRef.current || !mounted.current || activeRequest.current !== null) return
+      const requestGeneration = generation.current
+      activeRequest.current = requestGeneration
       setLoading(true)
+      setRefreshing(target === 1)
+      setLoadingMore(target > 1)
       setError(null)
+      const current = () =>
+        mounted.current && enabledRef.current && generation.current === requestGeneration
       try {
-        const { list: rows, total: t } = await fetcherRef.current({
+        const result = await fetcherRef.current({
           page: target,
           pageSize,
           keyword: keywordRef.current,
           filters: filtersRef.current,
         })
-        setTotal(t)
-        setList((prev) => (target === 1 ? rows : [...prev, ...rows]))
+        if (!current()) return
+        pageRef.current = target
+        finishedRef.current = target * pageSize >= result.total || result.list.length === 0
+        setTotal(result.total)
+        setList((previous) => (target === 1 ? result.list : [...previous, ...result.list]))
         setPage(target)
-        if (target * pageSize >= t || rows.length === 0) {
-          setFinished(true)
-        } else {
-          setFinished(false)
-        }
-      } catch (e) {
-        const msg = e instanceof ApiError ? e.message : (e as Error)?.message || '加载失败'
-        setError(msg)
-        if (isRefresh) {
-          Taro.showToast({ title: msg, icon: 'none' })
-        }
+        setFinished(finishedRef.current)
+      } catch (cause) {
+        if (current()) setError(cause instanceof Error ? cause.message : '加载失败，请重试')
       } finally {
-        setLoading(false)
-        setLoadingMore(false)
-        setRefreshing(false)
+        if (current()) {
+          activeRequest.current = null
+          setLoading(false)
+          setRefreshing(false)
+          setLoadingMore(false)
+        }
       }
     },
     [pageSize],
   )
 
   const refresh = useCallback(async () => {
-    await reset()
-    await fetchPage(1, true)
+    // Reset invalidates an earlier fetch before starting the new one.
+    void reset()
+    await fetchPage(1)
   }, [reset, fetchPage])
-
   const loadMore = useCallback(async () => {
-    if (loading || loadingMore || refreshing || finished) return
-    await fetchPage(pageRef.current + 1, false)
-  }, [loading, loadingMore, refreshing, finished, fetchPage])
-
+    if (pageRef.current === 0 || finishedRef.current) return
+    await fetchPage(pageRef.current + 1)
+  }, [fetchPage])
   const setKeyword = useCallback(
-    (k: string) => {
-      setKeywordState(k)
+    (value: string) => {
+      if (keywordRef.current === value) return
+      keywordRef.current = value
+      void reset()
+      setKeywordState(value)
     },
-    [],
+    [reset],
+  )
+  const setFilters = useCallback(
+    (patch: Record<string, unknown>) => {
+      const next = { ...filtersRef.current, ...patch }
+      if (Object.keys(patch).every((key) => Object.is(filtersRef.current[key], patch[key]))) return
+      filtersRef.current = next
+      void reset()
+      setFiltersState(next)
+    },
+    [reset],
   )
 
-  const setFilters = useCallback((patch: Record<string, unknown>) => {
-    setFiltersState((prev) => ({ ...prev, ...patch }))
-  }, [])
-
-  // 初始 / 关键词 / filters 变化 → 重置并刷新
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const previousQuery = useRef({ keyword, filters })
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      void refresh()
-    }, keywordDebounce)
+    mounted.current = true
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
+      mounted.current = false
+      generation.current++
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyword, filters])
-
-  // 首次挂载触发
-  const mountedRef = useRef(false)
-  useEffect(() => {
-    if (mountedRef.current) return
-    mountedRef.current = true
-    void fetchPage(1, true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => {
+    const changed =
+      previousQuery.current.keyword !== keyword || previousQuery.current.filters !== filters
+    previousQuery.current = { keyword, filters }
+    void reset()
+    if (enabled) {
+      if (changed)
+        debounce.current = setTimeout(() => {
+          void fetchPage(1)
+        }, keywordDebounce)
+      else void fetchPage(1)
+    }
+    return () => {
+      if (debounce.current) clearTimeout(debounce.current)
+      generation.current++
+      activeRequest.current = null
+    }
+  }, [enabled, keyword, filters, keywordDebounce, reset, fetchPage])
 
   usePullDownRefresh(async () => {
-    await refresh()
-    Taro.stopPullDownRefresh()
+    try {
+      await refresh()
+    } finally {
+      Taro.stopPullDownRefresh()
+    }
   })
-
   useReachBottom(() => {
     void loadMore()
   })

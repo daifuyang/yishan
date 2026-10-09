@@ -11,6 +11,7 @@ export interface GridItemProps {
   badge?: React.ReactNode
   className?: string
   onClick?: (e: ITouchEvent) => void
+  onLongPress?: () => void
 }
 
 export function GridItem({
@@ -20,21 +21,16 @@ export function GridItem({
   badge,
   className,
   onClick,
+  onLongPress,
 }: GridItemProps) {
   const cls = [styles.mGridItem, className ?? ''].filter(Boolean).join(' ')
 
-  const wrapCls = [
-    styles.mGridItem__iconWrap,
-    styles[`mGridItem__iconWrap--${tone}`],
-  ].join(' ')
+  const wrapCls = [styles.mGridItem__iconWrap, styles[`mGridItem__iconWrap--${tone}`]].join(' ')
 
-  const iconCls = [
-    styles.mGridItem__icon,
-    styles[`mGridItem__icon--${tone}`],
-  ].join(' ')
+  const iconCls = [styles.mGridItem__icon, styles[`mGridItem__icon--${tone}`]].join(' ')
 
   return (
-    <View className={cls} onClick={onClick}>
+    <View className={cls} onClick={onClick} onLongPress={onLongPress}>
       <View className={wrapCls}>
         <Text className={iconCls}>{icon}</Text>
         {badge ? <View className={styles.mGridItem__badge}>{badge}</View> : null}

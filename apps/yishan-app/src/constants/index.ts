@@ -1,4 +1,9 @@
 export const APP_NAME = '移山'
+export const APP_VERSION = '0.1.0'
+
+export const PREFERENCE_KEYS = {
+  showLoginActivity: 'yishan:app:show-login-activity',
+} as const
 
 export const TAB_BAR = {
   color: '#86909C',
@@ -11,12 +16,6 @@ export const TAB_BAR = {
       text: '首页',
       iconPath: 'assets/tabbar/home.png',
       selectedIconPath: 'assets/tabbar/home-active.png',
-    },
-    {
-      pagePath: 'pages/customers/index',
-      text: '客户',
-      iconPath: 'assets/tabbar/user.png',
-      selectedIconPath: 'assets/tabbar/user-active.png',
     },
     {
       pagePath: 'pages/apps/index',

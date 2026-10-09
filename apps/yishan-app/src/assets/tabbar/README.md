@@ -1,30 +1,22 @@
 # TabBar 图标
 
-占位图标（81×81 PNG），由 `.scripts/gen-tabbar-icons.cjs` 一次性脚本生成。
+采用 [Phosphor Icons](https://phosphoricons.com/)（`@phosphor-icons/core` 2.1.1，MIT）的配对图标，转换为六张 81×81 RGBA 透明 PNG。
 
-- 普通态：`#86909C` 灰
-- 激活态：`#1677FF` 主色（钉钉蓝）
+- 普通态：regular（outline），`#86909C`
+- 激活态：fill，`#1677FF`
 
-## 替换为真实图标
+| Tab | 上游图标 | 输出文件 |
+| --- | --- | --- |
+| 首页 | house / house-fill | home.png / home-active.png |
+| 工作台 | squares-four / squares-four-fill | apps.png / apps-active.png |
+| 我的 | user / user-fill | user.png / user-active.png |
 
-使用 `sharp` + Tabler/Lucide SVG 批量转换为 PNG：
+SVG 路径来自官方 npm 包，仅设置尺寸和颜色。源文件及完整 MIT 许可保存在 `scripts/tabbar-icons/`。在仓库根目录使用 PowerShell 重新生成：
 
-```bash
-# 1. 安装依赖（一次性）
-npm i -D sharp
-
-# 2. 写转换脚本，参考知识库：
-#    knowledge/03-process/02-standards/taro-scaffold-standards §3.3
-
-# 3. 输出到本目录
+```powershell
+pwsh -File apps/yishan-app/scripts/tabbar-icons/generate.ps1
 ```
 
-## 当前图标列表
+脚本通过 npx 使用固定版本的 resvg 转换工具，仅生成时需要网络；不增加项目依赖。H5 和微信小程序共享 `src/constants/index.ts` 中的路径，构建只复制 PNG，不包含 SVG 源文件或图标库。
 
-| 文件 | 状态 | 含义 |
-|------|------|------|
-| `home.png` / `home-active.png` | 普通 / 激活 | 首页 |
-| `apps.png` / `apps-active.png` | 普通 / 激活 | 功能 |
-| `user.png` / `user-active.png` | 普通 / 激活 | 我的 |
-
-> 真实项目应替换为矢量导出的高质量图标；占位图标形状是「房子/宫格/人物」简化版本，仅用于通过编译。
+`tests/tab-icons.test.cjs` 检查所有注册图标的尺寸、透明背景及可见像素。

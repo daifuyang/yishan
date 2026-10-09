@@ -2,8 +2,7 @@ import type { UserConfigExport } from '@tarojs/cli'
 import { API_TARGET } from '@yishan/shared-config'
 import path from 'node:path'
 
-const ROOT = path.resolve(__dirname, '../..')
-const APP_ROOT = path.join(ROOT, 'apps/yishan-app')
+const APP_ROOT = path.resolve(__dirname, '..')
 
 export default {
   mini: {},

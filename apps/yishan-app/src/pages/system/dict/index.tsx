@@ -4,13 +4,16 @@ import { AppText, Tag } from '@/components/atoms'
 import { PageHeader, Card, ListItem } from '@/components/molecules'
 import { TabBar } from '@/components/organisms'
 import { useRequireAuth } from '@/utils/auth-guard'
+import { PageContainer } from '@/components/layout'
 import { TAB_PAGES } from '@/constants/routes'
 
 /**
  * 字典管理 · 类型列表（PR-1 占位 / PR-6 实装）
  */
 export default function DictIndexPage() {
-  useRequireAuth()
+  const guard = useRequireAuth({ moduleId: 'system-dict' })
+
+  if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
 
   return (
     <View className="page-container">
@@ -39,7 +42,9 @@ export default function DictIndexPage() {
       <View style={{ padding: '12px 16px' }}>
         <Card bordered padded>
           <View style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <AppText size={15} weight="semibold">字典管理</AppText>
+            <AppText size={15} weight="semibold">
+              字典管理
+            </AppText>
             <AppText size={13} variant="tertiary">
               列表展示字典类型，点击进入字典项列表；支持 CRUD。
             </AppText>
@@ -51,22 +56,13 @@ export default function DictIndexPage() {
 
         <View style={{ marginTop: 12 }}>
           <Card>
-            <ListItem
-              title="类型列表"
-              value="GET /api/v1/admin/dicts/types"
-              showArrow={false}
-            />
+            <ListItem title="类型列表" value="GET /api/v1/admin/dicts/types" showArrow={false} />
             <ListItem
               title="字典项列表"
               value="GET /api/v1/admin/dicts/data?typeId="
               showArrow={false}
             />
-            <ListItem
-              title="写权限"
-              value="system:dict:write"
-              showArrow={false}
-              bordered={false}
-            />
+            <ListItem title="写权限" value="system:dict:write" showArrow={false} bordered={false} />
           </Card>
         </View>
       </View>

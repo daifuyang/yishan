@@ -1,97 +1,128 @@
-import { useEffect, useState } from 'react'
-import { View, Text } from '@tarojs/components'
-import Taro, { useReachBottom, usePullDownRefresh } from '@tarojs/taro'
+import { useEffect, useRef, useState } from 'react'
+import { Text, View } from '@tarojs/components'
+import Taro, { usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 
-import { AppText } from '@/components/atoms'
-import { ListItem } from '@/components/molecules'
 import { userApi } from '@/api'
+import type { LoginLog } from '@/api/types'
+import { AppText } from '@/components/atoms'
+import { EmptyState, ErrorState, ListSkeleton } from '@/components/feedback'
+import { PageContainer } from '@/components/layout'
+import { ListItem } from '@/components/molecules'
+import { useAuthStore } from '@/stores/auth'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
-import type { LoginLog } from '@/api/types'
 
 import styles from './index.module.scss'
 
 const PAGE_SIZE = 10
 
 export default function ProfileLoginLog() {
+  const userId = useAuthStore((state) => state.user?.id)
+  const token = useAuthStore((state) => state.token)
+  const auth = useRequireAuth()
   const [list, setList] = useState<LoginLog[]>([])
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const loadingRef = useRef(false)
+  const generation = useRef(0)
+  const retry = useRef({ page: 1, reset: true })
 
-  useRequireAuth()
-
-  const load = async (p: number, reset: boolean) => {
+  const load = async (requestedPage: number, reset: boolean) => {
+    const session = useAuthStore.getState()
+    if (!session.bootstrapped || !session.user || !session.token || loadingRef.current) return
+    const ownerId = session.user.id
+    const requestToken = session.token
+    const requestGeneration = generation.current
+    const isCurrent = () => {
+      const current = useAuthStore.getState()
+      return (
+        generation.current === requestGeneration &&
+        current.user?.id === ownerId &&
+        current.token === requestToken
+      )
+    }
+    loadingRef.current = true
     setLoading(true)
+    setError(null)
+    retry.current = { page: requestedPage, reset }
     try {
-      const data = await userApi.getMyLoginLogs({ page: p, pageSize: PAGE_SIZE })
-      const items = data || []
-      setList((prev) => (reset ? items : [...prev, ...items]))
-      setPage(p)
+      const items = await userApi.getMyLoginLogs({ page: requestedPage, pageSize: PAGE_SIZE })
+      if (!isCurrent()) return
+      setList((previous) => (reset ? items : [...previous, ...items]))
+      setPage(requestedPage)
       setHasMore(items.length >= PAGE_SIZE)
-    } catch (_e) {
-      Taro.showToast({ title: '加载失败', icon: 'none' })
+    } catch (failure) {
+      if (isCurrent()) setError(failure instanceof Error ? failure.message : '登录日志加载失败')
     } finally {
-      setLoading(false)
+      if (isCurrent()) {
+        loadingRef.current = false
+        setLoading(false)
+      }
     }
   }
 
   useEffect(() => {
-    load(1, true)
-  }, [])
+    generation.current += 1
+    loadingRef.current = false
+    setList([])
+    setError(null)
+    setLoading(false)
+    setPage(1)
+    setHasMore(true)
+    if (auth.ready && auth.allowed) void load(1, true)
+    return () => {
+      generation.current += 1
+    }
+  }, [auth.ready, auth.allowed, userId, token])
 
   usePullDownRefresh(() => {
-    load(1, true).finally(() => Taro.stopPullDownRefresh())
+    void load(1, true).finally(() => Taro.stopPullDownRefresh())
   })
 
   useReachBottom(() => {
-    if (hasMore && !loading) {
-      load(page + 1, false)
-    }
+    if (hasMore && !error) void load(page + 1, false)
   })
 
   return (
-    <View className="page-container">
+    <PageContainer>
       <View className={styles.logs__list}>
-        {list.length === 0 && !loading ? (
-          <View className={styles.logs__empty}>
-            <AppText size={13} variant="tertiary">
-              暂无登录记录
-            </AppText>
-          </View>
+        {loading && list.length === 0 ? (
+          <ListSkeleton />
+        ) : list.length === 0 && !error ? (
+          <EmptyState text="暂无登录记录" />
         ) : (
-          list.map((log, idx) => (
-            <View key={log.id}>
-              <ListItem
-                title={
-                  <View className={styles.logs__title}>
-                    <Text className={styles.logs__status} data-tone={log.status === '1' ? 'success' : 'warning'}>
-                      {log.status === '1' ? '登录成功' : '登录失败'}
-                    </Text>
-                  </View>
-                }
-                value={`${formatDateTime(log.createdAt)} · ${log.ipAddress || '-'}`}
-                showArrow={false}
-                bordered={idx < list.length - 1}
-              />
-            </View>
+          list.map((log, index) => (
+            <ListItem
+              key={log.id}
+              title={
+                <Text
+                  className={styles.logs__status}
+                  data-tone={log.status === '1' ? 'success' : 'warning'}
+                >
+                  {log.status === '1' ? '登录成功' : '登录失败'}
+                </Text>
+              }
+              value={`${formatDateTime(log.createdAt)} · ${log.ipAddress || '-'}`}
+              bordered={index < list.length - 1}
+            />
           ))
         )}
+        {error ? (
+          <ErrorState
+            text={error}
+            onRetry={() => void load(retry.current.page, retry.current.reset)}
+          />
+        ) : null}
       </View>
-
-      {loading ? (
+      {list.length > 0 ? (
         <View className={styles.logs__loading}>
           <AppText size={12} variant="tertiary">
-            加载中…
-          </AppText>
-        </View>
-      ) : !hasMore && list.length > 0 ? (
-        <View className={styles.logs__loading}>
-          <AppText size={12} variant="tertiary">
-            没有更多了
+            {loading ? '加载中…' : hasMore ? '上拉加载更多' : '没有更多了'}
           </AppText>
         </View>
       ) : null}
-    </View>
+    </PageContainer>
   )
 }

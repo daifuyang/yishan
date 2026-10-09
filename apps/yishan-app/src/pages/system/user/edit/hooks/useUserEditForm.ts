@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Taro from '@tarojs/taro'
 import { adminUserApi, adminDeptApi, adminRoleApi } from '@/api'
 import type { FormErrors } from '../types'
+import type { AdminDept, AdminRole, UpdateAdminUserReq } from '@/api/admin/types'
 
-export function useUserEditForm(id: string | undefined) {
+export function useUserEditForm(id: string | undefined, enabled = true) {
   const isEdit = id !== undefined
   const [username, setUsername] = useState('')
   const [nickname, setNickname] = useState('')
@@ -11,8 +12,8 @@ export function useUserEditForm(id: string | undefined) {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [gender, setGender] = useState(0)
-  const [status, setStatus] = useState(0)
+  const [gender, setGender] = useState<'0' | '1' | '2'>('0')
+  const [status, setStatus] = useState<'0' | '1' | '2'>('1')
   const [deptIds, setDeptIds] = useState<number[]>([])
   const [roleIds, setRoleIds] = useState<number[]>([])
 
@@ -20,28 +21,25 @@ export function useUserEditForm(id: string | undefined) {
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState<string | undefined>()
   const [submitting, setSubmitting] = useState(false)
-  const [depts, setDepts] = useState<any[]>([])
-  const [roles, setRoles] = useState<any[]>([])
+  const [depts, setDepts] = useState<AdminDept[]>([])
+  const [roles, setRoles] = useState<AdminRole[]>([])
+  const submittingRef = useRef(false)
 
   const loadUser = async (userId: string) => {
     setLoading(true)
     try {
-      const res = await adminUserApi.getAdminUser({ id: userId })
-      if (res.success && res.data) {
-        setUsername(res.data.username || '')
-        setNickname(res.data.nickname || '')
-        setRealName(res.data.realName || '')
-        setPhone(res.data.phone || '')
-        setEmail(res.data.email || '')
-        setGender(res.data.gender ?? 0)
-        setStatus(res.data.status ?? 0)
-        setDeptIds(res.data.deptIds || [])
-        setRoleIds(res.data.roleIds || [])
-      } else {
-        setPageError('加载用户失败')
-      }
-    } catch (e: any) {
-      setPageError(e?.message || '加载用户失败')
+      const res = await adminUserApi.getAdminUser(Number(userId))
+      setUsername(res.username || '')
+      setNickname(res.nickname || '')
+      setRealName(res.realName || '')
+      setPhone(res.phone || '')
+      setEmail(res.email || '')
+      setGender(res.gender)
+      setStatus(res.status)
+      setDeptIds(res.deptIds || [])
+      setRoleIds(res.roleIds || [])
+    } catch (e) {
+      setPageError(e instanceof Error ? e.message : '加载用户失败')
     } finally {
       setLoading(false)
     }
@@ -53,8 +51,8 @@ export function useUserEditForm(id: string | undefined) {
         adminDeptApi.listAdminDepts(),
         adminRoleApi.listAdminRoles(),
       ])
-      if (deptRes.success) setDepts(deptRes.data || [])
-      if (roleRes.success) setRoles(roleRes.data || [])
+      setDepts(deptRes.data || [])
+      setRoles(roleRes.data || [])
     } catch {
       // silent
     }
@@ -70,48 +68,94 @@ export function useUserEditForm(id: string | undefined) {
   }
 
   const handleSubmit = async () => {
+    if (!enabled || submittingRef.current) return
     if (!validate()) return
     setSubmitting(true)
+    submittingRef.current = true
     try {
-      const payload: any = {
-        username, nickname, realName, phone, email,
-        gender, status, deptIds, roleIds,
+      const payload: UpdateAdminUserReq = {
+        username,
+        nickname,
+        realName,
+        phone,
+        email,
+        gender,
+        status,
+        deptIds,
+        roleIds,
       }
       if (password) payload.password = password
       const fn = isEdit
-        ? adminUserApi.updateAdminUser({ id: id!, ...payload })
-        : adminUserApi.createAdminUser(payload)
+        ? adminUserApi.updateAdminUser(Number(id), payload)
+        : adminUserApi.createAdminUser({ ...payload, phone, password })
       const res = await fn
-      if (res.success) {
+      if (res) {
         Taro.showToast({ title: isEdit ? '修改成功' : '创建成功', icon: 'success' })
         const { navigateBack } = await import('@/utils/router')
         navigateBack(1)
-      } else {
-        Taro.showToast({ title: res.message || '操作失败', icon: 'error' })
       }
-    } catch (e: any) {
-      Taro.showToast({ title: e?.message || '操作失败', icon: 'error' })
+    } catch (e) {
+      Taro.showToast({ title: e instanceof Error ? e.message : '操作失败', icon: 'none' })
     } finally {
       setSubmitting(false)
+      submittingRef.current = false
     }
   }
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false)
+      return
+    }
     loadOptions()
     if (isEdit && id) loadUser(id)
     else setLoading(false)
-  }, [id, isEdit])
+  }, [enabled, id, isEdit])
 
-  const genderLabel = useMemo(() => ['保密', '男', '女'][gender] || '保密', [gender])
-  const statusLabel = useMemo(() => ['启用', '禁用', '锁定'][status] || '启用', [status])
+  const genderLabel = ['未知', '男', '女'][Number(gender)]
+  const statusLabel = ['禁用', '启用', '锁定'][Number(status)]
 
   return {
-    values: { username, setUsername, nickname, setNickname, realName, setRealName,
-      phone, setPhone, email, setEmail, password, setPassword,
-      gender, setGender, status, setStatus, deptIds, setDeptIds, roleIds, setRoleIds },
-    errors, loading, pageError, submitting, depts, roles, isEdit,
-    genderLabel, statusLabel, handleSubmit,
-    toggleDept: (id: number) => setDeptIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]),
-    toggleRole: (id: number) => setRoleIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]),
+    values: {
+      username,
+      setUsername,
+      nickname,
+      setNickname,
+      realName,
+      setRealName,
+      phone,
+      setPhone,
+      email,
+      setEmail,
+      password,
+      setPassword,
+      gender,
+      setGender,
+      status,
+      setStatus,
+      deptIds,
+      setDeptIds,
+      roleIds,
+      setRoleIds,
+    },
+    errors,
+    loading,
+    pageError,
+    submitting,
+    depts,
+    roles,
+    isEdit,
+    genderLabel,
+    statusLabel,
+    handleSubmit,
+    reload: async () => {
+      setPageError(undefined)
+      await loadOptions()
+      if (id) await loadUser(id)
+    },
+    toggleDept: (id: number) =>
+      setDeptIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])),
+    toggleRole: (id: number) =>
+      setRoleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])),
   }
 }

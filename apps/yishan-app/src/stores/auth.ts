@@ -1,117 +1,178 @@
-/**
- * 认证状态：token + 当前用户
- */
 import { create } from 'zustand'
 
-import { authApi, setUnauthorizedHandler } from '../api'
+import * as authApi from '../api/auth'
+import {
+  getSessionVersion,
+  invalidateSessionRequests,
+  setTokenRefreshedHandler,
+  setUnauthorizedHandler,
+} from '../api/client'
+import { RequestCancelledError, UnauthorizedError, type CurrentUser } from '../api/types'
+import { redirectToLogin } from '../utils/router'
 import { storage, STORAGE_KEYS } from '../utils/storage'
-import type { CurrentUser, LoginData } from '../api/types'
 
 interface AuthState {
   token: string | null
   refreshToken: string | null
   user: CurrentUser | null
+  enabledModuleIds: string[] | null
   bootstrapped: boolean
+  bootstrapError: string | null
   loading: boolean
-
-  /** 启动时调用：读 storage，尝试拉 me */
-  bootstrap: () => Promise<void>
-  /** 登录并落库 */
-  login: (params: { username: string; password: string; rememberMe?: boolean }) => Promise<void>
-  /** 登出清空 */
+  bootstrap: (force?: boolean) => Promise<void>
+  login: (params: authApi.LoginParams) => Promise<void>
   logout: () => Promise<void>
-  /** 拉取当前用户（用于刷新 me） */
   refreshMe: () => Promise<void>
-  /** 更新 user 局部字段（用于编辑资料后同步） */
   setUser: (patch: Partial<CurrentUser>) => void
-  /** 清空状态（401 触发） */
   clear: () => void
+}
+
+let bootstrapFlight: Promise<void> | undefined
+let identityFlight:
+  | { version: number; promise: Promise<{ user: CurrentUser; enabledModuleIds: string[] }> }
+  | undefined
+
+export function loadIdentity() {
+  const version = getSessionVersion()
+  if (identityFlight?.version === version) return identityFlight.promise
+  const promise = Promise.all([authApi.getCurrentUser(), authApi.getCapabilities()]).then(
+    ([user, capabilities]) => {
+      if (version !== getSessionVersion()) throw new RequestCancelledError()
+      return {
+        user: { ...user, permissions: capabilities.permissions },
+        enabledModuleIds: capabilities.enabledModuleIds,
+      }
+    },
+  )
+  const flight = { version, promise }
+  identityFlight = flight
+  void promise
+    .finally(() => {
+      if (identityFlight === flight) identityFlight = undefined
+    })
+    .catch(() => {})
+  return promise
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN),
   refreshToken: storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN),
-  user: storage.get<CurrentUser>(STORAGE_KEYS.USER),
+  // A persisted profile cannot establish current permissions or a valid session.
+  user: null,
+  enabledModuleIds: null,
   bootstrapped: false,
+  bootstrapError: null,
   loading: false,
 
-  async bootstrap() {
-    const { token } = get()
-    if (!token) {
-      set({ bootstrapped: true })
-      return
+  bootstrap(force = false) {
+    if (bootstrapFlight) return bootstrapFlight
+    if (get().bootstrapped && !force) return Promise.resolve()
+    if (!get().token) {
+      set({ bootstrapped: true, user: null, enabledModuleIds: null, bootstrapError: null })
+      return Promise.resolve()
     }
-    try {
-      const user = await authApi.getCurrentUser()
-      set({ user, bootstrapped: true })
-      storage.set(STORAGE_KEYS.USER, user)
-    } catch {
-      // token 失效，清空
-      get().clear()
-      set({ bootstrapped: true })
-    }
+    const version = getSessionVersion()
+    set({ bootstrapped: false, bootstrapError: null })
+    const flight = (async () => {
+      try {
+        const identity = await loadIdentity()
+        if (version === getSessionVersion()) set({ ...identity, bootstrapped: true })
+      } catch (error) {
+        if (version !== getSessionVersion()) return
+        if (error instanceof UnauthorizedError) get().clear()
+        else
+          set({
+            bootstrapped: true,
+            user: null,
+            enabledModuleIds: null,
+            bootstrapError: '无法恢复会话，请检查网络后重试',
+          })
+      }
+    })()
+    bootstrapFlight = flight
+    void flight.finally(() => {
+      if (bootstrapFlight === flight) bootstrapFlight = undefined
+    })
+    return flight
   },
 
   async login(params) {
+    if (get().loading) return
+    get().clear()
+    const version = getSessionVersion()
     set({ loading: true })
     try {
-      const data: LoginData = await authApi.login(params)
+      const data = await authApi.login(params)
+      if (version !== getSessionVersion()) throw new RequestCancelledError()
       storage.set(STORAGE_KEYS.ACCESS_TOKEN, data.token)
       if (data.refreshToken) storage.set(STORAGE_KEYS.REFRESH_TOKEN, data.refreshToken)
       set({ token: data.token, refreshToken: data.refreshToken ?? null })
-
-      const user = await authApi.getCurrentUser()
-      storage.set(STORAGE_KEYS.USER, user)
-      set({ user, bootstrapped: true })
+      const identity = await loadIdentity()
+      if (version === getSessionVersion())
+        set({ ...identity, bootstrapped: true, bootstrapError: null })
+    } catch (error) {
+      if (version === getSessionVersion()) get().clear()
+      throw error
     } finally {
-      set({ loading: false })
+      if (version === getSessionVersion()) set({ loading: false })
     }
   },
 
   async logout() {
-    try {
-      await authApi.logout()
-    } catch {
-      // ignore
-    }
+    const token = get().token
+    const refreshToken = get().refreshToken
     get().clear()
+    try {
+      await authApi.logout(token, refreshToken)
+    } catch {
+      // Local logout is complete even if the revocation endpoint is unreachable.
+    }
   },
 
   async refreshMe() {
+    if (!get().bootstrapped || !get().user || !get().token) return
+    const version = getSessionVersion()
     try {
-      const user = await authApi.getCurrentUser()
-      storage.set(STORAGE_KEYS.USER, user)
-      set({ user })
+      const identity = await loadIdentity()
+      if (version === getSessionVersion()) set(identity)
     } catch {
-      // ignore
+      // Keep the current verified profile for temporary network failures; 401 is handled centrally.
     }
   },
 
   setUser(patch) {
-    const next = { ...(get().user || ({} as CurrentUser)), ...patch }
-    storage.set(STORAGE_KEYS.USER, next)
-    set({ user: next })
+    const user = get().user
+    if (user) set({ user: { ...user, ...patch } })
   },
 
   clear() {
+    invalidateSessionRequests()
+    bootstrapFlight = undefined
+    identityFlight = undefined
     storage.remove(STORAGE_KEYS.ACCESS_TOKEN)
     storage.remove(STORAGE_KEYS.REFRESH_TOKEN)
     storage.remove(STORAGE_KEYS.USER)
-    set({ token: null, refreshToken: null, user: null })
+    set({
+      token: null,
+      refreshToken: null,
+      user: null,
+      enabledModuleIds: null,
+      loading: false,
+      bootstrapped: true,
+      bootstrapError: null,
+    })
   },
 }))
 
-/**
- * 在 401 时由 client 调用：清空 store + 跳登录
- * 在 app.ts 启动时注册一次
- */
+let interceptorsInstalled = false
 export function setupAuthInterceptor() {
+  if (interceptorsInstalled) return
+  interceptorsInstalled = true
   setUnauthorizedHandler(() => {
-    const { token, clear } = useAuthStore.getState()
-    if (token) {
-      clear()
-    }
-    // 跳转由 router 处理
-    import('../utils/router').then(({ redirectToLogin }) => redirectToLogin())
+    useAuthStore.getState().clear()
+    void redirectToLogin()
+  })
+  setTokenRefreshedHandler((data) => {
+    useAuthStore.setState({ token: data.token, refreshToken: data.refreshToken ?? null })
   })
 }

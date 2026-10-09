@@ -11,6 +11,7 @@ import { SECONDARY_PAGES } from '@/constants/routes'
 import type { SysMenuNode } from '@/api/types'
 
 import styles from './index.module.scss'
+import { PageContainer } from '@/components/layout'
 
 interface DeptFlatNode {
   id: number
@@ -39,9 +40,10 @@ export default function ContactsIndex() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useRequireAuth()
+  const guard = useRequireAuth()
 
   const load = async () => {
+    if (!guard.ready || !guard.allowed) return
     setLoading(true)
     setError(null)
     try {
@@ -56,18 +58,16 @@ export default function ContactsIndex() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [guard.ready, guard.allowed])
 
   useDidShow(() => load())
 
   const openDept = (id: number, name: string) => {
-    navigateTo(
-      `/${SECONDARY_PAGES.contactsDept}?id=${id}&name=${encodeURIComponent(name)}`
-    )
+    navigateTo(`/${SECONDARY_PAGES.contactsDept}?id=${id}&name=${encodeURIComponent(name)}`)
   }
 
   return (
-    <View className="page-container">
+    <PageContainer>
       <SectionHeader title="部门" showMore={false} />
 
       {loading && depts.length === 0 ? (
@@ -106,6 +106,6 @@ export default function ContactsIndex() {
           ))}
         </View>
       )}
-    </View>
+    </PageContainer>
   )
 }

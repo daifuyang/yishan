@@ -1,229 +1,165 @@
-import { useState, useEffect } from 'react'
-import { View, Text } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
-
-import { AppText } from '@/components/atoms'
-import { WorkbenchGrid, TabBar, WorkbenchUserPanel, type WorkbenchGroup } from '@/components/organisms'
-import { StateView } from '@/components/feedback'
-import { menuApi } from '@/api'
+import { useEffect, useRef, useState } from 'react'
+import { Button, Input, Text, View } from '@tarojs/components'
+import Taro, { useDidHide, useDidShow, usePullDownRefresh } from '@tarojs/taro'
+import { EmptyState, ErrorState } from '@/components/feedback'
+import { PageContainer } from '@/components/layout'
+import { getWorkbenchGroups, type WorkbenchApp } from '@/modules/registry'
+import { useModuleStore } from '@/stores/modules'
+import { useAuthStore } from '@/stores/auth'
 import { useRequireAuth } from '@/utils/auth-guard'
-import { useCanWrite } from '@/hooks'
-import { navigateTo, switchTab } from '@/utils/router'
-import { CRM_ACTION_PAGE, TAB_PAGES, PERMS, SYSTEM_PAGES } from '@/constants/routes'
-import { CRM_WORKBENCH_ACTIONS } from '@/constants/crm-workbench'
-import { resolveMenuRoute } from '@/constants/menu-routes'
-import { fallbackIconChar, mapMenuIcon } from '@/utils/menu-icon'
-import type { SysMenuNode } from '@/api/types'
-
+import { ApplicationGrid } from './ApplicationGrid'
+import { FavoritesEditor } from './FavoritesEditor'
+import { openWorkbenchApp } from './navigation'
 import styles from './index.module.scss'
 
-const ICON_FALLBACK = '·'
-
-function renderIcon(name?: string): React.ReactNode {
-  const mapped = mapMenuIcon(name)
-  if (mapped) {
-    return <Text className={styles.apps__icon}>{mapped}</Text>
-  }
-  return <Text className={styles.apps__icon}>{fallbackIconChar(name) || ICON_FALLBACK}</Text>
-}
-
-function buildGroups(menus: SysMenuNode[]): WorkbenchGroup[] {
-  // 1. 索引所有节点（含 type=0 目录）按 id
-  const byId = new Map<number, SysMenuNode>()
-  const walk = (nodes: SysMenuNode[]) => {
-    for (const n of nodes) {
-      byId.set(n.id, n)
-      if (n.children && n.children.length > 0) walk(n.children)
-    }
-  }
-  walk(menus || [])
-
-  // 2. 只挑要展示的叶子：type=1（菜单）、hideInMenu=false、status='1'
-  const leaves = Array.from(byId.values())
-    .filter((m) => m.type === 1 && !m.hideInMenu && m.status === '1')
-    .sort((a, b) => a.sort_order - b.sort_order)
-
-  // 3. 按父节点分组
-  //    - 父 type=0（目录）→ 用目录名做 group title
-  //    - 父不存在 / 父就是 type=1（孤儿）→ 进"应用"兜底组
-  const groupsByParent = new Map<number, { title: string; sortOrder: number; items: SysMenuNode[] }>()
-  const orphans: SysMenuNode[] = []
-  for (const leaf of leaves) {
-    const parent = leaf.parentId ? byId.get(leaf.parentId) : null
-    if (parent && parent.type === 0) {
-      const g = groupsByParent.get(parent.id) ?? {
-        title: parent.name,
-        sortOrder: parent.sort_order,
-        items: [],
-      }
-      g.items.push(leaf)
-      groupsByParent.set(parent.id, g)
-    } else {
-      orphans.push(leaf)
-    }
-  }
-
-  const result: WorkbenchGroup[] = []
-  const orderedParents = Array.from(groupsByParent.values()).sort(
-    (a, b) => a.sortOrder - b.sortOrder,
-  )
-  for (const g of orderedParents) {
-    result.push({
-      key: `dir-${g.title}`,
-      title: g.title,
-      bordered: false,
-      columns: 4,
-      items: g.items.map((c) => ({
-        key: String(c.id),
-        icon: renderIcon(c.icon),
-        label: c.name,
-      })),
-    })
-  }
-  if (orphans.length > 0) {
-    result.push({
-      key: 'orphans',
-      title: '应用',
-      bordered: false,
-      columns: 4,
-      items: orphans.map((c) => ({
-        key: String(c.id),
-        icon: renderIcon(c.icon),
-        label: c.name,
-      })),
-    })
-  }
-  return result
-}
-
 export default function AppsPage() {
-  const [groups, setGroups] = useState<WorkbenchGroup[]>([])
-  const [flatMenus, setFlatMenus] = useState<SysMenuNode[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [userPanelExpanded, setUserPanelExpanded] = useState(false)
-
-  const canViewUser = useCanWrite(PERMS.userList)
-
-  useRequireAuth()
-
-  const load = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await menuApi.getAuthorizedMenuTree()
-      const flat: SysMenuNode[] = []
-      const walk = (nodes: SysMenuNode[]) => {
-        for (const n of nodes) {
-          flat.push(n)
-          if (n.children && n.children.length > 0) walk(n.children)
-        }
-      }
-      walk(data || [])
-      setFlatMenus(flat)
-      setGroups([
-        {
-          key: 'crm-workbench',
-          title: 'CRM',
-          bordered: false,
-          columns: 4,
-          items: CRM_WORKBENCH_ACTIONS.map((item) => ({ key: `crm:${item.key}`, icon: <Text className={styles.apps__icon}>{item.icon}</Text>, label: item.label })),
-        },
-        ...buildGroups(data || []),
-      ])
-    } catch (e) {
-      setError((e as Error).message || '加载失败')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const guard = useRequireAuth()
+  const menus = useModuleStore((state) => state.menus)
+  const loading = useModuleStore((state) => state.loading)
+  const error = useModuleStore((state) => state.error)
+  const loaded = useModuleStore((state) => state.loaded)
+  const favorites = useModuleStore((state) => state.commonModuleIds)
+  const user = useAuthStore((state) => state.user)
+  const enabledModuleIds = useAuthStore((state) => state.enabledModuleIds)
+  const [query, setQuery] = useState('')
+  const [editing, setEditing] = useState(false)
+  const visible = useRef(false)
 
   useEffect(() => {
-    load()
-  }, [])
-
+    if (guard.ready && visible.current && !loaded) void useModuleStore.getState().load()
+  }, [guard.ready, loaded, user?.id, user?.permissions, enabledModuleIds])
+  useEffect(() => {
+    setQuery('')
+    setEditing(false)
+  }, [user?.id])
   useDidShow(() => {
-    load()
+    visible.current = true
+    void useModuleStore.getState().load({ force: useModuleStore.getState().loaded })
+  })
+  useDidHide(() => {
+    visible.current = false
+  })
+  usePullDownRefresh(async () => {
+    try {
+      await useModuleStore.getState().load({ force: true })
+    } finally {
+      Taro.stopPullDownRefresh()
+    }
   })
 
-  const isUserMenu = (menu: SysMenuNode) => {
-    const name = menu.name?.toLowerCase() || ''
-    const path = menu.path?.toLowerCase() || ''
-    const perm = menu.perm?.toLowerCase() || ''
-    return (
-      name === '用户管理' ||
-      path === '/system/user' ||
-      perm === 'system:user:list' ||
-      perm === 'system:user:write' ||
-      perm === 'system:user:delete'
-    )
+  const groups = getWorkbenchGroups(menus, user?.permissions, enabledModuleIds)
+  const apps = groups.flatMap((group) => group.apps)
+  const searchGroups = query.trim()
+    ? getWorkbenchGroups(menus, user?.permissions, enabledModuleIds, query)
+    : groups
+  const common = favorites
+    .map((id) => apps.find((app) => app.id === id))
+    .filter((app): app is WorkbenchApp => Boolean(app))
+  const retry = () => void useModuleStore.getState().load({ force: true })
+  const open = (id: string) => {
+    void openWorkbenchApp(id).catch((failure: unknown) => {
+      Taro.showToast({
+        title: failure instanceof Error ? failure.message : '无法打开应用，请重试',
+        icon: 'none',
+      })
+    })
   }
-
-  const handleItem = (key: string) => {
-    if (key.startsWith('crm:')) {
-      navigateTo(`/${CRM_ACTION_PAGE}?action=${key.slice(4)}`)
-      return
-    }
-    const menu = flatMenus.find((m) => String(m.id) === key)
-    if (!menu) {
-      Taro.showToast({ title: '该功能待实现', icon: 'none' })
-      return
-    }
-
-    if (isUserMenu(menu) && canViewUser) {
-      navigateTo(`/${SYSTEM_PAGES.userIndex}`)
-      return
-    }
-
-    const route = resolveMenuRoute(menu)
-    if (route.type === 'page') {
-      navigateTo(route.url)
-    } else if (route.type === 'tab') {
-      switchTab(route.url)
-    } else {
-      Taro.showToast({ title: '该功能待实现', icon: 'none' })
-    }
-  }
-
-  const handleUserPanelToggle = () => {
-    setUserPanelExpanded((prev) => !prev)
-  }
-
-  const kind: 'loading' | 'error' | 'empty' | 'ready' = error
-    ? 'error'
-    : loading && groups.length === 0
-      ? 'loading'
-      : groups.length === 0
-        ? 'empty'
-        : 'ready'
 
   return (
-    <View className={`page-container ${styles.apps}`}>
+    <PageContainer className={styles.apps}>
       <View className={styles.apps__header}>
-        <AppText size={20} weight="semibold">
-          应用
-        </AppText>
-        <AppText size={13} variant="tertiary">
-          当前角色已授权功能
-        </AppText>
+        <Text className={styles.apps__pageTitle}>工作台</Text>
+        <Button className={styles.apps__action} disabled={loading} onClick={retry}>
+          {loading && loaded ? '刷新中' : '刷新'}
+        </Button>
       </View>
-
-      <StateView
-        kind={kind}
-        text={error || (kind === 'empty' ? '暂无可用应用' : undefined)}
-        onRetry={load}
-        minHeight={300}
-      >
-        {canViewUser && (
-          <WorkbenchUserPanel
-            expanded={userPanelExpanded}
-            onToggle={handleUserPanelToggle}
+      {!editing ? (
+        <View className={styles.apps__searchWrap}>
+          <Input
+            className={styles.apps__search}
+            value={query}
+            placeholder="搜索应用"
+            onInput={(event) => setQuery(event.detail.value)}
           />
-        )}
-        <WorkbenchGrid groups={groups} onItemClick={handleItem} />
-      </StateView>
-
-      <TabBar currentPath={TAB_PAGES.apps} />
-    </View>
+          {query ? (
+            <Button
+              className={styles.apps__clear}
+              onClick={() => setQuery('')}
+              aria-label="清空搜索"
+            >
+              清空
+            </Button>
+          ) : null}
+        </View>
+      ) : null}
+      {!loaded ? (
+        error ? (
+          <ErrorState text={error} onRetry={retry} />
+        ) : (
+          <View className={styles.apps__section} aria-label="应用加载中">
+            <View className={styles.apps__skeletonTitle} />
+            <View className={styles.apps__grid}>
+              {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => (
+                <View key={id} className={styles.apps__item}>
+                  <View className={styles.apps__skeletonIcon} />
+                  <View className={styles.apps__skeletonLabel} />
+                </View>
+              ))}
+            </View>
+          </View>
+        )
+      ) : (
+        <>
+          {error ? (
+            <View className={styles.apps__refreshError}>
+              <Text>刷新失败，请重试</Text>
+              <Button className={styles.apps__action} disabled={loading} onClick={retry}>
+                重试
+              </Button>
+            </View>
+          ) : null}
+          {editing ? (
+            <FavoritesEditor key={user?.id} apps={apps} onClose={() => setEditing(false)} />
+          ) : apps.length === 0 ? (
+            <EmptyState text="暂无可用应用" />
+          ) : (
+            <>
+              {!query.trim() ? (
+                <View className={styles.apps__section}>
+                  <View className={styles.apps__sectionHeader}>
+                    <Text className={styles.apps__title}>常用应用</Text>
+                    <Button className={styles.apps__action} onClick={() => setEditing(true)}>
+                      编辑
+                    </Button>
+                  </View>
+                  {common.length ? (
+                    <ApplicationGrid apps={common} onOpen={open} />
+                  ) : (
+                    <Text className={styles.apps__hint}>点击编辑，添加常用应用</Text>
+                  )}
+                </View>
+              ) : null}
+              <View className={styles.apps__section}>
+                <View className={styles.apps__sectionHeader}>
+                  <Text className={styles.apps__title}>
+                    {query.trim() ? '搜索结果' : '全部应用'}
+                  </Text>
+                </View>
+                {searchGroups.length ? (
+                  searchGroups.map((group) => (
+                    <View key={group.id} className={styles.apps__group}>
+                      <Text className={styles.apps__category}>{group.name}</Text>
+                      <ApplicationGrid apps={group.apps} onOpen={open} />
+                    </View>
+                  ))
+                ) : (
+                  <EmptyState text="未找到相关应用" />
+                )}
+              </View>
+            </>
+          )}
+        </>
+      )}
+    </PageContainer>
   )
 }

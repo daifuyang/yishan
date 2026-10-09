@@ -26,12 +26,14 @@ export interface WorkbenchGroup {
 export interface WorkbenchGridProps {
   groups: WorkbenchGroup[]
   onItemClick?: (key: string) => void
+  onItemLongPress?: (key: string) => void
   onMoreClick?: (groupKey: string) => void
 }
 
 export function WorkbenchGrid({
   groups,
   onItemClick,
+  onItemLongPress,
   onMoreClick,
 }: WorkbenchGridProps) {
   return (
@@ -71,6 +73,7 @@ export function WorkbenchGrid({
                   tone={item.tone}
                   badge={item.badge}
                   onClick={() => onItemClick?.(item.key)}
+                  onLongPress={() => onItemLongPress?.(item.key)}
                 />
               ))}
             </View>

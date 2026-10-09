@@ -6,6 +6,11 @@ import devConfig from './dev'
 import prodConfig from './prod'
 
 export default defineConfig(async (merge, _env) => {
+  const outputRoot = `dist/${process.env.TARO_ENV || 'weapp'}`
+  const apiBaseUrl =
+    process.env.YISHAN_APP_API_BASE_URL ?? (process.env.TARO_ENV === 'h5' ? '' : API_TARGET)
+  if (apiBaseUrl && !/^https?:\/\//.test(apiBaseUrl))
+    throw new Error('YISHAN_APP_API_BASE_URL must be an absolute HTTP(S) URL')
   const baseConfig: UserConfigExport<'webpack5'> = {
     projectName: 'yishan-app',
     designWidth: 375,
@@ -16,7 +21,8 @@ export default defineConfig(async (merge, _env) => {
       828: 1.81 / 2,
     },
     sourceRoot: 'src',
-    outputRoot: 'dist',
+    outputRoot,
+    defineConstants: { __YISHAN_API_BASE_URL__: JSON.stringify(apiBaseUrl.replace(/\/$/, '')) },
     framework: 'react',
     compiler: {
       type: 'webpack5',
@@ -32,10 +38,21 @@ export default defineConfig(async (merge, _env) => {
       '@/stores': path.resolve(__dirname, '../src/stores'),
       '@/api': path.resolve(__dirname, '../src/api'),
       '@/hooks': path.resolve(__dirname, '../src/hooks'),
+      '@/modules': path.resolve(__dirname, '../src/modules'),
+      '@': path.resolve(__dirname, '../src'),
     },
     copy: {
       patterns: [
-        { from: 'src/styles/fonts-subset/', to: 'styles/fonts-subset/' },
+        {
+          from: 'src/styles/fonts-subset/',
+          to: `${outputRoot}/styles/fonts-subset/`,
+          ignore: ['**/README.md'],
+        },
+        {
+          from: 'src/assets/tabbar/',
+          to: `${outputRoot}/assets/tabbar/`,
+          ignore: ['**/README.md'],
+        },
       ],
       options: {},
     },
@@ -60,20 +77,15 @@ export default defineConfig(async (merge, _env) => {
       publicPath: '/',
       staticDirectory: 'static',
       useHtmlComponents: true,
-      // Taro 的 webpack5 UserConfigExport' devServer 类型不直接接受 https，
-      // 但 webpack-dev-server 自身支持。cast 保留显式关闭 HTTPS 的意图
-      // （外层 nginx 已终止 TLS）。
-      devServer: ({
+      devServer: {
         host: '0.0.0.0',
         port: 21003,
         // allowedHosts: 'all' 让 webpack-dev-server 接受非 localhost 的 Host
         // （如通过 debug.daifuyang.com 反代访问）
         allowedHosts: 'all',
-        // 关闭 HTTPS 自动跳转（外层 nginx 已终止 TLS）
-        https: false,
         // 代理：仅当 dev 端用户直连访问时使用。
         // 注意：若通过反向代理（如 nginx）访问 /api，
-        // 请在外层 nginx 中配置 /api → 3000 转发，不要依赖此处代理。
+        // 请在外层 nginx 中配置 /api → API_TARGET 转发。
         proxy: [
           {
             context: ['/api'],
@@ -82,7 +94,7 @@ export default defineConfig(async (merge, _env) => {
             secure: false,
           },
         ],
-      }) as any,
+      },
       postcss: {
         autoprefixer: { enable: true },
         pxtransform: {
