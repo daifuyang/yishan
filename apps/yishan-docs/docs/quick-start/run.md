@@ -12,7 +12,7 @@ pnpm --filter @yishan/demo-api db:migrate --dry-run
 pnpm --filter @yishan/demo-api db:migrate --apply
 pnpm db:seed
 pnpm dev:api
-pnpm --filter yishan-tiptap build
+pnpm --filter @yishan/tiptap build
 pnpm dev:admin
 pnpm dev:app
 pnpm dev:docs

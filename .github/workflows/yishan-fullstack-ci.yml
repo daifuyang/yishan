@@ -9,7 +9,9 @@ on:
       - "packages/core/**"
       - "apps/demo/config/**"
       - "scripts/**"
-      - "apps/yishan-components/yishan-tiptap/**"
+      - "packages/yishan-tiptap/**"
+      - "packages/ui/**"
+      - "apps/yishan-app/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -21,7 +23,9 @@ on:
       - "packages/core/**"
       - "apps/demo/config/**"
       - "scripts/**"
-      - "apps/yishan-components/yishan-tiptap/**"
+      - "packages/yishan-tiptap/**"
+      - "packages/ui/**"
+      - "apps/yishan-app/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -77,8 +81,20 @@ jobs:
 
       - name: Prepare yishan-tiptap
         run: |
-          pnpm install --filter yishan-tiptap --frozen-lockfile --prod=false
-          pnpm --filter yishan-tiptap build
+          pnpm install --filter @yishan/tiptap --frozen-lockfile --prod=false
+          pnpm --filter @yishan/tiptap typecheck
+          pnpm --filter @yishan/tiptap build
+
+      - name: Core App and mobile product checks
+        run: |
+          pnpm typecheck:mobile
+          pnpm --filter @yishan/core-app test
+          pnpm --filter yishan-app lint
+          pnpm --filter yishan-app test
+          pnpm build:mobile
+          pnpm build:app
+          pnpm --filter yishan-app build:h5
+          node scripts/check-app-boundaries.mjs
 
       - name: Admin Setup
         run: pnpm --filter @yishan/demo-admin exec max setup

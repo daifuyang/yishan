@@ -34,7 +34,9 @@ mistake. Its scope is still limited to the requested business area.
   under `src/modules/<id>/`.
 - `apps/yishan-app`: mini-program application. Follow its local conventions.
 - `apps/yishan-docs`: Docusaurus documentation site.
-- `apps/yishan-components/yishan-tiptap`: shared TipTap component package.
+- `packages/yishan-tiptap`: `@yishan/tiptap`, independent Rollup component package.
+- `packages/core/app`: `@yishan/core-app`, injected Taro request/auth/storage/env/hooks.
+- `packages/ui`: shared mobile components through `@yishan/ui/mobile`.
 - `apps/demo/config`: source-only Demo product configuration, consumed by Demo Admin and its companion mini-program. Other products own their configuration; Core must not depend on it.
 - `packages/core/admin`: public Admin runtime, module composition and Umi build plugin.
 - `packages/core/system-admin`: system management pages and module contributions.
@@ -257,3 +259,9 @@ workflow, concurrency, performance evidence, or testing pain.
 
 The purpose of these rules is to reduce maintenance-time cognitive load while
 keeping business code close to the business it serves.
+
+## Core App and mobile UI boundaries
+
+`packages/core/app` / `@yishan/core-app` owns generic Taro request/session/storage/env/hooks. Each product injects its API methods, URLs, storage keys and navigation; Core never imports an app or a backend/Admin runtime. UI is exported by `@yishan/ui/mobile`, with original tokens/styles. Product pages, business services, module registration and navigation remain in the full App. Never capture the uninitialized Taro default object in a storage adapter; delegate to live API methods at call time.
+
+Run `pnpm typecheck:mobile`, `pnpm --filter yishan-app test`, `pnpm build:app`, and H5/browser checks when shared mobile behavior changes. Root test/build now include App tests/weapp; H5, independent TipTap example and device validation remain separate. `pnpm check:boundaries` includes mobile public exports and dependency direction.

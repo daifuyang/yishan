@@ -1,4 +1,4 @@
-# Yishan Mobile 应用基座
+# Yishan Taro 产品应用
 
 保留 Taro 4、React、TypeScript、Zustand；使用现有 Design Tokens、组件及服务端认证能力。没有新增业务模块、数据库表或生产 Mock。
 
@@ -69,3 +69,11 @@ pnpm --filter yishan-app build:weapp
 `tests/browser/workbench.js` 是使用测试接口响应的 H5 手动回归脚本：先在 `http://127.0.0.1:21803` 提供 H5 静态构建，再打开独立 Playwright 会话并通过 `playwright-cli run-code --filename=apps/yishan-app/tests/browser/workbench.js` 执行。它不属于上述 Node 测试命令，也不代表真实服务端联调。
 
 微信产物构建通过不等于真机验收；发布前仍需开发者工具和真实 HTTPS 域名联调。消息服务、微信快捷登录和头像上传作为后续独立能力，不伪装成已提供的服务器功能。
+
+## 公共能力与产品所有权
+
+本应用保持完整产品：页面、业务 API、导航、模块注册、用户模型和配置不变。`@yishan/core-app` 位于 `packages/core/app`，提供注入式请求、登录、缓存、环境、分页 hook 与小型权限/路径工具。URL、Token key、认证 API 和失效跳转由本应用传入，每个产品实例互相隔离。
+
+通用 atoms/feedback 移至 `@yishan/ui/mobile`，原本地 barrels 仅转出公共实现；产品专属组合组件保留本地。`src/styles/tokens.scss` 转出公开样式入口，原视觉与交互保持一致。Taro 官方 `compile.include` 编译外部源码包；消费应用提供 React/Taro/platform 插件。Storage 使用调用时适配，避免捕获初始化前的 Taro API。
+
+根 `pnpm typecheck:mobile` 覆盖公共包和完整应用；根 test/build 现在覆盖 App 单元测试和 weapp。新产品在 `apps/<product>/app` 创建自己的 Taro 工程并消费公共 exports，不复制 Core/UI，不将业务放入 Core。

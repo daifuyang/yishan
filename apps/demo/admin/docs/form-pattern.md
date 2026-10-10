@@ -146,7 +146,7 @@ columns = [{
 ### 4.2 富文本（content 类）
 
 ```tsx
-import { FormEditor } from 'yishan-tiptap'
+import { FormEditor } from '@yishan/tiptap'
 import { ProForm } from '@ant-design/pro-components'
 
 <ProForm.Item
@@ -159,7 +159,7 @@ import { ProForm } from '@ant-design/pro-components'
 </ProForm.Item>
 ```
 
-`FormEditor` 来自 `yishan-tiptap` 包，做到 `pnpm --filter yishan-tiptap build` 后即可使用。
+`FormEditor` 来自 `@yishan/tiptap` 包，做到 `pnpm --filter @yishan/tiptap build` 后即可使用。
 
 ### 4.3 动态键值对（attributes）
 

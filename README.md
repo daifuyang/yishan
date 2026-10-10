@@ -2,14 +2,16 @@
 
 企业应用通用基座：React 19 / Umi / Ant Design 管理后台、Fastify 5 / TypeBox / Drizzle / MySQL 后端、微信小程序与 Docusaurus 文档。
 
-API V2 与 Admin V2 使用 Product-First Monorepo、Source-First 开发和显式应用装配。Core 可被多个独立产品复用；Demo 是一个普通产品实例。Admin 沿用 Umi Max / React / Ant Design，小程序保持现有组织方式。
+API V2 与 Admin V2 使用 Product-First Monorepo、Source-First 开发和显式应用装配。Core 可被多个独立产品复用；Demo 是一个普通产品实例。Admin 沿用 Umi Max / React / Ant Design，小程序保持完整产品应用，通用能力由 Core App 和移动 UI 提供。
 
 ```text
 apps/demo/api/              @yishan/demo-api：配置、装配、业务模块、扩展、部署
 apps/demo/admin/            @yishan/demo-admin：管理后台配置、装配和业务页面
 apps/yishan-app/            小程序
 apps/yishan-docs/           文档站
-apps/yishan-components/     共享编辑器
+packages/yishan-tiptap/    @yishan/tiptap：独立 Rollup 编辑器与发布示例
+packages/core/app/         @yishan/core-app：Taro 请求、登录、缓存、环境与公共 hooks
+packages/ui/               @yishan/ui/mobile：跨产品移动组件与原有样式
 packages/core/contracts/   @yishan/core-contracts：纯公共契约
 packages/core/database/    @yishan/core-database：连接与迁移执行
 packages/core/api/         @yishan/core-api：Fastify 平台与模块生命周期
@@ -33,7 +35,7 @@ pnpm --filter @yishan/demo-api db:migrate --dry-run
 pnpm --filter @yishan/demo-api db:migrate --apply
 pnpm db:seed
 pnpm dev:api
-pnpm --filter yishan-tiptap build
+pnpm --filter @yishan/tiptap build
 pnpm dev:admin
 ```
 
@@ -55,3 +57,21 @@ pnpm build:api
 生产产物由 `scripts/package-api.mjs` 使用 pnpm 生产依赖闭包打包，包含公开 package exports、迁移和 JSON 资源；可以脱离仓库运行。先以 `PUBLIC_PATH=/admin/` 构建 Admin，再通过 `--admin apps/demo/admin/dist` 包含静态资源；线上 `/admin/` 和 `/api/` 路径不因目录迁移改变。`pnpm build:admin` 先构建共享 TipTap，两个 Admin Core 包直接消费源码，不需要预构建。FC3 配置见 [Demo 部署说明](apps/demo/api/deploy/fc3/README.md)。构建、打包与部署不执行数据库迁移，不自动发布生产。
 
 开发指南：[模块接入](docs/module-onboarding.md)、[API V2](docs/architecture/api-v2.md)、[包边界](docs/architecture/package-boundaries.md)、[数据库所有权](docs/architecture/database-ownership.md)。贡献与安全规则见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [SECURITY.md](SECURITY.md)。
+
+移动端与共享组件：
+
+`apps/yishan-app` 仍为 Demo 配套的完整 Taro 产品，页面、业务 API、登录导航和产品配置留在应用中；没有创建无业务的 CRM/AXIS 空应用。新产品可在 `apps/<product>/app` 创建独立入口，使用自己的配置和 API，通过公开 exports 消费 Core App/UI，无需复制公共实现。
+
+| 命令 | 实际覆盖 |
+| --- | --- |
+| pnpm build:mobile | Core App 编译、移动 UI 类型检查 |
+| pnpm typecheck:mobile | Core App、移动 UI、完整 Taro App |
+| pnpm --filter @yishan/tiptap build / typecheck | 独立编辑器构建/类型检查 |
+| pnpm --filter yishan-app build:h5 | H5 生产构建 |
+| pnpm build:app | 微信小程序生产构建 |
+| pnpm typecheck | TipTap、移动端、API、Admin、Docs |
+| pnpm test | Core App、Taro App、Core Admin、Admin、API；数据库集成另行执行 |
+| pnpm lint | Admin、Docs、Taro App、API/Admin/App 包边界检查 |
+| pnpm build | Core App/UI、微信小程序、API、TipTap/Admin、Docs；H5 和独立 example 另行执行 |
+
+TipTap 独立示例不参与根 Workspace：先 `pnpm build:tiptap`，再在 `packages/yishan-tiptap/example` 执行 `pnpm install --frozen-lockfile`、`pnpm typecheck`、`pnpm dev`。发布包可由外部项目 `pnpm add @yishan/tiptap` 消费；本轮只验证本地 tarball，没有发布 npm。详见 [移动端迁移报告](docs/architecture/mobile-architecture-migration-report.md)。

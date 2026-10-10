@@ -8,9 +8,9 @@ Yishan (移山通用管理系统) is a pnpm monorepo for a generic admin baselin
 
 - `apps/demo/admin` — React 19 + Ant Design Pro 6 + UmiJS 4 (`@umijs/max`) admin frontend
 - `apps/demo/api` — Fastify 5 + Drizzle + TypeBox + JWT backend
-- `apps/yishan-app` — WeChat mini-program (Taro/uni-app style, see `apps/yishan-app/`)
+- `apps/yishan-app` — independent Taro 4 + React 18 mini-program (see `apps/yishan-app/`)
 - `apps/yishan-docs` — Docusaurus 3 docs site
-- `apps/yishan-components/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
+- `packages/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
 - `packages/core/admin` / `packages/core/system-admin` — source-only public Admin runtime, Umi build plugin and system management contributions
 - `apps/demo/config` — Demo product configuration (`@yishan/demo-config`); source-only workspace package for Demo Admin and its companion mini-program, no build step
 
@@ -24,23 +24,25 @@ All commands run from the repo root unless noted.
 # Install
 pnpm install
 
-# Full build (API packages → tiptap → admin → docs)
+# Full build (Core App/UI → weapp → API packages → tiptap → admin → docs)
 pnpm build
 # Equivalent to:
+#   pnpm build:mobile
+#   pnpm build:app
 #   pnpm build:api
-#   pnpm --filter yishan-tiptap build
+#   pnpm --filter @yishan/tiptap build
 #   pnpm --filter @yishan/demo-admin build
 #   pnpm --filter yishan-docs build
 
 # Per-app dev (run in separate terminals)
-pnpm --filter yishan-tiptap build         # admin depends on built tiptap
+pnpm --filter @yishan/tiptap build         # admin depends on built tiptap
 pnpm --filter @yishan/demo-admin dev            # Umi dev server (port 8000 by default for preview)
 pnpm dev:api              # TypeScript watch + Fastify auto-reload
 pnpm --filter yishan-docs start           # Docusaurus dev
 
 # Quality gate (matches CI)
 pnpm lint      # Admin packages + product (Biome/tsc) + docs/app + boundary checks
-pnpm test      # Core Admin registry + product Admin (Jest) + API (Vitest)
+pnpm test      # Core App + Taro App + Core Admin + Admin (Jest) + API (Vitest)
 
 # Backend DB (Drizzle)
 pnpm --filter @yishan/demo-api db:generate      # generate migrations from schema
@@ -170,3 +172,9 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 - Demo API listens on its configured `PORT`; Demo Admin startup accepts `ADMIN_PORT`, mapped to the Umi dev-server `PORT`. Set backend and proxy ports consistently for independent instances.
 - Mini-program `YISHAN_APP_API_BASE_URL` remains an explicit gateway override; H5 defaults to same-origin requests and uses the configured development proxy.
 - Change product defaults in product configuration. Do not introduce a shared default product address.
+
+## Core App and mobile UI boundaries
+
+`packages/core/app` / `@yishan/core-app` owns generic Taro request/session/storage/env/hooks. Each product injects its API methods, URLs, storage keys and navigation; Core never imports an app or a backend/Admin runtime. UI is exported by `@yishan/ui/mobile`, with original tokens/styles. Product pages, business services, module registration and navigation remain in the full App. Never capture the uninitialized Taro default object in a storage adapter; delegate to live API methods at call time.
+
+Run `pnpm typecheck:mobile`, `pnpm --filter yishan-app test`, `pnpm build:app`, and H5/browser checks when shared mobile behavior changes. Root test/build now include App tests/weapp; H5, independent TipTap example and device validation remain separate. `pnpm check:boundaries` includes mobile public exports and dependency direction.

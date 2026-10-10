@@ -111,10 +111,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Prepare yishan-tiptap
-        working-directory: apps/yishan-components/yishan-tiptap
+        working-directory: packages/yishan-tiptap
         run: |
-          pnpm install --filter yishan-tiptap --frozen-lockfile
-          pnpm build --filter yishan-tiptap
+          pnpm install --filter @yishan/tiptap --frozen-lockfile
+          pnpm build --filter @yishan/tiptap
 
       - name: Generate Admin plugin routes
         run: pnpm --filter @yishan/demo-admin exec max setup
