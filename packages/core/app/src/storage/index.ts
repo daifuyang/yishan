@@ -1,8 +1,18 @@
 /**
  * 跨端存储封装（H5 走 localStorage，小程序走 Taro 存储）
  */
-import type { StorageAdapter } from './options'
+import type { StorageAdapter, SessionStorageKeys } from './options'
 export type { StorageAdapter, SessionStorageKeys } from './options'
+
+export function createSessionStorageKeys(productId: string): Readonly<SessionStorageKeys> {
+  if (typeof productId !== 'string' || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(productId))
+    throw new Error('productId must be a non-empty lowercase product identifier (letters, digits and single hyphens)')
+  return Object.freeze({
+    ACCESS_TOKEN: `yishan:${productId}:accessToken`,
+    REFRESH_TOKEN: `yishan:${productId}:refreshToken`,
+    USER: `yishan:${productId}:user`,
+  })
+}
 
 export function createStorage(adapter: StorageAdapter) {
   return {

@@ -38,10 +38,16 @@ export interface ApiClientOptions {
   storage: Storage
   storageKeys: SessionStorageKeys
   refreshPath: string
+  /** Replaces business-code detection; HTTP 401 is always enforced by the client. */
+  isUnauthorized?: (status: number, body?: ApiResponse<unknown>) => boolean
+}
+
+function defaultIsUnauthorized(_status: number, body?: ApiResponse<unknown>) {
+  return [401, 401000, 401001, 401003, 22001, 22003, 22004, 22005, 22006, 22009].includes(body?.code ?? 0)
 }
 
 /** Each product creates its own request/session state and supplies its API contract. */
-export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, refreshPath }: ApiClientOptions) {
+export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, refreshPath, isUnauthorized: authPolicy = defaultIsUnauthorized }: ApiClientOptions) {
   let sessionVersion = 0
   let unauthorizedHandler: (() => void) | undefined
   let tokenRefreshedHandler: ((data: TokenData) => void) | undefined
@@ -110,12 +116,7 @@ export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, r
   }
 
   function isUnauthorized(status: number, body?: ApiResponse<unknown>) {
-    return (
-      status === 401 ||
-      [401, 401000, 401001, 401003, 22001, 22003, 22004, 22005, 22006, 22009].includes(
-        body?.code ?? 0,
-      )
-    )
+    return status === 401 || authPolicy(status, body)
   }
 
   function validate<T>(response: Taro.request.SuccessCallbackResult<ApiResponse<T>>): ApiResponse<T> {
@@ -154,6 +155,8 @@ export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, r
       } catch (error) {
         if (error instanceof RequestCancelledError || version !== sessionVersion)
           throw new RequestCancelledError()
+        // A transport outage provides no evidence that the refresh credential was rejected.
+        if (error instanceof ApiError && error.code === -1 && error.httpStatus === 0) throw error
         return expireSession(version)
       } finally {
         if (refreshFlight === flight) refreshFlight = undefined
