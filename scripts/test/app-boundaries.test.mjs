@@ -218,3 +218,102 @@ test('computed dynamic imports and require arguments are unsupported and are not
   pkg('apps/demo/app', { name: '@yishan/demo-app' }, "const subpath = 'private'; import('@yishan/ui/' + subpath); require(`@yishan/ui/${subpath}`); require.resolve(subpath)")
   assert.deepEqual(collectAppBoundaryErrors(root), [])
 }))
+
+test('Docs accepts local site aliases, official Docusaurus aliases and shared public exports', () => fixture(({ root, pkg }) => {
+  pkg('packages/core/admin', { name: '@yishan/core-admin', exports: { './runtime': './src/index.ts' } })
+  pkg('packages/core/api', { name: '@yishan/core-api', exports: './src/index.ts' })
+  pkg('apps/docs', { name: '@yishan/docs', dependencies: { '@yishan/core-admin': 'workspace:*' } }, `
+    import runtime from '@yishan/core-admin/runtime';
+    import server from '@yishan/core-api';
+    import local from './local';
+    import page from '@site/app/pages/local';
+    import component from '@site/components/local';
+    import Layout from '@theme/Layout';
+    import Link from '@docusaurus/Link';
+  `)
+  assert.deepEqual(collectAppBoundaryErrors(root), [])
+}))
+
+for (const kind of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+  test(`Docs rejects cross-product ${kind} even for public exports`, () => fixture(({ root, pkg }) => {
+    pkg('apps/demo/config', { name: '@yishan/demo-config', exports: './src/index.ts' })
+    pkg('apps/docs', { name: '@yishan/docs', [kind]: { '@yishan/demo-config': 'workspace:*' } })
+    assert.ok(collectAppBoundaryErrors(root).some(error => error.includes('cross-product dependency')))
+  }))
+  test(`all shared packages and product runtimes reject Docs ${kind}`, () => fixture(({ root, pkg }) => {
+    pkg('apps/docs', { name: '@yishan/docs', exports: './src/index.ts' })
+    const owners = ['packages/core/api', 'packages/core/admin', 'packages/core/system-api', 'packages/core/system-admin', 'packages/core/database', 'packages/contracts', 'packages/shared-config', 'packages/fixture', 'apps/demo/api', 'apps/demo/admin', 'apps/demo/config', 'apps/demo/app', 'apps/crm/api', 'apps/axis/admin']
+    for (const [index, location] of owners.entries()) pkg(location, { name: `@yishan/owner-${index}`, [kind]: { '@yishan/docs': 'workspace:*' } })
+    assert.equal(collectAppBoundaryErrors(root).filter(error => error.includes('cannot depend on Docs')).length, owners.length)
+  }))
+}
+
+for (const product of ['demo', 'crm', 'axis']) {
+  test(`Docs rejects public, private and path imports from ${product}`, () => fixture(({ root, pkg }) => {
+    const name = `@yishan/${product}-config`
+    const target = join(root, `apps/${product}/config/src/index.ts`)
+    pkg(`apps/${product}/config`, { name, exports: './src/index.ts' })
+    const imports = [name, `${name}/src/index`, `../../${product}/config/src/index`, `..\\..\\${product}\\config\\src\\index`, target, target.replaceAll('\\', '/'), pathToFileURL(target).href, `@site/../${product}/config/src/index`]
+    for (const specifier of imports) {
+      pkg('apps/docs', { name: '@yishan/docs' }, `import value from ${JSON.stringify(specifier)}`)
+      assert.ok(collectAppBoundaryErrors(root).some(error => error.includes('cross-product dependency')), specifier)
+    }
+  }))
+}
+
+test('Docs rejects private shared exports and paths escaping the site alias', () => fixture(({ root, pkg }) => {
+  pkg('packages/ui', { name: '@yishan/ui', exports: { './mobile': './src/index.ts' } })
+  pkg('apps/docs', { name: '@yishan/docs' }, "import privateUI from '@yishan/ui/src/index'; import escaped from '@site/../../packages/ui/src/index'")
+  const errors = collectAppBoundaryErrors(root)
+  assert.ok(errors.some(error => error.includes('public export')))
+  assert.ok(errors.some(error => error.includes('relative import')))
+}))
+
+for (const location of ['packages/core/api', 'packages/core/admin', 'packages/fixture', 'apps/demo/api', 'apps/demo/admin', 'apps/demo/config', 'apps/demo/app']) {
+  test(`${location} rejects public, private, relative, Windows and absolute Docs imports`, () => fixture(({ root, pkg }) => {
+    pkg('apps/docs', { name: '@yishan/docs', exports: './src/index.ts' })
+    const target = join(root, 'apps/docs/src/index.ts')
+    const relativePath = '../'.repeat(location.split('/').length + 1) + 'apps/docs/src/index'
+    for (const specifier of ['@yishan/docs', '@yishan/docs/src/index', relativePath, relativePath.replaceAll('/', '\\'), target, target.replaceAll('\\', '/'), pathToFileURL(target).href]) {
+      pkg(location, { name: '@yishan/owner' }, `import value from ${JSON.stringify(specifier)}`)
+      assert.ok(collectAppBoundaryErrors(root).some(error => error.includes('cannot depend on Docs')), specifier)
+    }
+  }))
+}
+
+test('Docs checks literal TS, JS and CSS imports outside the src directory', () => fixture(({ root, pkg }) => {
+  pkg('apps/demo/config', { name: '@yishan/demo-config', exports: './src/index.ts' })
+  pkg('apps/docs', { name: '@yishan/docs' })
+  for (const [filename, source] of [
+    ['config/config.ts', "import type { Value } from '@yishan/demo-config'; type Other = import('@yishan/demo-config').Value; export { value } from '@yishan/demo-config'"],
+    ['app/pages/page.mjs', "import('@yishan/demo-config'); require('@yishan/demo-config'); require.resolve('@yishan/demo-config')"],
+    ['components/styles.css', "@import url('@yishan/demo-config');"],
+  ]) {
+    mkdirSync(join(root, 'apps/docs', filename, '..'), { recursive: true })
+    writeFileSync(join(root, 'apps/docs', filename), source)
+  }
+  assert.equal(collectAppBoundaryErrors(root).filter(error => error.includes('cross-product dependency')).length, 7)
+}))
+
+test('Docs ignores generated Docusaurus source and site alias is local to Docs', () => fixture(({ root, pkg }) => {
+  pkg('apps/demo/config', { name: '@yishan/demo-config', exports: './src/index.ts' })
+  pkg('apps/docs', { name: '@yishan/docs' })
+  mkdirSync(join(root, 'apps/docs/.docusaurus'))
+  writeFileSync(join(root, 'apps/docs/.docusaurus/generated.ts'), "import value from '@yishan/demo-config'")
+  pkg('packages/fixture', { name: '@yishan/fixture' }, "import value from '@site/components/local'")
+  assert.deepEqual(collectAppBoundaryErrors(root), [])
+}))
+
+test('reverse Docs checks include literal dynamic, require, type and stylesheet imports', () => fixture(({ root, pkg }) => {
+  pkg('apps/docs', { name: '@yishan/docs', exports: './src/index.ts' })
+  pkg('apps/demo/api', { name: '@yishan/demo-api' }, "type Value = import('@yishan/docs').Value; import('@yishan/docs'); require('@yishan/docs'); require.resolve('@yishan/docs')")
+  writeFileSync(join(root, 'apps/demo/api/src/style.scss'), "@use '@yishan/docs'; @forward '@yishan/docs'; @import url('@yishan/docs');")
+  assert.equal(collectAppBoundaryErrors(root).filter(error => error.includes('cannot depend on Docs')).length, 7)
+}))
+
+test('Docs additions preserve the scope of existing non-mobile boundary checks', () => fixture(({ root, pkg }) => {
+  pkg('apps/docs', { name: '@yishan/docs' })
+  pkg('apps/demo/config', { name: '@yishan/demo-config' })
+  pkg('packages/core/api', { name: '@yishan/core-api', dependencies: { '@yishan/demo-config': 'workspace:*' } }, "import value from '@yishan/demo-config/src/index'; import invalid from 'file:invalid%' ")
+  assert.deepEqual(collectAppBoundaryErrors(root), [])
+}))

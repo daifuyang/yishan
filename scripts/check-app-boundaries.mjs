@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 const here = dirname(fileURLToPath(import.meta.url))
 const ts = createRequire(join(here, '../packages/core/app/package.json'))('typescript')
 const sharedPaths = ['packages/core/app', 'packages/ui', 'packages/yishan-tiptap']
-const ignored = new Set(['node_modules', 'dist', 'build', 'coverage', 'example', '.git'])
+const ignored = new Set(['node_modules', 'dist', 'build', 'coverage', 'example', '.git', '.docusaurus'])
 const serverAdmin = new Set(['@yishan/core-api', '@yishan/core-system-api', '@yishan/core-database', '@yishan/core-admin', '@yishan/core-system-admin'])
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
@@ -70,11 +70,15 @@ export function collectAppBoundaryErrors(root) {
   const byName = new Map(packages.map(pkg => [pkg.manifest.name, pkg]))
   const errors = []
   const shared = new Set(sharedPaths.map(location => join(root, location)))
-  for (const owner of packages.filter(pkg => shared.has(pkg.directory) || /^apps\/[^/]+\/app$/.test(relative(root, pkg.directory).split(sep).join('/')))) {
+  const docsDirectory = join(root, 'apps/docs')
+  for (const owner of packages) {
+    const mobile = shared.has(owner.directory) || /^apps\/[^/]+\/app$/.test(relative(root, owner.directory).split(sep).join('/'))
+    const docs = owner.directory === docsDirectory
     const dependency = (name, report, target = byName.get(name)) => {
-      if (shared.has(owner.directory) && target?.product) report('shared packages cannot depend on products')
-      if (owner.product && target?.product && owner.product !== target.product) report('cross-product dependency is forbidden')
-      if (serverAdmin.has(name) || target?.serverAdmin) report('mobile packages cannot depend on server/Admin runtime')
+      if (target?.directory === docsDirectory && !docs) report('other workspace packages cannot depend on Docs')
+      if (mobile && shared.has(owner.directory) && target?.product) report('shared packages cannot depend on products')
+      if ((mobile || docs) && owner.product && target?.product && owner.product !== target.product) report('cross-product dependency is forbidden')
+      if (mobile && (serverAdmin.has(name) || target?.serverAdmin)) report('mobile packages cannot depend on server/Admin runtime')
     }
     for (const kind of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
       for (const name of Object.keys(owner.manifest[kind] ?? {})) dependency(name, message => errors.push(owner.manifest.name + ': ' + message + ' (' + name + ')'))
@@ -84,21 +88,21 @@ export function collectAppBoundaryErrors(root) {
       let normalized = specifier.replaceAll('\\', '/')
       if (normalized.startsWith('file:')) {
         try { normalized = fileURLToPath(specifier).replaceAll('\\', '/') }
-        catch { report('invalid file URL import'); continue }
+        catch { if (mobile || docs) report('invalid file URL import'); continue }
       }
       const absolute = isAbsolute(normalized) || /^[A-Za-z]:\//.test(normalized)
-      const targetPath = absolute ? resolve(normalized) : normalized.startsWith('.') ? resolve(dirname(file), normalized) : normalized.startsWith('@/') ? resolve(owner.directory, 'src', normalized.slice(2)) : undefined
+      const targetPath = absolute ? resolve(normalized) : normalized.startsWith('.') ? resolve(dirname(file), normalized) : normalized.startsWith('@/') ? resolve(owner.directory, 'src', normalized.slice(2)) : docs && normalized.startsWith('@site/') ? resolve(owner.directory, normalized.slice(6)) : undefined
       if (targetPath) {
         const target = packages.find(pkg => contains(pkg.directory, targetPath))
         dependency(target?.manifest.name, report, target)
-        if (!contains(owner.directory, targetPath)) report(`cross-package ${absolute ? 'absolute' : 'relative'} import is forbidden`)
+        if ((mobile || docs) && !contains(owner.directory, targetPath)) report(`cross-package ${absolute ? 'absolute' : 'relative'} import is forbidden`)
         continue
       }
-      const name = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') : specifier.split('/')[0]
+      const name = normalized.startsWith('@') ? normalized.split('/').slice(0, 2).join('/') : normalized.split('/')[0]
       dependency(name, report)
       const target = byName.get(name)
-      if (target && target !== owner) {
-        const subpath = specifier === name ? '.' : '.' + specifier.slice(name.length)
+      if ((mobile || docs) && target && target !== owner) {
+        const subpath = normalized === name ? '.' : '.' + normalized.slice(name.length)
         if (!exposes(target.manifest.exports, subpath)) report('cross-package import must use a public export')
       }
     }
