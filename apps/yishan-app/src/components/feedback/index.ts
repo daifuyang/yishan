@@ -1,9 +1,6 @@
-export { default as EmptyState } from './EmptyState'
-export { default as Loading } from './Loading'
-export { default as LoadingState } from './Loading'
-export { default as ErrorState } from './ErrorState'
+export {
+  EmptyState, Loading, LoadingState, ErrorState, ListSkeleton, StateView,
+} from '@yishan/ui/mobile'
 export { default as PermissionDenied } from './PermissionDenied'
-export { default as ListSkeleton } from './ListSkeleton'
-export { default as StateView } from './StateView'
 export { default as DashboardSkeleton } from './DashboardSkeleton'
-export type { StateViewKind, StateViewProps } from './StateView'
+export type { StateViewKind, StateViewProps } from '@yishan/ui/mobile'

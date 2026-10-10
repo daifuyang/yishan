@@ -39,7 +39,10 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^5.0.14",
-    "@yishan/demo-config": "workspace:*"
+    "tslib": "^2.6.2",
+    "@yishan/demo-config": "workspace:*",
+    "@yishan/core-app": "workspace:*",
+    "@yishan/ui": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",

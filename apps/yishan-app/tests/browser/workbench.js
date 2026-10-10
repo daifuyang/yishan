@@ -88,12 +88,14 @@ async (page) => {
       }),
     })
   })
-  await page.goto(url)
-  await page.evaluate(() => {
+  // Seed before the app evaluates its initial auth state, only once per browser session.
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('workbench-fixture')) return
     localStorage.clear()
     localStorage.setItem('yishan:app:accessToken', JSON.stringify({ data: 'test-only' }))
+    sessionStorage.setItem('workbench-fixture', 'seeded')
   })
-  await page.reload()
+  await page.goto(url)
   await page.getByText('全部应用', { exact: true }).waitFor()
   check(
     (await page.locator('[aria-label="用户管理"]').count()) === 2,

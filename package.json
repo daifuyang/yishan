@@ -4,7 +4,7 @@
   "description": "移山通用管理系统 - 基于 React/Ant Design Pro、Fastify、Docusaurus 的 monorepo 解决方案",
   "private": true,
   "scripts": {
-    "build": "pnpm build:api && pnpm build:admin && pnpm --filter yishan-docs build",
+    "build": "pnpm build:mobile && pnpm build:app && pnpm build:api && pnpm build:admin && pnpm --filter yishan-docs build",
     "dev:admin": "pnpm --filter @yishan/demo-admin dev",
     "dev:api": "node scripts/dev-api.mjs",
     "dev:app": "pnpm --filter yishan-app dev:weapp",
@@ -14,19 +14,31 @@
     "build:app": "pnpm --filter yishan-app build:weapp",
     "dev:docs": "pnpm --filter yishan-docs start",
     "build:docs": "pnpm --filter yishan-docs build",
-    "build:tiptap": "pnpm --filter yishan-tiptap build",
+    "build:tiptap": "pnpm --filter @yishan/tiptap build",
     "db:generate": "pnpm --filter @yishan/demo-api db:generate",
     "db:seed": "pnpm --filter @yishan/demo-api db:seed",
     "check:openapi": "node scripts/check-openapi-drift.mjs apps/demo/api/openapi.json",
     "test:scripts": "node --test scripts/*.test.mjs scripts/test/*.test.mjs",
     "lint": "pnpm --filter @yishan/core-admin lint && pnpm --filter @yishan/core-system-admin lint && pnpm --filter @yishan/demo-admin lint && pnpm --filter yishan-docs typecheck && pnpm --filter yishan-app lint && pnpm check:boundaries",
-    "test": "pnpm --filter @yishan/core-admin test && pnpm --filter @yishan/demo-admin test && pnpm test:api",
+    "test": "pnpm --filter @yishan/core-app test && pnpm --filter yishan-app test && pnpm --filter @yishan/core-admin test && pnpm --filter @yishan/demo-admin test && pnpm test:api",
     "test:api": "pnpm build:api && pnpm -r --filter @yishan/demo-api... test",
     "typecheck:api": "pnpm build:api && pnpm -r --filter @yishan/demo-api... typecheck",
     "db:migrate": "pnpm --filter @yishan/demo-api db:migrate",
-    "check:boundaries": "node scripts/check-api-architecture.cjs && node scripts/check-main-baseline.mjs && node scripts/check-module-naming.mjs && node scripts/check-admin-boundaries.mjs",
+    "check:boundaries": "node scripts/check-api-architecture.cjs && node scripts/check-main-baseline.mjs && node scripts/check-module-naming.mjs && node scripts/check-admin-boundaries.mjs && node scripts/check-app-boundaries.mjs",
     "check:migrations": "node scripts/check-migration-history.mjs && pnpm --filter @yishan/demo-api db:migrate --check",
-    "test:integration": "pnpm build:api && pnpm --filter @yishan/core-database test:mysql && pnpm --filter @yishan/core-system-api test:integration && pnpm --filter @yishan/demo-api test:integration"
+    "test:integration": "pnpm build:api && pnpm --filter @yishan/core-database test:mysql && pnpm --filter @yishan/core-system-api test:integration && pnpm --filter @yishan/demo-api test:integration",
+    "build:mobile": "pnpm --filter @yishan/core-app build && pnpm --filter @yishan/ui typecheck",
+    "typecheck:mobile": "pnpm --filter @yishan/core-app typecheck && pnpm --filter @yishan/ui typecheck && pnpm --filter yishan-app tsc",
+    "typecheck": "pnpm --filter @yishan/tiptap typecheck && pnpm typecheck:mobile && pnpm typecheck:api && pnpm typecheck:admin && pnpm --filter yishan-docs typecheck"
+  },
+  "pnpm": {
+    "packageExtensions": {
+      "@floating-ui/react@*": {
+        "peerDependencies": {
+          "@types/react": "*"
+        }
+      }
+    }
   },
   "keywords": [
     "react",

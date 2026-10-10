@@ -19,6 +19,7 @@ export default {
       ],
     },
     webpackChain(chain) {
+      chain.resolve.modules.add('node_modules').prepend(path.join(APP_ROOT, 'node_modules'))
       chain.resolve.alias.set('@', path.join(APP_ROOT, 'src'))
 
       chain.optimization.splitChunks({

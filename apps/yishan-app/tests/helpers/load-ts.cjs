@@ -24,6 +24,8 @@ function loadTs(entry, mocks = {}) {
     }).outputText
     function localRequire(id) {
       if (Object.hasOwn(mocks, id)) return mocks[id]
+      if (id.startsWith('@yishan/core-app') || id.startsWith('@yishan/ui'))
+        return load(require.resolve(id, { paths: [path.dirname(absolute)] }))
       if (!id.startsWith('.') && !id.startsWith('@/')) return require(id)
       const base = id.startsWith('@/')
         ? path.resolve(appRoot, 'src', id.slice(2))
@@ -38,6 +40,7 @@ function loadTs(entry, mocks = {}) {
       if (!resolved) throw new Error(`Cannot resolve ${id} from ${file}`)
       return load(resolved)
     }
+    localRequire.resolve = (id) => require.resolve(id, { paths: [path.dirname(absolute)] })
     const factory = vm.runInThisContext(`(function(require,module,exports,__filename,__dirname){${source}\n})`, {
       filename: absolute,
     })

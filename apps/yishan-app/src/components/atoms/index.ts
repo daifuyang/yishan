@@ -1,11 +1,9 @@
-export { Button } from './Button'
-export { AppText } from './Text'
-export { Badge } from './Badge'
-export { Avatar } from './Avatar'
-export { Tag } from './Tag'
+export { Button, AppText, Badge, Avatar, Tag } from '@yishan/ui/mobile'
 
-export type { ButtonProps, ButtonVariant, ButtonSize } from './Button'
-export type { TextProps, TextVariant, TextSize, TextWeight } from './Text'
-export type { BadgeProps, BadgeVariant, BadgeSize } from './Badge'
-export type { AvatarProps, AvatarSize } from './Avatar'
-export type { TagProps, TagVariant, TagSize } from './Tag'
+export type {
+  ButtonProps, ButtonVariant, ButtonSize,
+  TextProps, TextVariant, TextSize, TextWeight,
+  BadgeProps, BadgeVariant, BadgeSize,
+  AvatarProps, AvatarSize,
+  TagProps, TagVariant, TagSize,
+} from '@yishan/ui/mobile'

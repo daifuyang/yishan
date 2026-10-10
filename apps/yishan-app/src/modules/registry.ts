@@ -1,3 +1,7 @@
+import { hasRequiredPermissions } from '@yishan/core-app/permissions'
+export { hasRequiredPermissions } from '@yishan/core-app/permissions'
+import { normalizePage } from '@yishan/core-app/router'
+export { normalizePage } from '@yishan/core-app/router'
 import type { SysMenuNode } from '@/api/types'
 import { isRegisteredPage } from '@/constants/page-config'
 
@@ -86,10 +90,6 @@ for (const field of ['id', 'entry'] as const) {
   }
 }
 
-export function normalizePage(path: string): string {
-  return path.split('?')[0].replace(/^\/+/, '').replace(/\/+$/, '')
-}
-
 export function flattenMenus(menus: readonly SysMenuNode[]): SysMenuNode[] {
   const result: SysMenuNode[] = []
   const walk = (nodes: readonly SysMenuNode[]) => {
@@ -111,13 +111,6 @@ export function getMobileModule(menu: SysMenuNode): MobileModule | undefined {
   return MOBILE_MODULES.find(
     (module) => normalizePage(module.backendMenuPath) === normalizePage(menu.path ?? ''),
   )
-}
-
-export function hasRequiredPermissions(
-  required: readonly string[],
-  permissions?: readonly string[],
-): boolean {
-  return permissions !== undefined && required.every((code) => permissions.includes(code))
 }
 
 export function isModuleEnabled(

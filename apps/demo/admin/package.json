@@ -54,7 +54,7 @@
     "react-easy-crop": "^6.2.2",
     "swagger-ui-dist": "^5.32.5",
     "xlsx": "^0.18.5",
-    "@zerocmf/yishan-tiptap": "workspace:^",
+    "@yishan/tiptap": "workspace:^",
     "@yishan/core-admin": "workspace:*",
     "@yishan/core-system-admin": "workspace:*"
   },

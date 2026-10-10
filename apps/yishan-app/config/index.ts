@@ -5,6 +5,12 @@ import path from 'node:path'
 import devConfig from './dev'
 import prodConfig from './prod'
 
+// Source workspace packages participate in both Taro compiler targets through public exports.
+const sharedSources = [
+  path.dirname(require.resolve('@yishan/core-app')),
+  path.dirname(require.resolve('@yishan/ui/mobile')),
+]
+
 export default defineConfig(async (merge, _env) => {
   const apiTarget = resolveApiTarget('http://localhost:3100')
   const outputRoot = `dist/${process.env.TARO_ENV || 'weapp'}`
@@ -59,6 +65,11 @@ export default defineConfig(async (merge, _env) => {
     },
     cache: { enable: true },
     mini: {
+      compile: { include: sharedSources },
+      webpackChain(chain) {
+        // Platform plugins and the React runtime belong to the consuming Taro application.
+        chain.resolve.modules.add('node_modules').prepend(path.resolve(__dirname, '../node_modules'))
+      },
       miniCssExtractPluginOption: { ignoreOrder: true },
       postcss: {
         pxtransform: {
@@ -75,6 +86,10 @@ export default defineConfig(async (merge, _env) => {
       },
     },
     h5: {
+      compile: { include: sharedSources },
+      webpackChain(chain) {
+        chain.resolve.modules.add('node_modules').prepend(path.resolve(__dirname, '../node_modules'))
+      },
       publicPath: '/',
       staticDirectory: 'static',
       useHtmlComponents: true,
