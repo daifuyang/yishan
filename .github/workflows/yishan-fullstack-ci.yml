@@ -12,6 +12,9 @@ on:
       - "packages/yishan-tiptap/**"
       - "packages/ui/**"
       - "apps/demo/app/**"
+      - "apps/yishan-docs/**"
+      - ".tool-versions"
+      - ".npmrc"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -26,6 +29,9 @@ on:
       - "packages/yishan-tiptap/**"
       - "packages/ui/**"
       - "apps/demo/app/**"
+      - "apps/yishan-docs/**"
+      - ".tool-versions"
+      - ".npmrc"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -79,11 +85,17 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile --prod=false
 
+      - name: Check installed Taro versions and local shim
+        run: pnpm check:taro
+
       - name: Prepare yishan-tiptap
         run: |
-          pnpm install --filter @yishan/tiptap --frozen-lockfile --prod=false
           pnpm --filter @yishan/tiptap typecheck
           pnpm --filter @yishan/tiptap build
+          pnpm --filter @yishan/tiptap verify:package
+
+      - name: Verify independent TipTap tarball consumer
+        run: pnpm verify:tiptap --output "$RUNNER_TEMP/yishan-tiptap-consumer"
 
       - name: Core App and mobile product checks
         run: |
@@ -96,8 +108,13 @@ jobs:
           pnpm --filter @yishan/demo-app build:h5
           node scripts/check-app-boundaries.mjs
 
-      - name: Admin Setup
-        run: pnpm --filter @yishan/demo-admin exec max setup
+      - name: Admin Setup and strict public package typechecks
+        run: pnpm typecheck:admin
+
+      - name: Docs typecheck and production build
+        run: |
+          pnpm --filter yishan-docs typecheck
+          pnpm build:docs
 
       - name: Admin public package lint and typechecks
         run: |

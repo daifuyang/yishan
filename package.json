@@ -28,8 +28,10 @@
     "check:migrations": "node scripts/check-migration-history.mjs && pnpm --filter @yishan/demo-api db:migrate --check",
     "test:integration": "pnpm build:api && pnpm --filter @yishan/core-database test:mysql && pnpm --filter @yishan/core-system-api test:integration && pnpm --filter @yishan/demo-api test:integration",
     "build:mobile": "pnpm --filter @yishan/core-app build && pnpm --filter @yishan/ui typecheck",
-    "typecheck:mobile": "pnpm --filter @yishan/core-app typecheck && pnpm --filter @yishan/ui typecheck && pnpm --filter @yishan/demo-app tsc",
-    "typecheck": "pnpm --filter @yishan/tiptap typecheck && pnpm typecheck:mobile && pnpm typecheck:api && pnpm typecheck:admin && pnpm --filter yishan-docs typecheck"
+    "typecheck:mobile": "pnpm check:taro && pnpm --filter @yishan/core-app typecheck && pnpm --filter @yishan/ui typecheck && pnpm --filter @yishan/demo-app tsc",
+    "typecheck": "pnpm --filter @yishan/tiptap typecheck && pnpm typecheck:mobile && pnpm typecheck:api && pnpm typecheck:admin && pnpm --filter yishan-docs typecheck",
+    "check:taro": "node scripts/check-taro-versions.mjs",
+    "verify:tiptap": "node scripts/verify-tiptap-consumer.mjs"
   },
   "pnpm": {
     "packageExtensions": {

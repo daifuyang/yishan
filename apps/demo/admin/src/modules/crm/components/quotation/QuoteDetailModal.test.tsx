@@ -415,7 +415,12 @@ test('zero discount omits public description and internal reason', async () => {
   expect(screen.queryByText(quote.internalDiscountReason ?? '')).toBeNull();
 });
 test('generation follows quote validity and stays separate from sending', async () => {
-  jest.mocked(getQuotation).mockResolvedValue({ ...quote, share: null });
+  // A calendar-date fixture keeps this interaction assertion independent of the runner timezone.
+  jest.mocked(getQuotation).mockResolvedValue({
+    ...quote,
+    validUntil: '2026-10-20',
+    share: null,
+  });
   jest.mocked(createQuotationShare).mockResolvedValue({
     shareId: 13,
     url: '/q/new-token',

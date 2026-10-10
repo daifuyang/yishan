@@ -93,24 +93,6 @@ export default defineConfig(async (merge, _env) => {
       publicPath: '/',
       staticDirectory: 'static',
       useHtmlComponents: true,
-      devServer: {
-        host: '0.0.0.0',
-        port: 21003,
-        // allowedHosts: 'all' 让 webpack-dev-server 接受非 localhost 的 Host
-        // （如通过 debug.daifuyang.com 反代访问）
-        allowedHosts: 'all',
-        // 代理：仅当 dev 端用户直连访问时使用。
-        // 注意：若通过反向代理（如 nginx）访问 /api，
-        // 请在外层 nginx 中配置 /api → apiTarget 转发。
-        proxy: [
-          {
-            context: ['/api'],
-            target: apiTarget,
-            changeOrigin: true,
-            secure: false,
-          },
-        ],
-      },
       postcss: {
         autoprefixer: { enable: true },
         pxtransform: {
