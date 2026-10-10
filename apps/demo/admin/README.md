@@ -141,7 +141,7 @@ config/
 2. 先 dump 并审查同产品 `../api/openapi.json`，再运行 `pnpm --filter @yishan/demo-admin openapi`
 3. 产品业务从 `@/services/generated/<module>` 导入；系统服务从 `@yishan/core-system-admin/services/<service>` 的公开 export 导入
 
-详情见 [模块接入（后端与 Admin）](../../../docs/module-onboarding.md)。
+详情见 [模块接入（后端与 Admin）](../../docs/content/modules/onboarding.md)。
 
 ### OpenAPI 生成所有权
 

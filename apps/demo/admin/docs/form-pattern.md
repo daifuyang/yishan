@@ -4,7 +4,7 @@
 >
 > 配套文档：
 > - 页面注册机制（怎么挂到菜单）→ 本目录 `module-pages.md`
-> - 后端模块规范 → `docs/module-onboarding.md`
+> - 后端模块规范 → `apps/docs/content/modules/onboarding.md`
 
 ## 1. 整体骨架
 

@@ -1,6 +1,6 @@
 # 模块页面注册机制
 
-业务页面位于产品 `apps/demo/admin`，系统管理页面由 `@yishan/core-system-admin` 公开贡献。表单约定见 [form-pattern.md](form-pattern.md)，后端与安装规则见 [模块接入](../../../../docs/module-onboarding.md)。
+业务页面位于产品 `apps/demo/admin`，系统管理页面由 `@yishan/core-system-admin` 公开贡献。表单约定见 [form-pattern.md](form-pattern.md)，后端与安装规则见 [模块接入](../../../docs/content/modules/onboarding.md)。
 
 ## 构建与运行时
 
@@ -28,7 +28,7 @@ URL 不带 `/modules/`；菜单 component 必须保留 `./modules/` 前缀。系
 
 1. 在 `apps/demo/admin/src/modules/portal/pages/tags/index.tsx` 创建默认导出的 React 页面。页面组合沿用 PageContainer / ProTable。
 2. 在产品 API 的 `src/modules/portal/config/system-menu.json` 声明菜单节点，URL 为 `/portal/tags`，component 为 `./modules/portal/tags`。
-3. 在模块的 `permissions.ts` 集中声明权限，在 routes / services / repositories / schemas 实现接口；按 [模块接入](../../../../docs/module-onboarding.md) 安装模块。
+3. 在模块的 `permissions.ts` 集中声明权限，在 routes / services / repositories / schemas 实现接口；按 [模块接入](../../../docs/content/modules/onboarding.md) 安装模块。
 4. 需要接口契约时，先审查 OpenAPI，再运行 `pnpm --filter @yishan/demo-admin openapi`。生成客户端与 typings 一起提交。
 5. 运行 `pnpm --filter @yishan/demo-admin exec max setup` 与相关检查，确认组件映射包含新页面。开发服务器必要时重启。
 

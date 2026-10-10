@@ -33,7 +33,7 @@ mistake. Its scope is still limited to the requested business area.
 - `apps/demo/api`: Fastify 5, Drizzle, TypeBox, JWT; business modules live
   under `src/modules/<id>/`.
 - `apps/demo/app`: mini-program application. Follow its local conventions.
-- `apps/yishan-docs`: Docusaurus documentation site.
+- `apps/docs`: `@yishan/docs`, independent Docusaurus product; product content in `content/`, pages/components/config/assets owned here. Root `docs/` owns architecture, ADR and engineering governance, not a second website.
 - `packages/yishan-tiptap`: `@yishan/tiptap`, independent Rollup component package.
 - `packages/core/app`: `@yishan/core-app`, injected Taro request/auth/storage/env/hooks.
 - `packages/ui`: shared mobile components through `@yishan/ui/mobile`.

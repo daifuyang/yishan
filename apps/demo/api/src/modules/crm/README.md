@@ -39,4 +39,4 @@ pnpm check:migrations
 
 **CRM 空库安装目前有既有历史冲突**：`0001_add-leads.sql` 已创建 conversion 字段，`0006_lead-conversion-links` 再次添加而失败，后续还有重复 DDL。44 份 SQL 中只有 34 份入 journal。不能在未解决历史基线前把 CRM 加入新产品的空库安装清单；不会自动改写 SQL、吞错或伪造已执行记录。quotation revision 并发数据库夹具仍有一个 skip，不计为通过。
 
-具体证据与限制见根目录 `docs/architecture/api-migration-report.md`、`database-ownership.md`；模块注册方式见 `docs/module-onboarding.md`。Admin 页面/组件未随本次后端拆分迁移。
+具体证据与限制见根目录 `docs/architecture/api-migration-report.md`、`database-ownership.md`；模块注册方式见 `apps/docs/content/modules/onboarding.md`。Admin 页面/组件未随本次后端拆分迁移。

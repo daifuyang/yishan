@@ -14,6 +14,7 @@
 | @yishan/ui | 公共移动 atoms/feedback 与原 Token/SCSS | Core 必要前端能力；无产品/API/Admin 依赖 |
 | @yishan/demo-app | 产品 Taro 配置、页面、服务、模块与导航 | core-app、ui、demo-config |
 | @yishan/demo-config | Demo 产品环境覆盖与配置 | 无 Core 反向依赖 |
+| @yishan/docs | 独立 Docusaurus 产品、产品内容/页面/配置/资源 | 公共 Package exports；禁止其他产品运行时代码 |
 | @yishan/tiptap | 独立 Rollup 可发布编辑器 | React/ReactDOM peers；无产品依赖 |
 
 跨包仅使用 package.json exports；不能通过 ../ 或 private/src 访问。公开用户服务/目录、受控 seed 和 schema 类型不是私有仓储接口。System 的 `./schema` 用于应用组合数据库 schema，不授权业务模块读写系统表。模块通过自己的 repository 和公开用户目录完成身份展示。
@@ -27,3 +28,5 @@ Admin Core 包直接通过公开 exports 提供源码，产品通过 Umi 编译�
 App checker 扫描 Core App/UI/TipTap 和 apps/<product>/app，检测产品反向依赖、跨产品、服务端/Admin 运行时、相对/绝对路径及公开 exports；覆盖字面量 TS/JS import/export/import type/import-equals、动态 import、require/require.resolve，以及 Sass/CSS use/forward/import（包括 url 字符串）。exports 条件/通配与 null 排除有正反向测试。计算式参数和变量/插值不解析，不能证明所有动态依赖安全；源码别名仅识别当前 `@/`，任意自定义 tsconfig alias 需要另行审查。源码 source exports 是公开契约，不允许绕过 exports 导入 src。
 
 Core App 的注入与命名空间契约见 [Core App README](../../packages/core/app/README.md)。独立 npm 分发仅适用于 TipTap；Core App/UI 均 private，不要求 npm 发布。Taro installed-version 检查与实际 Windows 构建不能代替 Linux CI/微信真机验收。
+
+Docs 隔离规则见 [文档体系](documentation-system.md)。App checker 新增 Docs 公开导入与双向产品隔离；所有 Workspace 包都检查对 Docs 的反向依赖，API/Admin 原有检查范围不变。Docs 的 @site 指向本产品根目录；MDX 内嵌导入不在当前静态扫描范围，须审查并真实构建。
