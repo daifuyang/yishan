@@ -1,0 +1,84 @@
+/* 首页：浅灰底 + 白色内容卡片，品牌蓝仅作点缀 */
+
+.home {
+  background-color: var(--color-bg-base, #f7f8fa);
+  /* 补齐 Windows / 安卓 H5 的中文无衬线回退，避免落到宋体 */
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ---------- 顶部品牌行（自定义导航栏，避让状态栏与胶囊） ---------- */
+
+.home__topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 16px;
+  box-sizing: border-box;
+}
+
+.home__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.home__logo {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.home__brandName {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0.5px;
+  color: var(--color-text-primary, #1d2129);
+}
+
+.home__iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: -9px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+.home__iconButton--pressed {
+  background-color: var(--color-bg-disabled, #f2f3f5);
+}
+
+/* ---------- 数据概览刷新 ---------- */
+
+.home__refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-right: -8px;
+  border-radius: 16px;
+}
+
+.home__refresh--pressed {
+  background-color: var(--color-bg-disabled, #f2f3f5);
+}
+
+.home__spin {
+  animation: home-spin 0.8s linear infinite;
+}
+
+@keyframes home-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

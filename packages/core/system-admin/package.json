@@ -1,0 +1,48 @@
+{
+  "name": "@yishan/core-system-admin",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./src/types/index.ts",
+    "./umi": {
+      "types": "./build/umi.d.cts",
+      "default": "./build/umi.cjs"
+    },
+    "./pages/*": "./src/pages/*/index.tsx",
+    "./services/*": "./src/services/generated/*.ts",
+    "./components": "./src/components/index.ts",
+    "./components/AttachmentLibraryModal/types": "./src/components/AttachmentLibraryModal/types.ts",
+    "./components/*": "./src/components/*/index.tsx",
+    "./attachment-upload": "./src/utils/attachmentUpload.ts"
+  },
+  "files": [
+    "src",
+    "build"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "biome lint . && pnpm typecheck"
+  },
+  "dependencies": {
+    "@yishan/core-admin": "workspace:*",
+    "dayjs": "^1.11.20",
+    "react-easy-crop": "^6.2.2"
+  },
+  "peerDependencies": {
+    "@ant-design/icons": "^6.2.3",
+    "@ant-design/pro-components": "^3.1.12-0",
+    "@umijs/max": "^4.6.51",
+    "antd": "^6.4.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

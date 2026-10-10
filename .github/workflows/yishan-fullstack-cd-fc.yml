@@ -1,29 +1,75 @@
 name: yishan-fullstack-cd-fc
 
 on:
-  push:
-    branches:
-      - all
-    paths:
-      - "apps/**"
-      - "apps/yishan-api/deploy/fc3/**"
-      - "!apps/**/docs/**"
-      - "!apps/**/*.md"
-      - "!apps/**/README.md"
-      - "pnpm-lock.yaml"
-      - "package.json"
-      - "pnpm-workspace.yaml"
   workflow_dispatch:
+    inputs:
+      skip_ci_gate:
+        description: "紧急覆盖：跳过对 yishan-fullstack-ci 的等待，直接部署该 commit。"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: yishan-fullstack-cd-fc
   cancel-in-progress: true
 
 jobs:
+  # 人工触发后等待同一 commit 的 CI；保留既有的显式紧急覆盖选项。
+  ci-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require green yishan-fullstack-ci on this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          SKIP_GATE: ${{ inputs.skip_ci_gate }}
+        run: |
+          set -euo pipefail
+          if [ "$SKIP_GATE" = "true" ]; then
+            echo "::warning::skip_ci_gate=true — 跳过 CI 门禁（紧急覆盖），直接部署。"
+            exit 0
+          fi
+          echo "等待 yishan-fullstack-ci @ ${SHA}"
+          deadline=$(( $(date +%s) + 3000 ))
+          while :; do
+            json="$(gh api "repos/${REPO}/actions/workflows/yishan-fullstack-ci.yml/runs?head_sha=${SHA}&per_page=100" 2>/dev/null || echo '{}')"
+            status="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request")] | sort_by(.created_at) | last | .status // "missing"')"
+            conclusion="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request")] | sort_by(.created_at) | last | .conclusion // ""')"
+            echo "ci status=${status} conclusion=${conclusion}"
+            # workflow_dispatch 落在从未跑过 CI 的 commit 上时，"missing" 会一直保持，
+            # 白等到超时没有意义，直接给出可操作的提示。
+            if [ "$status" = "missing" ] && [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+              echo "::error::${SHA} 上不存在 yishan-fullstack-ci 运行；如需跳过门禁请勾选 skip_ci_gate。"
+              exit 1
+            fi
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" = "success" ]; then
+                echo "CI 已通过，继续部署。"
+                exit 0
+              fi
+              echo "::error::yishan-fullstack-ci 在该 commit 上结论为 ${conclusion}，拒绝部署。"
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::等待 yishan-fullstack-ci（${SHA}）超时；如需紧急部署，请用 workflow_dispatch 并勾选 skip_ci_gate。"
+              exit 1
+            fi
+            sleep 15
+          done
+
   deploy:
+    needs: ci-gate
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: YISHAN_API
+    permissions:
+      contents: read
+      id-token: write   # 必需：允许 actions 拿 OIDC token
     env:
       FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
       FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
@@ -31,6 +77,8 @@ jobs:
       FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
       FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
       FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
+      ALIBABA_CLOUD_OIDC_AUDIENCE: github-actions
+      ALIBABA_CLOUD_OIDC_PROVIDER_ARN: acs:ram::1650595695532785:oidc-provider/github-actions
     steps:
       - name: Validate deployment variables
         run: |
@@ -60,23 +108,23 @@ jobs:
           cache: pnpm
 
       - name: Install
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Prepare yishan-tiptap
-        working-directory: apps/yishan-components/yishan-tiptap
+        working-directory: packages/yishan-tiptap
         run: |
-          pnpm install --filter yishan-tiptap --no-frozen-lockfile
-          pnpm build --filter yishan-tiptap
+          pnpm install --filter @yishan/tiptap --frozen-lockfile
+          pnpm build --filter @yishan/tiptap
 
       - name: Generate Admin plugin routes
-        run: pnpm --filter yishan-admin exec max setup
+        run: pnpm --filter @yishan/demo-admin exec max setup
 
-      - name: Build yishan-admin
+      - name: Build Demo Admin
         env:
           # 与 API 端的 ADMIN_BASE_PATH（默认 /admin/）保持一致，让 admin 静态资源
           # 也以 /admin/ 路径前缀打包，CDN/函数挂载在 /admin/* 时才能正确命中。
           PUBLIC_PATH: ${{ vars.ADMIN_BASE_PATH || '/admin/' }}
-        run: pnpm --filter yishan-admin build
+        run: pnpm --filter @yishan/demo-admin build
 
       - name: Install qshell
         env:
@@ -122,7 +170,7 @@ jobs:
           EOF
           chmod 600 "$HOME/.qshell.json"
           qshell qupload2 \
-            --src-dir apps/yishan-admin/dist \
+            --src-dir apps/demo/admin/dist \
             --bucket "${QINIU_BUCKET}" \
             --key-prefix admin/ \
             --overwrite \
@@ -135,7 +183,7 @@ jobs:
           fi
 
       - name: Prepare .env
-        working-directory: apps/yishan-api
+        working-directory: apps/demo/api
         env:
           LOG_LEVEL: info
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
@@ -145,6 +193,7 @@ jobs:
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
           REDIS_HOST: ${{ vars.REDIS_HOST }}
+          CACHE_NAMESPACE: ${{ vars.CACHE_NAMESPACE || 'yishan:demo' }}
         run: |
           set -euo pipefail
           ENV_FILE="$(pwd)/.env"
@@ -173,6 +222,7 @@ jobs:
             `REDIS_PORT=${redisPort}`,
             `REDIS_PASSWORD=${redisPassword}`,
             `REDIS_DB=${redisDb}`,
+            `CACHE_NAMESPACE=${process.env.CACHE_NAMESPACE || 'yishan:demo'}`,
           ];
           process.stdout.write(lines.join('\n') + '\n');
           NODE
@@ -180,80 +230,55 @@ jobs:
       - name: Install Serverless Devs
         run: npm i -g @serverless-devs/s
 
-      - name: Configure Serverless Devs Access
+      - name: Assume FC deploy role via OIDC (inline)
         env:
-          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
-          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
-          ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
-        run: |
-          if [ -z "${ALIBABA_CLOUD_ACCESS_KEY_ID:-}" ]; then
-            echo "Missing secret: ALIBABA_CLOUD_ACCESS_KEY_ID"
-            exit 1
-          fi
-          if [ -z "${ALIBABA_CLOUD_ACCESS_KEY_SECRET:-}" ]; then
-            echo "Missing secret: ALIBABA_CLOUD_ACCESS_KEY_SECRET"
-            exit 1
-          fi
-          ACCOUNT_ID_CLEAN="$(echo "${ALIBABA_CLOUD_ACCOUNT_ID:-}" | tr -d '[:space:]')"
-          if [ -n "${ACCOUNT_ID_CLEAN}" ] && echo "${ACCOUNT_ID_CLEAN}" | grep -Eq '^[0-9]{16,32}$'; then
-            s config add \
-              --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
-              --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
-              --AccountID "$ACCOUNT_ID_CLEAN" \
-              -a enterprise \
-              -f
-          else
-            echo "ALIBABA_CLOUD_ACCOUNT_ID missing or invalid, try non-AccountID mode"
-            s config add \
-              --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" \
-              --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" \
-              -a enterprise \
-              -f
-          fi
-
-      - name: Restore layer lock
-        uses: actions/cache@v4
-        with:
-          path: apps/yishan-api/deploy/fc3/layer-lock.json
-          key: yishan-api-layer-lock-fallback
-          restore-keys: |
-            yishan-api-layer-lock-fallback
-
-      - name: Build runtime layer
-        working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/scripts/build-runtime-layer.sh
-
-      - name: Publish runtime layer if needed
-        id: publish_layer
-        working-directory: apps/yishan-api
-        env:
-          YISHAN_FC_REGION: ${{ vars.FUNCTION_REGION || 'cn-shanghai' }}
-          YISHAN_FC_LAYER_NAME: ${{ vars.YISHAN_FC_LAYER_NAME || 'yishan-api-runtime-layer' }}
-          YISHAN_FC_ACCESS_ALIAS: enterprise
-          ALIBABA_CLOUD_ACCOUNT_ID: ${{ vars.ALIBABA_CLOUD_ACCOUNT_ID }}
+          ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
         run: |
           set -euo pipefail
-          bash ./deploy/fc3/scripts/publish-runtime-layer.sh | tee /tmp/publish_layer.log
-          LAYER_ARN="$(grep -E '^YISHAN_API_RUNTIME_LAYER_ARN=' /tmp/publish_layer.log | tail -n1 | cut -d= -f2-)"
-          if [ -z "$LAYER_ARN" ]; then
-            echo "Unable to extract runtime layer ARN" >&2
-            exit 1
-          fi
-          echo "layer_arn=$LAYER_ARN" >> "$GITHUB_OUTPUT"
+          : "${ROLE_ARN:?Missing FC_DEPLOY_ROLE_ARN in the YISHAN_API environment}"
+          echo "Requesting Alibaba Cloud OIDC credentials for the YISHAN_API environment"
+          curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" -o /tmp/aliyun.tgz
+          tar -xzf /tmp/aliyun.tgz -C /tmp
+          if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
+          aliyun --version
+          mkdir -p ~/.aliyun
+          cat >~/.aliyun/config.json <<'CFG'
+          {"current":"fcdeploy","profiles":[{"name":"fcdeploy","mode":"AK","access_key_id":"placeholder","access_key_secret":"placeholder","sts_token":"","ram_role_name":"","ram_role_arn":"","private_key":"","key_pairs_cmd":"","key_pairs_dir":"","language":"en","site":"","retry_timeout":0,"retry_count":0,"process_command":"","credentials_uri":"","oidc_provider_arn":"","oidc_token_file":"","external_id":"","using_oidc":false,"oidc_token_endpoint":"","ram_role_session_name":"","expiration":"","region_id":"cn-shanghai","output_format":"json","timeout":0,"insecure":false,"ssl_verify":true}],"meta_path":""}
+          CFG
+          chmod 600 ~/.aliyun/config.json
+          TOKEN=$(curl -fsS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${ALIBABA_CLOUD_OIDC_AUDIENCE}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
+          RESP=$(aliyun sts AssumeRoleWithOIDC \
+            --region cn-hangzhou \
+            --RoleArn "$ROLE_ARN" \
+            --OIDCProviderArn "$ALIBABA_CLOUD_OIDC_PROVIDER_ARN" \
+            --OIDCToken "$TOKEN" \
+            --RoleSessionName "gha-${{ github.run_id }}" \
+            --DurationSeconds 3600)
+          AK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeyId'])")
+          SK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeySecret'])")
+          ST=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecurityToken'])")
+          mkdir -p ~/.s
+          cat >~/.s/access.yaml <<SSHA
+          default:
+            AccessKeyID: ${AK}
+            AccessKeySecret: ${SK}
+            SecurityToken: ${ST}
+            type: sts
+            AccountID: '1650595695532785'
+            __provider: Alibaba Cloud
+          SSHA
+          chmod 600 ~/.s/access.yaml
+          echo "  STS issued OK, expires in 1h"
 
-      - name: Save layer lock
-        if: always() && hashFiles('apps/yishan-api/deploy/fc3/layer-lock.json') != ''
-        uses: actions/cache@v4
-        with:
-          path: apps/yishan-api/deploy/fc3/layer-lock.json
-          key: yishan-api-layer-lock-fallback
+      - name: Build standalone API package
+        working-directory: apps/demo/api
+        run: bash ./deploy/fc3/scripts/pre-deploy.sh
 
-      - name: Build Layered Package
-        working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/scripts/pre-deploy-layered.sh
-
-      - name: Deploy layered function
-        working-directory: apps/yishan-api
+      - name: Deploy API function
+        working-directory: apps/demo/api
         env:
           LOG_LEVEL: info
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
@@ -263,8 +288,8 @@ jobs:
           DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
           REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
           REDIS_HOST: ${{ vars.REDIS_HOST }}
+          CACHE_NAMESPACE: ${{ vars.CACHE_NAMESPACE || 'yishan:demo' }}
           JWT_SECRET: ${{ secrets.YISHAN_API_JWT_SECRET }}
-          YISHAN_API_RUNTIME_LAYER_ARN: ${{ steps.publish_layer.outputs.layer_arn }}
           FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
           FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
           FUNCTION_DESCRIPTION: ${{ vars.FUNCTION_DESCRIPTION }}
@@ -276,7 +301,7 @@ jobs:
         run: |
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
-          node <<'NODE' > /tmp/yishan_layered_env.sh
+          node <<'NODE'
           const redisUrl = process.env.REDIS_URL || '';
           let redisPort = '6379';
           let redisHost = process.env.REDIS_HOST || '';
@@ -297,14 +322,56 @@ jobs:
             DATABASE_HOST: process.env.DATABASE_HOST || '',
             DATABASE_PORT: process.env.DATABASE_PORT || '3306',
             JWT_SECRET: process.env.JWT_SECRET || '',
+            REDIS_URL: redisUrl,
+            CACHE_NAMESPACE: process.env.CACHE_NAMESPACE || 'yishan:demo',
             REDIS_PORT: redisPort,
             REDIS_HOST: redisHost,
             REDIS_PASSWORD: redisPassword,
             REDIS_DB: redisDb,
           };
-          for (const [key, value] of Object.entries(entries)) {
-            console.log(`export ${key}=${JSON.stringify(value)}`);
-          }
+          const result = require('node:child_process').spawnSync('bash', ['./deploy/fc3/scripts/deploy-function.sh'], { env: { ...process.env, ...entries }, stdio: 'inherit' });
+          if (result.error) throw result.error;
+          process.exitCode = result.status ?? 1;
           NODE
-          . /tmp/yishan_layered_env.sh
-          bash ./deploy/fc3/scripts/deploy-layered-function.sh
+
+      # 部署脚本自身只校验 CLI 退出码，无法证明函数真的在服务请求。
+      # 这里补一次事实校验：健康检查 + DB 连通 + admin 静态资源可达。
+      - name: Post-deploy smoke check
+        env:
+          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL }}
+        run: |
+          set -euo pipefail
+          BASE="${SMOKE_BASE_URL:-}"
+          if [ -z "$BASE" ]; then
+            echo "::warning::SMOKE_BASE_URL 未配置，跳过部署后 smoke 检查。"
+            echo "::warning::请在 GitHub Environment YISHAN_API 中设置 variable SMOKE_BASE_URL（例如 https://yishan.zerocmf.com）以启用校验。"
+            exit 0
+          fi
+          BASE="${BASE%/}"
+          echo "Smoke target: ${BASE}"
+
+          # FC 自定义域名后面是函数实例，部署后需要一点时间切换/预热，允许重试。
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            HEALTH="$(curl -fsS --max-time 15 "${BASE}/api/health" 2>/dev/null || true)"
+            if [ -n "$HEALTH" ]; then
+              echo "health: ${HEALTH}"
+              echo "$HEALTH" | jq -e '.success == true and .data.status == "ok"' >/dev/null \
+                || { echo "::error::/api/health 返回体不符合预期。"; exit 1; }
+              echo "$HEALTH" | jq -e '.data.db.ok == true' >/dev/null \
+                || { echo "::error::/api/health 报告数据库不可用。"; exit 1; }
+              break
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "::error::/api/health 连续 10 次不可用，部署视为失败。"
+              exit 1
+            fi
+            echo "health 暂不可用（第 ${attempt} 次），5s 后重试…"
+            sleep 5
+          done
+
+          # admin 静态资源必须返回 200，否则前端会白屏而部署仍然“成功”。
+          ADMIN_CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${BASE}/admin/" || true)"
+          echo "/admin/ -> ${ADMIN_CODE}"
+          [ "$ADMIN_CODE" = "200" ] || { echo "::error::/admin/ 返回 ${ADMIN_CODE}，期望 200。"; exit 1; }
+
+          echo "Smoke check passed."

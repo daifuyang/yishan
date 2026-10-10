@@ -1,0 +1,173 @@
+{
+  "version": 1,
+  "commit": "46b151b134b46cf039388b6bb51a18391d8624ab",
+  "migrations": {
+    "0000_init": {
+      "sha256": "42e3b1de08e37d507d699ab508b2a431ccfde55d6eeac9185b9ef65b9256e039",
+      "windowsSha256": "2b0489296a96984d5fe384d3c9b716fffcab0f5dfff8bc73a6df9b5e8d4c2686"
+    },
+    "0001_add-leads": {
+      "sha256": "3aa6b4f9cdaccf40c34b6b633937bf747ba85def774350a989bb4d8e1d24fe80",
+      "windowsSha256": "828f3edaad470c07981e277bc7a9705569f15dc3aa5e79f0b0a2d65e2ea26fd9"
+    },
+    "0001_collaborator_and_activity_soft_delete": {
+      "sha256": "5c2de8ac77ce51bc0b35f9b730d29c4c1db25393cc50207d6eb7b6a22cd37548",
+      "windowsSha256": "0a7cdbfc0f5757ac7d46aaf89e9e48a7271fbb2bf6441db19785f730aab852fe"
+    },
+    "0002_add-lead-activities": {
+      "sha256": "0da8e48b1bbbca3721839554ac86e21b2d4f0ddbdeeb910dfb77821aae7b7a8c",
+      "windowsSha256": "d86ba33d10a5fa5ff29b7638676bbdb1dfb1c11bb2bac13793a287bbeccc1351"
+    },
+    "0003_add-lead-wechat": {
+      "sha256": "deae5f83626666f2610fe0f8be97bb11a3a7ad88db2d308ff79d1b1b4ec88875",
+      "windowsSha256": "4599c5b1baf5569abd1afeb7a72d68c58f4daf1f4d36bcb9cd1a14c23461aab9"
+    },
+    "0004_add-lead-pool-status": {
+      "sha256": "41ab852a1fce4ed16143e61160994bdfa540b14fbea3ecc5a38d704360559a68",
+      "windowsSha256": "498b385ecb5c1ff66a8f76fbef5dde88b96667425780f6a41e3d22970db7483b"
+    },
+    "0005_lead-lifecycle-reasons": {
+      "sha256": "dc9ad19a0c7a17bcb1fc3b170b006198f7400b5660e26050da67b505f5676aa3",
+      "windowsSha256": "e1469392eeba28a2cb78725859a402738d7665cf0956f89508b9c6f8580838ec"
+    },
+    "0006_lead-conversion-links": {
+      "sha256": "e717da3eefb72cabb02daeed88277e452ee672711522648384da4f473bcfe1f9",
+      "windowsSha256": "d5b0d480f04a4997055c573d2e58f125ec0d255db3a0ced6185409aedcafb8b0"
+    },
+    "0007_drop-lead-pool-status": {
+      "sha256": "38545e6d18adfb8beb6adbd16f0e6a9640feaa5f6a864f32dd015045db09b914",
+      "windowsSha256": "4a1d982e3b81c5bf6dd65ff28b79cd05117dfa97330f058b3491cdd923ca1e5d"
+    },
+    "0009_simple_ma_gnuci": {
+      "sha256": "a0d72cbd1f7e6d118e90b262056ab6acc20bbeb9de63bd11f61697cdaaa5025f",
+      "windowsSha256": "b44446bd319704ed38b0b2150e6e985114a78eca175ce435d48d16b39d08884d"
+    },
+    "0010_crm-customer-enum-codes": {
+      "sha256": "34bc23d22443fc758e6c3e980a200745e57482a1325c166c1ad1576646cf1208",
+      "windowsSha256": "0a6f58b796a002f22dda61b4c5bbdc7de93bf4c8943a13eae477fe1daafb631f"
+    },
+    "0010_sleepy_metal_master": {
+      "sha256": "6538f85ee6e41c23e51a896cf66afb80901dd6b75f45d1a308487c6f716c2455",
+      "windowsSha256": "e2584d0c5338fef08d448e166ac00b3a5edcc7240fd11e4f554ce5ddd7630605"
+    },
+    "0011_crm-contact-role-status": {
+      "sha256": "e33298a1da0e50a7794498cf53d95c4248e53f0d64107294b0b04c91e9f191d7",
+      "windowsSha256": "bfacab005b91cfb5256c67dbc36af943cd1068cb59316d934056e24b9f19941a"
+    },
+    "0011_lowly_giant_girl": {
+      "sha256": "b7216d7028cc03b95cc95d6a4aee07c508f56a1f843670db2b6bd0b30d2d4f24",
+      "windowsSha256": "61848c370b5cf05da15f149257c1d5e60ab99f764d8c494760f08c6be3538af6"
+    },
+    "0012_crm-activity-polymorphic": {
+      "sha256": "82d7265500c70e685395d7aa9e4ba3e197fcdca1a456e2cd8f01e26d9aca3644",
+      "windowsSha256": "749f81c0fd0bb7fb05698bc22b6f0f865f1bc6ca9a38e09048b2a7f085c0c40f"
+    },
+    "0012_green_metal_master": {
+      "sha256": "cb0422c5dfc56f38c5cbeb8ebf84a749bc25d9f8217a7a5517c22d56dd2ea3ac",
+      "windowsSha256": "9219993f16bb73a3a4285bfffb57e4157bda1db4c66fc2cb481337e5e1c39f2f"
+    },
+    "0013_lead-follow-up-status-data": {
+      "sha256": "f502637560c9aac69a2981daea624508dadc7f6ab35ed4e8efa6f423dcdd6a5c",
+      "windowsSha256": "9c140edf3b4df004f6e059b8188bd853f53a8ca7274d756a51eac8b017a3a7b7"
+    },
+    "0031_crm-product": {
+      "sha256": "8616b48bb20eb9588a51ee0aa18cf7ed892a526a4936e735282bfad2c2952975",
+      "windowsSha256": "aae4fc09e28c3a5542f1aceb60641ca3746a187d6f30dd2c9a32d71c408c295a"
+    },
+    "0032_crm-quotation": {
+      "sha256": "4f1c8b710ead511bc965f9c1c4771b9301c2dba03103fe088502b09bd1729f58",
+      "windowsSha256": "cd312c3118baea1764c6c6146d6e0758a420eed8d8c3e73627d30514d9aaaf9a"
+    },
+    "0040_crm-contract": {
+      "sha256": "2c5c17a08bf3871f12caf7493baa6212f65a2863ee6cc66b9842179a061c6241",
+      "windowsSha256": "8e5a74156796cb3ff3ae673ef02dcfd85dff98753910340a1578829fc9ff788a"
+    },
+    "0041_crm-payment": {
+      "sha256": "5f091251688a2ecc706fef8d4677efbd8855183d794bac89a7003de6a63c6d53",
+      "windowsSha256": "1c4b041456549fac5d2ea98c8e238145f6e649b252b51ee09d7f31ef198dec23"
+    },
+    "0050_crm-visit-fields": {
+      "sha256": "c347e33804d149331a6faf953f7e8e834b96df67ee26aa233d1b4daf1f7740d5",
+      "windowsSha256": "e6565c9384be0ae0810097a792e2412e5b428e28603faee52059e7ce4403e69c"
+    },
+    "0051_crm-ticket": {
+      "sha256": "321a767d23aa7bd2d46642ce96816f71a825bc26ad67c5facf188c9e03225892",
+      "windowsSha256": "9553a6c853557f4a7dfb3dae4045f40c74de800ededd27c5902789640afeb263"
+    },
+    "0052_crm-v01-customer-lifecycle": {
+      "sha256": "82c91af1df3c40b5d358d299b57731b897773b6c175cad941281d8a66a2ffe8c",
+      "windowsSha256": "05426e66a6880f21b56ec2d89ac0e4ad87dc2200a18c2b767f680bf7a4be47e5"
+    },
+    "0053_crm-v01-lifecycle-hardening": {
+      "sha256": "e8d25f8d2a309612d9e2e7f37006e2b8efe83f8bb22a102f2fb00a0579ea9dea",
+      "windowsSha256": "f6a9a5ef8962f6623bf61d969d5846d2950849dadb826c7bc28a480a89deb3c8"
+    },
+    "0054_crm-activity-follow-up-metadata": {
+      "sha256": "0afe68b6e3c0d8e00d3474941e1025c0ca0b07c86c04852ba6d0ebb363f6b2db",
+      "windowsSha256": "a0fee8c98a9efa45b1dea986c4876530c05ccfc6c07f2aeea514fa20b168b9d0"
+    },
+    "0055_crm-customer-relationship-status": {
+      "sha256": "0695b64533003aa258601fe7b5bb748a1d44244ee437692a768b625695c799a3",
+      "windowsSha256": "d64d465bad25426b962378fb5bbe18f4105ecf2f872cdd4ecf5407ef4c51ba50"
+    },
+    "0056_crm-direct-close": {
+      "sha256": "c10461698d895b7bc9a382274d753cfd7fec47c57615906d2e697a37c55ff592",
+      "windowsSha256": "cb24210ae7288c6f1a7533bd1b19b5c6cc2e7a3b2088679d42235f3e1402d08b"
+    },
+    "0057_crm-opportunity-workspace": {
+      "sha256": "4fedf112318163cd57927b65c492babaa69b68b3052c49478178d25d098a0272",
+      "windowsSha256": "d86408931a04b31b22320df67276c8b62486736c48b6a26d0bdb38dd744c178c"
+    },
+    "0058_crm-opportunity-domain-reset": {
+      "sha256": "b244a00387767bd2545a38eadad58ad747e72989d5424a7842be55302eb6c3a0",
+      "windowsSha256": "a7efc67312b8ea463a8ad1daab54fa178587551888b630e7754ecc22039242ac"
+    },
+    "0059_crm-opportunity-optional-forecast": {
+      "sha256": "fc5345ac50a0f3114b91c025fcd9f972638d951d65be9edd53230ad46039a89d",
+      "windowsSha256": "7958b189c53b236d0db71ec3ba38f026670b73a5f9283f5fe1f338e4538db15a"
+    },
+    "0060_crm-quotation-name-discount": {
+      "sha256": "e77e1db9257fa10986fa5a2776d30c91185f6029c70a0e93fceaa038fa6a8a6c"
+    },
+    "0061_crm-contract-contact": {
+      "sha256": "7a04ca496cce2305e6c7dba50eb3d5a100b64c61c8b9ce35e2647ba008950eff"
+    },
+    "0062_crm-payment-no-tx-status": {
+      "sha256": "4bfd7081493992fb94146aa8d8d4ad271e420cfa1beb728b1c60512322b13a5a"
+    },
+    "0063_crm-task-priority": {
+      "sha256": "d62fbd3a7675018f3fc521a568cb90c08dd003088da0ee5977c6621601c0a13b"
+    },
+    "0064_crm-activity-follow-up-category": {
+      "sha256": "1562c996bf8458ebe1f44ea9badd643a756c4f0f195104673cc1ab7a3aed9d8c"
+    },
+    "0065_crm-opportunity-create-fields": {
+      "sha256": "fd897fff19e5766896fc9dbb5b9d184c7d0bb9019f1b9a796c4b6155264a8026"
+    },
+    "0066_crm-quotation-workflow": {
+      "sha256": "d7170ea28f0fb85f42f5057ae7e45fa06f7eddc0a13c603322d2f2aa90658467"
+    },
+    "0067_crm-quotation-share": {
+      "sha256": "c9f8bced21ea6210e0d9977e425ae7860e904995c1e7a8027998ec2a4b9f3848"
+    },
+    "0068_crm-quotation-discount-description": {
+      "sha256": "ff682d9245cd33e6cbee2c822f43949dfb533223050d7868c57f30af2a5399d0"
+    },
+    "0069_crm-quotation-revision": {
+      "sha256": "f8847699391cad18885241adce40cffafcebbeaa8d9d9e0374b18fce09c827de"
+    },
+    "0070_crm-opportunity-quote-series": {
+      "sha256": "0446ef5e9fc3c8e3debf3da2cef05c2439286eab6db8636ca3dadf300f054c35",
+      "windowsSha256": "d87540884edbec5aa86ad4c683873ce6516a900c3f013c978ee0eb2d11709f6e",
+      "windowsCrLfLines": [
+        43
+      ]
+    },
+    "0071_crm-quotation-confirmation": {
+      "sha256": "d8d4e4d0d108e36cfb35bfcf71bc71bed023dbde57c5843705313b099b03166f"
+    },
+    "0072_crm-business-number-backfill": {
+      "sha256": "a81712b824336c0b5d252d5525135388515983fe04995bbc0b3ebb1bcd5b5405"
+    }
+  }
+}

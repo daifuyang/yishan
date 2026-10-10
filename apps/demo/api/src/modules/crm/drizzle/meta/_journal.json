@@ -1,0 +1,244 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1788181797346,
+      "tag": "0000_init",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1788418325943,
+      "tag": "0001_collaborator_and_activity_soft_delete",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1788655499670,
+      "tag": "0001_add-leads",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1788741000000,
+      "tag": "0002_add-lead-activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1788827400000,
+      "tag": "0003_add-lead-wechat",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1788913800000,
+      "tag": "0004_add-lead-pool-status",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1788742230485,
+      "tag": "0005_lead-lifecycle-reasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1788742231000,
+      "tag": "0006_lead-conversion-links",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1788796800000,
+      "tag": "0007_drop-lead-pool-status",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1788881198103,
+      "tag": "0009_simple_ma_gnuci",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1788881649323,
+      "tag": "0010_sleepy_metal_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1788881770062,
+      "tag": "0011_lowly_giant_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1788881947479,
+      "tag": "0012_green_metal_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1789344000000,
+      "tag": "0052_crm-v01-customer-lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1789347600000,
+      "tag": "0053_crm-v01-lifecycle-hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "5",
+      "when": 1789348200000,
+      "tag": "0054_crm-activity-follow-up-metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1789350000000,
+      "tag": "0055_crm-customer-relationship-status",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1789353600000,
+      "tag": "0056_crm-direct-close",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1789430400000,
+      "tag": "0057_crm-opportunity-workspace",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1789516800000,
+      "tag": "0058_crm-opportunity-domain-reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1789603200000,
+      "tag": "0059_crm-opportunity-optional-forecast",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1790000000000,
+      "tag": "0060_crm-quotation-name-discount",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1790100000000,
+      "tag": "0061_crm-contract-contact",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1790200000000,
+      "tag": "0062_crm-payment-no-tx-status",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1790300000000,
+      "tag": "0063_crm-task-priority",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1790400000000,
+      "tag": "0064_crm-activity-follow-up-category",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1790500000000,
+      "tag": "0065_crm-opportunity-create-fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1790600000000,
+      "tag": "0066_crm-quotation-workflow",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1790700000000,
+      "tag": "0067_crm-quotation-share",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1790800000000,
+      "tag": "0068_crm-quotation-discount-description",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1790900000000,
+      "tag": "0069_crm-quotation-revision",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1791000000000,
+      "tag": "0070_crm-opportunity-quote-series",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1791100000000,
+      "tag": "0071_crm-quotation-confirmation",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1791200000000,
+      "tag": "0072_crm-business-number-backfill",
+      "breakpoints": true
+    }
+  ]
+}

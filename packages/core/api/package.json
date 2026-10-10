@@ -1,0 +1,68 @@
+{
+  "name": "@yishan/core-api",
+  "version": "2.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./plugins": {
+      "types": "./dist/plugins.d.ts",
+      "default": "./dist/plugins.js"
+    },
+    "./errors": {
+      "types": "./dist/exceptions/business-error.d.ts",
+      "default": "./dist/exceptions/business-error.js"
+    },
+    "./business-codes": {
+      "types": "./dist/constants/business-codes/index.d.ts",
+      "default": "./dist/constants/business-codes/index.js"
+    },
+    "./business-codes/*": {
+      "types": "./dist/constants/business-codes/*.d.ts",
+      "default": "./dist/constants/business-codes/*.js"
+    },
+    "./response": {
+      "types": "./dist/utils/response.d.ts",
+      "default": "./dist/utils/response.js"
+    },
+    "./routes/route-registrar": {
+      "types": "./dist/routes/route-registrar.d.ts",
+      "default": "./dist/routes/route-registrar.js"
+    },
+    "./permissions/catalog": {
+      "types": "./dist/permissions/catalog.d.ts",
+      "default": "./dist/permissions/catalog.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm build && node --test test/*.test.cjs"
+  },
+  "dependencies": {
+    "@yishan/core-contracts": "workspace:*",
+    "fastify": "^5.0.0",
+    "fastify-plugin": "^5.0.0",
+    "@fastify/cookie": "^11.1.1",
+    "@fastify/multipart": "^9.3.0",
+    "@fastify/sensible": "^6.0.0",
+    "@fastify/swagger": "^9.5.1",
+    "@fastify/swagger-ui": "^5.2.3",
+    "@fastify/type-provider-typebox": "^6.1.0",
+    "semver": "^7.7.3",
+    "@sinclair/typebox": "^0.34.41"
+  },
+  "devDependencies": {
+    "@types/node": "^22.1.0",
+    "@types/semver": "^7.7.1",
+    "typescript": "~5.8.2"
+  }
+}

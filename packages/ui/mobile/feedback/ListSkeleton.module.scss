@@ -1,0 +1,24 @@
+.list {
+  background: var(--color-bg-surface);
+}
+
+.row {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.title,
+.detail {
+  height: 12px;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg-disabled);
+}
+
+.title {
+  width: 38%;
+  margin-bottom: var(--space-3);
+}
+
+.detail {
+  width: 64%;
+}

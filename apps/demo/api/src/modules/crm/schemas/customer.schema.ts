@@ -1,0 +1,203 @@
+import { Type, type Static } from '@sinclair/typebox'
+import { PaginationQuerySchema } from './common.schema.js'
+import { CUSTOMER_STATUSES } from '../domain/statuses.js'
+
+/**
+ * 客户的 HTTP schema。
+ */
+
+export const CUSTOMER_TYPE = ['enterprise', 'individual'] as const
+export const POOL_STATUS = ['owned', 'public'] as const
+export const CUSTOMER_STATUS_CODES = CUSTOMER_STATUSES.map((status) => status.value)
+
+export const CustomerRespSchema = Type.Object({
+  id: Type.Number(),
+  code: Type.Union([Type.String(), Type.Null()]),
+  name: Type.String(),
+  type: Type.String(),
+  statusCode: Type.String({ enum: CUSTOMER_STATUS_CODES }),
+  relationshipStatus: Type.String({ enum: ['potential', 'following', 'lost'] }),
+  sourceId: Type.Union([Type.Number(), Type.Null()]),
+  level: Type.Union([Type.String(), Type.Null()]),
+  industry: Type.Union([Type.String(), Type.Null()]),
+  phone: Type.Union([Type.String(), Type.Null()]),
+  website: Type.Union([Type.String(), Type.Null()]),
+  province: Type.Union([Type.String(), Type.Null()]),
+  city: Type.Union([Type.String(), Type.Null()]),
+  address: Type.Union([Type.String(), Type.Null()]),
+  ownerUserId: Type.Union([Type.Number(), Type.Null()]),
+  ownerDepartmentId: Type.Union([Type.Number(), Type.Null()]),
+  poolStatus: Type.String(),
+  lastFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+  nextFollowUpAt: Type.Union([Type.String({ format: 'date-time' }), Type.Null()]),
+  remark: Type.Union([Type.String(), Type.Null()]),
+  creatorId: Type.Union([Type.Number(), Type.Null()]),
+  createdAt: Type.String({ format: 'date-time' }),
+  updaterId: Type.Union([Type.Number(), Type.Null()]),
+  updatedAt: Type.String({ format: 'date-time' }),
+})
+export type CustomerResp = Static<typeof CustomerRespSchema>
+
+export const CustomerListItemRespSchema = Type.Object({
+  ...CustomerRespSchema.properties,
+  ownerUserName: Type.Union([Type.String(), Type.Null()]),
+  primaryContactId: Type.Union([Type.Number(), Type.Null()]),
+  primaryContactName: Type.Union([Type.String(), Type.Null()]),
+  primaryContactMobile: Type.Union([Type.String(), Type.Null()]),
+})
+
+export const CustomerDetailRespSchema = Type.Object({
+  ...CustomerRespSchema.properties,
+  tagIds: Type.Array(Type.Number()),
+  ownerUserName: Type.Union([Type.String(), Type.Null()]),
+  statusName: Type.Union([Type.String(), Type.Null()]),
+  sourceName: Type.Union([Type.String(), Type.Null()]),
+  primaryContactId: Type.Union([Type.Number(), Type.Null()]),
+  primaryContactName: Type.Union([Type.String(), Type.Null()]),
+})
+export type CustomerDetailResp = Static<typeof CustomerDetailRespSchema>
+
+export const CustomerListRespSchema = Type.Object({
+  total: Type.Number(),
+  page: Type.Number(),
+  pageSize: Type.Number(),
+  items: Type.Array(CustomerListItemRespSchema),
+})
+
+export const CUSTOMER_VIEW = [
+  'all',
+  'important',
+  'mine',
+  'collaborating',
+  'pending',
+  'stale7d',
+  'pool',
+] as const
+
+/** 允许排序的字段，与 CustomerRepository 的 SORTABLE_COLUMNS 白名单一一对应。 */
+export const CUSTOMER_SORT_BY = [
+  'name',
+  'createdAt',
+  'updatedAt',
+  'lastFollowUpAt',
+  'nextFollowUpAt',
+  'level',
+] as const
+
+export const CustomerListQuerySchema = Type.Composite([
+  PaginationQuerySchema,
+  Type.Object({
+    view: Type.Optional(Type.String({ enum: [...CUSTOMER_VIEW] })),
+    statusCode: Type.Optional(Type.String({ enum: CUSTOMER_STATUS_CODES })),
+    sourceId: Type.Optional(Type.Integer()),
+    level: Type.Optional(Type.String({ maxLength: 16 })),
+    type: Type.Optional(Type.String({ maxLength: 16 })),
+    industry: Type.Optional(Type.String({ maxLength: 64 })),
+    ownerUserId: Type.Optional(Type.Integer()),
+    collaboratorId: Type.Optional(Type.Integer()),
+    poolStatus: Type.Optional(Type.String({ maxLength: 16 })),
+    // querystring 里的数组：?tagIds=1&tagIds=2
+    tagIds: Type.Optional(Type.Array(Type.Integer())),
+    createdFrom: Type.Optional(Type.String({ format: 'date-time' })),
+    createdTo: Type.Optional(Type.String({ format: 'date-time' })),
+    lastFollowUpFrom: Type.Optional(Type.String({ format: 'date-time' })),
+    lastFollowUpTo: Type.Optional(Type.String({ format: 'date-time' })),
+    nextFollowUpFrom: Type.Optional(Type.String({ format: 'date-time' })),
+    nextFollowUpTo: Type.Optional(Type.String({ format: 'date-time' })),
+    // enum 校验挡在这里，repository 还会再兜一次底，绝不把原始字符串拼进 ORDER BY
+    sortBy: Type.Optional(Type.String({ enum: [...CUSTOMER_SORT_BY] })),
+    sortOrder: Type.Optional(Type.String({ enum: ['asc', 'desc'] })),
+  }),
+])
+export type CustomerListQuery = Static<typeof CustomerListQuerySchema>
+
+/* ─── 协同人 ─────────────────────────── */
+
+export const CustomerMemberRespSchema = Type.Object({
+  id: Type.Number(),
+  customerId: Type.Number(),
+  userId: Type.Number(),
+  role: Type.String(),
+  userName: Type.Union([Type.String(), Type.Null()]),
+  createdAt: Type.String({ format: 'date-time' }),
+})
+export type CustomerMemberResp = Static<typeof CustomerMemberRespSchema>
+
+export const CustomerMemberListRespSchema = Type.Object({
+  items: Type.Array(CustomerMemberRespSchema),
+})
+
+export const CustomerMemberAddReqSchema = Type.Object({
+  userId: Type.Integer({ minimum: 1 }),
+})
+export type CustomerMemberAddReq = Static<typeof CustomerMemberAddReqSchema>
+
+export const CustomerCreateReqSchema = Type.Object({
+  name: Type.String({ minLength: 1, maxLength: 200 }),
+  type: Type.Optional(Type.String({ enum: [...CUSTOMER_TYPE] })),
+  sourceId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
+  level: Type.Optional(Type.String({ maxLength: 16 })),
+  industry: Type.Optional(Type.String({ maxLength: 64 })),
+  phone: Type.Optional(Type.String({ maxLength: 32 })),
+  website: Type.Optional(Type.String({ maxLength: 200 })),
+  province: Type.Optional(Type.String({ maxLength: 64 })),
+  city: Type.Optional(Type.String({ maxLength: 64 })),
+  address: Type.Optional(Type.String({ maxLength: 255 })),
+  ownerUserId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
+  ownerDepartmentId: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
+  tagIds: Type.Optional(Type.Array(Type.Integer())),
+  remark: Type.Optional(Type.String({ maxLength: 2000 })),
+})
+export type CustomerCreateReq = Static<typeof CustomerCreateReqSchema>
+
+export const CustomerUpdateReqSchema = Type.Partial(
+  Type.Object({
+    name: Type.String({ minLength: 1, maxLength: 200 }),
+    type: Type.String({ enum: [...CUSTOMER_TYPE] }),
+    sourceId: Type.Union([Type.Integer(), Type.Null()]),
+    level: Type.String({ maxLength: 16 }),
+    industry: Type.String({ maxLength: 64 }),
+    phone: Type.String({ maxLength: 32 }),
+    website: Type.String({ maxLength: 200 }),
+    province: Type.String({ maxLength: 64 }),
+    city: Type.String({ maxLength: 64 }),
+    address: Type.String({ maxLength: 255 }),
+    ownerUserId: Type.Union([Type.Integer(), Type.Null()]),
+    ownerDepartmentId: Type.Union([Type.Integer(), Type.Null()]),
+    tagIds: Type.Array(Type.Integer()),
+    remark: Type.String({ maxLength: 2000 }),
+  }),
+)
+export type CustomerUpdateReq = Static<typeof CustomerUpdateReqSchema>
+
+export const CustomerRelationshipStatusTransitionReqSchema = Type.Object({
+  target: Type.String({ enum: ['potential', 'following', 'lost'] }),
+  reasonCode: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+  remark: Type.Optional(Type.String({ maxLength: 2000 })),
+})
+export type CustomerRelationshipStatusTransitionReq = Static<typeof CustomerRelationshipStatusTransitionReqSchema>
+
+export const CustomerReleaseReqSchema = Type.Object({
+  reason: Type.Optional(Type.String({ maxLength: 500 })),
+})
+export type CustomerReleaseReq = Static<typeof CustomerReleaseReqSchema>
+
+export const CustomerTransferReqSchema = Type.Object({
+  targetUserId: Type.Integer({ minimum: 1 }),
+  reason: Type.Optional(Type.String({ maxLength: 500 })),
+})
+export type CustomerTransferReq = Static<typeof CustomerTransferReqSchema>
+
+export const DuplicateCustomerHintSchema = Type.Object({
+  existingCustomerId: Type.Number(),
+  existingCustomerName: Type.String(),
+  ownerUserId: Type.Union([Type.Number(), Type.Null()]),
+  ownerUserName: Type.Union([Type.String(), Type.Null()]),
+})
+export type DuplicateCustomerHint = Static<typeof DuplicateCustomerHintSchema>
+
+export const CustomerCreateRespSchema = Type.Object({
+  customer: CustomerRespSchema,
+  duplicate: Type.Union([DuplicateCustomerHintSchema, Type.Null()]),
+})
+export type CustomerCreateResp = Static<typeof CustomerCreateRespSchema>

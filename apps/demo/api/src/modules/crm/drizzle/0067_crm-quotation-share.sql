@@ -1,0 +1,21 @@
+CREATE TABLE `crm_quotation_share` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `quotation_id` int NOT NULL,
+  `token_hash` varchar(64) NOT NULL,
+  `status` varchar(16) NOT NULL DEFAULT 'active',
+  `expires_at` datetime NOT NULL,
+  `duration_days` int NULL,
+  `follow_quote_valid_until` tinyint NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+  `created_by` int NOT NULL,
+  `sent_at` datetime NULL,
+  `first_viewed_at` datetime NULL,
+  `last_viewed_at` datetime NULL,
+  `view_count` int NOT NULL DEFAULT 0,
+  `revoked_at` datetime NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_crm_quotation_share_token_hash` (`token_hash`),
+  KEY `idx_crm_quotation_share_quotation_id` (`quotation_id`),
+  KEY `idx_crm_quotation_share_status_expires` (`status`, `expires_at`)
+);

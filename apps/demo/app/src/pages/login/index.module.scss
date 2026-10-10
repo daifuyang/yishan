@@ -1,0 +1,236 @@
+/* 登录页：纯白背景，品牌 → 标题 → 账号 → 密码 → 登录 */
+
+.login {
+  min-height: 100vh;
+  background-color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+.login__body {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding-right: 24px;
+  padding-bottom: calc(32px + var(--safe-area-bottom, 0px));
+  padding-left: 24px;
+}
+
+/* ---------- 品牌 ---------- */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand__logo {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.brand__name {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 30px;
+  letter-spacing: 1px;
+  color: var(--color-text-primary, #1d2129);
+}
+
+/* ---------- 标题 ---------- */
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 40px;
+}
+
+.heading__title {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 36px;
+  color: var(--color-text-primary, #1d2129);
+}
+
+.heading__subtitle {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text-tertiary, #86909c);
+}
+
+/* ---------- 表单 ---------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 36px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field__label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--color-text-primary, #1d2129);
+}
+
+.field__box {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 4px 0 16px;
+  box-sizing: border-box;
+  border: 1px solid #e5e8ef;
+  border-radius: 10px;
+  background-color: #ffffff;
+  transition: border-color 120ms linear;
+}
+
+.field__box--focused {
+  border-color: var(--color-primary, #1677ff);
+}
+
+.field__box--disabled {
+  background-color: var(--color-bg-base, #f7f8fa);
+}
+
+.field__input {
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  /* 16px 避免 iOS Safari 聚焦时自动缩放 */
+  font-size: 16px;
+  line-height: 50px;
+  color: var(--color-text-primary, #1d2129);
+}
+
+.field__placeholder {
+  color: var(--color-text-quaternary, #c9cdd4);
+}
+
+.field__trailing {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.field__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.field__action--pressed {
+  opacity: 0.6;
+}
+
+.form__error {
+  margin-top: -8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--color-danger, #f53f3f);
+}
+
+/* ---------- 辅助操作 ---------- */
+
+.options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -4px;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding-right: 8px;
+}
+
+.remember__box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid #c9cdd4;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.remember__box--checked {
+  border-color: var(--color-primary, #1677ff);
+  background-color: var(--color-primary, #1677ff);
+}
+
+.remember__text {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-text-secondary, #4e5969);
+}
+
+/* ---------- 登录按钮 ---------- */
+
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 50px;
+  margin-top: 8px;
+  border-radius: 10px;
+  background-color: var(--color-primary, #1677ff);
+}
+
+.submit--pressed {
+  background-color: var(--color-primary-pressed, #0958d9);
+}
+
+.submit--disabled {
+  opacity: 0.45;
+}
+
+.submit--loading {
+  opacity: 0.8;
+}
+
+.submit__text {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+  color: #ffffff;
+}
+
+.submit__spinner {
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: login-spin 0.8s linear infinite;
+}
+
+@keyframes login-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

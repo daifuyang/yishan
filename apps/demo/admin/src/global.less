@@ -1,0 +1,221 @@
+@font-face {
+  font-family: "AlibabaSans";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("//mdn.alipayobjects.com/huamei_iwk9zp/afts/file/A*1GSgSYDD_aIAAAAAQsAAAAgAegCCAQ/AlibabaSans-Light.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "AlibabaSans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("//mdn.alipayobjects.com/huamei_iwk9zp/afts/file/A*2zEUQqnPNesAAAAAQtAAAAgAegCCAQ/AlibabaSans-Regular.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "AlibabaSans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("//mdn.alipayobjects.com/huamei_iwk9zp/afts/file/A*E_cxRbMlZqUAAAAAQuAAAAgAegCCAQ/AlibabaSans-Medium.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "AlibabaSans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("//mdn.alipayobjects.com/huamei_iwk9zp/afts/file/A*E_cxRbMlZqUAAAAAQuAAAAgAegCCAQ/AlibabaSans-Bold.woff2")
+    format("woff2");
+}
+@font-face {
+  font-family: "AlibabaSans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("//mdn.alipayobjects.com/huamei_iwk9zp/afts/file/A*E_cxRbMlZqUAAAAAQuAAAAgAegCCAQ/AlibabaSans-Heavy.woff2")
+    format("woff2");
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family:
+    AlibabaSans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans',
+    sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+.attachment-card {
+  .ant-image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .ant-image-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+}
+
+.dispatch-reply-content {
+  margin-top: 8px;
+  white-space: pre-wrap;
+
+  p {
+    margin: 0;
+  }
+
+  p + p {
+    margin-top: 8px;
+  }
+}
+
+.colorWeak {
+  filter: invert(80%);
+}
+
+.ant-layout {
+  min-height: 100vh;
+}
+.ant-pro-sider.ant-layout-sider.ant-pro-sider-fixed {
+  left: unset;
+}
+
+canvas {
+  display: block;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+.p-0 {
+  padding: 0;
+}
+
+// Ant Design 6 uses container for the dialog surface; keep only its body scrolling.
+.ant-modal-root .ant-modal-centered {
+  display: flex;
+  padding: 24px 0;
+
+  &::before {
+    display: none;
+  }
+
+  .ant-modal {
+    display: block;
+    flex: none;
+    margin: auto;
+  }
+}
+
+.ant-modal-wrap .ant-modal {
+  .ant-modal-container {
+    display: flex;
+    flex-direction: column;
+    // Below 288px, let the outer wrap scroll instead of collapsing the body.
+    max-height: max(240px, calc(100vh - 48px));
+    max-height: max(240px, calc(100dvh - 48px));
+  }
+
+  .ant-modal-header,
+  .ant-modal-footer {
+    flex: none;
+  }
+
+  .ant-modal-body {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  // Confirm dialogs put their title and buttons inside the body.
+  &.ant-modal-confirm {
+    .ant-modal-body,
+    .ant-modal-confirm-body-wrapper,
+    .ant-modal-confirm-paragraph {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .ant-modal-body {
+      overflow: visible;
+    }
+
+    .ant-modal-confirm-body-wrapper,
+    .ant-modal-confirm-body {
+      flex: auto;
+      min-height: 0;
+    }
+
+    .ant-modal-confirm-body {
+      align-items: stretch;
+
+      > .anticon {
+        align-self: flex-start;
+      }
+    }
+
+    .ant-modal-confirm-title,
+    .ant-modal-confirm-btns {
+      flex: none;
+    }
+
+    .ant-modal-confirm-content {
+      min-height: 0;
+      overflow: auto;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .ant-pro-page-container-children-container {
+    padding: 0 12px 16px !important;
+  }
+
+  .ant-page-header {
+    padding: 8px 12px 12px !important;
+  }
+
+  .ant-table {
+    width: 100%;
+    overflow-x: auto;
+    &-thead > tr,
+    &-tbody > tr {
+      > th,
+      > td {
+        white-space: pre;
+        > span {
+          display: block;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 375px) {
+  .ant-pro-page-container-children-container {
+    padding: 0 8px 12px !important;
+  }
+
+  .ant-page-header {
+    padding: 8px 8px 10px !important;
+  }
+}

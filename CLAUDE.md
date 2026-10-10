@@ -6,11 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Yishan (移山通用管理系统) is a pnpm monorepo for a generic admin baseline used at zerocmf.com:
 
-- `apps/yishan-admin` — React 19 + Ant Design Pro 6 + UmiJS 4 (`@umijs/max`) admin frontend
-- `apps/yishan-api` — Fastify 5 + Drizzle + TypeBox + JWT backend
-- `apps/yishan-app` — WeChat mini-program (Taro/uni-app style, see `apps/yishan-app/`)
-- `apps/yishan-docs` — Docusaurus 3 docs site
-- `apps/yishan-components/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
+- `apps/demo/admin` — React 19 + Ant Design Pro 6 + UmiJS 4 (`@umijs/max`) admin frontend
+- `apps/demo/api` — Fastify 5 + Drizzle + TypeBox + JWT backend
+- `apps/demo/app` — independent Taro 4 + React 18 mini-program (see `apps/demo/app/`)
+- `apps/demo/docs` — Demo product Docs; `apps/portal/docs` — platform developer Docs; both use `@yishan/docs-kit`; root `docs/` owns architecture/ADR/engineering/contribution records
+- `packages/core/docs-kit` — content-free shared Docusaurus configuration, theme and components consumed through `@yishan/docs-kit`
+- `packages/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
+- `packages/core/admin` / `packages/core/system-admin` — source-only public Admin runtime, Umi build plugin and system management contributions
+- `apps/demo/config` — Demo product configuration (`@yishan/demo-config`); source-only workspace package for Demo Admin and its companion mini-program, no build step
 
 Toolchain pinned in `.tool-versions` / root `package.json#packageManager`: Node 22.22.1, pnpm 8.15.9. Use asdf / mise / fnm to honor `.tool-versions` automatically.
 
@@ -22,34 +25,34 @@ All commands run from the repo root unless noted.
 # Install
 pnpm install
 
-# Full build (order matters: tiptap → admin → docs)
+# Full build (Core App/UI → weapp → API packages → tiptap → admin → docs)
 pnpm build
 # Equivalent to:
-#   pnpm --filter yishan-tiptap build
-#   pnpm --filter yishan-admin build
-#   pnpm --filter yishan-docs build
+#   pnpm build:mobile
+#   pnpm build:app
+#   pnpm build:api
+#   pnpm --filter @yishan/tiptap build
+#   pnpm --filter @yishan/demo-admin build
+#   pnpm build:docs
 
 # Per-app dev (run in separate terminals)
-pnpm --filter yishan-tiptap build         # admin depends on built tiptap
-pnpm --filter yishan-admin dev            # Umi dev server (port 8000 by default for preview)
-pnpm --filter yishan-api dev              # TypeScript watch + Fastify auto-reload
-pnpm --filter yishan-docs start           # Docusaurus dev
+pnpm --filter @yishan/tiptap build         # admin depends on built tiptap
+pnpm --filter @yishan/demo-admin dev            # Umi dev server (port 8000 by default for preview)
+pnpm dev:api              # TypeScript watch + Fastify auto-reload
+pnpm --filter @yishan/demo-docs start       # Demo Docusaurus dev
 
 # Quality gate (matches CI)
-pnpm lint      # admin (Biome + tsc) + docs (typecheck) + app + check-module-naming
-pnpm test      # admin (Jest) + api (Vitest)
+pnpm lint      # Admin packages + product (Biome/tsc) + docs/app + boundary checks
+pnpm test      # Core App + Taro App + Core Admin + Admin (Jest) + API (Vitest)
 
 # Backend DB (Drizzle)
-pnpm --filter yishan-api db:generate      # generate migrations from schema
-pnpm --filter yishan-api db:migrate       # apply Core migrations (drizzle-kit)
-pnpm --filter yishan-api db:migrate:all   # Core + every packed module, verified (non-zero exit on failure)
-pnpm --filter yishan-api db:migrate:modules [id...]
-pnpm --filter yishan-api db:migrations:bridge   # pre-per-module-history databases: dry-run diagnosis (-- --apply to write)
-pnpm --filter yishan-api db:seed          # run seed scripts (builds TS first)
-pnpm --filter yishan-api db:reset         # rebuild DB
+pnpm --filter @yishan/demo-api db:generate      # generate migrations from schema
+pnpm --filter @yishan/demo-api db:migrate --dry-run # inspect only
+pnpm --filter @yishan/demo-api db:migrate --apply   # explicit writes
+pnpm --filter @yishan/demo-api db:seed          # explicit seed; build API first
 ```
 
-### Admin-specific scripts (cd into `apps/yishan-admin`)
+### Admin-specific scripts (cd into `apps/demo/admin`)
 ```bash
 pnpm start              # alias for start:dev (UMI_ENV=dev, MOCK=none)
 pnpm openapi            # regenerate API client from backend OpenAPI
@@ -61,54 +64,36 @@ pnpm preview            # build + serve on :8000
 ```
 The `lint` script runs `max setup` (via `prelint`) then Biome + `tsc --noEmit`. Jest needs `.umi/` artifacts — `max setup` must run first; CI does this explicitly.
 
-### API-specific scripts (cd into `apps/yishan-api`)
+### API-specific scripts (cd into `apps/demo/api`)
 ```bash
-pnpm dev                # TS watch + fastify-cli start with watch
+pnpm dev:api            # run from root; watch all Core + Demo sources
 pnpm test               # vitest run
 pnpm test:watch         # vitest watch
-pnpm test:integration   # vitest run test/integration
-pnpm build:ts           # build: gen-tsconfig + tsc + tsc-alias
+pnpm test:integration   # disposable local MySQL fixtures
+pnpm build              # tsc + tsc-alias + resource copy
 ```
 
-## Architecture: the module system
+## Architecture: API V2
 
-The most distinctive thing in this repo is the business-module plugin system in `apps/yishan-api`. Read `apps/yishan-api/src/core/module-loader/module-loader.ts` and `apps/yishan-api/src/app.ts` for the full picture; `docs/module-onboarding.md` is the developer onboarding guide.
+Read docs/architecture/api-v2.md, package-boundaries.md and database-ownership.md.
+Demo owns configuration, a static manifest and product modules. Four public Core packages
+provide contracts, connection/migration infrastructure, Fastify lifecycle and System services.
+Imports have no connection/startup side effects. Resources, JWT settings, RBAC/catalog and
+module caches belong to an explicitly created runtime. Scoped legacy facades throw without it.
 
-### Layout
-- Each business capability lives at `apps/yishan-api/src/modules/<id>/`
-- A module owns: `module.ts` (entry), `db/schema.ts` (Drizzle tables), `drizzle.config.ts`, `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`, `repositories/`, `services/`, `schemas/`, `routes/`, `tests/`, `config/system-menu.json`, `permissions.ts`, optional `seed.ts`
-- `module.ts` exports a flat `meta = { id, enabled?, name?, description? }`. `enabled` is the pack/load switch (false → skip mount). Traffic uses `sys_module.enabled`. `description` becomes the module's OpenAPI tag description.
-- Current modules on this branch: `demo` (1 table, reference). `portal` / `shop` exist only on the `all` branch.
-
-### Lifecycle
-1. **Boot scan** — `scanDiskModules()` reads each `module.ts` / `module.js`. `meta.enabled === false` modules are skipped (not synced, not mounted). A packed module whose `meta.id` is invalid or differs from its directory name fails the boot.
-2. **DB sync** — upsert packed modules into `sys_module` (`name`, `table_prefix`, `version`). First insert sets traffic `enabled = 1`. Existing `enabled` is never overwritten.
-3. **Mount** — `@fastify/autoload` registers packed modules' `routes/` under `/api/<id>`.
-4. **Gate** — root `onRequest` checks `sys_module.enabled` (Redis + 1s memo) and returns 404 for traffic-disabled modules.
-
-### Hard invariants (enforced by `scripts/check-module-naming.mjs` + review)
-- `meta.id` equals the directory name, matches `/^[a-z][a-z0-9_]{0,23}$/` (checked at boot and by `check-module-naming`).
-- Route prefix is hardcoded to `/api/${id}` — modules don't declare it.
-- Module **table names must start with `<id>_`** (e.g. `demo_documents`). Cross-module duplicate table names also fail lint.
-- **Core never imports module source. Modules never import each other.** Modules join across their own tables only; cross-module reads go through HTTP or Core extensions.
-- **Modules import Yishan code only through `core/module-api.ts` (kernel contracts) and `core/system-api.ts` (System capabilities such as `seedModuleMenus`).** Runtime deps come from Fastify: `app.drizzleDb`, `request.currentUser`. Enforced by `check:boundaries` (`module-imports-internal`).
-- **Kernel/platform never import System** (`core/services`, `repositories`, `schemas`, `mappers`, `routes/api`, `plugins/app`, `scripts`); kernel files use relative imports only. Identity and permissions come from `fastify.authProvider` (`core/auth/identity.ts`; default System implementation `core/services/auth-provider.ts`, wired in `app.ts`).
-- Anonymous routes declare `public: true` on their permission; permission-group display names are registered by their owner (`registerPermissionGroups`). Core never lists business modules, groups or tags.
-- Each module has its own migration history table `<id>_drizzle_migrations`; Core + System keep `__drizzle_migrations`. Published SQL never changes (`check:migrations`).
-- **Routes never import drizzle tables or write SQL directly.** Only `repositories/` may import the Drizzle schema and execute queries. Services orchestrate; routes validate and shape.
-- Don't create `sys_*` tables in modules; don't modify existing `sys_*` Core tables.
-- Frontend menu paths use `/<id>/...` at root — **no `/modules/` prefix** in URLs (the `/modules/` segment is only a source directory convention).
-- Pack/load: `meta.enabled` in `module.ts` (redeploy to change). Traffic: `sys_module.enabled` (toggle, no restart).
-
-### Module enable/disable UX
-Dev-only routes under `core/routes/_dev/` (mounted only when `NODE_ENV !== 'production'`) drive the runtime toggle and invalidate Redis cache + in-process memo. Production hides these routes and they ship without devDeps (`deploy/fc3/scripts/build-runtime-layer.sh` strips them).
+Module definitions implement ApiModule with contractVersion 2, metadata, register, optional
+dependencies and lifecycle/seed/migration contributions. Core validates and topologically sorts
+them; it does not scan an app directory. Runtime traffic uses sys_module.enabled.
+Routes → services → repositories → schema remains the business layer direction.
+Only repositories execute SQL; modules cannot access private System repos or sys_* tables.
+Public userDirectory and controlled user extensions support independent product profile tables.
 
 ## Architecture: admin / api / shared
 
-- **Admin** uses Umi Max's `plugin.ts` to register Ant Design Pro blocks. `apps/yishan-admin/config/routes.ts` is intentionally lean — menu structure is **driven by backend `sys_menu.component`** (post July 2026 refactor; see root `TODO.md`).
-- **Admin module pages** live under `apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx`. `plugin.ts` scans this directory at build time and generates `moduleComponentsMap` (key `./modules/<id>/<page>` → `@/modules/<id>/pages/<page>`). The `component` field in menu JSON must use this exact `./modules/<id>/<page>` form.
-- **OpenAPI sync**: `pnpm --filter yishan-admin openapi` regenerates `src/services/generated/<module>.ts` from `apps/yishan-api/openapi.json`. The generated `typings.d.ts` (committed) provides the `API.*Params` ambient namespace. **Both files must be committed together** for fresh checkouts to compile. The backend also serves Swagger UI live at `/api/docs`.
-- **JWT secret gate**: production refuses to boot with a default/weak `JWT_SECRET` (see `core/plugins/external/jwt-secret-validator.ts`). Dev/CI only warn.
+- **Admin V2** uses `@yishan/core-admin` for runtime composition and the public `@yishan/core-admin/umi-plugin` build plugin. Demo owns the product adapter in `plugin.ts`; `@yishan/core-system-admin` contributes system management pages. `apps/demo/admin/config/routes.ts` is intentionally lean — menu structure is **driven by backend `sys_menu.component`** (post July 2026 refactor; see root `TODO.md`).
+- **Admin module pages** live under `apps/demo/admin/src/modules/<id>/pages/<page>/index.tsx`. The public build plugin includes installed product modules at build time and generates `moduleComponentsMap` (key `./modules/<id>/<page>` → `@/modules/<id>/pages/<page>`). The `component` field in menu JSON must use this exact `./modules/<id>/<page>` form.
+- **OpenAPI sync**: `pnpm --filter @yishan/demo-admin openapi` runs the product Node entry using official `@umijs/openapi.generateService` and the current sibling API schema. System endpoints generate into `packages/core/system-admin/src/services/generated/` with `SystemAPI`; installed product endpoints generate into `apps/demo/admin/src/services/generated/` with `API`. Uninstalled CRM retains its module-owned snapshot under `src/modules/crm/services/generated/` with `CrmAPI`, without contributing runtime pages. Commit each owned generated client and typings together. The Umi OpenAPI config consumes the cached product partition rather than duplicating shared System clients; use the package command for both partitions. Swagger remains at `/api/docs`.
+- **JWT secret gate**: production refuses to boot with a default/weak `JWT_SECRET` (see System API `src/core/plugins/external/jwt-secret-validator.ts`). Dev/CI only warn.
 - **Auth bypass codes**: `BYPASS_CODES` in admin allows local testing of specific routes; `auth:logout` was removed (bugfix in July 2026) — don't add it back.
 - **TipTap**: builds to `dist/` with both CJS and ESM; admin imports it as `workspace:^` and **must rebuild tiptap after tipTap source changes** before re-running admin.
 
@@ -117,16 +102,9 @@ Dev-only routes under `core/routes/_dev/` (mounted only when `NODE_ENV !== 'prod
 Per `CONTRIBUTING.md` and CI (`.github/workflows/yishan-fullstack-ci.yml`):
 
 1. Run the lint/test/build for the apps you touched (root `pnpm lint`, `pnpm test`, `pnpm build`).
-2. Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`. Husky + lint-staged are wired in `yishan-admin`.
+2. Follow Conventional Commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`. Husky + lint-staged are wired in `@yishan/demo-admin`.
 3. Architecture-affecting changes must update root docs (TODO files, README, this file).
 4. Don't stage scratch/plan docs in `tmp/` — they're gitignored.
-
-Gates added in P1-A (`docs/verification/yishan-source-first-p1a/`):
-- `pnpm check:toolchain` — Node/pnpm must match `.tool-versions` (machine default may be Node 24).
-- `pnpm build` now includes the API (`build:ts`) and the App (`build:weapp`).
-- `pnpm lint` runs `typecheck:baseline` (App and TipTap `tsc` ratchet against `scripts/baselines/tsc/*.json`: new errors fail, fixed errors must be removed from the baseline), `check:boundaries` (`scripts/baselines/architecture-boundaries.json`, currently empty: Core must not import or name business modules, modules only use the public entries, kernel/platform never import System) and `check:migrations` (`scripts/baselines/migrations.json`: journal/SQL consistency, monotonic `when`, published SQL immutable, per-module history table).
-- `pnpm check:openapi <runtime.json>` compares the committed `apps/yishan-api/openapi.json` with a runtime dump (`apps/yishan-api/scripts/dump-openapi-from-build.mjs`); `scripts/openapi-diff.mjs` classifies every change and only accepts entries listed in `scripts/baselines/openapi-allowed-changes.json`.
-- `pnpm test:integration` needs a disposable MySQL/Redis (`apps/yishan-api/test/integration/README.md`). R-01 is fixed (per-module history); `module-migration.r01.test.ts` keeps both the fixed path and the root-cause reproduction — do not delete either.
 
 ## Frontend page conventions (admin / Ant Design Pro 6)
 
@@ -145,21 +123,59 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 - Operation column: `dataIndex: 'option'`, `valueType: 'option'`, `fixed: 'right'`, `width: 160`, and wrap the action links in `<Space size={16}>` using `<a>` (not `<Button type="link">`). Match the `system/user` reference exactly.
 
 ### Time formatting
-- Use `dayjs` (already in `apps/yishan-admin/package.json` dependencies, used by `system/user` and `account/center`). It's the project-standard formatter.
+- Use `dayjs` (already in `apps/demo/admin/package.json` dependencies, used by `system/user` and `account/center`). It's the project-standard formatter.
 - For CN-locale pages, format with `dayjs(value).format('YYYY-MM-DD HH:mm:ss')`. dayjs defaults to the runtime's local timezone, which matches the user's expectation in CN deployments. Avoid `toLocaleString()` (browser default) and the raw `Intl.DateTimeFormat` boilerplate.
 - `valueType: 'dateTime'` columns don't need any of the above — let ProTable render.
 
+### CRM drawer 共享原子
+
+`apps/demo/admin/src/modules/crm/components/drawer/_shared/` 下放线索 / 客户两个 drawer
+的共享 UI 原子。新建 drawer 或扩展现有 drawer 时**先查这里**，避免重写：
+
+| 原子 | 职责 |
+|---|---|
+| `DrawerChrome.tsx` | antd `<Drawer>` 统一外壳（resizable + destroyOnClose + closable=false） |
+| `useResizableDrawer.ts` | size state hook + clamp（`MIN_DRAWER_SIZE=1100`） |
+| `DrawerCloseButton.tsx` | 右上角 × text icon button |
+| `DrawerNewWindowButton.tsx` | 右上角 ↗ 新窗口 button |
+| `DrawerMetaRow.tsx` | 标题下分隔线 join 的二级元数据行 |
+| `DrawerStatusTag.tsx` | status → antd Tag color 映射 |
+| `DrawerFilterBar.tsx` | filter 按钮组 + 可选 DateRange Popover |
+| `DrawerDeletePopconfirm.tsx` | 删除 Popconfirm 包装（线索 / 客户共用） |
+| `groupByDate.ts` | 按日期分组的纯函数（今天 / 昨天 / YYYY年MM月DD日） |
+| `crmDialogZIndex.ts` | `CRM_DIALOG_Z_INDEX=1200`（弹窗在抽屉里的统一 z 基准） |
+
+调用方保留各自的视觉差异（线索 vs 客户的 Activity Timeline、tag 块、metric 卡），
+仅复用以上原子保证交互模式一致。
+
+跨页打开客户 Drawer：navigate 到 `/crm/customers?customerId=N`，`useCustomerDrawer` 会
+自动打开。新建客户 / 编辑全屏模式尚未实现，Phase 3 接入 `customer-edit` 路由后接入。
+
 ## Tracking ongoing work
 
-- `TODO.md` is the index of `TODO-*.md` files at the repo root for known follow-ups (e.g. `TODO-admin-routes-factory.md`, `TODO-attachment-select-split.md`, `TODO-architecture-doc-sync.md`).
-- `TODO-architecture-doc-sync.md` tracks that `README.md` and `CONTRIBUTING.md` reference `AGENTS.md` / `ARCHITECTURE.md` that don't yet exist — content has been folded into `docs/module-onboarding.md` and this file. Treat those doc references as pointing here.
+- `TODO.md` is the index of current follow-ups. Completed or obsolete TODO records live under `docs/engineering/archive/todos/`.
+- The former architecture-doc-sync TODO is archived: `ARCHITECTURE.md` is superseded by docs/architecture/; AGENTS.md contains current engineering rules, and the relevant guidance is in `apps/portal/docs/content/modules/onboarding.md` and this file.
 
 ## Other things worth knowing
 
 - **Module naming lint**: `scripts/check-module-naming.mjs` parses each module's `db/schema.ts` with regex; runs as part of `pnpm lint`. Add new tables here and the linter will catch missing `<id>_` prefixes.
-- **Drizzle per-module**: each module ships its own `drizzle.config.ts` (with `migrations: { table: moduleMigrationsTable('<id>') }`) + `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`. Core's `drizzle/meta` is committed too. To regenerate migrations after schema changes, `cd src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts`, then record the new SQL with `node scripts/check-migrations.mjs --update`. Migrations are not auto-applied at boot — operators run `pnpm --filter yishan-api db:migrate:all` (or `db:seed` on first deploy). SQL is checked out with LF (`.gitattributes`) because Drizzle hashes raw bytes.
-- **Source distribution**: downstream projects copy source and follow upstream with `scripts/yishan-upstream.mjs` + `YISHAN_UPSTREAM.json` (see `docs/distribution.md`). Tests that need an optional module are gated with `test/_modules.ts#hasModule` so deleting a module keeps the suite green.
-- **FC deploy**: `.github/workflows/yishan-fc-migrate.yml` and `yishan-fullstack-cd-fc.yml` deploy to Alibaba Function Compute. `apps/yishan-api/deploy/` and `apps/yishan-api/dockerfile` cover the prod image build (which excludes devDeps).
+- **Drizzle per-module**: each module ships its own `drizzle.config.ts` + `drizzle/0000_init.sql` + `drizzle/meta/{_journal,0000_snapshot}.json`. To regenerate migrations after schema changes, `cd src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts`. Migrations are not auto-applied at boot — operators run them via `pnpm --filter @yishan/demo-api db:migrate`.
+- **FC deploy**: `.github/workflows/yishan-fc-migrate.yml` and `yishan-fullstack-cd-fc.yml` deploy to Alibaba Function Compute. `apps/demo/api/deploy/` and `apps/demo/api/dockerfile` cover the prod image build (which excludes devDeps).
 - **Cert rotation**: `yishan-cert-rotate-fc.yml` rotates FC certs.
 - **No real credentials in repo**: demo creds intentionally not committed; per README, request from the maintainer.
-- **sys_region seed data**: 省市区三级（~3400 条）由 `sys_region` 表承载，数据源是 modood/Administrative-divisions-of-China 的 `pca-code.json`，嵌在 `apps/yishan-api/src/scripts/seed/config/`。`pnpm --filter yishan-api db:seed` 自动跑 `system-region.ts` 把数据灌进 MySQL（INSERT ... ON DUPLICATE KEY UPDATE，幂等）。前端复用 `<ProFormRegionCascader name="area" />` 即可拿到三段级联选择器，无需另写 service。
+- **sys_region seed data**: 省市区三级（~3400 条）由 `sys_region` 表承载，数据源是 modood/Administrative-divisions-of-China 的 `pca-code.json`，嵌在 `packages/core/system-api/src/scripts/seed/config/`。`pnpm --filter @yishan/demo-api db:seed` 自动跑 `system-region.ts` 把数据灌进 MySQL（INSERT ... ON DUPLICATE KEY UPDATE，幂等）。前端复用 `<ProFormRegionCascader name="area" />` 即可拿到三段级联选择器，无需另写 service。
+
+## Cross-app config: resolveApiTarget
+
+`@yishan/demo-config` exports `resolveApiTarget(defaultTarget, env = process.env)`. It belongs to Demo and is consumed by Demo Admin and its companion mini-program. Other products own independent configuration packages; Core never imports product configuration. Demo clients retain their existing `http://localhost:3100` fallback and environment overrides.
+
+- Precedence: `API_TARGET` → `YISHAN_API_TARGET` → `YISHAN_API_PORT` → caller default. Complete target URLs override port-only settings; a port override preserves the caller protocol, host and path.
+- Demo API listens on its configured `PORT`; Demo Admin startup accepts `ADMIN_PORT`, mapped to the Umi dev-server `PORT`. Set backend and proxy ports consistently for independent instances.
+- Mini-program `YISHAN_APP_API_BASE_URL` remains an explicit gateway override; H5 defaults to same-origin requests and uses the configured development proxy.
+- Change product defaults in product configuration. Do not introduce a shared default product address.
+
+## Core App and mobile UI boundaries
+
+`packages/core/app` / `@yishan/core-app` owns generic Taro request/session/storage/env/hooks. Each product injects its API methods, URLs, storage keys and navigation; Core never imports an app or a backend/Admin runtime. UI is exported by `@yishan/ui/mobile`, with original tokens/styles. Product pages, business services, module registration and navigation remain in the full App. Never capture the uninitialized Taro default object in a storage adapter; delegate to live API methods at call time.
+
+Run `pnpm typecheck:mobile`, `pnpm --filter @yishan/demo-app test`, `pnpm build:app`, and H5/browser checks when shared mobile behavior changes. Root test/build now include App tests/weapp; H5, independent TipTap example and device validation remain separate. `pnpm check:boundaries` includes mobile public exports and dependency direction. Keep Core App private/source-first, client/store instances paired, HTTP 401 mandatory, and Demo legacy session keys unchanged. New products use `createSessionStorageKeys(productId)` and scoped auth clear/logout, never origin-wide storage.clear() for logout. Run `pnpm check:taro`; for editor distribution changes also run `pnpm verify:tiptap`. Detailed contracts: [Core App README](packages/core/app/README.md).

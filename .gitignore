@@ -1,6 +1,11 @@
 node_modules/
 dist/
 build/
+# These packages ship handwritten Umi build tools; these directories are source.
+!packages/core/admin/build/
+!packages/core/admin/build/**
+!packages/core/system-admin/build/
+!packages/core/system-admin/build/**
 coverage/
 .cache/
 
@@ -33,15 +38,14 @@ yarn-error.log*
 *.bak
 /demo/
 .playwright-cli/
-apps/yishan-app/.swc/
+apps/demo/app/.swc/
 tmp/
 .worktrees/
 
+# Local memory database (DSH meow-memory) — per-workspace, never commit.
+.dsh-meow/
+
 # Generated local artifacts
 artifacts/
-apps/yishan-api/openapi.json
-
-# Core drizzle/meta（journal + snapshot）是迁移历史的一部分，必须提交（P0 J3）：
-# journal 的 `when` 决定 created_at，随运行时 generate 会让各环境 Core 历史不可复现。
 
 # Local dev module enable/disable overrides — 已废弃。启停事实迁入 sys_module 表。
