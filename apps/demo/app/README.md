@@ -16,6 +16,13 @@ pnpm --filter @yishan/demo-app build:weapp
 
 H5 开发端口为 `21003`，`/api` 通过产品配置调用 `resolveApiTarget` 解析代理地址。本应用保留本地默认 `http://localhost:3100`；覆盖优先级为 `API_TARGET` → `YISHAN_API_TARGET` → `YISHAN_API_PORT` → 本地默认，共享包不拥有默认地址。构建产物分别位于 `dist/h5` 和 `dist/weapp`；微信开发者工具打开本应用目录，`project.config.json` 已指向 `dist/weapp/`。
 
+H5 开发服务器默认绑定 `127.0.0.1`，允许 localhost、回环 IP 和现有反向代理 `debug.daifuyang.com`。其他代理域名通过 `YISHAN_H5_ALLOWED_HOSTS` 指定，使用逗号分隔的完整主机名，不包含协议、端口、路径或通配符；`all`、`auto` 和点号前缀域名不接受。需从其他网卡访问时显式设置 `YISHAN_H5_HOST`，例如 `0.0.0.0`。外层反向代理若自行处理 `/api`，仍需配置到目标 API 的转发。devServer 只参与开发配置，生产构建不包含该配置。webpack-dev-server 4 自身还接受字面量 IPv4/IPv6 和 `*.localhost`；该配置限制额外域名，不是严格 IP 白名单，默认回环绑定仍是本地访问边界。
+
+```powershell
+$env:YISHAN_H5_ALLOWED_HOSTS = 'preview.example.com,tunnel.example.com'
+pnpm --filter @yishan/demo-app dev:h5
+```
+
 修改 `config/` 中的构建配置、路径别名或 API 环境变量后，重启 `dev:h5` / `dev:weapp`。源码热更新不会重新加载这些启动配置；旧开发进程可能出现常量未定义或新别名无法解析。
 
 生产 H5 默认使用同源 `/api`，需在部署层转发 API；跨域部署时设置 `YISHAN_APP_API_BASE_URL`。微信小程序生产构建必须设置真实 HTTPS API 地址，并在微信后台登记合法请求域名。环境变量在构建阶段注入，不在客户端读取 Node 环境。
@@ -37,7 +44,7 @@ pnpm --filter @yishan/demo-app build:weapp
 
 ## 认证与服务端兼容
 
-复用 `/api/v1/app/auth/login`、`refresh`、`logout`、`me`、用户资料和菜单接口。请求统一注入身份凭证；并发 401 合并刷新并重试一次，旧请求不能恢复已退出的会话。刷新失败清理会话并跳转登录；普通网络错误保留会话并提供重试。退出优先使用 refresh token 撤销服务器会话，避免已过期 access token 阻止退出。
+复用 `/api/v1/app/auth/login`、`refresh`、`logout`、`me`、用户资料和菜单接口。请求统一注入身份凭证；并发 401 合并刷新并重试一次，旧请求不能恢复已退出的会话。刷新凭据被拒绝时清理会话并跳转登录；普通请求或刷新网络错误保留会话并提供重试。退出优先使用 refresh token 撤销服务器会话，避免已过期 access token 阻止退出。
 
 新增只读、向后兼容的 `GET /api/v1/app/auth/capabilities`，返回真实权限码与已挂载且启用的模块 ID，复用原 `app:auth:profile` 权限。原 `me` 和授权菜单只提供路径/关联权限，不能作为用户实际权限来源。API、OpenAPI 和 admin 生成客户端已同步；无数据库迁移，PC 功能不变。新版移动端要求服务端提供此接口；缺失时默认拒绝访问并展示恢复错误。
 
@@ -77,5 +84,9 @@ pnpm --filter @yishan/demo-app build:weapp
 本应用保持完整产品：页面、业务 API、导航、模块注册、用户模型和配置不变。`@yishan/core-app` 位于 `packages/core/app`，提供注入式请求、登录、缓存、环境、分页 hook 与小型权限/路径工具。URL、Token key、认证 API 和失效跳转由本应用传入，每个产品实例互相隔离。
 
 通用 atoms/feedback 移至 `@yishan/ui/mobile`，原本地 barrels 仅转出公共实现；产品专属组合组件保留本地。`src/styles/tokens.scss` 转出公开样式入口，原视觉与交互保持一致。Taro 官方 `compile.include` 编译外部源码包；消费应用提供 React/Taro/platform 插件。Storage 使用调用时适配，避免捕获初始化前的 Taro API。
+
+当前锁定安装组合为 Taro `4.2.0`、React/ReactDOM `18.3.1`，配置沿用 `framework: 'react'`、Webpack 5 和关闭 prebundle。`scripts/tarojs-react-shim` 是通过 `file:` 安装的本地 `@tarojs/react` 包，其 JavaScript 和声明仅转出应用的 `react-dom`，用于现有 framework-react 插件的别名解析；shim 的 `4.2.0` 是本地兼容标记，不代表安装了上游同名渲染器。保留该适配前提，微信真机验收仍独立于构建检查。只有官方 runner 不再要求这一别名、直接消费应用 ReactDOM，并在无 shim 的 H5/WeApp 构建与浏览器/设备回归均通过后，才可移除；本轮不升级 Taro 或移除 shim。
+
+从根目录运行 `pnpm check:taro` 可核对应用、Core App 和移动 UI 实际解析到的 Taro 包及 Babel preset，要求与已安装 CLI 的 Taro 4 版本一致，也核对本地 shim。检查实际安装版本，不仅检查 manifest 中的 `^4.0.0` 声明；不会修改依赖或锁文件。两种构建目标都通过公开 package exports 定位 Core App/UI 源码，再交给 `compile.include` 编译。
 
 根 `pnpm typecheck:mobile` 覆盖公共包和完整应用；根 test/build 现在覆盖 App 单元测试和 weapp。新产品在 `apps/<product>/app` 创建自己的 Taro 工程并消费公共 exports，不复制 Core/UI，不将业务放入 Core。

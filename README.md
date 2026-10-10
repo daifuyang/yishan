@@ -7,7 +7,7 @@ API V2 与 Admin V2 使用 Product-First Monorepo、Source-First 开发和显式
 ```text
 apps/demo/api/              @yishan/demo-api：配置、装配、业务模块、扩展、部署
 apps/demo/admin/            @yishan/demo-admin：管理后台配置、装配和业务页面
-apps/demo/app/            小程序
+apps/demo/app/              @yishan/demo-app：独立 Taro 产品
 apps/yishan-docs/           文档站
 packages/yishan-tiptap/    @yishan/tiptap：独立 Rollup 编辑器与发布示例
 packages/core/app/         @yishan/core-app：Taro 请求、登录、缓存、环境与公共 hooks
@@ -65,7 +65,9 @@ pnpm build:api
 | 命令 | 实际覆盖 |
 | --- | --- |
 | pnpm build:mobile | Core App 编译、移动 UI 类型检查 |
-| pnpm typecheck:mobile | Core App、移动 UI、完整 Taro App |
+| pnpm typecheck:mobile | 已安装 Taro/shim 版本、Core App、移动 UI、完整 Taro App |
+| pnpm check:taro | 实际解析的 Taro/shim 版本一致性 |
+| pnpm verify:tiptap | 复用 prepack，仓库外 React 18/19 tarball 消费、严格类型与单实例 |
 | pnpm --filter @yishan/tiptap build / typecheck | 独立编辑器构建/类型检查 |
 | pnpm --filter @yishan/demo-app build:h5 | H5 生产构建 |
 | pnpm build:app | 微信小程序生产构建 |
@@ -74,4 +76,4 @@ pnpm build:api
 | pnpm lint | Admin、Docs、Taro App、API/Admin/App 包边界检查 |
 | pnpm build | Core App/UI、微信小程序、API、TipTap/Admin、Docs；H5 和独立 example 另行执行 |
 
-TipTap 独立示例不参与根 Workspace：先 `pnpm build:tiptap`，再在 `packages/yishan-tiptap/example` 执行 `pnpm install --frozen-lockfile`、`pnpm typecheck`、`pnpm dev`。发布包可由外部项目 `pnpm add @yishan/tiptap` 消费；本轮只验证本地 tarball，没有发布 npm。详见 [移动端迁移报告](docs/architecture/mobile-architecture-migration-report.md)。
+TipTap 独立示例不参与根 Workspace：先 `pnpm build:tiptap`，再在 `packages/yishan-tiptap/example` 执行 `pnpm install --frozen-lockfile`、`pnpm typecheck`、`pnpm dev`。发布包可由外部项目 `pnpm add @yishan/tiptap` 消费；本轮只验证本地 tarball，没有发布 npm。新产品装配、认证策略与同源 Session key 见 [Core App 契约](packages/core/app/README.md)，构建 Host 与 shim 见 [Demo App](apps/demo/app/README.md)，发布验证见 [TipTap](packages/yishan-tiptap/README.md)。历史迁移见 [移动端迁移报告](docs/architecture/mobile-architecture-migration-report.md)，本轮证据见 [V2 工程收口报告](docs/architecture/v2-engineering-hardening-report.md)。
