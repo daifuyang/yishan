@@ -7,7 +7,6 @@ const PermissionCatalogItemSchema = Type.Object({
   label: Type.String({ description: '面向管理员的功能名称' }),
   description: Type.Optional(Type.String({ description: '功能说明' })),
   group: Type.String({ description: '权限分组' }),
-  source: Type.String({ description: '来源：core 或插件 ID' }),
 }, { $id: 'permissionCatalogItem' });
 
 const PermissionCatalogRespSchema = successResponse({

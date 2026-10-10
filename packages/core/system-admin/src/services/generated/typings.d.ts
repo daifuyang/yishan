@@ -959,8 +959,6 @@ declare namespace SystemAPI {
     description?: string;
     /** 权限分组 */
     group: string;
-    /** 来源：core 或插件 ID */
-    source: string;
   };
 
   type permissionCatalogResp = {

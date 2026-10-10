@@ -5594,17 +5594,12 @@
           "group": {
             "description": "权限分组",
             "type": "string"
-          },
-          "source": {
-            "description": "来源：core 或插件 ID",
-            "type": "string"
           }
         },
         "required": [
           "code",
           "label",
-          "group",
-          "source"
+          "group"
         ]
       },
       "permissionCatalogResp": {
