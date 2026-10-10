@@ -84,6 +84,6 @@ The only remaining external verification is a fresh GitHub Actions run after the
 
 - Branch: `tmp/api-admin-v2-integration`
 - Starting HEAD: `b260a1a docs(architecture): finalize V2 hardening acceptance`
-- Local commits: recorded below after the migration and verification commits are created
+- Local commits: `9b4872c` (Docs application), `8e826e3` (content/governance separation), `d7f8833` (boundary checks)
 - PR: none created; no push performed
 - Working tree: expected clean after the local commits; generated `build`, `.docusaurus`, logs and temporary consumer directories are ignored
