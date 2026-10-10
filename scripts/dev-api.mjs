@@ -60,7 +60,7 @@ export async function devApi({ once = false } = {}) {
   if (!once) for (const directory of ['packages/core/api', 'packages/core/contracts', 'packages/core/database', 'packages/core/system-api', 'apps/demo/api']) {
     watchers.push(watch(join(root, directory), { recursive: true }, (_event, filename) => {
       const file = filename?.toString().replace(/\\/g, '/')
-      if (!file || /^(src\/|scripts\/|package\.json$|tsconfig(?:\.[^/]+)?\.json$)/.test(file)) {
+      if (file && /^(src\/|scripts\/|package\.json$|tsconfig(?:\.[^/]+)?\.json$)/.test(file)) {
         clearTimeout(timer)
         timer = setTimeout(() => { void queue.request().catch(error => console.error(error)) }, 150)
       }
