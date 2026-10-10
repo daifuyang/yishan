@@ -1,6 +1,6 @@
 # 文档治理
 
-`apps/docs/content` 是产品使用、API 接入和模块开发指南的唯一站点内容来源。根 `docs/` 保存架构决策、贡献规范、测试/发布策略及工程证据，不被网站构建扫描。源码附近 README 可解释本包契约，通过链接引用指南，不复制整篇内容。分类与路径见 [文档体系](../architecture/documentation-system.md)。
+产品文档由各产品自行拥有：Demo 内容在 `apps/demo/docs/content`，平台 API、SDK 和模块开发指南在 `apps/portal/docs/content`。根 `docs/` 保存架构决策、贡献规范、测试/发布策略及工程证据，不被网站构建扫描。源码附近 README 可解释本包契约，通过链接引用指南，不复制整篇内容。分类与路径见 [文档所有权](../architecture/documentation-ownership.md)。
 
 ## 分层原则
 

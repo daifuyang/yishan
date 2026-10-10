@@ -9,7 +9,8 @@ Yishan (移山通用管理系统) is a pnpm monorepo for a generic admin baselin
 - `apps/demo/admin` — React 19 + Ant Design Pro 6 + UmiJS 4 (`@umijs/max`) admin frontend
 - `apps/demo/api` — Fastify 5 + Drizzle + TypeBox + JWT backend
 - `apps/demo/app` — independent Taro 4 + React 18 mini-program (see `apps/demo/app/`)
-- `apps/docs` — independent `@yishan/docs` Docusaurus 3 product; root `docs/` owns architecture/ADR/engineering/contribution records
+- `apps/demo/docs` — Demo product Docs; `apps/portal/docs` — platform developer Docs; both use `@yishan/docs-kit`; root `docs/` owns architecture/ADR/engineering/contribution records
+- `packages/core/docs-kit` — content-free shared Docusaurus configuration, theme and components consumed through `@yishan/docs-kit`
 - `packages/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
 - `packages/core/admin` / `packages/core/system-admin` — source-only public Admin runtime, Umi build plugin and system management contributions
 - `apps/demo/config` — Demo product configuration (`@yishan/demo-config`); source-only workspace package for Demo Admin and its companion mini-program, no build step
@@ -32,13 +33,13 @@ pnpm build
 #   pnpm build:api
 #   pnpm --filter @yishan/tiptap build
 #   pnpm --filter @yishan/demo-admin build
-#   pnpm --filter @yishan/docs build
+#   pnpm build:docs
 
 # Per-app dev (run in separate terminals)
 pnpm --filter @yishan/tiptap build         # admin depends on built tiptap
 pnpm --filter @yishan/demo-admin dev            # Umi dev server (port 8000 by default for preview)
 pnpm dev:api              # TypeScript watch + Fastify auto-reload
-pnpm --filter @yishan/docs start           # Docusaurus dev
+pnpm --filter @yishan/demo-docs start       # Demo Docusaurus dev
 
 # Quality gate (matches CI)
 pnpm lint      # Admin packages + product (Biome/tsc) + docs/app + boundary checks
@@ -153,7 +154,7 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 ## Tracking ongoing work
 
 - `TODO.md` is the index of current follow-ups. Completed or obsolete TODO records live under `docs/engineering/archive/todos/`.
-- The former architecture-doc-sync TODO is archived: `ARCHITECTURE.md` is superseded by docs/architecture/; AGENTS.md contains current engineering rules, and the relevant guidance is in `apps/docs/content/modules/onboarding.md` and this file.
+- The former architecture-doc-sync TODO is archived: `ARCHITECTURE.md` is superseded by docs/architecture/; AGENTS.md contains current engineering rules, and the relevant guidance is in `apps/portal/docs/content/modules/onboarding.md` and this file.
 
 ## Other things worth knowing
 

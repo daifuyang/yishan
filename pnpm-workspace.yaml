@@ -11,8 +11,8 @@ packages:
   - '!**/build/**'
 
   # Docs 的内容、页面、组件、配置和静态资源不是独立 Workspace。
-  - '!apps/docs/content/**'
-  - '!apps/docs/app/**'
-  - '!apps/docs/components/**'
-  - '!apps/docs/config/**'
-  - '!apps/docs/public/**'
+  - '!apps/*/docs/content/**'
+  - '!apps/*/docs/app/**'
+  - '!apps/*/docs/components/**'
+  - '!apps/*/docs/config/**'
+  - '!apps/*/docs/public/**'

@@ -8,7 +8,9 @@ API V2 与 Admin V2 使用 Product-First Monorepo、Source-First 开发和显式
 apps/demo/api/              @yishan/demo-api：配置、装配、业务模块、扩展、部署
 apps/demo/admin/            @yishan/demo-admin：管理后台配置、装配和业务页面
 apps/demo/app/              @yishan/demo-app：独立 Taro 产品
-apps/docs/                 @yishan/docs：独立 Docusaurus 文档产品
+apps/demo/docs/            @yishan/demo-docs：Demo 产品文档
+apps/portal/docs/          @yishan/portal-docs：平台开发者文档
+packages/core/docs-kit/   @yishan/docs-kit：共享文档能力
 docs/                     架构、ADR、工程规范与贡献指南
 packages/yishan-tiptap/    @yishan/tiptap：独立 Rollup 编辑器与发布示例
 packages/core/app/         @yishan/core-app：Taro 请求、登录、缓存、环境与公共 hooks
@@ -57,7 +59,7 @@ pnpm build:api
 
 生产产物由 `scripts/package-api.mjs` 使用 pnpm 生产依赖闭包打包，包含公开 package exports、迁移和 JSON 资源；可以脱离仓库运行。先以 `PUBLIC_PATH=/admin/` 构建 Admin，再通过 `--admin apps/demo/admin/dist` 包含静态资源；线上 `/admin/` 和 `/api/` 路径不因目录迁移改变。`pnpm build:admin` 先构建共享 TipTap，两个 Admin Core 包直接消费源码，不需要预构建。FC3 配置见 [Demo 部署说明](apps/demo/api/deploy/fc3/README.md)。构建、打包与部署不执行数据库迁移，不自动发布生产。
 
-开发指南：[模块接入](apps/docs/content/modules/onboarding.md)、[API V2](docs/architecture/api-v2.md)、[包边界](docs/architecture/package-boundaries.md)、[数据库所有权](docs/architecture/database-ownership.md)。贡献与安全规则见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [SECURITY.md](SECURITY.md)。
+开发指南：[模块接入](apps/portal/docs/content/modules/onboarding.md)、[API V2](docs/architecture/api-v2.md)、[包边界](docs/architecture/package-boundaries.md)、[数据库所有权](docs/architecture/database-ownership.md)。贡献与安全规则见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [SECURITY.md](SECURITY.md)。
 
 移动端与共享组件：
 
@@ -66,8 +68,9 @@ pnpm build:api
 | 命令 | 实际覆盖 |
 | --- | --- |
 | pnpm dev:docs | 独立文档产品开发（默认 4000） |
-| pnpm build:docs | @yishan/docs 生产静态站点，输出 apps/docs/build |
-| pnpm --filter @yishan/docs typecheck / build | 文档产品独立类型检查 / 构建 |
+| pnpm build:docs | 同时构建 Demo 与 Portal 文档站点 |
+| pnpm --filter @yishan/demo-docs typecheck / build | Demo 文档独立检查 / 构建 |
+| pnpm --filter @yishan/portal-docs typecheck / build | Portal 文档独立检查 / 构建 |
 | pnpm build:mobile | Core App 编译、移动 UI 类型检查 |
 | pnpm typecheck:mobile | 已安装 Taro/shim 版本、Core App、移动 UI、完整 Taro App |
 | pnpm check:taro | 实际解析的 Taro/shim 版本一致性 |
@@ -82,4 +85,4 @@ pnpm build:api
 
 TipTap 独立示例不参与根 Workspace：先 `pnpm build:tiptap`，再在 `packages/yishan-tiptap/example` 执行 `pnpm install --frozen-lockfile`、`pnpm typecheck`、`pnpm dev`。发布包可由外部项目 `pnpm add @yishan/tiptap` 消费；本轮只验证本地 tarball，没有发布 npm。新产品装配、认证策略与同源 Session key 见 [Core App 契约](packages/core/app/README.md)，构建 Host 与 shim 见 [Demo App](apps/demo/app/README.md)，发布验证见 [TipTap](packages/yishan-tiptap/README.md)。历史迁移见 [移动端迁移报告](docs/architecture/mobile-architecture-migration-report.md)，本轮证据见 [V2 工程收口报告](docs/architecture/v2-engineering-hardening-report.md)。
 
-文档产品的运行、内容维护和发布见 [Docs README](apps/docs/README.md)，工程治理与站点内容分层见 [文档体系](docs/architecture/documentation-system.md)。产品指南只维护在 apps/docs/content，架构/ADR/历史工程记录只维护在根 docs/。
+文档产品的运行、内容维护和发布见 [Docs README](apps/demo/docs/README.md)，工程治理与站点内容分层见 [文档体系](docs/architecture/documentation-ownership.md)。产品指南只维护在 apps/demo/docs/content，架构/ADR/历史工程记录只维护在根 docs/。

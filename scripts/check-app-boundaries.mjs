@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const ts = createRequire(join(here, '../packages/core/app/package.json'))('typescript')
-const sharedPaths = ['packages/core/app', 'packages/ui', 'packages/yishan-tiptap']
+const sharedPaths = ['packages/core/app', 'packages/core/docs-kit', 'packages/ui', 'packages/yishan-tiptap']
 const ignored = new Set(['node_modules', 'dist', 'build', 'coverage', 'example', '.git', '.docusaurus'])
 const serverAdmin = new Set(['@yishan/core-api', '@yishan/core-system-api', '@yishan/core-database', '@yishan/core-admin', '@yishan/core-system-admin'])
 function walk(directory) {
@@ -70,13 +70,16 @@ export function collectAppBoundaryErrors(root) {
   const byName = new Map(packages.map(pkg => [pkg.manifest.name, pkg]))
   const errors = []
   const shared = new Set(sharedPaths.map(location => join(root, location)))
-  const docsDirectory = join(root, 'apps/docs')
+  const docsDirectories = new Set(packages
+    .filter(pkg => /^apps\/(?:[^/]+\/)?docs$/.test(relative(root, pkg.directory).split(sep).join('/')))
+    .map(pkg => pkg.directory))
   for (const owner of packages) {
-    const mobile = shared.has(owner.directory) || /^apps\/[^/]+\/app$/.test(relative(root, owner.directory).split(sep).join('/'))
-    const docs = owner.directory === docsDirectory
+    const sharedPackage = shared.has(owner.directory)
+    const mobile = sharedPackage || /^apps\/[^/]+\/app$/.test(relative(root, owner.directory).split(sep).join('/'))
+    const docs = docsDirectories.has(owner.directory)
     const dependency = (name, report, target = byName.get(name)) => {
-      if (target?.directory === docsDirectory && !docs) report('other workspace packages cannot depend on Docs')
-      if (mobile && shared.has(owner.directory) && target?.product) report('shared packages cannot depend on products')
+      if (target && docsDirectories.has(target.directory) && !docs) report('other workspace packages cannot depend on Docs')
+      if (sharedPackage && target?.product) report('shared packages cannot depend on products')
       if ((mobile || docs) && owner.product && target?.product && owner.product !== target.product) report('cross-product dependency is forbidden')
       if (mobile && (serverAdmin.has(name) || target?.serverAdmin)) report('mobile packages cannot depend on server/Admin runtime')
     }

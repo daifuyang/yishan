@@ -14,7 +14,7 @@ Install dependencies at repo root:
 pnpm install
 ```
 
-修改前请先阅读 [`CLAUDE.md`](../CLAUDE.md) 与 [模块接入指南](../apps/docs/content/modules/onboarding.md)。
+修改前请先阅读 [`CLAUDE.md`](../CLAUDE.md) 与 [模块接入指南](../apps/portal/docs/content/modules/onboarding.md)。
 
 ## Common Commands
 
@@ -32,14 +32,14 @@ pnpm build
 
 API V2 通过 pnpm check:boundaries 和负面测试强制检查 Package exports、Core依赖方向、产品/模块私有边界。应用显式manifest决定安装，Core不扫描产品代码；System拥有sys_*，模块拥有<id>_表。Route → Service → Repository → Schema 保持分层。迁移必须保留发布历史，启动不迁移、不seed。
 
-参见 [API V2](architecture/api-v2.md)、[包边界](architecture/package-boundaries.md)与[模块接入指南](../apps/docs/content/modules/onboarding.md)。
+参见 [API V2](architecture/api-v2.md)、[包边界](architecture/package-boundaries.md)与[模块接入指南](../apps/portal/docs/content/modules/onboarding.md)。
 
 Run apps individually:
 
 ```bash
 pnpm --filter @yishan/demo-admin dev
 pnpm dev:api
-pnpm --filter @yishan/docs start
+pnpm --filter @yishan/demo-docs start
 ```
 
 ## Pull Request Guidelines

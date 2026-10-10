@@ -11,8 +11,9 @@ on:
       - "scripts/**"
       - "packages/yishan-tiptap/**"
       - "packages/ui/**"
+      - "packages/core/docs-kit/**"
       - "apps/demo/app/**"
-      - "apps/docs/**"
+      - "apps/*/docs/**"
       - "docs/**"
       - ".tool-versions"
       - ".npmrc"
@@ -29,8 +30,9 @@ on:
       - "scripts/**"
       - "packages/yishan-tiptap/**"
       - "packages/ui/**"
+      - "packages/core/docs-kit/**"
       - "apps/demo/app/**"
-      - "apps/docs/**"
+      - "apps/*/docs/**"
       - "docs/**"
       - ".tool-versions"
       - ".npmrc"
@@ -115,7 +117,9 @@ jobs:
 
       - name: Docs typecheck and production build
         run: |
-          pnpm --filter @yishan/docs typecheck
+          pnpm --filter @yishan/docs-kit typecheck
+          pnpm --filter @yishan/demo-docs typecheck
+          pnpm --filter @yishan/portal-docs typecheck
           pnpm build:docs
 
       - name: Admin public package lint and typechecks

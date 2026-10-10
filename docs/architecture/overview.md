@@ -7,4 +7,4 @@ apps/ 拥有独立产品；packages/ 提供公共能力；docs/ 保存架构、A
 - [文档体系](documentation-system.md)：站点内容与工程资产的唯一所有者。
 - [ADR](../adr/README.md)、[工程指南](../engineering/development.md)、[贡献](../contributing.md)。
 
-产品使用与开发接入在 [apps/docs/content](../../apps/docs/content)，实例请求/认证契约在 [Core App README](../../packages/core/app/README.md)。本入口只指向权威说明，不再维护另一份完整架构正文。
+Demo 产品使用在 [apps/demo/docs/content](../../apps/demo/docs/content)，平台开发接入在 [apps/portal/docs/content](../../apps/portal/docs/content)，实例请求/认证契约在 [Core App README](../../packages/core/app/README.md)。本入口只指向权威说明，不再维护另一份完整架构正文。

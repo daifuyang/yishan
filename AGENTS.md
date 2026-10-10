@@ -33,9 +33,10 @@ mistake. Its scope is still limited to the requested business area.
 - `apps/demo/api`: Fastify 5, Drizzle, TypeBox, JWT; business modules live
   under `src/modules/<id>/`.
 - `apps/demo/app`: mini-program application. Follow its local conventions.
-- `apps/docs`: `@yishan/docs`, independent Docusaurus product; product content in `content/`, pages/components/config/assets owned here. Root `docs/` owns architecture, ADR and engineering governance, not a second website.
+- `apps/demo/docs`: `@yishan/demo-docs`, Demo product documentation; `apps/portal/docs`: `@yishan/portal-docs`, platform developer documentation. Both consume `@yishan/docs-kit`; root `docs/` owns architecture, ADR and engineering governance.
 - `packages/yishan-tiptap`: `@yishan/tiptap`, independent Rollup component package.
 - `packages/core/app`: `@yishan/core-app`, injected Taro request/auth/storage/env/hooks.
+- `packages/core/docs-kit`: `@yishan/docs-kit`, content-free shared Docusaurus configuration, theme and components.
 - `packages/ui`: shared mobile components through `@yishan/ui/mobile`.
 - `apps/demo/config`: source-only Demo product configuration, consumed by Demo Admin and its companion mini-program. Other products own their configuration; Core must not depend on it.
 - `packages/core/admin`: public Admin runtime, module composition and Umi build plugin.

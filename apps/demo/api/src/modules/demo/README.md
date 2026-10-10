@@ -28,4 +28,4 @@ pnpm db:seed
 pnpm dev:api
 ```
 
-添加模块步骤和数据库安全约束见仓库 `apps/docs/content/modules/onboarding.md`。不修改历史 SQL，不使用 boot-time seed/reset。
+添加模块步骤和数据库安全约束见仓库 `apps/portal/docs/content/modules/onboarding.md`。不修改历史 SQL，不使用 boot-time seed/reset。

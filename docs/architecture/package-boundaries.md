@@ -14,7 +14,8 @@
 | @yishan/ui | 公共移动 atoms/feedback 与原 Token/SCSS | Core 必要前端能力；无产品/API/Admin 依赖 |
 | @yishan/demo-app | 产品 Taro 配置、页面、服务、模块与导航 | core-app、ui、demo-config |
 | @yishan/demo-config | Demo 产品环境覆盖与配置 | 无 Core 反向依赖 |
-| @yishan/docs | 独立 Docusaurus 产品、产品内容/页面/配置/资源 | 公共 Package exports；禁止其他产品运行时代码 |
+| @yishan/demo-docs / @yishan/portal-docs | 产品与平台 Docs 应用 | 只能依赖公开 Package exports；禁止产品间 Docs 依赖 |
+| @yishan/docs-kit | 无业务文档配置、主题和组件 | 禁止依赖任何 apps/* 或保存内容 |
 | @yishan/tiptap | 独立 Rollup 可发布编辑器 | React/ReactDOM peers；无产品依赖 |
 
 跨包仅使用 package.json exports；不能通过 ../ 或 private/src 访问。公开用户服务/目录、受控 seed 和 schema 类型不是私有仓储接口。System 的 `./schema` 用于应用组合数据库 schema，不授权业务模块读写系统表。模块通过自己的 repository 和公开用户目录完成身份展示。
