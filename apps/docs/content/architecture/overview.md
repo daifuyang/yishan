@@ -12,7 +12,7 @@ apps/
   demo/admin/                     Umi Max / React 管理后台
   demo/config/                    Demo 产品配置
   demo/app/                       完整 Taro 4 / React 18 产品应用
-  yishan-docs/                    Docusaurus 文档站
+  docs/                          独立 Docusaurus 文档产品
 packages/
   yishan-tiptap/                  独立 Rollup 编辑器、npm 发布包和 example
   ui/mobile/                     跨产品移动组件与原有样式

@@ -19,6 +19,7 @@ const config: Config = {
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
+  staticDirectories: ['public'],
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
@@ -45,12 +46,14 @@ const config: Config = {
       'classic',
       {
         docs: {
-          sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/zerocmf/yishan/tree/main/apps/yishan-docs/',
+          path: 'content',
+          sidebarPath: './config/sidebars.ts',
+          editUrl: 'https://github.com/daifuyang/yishan/tree/main/apps/docs/',
         },
+        pages: { path: 'app/pages' },
         blog: false,
         theme: {
-          customCss: './src/css/custom.css',
+          customCss: './app/css/custom.css',
         },
       } satisfies Preset.Options,
     ],

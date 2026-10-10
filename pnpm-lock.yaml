@@ -328,7 +328,7 @@ importers:
         specifier: ~5.4.5
         version: 5.4.5
 
-  apps/yishan-docs:
+  apps/docs:
     dependencies:
       '@docusaurus/core':
         specifier: 3.9.2

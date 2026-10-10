@@ -12,7 +12,8 @@ on:
       - "packages/yishan-tiptap/**"
       - "packages/ui/**"
       - "apps/demo/app/**"
-      - "apps/yishan-docs/**"
+      - "apps/docs/**"
+      - "docs/**"
       - ".tool-versions"
       - ".npmrc"
       - "pnpm-lock.yaml"
@@ -29,7 +30,8 @@ on:
       - "packages/yishan-tiptap/**"
       - "packages/ui/**"
       - "apps/demo/app/**"
-      - "apps/yishan-docs/**"
+      - "apps/docs/**"
+      - "docs/**"
       - ".tool-versions"
       - ".npmrc"
       - "pnpm-lock.yaml"
@@ -113,7 +115,7 @@ jobs:
 
       - name: Docs typecheck and production build
         run: |
-          pnpm --filter yishan-docs typecheck
+          pnpm --filter @yishan/docs typecheck
           pnpm build:docs
 
       - name: Admin public package lint and typechecks

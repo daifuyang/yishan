@@ -14,4 +14,4 @@ title: 模块文档模板
 - 菜单 `/<id>/...`、现有 Admin module pages，不创造新的 UI 机制。
 - 实际验证命令、外部环境限制及生产部署说明。
 
-System 能力位于 packages/core/system-api，模块不得导入其私有 Repository 或 sys_* 表。用户扩展通过公开目录、受控校验/领域事件及独立扩展表实现。参考仓库 docs/module-onboarding.md 与 Demo 的真实模块。
+System 能力位于 packages/core/system-api，模块不得导入其私有 Repository 或 sys_* 表。用户扩展通过公开目录、受控校验/领域事件及独立扩展表实现。参考[模块接入指南](./onboarding.md)与 Demo 的真实模块。

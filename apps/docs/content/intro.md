@@ -13,6 +13,6 @@ title: 简介
 
 • 产品后端：`apps/demo/api`；共享后端：`packages/core/{api,system-api,database,contracts}`
 
-• 文档站点：`apps/yishan-docs`
+• 文档站点：`apps/docs`
 
 建议从“快速开始”开始配置并运行项目，再阅读“架构与规范”理解整体边界，然后根据角色进入前端、后端、插件或部署章节。
