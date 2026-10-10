@@ -4,7 +4,7 @@
 
 ## Summary
 
-按最新命名要求，共享移动能力位于 `packages/core/app`，包名为 `@yishan/core-app`。完整 Taro 产品仍在 `apps/yishan-app`，没有拆成共享 App，也没有创建空的 Demo/CRM/AXIS App。公共移动 UI 使用 `@yishan/ui/mobile`；独立编辑器迁至 `packages/yishan-tiptap`，包名 `@yishan/tiptap`。
+按最新命名要求，共享移动能力位于 `packages/core/app`，包名为 `@yishan/core-app`。完整 Taro 产品已迁至 `apps/demo/app`，包名 `@yishan/demo-app`，与同产品 API/Admin/config 对称；没有拆成共享 App，没有保留旧目录，也没有创建空的 CRM/AXIS App。公共移动 UI 使用 `@yishan/ui/mobile`；独立编辑器迁至 `packages/yishan-tiptap`，包名 `@yishan/tiptap`。
 
 本次没有修改移动业务页面、功能流程、设计样式或 API 源码。Admin 只修改编辑器包名的必要消费引用、CSS 声明和对应依赖。React/Taro 版本未升级。
 
@@ -32,7 +32,7 @@ apps/
   demo/api/                     配套产品 API（未重构）
   demo/admin/                   产品 Admin（仅编辑器消费引用调整）
   demo/config/                  产品配置（上一提交已归位）
-  yishan-app/                   完整 Taro 产品
+  demo/app/                     @yishan/demo-app，完整 Taro 产品
     src/pages/                  原页面与业务不变
     src/api/                    业务 API、模型、请求客户端装配
     src/stores/auth.ts          产品认证 API 与跳转装配
@@ -62,6 +62,8 @@ packages/
     tsconfig.json
 ```
 
+完整 Taro 工程（包括隐藏配置、平台配置、字体与图标、scripts、tests、types）通过 git mv 从 apps/yishan-app 迁至 apps/demo/app。别名、copy 资源和应用内相对路径仍以本应用为根；Workspace 锁链接增加一级，产品配置改为同级 ../config，file React shim 指向新目录。测试通过公开 exports 解析 Core，不再依赖仓库相对深度。包名与 Taro/微信 projectName 改为 Demo 标识，appid、页面显示品牌和 URL 不改。
+
 编辑器和移动 UI 使用 Git 移动；多数源码和样式被 Git 识别为 100% 重命名。原 App 的请求/认证/存储路径成为真正的产品装配入口，公共实现只有一份。原编辑器目录不再有受版本管理的源码或活跃 Package。
 
 Workspace 支持 apps/*、apps/*/*、packages/*、packages/*/*、modules/*。example、dist、build 排除；独立 example 使用自己的 pnpm lock，不重复成为 Workspace 项目。没有制造空目录或永久第二产品夹具。
@@ -88,9 +90,9 @@ example 使用 file:.. 安装构建后的发布包、单独冻结锁和 hoisted 
 
 根新增 build:mobile、typecheck:mobile、typecheck；root test 纳入 Core App/App 测试，root build 纳入 Core App/UI 与 weapp。H5 和独立 example 明确另行构建，README 列出实际覆盖。
 
-新增 check-app-boundaries.mjs 和四个正反向夹具，校验产品反向依赖、服务端/Admin 依赖、公开 exports、跨 Workspace 相对导入，覆盖 TS、require.resolve 与 SCSS。并接入 check:boundaries。
+新增 check-app-boundaries.mjs 和四个正反向夹具，校验产品反向依赖、服务端/Admin 依赖、公开 exports、跨 Workspace 相对导入，覆盖 TS、require.resolve 与 SCSS。并接入 check:boundaries。App 检查按 apps/<product>/app 发现应用，已使用 fixture 产品验证，公共工具不固定 Demo 或旧包名。
 
-fullstack CI 更新编辑器名称/路径，增加 App/UI 路径过滤与移动包类型检查、测试、lint、weapp/H5 构建。CD 源码仅调整编辑器构建路径/名称。fc-migrate 没有相关编辑器路径，无需修改。YAML 解析通过；未运行远端 GitHub CI、未触发 CD，线上 URL/环境/数据未改动。
+fullstack CI 更新 Demo App 的 apps/demo/app 路径过滤和 @yishan/demo-app 命令，更新编辑器名称/路径，增加 App/UI 路径过滤与移动包类型检查、测试、lint、weapp/H5 构建。CD 源码仅调整编辑器构建路径/名称。fc-migrate 没有相关编辑器路径，无需修改。YAML 解析通过；未运行远端 GitHub CI、未触发 CD，线上 URL/环境/数据未改动。
 
 ## Validation
 
@@ -141,6 +143,24 @@ App 产物不提交。API 与 Admin 源码迁移在前一任务完成，本轮�
 
 因此源码、工程、移动端浏览器与独立编辑器消费目标通过；设备、Docker 镜像拉取、远端 CI 与现有 Admin 预览异常有明确限制，状态为 PASS WITH RESTRICTIONS。
 
+## Demo App 产品归位补充验收
+
+按最终要求，完整应用已从 apps/yishan-app 迁入 apps/demo/app（@yishan/demo-app），Core 仍为 packages/core/app。共 253 个受版本管理的文件被 Git 识别为重命名；仅 6 个应用文件修改产品元数据、文档命令或测试解析，全部业务页面与样式保持内容不变。旧目录不再存在于此工作分支；原主工作区的用户文件未移动或覆盖。
+
+归位后重新执行并通过：
+
+- pnpm install --frozen-lockfile（及 --offline）：15 个工程；离线普通安装因新 importer 无缓存元数据失败，随后先语义迁移已锁 importer/Workspace/file 链接，冻结安装成功。没有重新解析或升级第三方依赖。
+- pnpm --filter @yishan/demo-app lint（含 tsc --noEmit）、test：76/76，无失败/跳过。
+- pnpm typecheck、pnpm lint、pnpm test、pnpm build：全部成功；lint 保留已有警告，根测试仍有既有 14 项跳过。build 包含新的 Demo weapp 路径及 API/Admin/编辑器/Docs。
+- pnpm --filter @yishan/demo-app build:h5：成功，输出 apps/demo/app/dist/h5；webpack 保留 2 项体积警告。
+- pnpm test:scripts：33/33；pnpm check:boundaries、Workflow YAML 解析、git diff --check：成功。第二产品 fixture 先证明旧扫描器漏检，再验证按产品 app 目录识别后能拒绝 private/跨包导入。
+- 新 H5 产物通过真实 Chrome/Playwright 联调：匿名直接 URL、隔离 API 管理员登录、me/capabilities/menu、用户列表、刷新恢复、logout/再次匿名跳转；全部通过，pageerror 为 0。
+- 新目录 tests/browser/workbench.js：目录、占位 Modal、320px、搜索、收藏/排序/刷新、账号隔离、返回、重试、权限撤销/菜单禁用、二级 URL 拒绝，10 个场景通过。
+
+现行开发文档、根 scripts、CI path filters、Git 忽略、包依赖和锁文件均使用新目录/包名。已归档规格与早期验收报告保留当时的路径/命令记录；服务端返回的历史产品展示名和 H5 页面 title 未改动，不属于旧工程引用。微信 appid、页面品牌、公开 API 与部署 URL 不变。
+
+本补充达到目录、源码、工程与 H5 联调目标；微信开发者工具/真机、远端 CI 和前述环境限制仍未验收，完整任务状态继续为 **PASS WITH RESTRICTIONS**。
+
 ## Future Ready 与提交
 
 可以在 apps/crm/app、apps/axis/app 创建各自独立 Taro 工程，拥有自己的配置、业务服务、模块表和页面；注入各自 API/Storage/auth，公开消费 Core App/UI。无需复制公共请求、登录、缓存、hooks 和移动基础组件。新增产品仍需编写自己的业务和产品装配，本轮没有虚构这些业务应用。
@@ -150,7 +170,9 @@ App 产物不提交。API 与 Admin 源码迁移在前一任务完成，本轮�
 - 1198cb6：refactor(demo): localize product configuration（先前完成）
 - f91c874：refactor(app): extract Core App and UI and relocate TipTap
 - e29013f：build(app): align CI and document product package ownership
+- ea2f6fb：docs(app): record mobile migration validation
+- 9ed72ef：refactor(app): move Demo Taro product into product workspace
 
 交付时保留本地预览：H5 http://127.0.0.1:21803/、Admin http://127.0.0.1:8000/admin/、API Swagger http://127.0.0.1:3100/api/docs。预览使用隔离数据，启动不代表部署。
 
-本报告作为 docs(app): record mobile migration validation 独立提交；实际提交可由该路径 git log 查询。没有推送或创建 PR，也没有部署。
+初版报告提交为 ea2f6fb；产品归位补充报告以 docs(app): record Demo product relocation validation 独立提交；实际提交可由该路径 git log 查询。没有推送或创建 PR，也没有部署。
