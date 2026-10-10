@@ -32,7 +32,7 @@ mistake. Its scope is still limited to the requested business area.
 - `apps/demo/admin`: `@yishan/demo-admin`, Umi Max, React 19, Ant Design 6, Ant Design Pro; product configuration, composition and business UI.
 - `apps/demo/api`: Fastify 5, Drizzle, TypeBox, JWT; business modules live
   under `src/modules/<id>/`.
-- `apps/yishan-app`: mini-program application. Follow its local conventions.
+- `apps/demo/app`: mini-program application. Follow its local conventions.
 - `apps/yishan-docs`: Docusaurus documentation site.
 - `packages/yishan-tiptap`: `@yishan/tiptap`, independent Rollup component package.
 - `packages/core/app`: `@yishan/core-app`, injected Taro request/auth/storage/env/hooks.
@@ -264,4 +264,4 @@ keeping business code close to the business it serves.
 
 `packages/core/app` / `@yishan/core-app` owns generic Taro request/session/storage/env/hooks. Each product injects its API methods, URLs, storage keys and navigation; Core never imports an app or a backend/Admin runtime. UI is exported by `@yishan/ui/mobile`, with original tokens/styles. Product pages, business services, module registration and navigation remain in the full App. Never capture the uninitialized Taro default object in a storage adapter; delegate to live API methods at call time.
 
-Run `pnpm typecheck:mobile`, `pnpm --filter yishan-app test`, `pnpm build:app`, and H5/browser checks when shared mobile behavior changes. Root test/build now include App tests/weapp; H5, independent TipTap example and device validation remain separate. `pnpm check:boundaries` includes mobile public exports and dependency direction.
+Run `pnpm typecheck:mobile`, `pnpm --filter @yishan/demo-app test`, `pnpm build:app`, and H5/browser checks when shared mobile behavior changes. Root test/build now include App tests/weapp; H5, independent TipTap example and device validation remain separate. `pnpm check:boundaries` includes mobile public exports and dependency direction.

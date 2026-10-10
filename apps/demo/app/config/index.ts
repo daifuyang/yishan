@@ -19,7 +19,7 @@ export default defineConfig(async (merge, _env) => {
   if (apiBaseUrl && !/^https?:\/\//.test(apiBaseUrl))
     throw new Error('YISHAN_APP_API_BASE_URL must be an absolute HTTP(S) URL')
   const baseConfig: UserConfigExport<'webpack5'> = {
-    projectName: 'yishan-app',
+    projectName: 'demo-app',
     designWidth: 375,
     deviceRatio: {
       640: 2.34 / 2,

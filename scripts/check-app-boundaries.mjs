@@ -40,7 +40,7 @@ export function collectAppBoundaryErrors(root) {
   const byName = new Map(packages.map(pkg => [pkg.manifest.name, pkg]))
   const errors = []
   const shared = new Set(sharedPaths.map(location => join(root, location)))
-  for (const owner of packages.filter(pkg => shared.has(pkg.directory) || pkg.manifest.name === 'yishan-app')) {
+  for (const owner of packages.filter(pkg => shared.has(pkg.directory) || /^apps\/[^/]+\/app$/.test(relative(root, pkg.directory).split(sep).join('/')))) {
     const dependency = (name, report) => {
       const target = byName.get(name)
       if (shared.has(owner.directory) && target && relative(root, target.directory).startsWith('apps' + sep)) report('shared packages cannot depend on products')

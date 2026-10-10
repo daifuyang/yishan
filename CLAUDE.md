@@ -8,7 +8,7 @@ Yishan (移山通用管理系统) is a pnpm monorepo for a generic admin baselin
 
 - `apps/demo/admin` — React 19 + Ant Design Pro 6 + UmiJS 4 (`@umijs/max`) admin frontend
 - `apps/demo/api` — Fastify 5 + Drizzle + TypeBox + JWT backend
-- `apps/yishan-app` — independent Taro 4 + React 18 mini-program (see `apps/yishan-app/`)
+- `apps/demo/app` — independent Taro 4 + React 18 mini-program (see `apps/demo/app/`)
 - `apps/yishan-docs` — Docusaurus 3 docs site
 - `packages/yishan-tiptap` — shared TipTap 3 React component library (Rollup, CJS/ESM/types/css)
 - `packages/core/admin` / `packages/core/system-admin` — source-only public Admin runtime, Umi build plugin and system management contributions
@@ -177,4 +177,4 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 
 `packages/core/app` / `@yishan/core-app` owns generic Taro request/session/storage/env/hooks. Each product injects its API methods, URLs, storage keys and navigation; Core never imports an app or a backend/Admin runtime. UI is exported by `@yishan/ui/mobile`, with original tokens/styles. Product pages, business services, module registration and navigation remain in the full App. Never capture the uninitialized Taro default object in a storage adapter; delegate to live API methods at call time.
 
-Run `pnpm typecheck:mobile`, `pnpm --filter yishan-app test`, `pnpm build:app`, and H5/browser checks when shared mobile behavior changes. Root test/build now include App tests/weapp; H5, independent TipTap example and device validation remain separate. `pnpm check:boundaries` includes mobile public exports and dependency direction.
+Run `pnpm typecheck:mobile`, `pnpm --filter @yishan/demo-app test`, `pnpm build:app`, and H5/browser checks when shared mobile behavior changes. Root test/build now include App tests/weapp; H5, independent TipTap example and device validation remain separate. `pnpm check:boundaries` includes mobile public exports and dependency direction.

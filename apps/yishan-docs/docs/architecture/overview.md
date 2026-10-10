@@ -11,7 +11,7 @@ apps/
   demo/api/                       Fastify Demo 产品 API
   demo/admin/                     Umi Max / React 管理后台
   demo/config/                    Demo 产品配置
-  yishan-app/                     完整 Taro 4 / React 18 产品应用
+  demo/app/                       完整 Taro 4 / React 18 产品应用
   yishan-docs/                    Docusaurus 文档站
 packages/
   yishan-tiptap/                  独立 Rollup 编辑器、npm 发布包和 example
@@ -44,4 +44,4 @@ MySQL schema 与查询使用 Drizzle。System 拥有 `sys_*` 表，各模块拥�
 
 前端构建前先构建 yishan-tiptap。pnpm build 包含 Core App/UI、微信小程序、API、编辑器、Admin 和文档站；H5 和独立编辑器 example 另行构建。生产 API 使用 scripts/package-api.mjs 收集完整运行依赖并验证独立启动；FC3 同站部署把 Admin dist 放入产物 public/admin，不使用运行时 Layer，也不自动应用迁移。
 
-移动端 Core 通过实例工厂接受产品配置、业务 API 和导航回调。`apps/yishan-app` 保留页面、业务组件、模块装配和服务；`apps/crm/app`、`apps/axis/app` 可创建独立入口并消费公共 exports。共享包不导入产品，不携带具体 API 地址、Storage key 或页面。
+移动端 Core 通过实例工厂接受产品配置、业务 API 和导航回调。`apps/demo/app` 保留页面、业务组件、模块装配和服务；`apps/crm/app`、`apps/axis/app` 可创建独立入口并消费公共 exports。共享包不导入产品，不携带具体 API 地址、Storage key 或页面。

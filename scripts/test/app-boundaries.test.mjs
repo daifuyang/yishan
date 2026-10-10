@@ -23,9 +23,9 @@ test('Core App and UI cannot depend on product packages', () => fixture(({ root,
 }))
 test('products consume public App exports and reject private or cross-workspace imports', () => fixture(({ root, pkg }) => {
   pkg('packages/core/app', { name: '@yishan/core-app', exports: { './request': './src/index.ts' } })
-  pkg('apps/yishan-app', { name: 'yishan-app' }, "import request from '@yishan/core-app/request'")
+  pkg('apps/fixture/app', { name: '@yishan/fixture-app' }, "import request from '@yishan/core-app/request'")
   assert.deepEqual(collectAppBoundaryErrors(root), [])
-  pkg('apps/yishan-app', { name: 'yishan-app' }, "import privateRequest from '@yishan/core-app/src/request'; import other from '../../../packages/core/app/src/index'")
+  pkg('apps/fixture/app', { name: '@yishan/fixture-app' }, "import privateRequest from '@yishan/core-app/src/request'; import other from '../../../../packages/core/app/src/index'")
   const errors = collectAppBoundaryErrors(root)
   assert.ok(errors.some(error => error.includes('public export')))
   assert.ok(errors.some(error => error.includes('relative import')))
@@ -37,7 +37,7 @@ test('mobile packages cannot pull server or Admin runtimes into the bundle', () 
 
 test('build resolvers and SCSS must also use public exports', () => fixture(({ root, pkg }) => {
   pkg('packages/ui', { name: '@yishan/ui', exports: { './mobile': './src/index.ts' } })
-  pkg('apps/yishan-app', { name: 'yishan-app' }, "const source = require.resolve('@yishan/ui/mobile/private')")
-  writeFileSync(join(root, 'apps/yishan-app/src/index.scss'), "@use '@yishan/ui/mobile/private.scss';")
+  pkg('apps/fixture/app', { name: '@yishan/fixture-app' }, "const source = require.resolve('@yishan/ui/mobile/private')")
+  writeFileSync(join(root, 'apps/fixture/app/src/index.scss'), "@use '@yishan/ui/mobile/private.scss';")
   assert.equal(collectAppBoundaryErrors(root).filter(error => error.includes('public export')).length, 2)
 }))

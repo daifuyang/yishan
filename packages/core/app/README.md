@@ -18,6 +18,6 @@ Taro 应用的公共能力，属于 `packages/core/app`。产品拥有完整 App
 
 这是源码 Workspace Package。Taro 使用官方 mini/h5 compile.include 编译公开 export 对应的源码；Webpack 保留 node_modules 默认查找，并优先解析消费应用的平台插件。React/Taro 是 peers，消费产品提供版本。本包不包含页面和 UI。
 
-Taro 平台 API 在应用模块执行后初始化。产品的 storage adapter 应通过回调调用当前 Taro API，避免在初始化前捕获对象。参见 apps/yishan-app/src/utils/storage.ts。
+Taro 平台 API 在应用模块执行后初始化。产品的 storage adapter 应通过回调调用当前 Taro API，避免在初始化前捕获对象。参见 apps/demo/app/src/utils/storage.ts。
 
 `pnpm --filter @yishan/core-app typecheck`、`build`、`test` 分别执行严格类型检查、声明/JS 构建和实例隔离测试。构建结果不提交，消费产品仍从公开源码 export 导入。

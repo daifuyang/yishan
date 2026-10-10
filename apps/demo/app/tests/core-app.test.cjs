@@ -4,7 +4,7 @@ const { loadTs } = require('./helpers/load-ts.cjs')
 
 test('separate product clients keep their URLs, session versions and token stores independent', async () => {
   const seen = []
-  const core = loadTs('../../packages/core/app/src/request/index.ts', {
+  const core = loadTs(require.resolve('@yishan/core-app/request'), {
     '@tarojs/taro': {
       request: async (options) => {
         seen.push(options)

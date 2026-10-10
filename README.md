@@ -7,7 +7,7 @@ API V2 与 Admin V2 使用 Product-First Monorepo、Source-First 开发和显式
 ```text
 apps/demo/api/              @yishan/demo-api：配置、装配、业务模块、扩展、部署
 apps/demo/admin/            @yishan/demo-admin：管理后台配置、装配和业务页面
-apps/yishan-app/            小程序
+apps/demo/app/            小程序
 apps/yishan-docs/           文档站
 packages/yishan-tiptap/    @yishan/tiptap：独立 Rollup 编辑器与发布示例
 packages/core/app/         @yishan/core-app：Taro 请求、登录、缓存、环境与公共 hooks
@@ -60,14 +60,14 @@ pnpm build:api
 
 移动端与共享组件：
 
-`apps/yishan-app` 仍为 Demo 配套的完整 Taro 产品，页面、业务 API、登录导航和产品配置留在应用中；没有创建无业务的 CRM/AXIS 空应用。新产品可在 `apps/<product>/app` 创建独立入口，使用自己的配置和 API，通过公开 exports 消费 Core App/UI，无需复制公共实现。
+`apps/demo/app` 是 Demo 配套的完整 Taro 产品（`@yishan/demo-app`），页面、业务 API、登录导航和产品配置留在应用中；没有创建无业务的 CRM/AXIS 空应用。新产品可在 `apps/<product>/app` 创建独立入口，使用自己的配置和 API，通过公开 exports 消费 Core App/UI，无需复制公共实现。
 
 | 命令 | 实际覆盖 |
 | --- | --- |
 | pnpm build:mobile | Core App 编译、移动 UI 类型检查 |
 | pnpm typecheck:mobile | Core App、移动 UI、完整 Taro App |
 | pnpm --filter @yishan/tiptap build / typecheck | 独立编辑器构建/类型检查 |
-| pnpm --filter yishan-app build:h5 | H5 生产构建 |
+| pnpm --filter @yishan/demo-app build:h5 | H5 生产构建 |
 | pnpm build:app | 微信小程序生产构建 |
 | pnpm typecheck | TipTap、移动端、API、Admin、Docs |
 | pnpm test | Core App、Taro App、Core Admin、Admin、API；数据库集成另行执行 |

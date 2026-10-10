@@ -11,7 +11,7 @@ on:
       - "scripts/**"
       - "packages/yishan-tiptap/**"
       - "packages/ui/**"
-      - "apps/yishan-app/**"
+      - "apps/demo/app/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -25,7 +25,7 @@ on:
       - "scripts/**"
       - "packages/yishan-tiptap/**"
       - "packages/ui/**"
-      - "apps/yishan-app/**"
+      - "apps/demo/app/**"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -89,11 +89,11 @@ jobs:
         run: |
           pnpm typecheck:mobile
           pnpm --filter @yishan/core-app test
-          pnpm --filter yishan-app lint
-          pnpm --filter yishan-app test
+          pnpm --filter @yishan/demo-app lint
+          pnpm --filter @yishan/demo-app test
           pnpm build:mobile
           pnpm build:app
-          pnpm --filter yishan-app build:h5
+          pnpm --filter @yishan/demo-app build:h5
           node scripts/check-app-boundaries.mjs
 
       - name: Admin Setup

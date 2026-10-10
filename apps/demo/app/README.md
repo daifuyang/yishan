@@ -5,13 +5,13 @@
 ## 运行
 
 ```bash
-pnpm --filter yishan-app dev:h5
-pnpm --filter yishan-app dev:weapp
-pnpm --filter yishan-app tsc
-pnpm --filter yishan-app lint
-pnpm --filter yishan-app test
-pnpm --filter yishan-app build:h5
-pnpm --filter yishan-app build:weapp
+pnpm --filter @yishan/demo-app dev:h5
+pnpm --filter @yishan/demo-app dev:weapp
+pnpm --filter @yishan/demo-app tsc
+pnpm --filter @yishan/demo-app lint
+pnpm --filter @yishan/demo-app test
+pnpm --filter @yishan/demo-app build:h5
+pnpm --filter @yishan/demo-app build:weapp
 ```
 
 H5 开发端口为 `21003`，`/api` 通过产品配置调用 `resolveApiTarget` 解析代理地址。本应用保留本地默认 `http://localhost:3100`；覆盖优先级为 `API_TARGET` → `YISHAN_API_TARGET` → `YISHAN_API_PORT` → 本地默认，共享包不拥有默认地址。构建产物分别位于 `dist/h5` 和 `dist/weapp`；微信开发者工具打开本应用目录，`project.config.json` 已指向 `dist/weapp/`。
@@ -24,7 +24,7 @@ PowerShell 示例：
 
 ```powershell
 $env:YISHAN_APP_API_BASE_URL = 'https://your-api.example.com'
-pnpm --filter yishan-app build:weapp
+pnpm --filter @yishan/demo-app build:weapp
 ```
 
 ## 导航与页面
@@ -66,11 +66,13 @@ pnpm --filter yishan-app build:weapp
 
 `tests/*.test.cjs` 使用仓库已有 TypeScript 编译器执行真实实现，仅替换平台请求、存储和导航边界；覆盖并发刷新、会话清理、恢复错误、权限交集、账号间状态隔离、静态路由、分页竞态及确认弹窗。没有新增测试依赖。
 
-`tests/browser/workbench.js` 是使用测试接口响应的 H5 手动回归脚本：先在 `http://127.0.0.1:21803` 提供 H5 静态构建，再打开独立 Playwright 会话并通过 `playwright-cli run-code --filename=apps/yishan-app/tests/browser/workbench.js` 执行。它不属于上述 Node 测试命令，也不代表真实服务端联调。
+`tests/browser/workbench.js` 是使用测试接口响应的 H5 手动回归脚本：先在 `http://127.0.0.1:21803` 提供 H5 静态构建，再打开独立 Playwright 会话并通过 `playwright-cli run-code --filename=apps/demo/app/tests/browser/workbench.js` 执行。它不属于上述 Node 测试命令，也不代表真实服务端联调。
 
 微信产物构建通过不等于真机验收；发布前仍需开发者工具和真实 HTTPS 域名联调。消息服务、微信快捷登录和头像上传作为后续独立能力，不伪装成已提供的服务器功能。
 
 ## 公共能力与产品所有权
+
+产品入口为 `apps/demo/app`（`@yishan/demo-app`），同级 `../api`、`../admin`、`../config` 属于 Demo 产品。
 
 本应用保持完整产品：页面、业务 API、导航、模块注册、用户模型和配置不变。`@yishan/core-app` 位于 `packages/core/app`，提供注入式请求、登录、缓存、环境、分页 hook 与小型权限/路径工具。URL、Token key、认证 API 和失效跳转由本应用传入，每个产品实例互相隔离。
 

@@ -1,5 +1,5 @@
 {
-  "name": "yishan-app",
+  "name": "@yishan/demo-app",
   "version": "0.1.0",
   "private": true,
   "description": "移山小程序 (Taro 4 + React 18) — 钉钉/飞书风 ToB 移动端",

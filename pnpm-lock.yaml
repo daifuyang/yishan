@@ -219,7 +219,7 @@ importers:
 
   apps/demo/config: {}
 
-  apps/yishan-app:
+  apps/demo/app:
     dependencies:
       '@tarojs/components':
         specifier: ^4.0.0
@@ -256,7 +256,7 @@ importers:
         version: 4.2.0(@tarojs/service@4.2.0)(@tarojs/shared@4.2.0)
       '@tarojs/react':
         specifier: file:./scripts/tarojs-react-shim
-        version: file:apps/yishan-app/scripts/tarojs-react-shim
+        version: file:apps/demo/app/scripts/tarojs-react-shim
       '@tarojs/runtime':
         specifier: ^4.0.0
         version: 4.2.0
@@ -268,13 +268,13 @@ importers:
         version: 4.2.0(@tarojs/components@4.2.0)(@tarojs/helper@4.2.0)(@tarojs/shared@4.2.0)(@types/react@18.3.27)(postcss@8.5.22)(webpack@5.91.0)
       '@yishan/core-app':
         specifier: workspace:*
-        version: link:../../packages/core/app
+        version: link:../../../packages/core/app
       '@yishan/demo-config':
         specifier: workspace:*
-        version: link:../demo/config
+        version: link:../config
       '@yishan/ui':
         specifier: workspace:*
-        version: link:../../packages/ui
+        version: link:../../../packages/ui
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -40775,7 +40775,7 @@ packages:
   /zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
-  file:apps/yishan-app/scripts/tarojs-react-shim:
-    resolution: {directory: apps/yishan-app/scripts/tarojs-react-shim, type: directory}
+  file:apps/demo/app/scripts/tarojs-react-shim:
+    resolution: {directory: apps/demo/app/scripts/tarojs-react-shim, type: directory}
     name: '@tarojs/react'
     dev: false
