@@ -23,7 +23,7 @@ import { adminUserApi, adminRoleApi, adminDeptApi } from '@/api'
 import type { AdminUser } from '@/api/admin/types'
 import { PERMS, SYSTEM_PAGES } from '@/constants/routes'
 import { formatDateTime } from '@/utils/format'
-import { buildProfileSections, formatOrgSummary, UNSET } from '../profileSections'
+import { buildProfileSections, formatOrgSummary, maskSecret, UNSET } from '../profileSections'
 import { withAccountScope } from '../../_shared/AdminUI'
 
 function UserDetailPage() {
@@ -328,9 +328,12 @@ function UserDetailPage() {
                       value={
                         field.kind === 'org'
                           ? formatOrgSummary(field.ids, field.names)
-                          : field.kind === 'enum'
-                            ? (field.options[Number(field.value)] ?? field.value)
-                            : field.value
+                          : field.kind === 'secret'
+                            ? // 已存在用户的密码必然已设置，一律打码，不暴露也不误报「未设置」
+                              maskSecret(field.value) || '••••••••'
+                            : field.kind === 'enum'
+                              ? (field.options[Number(field.value)] ?? field.value)
+                              : field.value
                       }
                       tone={
                         field.kind === 'org'

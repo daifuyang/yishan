@@ -60,7 +60,6 @@ function UserEditContent({ id }: { id?: string }) {
           phone: values.phone,
           email: values.email,
           password: values.password,
-          loginMethod: '用户名密码',
           gender: values.gender,
           birthDate: values.birthDate,
           status: values.status,
@@ -71,7 +70,6 @@ function UserEditContent({ id }: { id?: string }) {
         roleNames: new Map(roles.map((role) => [role.id, role.name])),
         canReadDepts,
         canReadRoles,
-        isCreate: !isEdit,
       }),
     [values, depts, roles, canReadDepts, canReadRoles, isEdit],
   )
@@ -112,29 +110,20 @@ function UserEditContent({ id }: { id?: string }) {
                   }
 
                   if (field.kind === 'secret') {
-                    // 新建时可填密码；编辑态只读展示，重置密码走列表页长按菜单
-                    return field.editable ? (
+                    // 新建必填；编辑态留空即不修改（后端按空值跳过密码字段）
+                    return (
                       <FormField
                         key={field.key}
                         label={field.label}
-                        required={field.editable}
-                        note="6–50 位，需包含字母和数字"
+                        required={!isEdit}
+                        note={isEdit ? '留空则不修改' : '6–50 位，需包含字母和数字'}
                         error={(errors as Record<string, string | undefined>)[field.key]}
                       >
                         <TextField
                           value={field.value}
+                          placeholder={isEdit ? '留空则不修改' : '请输入初始密码'}
                           onChange={(next) => setterFor(field.key)?.(next)}
                         />
-                      </FormField>
-                    ) : (
-                      <FormField
-                        key={field.key}
-                        label={field.label}
-                        disabled
-                      >
-                        <View className={styles.readonlyValue}>
-                          <Text>{field.value || UNSET}</Text>
-                        </View>
                       </FormField>
                     )
                   }

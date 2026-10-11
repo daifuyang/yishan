@@ -2,19 +2,7 @@
   margin-bottom: var(--space-2);
 }
 
-/* 只读值与日期取值都跟在 label 右侧并右对齐，与输入框同构 */
-.readonlyValue {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  font-size: var(--font-size-14);
-  line-height: 22px;
-  color: var(--color-text-tertiary);
-  cursor: not-allowed;
-}
-
+/* 日期取值跟在 label 右侧并右对齐，与输入框同构 */
 /* Taro 的 Picker 在 H5 下渲染成 div，不参与 flex 布局，
    必须显式撑满，否则内部的右对齐不会贴到行尾。*/
 .picker {

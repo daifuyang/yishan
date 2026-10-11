@@ -26,20 +26,6 @@ test('契约里状态与性别的枚举值与后端取值一致', () => {
   assert.equal(GENDER_OPTIONS[2], '女')
 })
 
-test('新建用户时密码可编辑，否则无法创建带密码的账号', () => {
-  const opts = {
-    user: { username: 'x', password: '' },
-    deptNames: new Map(),
-    roleNames: new Map(),
-    canReadDepts: true,
-    canReadRoles: true,
-  }
-  const create = contract.buildProfileSections({ ...opts, isCreate: true })
-  const edit = contract.buildProfileSections({ ...opts, isCreate: false })
-  const field = (sections) => sections.flatMap((s) => s.fields).find((f) => f.key === 'password')
-  assert.equal(field(create).editable, true)
-  assert.equal(field(edit).editable, false)
-})
 
 
 test('编辑页不再使用平铺 Tag 承载部门与角色', () => {
@@ -84,20 +70,6 @@ test("契约不携带无数据来源的登录方式字段", () => {
   assert.equal(fields.find((f) => f.key === 'loginMethod'), undefined)
 })
 
-test("已存在用户的密码只读展示为打码，而不是「未设置」", () => {
-  const field = contract
-    .buildProfileSections({
-      user: {},
-      deptNames: new Map(),
-      roleNames: new Map(),
-      canReadDepts: true,
-      canReadRoles: true,
-      isCreate: false,
-    })
-    .flatMap((s) => s.fields)
-    .find((f) => f.key === 'password')
-  assert.equal(field.value, '••••••••')
-})
 
 test("两个选择页登记显式读取权限，而不是借用 editUser 的增删改判定", () => {
   const source = readSource('src/modules/registry.ts')
@@ -110,3 +82,32 @@ test("两个选择页登记显式读取权限，而不是借用 editUser 的增�
     "角色选择页需声明 system:role:list",
   )
 })
+
+test('密码字段在契约里始终是可填原值，留空由后端跳过', () => {
+  const field = contract
+    .buildProfileSections({
+      user: {},
+      deptNames: new Map(),
+      roleNames: new Map(),
+      canReadDepts: true,
+      canReadRoles: true,
+    })
+    .flatMap((s) => s.fields)
+    .find((f) => f.key === 'password');
+  assert.equal(field.kind, 'secret');
+  assert.equal(field.value, '');
+});
+
+test('编辑页的密码输入框留空即不修改，不带 required 标记', () => {
+  const source = readSource('src/pages/system/user/edit/index.tsx');
+  assert.ok(source.includes("placeholder={isEdit ? '留空则不修改'"), '编辑态密码应提示留空不修改');
+  assert.ok(source.includes('required={!isEdit}'), '仅新建态把密码标为必填');
+});
+
+test('提交时空密码不会进入 update payload', () => {
+  const source = readSource('src/pages/system/user/edit/hooks/useUserEditForm.ts');
+  assert.ok(
+    source.includes('if (password) payload.password = password'),
+    '空密码必须被排除，否则会把用户密码清空',
+  );
+});

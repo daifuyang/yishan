@@ -6,7 +6,7 @@ export type ProfileOrgTarget = 'departments' | 'roles'
 export type ProfileField =
   | { kind: 'text'; key: string; label: string; value: string; editable: boolean }
   | { kind: 'date'; key: string; label: string; value: string; editable: boolean }
-  | { kind: 'secret'; key: string; label: string; value: string; editable: boolean }
+  | { kind: 'secret'; key: string; label: string; value: string }
   | { kind: 'enum'; key: string; label: string; value: string; options: readonly string[] }
   | {
       kind: 'org'
@@ -57,8 +57,6 @@ export interface BuildProfileOptions {
   roleNames: Map<number, string>
   canReadDepts: boolean
   canReadRoles: boolean
-  /** 新建态：密码可填（编辑态一律只读，重置密码走列表页长按菜单） */
-  isCreate?: boolean
 }
 
 export function buildProfileSections(options: BuildProfileOptions): ProfileSection[] {
@@ -111,14 +109,9 @@ export function buildProfileSections(options: BuildProfileOptions): ProfileSecti
       key: 'security',
       title: '安全设置',
       fields: [
-        {
-          kind: 'secret',
-          key: 'password',
-          label: '密码',
-          // 已有用户必然有密码：只读态一律打码，避免显示成误导性的「未设置」
-          value: options.isCreate ? String(user.password ?? '') : maskSecret('set'),
-          editable: options.isCreate === true,
-        },
+        // 密码是「可填但不回显」的字段：编辑态留空表示不修改，
+        // 因此这里始终给出可填的原值，由渲染层决定如何呈现。
+        { kind: 'secret', key: 'password', label: '密码', value: String(user.password ?? '') },
       ],
     },
     { key: 'org', title: '组织关系', fields: orgFields },
