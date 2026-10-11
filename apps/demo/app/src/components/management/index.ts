@@ -20,6 +20,8 @@ export {
   DetailSection,
   type DetailSectionProps,
 } from './DetailLayout'
+export { OrganizationPicker } from './OrganizationPicker'
+export type { OrganizationPickerProps } from './OrganizationPicker'
 export {
   FormContent,
   type FormContentProps,
