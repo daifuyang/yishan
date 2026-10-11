@@ -1,7 +1,6 @@
 import { View } from '@tarojs/components'
 
 import styles from './Checkbox.module.scss'
-import { LineIcon } from './LineIcon'
 
 const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ')
 
@@ -17,9 +16,11 @@ export interface CheckboxProps {
 }
 
 /**
- * 统一的多选框：22px 圆角方框 + 14px 勾。
- * 曾经各页面各写一套（圆形 20px、文字 ✓、胶囊形），视觉互相打架，
+ * 统一的多选框：22px 圆角方框，白底 + 主色勾。
+ * 曾经各页面各写一套（圆形 20px、文字 ✓、实心蓝块），视觉互相打架，
  * 因此收敛到这里，跨页面复用。
+ *
+ * 勾用 CSS 边框画而非 SVG 图标，颜色才能跟随 var(--color-primary)。
  */
 export function Checkbox({
   checked,
@@ -44,11 +45,7 @@ export function Checkbox({
             }
       }
     >
-      {indeterminate ? (
-        <View className={styles.dash} />
-      ) : checked ? (
-        <LineIcon name="check" size={14} color="#FFFFFF" />
-      ) : null}
+      {indeterminate ? <View className={styles.dash} /> : checked ? <View className={styles.tick} /> : null}
     </View>
   )
 }

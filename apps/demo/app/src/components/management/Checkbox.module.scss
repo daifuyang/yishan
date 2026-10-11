@@ -1,8 +1,13 @@
-/* 22px 圆角方框 + 14px 勾 —— 权限树与部门选择共用同一形态。 */
+/*
+ * 22px 圆角方框。勾选态是「白底 + 主色描边 + 主色勾」，不是实心蓝块 ——
+ * 实心块在一屏多行里非常抢眼，把整列的视觉重量都吸走了。
+ *
+ * 勾用两条边框旋转画成，不用 SVG 图标：颜色才能走 var(--color-primary)，
+ * 换主题时不需要在 JS 里改十六进制。
+ */
 .check {
   flex: 0 0 22px;
-  /* align-self 显式居中：宿主若把 align-items 设成 stretch，
-     方框会被拉成竖条、里面的勾被压成椭圆。 */
+  /* 显式居中：宿主若把 align-items 设成 stretch，方框会被拉成竖条 */
   align-self: center;
   flex-shrink: 0;
   width: 22px;
@@ -20,13 +25,23 @@
 
 .check--active {
   border-color: var(--color-primary);
-  background: var(--color-primary);
 }
 
-/* 半选：一道横杠，比再放一个减号图标更干净 */
+/* 勾：右下两笔。rotate(45deg) 把「└」变成「✓」 */
+.tick {
+  width: 5px;
+  height: 9px;
+  margin-top: -2px;
+  border: 2px solid var(--color-primary);
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg);
+}
+
+/* 半选：一道横杠 */
 .dash {
   width: 10px;
   height: 2px;
   border-radius: 1px;
-  background: var(--color-text-inverse);
+  background: var(--color-primary);
 }
