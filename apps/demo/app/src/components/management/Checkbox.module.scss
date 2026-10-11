@@ -1,8 +1,14 @@
 /* 22px 圆角方框 + 14px 勾 —— 权限树与部门选择共用同一形态。 */
 .check {
   flex: 0 0 22px;
+  /* align-self 显式居中：宿主若把 align-items 设成 stretch，
+     方框会被拉成竖条、里面的勾被压成椭圆。 */
+  align-self: center;
+  flex-shrink: 0;
   width: 22px;
   height: 22px;
+  min-width: 22px;
+  min-height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
