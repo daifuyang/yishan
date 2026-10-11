@@ -79,13 +79,15 @@ export function ManagementCell({
         </View>
       ) : null}
       <View className={styles.row__content}>
-        <View className={styles.row__titleLine}>
-          <Text className={styles.row__title}>{title}</Text>
-          {tag ? <View className={styles.row__tag}>{tag}</View> : null}
-        </View>
-        {description ? <Text className={styles.row__description}>{description}</Text> : null}
-        {footnote ? <Text className={styles.row__description}>{footnote}</Text> : null}
+        <Text className={styles.row__title}>{title}</Text>
+        {/* 只保留一行描述：description 优先，footnote 作为兜底。
+            两行并存会把单元格撑成三行，标题和图标就对不齐了。 */}
+        {description || footnote ? (
+          <Text className={styles.row__description}>{description || footnote}</Text>
+        ) : null}
       </View>
+      {/* 状态放在右侧独立成列：与整行垂直居中，不必和标题抢同一条基线 */}
+      {tag ? <View className={styles.row__tag}>{tag}</View> : null}
       {showArrow ? <Text className={styles.row__arrow}>›</Text> : null}
     </View>
   )

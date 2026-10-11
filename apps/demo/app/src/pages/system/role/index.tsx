@@ -19,7 +19,7 @@ import { useCanWrite, useListPagination } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
 import { withAccountScope } from '../_shared/AdminUI'
-import { DATA_SCOPE_LABELS, roleStatus, roleTypeLabel } from './model'
+import { roleStatus } from './model'
 
 const STATUS_TABS = [
   { key: '', label: '全部' },
@@ -117,8 +117,7 @@ function RolePage() {
                     {status.label}
                   </Tag>
                 }
-                description={`${roleTypeLabel(role)} · ${DATA_SCOPE_LABELS[role.dataScope] ?? '未设置数据权限'}`}
-                footnote={role.description || '暂无描述'}
+                description={role.description || '暂无描述'}
                 onClick={() => navigateTo(`/${SYSTEM_PAGES.roleDetail}?id=${role.id}`)}
               />
             )

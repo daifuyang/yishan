@@ -45,14 +45,8 @@
   flex: 1;
 }
 
-.row__titleLine {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 .row__title {
+  display: block;
   min-width: 0;
   overflow: hidden;
   color: var(--color-text-primary);
@@ -63,8 +57,11 @@
   text-overflow: ellipsis;
 }
 
+/* 状态独立成列：与整行垂直居中，不和标题抢基线 */
 .row__tag {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
 }
 
 .row__description {

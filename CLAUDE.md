@@ -140,6 +140,12 @@ explicit reason in the PR description.
   `var(--space-4)`. A list with side margins beside full-bleed content reads as two different card
   widths. The footer supplies only bottom padding; the list's own margin already provides the gap
   above it, so stacking both gives an irregular 32px.
+- **List cells: title left, status right, single description line.** Put the status tag in its own
+  right-hand column rather than after the title — an 18px tag centred against a 21.6px title line is
+  never optically centred, and moving it right centres it against the whole row. Render one
+  description (`description`, falling back to `footnote`), never both. **Don't join attributes with
+  `·`** — structural facts (role type, data scope) belong on the detail page; only unstructured
+  prose belongs under the title.
 - **Rows that navigate carry `›`** (date picker, department/role rows). Reuse the existing
   `LineIcon name="chevronRight"`. **Read-only rows must not** — a detail-page row with an arrow
   reads as editable.
