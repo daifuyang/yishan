@@ -2,13 +2,16 @@
   padding: 0 0 var(--space-6);
 }
 
-/* 头部：裸排版，直接落在页面底色上，不使用白卡 */
+/* 头部：独立的身份模块，用白色卡片与下方分组区分。
+   裸排版时它会和「基础信息」这类灰标题糊成一片，缺少模块边界。 */
 .hero {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  margin: var(--space-3);
   padding: var(--space-4);
-  margin-bottom: var(--space-2);
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-lg);
 }
 
 .hero__glyph {
@@ -83,7 +86,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-4) var(--space-4) var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-2);
   background: var(--color-bg-base);
   font-size: var(--font-size-13);
   font-weight: var(--font-weight-regular);

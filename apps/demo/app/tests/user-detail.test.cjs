@@ -485,3 +485,10 @@ test("详情页不再渲染可点击的组织关系跳转入口", async () => {
   );
   assert.equal(clickable.length, 0);
 });
+
+test("详情页头部不再渲染头像占位（头像无数据来源且与姓名重复）", async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  const avatars = page.nodes.filter((n) => n.type === "Avatar");
+  assert.equal(avatars.length, 0);
+});

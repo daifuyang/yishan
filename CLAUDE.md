@@ -122,9 +122,12 @@ explicit reason in the PR description.
   as a different control. Row height stays identical to a normal row.
 - **If it has a placeholder, it does not need a tip.** Don't restate the placeholder in a note/hint
   line. At most one note per field, only when the placeholder can't carry it.
-- **No white cards for groups.** Grey section title (`--font-size-13`, tertiary) floating on the page
-  background, with a borderless full-bleed white sheet underneath. The group container adds no
+- **No white cards for form groups.** Grey section title (`--font-size-13`, tertiary) floating on the
+  page background, with a borderless full-bleed white sheet underneath. The group container adds no
   horizontal padding — each row carries its own `var(--space-4)`.
+- **Exception — the detail-page hero IS a white card** (`margin: var(--space-3)`, `radius-lg`). Set bare
+  on the page background it visually merges with the grey group title right below it and reads as one
+  undifferentiated block. Keep the avatar: it anchors the identity even when it is only an initial.
 - **Rows that navigate carry `›`** (date picker, department/role rows). Reuse the existing
   `LineIcon name="chevronRight"`. **Read-only rows must not** — a detail-page row with an arrow
   reads as editable.
