@@ -40,9 +40,10 @@ export function maskSecret(value: string): string {
 export function formatOrgSummary(ids: number[], names: Map<number, string>): string {
   if (!ids.length) return UNSET
   const resolved = ids.map((id) => names.get(id)).filter((name): name is string => !!name)
-  if (resolved.length < ids.length) resolved.push(UNRESOLVED)
-  if (resolved.length <= 2) return resolved.join('、')
-  return `${resolved.slice(0, 2).join('、')} 等 ${resolved.length} 个`
+  const shown = resolved.length < ids.length ? [...resolved, UNRESOLVED] : resolved
+  if (shown.length <= 2) return shown.join('、')
+  // 计数用实际选中项数量，占位文案不代表一个部门
+  return `${shown.slice(0, 2).join('、')} 等 ${ids.length} 个`
 }
 
 function text(value: unknown): string {
@@ -114,10 +115,10 @@ export function buildProfileSections(options: BuildProfileOptions): ProfileSecti
           kind: 'secret',
           key: 'password',
           label: '密码',
-          value: options.isCreate ? String(user.password ?? '') : maskSecret(String(user.password ?? '')),
+          // 已有用户必然有密码：只读态一律打码，避免显示成误导性的「未设置」
+          value: options.isCreate ? String(user.password ?? '') : maskSecret('set'),
           editable: options.isCreate === true,
         },
-        { kind: 'secret', key: 'loginMethod', label: '登录方式', value: text(user.loginMethod), editable: false },
       ],
     },
     { key: 'org', title: '组织关系', fields: orgFields },

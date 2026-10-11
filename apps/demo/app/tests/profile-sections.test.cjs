@@ -98,6 +98,11 @@ test('formatOrgSummary 在名称全部解析不出时回退为占位文案', () 
   assert.equal(formatOrgSummary([9, 10], new Map()), '名称暂不可用')
 })
 
+test('formatOrgSummary 的「等 N 个」按实际选中数计，不把占位算作部门', () => {
+  const names = new Map([[1, '甲'], [2, '乙']])
+  assert.equal(formatOrgSummary([1, 2, 3, 4], names), '甲、乙 等 4 个')
+})
+
 test('formatOrgSummary 部分解析失败时保留占位文案', () => {
   const names = new Map([[1, '甲']])
   assert.equal(formatOrgSummary([1, 9], names), '甲、名称暂不可用')

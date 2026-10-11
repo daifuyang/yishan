@@ -48,13 +48,20 @@ export default function UserDepartmentsPage() {
 
   const [selected, setSelected] = useState<number[]>(initial)
 
-  useDidShow(() => {
-    if (loaded) return
-    setLoaded(true)
+  // 抽成可调用函数：StateView 的「重试」不会让 useDidShow 再次触发，
+  // 重试必须由页面自己重新发起请求，否则会永久卡在错误态。
+  const load = () => {
+    setError(undefined)
     adminDeptApi
       .getAdminDeptTree()
       .then((result) => setTree(result ?? []))
       .catch((err) => setError(err instanceof Error ? err.message : '加载失败'))
+  }
+
+  useDidShow(() => {
+    if (loaded) return
+    setLoaded(true)
+    load()
   })
 
   const currentId = path.length ? path[path.length - 1].id : null
@@ -105,7 +112,7 @@ export default function UserDepartmentsPage() {
       <StateView
         kind={error ? 'error' : loaded && !tree ? 'loading' : 'ready'}
         text={error}
-        onRetry={() => setLoaded(false)}
+        onRetry={load}
       >
         {hits ? (
           <View className={styles.results}>

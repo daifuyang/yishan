@@ -490,3 +490,11 @@ test("组织关系展示部门摘要而非整串 ID", async () => {
   const picker = page.nodes.find((n) => n.props?.["aria-label"] === "所属部门");
   assert.ok(picker, "应渲染 OrganizationPicker");
 });
+
+test("枚举字段在详情页显示文案而不是原始码值", async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  const flat = text(page.tree);
+  assert.ok(flat.includes("启用"), `状态应显示文案，实际：${flat.slice(0, 200)}`);
+  assert.ok(!/(启用状态|性别)1/.test(flat), "不应把状态/性别的原始码值直接渲染出来");
+});

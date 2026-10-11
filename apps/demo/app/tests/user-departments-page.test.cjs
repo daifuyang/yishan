@@ -23,7 +23,7 @@ const TREE = [
  * 组件自身的渲染由 dept-tree / selection-footer 测试覆盖。
  * state 按调用序号持久化，每次 render 重置序号 —— 与 user-detail.test.cjs 同一手法。
  */
-function mount({ params = {}, tree = TREE, draftIds } = {}) {
+function mount({ params = {}, tree = TREE, draftIds, fetchTree } = {}) {
   const routes = []
   const back = []
   const wrote = []
@@ -88,7 +88,7 @@ function mount({ params = {}, tree = TREE, draftIds } = {}) {
       navigateBack: () => back.push(true),
       navigateTo: (p) => routes.push(p),
     },
-    '@/api': { adminDeptApi: { getAdminDeptTree: async () => tree } },
+    '@/api': { adminDeptApi: { getAdminDeptTree: fetchTree || (async () => tree) } },
     './index.module.scss': scssMock(),
   }).default
 
@@ -263,4 +263,25 @@ test('部门树为空时页面仍可确定空选择', async () => {
   const tree = await page.settle()
   page.el(tree, 'FOOT').props.onConfirm()
   assert.deepEqual(page.wrote, [{ key: 'user-depts', ids: [] }])
+})
+
+test('加载失败后点击重试会重新拉取部门树，而不是卡在错误态', async () => {
+  let attempts = 0
+  const page = mount({
+    fetchTree: async () => {
+      attempts++
+      if (attempts === 1) throw new Error('网络异常')
+      return TREE
+    },
+  })
+  const tree = await page.settle()
+  const sv = page.el(tree, 'SV')
+  assert.ok(sv.props.onRetry, 'StateView 应暴露重试回调')
+  sv.props.onRetry()
+  // 生产环境里 useDidShow 不会因为点重试而再次触发，
+  // 因此重试必须由页面自身的 load 完成，而不是等下一次 onShow
+  const after = page.render()
+  await new Promise(setImmediate)
+  assert.equal(attempts, 2, '点重试后必须真正重新发起请求')
+  assert.ok(page.find(after, () => true).length > 0)
 })

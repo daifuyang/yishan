@@ -41,22 +41,6 @@ test('新建用户时密码可编辑，否则无法创建带密码的账号', ()
   assert.equal(field(edit).editable, false)
 })
 
-test('登录方式在任何模式下都只读', () => {
-  const opts = {
-    user: {},
-    deptNames: new Map(),
-    roleNames: new Map(),
-    canReadDepts: true,
-    canReadRoles: true,
-  }
-  const field = (isCreate) =>
-    contract
-      .buildProfileSections({ ...opts, isCreate })
-      .flatMap((s) => s.fields)
-      .find((f) => f.key === 'loginMethod')
-  assert.equal(field(true).editable, false)
-  assert.equal(field(false).editable, false)
-})
 
 test('编辑页不再使用平铺 Tag 承载部门与角色', () => {
   const source = readSource('src/pages/system/user/edit/index.tsx')
@@ -77,4 +61,52 @@ test('edit/constants.ts 不再导出与实际取值顺序相反的 options', () 
   const source = readSource('src/pages/system/user/edit/constants.ts')
   assert.ok(!source.includes('STATUS_OPTIONS'), '选项来源应收敛到 profileSections')
   assert.ok(!source.includes('GENDER_OPTIONS'))
+})
+
+test("编辑页进入选择页时带上当前已选，否则确认会清空部门与角色", () => {
+  const source = readSource('src/pages/system/user/edit/index.tsx')
+  assert.ok(
+    /navigateTo\(`\/\$\{page\}[^`]*ids=/.test(source),
+    "编辑页跳转选择页必须携带 ?ids=，否则选择页初始选中为空且确定会写回空数组",
+  )
+})
+
+test("契约不携带无数据来源的登录方式字段", () => {
+  const { buildProfileSections } = contract
+  const sections = buildProfileSections({
+    user: {},
+    deptNames: new Map(),
+    roleNames: new Map(),
+    canReadDepts: true,
+    canReadRoles: true,
+  })
+  const fields = sections.flatMap((s) => s.fields)
+  assert.equal(fields.find((f) => f.key === 'loginMethod'), undefined)
+})
+
+test("已存在用户的密码只读展示为打码，而不是「未设置」", () => {
+  const field = contract
+    .buildProfileSections({
+      user: {},
+      deptNames: new Map(),
+      roleNames: new Map(),
+      canReadDepts: true,
+      canReadRoles: true,
+      isCreate: false,
+    })
+    .flatMap((s) => s.fields)
+    .find((f) => f.key === 'password')
+  assert.equal(field.value, '••••••••')
+})
+
+test("两个选择页登记显式读取权限，而不是借用 editUser 的增删改判定", () => {
+  const source = readSource('src/modules/registry.ts')
+  assert.ok(
+    /'pages\/system\/user\/departments\/index': \{ moduleId: 'system-user', permissions: \['system:department:list'\] \}/.test(source),
+    "部门选择页需声明 system:department:list，否则只读浏览会被要求 user:update",
+  )
+  assert.ok(
+    /'pages\/system\/user\/roles\/index': \{ moduleId: 'system-user', permissions: \['system:role:list'\] \}/.test(source),
+    "角色选择页需声明 system:role:list",
+  )
 })

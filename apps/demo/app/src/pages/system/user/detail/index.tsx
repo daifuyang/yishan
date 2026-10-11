@@ -342,7 +342,12 @@ function UserDetailPage() {
                       <DetailRow
                         key={field.key}
                         label={field.label}
-                        value={field.value}
+                        value={
+                          // 枚举字段的 value 是后端码值，详情页展示文案
+                          field.kind === 'enum'
+                            ? (field.options[Number(field.value)] ?? field.value)
+                            : field.value
+                        }
                         tone={field.value === UNSET ? 'muted' : 'default'}
                       />
                     ),

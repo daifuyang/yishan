@@ -67,7 +67,13 @@ export function DepartmentTreeNavigator({
               className={cx(styles.treeRow, node.id === highlightId && styles['treeRow--highlight'])}
               aria-label={`部门-${node.name}`}
               hoverClass={styles['treeRow--hover']}
-              onClick={branch ? () => onEnter(node) : () => onToggle(node.id)}
+              onClick={
+                branch
+                  ? () => onEnter(node)
+                  : readonly
+                    ? undefined
+                    : () => onToggle(node.id)
+              }
             >
               {/* checkbox 独立可点：任意层级均可被选中；stopPropagation 避免连带触发行点击 */}
               <View

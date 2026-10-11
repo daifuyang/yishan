@@ -269,3 +269,33 @@ test('当前层为空时渲染空态文案', () => {
   })
   assert.match(text(t), /没有下级部门/)
 })
+test('readonly 模式下点击叶子行不会改变选中（只读浏览不应污染计数）', () => {
+  let toggled = null
+  const t = DepartmentTreeNavigator({
+    nodes: tree[0].children,
+    path: [{ id: 1, name: '上海总公司' }],
+    selectedIds: new Set([12]),
+    readonly: true,
+    onEnter: () => {},
+    onToggle: (id) => (toggled = id),
+    onCrumb: () => {},
+  })
+  const row = find(t, (n) => n.props?.['aria-label'] === '部门-市场部门')[0]
+  assert.equal(row.props.onClick, undefined, '只读模式叶子行不应绑定 onClick')
+  assert.equal(toggled, null)
+})
+
+test('readonly 模式下仍可点击分支行进入下一层（只读≠不可浏览）', () => {
+  let entered = null
+  const t = DepartmentTreeNavigator({
+    nodes: tree[0].children,
+    path: [{ id: 1, name: '上海总公司' }],
+    selectedIds: new Set(),
+    readonly: true,
+    onEnter: (n) => (entered = n.id),
+    onToggle: () => {},
+    onCrumb: () => {},
+  })
+  find(t, (n) => n.props?.['aria-label'] === '部门-研发部门')[0].props.onClick()
+  assert.equal(entered, 11)
+})

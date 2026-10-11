@@ -98,7 +98,11 @@ function UserEditContent({ id }: { id?: string }) {
                         label={field.label}
                         ids={field.ids}
                         names={field.names}
-                        onPress={() => navigateTo(`/${page}`)}
+                        onPress={() =>
+                          // 必须带上当前已选：选择页的初始选中取自草稿或 ?ids=，
+                          // 两者都为空时用户点「确定」会把关联清空
+                          navigateTo(`/${page}?ids=${field.ids.join(',')}`)
+                        }
                       />
                     )
                   }
