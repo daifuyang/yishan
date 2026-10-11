@@ -23,10 +23,12 @@ export interface FormSectionProps {
 
 export function FormSection({ title, hint, children }: FormSectionProps) {
   return (
-    <View className={styles.section}>
+    <View className={styles.sectionBlock}>
       {title ? <Text className={styles.section__title}>{title}</Text> : null}
-      {children}
-      {hint ? <Text className={styles.section__hint}>{hint}</Text> : null}
+      <View className={styles.section}>
+        {children}
+        {hint ? <Text className={styles.section__hint}>{hint}</Text> : null}
+      </View>
     </View>
   )
 }

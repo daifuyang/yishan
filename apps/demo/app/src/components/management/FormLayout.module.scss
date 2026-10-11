@@ -1,48 +1,64 @@
 .content {
-  padding: var(--space-4);
-  padding-bottom: calc(66px + var(--safe-area-bottom));
+  padding: 0 0 calc(66px + var(--safe-area-bottom));
+}
+
+/* 分组：与详情页 DetailSection 同一套「灰标题 + 无圆角贴边白底」结构 */
+.sectionBlock {
+  margin-bottom: var(--space-2);
+  background: var(--color-bg-base);
+}
+
+.sectionBlock:last-child {
+  margin-bottom: 0;
 }
 
 .section {
-  margin-bottom: var(--space-3);
-  padding: var(--space-4);
+  /* 横向内边距由各行自带，便于 OrganizationPicker 等同一套行组件复用 */
+  padding: 0;
   background: var(--color-bg-surface);
-  border-radius: var(--radius-xl);
-}
-
-.section:last-child {
-  margin-bottom: 0;
 }
 
 .section__title {
   display: block;
-  margin-bottom: var(--space-3);
-  font-size: var(--font-size-15);
-  font-weight: var(--font-weight-semibold);
-  line-height: 22px;
-  color: var(--color-text-primary);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  background: var(--color-bg-base);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-regular);
+  line-height: 20px;
+  color: var(--color-text-tertiary);
 }
 
 .section__hint {
   display: block;
-  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-3);
   font-size: var(--font-size-12);
   line-height: 18px;
   color: var(--color-text-tertiary);
 }
 
+/* 表单行：label 在左固定列，控件在右并右对齐 ——
+   与详情页 DetailRow、OrganizationPicker 保持同一种「左标签 / 右取值」结构。*/
 .field {
-  margin-bottom: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  min-height: var(--list-item-height-sm);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .field:last-child {
-  margin-bottom: 0;
+  border-bottom: 0;
 }
 
 .field__label {
-  display: block;
-  margin-bottom: var(--space-2);
+  flex-shrink: 0;
+  width: 76px;
+  margin-bottom: 0;
   font-size: var(--font-size-14);
+  line-height: 22px;
   color: var(--color-text-secondary);
 }
 
@@ -53,25 +69,28 @@
 
 .field__input,
 .field__textarea {
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
-  width: 100%;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-surface);
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--color-text-primary);
   font-family: var(--font-family-base);
   font-size: var(--font-size-14);
+  line-height: 22px;
+  text-align: right;
 }
 
 .field__input {
-  height: 44px;
+  height: 40px;
 }
 
 .field__textarea {
   padding-top: var(--space-2);
   padding-bottom: var(--space-2);
-  min-height: 88px;
+  min-height: 64px;
+  text-align: left;
   line-height: 22px;
 }
 
@@ -81,29 +100,36 @@
 }
 
 .field__error {
+  flex-basis: 100%;
   display: block;
   margin-top: var(--space-1);
+  text-align: right;
   font-size: var(--font-size-12);
   line-height: 18px;
   color: var(--color-danger);
 }
 
 .segment {
+  flex: 1;
+  min-width: 0;
   display: flex;
+  justify-content: flex-end;
   gap: var(--space-2);
 }
 
 .segment__item {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 40px;
+  height: 32px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   background: var(--color-bg-surface);
   color: var(--color-text-secondary);
-  font-size: var(--font-size-14);
+  font-size: var(--font-size-13);
 }
 
 .segment__itemActive {
@@ -118,7 +144,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  min-height: 48px;
+  min-height: var(--list-item-height-sm);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .link__label {

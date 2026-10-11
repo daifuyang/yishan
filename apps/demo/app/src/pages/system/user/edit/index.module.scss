@@ -1,23 +1,25 @@
 .group {
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+/* 只读值与日期取值都跟在 label 右侧并右对齐，与输入框同构 */
+.readonlyValue,
+.pickerValue {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  text-align: right;
 }
 
 .readonlyValue {
-  min-height: var(--list-item-height-sm);
-  display: flex;
-  align-items: center;
-  padding: var(--space-2) 0;
-  font-size: var(--font-size-14);
-  line-height: 22px;
   color: var(--color-text-tertiary);
 }
 
 .pickerValue {
-  min-height: var(--list-item-height-sm);
-  display: flex;
-  align-items: center;
-  padding: var(--space-2) 0;
-  font-size: var(--font-size-14);
-  line-height: 22px;
   color: var(--color-text-primary);
 }
