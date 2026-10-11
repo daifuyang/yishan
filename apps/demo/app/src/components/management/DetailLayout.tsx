@@ -1,5 +1,5 @@
 import { Text, View } from '@tarojs/components'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { Avatar, Tag } from '@/components/atoms'
 import styles from './DetailLayout.module.scss'
@@ -77,14 +77,37 @@ export interface DetailSectionProps {
   title: string
   children: ReactNode
   className?: string
+  /** 标题变为可点击的展开/收起控制 */
+  collapsible?: boolean
+  defaultCollapsed?: boolean
 }
 
-/** 详情页信息分组：白色圆角容器 + 分组标题。 */
-export function DetailSection({ title, children, className = '' }: DetailSectionProps) {
+/** 详情页信息分组：灰色标题浮在页面底色上，标题下方是一块无圆角的全出血白底。 */
+export function DetailSection({
+  title,
+  children,
+  className = '',
+  collapsible = false,
+  defaultCollapsed = false,
+}: DetailSectionProps) {
+  const [open, setOpen] = useState(!defaultCollapsed)
   return (
-    <View className={cx(styles.section, className)}>
-      <Text className={styles.section__title}>{title}</Text>
-      {children}
+    <View className={cx(styles.sectionBlock, className)}>
+      <Text
+        className={cx(styles.section__title, collapsible && styles.section__titleToggle)}
+        aria-expanded={collapsible ? open : undefined}
+        onClick={collapsible ? () => setOpen(!open) : undefined}
+      >
+        {title}
+        {collapsible ? (
+          <LineIcon
+            name={open ? 'chevronDown' : 'chevronRight'}
+            size={14}
+            color="#86909C"
+          />
+        ) : null}
+      </Text>
+      {collapsible && !open ? null : <View className={styles.section}>{children}</View>}
     </View>
   )
 }
@@ -92,17 +115,36 @@ export function DetailSection({ title, children, className = '' }: DetailSection
 export interface DetailRowProps {
   label: string
   value?: string | number | ReactNode
+  /** 渲染右侧箭头。省略时按 onClick 推导：可点即有箭头 */
+  showArrow?: boolean
+  onClick?: () => void
+  /** 'muted' 弱化值文字，用于未设置态 */
+  tone?: 'default' | 'muted'
 }
 
 /** 分组内的「标签 : 值」行，空值统一显示「未设置」。 */
-export function DetailRow({ label, value }: DetailRowProps) {
+export function DetailRow({ label, value, showArrow, onClick, tone = 'default' }: DetailRowProps) {
   const empty = value === undefined || value === null || value === ''
+  const arrow = showArrow ?? Boolean(onClick)
   return (
-    <View className={styles.row}>
+    <View
+      className={cx(styles.row, onClick && styles['row--tappable'])}
+      onClick={onClick}
+      hoverClass={onClick ? styles['row--hover'] : undefined}
+    >
       <Text className={styles.row__label}>{label}</Text>
-      <Text className={styles.row__value} selectable>
-        {empty ? '未设置' : value}
-      </Text>
+      <View className={styles.row__tail}>
+        <Text
+          className={cx(
+            styles.row__value,
+            (empty || tone === 'muted') && styles['row__value--muted'],
+          )}
+          selectable={!onClick}
+        >
+          {empty ? '未设置' : value}
+        </Text>
+        {arrow ? <LineIcon name="chevronRight" size={16} color="#C9CDD4" /> : null}
+      </View>
     </View>
   )
 }

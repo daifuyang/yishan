@@ -1,19 +1,14 @@
 .content {
-  padding: var(--space-4);
+  padding: 0 0 var(--space-6);
 }
 
-.hero,
-.section {
-  background: var(--color-bg-surface);
-  border-radius: var(--radius-xl);
-}
-
+/* 头部：裸排版，直接落在页面底色上，不使用白卡 */
 .hero {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-5) var(--space-4);
-  margin-bottom: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 
 .hero__glyph {
@@ -71,32 +66,43 @@
   color: var(--color-text-secondary);
 }
 
-.section {
-  margin-bottom: var(--space-3);
-  padding: 0 var(--space-4);
+/* 分组：标题浮在页面底色上，正文是一块无圆角、全出血的白底 */
+.sectionBlock {
+  margin-bottom: var(--space-2);
 }
 
-.section:last-child {
+.sectionBlock:last-child {
   margin-bottom: 0;
 }
 
+.section {
+  background: var(--color-bg-surface);
+}
+
 .section__title {
-  display: block;
-  padding: var(--space-4) 0 var(--space-2);
-  font-size: var(--font-size-15);
-  font-weight: var(--font-weight-semibold);
-  line-height: 22px;
-  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  background: var(--color-bg-base);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-regular);
+  line-height: 20px;
+  color: var(--color-text-tertiary);
+}
+
+.section__titleToggle {
+  cursor: pointer;
 }
 
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  min-height: 48px;
+  min-height: var(--list-item-height-sm);
   box-sizing: border-box;
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border-light);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
   font-size: var(--font-size-14);
   line-height: 22px;
 }
@@ -105,13 +111,29 @@
   border-bottom: 0;
 }
 
+.row--tappable {
+  cursor: pointer;
+}
+
+.row--hover {
+  background: var(--color-bg-disabled);
+}
+
 .row__label {
   flex-shrink: 0;
   color: var(--color-text-secondary);
 }
 
-.row__value {
+.row__tail {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.row__value {
   min-width: 0;
   text-align: right;
   overflow-wrap: anywhere;
@@ -119,10 +141,14 @@
   color: var(--color-text-primary);
 }
 
+.row__value--muted {
+  color: var(--color-text-tertiary);
+}
+
 /* 权限分组：模块标题 + 成员列表，避免直接暴露关联 ID */
 .groupBlock {
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border-light);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .groupBlock:last-child {
