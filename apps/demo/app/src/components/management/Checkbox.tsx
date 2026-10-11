@@ -37,11 +37,13 @@ export function Checkbox({
       aria-label={rest['aria-label']}
       aria-checked={disabled ? undefined : indeterminate ? 'mixed' : checked}
       onClick={
-        disabled
+        // 只有自带处理函数才拦截冒泡。不传 onClick 时必须让点击冒泡到整行 ——
+        // 否则点在框上会「既不自己响应、又不冒泡」，看起来就是失灵。
+        disabled || !onClick
           ? undefined
           : (event) => {
               event.stopPropagation()
-              onClick?.(event)
+              onClick(event)
             }
       }
     >

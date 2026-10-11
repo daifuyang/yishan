@@ -149,7 +149,9 @@ explicit reason in the PR description.
 - **Checkboxes: only `components/management/Checkbox`** — 22px rounded square (radius-sm), **white fill with a
   primary border and primary tick**, dash for indeterminate. Never a solid filled block: a dozen
   filled blocks down a list outweigh the actual content. The tick is CSS-drawn (not SVG) so its colour
-  follows `var(--color-primary)`. It pins `align-self: center` because a host with `align-items: stretch`
+  follows `var(--color-primary)`. Two contract rules: it **does not stop propagation unless you pass
+  `onClick`** (it is usually a decorative element inside a tappable row — stopping unconditionally makes
+  clicks silently do nothing), and it pins `align-self: center` because a host with `align-items: stretch`
   squashes it into a tall pill. Three hand-rolled variants existed at once (22px square, 20px circle,
   text ✓); never draw your own.
 - **Rows that navigate carry `›`** (date picker, department/role rows). Reuse the existing
