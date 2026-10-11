@@ -1,9 +1,7 @@
 import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as adminRoleApi from '@/api/admin/role'
-import * as adminMenuApi from '@/api/admin/menu'
 import type { AdminRoleDetail } from '@/api/admin/role'
-import type { AdminPermission } from '@/api/admin/menu'
 import { Tag } from '@/components/atoms'
 import { StateView } from '@/components/feedback'
 import {
@@ -12,7 +10,6 @@ import {
   type BottomAction,
   BottomActionBar,
   DetailContent,
-  DetailGroupList,
   DetailHero,
   DetailRow,
   DetailSection,
@@ -32,20 +29,18 @@ import {
   roleTypeLabel,
   toggleRoleStatus,
 } from '../model'
-import { groupMenuPermissions, groupPermissionCodes, type PermissionGroup } from '../permissions'
 
 function RoleDetailPage() {
   const guard = useRequireAuth({ moduleId: 'system-role' })
   const router = useRouter()
   const id = Number(router.params.id)
+  // AND 语义：权限内页要求 update + grant 同时具备，用它决定是否给跳转箭头
   const canUpdate = useCanWrite(PERMS.roleUpdate, PERMS.roleGrant)
   const canDelete = useCanWrite(PERMS.roleDelete)
 
   const [role, setRole] = useState<AdminRoleDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [menuGroups, setMenuGroups] = useState<PermissionGroup[]>([])
-  const [catalog, setCatalog] = useState<AdminPermission[]>([])
   const [moreOpen, setMoreOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
@@ -92,40 +87,12 @@ function RoleDetailPage() {
     setMoreOpen(false)
   })
 
-  // 菜单树与权限目录用于把 ID 还原成可读名称；缺少读取权限时静默降级。
-  const menuIdsKey = role?.menuIds?.join(',') ?? ''
-  const codesKey = role?.permissionCodes?.join(',') ?? ''
-  const currentMenuIds = useMemo(
-    () => (menuIdsKey ? menuIdsKey.split(',').map(Number) : undefined),
-    [menuIdsKey],
-  )
-  useEffect(() => {
-    if (!guard.allowed) return
-    let active = true
-    void (async () => {
-      try {
-        const menus = await adminMenuApi.getAdminMenuTree()
-        if (active) setMenuGroups(groupMenuPermissions(currentMenuIds, menus ?? []))
-      } catch {
-        if (active) setMenuGroups([])
-      }
-      try {
-        const list = await adminMenuApi.getAdminPermissionCatalog()
-        if (active) setCatalog(list ?? [])
-      } catch {
-        if (active) setCatalog([])
-      }
-    })()
-    return () => {
-      active = false
-    }
-  }, [menuIdsKey, codesKey, guard.allowed])
+  // 菜单树与权限目录不再在详情页拉取：详情只展示计数，清单由权限内页负责。
 
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
 
   const kind = error ? 'error' : loading && !role ? 'loading' : !role ? 'empty' : 'ready'
   const status = role ? roleStatus(role) : null
-  const permissionGroups = role ? groupPermissionCodes(role.permissionCodes, catalog) : []
   const disabled = submitting || loading
 
   const handleToggle = async () => {
@@ -245,15 +212,30 @@ function RoleDetailPage() {
                 <DetailRow label="描述" value={role.description} />
               </DetailSection>
 
-              <DetailSection title="菜单权限">
-                <DetailGroupList groups={menuGroups} />
+              <DetailSection title="权限配置">
+                {/* 只给计数，具体清单到内页看 —— 内页是带搜索和勾选的完整树，
+                    详情页铺一排 chip 既挤又看不全。 */}
+                <DetailRow
+                  label="菜单权限"
+                  value={`${role.menuIds?.length ?? 0} 个菜单`}
+                  showArrow={canUpdate}
+                  onClick={
+                    canUpdate
+                      ? () => navigateTo(`/${SYSTEM_PAGES.rolePermissions}?id=${role.id}`)
+                      : undefined
+                  }
+                />
+                <DetailRow
+                  label="功能权限"
+                  value={`${role.permissionCodes?.length ?? 0} 项`}
+                  showArrow={canUpdate}
+                  onClick={
+                    canUpdate
+                      ? () => navigateTo(`/${SYSTEM_PAGES.rolePermissions}?id=${role.id}`)
+                      : undefined
+                  }
+                />
               </DetailSection>
-
-              {permissionGroups.length > 0 ? (
-                <DetailSection title="功能权限">
-                  <DetailGroupList groups={permissionGroups} />
-                </DetailSection>
-              ) : null}
 
               <DetailSection title="账号记录">
                 <DetailRow label="角色 ID" value={role.id} />
