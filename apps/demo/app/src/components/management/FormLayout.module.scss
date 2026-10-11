@@ -68,7 +68,8 @@
   color: var(--color-danger);
 }
 
-/* 禁用行：标签与取值同时弱化，并禁止点击光标 */
+/* 禁用行：标签与取值统一弱化，行高与普通行一致 —— 靠颜色区分不可编辑，
+   不加灰底块也不加额外说明行，避免把表单撑高。 */
 .field--disabled {
   cursor: not-allowed;
 }
@@ -78,9 +79,6 @@
 }
 
 .field__input--disabled {
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-disabled);
   color: var(--color-text-tertiary);
   cursor: not-allowed;
 }

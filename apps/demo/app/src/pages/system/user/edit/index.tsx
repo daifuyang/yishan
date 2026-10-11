@@ -9,6 +9,7 @@ import {
   FormField,
   FormSection,
   FormSubmitBar,
+  LineIcon,
   OrganizationPicker,
   SegmentField,
   TextField,
@@ -130,7 +131,6 @@ function UserEditContent({ id }: { id?: string }) {
                         key={field.key}
                         label={field.label}
                         disabled
-                        note="如需修改请返回列表长按该用户"
                       >
                         <View className={styles.readonlyValue}>
                           <Text>{field.value || UNSET}</Text>
@@ -166,12 +166,14 @@ function UserEditContent({ id }: { id?: string }) {
                         error={(errors as Record<string, string | undefined>)[field.key]}
                       >
                         <Picker
+                          className={styles.picker}
                           mode="date"
                           value={current}
                           onChange={(event) => setterFor(field.key)?.(String(event.detail.value))}
                         >
                           <View className={styles.pickerValue}>
                             <Text>{current || UNSET}</Text>
+                            <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
                           </View>
                         </Picker>
                       </FormField>
@@ -187,7 +189,6 @@ function UserEditContent({ id }: { id?: string }) {
                       label={field.label}
                       required={REQUIRED_KEYS.has(field.key)}
                       disabled={locked}
-                      note={locked ? '创建后不可修改' : undefined}
                       error={(errors as Record<string, string | undefined>)[field.key]}
                     >
                       <TextField
