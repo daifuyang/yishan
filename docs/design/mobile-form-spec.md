@@ -242,7 +242,7 @@ H5 下 `Picker` 渲染成一个独立 `div`，不是 flex 子项，内部的 `fl
 - 部门 / 角色等组织关系行（`OrganizationPicker`）
 - 任何 `LinkRow`
 
-复用已有的 `LineIcon name="chevronRight"`，不要引入新图标。
+**箭头必须是行级元素，不能塞在控件内部。** 用 `<FormField arrow>` 让 FormField 把它渲染成整行的最后一个子元素（与 `DetailRow` / `LinkRow` / `ListItem` 同一位置），并显式 `align-self: center`。把 `LineIcon` 写进控件的内部 flex 容器里，它会跟着控件自己的盒子走，和整行对不齐。
 
 **纯展示行不要给箭头** —— 详情页的组织关系只读展示，不带箭头也不可点击，避免让用户误以为能改。
 
@@ -285,3 +285,4 @@ H5 下 `Picker` 渲染成一个独立 `div`，不是 flex 子项，内部的 `fl
 - [ ] 列表单元格：状态在右侧独立成列（不跟在标题后），描述只有一行，没有 · 拼接
 - [ ] 多选框用的是共享 `Checkbox`（22px 圆角方框、白底 + 主色勾），没有自绘，也没有实心蓝块
 - [ ] 复选框不传 onClick 时点击能冒泡到整行（点框和点标题行为一致）
+- [ ] 箭头由 `FormField arrow` / `DetailRow` 渲染在行末，没有塞进控件内部

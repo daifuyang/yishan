@@ -109,6 +109,15 @@
   cursor: not-allowed;
 }
 
+/* 行尾箭头：与 DetailRow / LinkRow 同一位置，显式垂直居中 */
+.field__arrow {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  margin-left: var(--space-1);
+}
+
 .field__input,
 .field__textarea {
   flex: 1;

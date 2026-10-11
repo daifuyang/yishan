@@ -9,7 +9,6 @@ import {
   FormField,
   FormSection,
   FormSubmitBar,
-  LineIcon,
   OrganizationPicker,
   TextField,
 } from '@/components/management'
@@ -132,6 +131,7 @@ function UserEditContent({ id }: { id?: string }) {
                       <FormField
                         key={field.key}
                         label={field.label}
+                        arrow
                         error={(errors as Record<string, string | undefined>)[field.key]}
                       >
                         <Picker
@@ -145,7 +145,6 @@ function UserEditContent({ id }: { id?: string }) {
                         >
                           <View className={styles.pickerValue}>
                             <Text>{field.options[Number(field.value)] ?? UNSET}</Text>
-                            <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
                           </View>
                         </Picker>
                       </FormField>
@@ -158,6 +157,7 @@ function UserEditContent({ id }: { id?: string }) {
                       <FormField
                         key={field.key}
                         label={field.label}
+                        arrow
                         error={(errors as Record<string, string | undefined>)[field.key]}
                       >
                         <Picker
@@ -168,7 +168,6 @@ function UserEditContent({ id }: { id?: string }) {
                         >
                           <View className={styles.pickerValue}>
                             <Text>{current || UNSET}</Text>
-                            <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
                           </View>
                         </Picker>
                       </FormField>

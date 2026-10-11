@@ -44,6 +44,10 @@ export interface FormFieldProps {
   note?: string
   /** 独占一行：label 在上、控件占满宽度。多行文本必须用这个 */
   stacked?: boolean
+  /** 行尾箭头：表示该行可跳转到下一级。与 DetailRow / LinkRow 同一位置 */
+  arrow?: boolean
+  /** 箭头点击（整行是否可点由控件自己决定） */
+  onArrowClick?: () => void
   children: ReactNode
 }
 
@@ -55,6 +59,8 @@ export function FormField({
   error,
   note,
   stacked = false,
+  arrow = false,
+  onArrowClick,
   children,
 }: FormFieldProps) {
   return (
@@ -67,6 +73,12 @@ export function FormField({
     >
       <Text className={cx(styles.field__label, required && styles.field__required)}>{label}</Text>
       {children}
+      {/* 箭头是行级元素，与整行垂直居中；放进控件内部会跟着控件的盒子走偏 */}
+      {arrow ? (
+        <View className={styles.field__arrow} onClick={onArrowClick}>
+          <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+        </View>
+      ) : null}
       {error ? (
         <Text className={styles.field__error}>{error}</Text>
       ) : note ? (

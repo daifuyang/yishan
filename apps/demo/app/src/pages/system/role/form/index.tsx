@@ -10,7 +10,6 @@ import {
   FormField,
   FormSection,
   FormSubmitBar,
-  LineIcon,
   LinkRow,
   ManagementPage,
   TextAreaField,
@@ -52,6 +51,8 @@ function RoleFormPage() {
   const [dataScope, setDataScope] = useState<AdminRoleDetail['dataScope']>('1')
   const [loading, setLoading] = useState(isEdit)
   const [error, setError] = useState<string | null>(null)
+  const [menuCount, setMenuCount] = useState(0)
+  const [permissionCount, setPermissionCount] = useState(0)
   const [nameError, setNameError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
@@ -70,6 +71,8 @@ function RoleFormPage() {
         setDescription(role.description ?? '')
         setStatus(role.status)
         setDataScope(role.dataScope)
+        setMenuCount(role.menuIds?.length ?? 0)
+        setPermissionCount(role.permissionCodes?.length ?? 0)
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : '加载失败')
       } finally {
@@ -80,6 +83,14 @@ function RoleFormPage() {
       active = false
     }
   }, [isEdit, id])
+
+  const goPermissions = () => {
+    if (!isEdit) {
+      Taro.showToast({ title: '请先保存角色', icon: 'none' })
+      return
+    }
+    navigateTo(`/${SYSTEM_PAGES.rolePermissions}?id=${id}`)
+  }
 
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
 
@@ -158,7 +169,7 @@ function RoleFormPage() {
                 disabled={!canSave || submitting}
               />
             </FormField>
-            <FormField label="状态">
+            <FormField label="状态" arrow>
               <Picker
                 className={styles.picker}
                 mode="selector"
@@ -170,11 +181,10 @@ function RoleFormPage() {
               >
                 <View className={styles.pickerValue}>
                   <Text>{STATUS_OPTIONS.find((option) => option.value === status)?.label ?? '启用'}</Text>
-                  <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
                 </View>
               </Picker>
             </FormField>
-            <FormField label="数据权限">
+            <FormField label="数据权限" arrow>
               <Picker
                 className={styles.picker}
                 mode="selector"
@@ -191,26 +201,24 @@ function RoleFormPage() {
                   <Text>
                     {SCOPE_OPTIONS.find((option) => option.value === dataScope)?.label ?? '全部数据'}
                   </Text>
-                  <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
                 </View>
               </Picker>
             </FormField>
           </FormSection>
 
-          <FormSection
-            title="权限配置"
-            hint="菜单与功能权限在独立的权限配置页维护，保存角色后生效。"
-          >
+          <FormSection title="权限配置">
+            {/* 与角色详情页同一组、同一对标签：详情页看数量，编辑页从这里进内页 */}
             <LinkRow
-              label="配置权限"
-              value={isEdit ? '前往配置' : '保存后可配置'}
-              onClick={() => {
-                if (!isEdit) {
-                  Taro.showToast({ title: '请先保存角色', icon: 'none' })
-                  return
-                }
-                navigateTo(`/${SYSTEM_PAGES.rolePermissions}?id=${id}`)
-              }}
+              label="菜单权限"
+              value={
+                isEdit ? `${menuCount} 个菜单` : '保存后可配置'
+              }
+              onClick={goPermissions}
+            />
+            <LinkRow
+              label="功能权限"
+              value={isEdit ? `${permissionCount} 项` : '保存后可配置'}
+              onClick={goPermissions}
             />
           </FormSection>
         </FormContent>

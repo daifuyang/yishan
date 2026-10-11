@@ -155,8 +155,9 @@ explicit reason in the PR description.
   squashes it into a tall pill. Three hand-rolled variants existed at once (22px square, 20px circle,
   text ✓); never draw your own.
 - **Rows that navigate carry `›`** (date picker, department/role rows). Reuse the existing
-  `LineIcon name="chevronRight"`. **Read-only rows must not** — a detail-page row with an arrow
-  reads as editable.
+  `LineIcon name="chevronRight"`, rendered as the row's **last child** via `<FormField arrow>` — never
+  nested inside the control, where it centres against the control's own box instead of the row.
+  **Read-only rows must not** carry one: a detail-page row with an arrow reads as editable.
 - **Single-choice enums (status, gender) use a Taro `Picker mode="selector"`** rendered as an ordinary
   row: label left, current label right, `›` at the end. Not a segmented control, not
   `Taro.showActionSheet` — both break the row rhythm and lose sight of the current value.

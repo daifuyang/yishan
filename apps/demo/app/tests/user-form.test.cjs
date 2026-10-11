@@ -116,7 +116,10 @@ test("状态与性别用 Picker 呈现为普通行，而不是分段控件", () 
   const source = readSource('src/pages/system/user/edit/index.tsx')
   assert.ok(!source.includes('SegmentField'), '枚举字段不应使用分段控件')
   assert.ok(source.includes('mode="selector"'), '枚举字段应使用原生 selector Picker')
-  assert.ok(source.includes('chevronRight'), 'picker 行右侧应有箭头')
+  assert.ok(
+    /label=\{field\.label\}\s+arrow/.test(source),
+    'picker 行应由 FormField 的 arrow 渲染行尾箭头',
+  )
 })
 
 test("有 placeholder 的密码字段不再附加说明行", () => {
