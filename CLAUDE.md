@@ -146,6 +146,9 @@ explicit reason in the PR description.
   description (`description`, falling back to `footnote`), never both. **Don't join attributes with
   `·`** — structural facts (role type, data scope) belong on the detail page; only unstructured
   prose belongs under the title.
+- **Checkboxes: only `components/management/Checkbox`** — 22px rounded square (radius-sm), 14px
+  check, dash for indeterminate. Three hand-rolled variants existed at once (22px square, 20px circle,
+  text ✓) and read as three different controls on one screen. Never draw your own.
 - **Rows that navigate carry `›`** (date picker, department/role rows). Reuse the existing
   `LineIcon name="chevronRight"`. **Read-only rows must not** — a detail-page row with an arrow
   reads as editable.

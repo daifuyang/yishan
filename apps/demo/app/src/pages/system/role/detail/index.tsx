@@ -237,7 +237,7 @@ function RoleDetailPage() {
                 />
               </DetailSection>
 
-              <DetailSection title="账号记录">
+              <DetailSection title="账号记录" collapsible defaultCollapsed>
                 <DetailRow label="角色 ID" value={role.id} />
                 <DetailRow label="创建人" value={role.creatorName} />
                 <DetailRow label="创建时间" value={formatDateTime(role.createdAt)} />

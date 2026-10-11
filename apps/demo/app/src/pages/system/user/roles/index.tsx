@@ -4,14 +4,12 @@ import { useDidShow, useRouter } from '@tarojs/taro'
 
 import { adminRoleApi } from '@/api'
 import type { AdminRole } from '@/api/admin/types'
-import { SelectionFooter } from '@/components/management'
+import { Checkbox, SelectionFooter } from '@/components/management'
 import { StateView } from '@/components/feedback'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
 import { DRAFT_KEYS, useSelectionDraft } from '@/stores/selectionDraft'
 import styles from './index.module.scss'
-
-const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ')
 
 function parseIds(raw?: string): number[] {
   if (!raw) return []
@@ -143,12 +141,7 @@ export default function UserRolesPage() {
                               : [...prev, role.id],
                           )
                   }
-                >
-                  <View
-                    className={cx(styles.checkbox, checked && styles['checkbox--on'])}
-                  >
-                    {checked ? <Text className={styles.check}>✓</Text> : null}
-                  </View>
+                >                  <Checkbox checked={checked} disabled={readonly} />
                   <Text className={styles.roleName}>{role.name}</Text>
                 </View>
               )

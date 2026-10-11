@@ -26,6 +26,8 @@ export { DepartmentTreeNavigator } from './DepartmentTreeNavigator'
 export type { DepartmentTreeNavigatorProps } from './DepartmentTreeNavigator'
 export type { DeptPathNode, DeptFlatNode } from './deptTree'
 export { childOf, findDeptPath, flattenDepts, searchDepts, hasChildren } from './deptTree'
+export { Checkbox } from './Checkbox'
+export type { CheckboxProps } from './Checkbox'
 export { SelectionFooter } from './SelectionFooter'
 export type { SelectionFooterProps, SelectionFooterItem } from './SelectionFooter'
 export {

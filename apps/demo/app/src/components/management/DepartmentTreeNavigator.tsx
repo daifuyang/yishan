@@ -1,6 +1,7 @@
 import { Text, View } from '@tarojs/components'
 import type { AdminDept } from '@/api/admin/types'
 
+import { Checkbox } from './Checkbox'
 import styles from './DepartmentTreeNavigator.module.scss'
 import { type DeptPathNode, hasChildren } from './deptTree'
 import { LineIcon } from './LineIcon'
@@ -75,22 +76,13 @@ export function DepartmentTreeNavigator({
                     : () => onToggle(node.id)
               }
             >
-              {/* checkbox 独立可点：任意层级均可被选中；stopPropagation 避免连带触发行点击 */}
-              <View
-                className={cx(styles.checkbox, checked && styles['checkbox--on'])}
+              {/* checkbox 独立可点：任意层级均可被选中；内部已阻止冒泡 */}
+              <Checkbox
+                checked={checked}
+                disabled={readonly}
                 aria-label={`勾选-${node.name}`}
-                aria-checked={readonly ? undefined : checked}
-                onClick={
-                  readonly
-                    ? undefined
-                    : (event) => {
-                        event.stopPropagation()
-                        onToggle(node.id)
-                      }
-                }
-              >
-                {checked ? <LineIcon name="check" size={12} color="#FFFFFF" /> : null}
-              </View>
+                onClick={() => onToggle(node.id)}
+              />
               <Text className={styles.treeName}>{node.name}</Text>
               {branch ? <LineIcon name="chevronRight" size={16} color="#C9CDD4" /> : null}
             </View>

@@ -6,8 +6,8 @@ import * as adminMenuApi from '@/api/admin/menu'
 import type { AdminMenu } from '@/api/admin/menu'
 import { getSessionVersion } from '@/api/client'
 import {
+  Checkbox,
   FormSubmitBar,
-  LineIcon,
   ManagementFilterBar,
   ManagementPage,
   ManagementSearchBar,
@@ -155,11 +155,7 @@ function RolePermissionsPage() {
           hoverClass={styles['node:hover']}
           aria-label={node.name}
         >
-          <View
-            className={[styles.check, checked && styles.checkChecked].filter(Boolean).join(' ')}
-          >
-            {checked ? <LineIcon name="check" size={14} color="#FFFFFF" /> : null}
-          </View>
+                    <Checkbox checked={checked} />
           <View className={styles.node__body}>
             <Text className={styles.node__name}>{node.name}</Text>
             {node.path ? <Text className={styles.node__path}>{node.path}</Text> : null}

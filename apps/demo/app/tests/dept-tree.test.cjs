@@ -96,6 +96,7 @@ const { DepartmentTreeNavigator } = loadTs('src/components/management/Department
   '@tarojs/components': { View: 'View', Text: 'Text' },
   './LineIcon': { LineIcon: 'LineIcon' },
   './DepartmentTreeNavigator.module.scss': scssMock(),
+  './Checkbox.module.scss': scssMock(),
   './deptTree': loadTs('src/components/management/deptTree.ts'),
 })
 
@@ -110,6 +111,10 @@ function find(node, pred, out = []) {
   if (pred(node)) out.push(node)
   find(node.props?.children, pred, out)
   return out
+}
+
+function render(node) {
+  return typeof node.type === 'function' ? node.type(node.props) : node
 }
 
 function text(node) {
@@ -186,11 +191,11 @@ test('已选中的节点渲染 checked 状态', () => {
     onToggle: () => {},
     onCrumb: () => {},
   })
-  assert.equal(find(t, (n) => n.props?.['aria-checked'] === true).length, 1)
-  assert.equal(
-    find(t, (n) => n.props?.['aria-label'] === '勾选-市场部门')[0].props['aria-checked'],
-    true,
+  // find() 不调用函数型组件节点（text()/nodes() 会），所以要显式取渲染结果
+  const box = render(
+    find(t, (n) => n.props?.['aria-label'] === '勾选-市场部门')[0],
   )
+  assert.equal(box.props['aria-checked'], true)
 })
 
 test('任意层级均可选中：勾选分支节点只触发 onToggle 且阻止冒泡', () => {
@@ -205,9 +210,8 @@ test('任意层级均可选中：勾选分支节点只触发 onToggle 且阻止�
     onCrumb: () => {},
   })
   const stopped = []
-  find(t, (n) => n.props?.['aria-label'] === '勾选-研发部门')[0].props.onClick({
-    stopPropagation: () => stopped.push(true),
-  })
+  const box = render(find(t, (n) => n.props?.['aria-label'] === '勾选-研发部门')[0])
+  box.props.onClick({ stopPropagation: () => stopped.push(true) })
   assert.equal(toggled, 11)
   assert.equal(entered, null)
   assert.equal(stopped.length, 1, 'checkbox 点击必须阻止冒泡，否则会连带进入层级')
@@ -240,8 +244,9 @@ test('readonly 模式下 checkbox 不可点击且不渲染 checked', () => {
     onToggle: (id) => (toggled = id),
     onCrumb: () => {},
   })
-  assert.equal(find(t, (n) => n.props?.['aria-checked'] !== undefined).length, 0)
-  assert.equal(find(t, (n) => n.props?.['aria-label'] === '勾选-市场部门')[0].props.onClick, undefined)
+  const box = render(find(t, (n) => n.props?.['aria-label'] === '勾选-市场部门')[0])
+  assert.equal(box.props['aria-checked'], undefined, '只读态不应暴露 checked 语义')
+  assert.equal(box.props.onClick, undefined, '只读态 checkbox 不可点')
   assert.equal(toggled, null)
 })
 
