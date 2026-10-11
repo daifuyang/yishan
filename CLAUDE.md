@@ -135,6 +135,11 @@ explicit reason in the PR description.
   titles must have `padding-top: 0` — they already sit inside the 16px gap, and adding their own
   produces irregular 28px spacing. Don't put a margin on a wrapper around a group either; it stacks
   with the group's own margin into 32px.
+- **List pages:** the white list block is full-bleed — `margin: var(--space-4) 0`, no radius —
+  matching the detail groups. Only *controls* (search box, filter chips) stay inset at
+  `var(--space-4)`. A list with side margins beside full-bleed content reads as two different card
+  widths. The footer supplies only bottom padding; the list's own margin already provides the gap
+  above it, so stacking both gives an irregular 32px.
 - **Rows that navigate carry `›`** (date picker, department/role rows). Reuse the existing
   `LineIcon name="chevronRight"`. **Read-only rows must not** — a detail-page row with an arrow
   reads as editable.

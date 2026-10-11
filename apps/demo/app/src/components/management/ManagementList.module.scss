@@ -1,8 +1,8 @@
+/* 列表是白色内容块：与详情页各分组一致——全出血、无圆角，
+   上下各留 16px 模块间距。带左右外边距会和搜索框/筛选条的宽度对不上。*/
 .list {
-  margin: 0 var(--space-4);
-  overflow: hidden;
+  margin: var(--space-4) 0;
   background: var(--color-bg-surface);
-  border-radius: var(--radius-xl);
 }
 
 .row {
@@ -15,7 +15,7 @@
 }
 
 .rowBordered {
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .rowHover {
@@ -87,11 +87,12 @@
   line-height: 1;
 }
 
+/* 与 .list 的 margin-bottom 组成模块间距，自身不再叠加 padding */
 .footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4) 0;
+  padding: 0 0 var(--space-4);
 }
 
 /* ---------- 骨架屏 ---------- */
@@ -102,7 +103,7 @@
   min-height: 76px;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-divider);
   background: var(--color-bg-surface);
 }
 
