@@ -35,18 +35,34 @@ export function FormSection({ title, hint, children }: FormSectionProps) {
 
 export interface FormFieldProps {
   label: string
+  /** 必填：label 前加红色星号，并在行尾给出说明 */
   required?: boolean
+  /** 禁用：整行弱化，控件不可编辑 */
+  disabled?: boolean
   error?: string
+  /** 行尾补充说明，如「创建后不可修改」 */
+  note?: string
   children: ReactNode
 }
 
-/** 表单字段：标签 + 控件 + 错误提示。 */
-export function FormField({ label, required = false, error, children }: FormFieldProps) {
+/** 表单字段：左侧标签 + 右侧控件，错误与说明在行尾右对齐。 */
+export function FormField({
+  label,
+  required = false,
+  disabled = false,
+  error,
+  note,
+  children,
+}: FormFieldProps) {
   return (
-    <View className={styles.field}>
+    <View className={cx(styles.field, disabled && styles['field--disabled'])}>
       <Text className={cx(styles.field__label, required && styles.field__required)}>{label}</Text>
       {children}
-      {error ? <Text className={styles.field__error}>{error}</Text> : null}
+      {error ? (
+        <Text className={styles.field__error}>{error}</Text>
+      ) : note ? (
+        <Text className={styles.field__note}>{note}</Text>
+      ) : null}
     </View>
   )
 }
@@ -68,7 +84,7 @@ export function TextField({
 }: TextFieldProps) {
   return (
     <Input
-      className={styles.field__input}
+      className={cx(styles.field__input, disabled && styles['field__input--disabled'])}
       value={value}
       placeholder={placeholder}
       maxlength={maxlength}

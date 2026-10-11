@@ -1,7 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { loadTs, deferred } = require("./helpers/load-ts.cjs");
-const scssMock = () => new Proxy({}, { get: (_, key) => (key === "__esModule" ? false : key) });
 
 
 const USER = {
@@ -125,12 +124,6 @@ function mount({
         heroProps.push(props);
         return [props.title, props.subtitle].filter(Boolean);
       },
-      OrganizationPicker: loadTs("src/components/management/OrganizationPicker.tsx", {
-        "@tarojs/components": { View: "View", Text: "Text" },
-        "./LineIcon": { LineIcon: "LineIcon" },
-        "./OrganizationPicker.module.scss": scssMock(),
-        "@/pages/system/user/profileSections": loadTs("src/pages/system/user/profileSections.ts"),
-      }).OrganizationPicker,
       DetailSection: (props) => [
         props.title,
         props.collapsible ? { type: "View", props: { "aria-label": `折叠-${props.title}`, "aria-expanded": !props.defaultCollapsed } } : null,
@@ -454,25 +447,7 @@ test('账号记录默认收起，不渲染其内容', async () => {
   assert.ok(!text(page.tree).includes("用户 ID"), "账号记录收起时不应渲染其内容");
 });
 
-test("组织关系行跳转到只读模式的选择页", async () => {
-  const page = mount({ permissions: ALL });
-  await page.settle();
-  await page.click("所属部门");
-  assert.ok(
-    page.routes.some((r) => r.includes("departments") && r.includes("mode=readonly")),
-    `期望跳到只读部门选择页，实际路由：${JSON.stringify(page.routes)}`,
-  );
-});
 
-test("角色行也跳转到只读模式的选择页", async () => {
-  const page = mount({ permissions: ALL });
-  await page.settle();
-  await page.click("角色");
-  assert.ok(
-    page.routes.some((r) => r.includes("roles") && r.includes("mode=readonly")),
-    `期望跳到只读角色选择页，实际路由：${JSON.stringify(page.routes)}`,
-  );
-});
 
 test("详情页头部不再渲染性别 note 与组织归属 footnote", async () => {
   const page = mount({ permissions: ALL });
@@ -484,12 +459,6 @@ test("详情页头部不再渲染性别 note 与组织归属 footnote", async ()
   assert.equal(hero.note, undefined, "性别已下沉到其他属性分组");
 });
 
-test("组织关系展示部门摘要而非整串 ID", async () => {
-  const page = mount({ permissions: ALL });
-  await page.settle();
-  const picker = page.nodes.find((n) => n.props?.["aria-label"] === "所属部门");
-  assert.ok(picker, "应渲染 OrganizationPicker");
-});
 
 test("枚举字段在详情页显示文案而不是原始码值", async () => {
   const page = mount({ permissions: ALL });
@@ -497,4 +466,22 @@ test("枚举字段在详情页显示文案而不是原始码值", async () => {
   const flat = text(page.tree);
   assert.ok(flat.includes("启用"), `状态应显示文案，实际：${flat.slice(0, 200)}`);
   assert.ok(!/(启用状态|性别)1/.test(flat), "不应把状态/性别的原始码值直接渲染出来");
+});
+
+test("详情页的组织关系只是展示，不可点击进入选择页", async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  const rows = page.nodes.filter((n) => n.props?.["aria-label"] === "所属部门");
+  assert.equal(rows.length, 0, "详情页不应再渲染 OrganizationPicker");
+  assert.deepEqual(page.routes, [], "详情页不应发生页面跳转");
+  assert.match(text(page.tree), /产品部/, "组织归属仍应显示部门名");
+});
+
+test("详情页不再渲染可点击的组织关系跳转入口", async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  const clickable = page.nodes.filter(
+    (n) => typeof n.props?.onClick === "function" && /所属部门|角色/.test(text(n)),
+  );
+  assert.equal(clickable.length, 0);
 });

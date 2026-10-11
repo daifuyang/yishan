@@ -10,7 +10,6 @@ import {
   DetailHero,
   DetailSection,
   DetailRow,
-  OrganizationPicker,
   BottomActionBar,
   ActionSheet,
   PromptDialog,
@@ -24,7 +23,7 @@ import { adminUserApi, adminRoleApi, adminDeptApi } from '@/api'
 import type { AdminUser } from '@/api/admin/types'
 import { PERMS, SYSTEM_PAGES } from '@/constants/routes'
 import { formatDateTime } from '@/utils/format'
-import { buildProfileSections, UNSET } from '../profileSections'
+import { buildProfileSections, formatOrgSummary, UNSET } from '../profileSections'
 import { withAccountScope } from '../../_shared/AdminUI'
 
 function UserDetailPage() {
@@ -321,37 +320,29 @@ function UserDetailPage() {
               />
               {sections.map((section) => (
                 <DetailSection key={section.key} title={section.title}>
-                  {section.fields.map((field) =>
-                    field.kind === 'org' ? (
-                      <OrganizationPicker
-                        key={field.key}
-                        label={field.label}
-                        ids={field.ids}
-                        names={field.names}
-                        onPress={() => {
-                          const page =
-                            field.target === 'roles'
-                              ? SYSTEM_PAGES.userRoles
-                              : SYSTEM_PAGES.userDepartments
-                          navigateTo(
-                            `/${page}?id=${user.id}&ids=${field.ids.join(',')}&mode=readonly`,
-                          )
-                        }}
-                      />
-                    ) : (
-                      <DetailRow
-                        key={field.key}
-                        label={field.label}
-                        value={
-                          // 枚举字段的 value 是后端码值，详情页展示文案
-                          field.kind === 'enum'
+                  {section.fields.map((field) => (
+                    <DetailRow
+                      key={field.key}
+                      label={field.label}
+                      // 详情页只做展示：组织关系不提供跳转，避免只读浏览误导为可编辑
+                      value={
+                        field.kind === 'org'
+                          ? formatOrgSummary(field.ids, field.names)
+                          : field.kind === 'enum'
                             ? (field.options[Number(field.value)] ?? field.value)
                             : field.value
-                        }
-                        tone={field.value === UNSET ? 'muted' : 'default'}
-                      />
-                    ),
-                  )}
+                      }
+                      tone={
+                        field.kind === 'org'
+                          ? field.ids.length
+                            ? 'default'
+                            : 'muted'
+                          : field.value === UNSET
+                            ? 'muted'
+                            : 'default'
+                      }
+                    />
+                  ))}
                 </DetailSection>
               ))}
               <DetailSection title="账号记录" collapsible defaultCollapsed>

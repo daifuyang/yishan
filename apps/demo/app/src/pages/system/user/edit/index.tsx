@@ -21,6 +21,9 @@ import { useAuthStore } from '@/stores/auth'
 import { buildProfileSections, UNSET } from '../profileSections'
 import styles from './index.module.scss'
 
+/** 必填字段：与 edit/model.ts 的 validateUserForm 保持一致。 */
+const REQUIRED_KEYS = new Set(['phone'])
+
 export default function UserEditPage() {
   const guard = useRequireAuth({ moduleId: 'system-user' })
   const { params } = useRouter()
@@ -113,7 +116,8 @@ function UserEditContent({ id }: { id?: string }) {
                       <FormField
                         key={field.key}
                         label={field.label}
-                        required
+                        required={field.editable}
+                        note="6–50 位，需包含字母和数字"
                         error={(errors as Record<string, string | undefined>)[field.key]}
                       >
                         <TextField
@@ -122,7 +126,12 @@ function UserEditContent({ id }: { id?: string }) {
                         />
                       </FormField>
                     ) : (
-                      <FormField key={field.key} label={field.label}>
+                      <FormField
+                        key={field.key}
+                        label={field.label}
+                        disabled
+                        note="如需修改请返回列表长按该用户"
+                      >
                         <View className={styles.readonlyValue}>
                           <Text>{field.value || UNSET}</Text>
                         </View>
@@ -170,16 +179,21 @@ function UserEditContent({ id }: { id?: string }) {
                   }
 
                   const current = (values as unknown as Record<string, string>)[field.key] ?? ''
+                  // 用户名是登录标识，创建后不可改；其余字段按契约的 editable 决定
+                  const locked = field.key === 'username' && isEdit
                   return (
                     <FormField
                       key={field.key}
                       label={field.label}
+                      required={REQUIRED_KEYS.has(field.key)}
+                      disabled={locked}
+                      note={locked ? '创建后不可修改' : undefined}
                       error={(errors as Record<string, string | undefined>)[field.key]}
                     >
                       <TextField
                         value={current === UNSET ? '' : current}
                         placeholder={`请输入${field.label}`}
-                        disabled={field.key === 'username' && isEdit}
+                        disabled={locked}
                         onChange={(next) => setterFor(field.key)?.(next)}
                       />
                     </FormField>

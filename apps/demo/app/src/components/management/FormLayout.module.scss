@@ -62,9 +62,27 @@
   color: var(--color-text-secondary);
 }
 
-.field__required::after {
-  content: ' *';
+.field__required::before {
+  content: '*';
+  margin-right: 2px;
   color: var(--color-danger);
+}
+
+/* 禁用行：标签与取值同时弱化，并禁止点击光标 */
+.field--disabled {
+  cursor: not-allowed;
+}
+
+.field--disabled .field__label {
+  color: var(--color-text-tertiary);
+}
+
+.field__input--disabled {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-disabled);
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
 }
 
 .field__input,
@@ -107,6 +125,16 @@
   font-size: var(--font-size-12);
   line-height: 18px;
   color: var(--color-danger);
+}
+
+.field__note {
+  flex-basis: 100%;
+  display: block;
+  margin-top: var(--space-1);
+  text-align: right;
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  color: var(--color-text-tertiary);
 }
 
 .segment {
