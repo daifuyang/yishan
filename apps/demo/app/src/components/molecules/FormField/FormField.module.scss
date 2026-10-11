@@ -1,7 +1,12 @@
+/* 表单行：label 在左固定列，控件在右并右对齐。
+   与 components/management 的 FormField 同一套设计语言，
+   详见 docs/design/mobile-form-spec.md。 */
 .mFormField {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  box-sizing: border-box;
   padding: var(--space-3) var(--space-4);
   background-color: var(--color-bg-surface);
 }
@@ -13,6 +18,8 @@
 }
 
 .mFormField__label {
+  flex-shrink: 0;
+  width: 76px;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -26,8 +33,11 @@
 }
 
 .mFormField__control {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
 }
 
@@ -40,11 +50,14 @@
   line-height: var(--line-height-normal);
   padding: 0;
   background-color: transparent;
+  text-align: right;
 }
 
 .mFormField__textarea {
   min-height: 60px;
   width: 100%;
+  /* 多行文本保持左对齐，右对齐会难读 */
+  text-align: left;
 }
 
 .mFormField__switch {
@@ -94,12 +107,16 @@
 }
 
 .mFormField__hintText {
+  flex-basis: 100%;
+  text-align: right;
   font-size: var(--font-size-12);
   color: var(--color-text-tertiary);
   line-height: var(--line-height-normal);
 }
 
 .mFormField__errorText {
+  flex-basis: 100%;
+  text-align: right;
   font-size: var(--font-size-12);
   color: var(--color-danger);
   line-height: var(--line-height-normal);

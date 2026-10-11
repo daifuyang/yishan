@@ -111,3 +111,16 @@ test('提交时空密码不会进入 update payload', () => {
     '空密码必须被排除，否则会把用户密码清空',
   );
 });
+
+test("状态与性别用 Picker 呈现为普通行，而不是分段控件", () => {
+  const source = readSource('src/pages/system/user/edit/index.tsx')
+  assert.ok(!source.includes('SegmentField'), '枚举字段不应使用分段控件')
+  assert.ok(source.includes('mode="selector"'), '枚举字段应使用原生 selector Picker')
+  assert.ok(source.includes('chevronRight'), 'picker 行右侧应有箭头')
+})
+
+test("有 placeholder 的密码字段不再附加说明行", () => {
+  const source = readSource('src/pages/system/user/edit/index.tsx')
+  assert.ok(source.includes("placeholder={isEdit ? '留空则不修改'"), '密码用 placeholder 说明')
+  assert.ok(!source.includes('留空则不修改：'), 'placeholder 已说明时不重复写 note')
+})

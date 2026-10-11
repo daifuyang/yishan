@@ -11,7 +11,6 @@ import {
   FormSubmitBar,
   LineIcon,
   OrganizationPicker,
-  SegmentField,
   TextField,
 } from '@/components/management'
 import { SYSTEM_PAGES } from '@/constants/routes'
@@ -116,7 +115,6 @@ function UserEditContent({ id }: { id?: string }) {
                         key={field.key}
                         label={field.label}
                         required={!isEdit}
-                        note={isEdit ? '留空则不修改' : '6–50 位，需包含字母和数字'}
                         error={(errors as Record<string, string | undefined>)[field.key]}
                       >
                         <TextField
@@ -129,19 +127,27 @@ function UserEditContent({ id }: { id?: string }) {
                   }
 
                   if (field.kind === 'enum') {
+                    // 状态/性别默认只显示文案 + 右箭头，点击唤起原生选择器
                     return (
-                      <FormField key={field.key} label={field.label}>
-                        <SegmentField
-                          value={field.value}
-                          options={field.options.map((label, index) => ({
-                            label,
-                            value: String(index),
-                          }))}
-                          onChange={(next) => {
-                            const set = setterFor(field.key)
-                            if (set) set(next)
-                          }}
-                        />
+                      <FormField
+                        key={field.key}
+                        label={field.label}
+                        error={(errors as Record<string, string | undefined>)[field.key]}
+                      >
+                        <Picker
+                          className={styles.picker}
+                          mode="selector"
+                          range={field.options as string[]}
+                          value={Number(field.value) || 0}
+                          onChange={(event) =>
+                            setterFor(field.key)?.(String(Number(event.detail.value)))
+                          }
+                        >
+                          <View className={styles.pickerValue}>
+                            <Text>{field.options[Number(field.value)] ?? UNSET}</Text>
+                            <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+                          </View>
+                        </Picker>
                       </FormField>
                     )
                   }

@@ -106,6 +106,43 @@ Per `CONTRIBUTING.md` and CI (`.github/workflows/yishan-fullstack-ci.yml`):
 3. Architecture-affecting changes must update root docs (TODO files, README, this file).
 4. Don't stage scratch/plan docs in `tmp/` — they're gitignored.
 
+## Mobile form & list conventions (`apps/demo/app`)
+
+**These are hard rules, not suggestions.** Full spec with rationale and a self-check list:
+`docs/design/mobile-form-spec.md`. New form/detail/list pages must follow it; deviations need an
+explicit reason in the PR description.
+
+- **Label left, value right — never stack them.** Label is a fixed `76px` column, control is
+  `flex: 1` and right-aligned. Stacking halves how many fields fit on a mobile screen.
+- **Required marker goes *before* the label** (`* 手机号`). The label column is narrow; a trailing
+  asterisk gets clipped. The required set must match the validation function — do not keep two
+  copies.
+- **Disabled = the whole row greys out** (label *and* value at `--color-text-tertiary`). No grey
+  background block, no "创建后不可修改" note underneath — both make the row taller and the row reads
+  as a different control. Row height stays identical to a normal row.
+- **If it has a placeholder, it does not need a tip.** Don't restate the placeholder in a note/hint
+  line. At most one note per field, only when the placeholder can't carry it.
+- **No white cards for groups.** Grey section title (`--font-size-13`, tertiary) floating on the page
+  background, with a borderless full-bleed white sheet underneath. The group container adds no
+  horizontal padding — each row carries its own `var(--space-4)`.
+- **Rows that navigate carry `›`** (date picker, department/role rows). Reuse the existing
+  `LineIcon name="chevronRight"`. **Read-only rows must not** — a detail-page row with an arrow
+  reads as editable.
+- **Single-choice enums (status, gender) use a Taro `Picker mode="selector"`** rendered as an ordinary
+  row: label left, current label right, `›` at the end. Not a segmented control, not
+  `Taro.showActionSheet` — both break the row rhythm and lose sight of the current value.
+- **Taro `Picker` needs `flex: 1` on the Picker itself.** In H5 it renders as a standalone `div`, so
+  an inner `flex: 1` never participates in layout and the value won't reach the row end.
+- **Textarea stays left-aligned**; everything else is right-aligned.
+- **Enum values**: array index is the backend code, the array entry is the label. Render the label,
+  submit the code — never render the raw code.
+- **Empty means unchanged**: an optional edit field left blank must not be added to the update
+  payload (`if (password) payload.password = password`).
+
+Prefer `components/management`'s `FormField` / `FormSection` / `SegmentField` / `FormSubmitBar` for
+new code. `components/molecules/FormField` is the legacy variant for existing pages; it has been
+restyled to the same language, but don't build new screens on it.
+
 ## Frontend page conventions (admin / Ant Design Pro 6)
 
 These rules were hardened while iterating the `demo` module pages (`/demo/quickstart`, `/demo/health`, `/demo/todos`). New module pages should follow them by default.
