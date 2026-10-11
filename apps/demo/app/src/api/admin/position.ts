@@ -10,6 +10,17 @@ export interface AdminPosition {
   updatedAt: string;
 }
 
+export interface AdminPositionListQuery {
+  page?: number;
+  pageSize?: number;
+  keyword?: string;
+  status?: "0" | "1";
+  /** sortOrder 为岗位自定义排序号，createdAt/updatedAt 为时间字段 */
+  sortBy?: "sortOrder" | "createdAt" | "updatedAt";
+  sortOrder?: "asc" | "desc";
+  [key: string]: unknown;
+}
+
 export interface SaveAdminPosition {
   name: string;
   status?: "0" | "1";
@@ -17,9 +28,7 @@ export interface SaveAdminPosition {
   description?: string;
 }
 
-export function listAdminPositions(
-  query: { page?: number; pageSize?: number; keyword?: string; status?: "0" | "1" } = {},
-) {
+export function listAdminPositions(query: AdminPositionListQuery = {}) {
   return requestPaginated<AdminPosition[]>({
     method: "GET",
     path: "/api/v1/admin/positions",

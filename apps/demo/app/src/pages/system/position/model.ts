@@ -3,12 +3,6 @@ import { getSessionVersion } from '@/api/client'
 import { confirmAction } from '@/hooks'
 import { canWriteModuleNow } from '@/utils/auth-guard'
 
-export const POSITION_STATUSES = [
-  { key: '', label: '全部状态' },
-  { key: '1', label: '启用' },
-  { key: '0', label: '禁用' },
-] as const
-
 export function positionPayload(
   name: string,
   description: string,

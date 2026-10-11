@@ -359,10 +359,8 @@ test("role list keeps row actions out and gates create behind grant permission",
 
 test("position read-only users can inspect but cannot mutate", () => {
   const nodes = pageNodes("position", [], [{ id: 1, name: "主管", status: "1" }], {
-    "./index.module.scss": { filter: "filter", active: "active" },
-    "./model": { POSITION_STATUSES: [{ key: "", label: "全部状态" }] },
     "@tarojs/taro": { useDidShow() {}, useDidHide() {} },
-    "@/components/management": Object.fromEntries(["ManagementPage", "ManagementPageHeader", "ManagementHeaderAction", "ManagementFilterBar", "ManagementSearchBar", "ManagementList", "ManagementCell", "ManagementStates", "ManagementListFooter", "BottomSelectSheet", "LineIcon"].map(key => [key, key])),
+    "@/components/management": Object.fromEntries(["ManagementPage", "ManagementPageHeader", "ManagementHeaderAction", "ManagementFilterBar", "ManagementFilterTriggers", "ManagementFilterClear", "ManagementSearchBar", "ManagementList", "ManagementCell", "ManagementStates", "ManagementListFooter", "BottomSelectSheet"].map(key => [key, key])),
   });
   assert.equal(nodes.filter(node => node.type === "ManagementCell" && typeof node.props.onClick === "function").length, 1);
   assert.equal(nodes.filter(node => node.type === "ManagementHeaderAction").length, 0);

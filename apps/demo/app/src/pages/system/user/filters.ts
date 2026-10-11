@@ -1,4 +1,5 @@
 import type { AdminUserListQuery } from '@/api/admin/types'
+import { parseDateBoundary } from '@/components/management/dateRange'
 
 export const USER_STATUS_OPTIONS = [
   { key: '', label: '全部状态' },
@@ -29,35 +30,14 @@ export const DEFAULT_USER_FILTERS: UserFilters = {
   endDate: '',
 }
 
-function localDate(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-export function datePreset(key: string, now = new Date()) {
-  if (key === 'all') return { startDate: '', endDate: '' }
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  start.setDate(start.getDate() - (Number(key) - 1))
-  return { startDate: localDate(start), endDate: localDate(now) }
-}
-
-export function validateDateRange(start: string, end: string) {
-  if (!start && !end) return ''
-  if (!start || !end) return '请选择开始和结束日期'
-  if (start > end) return '结束日期不能早于开始日期'
-  return ''
-}
-
-function dateBoundary(value: string, end = false) {
-  const [year, month, day] = value.split('-').map(Number)
-  return new Date(
-    year,
-    month - 1,
-    day,
-    end ? 23 : 0,
-    end ? 59 : 0,
-    end ? 59 : 0,
-    end ? 999 : 0,
-  ).toISOString()
+/** useListPagination 的 filters 是弱类型字典，这里收敛成筛选对象。 */
+export function readUserFilters(filters: Record<string, unknown>): UserFilters {
+  return {
+    status: typeof filters.status === 'string' ? filters.status : DEFAULT_USER_FILTERS.status,
+    sort: typeof filters.sort === 'string' ? filters.sort : DEFAULT_USER_FILTERS.sort,
+    startDate: typeof filters.startDate === 'string' ? filters.startDate : '',
+    endDate: typeof filters.endDate === 'string' ? filters.endDate : '',
+  }
 }
 
 export function buildUserQuery(
@@ -75,7 +55,7 @@ export function buildUserQuery(
     status: USER_STATUS_OPTIONS.find((option) => option.key === filters.status)?.key || undefined,
     sortBy: sort.field,
     sortOrder: sort.order,
-    startTime: filters.startDate ? dateBoundary(filters.startDate) : undefined,
-    endTime: filters.endDate ? dateBoundary(filters.endDate, true) : undefined,
+    startTime: parseDateBoundary(filters.startDate),
+    endTime: parseDateBoundary(filters.endDate, true),
   }
 }

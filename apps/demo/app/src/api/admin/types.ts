@@ -170,6 +170,9 @@ export interface AdminDictTypeListQuery {
   pageSize?: number
   keyword?: string
   status?: 0 | 1
+  /** sortOrder 为字典排序号，createdAt/updatedAt 为时间字段 */
+  sortBy?: 'sortOrder' | 'createdAt' | 'updatedAt'
+  sortOrder?: 'asc' | 'desc'
   [key: string]: unknown
 }
 
@@ -180,6 +183,8 @@ export interface AdminDictDataListQuery {
   keyword?: string
   status?: 0 | 1
   type?: string
+  sortBy?: 'sortOrder' | 'createdAt' | 'updatedAt'
+  sortOrder?: 'asc' | 'desc'
   [key: string]: unknown
 }
 

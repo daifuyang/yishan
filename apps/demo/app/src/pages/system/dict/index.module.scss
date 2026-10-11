@@ -1,1 +1,2 @@
-.filter { display:flex; align-items:center; justify-content:center; min-height:88px; color:#1677ff; font-size:28px; }
+/* 筛选条不再提供底部内边距，紧随其后的上下文行自行留出 16px 灰间隔 */
+.context { margin-top: var(--space-4); }

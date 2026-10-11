@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { Text, View } from '@tarojs/components'
-import { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
 import * as api from '@/api/admin/dept'
 import type { AdminDept } from '@/api/admin/types'
 import { Tag } from '@/components/atoms'
 import {
   BottomSelectSheet,
-  LineIcon,
   ManagementCell,
   ManagementFilterBar,
+  ManagementFilterClear,
+  ManagementFilterTriggers,
   ManagementHeaderAction,
   ManagementList,
   ManagementListFooter,
@@ -22,36 +22,44 @@ import { useCanWrite, useListPagination } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
 import { withAccountScope } from '../_shared/AdminUI'
-import styles from './index.module.scss'
-
-const STATUSES = [
-  { key: '', label: '全部状态' },
-  { key: '1', label: '启用' },
-  { key: '0', label: '禁用' },
-] as const
+import {
+  buildDeptQuery,
+  DEFAULT_DEPT_FILTERS,
+  DEPT_SORT_OPTIONS,
+  DEPT_STATUS_OPTIONS,
+  readDeptFilters,
+  type DeptFilters,
+} from './filters'
 
 function DeptIndexPage() {
   const guard = useRequireAuth({ moduleId: 'system-dept' })
   const canCreate = useCanWrite('system:department:create')
-  const [statusOpen, setStatusOpen] = useState(false)
+  const [panel, setPanel] = useState<string | null>(null)
   const list = useListPagination<AdminDept>({
     enabled: guard.ready && guard.allowed,
+    initialFilters: { ...DEFAULT_DEPT_FILTERS },
     fetcher: async ({ page, pageSize, keyword, filters }) => {
-      const { data, pagination } = await api.listAdminDepts({
-        page,
-        pageSize,
-        keyword: keyword || undefined,
-        status: filters.status === '0' || filters.status === '1' ? filters.status : undefined,
-      })
+      const { data, pagination } = await api.listAdminDepts(
+        buildDeptQuery(page, pageSize, keyword, readDeptFilters(filters)),
+      )
       return { list: data, total: pagination.total }
     },
   })
+  const deptFilters = readDeptFilters(list.filters)
+  const filtered = Boolean(list.keyword || deptFilters.status)
+  const changeFilters = (patch: Partial<DeptFilters>) => {
+    list.setFilters(patch)
+    void Taro.pageScrollTo({ scrollTop: 0, duration: 0 })
+  }
+  const clearFilters = () => {
+    list.setKeyword('')
+    changeFilters({ ...DEFAULT_DEPT_FILTERS })
+  }
   useDidShow(() => {
     if (guard.ready && guard.allowed) void list.refresh()
   })
-  useDidHide(() => setStatusOpen(false))
+  useDidHide(() => setPanel(null))
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
-  const status = String(list.filters.status || '')
   const kind = list.error
     ? 'error'
     : list.loading && !list.list.length
@@ -59,11 +67,17 @@ function DeptIndexPage() {
       : !list.list.length
         ? 'empty'
         : 'ready'
+  const statusLabel =
+    DEPT_STATUS_OPTIONS.find((option) => option.key === deptFilters.status)?.label ??
+    DEPT_STATUS_OPTIONS[0].label
+  const sortLabel =
+    DEPT_SORT_OPTIONS.find((option) => option.key === deptFilters.sort)?.label ??
+    DEPT_SORT_OPTIONS[0].label
   return (
     <ManagementPage>
       <ManagementPageHeader
         title="部门管理"
-        subtitle={`${list.total} 个部门`}
+        subtitle={filtered ? `找到 ${list.total} 个部门` : `${list.total} 个部门`}
         action={
           canCreate ? (
             <ManagementHeaderAction
@@ -77,23 +91,34 @@ function DeptIndexPage() {
         <ManagementSearchBar
           value={list.keyword}
           onChange={list.setKeyword}
-          placeholder="搜索部门名称、描述"
+          placeholder="搜索部门名称或描述"
         />
-        <View
-          className={styles.filter}
-          onClick={() => setStatusOpen(true)}
-          aria-label="筛选部门状态"
-        >
-          <Text className={status ? styles.active : ''}>
-            {STATUSES.find((item) => item.key === status)?.label || '全部状态'}
-          </Text>
-          <LineIcon name="chevronDown" size={14} color={status ? '#1677FF' : '#86909C'} />
-        </View>
+        <ManagementFilterTriggers
+          panel={panel}
+          onPanelChange={(key) => setPanel(panel === key ? null : key)}
+          triggers={[
+            { key: 'status', label: statusLabel, active: Boolean(deptFilters.status) },
+            {
+              key: 'sort',
+              label: sortLabel,
+              active: deptFilters.sort !== DEFAULT_DEPT_FILTERS.sort,
+            },
+          ]}
+        />
       </ManagementFilterBar>
+      <BottomSelectSheet
+        open={panel === 'status' || panel === 'sort'}
+        title={panel === 'status' ? '部门状态' : '排序方式'}
+        options={panel === 'status' ? DEPT_STATUS_OPTIONS : DEPT_SORT_OPTIONS}
+        value={panel === 'status' ? deptFilters.status : deptFilters.sort}
+        onSelect={(key) => changeFilters(panel === 'status' ? { status: key } : { sort: key })}
+        onClose={() => setPanel(null)}
+      />
+      {kind === 'empty' && filtered ? <ManagementFilterClear onClick={clearFilters} /> : null}
       <ManagementStates
         kind={kind}
         errorText={list.error || undefined}
-        emptyText={list.keyword || status ? '未找到符合条件的部门' : '暂无部门'}
+        emptyText={filtered ? '未找到符合条件的部门' : '暂无部门'}
         onRetry={list.refresh}
       >
         <ManagementList>
@@ -120,14 +145,6 @@ function DeptIndexPage() {
         finished={list.finished}
         empty={!list.list.length}
         summary={kind === 'ready' ? `共 ${list.total} 个部门` : undefined}
-      />
-      <BottomSelectSheet
-        open={statusOpen}
-        title="部门状态"
-        options={STATUSES}
-        value={status}
-        onSelect={(value) => list.setFilters({ status: value })}
-        onClose={() => setStatusOpen(false)}
       />
     </ManagementPage>
   )

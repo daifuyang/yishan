@@ -5,6 +5,7 @@ import { TabBar } from '@/components/organisms'
 import {
   ManagementPage,
   ManagementPageHeader,
+  ManagementFilterClear,
   ManagementHeaderAction,
   ManagementList,
   ManagementCell,
@@ -19,7 +20,12 @@ import type { AdminUser } from '@/api/admin/types'
 import { PERMS, SYSTEM_PAGES, TAB_PAGES } from '@/constants/routes'
 
 import { withAccountScope } from '../_shared/AdminUI'
-import { buildUserQuery, DEFAULT_USER_FILTERS, type UserFilters } from './filters'
+import {
+  buildUserQuery,
+  DEFAULT_USER_FILTERS,
+  readUserFilters,
+  type UserFilters,
+} from './filters'
 import { UserFilterBar } from './UserFilters'
 
 function userStatus(user: AdminUser): { label: string; variant: 'success' | 'default' | 'warning' } {
@@ -51,13 +57,13 @@ function UserIndexPage() {
     enabled: guard.ready && guard.allowed,
     initialFilters: { ...DEFAULT_USER_FILTERS },
     fetcher: async ({ page, pageSize, keyword: kw, filters: fs }) => {
-      const query = buildUserQuery(page, pageSize, kw, readFilters(fs))
+      const query = buildUserQuery(page, pageSize, kw, readUserFilters(fs))
       const { data, pagination } = await adminUserApi.listAdminUsers(query)
       return { list: data, total: pagination.total }
     },
   })
 
-  const userFilters = readFilters(filters)
+  const userFilters = readUserFilters(filters)
   const filtered = Boolean(keyword || userFilters.status || userFilters.startDate || userFilters.endDate)
   const changeFilters = (patch: Partial<UserFilters>) => {
     setFilters(patch)
@@ -192,7 +198,7 @@ function UserIndexPage() {
       <UserFilterBar keyword={keyword} onKeywordChange={setKeyword} filters={userFilters} onChange={changeFilters} />
 
       {kind === 'empty' && filtered ? (
-        <ManagementHeaderAction label="清除筛选" onClick={clearFilters} />
+        <ManagementFilterClear onClick={clearFilters} />
       ) : null}
 
       <ManagementStates
@@ -241,12 +247,3 @@ function UserIndexPage() {
 }
 
 export default withAccountScope(UserIndexPage)
-
-function readFilters(filters: Record<string, unknown>): UserFilters {
-  return {
-    status: typeof filters.status === 'string' ? filters.status : '',
-    sort: typeof filters.sort === 'string' ? filters.sort : 'createdDesc',
-    startDate: typeof filters.startDate === 'string' ? filters.startDate : '',
-    endDate: typeof filters.endDate === 'string' ? filters.endDate : '',
-  }
-}

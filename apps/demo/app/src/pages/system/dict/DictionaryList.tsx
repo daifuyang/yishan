@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
 import { View } from '@tarojs/components'
 import { Tag } from '@/components/atoms'
 import {
   BottomSelectSheet,
   ManagementCell,
   ManagementFilterBar,
+  ManagementFilterClear,
+  ManagementFilterTriggers,
   ManagementHeaderAction,
   ManagementList,
   ManagementListFooter,
@@ -22,16 +24,19 @@ import * as api from '@/api/admin/dict'
 import type { AdminDictType, AdminDictData } from '@/api/admin/types'
 import { StateView } from '@/components/feedback'
 import { errorMessage } from '../_shared/AdminUI'
+import {
+  buildDictQuery,
+  DEFAULT_DICT_FILTERS,
+  DICT_SORT_OPTIONS,
+  DICT_STATUS_OPTIONS,
+  readDictFilters,
+  type DictFilters,
+} from './filters'
 import styles from './index.module.scss'
 
-const statuses = [
-  { key: '', label: '全部状态' },
-  { key: '1', label: '启用' },
-  { key: '0', label: '禁用' },
-]
 export default function DictionaryList({ enabled, typeId }: { enabled: boolean; typeId?: number }) {
   const canCreate = useCanWrite('system:dict:create')
-  const [open, setOpen] = useState(false)
+  const [panel, setPanel] = useState<string | null>(null)
   const [context, setContext] = useState<AdminDictType | null>(null)
   const [contextError, setContextError] = useState('')
   const [reload, setReload] = useState(0)
@@ -53,28 +58,32 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
   }, [enabled, typeId, reload])
   const list = useListPagination<AdminDictType | AdminDictData>({
     enabled,
+    initialFilters: { ...DEFAULT_DICT_FILTERS },
     fetcher: async ({ page, pageSize, keyword, filters }) => {
-      const query = {
-        page,
-        pageSize,
-        keyword: keyword || undefined,
-        status:
-          filters.status === '0' ? (0 as const) : filters.status === '1' ? (1 as const) : undefined,
-      }
+      const query = buildDictQuery(page, pageSize, keyword, readDictFilters(filters))
       const response = typeId
         ? await api.listAdminDictData({ ...query, typeId })
         : await api.listAdminDictTypes(query)
       return { list: response.data, total: response.pagination.total }
     },
   })
+  const dictFilters = readDictFilters(list.filters)
+  const filtered = Boolean(list.keyword || dictFilters.status)
+  const changeFilters = (patch: Partial<DictFilters>) => {
+    list.setFilters(patch)
+    void Taro.pageScrollTo({ scrollTop: 0, duration: 0 })
+  }
+  const clearFilters = () => {
+    list.setKeyword('')
+    changeFilters({ ...DEFAULT_DICT_FILTERS })
+  }
   useDidShow(() => {
     if (enabled) {
       void list.refresh()
       setReload((value) => value + 1)
     }
   })
-  useDidHide(() => setOpen(false))
-  const status = String(list.filters.status ?? '')
+  useDidHide(() => setPanel(null))
   const kind = list.error
     ? 'error'
     : list.loading && !list.list.length
@@ -82,11 +91,21 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
       : !list.list.length
         ? 'empty'
         : 'ready'
+  const statusLabel =
+    DICT_STATUS_OPTIONS.find((option) => option.key === dictFilters.status)?.label ??
+    DICT_STATUS_OPTIONS[0].label
+  const sortLabel =
+    DICT_SORT_OPTIONS.find((option) => option.key === dictFilters.sort)?.label ??
+    DICT_SORT_OPTIONS[0].label
   return (
     <ManagementPage>
       <ManagementPageHeader
         title={typeId ? context?.name || '字典项' : '字典管理'}
-        subtitle={`${list.total} 个${typeId ? '字典项' : '字典类型'}`}
+        subtitle={
+          filtered
+            ? `找到 ${list.total} 个${typeId ? '字典项' : '字典类型'}`
+            : `${list.total} 个${typeId ? '字典项' : '字典类型'}`
+        }
         action={
           canCreate && (!typeId || context) ? (
             <ManagementHeaderAction
@@ -113,20 +132,40 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
           onChange={list.setKeyword}
           placeholder={typeId ? '搜索标签、键值' : '搜索名称、类型'}
         />
-        <View className={styles.filter} onClick={() => setOpen(true)}>
-          {statuses.find((option) => option.key === status)?.label || '全部状态'} ▾
-        </View>
-      </ManagementFilterBar>
-      {context ? (
-        <LinkRow
-          label="所属字典"
-          value={context.name}
-          onClick={() => navigateTo(`/${SYSTEM_PAGES.dictDetail}?id=${context.id}`)}
+        <ManagementFilterTriggers
+          panel={panel}
+          onPanelChange={(key) => setPanel(panel === key ? null : key)}
+          triggers={[
+            { key: 'status', label: statusLabel, active: Boolean(dictFilters.status) },
+            {
+              key: 'sort',
+              label: sortLabel,
+              active: dictFilters.sort !== DEFAULT_DICT_FILTERS.sort,
+            },
+          ]}
         />
+      </ManagementFilterBar>
+      <BottomSelectSheet
+        open={panel === 'status' || panel === 'sort'}
+        title={panel === 'status' ? '字典状态' : '排序方式'}
+        options={panel === 'status' ? DICT_STATUS_OPTIONS : DICT_SORT_OPTIONS}
+        value={panel === 'status' ? dictFilters.status : dictFilters.sort}
+        onSelect={(key) => changeFilters(panel === 'status' ? { status: key } : { sort: key })}
+        onClose={() => setPanel(null)}
+      />
+      {context ? (
+        <View className={styles.context}>
+          <LinkRow
+            label="所属字典"
+            value={context.name}
+            onClick={() => navigateTo(`/${SYSTEM_PAGES.dictDetail}?id=${context.id}`)}
+          />
+        </View>
       ) : null}
+      {kind === 'empty' && filtered ? <ManagementFilterClear onClick={clearFilters} /> : null}
       <ManagementStates
         kind={kind}
-        emptyText={list.keyword || status ? '没有符合条件的字典' : '暂无数据'}
+        emptyText={filtered ? '没有符合条件的字典' : '暂无数据'}
         errorText={list.error || undefined}
         onRetry={list.refresh}
       >
@@ -161,14 +200,6 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
         refreshing={list.refreshing}
         finished={list.finished}
         empty={!list.list.length}
-      />
-      <BottomSelectSheet
-        open={open}
-        title="字典状态"
-        options={statuses}
-        value={status}
-        onSelect={(value) => list.setFilters({ status: value })}
-        onClose={() => setOpen(false)}
       />
     </ManagementPage>
   )

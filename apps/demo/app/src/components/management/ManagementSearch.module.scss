@@ -1,9 +1,20 @@
+/* 底部不留内边距：筛选条与下方白色块之间的 16px 灰间隔由列表自身的
+   margin-top 承担，两处都给会叠成 32px。 */
 .filters {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4) var(--space-4);
+  padding: var(--space-3) var(--space-4) 0;
   background: var(--color-bg-surface);
+}
+
+.clear {
+  padding: var(--space-3) 0 0;
+}
+
+.clearAction {
+  color: var(--color-primary);
+  font-size: var(--font-size-13);
 }
 
 .search {
@@ -105,3 +116,47 @@
 .chipHover {
   opacity: var(--opacity-pressed);
 }
+
+.triggers {
+  display: flex;
+}
+
+.trigger {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-14);
+}
+
+.triggerActive {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.triggerLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-primary);
+  font-size: var(--font-size-12);
+}
+
+.summaryText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
