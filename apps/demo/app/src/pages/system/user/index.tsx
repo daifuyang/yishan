@@ -6,9 +6,6 @@ import {
   ManagementPage,
   ManagementPageHeader,
   ManagementHeaderAction,
-  ManagementFilterBar,
-  ManagementSearchBar,
-  ManagementFilterTabs,
   ManagementList,
   ManagementCell,
   ManagementStates,
@@ -18,17 +15,12 @@ import { useListPagination, useCanWrite, confirmAction } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
 import { adminUserApi } from '@/api'
-import type { AdminUser, AdminUserListQuery } from '@/api/admin/types'
+import type { AdminUser } from '@/api/admin/types'
 import { PERMS, SYSTEM_PAGES, TAB_PAGES } from '@/constants/routes'
 
 import { withAccountScope } from '../_shared/AdminUI'
-
-const STATUS_TABS = [
-  { key: '', label: '全部' },
-  { key: '1', label: '启用' },
-  { key: '0', label: '禁用' },
-  { key: '2', label: '锁定' },
-] as const
+import { buildUserQuery, DEFAULT_USER_FILTERS, type UserFilters } from './filters'
+import { UserFilterBar } from './UserFilters'
 
 function userStatus(user: AdminUser): { label: string; variant: 'success' | 'default' | 'warning' } {
   if (user.status === '1') return { label: '启用', variant: 'success' }
@@ -57,17 +49,24 @@ function UserIndexPage() {
     refresh,
   } = useListPagination<AdminUser>({
     enabled: guard.ready && guard.allowed,
+    initialFilters: { ...DEFAULT_USER_FILTERS },
     fetcher: async ({ page, pageSize, keyword: kw, filters: fs }) => {
-      const query: AdminUserListQuery = {
-        page,
-        pageSize,
-        keyword: kw || undefined,
-        status: (fs.status as '0' | '1' | '2' | undefined) || undefined,
-      }
+      const query = buildUserQuery(page, pageSize, kw, readFilters(fs))
       const { data, pagination } = await adminUserApi.listAdminUsers(query)
       return { list: data, total: pagination.total }
     },
   })
+
+  const userFilters = readFilters(filters)
+  const filtered = Boolean(keyword || userFilters.status || userFilters.startDate || userFilters.endDate)
+  const changeFilters = (patch: Partial<UserFilters>) => {
+    setFilters(patch)
+    void Taro.pageScrollTo({ scrollTop: 0, duration: 0 })
+  }
+  const clearFilters = () => {
+    setKeyword('')
+    changeFilters({ ...DEFAULT_USER_FILTERS })
+  }
 
   useDidShow(() => {
     if (guard.ready && guard.allowed) void refresh()
@@ -179,7 +178,7 @@ function UserIndexPage() {
     <ManagementPage className="page-container">
       <ManagementPageHeader
         title="用户管理"
-        subtitle={`${total} 位成员`}
+        subtitle={filtered ? `找到 ${total} 位成员` : `${total} 位成员`}
         action={
           canCreate ? (
             <ManagementHeaderAction
@@ -190,18 +189,15 @@ function UserIndexPage() {
         }
       />
 
-      <ManagementFilterBar>
-        <ManagementSearchBar value={keyword} onChange={setKeyword} placeholder="搜索用户" />
-        <ManagementFilterTabs
-          tabs={STATUS_TABS}
-          active={(filters.status as string | undefined) ?? ''}
-          onChange={(status) => setFilters({ status })}
-        />
-      </ManagementFilterBar>
+      <UserFilterBar keyword={keyword} onKeywordChange={setKeyword} filters={userFilters} onChange={changeFilters} />
+
+      {kind === 'empty' && filtered ? (
+        <ManagementHeaderAction label="清除筛选" onClick={clearFilters} />
+      ) : null}
 
       <ManagementStates
         kind={kind}
-        emptyText={keyword ? '未找到相关用户' : '暂无用户'}
+        emptyText={filtered ? '未找到符合条件的用户' : '暂无用户'}
         errorText="加载失败，请重试"
         onRetry={refresh}
       >
@@ -245,3 +241,12 @@ function UserIndexPage() {
 }
 
 export default withAccountScope(UserIndexPage)
+
+function readFilters(filters: Record<string, unknown>): UserFilters {
+  return {
+    status: typeof filters.status === 'string' ? filters.status : '',
+    sort: typeof filters.sort === 'string' ? filters.sort : 'createdDesc',
+    startDate: typeof filters.startDate === 'string' ? filters.startDate : '',
+    endDate: typeof filters.endDate === 'string' ? filters.endDate : '',
+  }
+}

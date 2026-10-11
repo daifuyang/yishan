@@ -1,190 +1,52 @@
-import { useEffect, useState } from "react";
-import { Picker, Text, View } from "@tarojs/components";
-import { Button } from "@/components/atoms";
-import { FormField } from "@/components/molecules";
-import { StateView } from "@/components/feedback";
-import { PageContainer } from "@/components/layout";
-import { useRequireAuth } from "@/utils/auth-guard";
-import { useListPagination } from "@/hooks";
-import { useAuthStore } from "@/stores/auth";
-import { listAdminLoginLogs, getAdminLoginLog } from "@/api/admin/loginLog";
-import type { AdminLoginLog } from "@/api/admin/types";
-import { AdminPage, AdminSelect, AdminNotice, errorMessage } from "../_shared/AdminUI";
-import { loginLogTimeRange } from "./query";
+import { Text, View } from '@tarojs/components'
+import { useDidHide } from '@tarojs/taro'
+import { useState } from 'react'
+import { listAdminLoginLogs } from '@/api/admin/loginLog'
+import { Tag } from '@/components/atoms'
+import { BottomSelectSheet, ManagementCell, ManagementFilterBar, ManagementList, ManagementListFooter, ManagementPage, ManagementPageHeader, ManagementSearchBar, ManagementStates, LineIcon } from '@/components/management'
+import { SYSTEM_PAGES } from '@/constants/routes'
+import { useListPagination } from '@/hooks'
+import { useRequireAuth } from '@/utils/auth-guard'
+import { formatDateTime } from '@/utils/format'
+import { navigateTo } from '@/utils/router'
+import { withAccountScope } from '../_shared/AdminUI'
+import { buildLoginLogQuery } from './query'
+import { LogDateSheet } from './LogDateSheet'
+import styles from './index.module.scss'
 
-export default function LoginLogPage() {
-  const guard = useRequireAuth({ moduleId: "system-login-log" });
-  const identity = useAuthStore((state) => state.user?.id);
-  if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>;
-  return <LoginLogs key={identity} enabled={guard.ready && guard.allowed} />;
-}
-
-function LoginLogs({ enabled }: { enabled: boolean }) {
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [dateError, setDateError] = useState("");
-  const [detailId, setDetailId] = useState<number | null>(null);
-  const list = useListPagination<AdminLoginLog>({
-    enabled,
-    fetcher: async ({ page, pageSize, keyword, filters }) => {
-      const response = await listAdminLoginLogs({
-        page,
-        pageSize,
-        keyword: keyword || undefined,
-        status: filters.status === "0" || filters.status === "1" ? filters.status : undefined,
-        startTime: typeof filters.startTime === "string" ? filters.startTime : undefined,
-        endTime: typeof filters.endTime === "string" ? filters.endTime : undefined,
-        sortBy: "createdAt",
-        sortOrder: "desc",
-      });
-      return { list: response.data, total: response.pagination.total };
-    },
-  });
-  const applyDates = () => {
-    try {
-      list.setFilters(loginLogTimeRange(start, end));
-      setDateError("");
-      setDetailId(null);
-    } catch (cause) {
-      setDateError(errorMessage(cause));
-    }
-  };
-  const clear = () => {
-    setStart("");
-    setEnd("");
-    setDateError("");
-    list.setFilters({ startTime: undefined, endTime: undefined });
-  };
-  return (
-    <AdminPage title="登录日志">
-      <View className="admin-card">
-        <FormField
-          type="input"
-          label="搜索"
-          placeholder="账号、姓名、IP、提示信息"
-          value={list.keyword}
-          onInput={list.setKeyword}
-        />
-        <AdminSelect
-          label="登录状态"
-          value={String(list.filters.status || "")}
-          options={[
-            { label: "全部", value: "" },
-            { label: "成功", value: "1" },
-            { label: "失败", value: "0" },
-          ]}
-          onChange={(status) => list.setFilters({ status })}
-        />
-        <Picker mode="date" value={start} onChange={(event) => setStart(event.detail.value)}>
-          <FormField type="picker" label="开始日期" value={start} placeholder="不限" />
-        </Picker>
-        <Picker mode="date" value={end} onChange={(event) => setEnd(event.detail.value)}>
-          <FormField type="picker" label="结束日期" value={end} placeholder="不限" />
-        </Picker>
-        {dateError && <AdminNotice>{dateError}</AdminNotice>}
-        <View className="admin-actions">
-          <Button size="sm" onClick={applyDates}>
-            应用日期
-          </Button>
-          <Button size="sm" variant="secondary" onClick={clear}>
-            清除日期
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            loading={list.refreshing}
-            onClick={() => list.refresh()}
-          >
-            刷新
-          </Button>
-        </View>
+const STATUS = [{ key: '', label: '全部状态' }, { key: '1', label: '登录成功' }, { key: '0', label: '登录失败' }]
+const SORT = [{ key: 'desc', label: '最近登录' }, { key: 'asc', label: '最早登录' }]
+function LoginLogPage() {
+  const guard = useRequireAuth({ moduleId: 'system-login-log' })
+  const [panel, setPanel] = useState('')
+  const list = useListPagination({ enabled: guard.ready && guard.allowed, fetcher: async ({ page, pageSize, keyword, filters }) => {
+    const response = await listAdminLoginLogs(buildLoginLogQuery(page, pageSize, keyword, filters))
+    return { list: response.data, total: response.pagination.total }
+  } })
+  useDidHide(() => setPanel(''))
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+  const status = String(list.filters.status || '')
+  const sort = String(list.filters.sort || 'desc')
+  const startDate = String(list.filters.startDate || '')
+  const endDate = String(list.filters.endDate || '')
+  const hasDates = Boolean(startDate || endDate)
+  const kind = list.error ? 'error' : list.loading && !list.list.length ? 'loading' : !list.list.length ? 'empty' : 'ready'
+  return <ManagementPage>
+    <ManagementPageHeader title="登录日志" subtitle={`${list.total} 条记录`} showBack={process.env.TARO_ENV === 'h5'} />
+    <ManagementFilterBar>
+      <ManagementSearchBar value={list.keyword} onChange={list.setKeyword} placeholder="搜索账号、姓名、IP或提示" />
+      <View className={styles.triggers}>
+        {[{ key: 'status', label: STATUS.find(item => item.key === status)?.label || '全部状态', active: Boolean(status) }, { key: 'sort', label: sort === 'asc' ? '最早登录' : '最近登录', active: sort === 'asc' }, { key: 'dates', label: hasDates ? '时间 · 1' : '登录时间', active: hasDates }].map(item => <View key={item.key} className={`${styles.trigger} ${item.active ? styles.active : ''}`} onClick={() => setPanel(item.key)} aria-label={item.label}><Text>{item.label}</Text><LineIcon name="chevronDown" size={14} /></View>)}
       </View>
-      {detailId && (
-        <LoginLogDetail key={detailId} id={detailId} onClose={() => setDetailId(null)} />
-      )}
-      <AdminNotice>共 {list.total} 条记录 · 按时间倒序</AdminNotice>
-      {list.error && <StateView kind="error" text={list.error} onRetry={list.refresh} />}
-      {list.loading && list.list.length === 0 && <StateView kind="loading" />}
-      {!list.loading && !list.error && list.list.length === 0 && (
-        <StateView kind="empty" text="暂无登录日志" />
-      )}
-      {list.list.map((record) => (
-        <View className="admin-card" key={record.id}>
-          <Text className="admin-name">
-            {record.username} · {record.status === "1" ? "成功" : "失败"}
-          </Text>
-          <Text className="admin-meta">
-            {record.realName || "-"} · {record.ipAddress || "-"}
-          </Text>
-          <Text className="admin-meta">{record.message || "无提示信息"}</Text>
-          <Text className="admin-meta">{record.createdAt}</Text>
-          <View className="admin-actions">
-            <Button size="sm" variant="secondary" onClick={() => setDetailId(record.id)}>
-              查看详情
-            </Button>
-          </View>
-        </View>
-      ))}
-      {!list.finished && (
-        <Button
-          variant="secondary"
-          loading={list.loadingMore}
-          disabled={list.loading}
-          onClick={() => list.loadMore()}
-        >
-          加载更多
-        </Button>
-      )}
-    </AdminPage>
-  );
+      {hasDates ? <View className={styles.summary} onClick={() => list.setFilters({ startDate: '', endDate: '' })} aria-label="清除登录时间筛选"><Text>{startDate || '不限'} 至 {endDate || '不限'}</Text><LineIcon name="close" size={14} /></View> : null}
+    </ManagementFilterBar>
+    <ManagementStates kind={kind} errorText={list.error || undefined} emptyText={list.keyword || status || hasDates ? '未找到符合条件的登录日志' : '暂无登录日志'} onRetry={list.refresh}>
+      <ManagementList>{list.list.map((record, index) => <ManagementCell key={record.id} bordered={index < list.list.length - 1} glyph="shield" title={record.realName || record.username} description={`${formatDateTime(record.createdAt)} · ${record.ipAddress || '未知IP'}`} tag={<Tag size="sm" variant={record.status === '1' ? 'success' : 'danger'}>{record.status === '1' ? '成功' : '失败'}</Tag>} onClick={() => navigateTo(`/${SYSTEM_PAGES.loginLogDetail}?id=${record.id}`)} />)}</ManagementList>
+    </ManagementStates>
+    <ManagementListFooter loadingMore={list.loadingMore} refreshing={list.refreshing} finished={list.finished} empty={!list.list.length} summary={kind === 'ready' ? `共 ${list.total} 条记录` : undefined} />
+    <BottomSelectSheet open={panel === 'status' || panel === 'sort'} title={panel === 'status' ? '登录状态' : '排序方式'} options={panel === 'status' ? STATUS : SORT} value={panel === 'status' ? status : sort} onSelect={key => list.setFilters(panel === 'status' ? { status: key } : { sort: key })} onClose={() => setPanel('')} />
+    {panel === 'dates' ? <LogDateSheet startDate={startDate} endDate={endDate} onClose={() => setPanel('')} onConfirm={dates => { list.setFilters(dates); setPanel('') }} /> : null}
+  </ManagementPage>
 }
+export default withAccountScope(LoginLogPage)
 
-function LoginLogDetail({ id, onClose }: { id: number; onClose: () => void }) {
-  const [record, setRecord] = useState<AdminLoginLog | null>(null);
-  const [error, setError] = useState("");
-  const [reload, setReload] = useState(0);
-  useEffect(() => {
-    let current = true;
-    setError("");
-    getAdminLoginLog(id)
-      .then((data) => {
-        if (current) setRecord(data);
-      })
-      .catch((cause) => {
-        if (current) setError(errorMessage(cause));
-      });
-    return () => {
-      current = false;
-    };
-  }, [id, reload]);
-  return (
-    <View className="admin-card">
-      <Text className="admin-section-title">登录详情</Text>
-      {error && (
-        <StateView kind="error" text={error} onRetry={() => setReload((value) => value + 1)} />
-      )}
-      {!record && !error && <StateView kind="loading" />}
-      {record && (
-        <>
-          <Text className="admin-name">
-            {record.username} · {record.status === "1" ? "成功" : "失败"}
-          </Text>
-          <Text className="admin-meta">
-            日志 ID：{record.id} · 用户 ID：{record.userId || "-"}
-          </Text>
-          <Text className="admin-meta">姓名：{record.realName || "-"}</Text>
-          <Text className="admin-meta">提示：{record.message || "-"}</Text>
-          <Text className="admin-meta">IP：{record.ipAddress || "-"}</Text>
-          <Text className="admin-meta">User-Agent：{record.userAgent || "-"}</Text>
-          <Text className="admin-meta">创建：{record.createdAt}</Text>
-          <Text className="admin-meta">更新：{record.updatedAt}</Text>
-        </>
-      )}
-      <View className="admin-actions">
-        <Button size="sm" variant="secondary" onClick={onClose}>
-          关闭详情
-        </Button>
-      </View>
-    </View>
-  );
-}

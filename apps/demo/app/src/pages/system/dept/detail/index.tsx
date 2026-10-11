@@ -1,226 +1,345 @@
-import { useEffect, useState } from "react";
-import { View, Text } from "@tarojs/components";
-import { useRouter } from "@tarojs/taro";
-import { Button } from "@/components/atoms";
-import { StateView } from "@/components/feedback";
-import { PageContainer } from "@/components/layout";
-import { useRequireAuth } from "@/utils/auth-guard";
-import { useCanWrite, useListPagination } from "@/hooks";
-import { useAuthStore } from "@/stores/auth";
-import { navigateTo } from "@/utils/router";
-import { SYSTEM_PAGES } from "@/constants/routes";
-import { getAdminDept, listAdminDepts } from "@/api/admin/dept";
-import { getDeptUsers } from "@/api/contacts";
-import type { AdminDept } from "@/api/admin/types";
-import type { DeptUser } from "@/api/types";
-import { AdminPage, AdminNotice, errorMessage } from "../../_shared/AdminUI";
-import DepartmentForm from "../DepartmentForm";
+import Taro, { useDidHide, useDidShow, usePullDownRefresh, useRouter } from '@tarojs/taro'
+import { useEffect, useRef, useState } from 'react'
+import { Tag } from '@/components/atoms'
+import { StateView } from '@/components/feedback'
+import {
+  ActionSheet,
+  BottomActionBar,
+  type BottomAction,
+  DetailContent,
+  DetailHero,
+  DetailRow,
+  DetailSection,
+  ManagementCell,
+  ManagementList,
+  ManagementListFooter,
+  ManagementPage,
+} from '@/components/management'
+import { PageHeader } from '@/components/molecules'
+import { SYSTEM_PAGES } from '@/constants/routes'
+import { confirmAction, useCanWrite, useListPagination } from '@/hooks'
+import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
+import { formatDateTime } from '@/utils/format'
+import { navigateBack, navigateTo } from '@/utils/router'
+import * as api from '@/api/admin/dept'
+import { getDeptUsers } from '@/api/contacts'
+import type { AdminDept } from '@/api/admin/types'
+import type { DeptUser } from '@/api/types'
+import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
 
-export default function DeptDetailPage() {
-  const guard = useRequireAuth({ moduleId: "system-dept" });
-  const id = Number(useRouter().params.id);
-  const identity = useAuthStore((state) => state.user?.id);
-  if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>;
-  if (!Number.isInteger(id) || id < 1)
-    return (
-      <AdminPage title="部门详情">
-        <AdminNotice>部门参数无效</AdminNotice>
-      </AdminPage>
-    );
-  return (
-    <DepartmentDetail key={`${identity}:${id}`} id={id} enabled={guard.ready && guard.allowed} />
-  );
-}
-
-function DepartmentDetail({ id, enabled }: { id: number; enabled: boolean }) {
-  const canUpdate = useCanWrite("system:department:update");
-  const canCreate = useCanWrite("system:department:create");
-  const canMembers = useCanWrite("app:contacts:dept-users");
-  const [department, setDepartment] = useState<AdminDept | null>(null);
-  const [members, setMembers] = useState<DeptUser[]>([]);
-  const [memberError, setMemberError] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("info");
-  const [editing, setEditing] = useState<"edit" | "new" | null>(null);
-  const [reload, setReload] = useState(0);
+function DeptDetailPage() {
+  const guard = useRequireAuth({ moduleId: 'system-dept' })
+  const id = Number(useRouter().params.id)
+  const validId = Number.isInteger(id) && id > 0
+  const canUpdate = useCanWrite('system:department:update')
+  const canCreate = useCanWrite('system:department:create')
+  const canDelete = useCanWrite('system:department:delete')
+  const canMembers = useCanWrite('app:contacts:dept-users')
+  const isCurrent = useCurrentModuleAccess('system-dept')
+  const [department, setDepartment] = useState<AdminDept | null>(null)
+  const [members, setMembers] = useState<DeptUser[]>([])
+  const [memberError, setMemberError] = useState('')
+  const [membersLoading, setMembersLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [reload, setReload] = useState(0)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const lock = useRef(false)
+  const alive = useRef(true)
+  const refreshOnShow = useRef(false)
+  const enabled = guard.ready && guard.allowed && validId
   useEffect(() => {
-    let current = true;
-    if (!enabled) return;
-    setLoading(true);
-    setError("");
-    getAdminDept(id)
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
+  useEffect(() => {
+    let active = true
+    setDepartment(null)
+    if (!enabled) return
+    setLoading(true)
+    setError('')
+    api
+      .getAdminDept(id)
       .then((data) => {
-        if (current) setDepartment(data);
+        if (active && isCurrent()) setDepartment(data)
       })
       .catch((cause) => {
-        if (current) setError(errorMessage(cause));
+        if (active && isCurrent()) setError(errorMessage(cause))
       })
       .finally(() => {
-        if (current) setLoading(false);
-      });
+        if (active) setLoading(false)
+      })
     return () => {
-      current = false;
-    };
-  }, [id, enabled, reload]);
+      active = false
+    }
+  }, [id, enabled, reload])
   useEffect(() => {
-    let current = true;
-    setMembers([]);
-    setMemberError("");
-    if (!enabled || !canMembers) return;
+    let active = true
+    setMembers([])
+    setMemberError('')
+    setMembersLoading(true)
+    if (!enabled || !canMembers) return
     getDeptUsers(id)
       .then((data) => {
-        if (current) setMembers(data);
+        if (active && isCurrent()) setMembers(data)
       })
       .catch((cause) => {
-        if (current) setMemberError(errorMessage(cause));
-      });
+        if (active && isCurrent()) setMemberError(errorMessage(cause))
+      })
+      .finally(() => {
+        if (active) setMembersLoading(false)
+      })
     return () => {
-      current = false;
-    };
-  }, [id, enabled, canMembers, reload]);
+      active = false
+    }
+  }, [id, enabled, canMembers, reload])
   const children = useListPagination<AdminDept>({
     enabled,
     fetcher: async ({ page, pageSize }) => {
-      const { data, pagination } = await listAdminDepts({ parentId: id, page, pageSize });
-      return { list: data, total: pagination.total };
+      const { data, pagination } = await api.listAdminDepts({ parentId: id, page, pageSize })
+      return { list: data, total: pagination.total }
     },
-  });
+  })
   const refresh = () => {
-    setReload((value) => value + 1);
-    void children.refresh();
-  };
+    if (lock.current) return
+    setReload((value) => value + 1)
+    void children.refresh()
+  }
+  usePullDownRefresh(() => {
+    if (!enabled || lock.current || !isCurrent()) return
+    // 子部门列表由分页 hook 响应同一事件并结束刷新动画。
+    setReload((value) => value + 1)
+  })
+  useDidHide(() => {
+    refreshOnShow.current = true
+    setMoreOpen(false)
+  })
+  useDidShow(() => {
+    if (refreshOnShow.current) {
+      refreshOnShow.current = false
+      refresh()
+    }
+  })
+  const mutate = async (remove: boolean) => {
+    if (!department || lock.current || loading) return
+    const permission = remove ? 'system:department:delete' : 'system:department:update'
+    if (!(remove ? canDelete : canUpdate) || !isCurrent([permission])) return
+    lock.current = true
+    setBusy(true)
+    setMoreOpen(false)
+    try {
+      if (
+        remove &&
+        !(await confirmAction({
+          title: '删除部门',
+          content: `确认删除「${department.name}」？有子部门的部门不能删除。`,
+        }))
+      )
+        return
+      if (!alive.current || !isCurrent([permission])) return
+      if (remove) await api.deleteAdminDept(id)
+      else await api.updateAdminDept(id, { status: department.status === '1' ? '0' : '1' })
+      if (!alive.current || !isCurrent([permission])) return
+      await Taro.showToast({ title: '操作成功', icon: 'success' })
+      if (!alive.current || !isCurrent([permission])) return
+      if (remove) navigateBack(1)
+      else setReload((value) => value + 1)
+    } catch (cause) {
+      if (alive.current && isCurrent([permission]))
+        await Taro.showToast({ title: errorMessage(cause), icon: 'none' })
+    } finally {
+      lock.current = false
+      if (alive.current) setBusy(false)
+    }
+  }
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+  const actions: BottomAction[] = [
+    ...(canUpdate
+      ? [
+          {
+            key: 'edit',
+            label: '编辑',
+            icon: 'pencil' as const,
+            tone: 'primary' as const,
+            onClick: () => navigateTo(`/${SYSTEM_PAGES.deptForm}?id=${id}`),
+          },
+          {
+            key: 'toggle',
+            label: department?.status === '1' ? '禁用' : '启用',
+            icon: 'ban' as const,
+            tone: 'warning' as const,
+            onClick: () => void mutate(false),
+          },
+        ]
+      : []),
+    ...(canCreate
+      ? [
+          {
+            key: 'child',
+            label: '新建子部门',
+            icon: 'plus' as const,
+            tone: 'primary' as const,
+            onClick: () => navigateTo(`/${SYSTEM_PAGES.deptForm}?parentId=${id}`),
+          },
+        ]
+      : []),
+    ...(canDelete
+      ? [
+          {
+            key: 'more',
+            label: '更多',
+            icon: 'ellipsis' as const,
+            onClick: () => setMoreOpen(true),
+          },
+        ]
+      : []),
+  ]
+  const kind = !validId || error ? 'error' : loading ? 'loading' : department ? 'ready' : 'empty'
   return (
-    <AdminPage
-      title={department?.name || "部门详情"}
-      action={
-        <Button size="sm" variant="secondary" onClick={refresh}>
-          刷新
-        </Button>
-      }
-    >
-      {loading && <StateView kind="loading" />}
-      {error && <StateView kind="error" text={error} onRetry={refresh} />}
-      {department && (
-        <>
-          <View className="admin-actions">
-            {[
-              { value: "info", label: "基本信息" },
-              { value: "members", label: "部门成员" },
-              { value: "children", label: "子部门" },
-            ].map((item) => (
-              <Button
-                key={item.value}
-                size="sm"
-                variant={tab === item.value ? "primary" : "secondary"}
-                onClick={() => setTab(item.value)}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </View>
-          {editing && (
-            <DepartmentForm
-              key={editing}
-              department={editing === "edit" ? department : undefined}
-              parentId={editing === "new" ? id : undefined}
-              onCancel={() => setEditing(null)}
-              onSuccess={() => {
-                setEditing(null);
-                refresh();
-              }}
-            />
-          )}
-          {tab === "info" && (
-            <View className="admin-card">
-              <Text className="admin-name">{department.name}</Text>
-              <Text className="admin-meta">
-                ID：{department.id} · {department.status === "1" ? "启用" : "禁用"}
-              </Text>
-              <Text className="admin-meta">上级部门：{department.parentName || "顶级部门"}</Text>
-              <Text className="admin-meta">
-                负责人：{department.leaderName || department.leaderId || "未设置"}
-              </Text>
-              <Text className="admin-meta">排序：{department.sort_order}</Text>
-              <Text className="admin-meta">描述：{department.description || "无"}</Text>
-              <Text className="admin-meta">
-                创建：{department.createdAt} · {department.creatorName || "-"}
-              </Text>
-              <Text className="admin-meta">
-                更新：{department.updatedAt} · {department.updaterName || "-"}
-              </Text>
-              <View className="admin-actions">
-                {canUpdate && (
-                  <Button size="sm" onClick={() => setEditing("edit")}>
-                    编辑部门
-                  </Button>
-                )}
-                {canCreate && (
-                  <Button size="sm" variant="secondary" onClick={() => setEditing("new")}>
-                    新建子部门
-                  </Button>
-                )}
-              </View>
-            </View>
-          )}
-          {tab === "members" && (
-            <View className="admin-card">
-              {!canMembers && <AdminNotice>暂无查看部门成员的权限</AdminNotice>}
-              {memberError && <StateView kind="error" text={memberError} onRetry={refresh} />}
-              {canMembers && !memberError && members.length === 0 && (
-                <AdminNotice>暂无启用成员</AdminNotice>
-              )}
-              {members.map((member) => (
-                <View key={member.id} className="admin-row">
-                  <View>
-                    <Text className="admin-name">
-                      {member.realName || member.username || member.phone}
-                    </Text>
-                    <Text className="admin-meta">
-                      ID：{member.id} · {member.phone || "-"} · {member.email || "-"}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-          {tab === "children" && (
+    <ManagementPage withActions={actions.length > 0}>
+      {process.env.TARO_ENV === 'h5' ? <PageHeader title="部门详情" /> : null}
+      <DetailContent>
+        <StateView
+          kind={kind}
+          text={!validId ? '部门参数无效' : error || undefined}
+          onRetry={validId ? refresh : undefined}
+        >
+          {department ? (
             <>
-              <AdminNotice>共 {children.total} 个子部门</AdminNotice>
-              {children.error && (
-                <StateView kind="error" text={children.error} onRetry={children.refresh} />
-              )}
-              {children.loading && <StateView kind="loading" />}
-              {!children.loading && !children.error && children.list.length === 0 && (
-                <StateView kind="empty" text="暂无子部门" />
-              )}
-              {children.list.map((child) => (
-                <View
-                  className="admin-card"
-                  key={child.id}
-                  onClick={() => navigateTo(`/${SYSTEM_PAGES.deptDetail}?id=${child.id}`)}
+              <DetailHero
+                glyph="folder"
+                title={department.name}
+                tag={
+                  <Tag variant={department.status === '1' ? 'success' : 'default'}>
+                    {department.status === '1' ? '启用' : '禁用'}
+                  </Tag>
+                }
+                subtitle={department.parentName || '顶级部门'}
+              />
+              <DetailSection title="基本信息">
+                <DetailRow label="部门名称" value={department.name} />
+                <DetailRow
+                  label="上级部门"
+                  value={department.parentName || '顶级部门'}
+                  onClick={
+                    department.parentId
+                      ? () => navigateTo(`/${SYSTEM_PAGES.deptDetail}?id=${department.parentId}`)
+                      : undefined
+                  }
+                />
+                <DetailRow label="负责人" value={department.leaderName || department.leaderId} />
+                <DetailRow label="排序" value={department.sort_order} />
+                <DetailRow label="描述" value={department.description} />
+              </DetailSection>
+              <DetailSection
+                title={`部门成员${canMembers && !membersLoading && !memberError ? ` · ${members.length}` : ''}`}
+              >
+                {!canMembers ? (
+                  <DetailRow label="成员信息" value="暂无查看权限" />
+                ) : (
+                  <StateView
+                    kind={
+                      memberError
+                        ? 'error'
+                        : membersLoading
+                          ? 'loading'
+                          : members.length
+                            ? 'ready'
+                            : 'empty'
+                    }
+                    text={memberError || '暂无启用成员'}
+                    onRetry={refresh}
+                    minHeight={100}
+                  >
+                    <ManagementList>
+                      {members.map((member, index) => (
+                        <ManagementCell
+                          key={member.id}
+                          bordered={index < members.length - 1}
+                          avatar={{
+                            name: member.realName || member.username || member.phone,
+                            src: member.avatar,
+                          }}
+                          title={member.realName || member.username || member.phone}
+                          description={
+                            [member.phone, member.email].filter(Boolean).join(' · ') ||
+                            '暂无联系方式'
+                          }
+                          showArrow={false}
+                        />
+                      ))}
+                    </ManagementList>
+                  </StateView>
+                )}
+              </DetailSection>
+              <DetailSection title={`子部门 · ${children.total}`}>
+                <StateView
+                  kind={
+                    children.error
+                      ? 'error'
+                      : children.loading && !children.list.length
+                        ? 'loading'
+                        : children.list.length
+                          ? 'ready'
+                          : 'empty'
+                  }
+                  text={children.error || '暂无子部门'}
+                  onRetry={children.refresh}
+                  minHeight={100}
                 >
-                  <Text className="admin-name">{child.name} ›</Text>
-                  <Text className="admin-meta">
-                    {child.status === "1" ? "启用" : "禁用"} · 负责人：
-                    {child.leaderName || child.leaderId || "未设置"}
-                  </Text>
-                </View>
-              ))}
-              {!children.finished && (
-                <Button
-                  variant="secondary"
-                  loading={children.loadingMore}
-                  disabled={children.loading}
-                  onClick={() => children.loadMore()}
-                >
-                  加载更多
-                </Button>
-              )}
+                  <ManagementList>
+                    {children.list.map((child, index) => (
+                      <ManagementCell
+                        key={child.id}
+                        bordered={index < children.list.length - 1}
+                        glyph="folder"
+                        title={child.name}
+                        description={`负责人：${child.leaderName || child.leaderId || '未设置'}`}
+                        tag={
+                          <Tag size="sm" variant={child.status === '1' ? 'success' : 'default'}>
+                            {child.status === '1' ? '启用' : '禁用'}
+                          </Tag>
+                        }
+                        onClick={() => navigateTo(`/${SYSTEM_PAGES.deptDetail}?id=${child.id}`)}
+                      />
+                    ))}
+                  </ManagementList>
+                </StateView>
+                <ManagementListFooter
+                  loadingMore={children.loadingMore}
+                  finished={children.finished}
+                  empty={!children.list.length}
+                />
+              </DetailSection>
+              <DetailSection title="部门记录" collapsible defaultCollapsed>
+                <DetailRow label="部门 ID" value={department.id} />
+                <DetailRow label="创建人" value={department.creatorName} />
+                <DetailRow label="创建时间" value={formatDateTime(department.createdAt)} />
+                <DetailRow label="更新人" value={department.updaterName} />
+                <DetailRow label="更新时间" value={formatDateTime(department.updatedAt)} />
+              </DetailSection>
             </>
-          )}
-        </>
-      )}
-    </AdminPage>
-  );
+          ) : null}
+        </StateView>
+      </DetailContent>
+      <BottomActionBar actions={actions} disabled={busy || loading || !department || !!error} />
+      <ActionSheet
+        open={moreOpen}
+        items={[
+          {
+            key: 'delete',
+            label: '删除部门',
+            icon: 'trash',
+            danger: true,
+            onClick: () => void mutate(true),
+          },
+        ]}
+        onClose={() => setMoreOpen(false)}
+      />
+    </ManagementPage>
+  )
 }
+export default withAccountScope(DeptDetailPage)

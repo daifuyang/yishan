@@ -1,207 +1,129 @@
+import { Text, View } from '@tarojs/components'
+import { useDidHide, useDidShow } from '@tarojs/taro'
+import { useState } from 'react'
+import { listAdminPositions } from '@/api/admin/position'
+import { Tag } from '@/components/atoms'
+import {
+  BottomSelectSheet,
+  LineIcon,
+  ManagementCell,
+  ManagementFilterBar,
+  ManagementHeaderAction,
+  ManagementList,
+  ManagementListFooter,
+  ManagementPage,
+  ManagementPageHeader,
+  ManagementSearchBar,
+  ManagementStates,
+} from '@/components/management'
+import { SYSTEM_PAGES } from '@/constants/routes'
+import { useCanWrite, useListPagination } from '@/hooks'
+import { useRequireAuth } from '@/utils/auth-guard'
+import { navigateTo } from '@/utils/router'
 import { withAccountScope } from '../_shared/AdminUI'
-import { Text, View } from "@tarojs/components";
-import Taro from "@tarojs/taro";
-import { useEffect, useRef, useState } from "react";
-import { deleteAdminPosition, listAdminPositions, updateAdminPosition } from "@/api/admin/position";
-import { getSessionVersion } from "@/api/client";
-import { Button } from "@/components/atoms";
-import { FormField } from "@/components/molecules";
-import { confirmAction, useCanWrite, useListPagination } from "@/hooks";
-import { canWriteModuleNow, useRequireAuth } from "@/utils/auth-guard";
-import { AdminNotice, AdminPage, AdminSelect, errorMessage } from "../_shared/AdminUI";
-import { PositionEditor } from "./PositionEditor";
+import { POSITION_STATUSES } from './model'
+import styles from './index.module.scss'
 
 function PositionPage() {
-  const guard = useRequireAuth({ moduleId: "system-position" });
-  const allowed = guard.ready && guard.allowed;
-  const canCreate = useCanWrite("system:position:create");
-  const canUpdate = useCanWrite("system:position:update");
-  const canDelete = useCanWrite("system:position:delete");
-  const [editor, setEditor] = useState<{ id?: number; editable: boolean } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const locked = useRef(false);
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
+  const guard = useRequireAuth({ moduleId: 'system-position' })
+  const canCreate = useCanWrite('system:position:create')
+  const [statusOpen, setStatusOpen] = useState(false)
   const list = useListPagination({
-    enabled: allowed,
+    enabled: guard.ready && guard.allowed,
     fetcher: async ({ page, pageSize, keyword, filters }) => {
       const result = await listAdminPositions({
         page,
         pageSize,
         keyword,
-        status: filters.status === "1" || filters.status === "0" ? filters.status : undefined,
-      });
-      return { list: result.data, total: result.pagination.total };
+        status: filters.status === '1' || filters.status === '0' ? filters.status : undefined,
+      })
+      return { list: result.data, total: result.pagination.total }
     },
-  });
-  async function mutate(required: string[], operation: () => Promise<unknown>, confirm?: string) {
-    if (!mounted.current || locked.current || !canWriteModuleNow("system-position", required))
-      return;
-    const session = getSessionVersion();
-    locked.current = true;
-    setBusy(true);
-    try {
-      if (confirm && !(await confirmAction({ content: confirm }))) return;
-      if (
-        !mounted.current ||
-        session !== getSessionVersion() ||
-        !canWriteModuleNow("system-position", required)
-      )
-        return;
-      await operation();
-      if (
-        !mounted.current ||
-        session !== getSessionVersion() ||
-        !canWriteModuleNow("system-position", required)
-      )
-        return;
-      void Taro.showToast({ title: "操作成功", icon: "success" });
-      await list.refresh();
-    } catch (error) {
-      if (
-        mounted.current &&
-        session === getSessionVersion() &&
-        canWriteModuleNow("system-position", required)
-      )
-        void Taro.showToast({ title: errorMessage(error), icon: "none" });
-    } finally {
-      locked.current = false;
-      if (mounted.current) setBusy(false);
-    }
-  }
+  })
+  useDidShow(() => {
+    if (guard.ready && guard.allowed) void list.refresh()
+  })
+  useDidHide(() => setStatusOpen(false))
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+  const status = String(list.filters.status || '')
+  const kind = list.error
+    ? 'error'
+    : list.loading && !list.list.length
+      ? 'loading'
+      : !list.list.length
+        ? 'empty'
+        : 'ready'
   return (
-    <AdminPage
-      title="岗位管理"
-      action={
-        allowed && canCreate && !editor ? (
-          <Button size="sm" disabled={busy} onClick={() => setEditor({ editable: true })}>
-            新建
-          </Button>
-        ) : undefined
-      }
-    >
-      {!allowed ? (
-        <AdminNotice>
-          {guard.denied ? "无权访问岗位管理" : guard.accessError || "正在验证访问权限"}
-        </AdminNotice>
-      ) : editor ? (
-        <PositionEditor
-          key={`${editor.id ?? "new"}:${getSessionVersion()}`}
-          id={editor.id}
-          editable={editor.editable}
-          onClose={() => setEditor(null)}
-          onSaved={() => {
-            setEditor(null);
-            void list.refresh();
-          }}
+    <ManagementPage>
+      <ManagementPageHeader
+        title="岗位管理"
+        subtitle={`${list.total} 个岗位`}
+        action={
+          canCreate ? (
+            <ManagementHeaderAction
+              label="新建"
+              onClick={() => navigateTo(`/${SYSTEM_PAGES.positionForm}`)}
+            />
+          ) : undefined
+        }
+      />
+      <ManagementFilterBar>
+        <ManagementSearchBar
+          value={list.keyword}
+          onChange={list.setKeyword}
+          placeholder="搜索岗位"
         />
-      ) : (
-        <>
-          <View className="admin-card">
-            <FormField
-              type="input"
-              label="搜索岗位"
-              value={list.keyword}
-              onChange={list.setKeyword}
+        <View
+          className={`${styles.filter} ${status ? styles.active : ''}`}
+          onClick={() => setStatusOpen(true)}
+          aria-label="筛选岗位状态"
+        >
+          <Text>
+            {POSITION_STATUSES.find((option) => option.key === status)?.label || '全部状态'}
+          </Text>
+          <LineIcon name="chevronDown" size={16} color={status ? '#1677FF' : '#86909C'} />
+        </View>
+      </ManagementFilterBar>
+      <ManagementStates
+        kind={kind}
+        errorText={list.error || undefined}
+        emptyText={list.keyword || status ? '未找到符合条件的岗位' : '暂无岗位'}
+        onRetry={list.refresh}
+      >
+        <ManagementList>
+          {list.list.map((position, index) => (
+            <ManagementCell
+              key={position.id}
+              bordered={index < list.list.length - 1}
+              glyph="folder"
+              title={position.name}
+              description={position.description || '暂无描述'}
+              tag={
+                <Tag size="sm" variant={position.status === '1' ? 'success' : 'default'}>
+                  {position.status === '1' ? '启用' : '禁用'}
+                </Tag>
+              }
+              onClick={() => navigateTo(`/${SYSTEM_PAGES.positionDetail}?id=${position.id}`)}
             />
-            <AdminSelect
-              label="状态"
-              value={String(list.filters.status || "")}
-              options={[
-                { label: "全部", value: "" },
-                { label: "启用", value: "1" },
-                { label: "禁用", value: "0" },
-              ]}
-              onChange={(status) => list.setFilters({ status })}
-            />
-          </View>
-          {list.error && (
-            <AdminNotice>
-              {list.error}
-              <Button variant="text" onClick={() => void list.refresh()}>
-                重试
-              </Button>
-            </AdminNotice>
-          )}
-          {list.list.map((position) => (
-            <View className="admin-card" key={position.id}>
-              <Text className="admin-name">{position.name}</Text>
-              <Text className="admin-meta">
-                {position.status === "1" ? "启用" : "禁用"} · 排序 {position.sort_order}
-              </Text>
-              <Text className="admin-meta">{position.description || "暂无描述"}</Text>
-              <View className="admin-actions">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => setEditor({ id: position.id, editable: false })}
-                >
-                  详情
-                </Button>
-                {canUpdate && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => setEditor({ id: position.id, editable: true })}
-                  >
-                    编辑
-                  </Button>
-                )}
-                {canUpdate && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() =>
-                      void mutate(["system:position:update"], () =>
-                        updateAdminPosition(position.id, {
-                          status: position.status === "1" ? "0" : "1",
-                        }),
-                      )
-                    }
-                  >
-                    {position.status === "1" ? "禁用" : "启用"}
-                  </Button>
-                )}
-                {canDelete && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() =>
-                      void mutate(
-                        ["system:position:delete"],
-                        () => deleteAdminPosition(position.id),
-                        `确定删除岗位“${position.name}”？`,
-                      )
-                    }
-                  >
-                    删除
-                  </Button>
-                )}
-              </View>
-            </View>
           ))}
-          <AdminNotice>{list.loading ? "加载中…" : `共 ${list.total} 个岗位`}</AdminNotice>
-          {!list.loading && !list.finished && (
-            <Button block variant="secondary" onClick={() => void list.loadMore()}>
-              加载更多
-            </Button>
-          )}
-          {!list.loading && !list.error && list.list.length === 0 && (
-            <AdminNotice>暂无岗位</AdminNotice>
-          )}
-        </>
-      )}
-    </AdminPage>
-  );
+        </ManagementList>
+      </ManagementStates>
+      <ManagementListFooter
+        loadingMore={list.loadingMore}
+        refreshing={list.refreshing}
+        finished={list.finished}
+        empty={!list.list.length}
+        summary={kind === 'ready' ? `共 ${list.total} 个岗位` : undefined}
+      />
+      <BottomSelectSheet
+        open={statusOpen}
+        title="岗位状态"
+        options={POSITION_STATUSES}
+        value={status}
+        onSelect={(value) => list.setFilters({ status: value })}
+        onClose={() => setStatusOpen(false)}
+      />
+    </ManagementPage>
+  )
 }
-
 export default withAccountScope(PositionPage)

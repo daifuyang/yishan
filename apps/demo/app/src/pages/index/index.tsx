@@ -17,7 +17,6 @@ import { type FavoriteAppItem, FavoriteApps } from './components/FavoriteApps'
 import { HomeIcon } from './components/HomeIcon'
 import { HomeSection, SectionLink } from './components/HomeSection'
 import { TodoPreview } from './components/TodoPreview'
-import { resolveHomeIcon } from './home-icons'
 import type { HomeMetricDef } from './home-metrics'
 import { useHomeMetrics } from './useHomeMetrics'
 import { useHomeTodos } from './useHomeTodos'
@@ -102,7 +101,7 @@ export default function IndexPage() {
   const common = commonModuleIds.flatMap((id) => modules.filter((module) => module.id === id))
   const apps: FavoriteAppItem[] = (commonConfigured || common.length > 0 ? common : modules)
     .slice(0, MAX_APPS)
-    .map((module) => ({ id: module.id, name: module.name, icon: resolveHomeIcon(module.icon) }))
+    .map((module) => ({ id: module.id, name: module.name, icon: module.icon }))
 
   const openModule = (id: string) => {
     const module = modules.find((candidate) => candidate.id === id)

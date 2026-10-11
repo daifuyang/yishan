@@ -91,6 +91,7 @@ function renderPage(page, permissions) {
     },
     "@/api": { adminUserApi: {} },
     "./index.module.scss": {},
+    "./UserFilters": { UserFilterBar: "UserFilterBar" },
   };
   const rendered = loadTs(`src/pages/system/user/${page}`, mocks).default();
   return { nodes: elements(rendered), getActions: () => actions };

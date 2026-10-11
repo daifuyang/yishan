@@ -2,7 +2,16 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, Input, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
-import { Button } from '@/components/atoms'
+import {
+  ManagementPage,
+  ManagementPageHeader,
+  FormContent,
+  FormSection,
+  FormField,
+  TextField,
+  FormSubmitBar,
+} from '@/components/management'
+import { getSessionVersion } from '@/api/client'
 import { LineIcon } from '@/components/icons'
 import { useAuthStore } from '@/stores/auth'
 import { userApi } from '@/api'
@@ -10,7 +19,6 @@ import { useRequireAuth } from '@/utils/auth-guard'
 import { ApiError } from '@/api'
 import { dictApi } from '@/api'
 import type { DictItem } from '@/api/types'
-import { PageContainer } from '@/components/layout'
 import { navigateBack } from '@/utils/router'
 
 import styles from './index.module.scss'
@@ -18,9 +26,33 @@ import styles from './index.module.scss'
 const GENDER_DICT_TYPE = 'user_gender'
 
 const GENDER_OPTIONS: DictItem[] = [
-  { id: 0, typeId: 0, type: 'user_gender', label: '保密', value: '0', sortOrder: 0, isDefault: false },
-  { id: 1, typeId: 0, type: 'user_gender', label: '男', value: '1', sortOrder: 1, isDefault: false },
-  { id: 2, typeId: 0, type: 'user_gender', label: '女', value: '2', sortOrder: 2, isDefault: false },
+  {
+    id: 0,
+    typeId: 0,
+    type: 'user_gender',
+    label: '保密',
+    value: '0',
+    sortOrder: 0,
+    isDefault: false,
+  },
+  {
+    id: 1,
+    typeId: 0,
+    type: 'user_gender',
+    label: '男',
+    value: '1',
+    sortOrder: 1,
+    isDefault: false,
+  },
+  {
+    id: 2,
+    typeId: 0,
+    type: 'user_gender',
+    label: '女',
+    value: '2',
+    sortOrder: 2,
+    isDefault: false,
+  },
 ]
 
 const PHONE_PATTERN = /^1[3-9]\d{9}$/
@@ -50,6 +82,13 @@ export default function ProfileEdit() {
   const [submitting, setSubmitting] = useState(false)
   const initializedUserId = useRef<number | null>(null)
   const submitLocked = useRef(false)
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
 
   const auth = useRequireAuth()
 
@@ -91,6 +130,14 @@ export default function ProfileEdit() {
       Taro.showToast({ title: '手机号格式不正确', icon: 'none' })
       return
     }
+    const session = getSessionVersion()
+    const userId = user?.id
+    if (!userId || initializedUserId.current !== userId) return
+    const isCurrent = () =>
+      alive.current &&
+      session === getSessionVersion() &&
+      useAuthStore.getState().user?.id === userId
+    if (!isCurrent() || !useAuthStore.getState().token) return
     submitLocked.current = true
     setSubmitting(true)
     try {
@@ -102,6 +149,7 @@ export default function ProfileEdit() {
         gender: gender as '0' | '1' | '2',
         birthDate: birthDate || undefined,
       })
+      if (!isCurrent()) return
       // 同步到 store
       setUser({
         nickname: nickname || undefined,
@@ -113,14 +161,16 @@ export default function ProfileEdit() {
       })
       // 强制刷新 me 拉一次
       await refreshMe()
+      if (!isCurrent()) return
       Taro.showToast({ title: '保存成功', icon: 'success' })
       navigateBack()
     } catch (e) {
+      if (!isCurrent()) return
       const msg = e instanceof ApiError ? e.message : (e as Error).message
       Taro.showToast({ title: msg || '保存失败', icon: 'none' })
     } finally {
       submitLocked.current = false
-      setSubmitting(false)
+      if (alive.current) setSubmitting(false)
     }
   }
 
@@ -130,97 +180,87 @@ export default function ProfileEdit() {
     return idx >= 0 ? idx : 0
   })()
 
+  const disabled = submitting || !auth.ready || !auth.allowed || !user
   return (
-    <PageContainer className={styles.edit}>
-      <View className={styles.edit__form}>
-        <View className={styles.edit__field}>
-          <Text className={styles.edit__label}>昵称</Text>
-          <Input
-            className={styles.edit__input}
-            placeholder="请输入昵称"
-            placeholderClass={styles.edit__placeholder}
-            value={nickname}
-            onInput={(e) => setNickname(e.detail.value)}
-            maxlength={50}
-          />
-        </View>
-
-        <View className={styles.edit__field}>
-          <Text className={styles.edit__label}>真实姓名</Text>
-          <Input
-            className={styles.edit__input}
-            placeholder="请输入真实姓名"
-            placeholderClass={styles.edit__placeholder}
-            value={realName}
-            onInput={(e) => setRealName(e.detail.value)}
-            maxlength={50}
-          />
-        </View>
-
-        <View className={styles.edit__field}>
-          <Text className={styles.edit__label}>邮箱</Text>
-          <Input
-            className={styles.edit__input}
-            placeholder="请输入邮箱"
-            placeholderClass={styles.edit__placeholder}
-            value={email}
-            onInput={(e) => setEmail(e.detail.value)}
-            maxlength={100}
-          />
-        </View>
-
-        <View className={styles.edit__field}>
-          <Text className={styles.edit__label}>手机号</Text>
-          <Input
-            className={styles.edit__input}
-            type="number"
-            placeholder="请输入 11 位手机号"
-            placeholderClass={styles.edit__placeholder}
-            value={phone}
-            onInput={(e) => setPhone(e.detail.value)}
-            maxlength={11}
-          />
-        </View>
-
-        <Picker
-          className={styles.edit__row}
-          mode="selector"
-          range={genderRange}
-          value={genderValue}
-          onChange={(e) => {
-            const idx = Number(e.detail.value)
-            setGender(genderOptions[idx]?.value || '0')
-          }}
-        >
-          <View className={`${styles.edit__field} ${styles.edit__fieldBare}`} hoverClass={styles.edit__fieldHover} hoverStayTime={60}>
-            <Text className={styles.edit__label}>性别</Text>
-            <Text className={styles.edit__value}>
-              {genderOptions.find((g) => g.value === gender)?.label || '保密'}
-            </Text>
-            <LineIcon name="chevronRight" size={16} className={styles.edit__arrow} />
-          </View>
-        </Picker>
-
-        <Picker
-          className={styles.edit__row}
-          mode="date"
-          value={birthDate}
-          end={today()}
-          onChange={(e) => setBirthDate(String(e.detail.value))}
-        >
-          <View className={`${styles.edit__field} ${styles.edit__fieldBare}`} hoverClass={styles.edit__fieldHover} hoverStayTime={60}>
-            <Text className={styles.edit__label}>出生日期</Text>
-            <Text className={`${styles.edit__value} ${birthDate ? '' : styles.edit__valueEmpty}`}>
-              {birthDate || '请选择出生日期'}
-            </Text>
-            <LineIcon name="chevronRight" size={16} className={styles.edit__arrow} />
-          </View>
-        </Picker>
-      </View>
-
-      <Button variant="primary" size="lg" block loading={submitting} onClick={handleSave}>
-        保存
-      </Button>
-    </PageContainer>
+    <ManagementPage>
+      {Taro.getEnv() === Taro.ENV_TYPE.WEB && <ManagementPageHeader title="个人资料" />}
+      <FormContent>
+        <FormSection title="基本信息">
+          <FormField label="昵称">
+            <TextField
+              value={nickname}
+              onChange={setNickname}
+              placeholder="请输入昵称"
+              disabled={disabled}
+            />
+          </FormField>
+          <FormField label="真实姓名">
+            <TextField
+              value={realName}
+              onChange={setRealName}
+              placeholder="请输入真实姓名"
+              disabled={disabled}
+            />
+          </FormField>
+          <FormField label="性别" disabled={disabled}>
+            <Picker
+              className={styles.picker}
+              mode="selector"
+              disabled={disabled}
+              range={genderRange}
+              value={genderValue}
+              onChange={(event) =>
+                setGender(genderOptions[Number(event.detail.value)]?.value || '0')
+              }
+            >
+              <View className={styles.pickerValue}>
+                <Text>
+                  {genderOptions.find((option) => option.value === gender)?.label || '保密'}
+                </Text>
+                <LineIcon name="chevronRight" size={16} />
+              </View>
+            </Picker>
+          </FormField>
+          <FormField label="出生日期" disabled={disabled}>
+            <Picker
+              className={styles.picker}
+              mode="date"
+              disabled={disabled}
+              value={birthDate}
+              end={today()}
+              onChange={(event) => setBirthDate(String(event.detail.value))}
+            >
+              <View className={`${styles.pickerValue} ${birthDate ? '' : styles.empty}`}>
+                <Text>{birthDate || '请选择出生日期'}</Text>
+                <LineIcon name="chevronRight" size={16} />
+              </View>
+            </Picker>
+          </FormField>
+        </FormSection>
+        <FormSection title="联系方式">
+          <FormField label="邮箱">
+            <TextField
+              value={email}
+              onChange={setEmail}
+              placeholder="请输入邮箱"
+              maxlength={100}
+              disabled={disabled}
+            />
+          </FormField>
+          <FormField label="手机号">
+            <Input
+              className={styles.input}
+              type="number"
+              value={phone}
+              onInput={(event) => setPhone(event.detail.value)}
+              placeholder="请输入手机号"
+              maxlength={11}
+              disabled={disabled}
+            />
+          </FormField>
+        </FormSection>
+      </FormContent>
+      <FormSubmitBar text="保存" submitting={disabled} onSubmit={handleSave} />
+    </ManagementPage>
   )
 }

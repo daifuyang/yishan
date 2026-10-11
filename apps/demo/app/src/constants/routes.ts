@@ -22,8 +22,10 @@ export const SECONDARY_PAGES = {
 
 export const SYSTEM_PAGES = {
   loginLog: 'pages/system/login-log/index',
+  loginLogDetail: 'pages/system/login-log/detail/index',
   deptIndex: 'pages/system/dept/index',
   deptDetail: 'pages/system/dept/detail/index',
+  deptForm: 'pages/system/dept/form/index',
   userIndex: 'pages/system/user/index',
   userDetail: 'pages/system/user/detail/index',
   userEdit: 'pages/system/user/edit/index',
@@ -31,11 +33,17 @@ export const SYSTEM_PAGES = {
   userRoles: 'pages/system/user/roles/index',
   dictIndex: 'pages/system/dict/index',
   dictItems: 'pages/system/dict/items/index',
+  dictDetail: 'pages/system/dict/detail/index',
+  dictForm: 'pages/system/dict/form/index',
+  dictItemDetail: 'pages/system/dict/items/detail/index',
+  dictItemForm: 'pages/system/dict/items/form/index',
   role: 'pages/system/role/index',
   roleDetail: 'pages/system/role/detail/index',
   roleForm: 'pages/system/role/form/index',
   rolePermissions: 'pages/system/role/permissions/index',
   position: 'pages/system/position/index',
+  positionDetail: 'pages/system/position/detail/index',
+  positionForm: 'pages/system/position/form/index',
   menu: 'pages/system/menu/index',
   appMenu: 'pages/system/app-menu/index',
   region: 'pages/system/region/index',
@@ -43,6 +51,7 @@ export const SYSTEM_PAGES = {
   storage: 'pages/system/storage/index',
   attachments: 'pages/system/attachments/index',
   moduleManagement: 'pages/system/module-management/index',
+  moduleDetail: 'pages/system/module-management/detail/index',
 } as const
 
 export const DEMO_PAGES = {

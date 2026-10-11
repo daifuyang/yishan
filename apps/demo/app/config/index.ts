@@ -1,6 +1,8 @@
 import { defineConfig, type UserConfigExport } from '@tarojs/cli'
 import { resolveApiTarget } from '@yishan/demo-config'
 import path from 'node:path'
+import { existsSync } from 'node:fs'
+import { PAGE_CONFIG } from '../src/constants/page-config'
 
 import devConfig from './dev'
 import prodConfig from './prod'
@@ -67,7 +69,14 @@ export default defineConfig(async (merge, _env) => {
       enable: true,
       // Taro 的默认缓存只跟踪 app.config，工作台导航配置也必须使旧路由缓存失效。
       buildDependencies: {
-        pages: [path.resolve(__dirname, '../src/pages/apps/index.config.ts')],
+        pages: [
+          path.resolve(__dirname, '../src/app.config.ts'),
+          path.resolve(__dirname, '../src/constants/page-config.ts'),
+          ...[
+            ...PAGE_CONFIG.pages,
+            ...PAGE_CONFIG.subPackages.flatMap((pkg) => pkg.pages.map((page) => `${pkg.root}/${page}`)),
+          ].map((page) => path.resolve(__dirname, `../src/${page}.config.ts`)).filter(existsSync),
+        ],
       },
     },
     mini: {

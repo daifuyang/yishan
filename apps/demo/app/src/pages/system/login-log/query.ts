@@ -17,3 +17,16 @@ export function loginLogTimeRange(start: string, end: string) {
   if (startTime && endTime && startTime > endTime) throw new Error("开始日期不能晚于结束日期");
   return { startTime, endTime };
 }
+
+import type { AdminLoginLogListQuery } from '@/api/admin/types'
+
+export function buildLoginLogQuery(page: number, pageSize: number, keyword: string, filters: Record<string, unknown>): AdminLoginLogListQuery {
+  return {
+    page, pageSize, keyword: keyword || undefined,
+    status: filters.status === '0' || filters.status === '1' ? filters.status : undefined,
+    sortBy: 'createdAt' as const,
+    sortOrder: filters.sort === 'asc' ? 'asc' as const : 'desc' as const,
+    ...loginLogTimeRange(String(filters.startDate || ''), String(filters.endDate || '')),
+  }
+}
+

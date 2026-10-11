@@ -177,10 +177,12 @@ function mountDepartmentForm(
   let completed = 0;
   const component = loadTs("src/pages/system/dept/DepartmentForm.tsx", {
     react,
-    "@tarojs/components": { View: "View", Text: "Text" },
+    "@tarojs/components": { View: "View", Text: "Text", Picker: "Picker" },
     "@tarojs/taro": { showToast: async () => {} },
     "@/components/atoms": { Button: "Button" },
     "@/components/molecules": { FormField: "FormField" },
+    "@/components/management": Object.fromEntries(["FormContent", "FormSection", "FormField", "TextField", "TextAreaField", "SegmentField", "FormSubmitBar", "LineIcon"].map((name) => [name, name])),
+    "./DepartmentForm.module.scss": {},
     "@/hooks": {
       useCanWrite: (...required) =>
         required.every((permission) => permissions.includes(permission)),
@@ -232,17 +234,17 @@ test("department saves lock duplicate submissions and retain input after failure
   });
   await new Promise((resolve) => setImmediate(resolve));
   let tree = form.render();
-  tree.find((node) => node.props?.label === "部门名称").props.onInput("研发部");
+  tree.find((node) => node.type === "TextField").props.onChange("研发部");
   tree = form.render();
-  const button = tree.find((node) => node.type === "Button" && node.props.children === "保存");
-  const one = button.props.onClick();
-  const two = button.props.onClick();
+  const button = tree.find((node) => node.type === "FormSubmitBar");
+  const one = button.props.onSubmit();
+  const two = button.props.onSubmit();
   assert.equal(submitted.length, 1);
   assert.equal(submitted[0].name, "研发部");
   save.reject(new Error("保存失败"));
   await Promise.all([one, two]);
   tree = form.render();
-  assert.equal(tree.find((node) => node.props?.label === "部门名称").props.value, "研发部");
+  assert.equal(tree.find((node) => node.type === "TextField").props.value, "研发部");
   assert.equal(tree.find((node) => node.type === "AdminNotice").props.children, "保存失败");
   assert.equal(form.completed(), 0);
   form.unmount();
@@ -266,9 +268,9 @@ test("department detail load failure prevents overwriting existing department wi
   await new Promise((resolve) => setImmediate(resolve));
   const button = form
     .render()
-    .find((node) => node.type === "Button" && node.props.children === "保存");
-  assert.equal(button.props.disabled, true);
-  await button.props.onClick();
+    .find((node) => node.type === "FormSubmitBar");
+  assert.equal(button.props.submitting, true);
+  await button.props.onSubmit();
   assert.equal(saved, 0);
   form.unmount();
 });
@@ -287,11 +289,11 @@ test("department save remains denied without exact create/update permission", as
   );
   await new Promise((resolve) => setImmediate(resolve));
   let tree = form.render();
-  tree.find((node) => node.props?.label === "部门名称").props.onInput("研发");
+  tree.find((node) => node.type === "TextField").props.onChange("研发");
   tree = form.render();
-  const button = tree.find((node) => node.type === "Button" && node.props.children === "保存");
-  assert.equal(button.props.disabled, true);
-  await button.props.onClick();
+  const button = tree.find((node) => node.type === "FormSubmitBar");
+  assert.equal(button.props.submitting, true);
+  await button.props.onSubmit();
   assert.equal(saved, 0);
   form.unmount();
 });
@@ -305,14 +307,36 @@ test("unmounted department form ignores a stale successful save", async () => {
   await new Promise((resolve) => setImmediate(resolve));
   form
     .render()
-    .find((node) => node.props?.label === "部门名称")
-    .props.onInput("研发");
+    .find((node) => node.type === "TextField")
+    .props.onChange("研发");
   const pending = form
     .render()
-    .find((node) => node.type === "Button" && node.props.children === "保存")
-    .props.onClick();
+    .find((node) => node.type === "FormSubmitBar")
+    .props.onSubmit();
   form.unmount();
   save.resolve({ id: 5 });
   await pending;
   assert.equal(form.completed(), 0);
+});
+
+
+
+test("department standalone edit loads authoritative parent and saves with its ID", async () => {
+  const saved = [];
+  const form = mountDepartmentForm({
+    getAdminDeptTree: async () => [{id: 1, name: "总部", children: [{id: 3, name: "研发"}]}],
+    getAdminDept: async (id) => ({id, name: "研发", parentId: 1, status: "1", sort_order: 0}),
+    updateAdminDept: async (id, payload) => saved.push({id, payload}),
+  }, {departmentId: 3}, ["system:department:list", "system:department:update"]);
+  await new Promise((resolve) => setImmediate(resolve));
+  const tree = form.render();
+  assert.equal(tree.find((node) => node.type === "TextField").props.value, "研发");
+  const picker = tree.find((node) => node.type === "Picker");
+  assert.deepEqual(picker.props.range, ["总部"]);
+  await tree.find((node) => node.type === "FormSubmitBar").props.onSubmit();
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].id, 3);
+  assert.equal(saved[0].payload.parentId, 1);
+  assert.equal(form.completed(), 1);
+  form.unmount();
 });

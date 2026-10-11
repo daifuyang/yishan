@@ -78,10 +78,13 @@
 
 .row__arrow {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 20px;
   margin-left: var(--space-1);
   color: var(--color-text-quaternary);
-  font-size: var(--font-size-18);
-  line-height: 1;
 }
 
 /* 与 .list 的 margin-bottom 组成模块间距，自身不再叠加 padding */

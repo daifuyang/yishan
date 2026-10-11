@@ -1,0 +1,36 @@
+.layer { position: fixed; inset: 0; z-index: var(--z-modal, 1000); }
+.mask { position: absolute; inset: 0; background: var(--color-bg-mask); }
+.sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-bg-surface);
+  border-radius: 16px 16px 0 0;
+  padding-bottom: var(--safe-area-bottom);
+  overflow: hidden;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-divider);
+  font-weight: 600;
+  font-size: 16px;
+}
+.close { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: -12px; }
+.options { max-height: 50vh; }
+.option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 52px;
+  padding: 0 16px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--color-divider);
+  color: var(--color-text-primary);
+}
+.option:last-child { border-bottom: 0; }
+.selected { color: var(--color-primary); font-weight: 500; }

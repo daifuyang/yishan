@@ -151,5 +151,6 @@ test('workbench navigation configuration invalidates the persistent build cache'
   await withEnvironment({ TARO_ENV: 'h5', NODE_ENV: 'development' }, async () => {
     const config = await appConfig()(merge, {})
     assert.ok(config.cache.buildDependencies?.pages?.some(file => file.replace(/\\/g, '/').endsWith('/src/pages/apps/index.config.ts')))
+    assert.ok(config.cache.buildDependencies?.pages?.some(file => file.replace(/\\/g, '/').endsWith('/src/constants/page-config.ts')))
   })
 })

@@ -2,6 +2,25 @@
 
 保留 Taro 4、React、TypeScript、Zustand；使用现有 Design Tokens、组件及服务端认证能力。没有新增业务模块、数据库表或生产 Mock。
 
+## 应用入口图标规范
+
+首页常用应用、工作台及后续同类应用入口统一使用 `src/components/ApplicationIcon` 的 `ApplicationIcon`，传入稳定的应用 `id` 和工作台配置的 `icon`，不要在页面另建图标或配色映射。
+
+- 底板为 48×48 px、14 px 圆角的纯色方形；图形为居中的 28×28 px 白色 Phosphor Fill 实心图标。保持平面风格，不添加渐变、阴影、描边或装饰。
+- 图形与别名统一维护在组件目录的 `app-icons.ts`，保留 Phosphor MIT 许可；通过 SVG data URL 背景图兼容 H5 和小程序。
+- 配色以应用 ID 在 `APP_COLORS` 中固定，同一应用在所有入口保持一致。使用现有蓝、绿、紫、橙、黄、青、红、靛色板；新增应用在这里指定颜色，未配置时默认蓝色，未知图形回退为四宫格。
+- 应用名称放在图标下方，保持居中并对长名称省略；网格、文字字号和点击反馈由所在页面控制。加载骨架使用相同底板尺寸与圆角。
+
+## 管理页面交互规范
+
+用户管理、角色管理是移动管理页面的基准。列表使用 `ManagementPageHeader`（标题、数量、新建）、白色 `ManagementFilterBar`、`ManagementSearchBar` 和 `ManagementList` / `ManagementCell`。有多种筛选条件时按接口能力展示入口；状态、排序等单选使用 `BottomSelectSheet`，点击选项生效并关闭，取消不修改。多条件筛选在底部面板内保留草稿，确认后生效。
+
+列表点击进入独立详情页，使用 `DetailHero` 和业务分组；创建、更新记录放在默认折叠的分组。详情操作放在 `BottomActionBar`，次要和删除操作进入 `ActionSheet`。新建与编辑使用同一个独立表单页及 `FormContent` / `FormSection` / `FormSubmitBar`；关联对象继承来源上下文，失败保留输入，成功返回后刷新。
+
+部门、字典等保留自己的层级或关联导航；不为视觉一致性改变业务关系。已有权限、账号切换和在途请求保护继续生效。入口图标使用彩色实心样式，列表和操作图标使用现有线性图标；不额外添加装饰或动画。
+
+第一批及后续清单见 [管理页面统一实施计划](../../../docs/superpowers/plans/2026-10-11-mobile-management-unification.md)。
+
 ## 运行
 
 ```bash

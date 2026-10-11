@@ -12,10 +12,20 @@ import type { DeptUser } from '@/api/types'
 import styles from './index.module.scss'
 import { PageContainer } from '@/components/layout'
 
+function readDeptName(name?: string): string {
+  if (!name) return '部门'
+  try {
+    return decodeURIComponent(name)
+  } catch {
+    // 兼容已解码且包含百分号的名称，以及不完整的 URL 编码。
+    return name
+  }
+}
+
 export default function ContactsDept() {
   const router = useRouter()
   const deptId = Number(router.params.id)
-  const deptName = router.params.name || '部门'
+  const deptName = readDeptName(router.params.name)
 
   const [users, setUsers] = useState<DeptUser[]>([])
   const [loading, setLoading] = useState(false)

@@ -21,6 +21,7 @@ export {
   type DetailSectionProps,
 } from './DetailLayout'
 export { OrganizationPicker } from './OrganizationPicker'
+export { BottomSelectSheet, type BottomSelectSheetProps } from './BottomSelectSheet'
 export type { OrganizationPickerProps } from './OrganizationPicker'
 export { DepartmentTreeNavigator } from './DepartmentTreeNavigator'
 export type { DepartmentTreeNavigatorProps } from './DepartmentTreeNavigator'

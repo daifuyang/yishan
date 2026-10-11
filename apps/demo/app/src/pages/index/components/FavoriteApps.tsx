@@ -1,14 +1,13 @@
 import { Text, View } from '@tarojs/components'
 
-import type { HomeIconName } from '../home-icons'
-import { HomeIcon } from './HomeIcon'
+import { ApplicationIcon } from '@/components/ApplicationIcon'
 import { InlineState } from './HomeSection'
 import styles from './FavoriteApps.module.scss'
 
 export interface FavoriteAppItem {
   id: string
   name: string
-  icon: HomeIconName
+  icon: string
 }
 
 export interface FavoriteAppsProps {
@@ -45,9 +44,7 @@ export function FavoriteApps({ apps, loading, error, onRetry, onOpen }: Favorite
           hoverClass={styles['app--pressed']}
           onClick={() => onOpen(app.id)}
         >
-          <View className={styles.app__icon}>
-            <HomeIcon name={app.icon} size={24} color="#1677FF" />
-          </View>
+          <ApplicationIcon id={app.id} icon={app.icon} />
           <Text className={styles.app__label}>{app.name}</Text>
         </View>
       ))}

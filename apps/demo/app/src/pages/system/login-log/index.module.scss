@@ -1,0 +1,54 @@
+.filters {
+  position: relative;
+  padding: 12px 16px 0;
+  background: var(--color-bg-surface);
+}
+.triggers { display: flex; margin-top: 6px; }
+.trigger {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+.triggerLabel { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.active { color: var(--color-primary); font-weight: 500; }
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 12px;
+  color: var(--color-primary);
+  font-size: 12px;
+}
+.layer { position: fixed; inset: 0; z-index: var(--z-modal, 1000); }
+.mask { position: absolute; inset: 0; background: var(--color-bg-mask, rgba(0, 0, 0, 0.4)); }
+.sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-bg-surface);
+  border-radius: 16px 16px 0 0;
+  padding-bottom: var(--safe-area-bottom);
+  overflow: hidden;
+}
+.header { display: flex; justify-content: space-between; align-items: center; height: 56px; padding: 0 16px; border-bottom: 1px solid var(--color-divider); font-weight: 600; font-size: 16px; }
+.close { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: -12px; }
+.body { height: 280px; max-height: 45vh; }
+.heading { display: block; margin: 20px 16px 12px; font-size: 14px; font-weight: 500; }
+.presets { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 16px; }
+.preset { padding: 10px 14px; border: 1px solid var(--color-border-light); border-radius: 8px; font-size: 14px; }
+.selected { color: var(--color-primary); background: var(--color-primary-bg); border-color: var(--color-primary-border); }
+.dates { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 20px 16px; font-size: 14px; }
+.date { padding: 12px 8px; background: var(--color-bg-base); border-radius: 6px; }
+.error { display: block; color: var(--color-danger); font-size: 13px; padding: 12px 16px; }
+.footer { display: flex; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--color-divider); }
+.footer .reset, .footer .confirm { flex: 1; margin: 0; height: 44px; line-height: 44px; font-size: 15px; border-radius: 8px; }
+.footer .reset { color: var(--color-text-secondary); background: var(--color-bg-base); }
+.footer .confirm { color: #fff; background: var(--color-primary); }
+.reset::after, .confirm::after { border: 0; }

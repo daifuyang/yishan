@@ -88,7 +88,11 @@ export function ManagementCell({
       </View>
       {/* 状态放在右侧独立成列：与整行垂直居中，不必和标题抢同一条基线 */}
       {tag ? <View className={styles.row__tag}>{tag}</View> : null}
-      {showArrow ? <Text className={styles.row__arrow}>›</Text> : null}
+      {showArrow ? (
+        <View className={styles.row__arrow}>
+          <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+        </View>
+      ) : null}
     </View>
   )
 }

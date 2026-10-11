@@ -92,119 +92,6 @@ function mountEditor(entry, name, props, apiMocks, permissions = []) {
   };
 }
 
-test("position submission locks duplicate taps and retains fields after server rejection", async () => {
-  const pending = deferred();
-  const requests = [];
-  let saved = 0;
-  const editor = mountEditor(
-    "src/pages/system/position/PositionEditor.tsx",
-    "PositionEditor",
-    {
-      editable: true,
-      onClose() {},
-      onSaved() {
-        saved++;
-      },
-    },
-    {
-      "@/api/admin/position": {
-        createAdminPosition: (payload) => {
-          requests.push(payload);
-          return pending.promise;
-        },
-      },
-    },
-    ["system:position:create"],
-  );
-  editor.field("岗位名称").props.onChange("审核主管");
-  const save = editor.save().props.onClick;
-  save();
-  save();
-  assert.equal(requests.length, 1);
-  pending.reject(new Error("名称已存在"));
-  const nodes = await editor.settle();
-  assert.equal(editor.field("岗位名称").props.value, "审核主管");
-  assert.equal(editor.save().props.loading, false);
-  assert.equal(
-    nodes.some((node) => node.type === "AdminNotice" && node.props.children[0] === "名称已存在"),
-    true,
-  );
-  assert.equal(saved, 0);
-});
-
-test("an editor callback from the previous session cannot submit its draft", async () => {
-  let session = 0;
-  let creates = 0;
-  const editor = mountEditor(
-    "src/pages/system/position/PositionEditor.tsx",
-    "PositionEditor",
-    { editable: true, onClose() {}, onSaved() {} },
-    {
-      "@/api/client": { getSessionVersion: () => session },
-      "@/api/admin/position": {
-        createAdminPosition: async () => {
-          creates++;
-        },
-      },
-    },
-    ["system:position:create"],
-  );
-  editor.field("岗位名称").props.onChange("旧账号草稿");
-  const save = editor.save().props.onClick;
-  session++;
-  save();
-  await editor.settle();
-  assert.equal(creates, 0);
-});
-
-test("a completed save from the previous session cannot close a new editor", async () => {
-  let session = 0;
-  let saved = 0;
-  const pending = deferred();
-  const editor = mountEditor(
-    "src/pages/system/position/PositionEditor.tsx",
-    "PositionEditor",
-    {
-      editable: true,
-      onClose() {},
-      onSaved() {
-        saved++;
-      },
-    },
-    {
-      "@/api/client": { getSessionVersion: () => session },
-      "@/api/admin/position": { createAdminPosition: () => pending.promise },
-    },
-    ["system:position:create"],
-  );
-  editor.field("岗位名称").props.onChange("旧账号岗位");
-  editor.save().props.onClick();
-  session++;
-  editor.unmount();
-  pending.resolve({ id: 7 });
-  await editor.settle();
-  assert.equal(saved, 0);
-});
-
-test("failed position detail cannot overwrite the record with form defaults", async () => {
-  const editor = mountEditor(
-    "src/pages/system/position/PositionEditor.tsx",
-    "PositionEditor",
-    { id: 7, editable: true, onClose() {}, onSaved() {} },
-    {
-      "@/api/admin/position": {
-        getAdminPosition: async () => {
-          throw new Error("加载失败");
-        },
-      },
-    },
-    ["system:position:update"],
-  );
-  await editor.settle();
-  assert.equal(editor.field("岗位名称").props.disabled, true);
-  assert.equal(editor.save().props.disabled, true);
-});
-
 test("menu edits preserve hidden flags and omit untouched associated permissions", async () => {
   const requests = [];
   const editor = mountEditor(
@@ -436,45 +323,6 @@ function pageActions(page, permissions, records) {
     .map((node) => node.props.children);
 }
 
-test("position deletion rechecks current permission after confirmation", async () => {
-  let allowed = true;
-  let deletes = 0;
-  const nodes = pageNodes(
-    "position",
-    ["system:position:delete"],
-    [{ id: 8, name: "主管", status: "1" }],
-    {
-      "@/utils/auth-guard": {
-        useRequireAuth: () => ({ ready: true, allowed: true }),
-        canWriteModuleNow: () => allowed,
-      },
-      "@/api/admin/position": {
-        deleteAdminPosition: async () => {
-          deletes++;
-        },
-      },
-      "@/hooks": {
-        useCanWrite: (...required) =>
-          required.every((code) => ["system:position:delete"].includes(code)),
-        useListPagination: () => ({
-          list: [{ id: 8, name: "主管", status: "1" }],
-          keyword: "",
-          filters: {},
-          finished: true,
-          refresh() {},
-        }),
-        confirmAction: async () => {
-          allowed = false;
-          return true;
-        },
-      },
-    },
-  );
-  nodes.find((node) => node.type === "Button" && node.props.children === "删除").props.onClick();
-  await new Promise(setImmediate);
-  assert.equal(deletes, 0);
-});
-
 test("role list keeps row actions out and gates create behind grant permission", () => {
   const record = { id: 1, name: "系统管理员", status: "1", dataScope: "1", isSystemDefault: true };
 
@@ -510,12 +358,15 @@ test("role list keeps row actions out and gates create behind grant permission",
 });
 
 test("position read-only users can inspect but cannot mutate", () => {
-  const actions = pageActions("position", [], [{ id: 1, name: "主管", status: "1" }]);
-  assert.equal(actions.includes("详情"), true);
-  assert.equal(
-    actions.some((label) => ["新建", "编辑", "删除", "禁用"].includes(label)),
-    false,
-  );
+  const nodes = pageNodes("position", [], [{ id: 1, name: "主管", status: "1" }], {
+    "./index.module.scss": { filter: "filter", active: "active" },
+    "./model": { POSITION_STATUSES: [{ key: "", label: "全部状态" }] },
+    "@tarojs/taro": { useDidShow() {}, useDidHide() {} },
+    "@/components/management": Object.fromEntries(["ManagementPage", "ManagementPageHeader", "ManagementHeaderAction", "ManagementFilterBar", "ManagementSearchBar", "ManagementList", "ManagementCell", "ManagementStates", "ManagementListFooter", "BottomSelectSheet", "LineIcon"].map(key => [key, key])),
+  });
+  assert.equal(nodes.filter(node => node.type === "ManagementCell" && typeof node.props.onClick === "function").length, 1);
+  assert.equal(nodes.filter(node => node.type === "ManagementHeaderAction").length, 0);
+  assert.equal(nodes.filter(node => node.type === "Button").length, 0);
 });
 
 test("role authorization excludes action IDs, derives app groups, and keeps standalone permissions", () => {
