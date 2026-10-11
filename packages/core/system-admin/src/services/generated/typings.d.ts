@@ -98,6 +98,66 @@ declare namespace SystemAPI {
     pageSize?: number;
   };
 
+  type appMenuDeleteResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { id: number };
+    timestamp: string;
+  };
+
+  type appMenuDetailResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: appMenuNode;
+    timestamp: string;
+  };
+
+  type appMenuNode = {
+    /** 工作台菜单ID */
+    id: number;
+    /** 分组ID，分组本身为空 */
+    parentId?: number;
+    /** 类型（0:分组,1:应用入口） */
+    type: 0 | 1;
+    /** 名称 */
+    name: string;
+    /** 图标名 */
+    icon?: string;
+    /** App 页面入口，如 pages/contacts/index/index */
+    page?: string;
+    /** 所属模块ID，系统为 core */
+    moduleId: string;
+    /** 同级排序，越小越靠前 */
+    sortOrder: number;
+    /** 状态（0-禁用，1-启用） */
+    status: "0" | "1";
+    /** 创建时间 */
+    createdAt: string;
+    /** 更新时间 */
+    updatedAt: string;
+    children?: appMenuNode[] | null;
+  };
+
+  type appMenuReorderResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { count: number };
+    timestamp: string;
+  };
+
+  type appMenuTreeList = appMenuNode[];
+
+  type appMenuTreeResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: appMenuTreeList;
+    timestamp: string;
+  };
+
   type attachmentBatchDeleteReq = {
     /** 素材ID列表 */
     ids: number[];
@@ -366,6 +426,11 @@ declare namespace SystemAPI {
     timestamp: string;
   };
 
+  type deleteAppMenuParams = {
+    /** 工作台菜单ID */
+    id: string;
+  };
+
   type deleteAttachmentFolderParams = {
     /** 分组ID */
     id: number;
@@ -534,6 +599,11 @@ declare namespace SystemAPI {
     data: sysDictType[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+
+  type getAppMenuDetailParams = {
+    /** 工作台菜单ID */
+    id: string;
   };
 
   type getAttachmentDetailParams = {
@@ -1023,6 +1093,13 @@ declare namespace SystemAPI {
     timestamp: string;
   };
 
+  type reorderAppMenuReq = {
+    /** 同级所属分组ID；为空表示顶层分组之间排序 */
+    parentId?: number;
+    /** 该层级全部菜单ID，按期望顺序排列 */
+    orderedIds: number[];
+  };
+
   type roleDeleteResp = {
     code: number;
     message: string;
@@ -1046,6 +1123,25 @@ declare namespace SystemAPI {
     data: sysRole[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+
+  type saveAppMenuReq = {
+    /** 名称 */
+    name: string;
+    /** 类型（0:分组,1:应用入口） */
+    type?: 0 | 1;
+    /** 分组ID，应用入口必填 */
+    parentId?: number;
+    /** 图标名 */
+    icon?: string;
+    /** App 页面入口 */
+    page?: string;
+    /** 所属模块ID */
+    moduleId?: string;
+    /** 同级排序 */
+    sortOrder?: number;
+    /** 状态 */
+    status?: "0" | "1";
   };
 
   type saveDictDataReq = {
@@ -1117,6 +1213,8 @@ declare namespace SystemAPI {
     dataScope?: "1" | "2" | "3" | "4" | "5";
     /** 菜单ID列表 */
     menuIds?: number[];
+    /** App 工作台菜单ID列表 */
+    appMenuIds?: number[];
     /** 后端功能/API 权限码列表 */
     permissionCodes?: string[];
   };
@@ -1488,6 +1586,8 @@ declare namespace SystemAPI {
     updatedAt: string;
     /** 菜单ID列表 */
     menuIds?: number[];
+    /** App 工作台菜单ID列表 */
+    appMenuIds?: number[];
     /** 后端功能/API 权限码列表 */
     permissionCodes?: string[];
   };
@@ -1577,6 +1677,30 @@ declare namespace SystemAPI {
       expiredTokens?: number;
       revokedTokens?: number;
     };
+  };
+
+  type updateAppMenuParams = {
+    /** 工作台菜单ID */
+    id: string;
+  };
+
+  type updateAppMenuReq = {
+    /** 名称 */
+    name?: string;
+    /** 类型（0:分组,1:应用入口） */
+    type?: 0 | 1;
+    /** 分组ID，应用入口必填 */
+    parentId?: number;
+    /** 图标名 */
+    icon?: string;
+    /** App 页面入口 */
+    page?: string;
+    /** 所属模块ID */
+    moduleId?: string;
+    /** 同级排序 */
+    sortOrder?: number;
+    /** 状态 */
+    status?: "0" | "1";
   };
 
   type updateAttachmentFolderParams = {
@@ -1726,6 +1850,8 @@ declare namespace SystemAPI {
     dataScope?: "1" | "2" | "3" | "4" | "5";
     /** 菜单ID列表 */
     menuIds?: number[];
+    /** App 工作台菜单ID列表 */
+    appMenuIds?: number[];
     /** 后端功能/API 权限码列表 */
     permissionCodes?: string[];
   };

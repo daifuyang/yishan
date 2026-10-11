@@ -1,0 +1,203 @@
+import Taro, { useRouter } from '@tarojs/taro'
+import { useEffect, useRef, useState } from 'react'
+import * as adminRoleApi from '@/api/admin/role'
+import type { AdminRoleDetail } from '@/api/admin/role'
+import { getSessionVersion } from '@/api/client'
+import { StateView } from '@/components/feedback'
+import {
+  FormContent,
+  FormField,
+  FormSection,
+  FormSubmitBar,
+  LinkRow,
+  ManagementPage,
+  SegmentField,
+  TextAreaField,
+  TextField,
+} from '@/components/management'
+import { PageHeader } from '@/components/molecules'
+import { SYSTEM_PAGES } from '@/constants/routes'
+import { useCanWrite } from '@/hooks'
+import { useRequireAuth } from '@/utils/auth-guard'
+import { navigateBack, navigateTo } from '@/utils/router'
+import { withAccountScope } from '../../_shared/AdminUI'
+import { DATA_SCOPE_LABELS } from '../model'
+
+const STATUS_OPTIONS = [
+  { value: '1', label: '启用' },
+  { value: '0', label: '禁用' },
+] as const
+
+const SCOPE_OPTIONS = (Object.keys(DATA_SCOPE_LABELS) as (keyof typeof DATA_SCOPE_LABELS)[]).map(
+  (value) => ({ value, label: DATA_SCOPE_LABELS[value] }),
+)
+
+function RoleFormPage() {
+  const guard = useRequireAuth({ moduleId: 'system-role' })
+  const router = useRouter()
+  const rawId = router.params.id
+  const id = rawId ? Number(rawId) : undefined
+  const isEdit = Boolean(id && Number.isInteger(id) && id > 0)
+
+  const canSave = useCanWrite(
+    isEdit ? 'system:role:update' : 'system:role:create',
+    'system:role:grant',
+  )
+
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [status, setStatus] = useState<'0' | '1'>('1')
+  const [dataScope, setDataScope] = useState<AdminRoleDetail['dataScope']>('1')
+  const [loading, setLoading] = useState(isEdit)
+  const [error, setError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
+  const loadedFor = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!isEdit || loadedFor.current === id) return
+    loadedFor.current = id as number
+    let active = true
+    void (async () => {
+      setLoading(true)
+      try {
+        const role = await adminRoleApi.getAdminRole(id as number)
+        if (!active) return
+        setName(role.name)
+        setDescription(role.description ?? '')
+        setStatus(role.status)
+        setDataScope(role.dataScope)
+      } catch (e) {
+        if (active) setError(e instanceof Error ? e.message : '加载失败')
+      } finally {
+        if (active) setLoading(false)
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [isEdit, id])
+
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+
+  const handleSubmit = async () => {
+    if (submittingRef.current) return
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setNameError('请输入角色名称')
+      return
+    }
+    setNameError('')
+    submittingRef.current = true
+    setSubmitting(true)
+    const session = getSessionVersion()
+    try {
+      const payload = {
+        name: trimmed,
+        description: description.trim() || undefined,
+        status,
+        dataScope,
+      }
+      if (isEdit) await adminRoleApi.updateAdminRole(id as number, payload)
+      else
+        await adminRoleApi.createAdminRole({
+          ...payload,
+          menuIds: [],
+          permissionCodes: [],
+          appMenuIds: [],
+        })
+      if (session !== getSessionVersion()) return
+      Taro.showToast({ title: '保存成功', icon: 'success' })
+      setTimeout(() => navigateBack(1), 600)
+    } catch (e) {
+      if (session === getSessionVersion()) {
+        Taro.showToast({ title: e instanceof Error ? e.message : '保存失败', icon: 'none' })
+      }
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
+    }
+  }
+
+  const kind = error ? 'error' : loading ? 'loading' : 'ready'
+
+  return (
+    <ManagementPage>
+      {process.env.TARO_ENV === 'h5' ? (
+        <PageHeader title={isEdit ? '编辑角色' : '新建角色'} />
+      ) : null}
+      <StateView
+        kind={kind}
+        text={error ?? undefined}
+        onRetry={() => setError(null)}
+        minHeight={200}
+      >
+        <FormContent>
+          <FormSection title="基础信息">
+            <FormField label="角色名称" required error={nameError}>
+              <TextField
+                value={name}
+                onChange={(value) => {
+                  setName(value)
+                  if (nameError) setNameError('')
+                }}
+                placeholder="请输入角色名称"
+                maxlength={50}
+                disabled={!canSave || submitting}
+              />
+            </FormField>
+            <FormField label="描述">
+              <TextAreaField
+                value={description}
+                onChange={setDescription}
+                placeholder="请输入角色描述"
+                maxlength={200}
+                disabled={!canSave || submitting}
+              />
+            </FormField>
+            <FormField label="状态">
+              <SegmentField
+                value={status}
+                options={STATUS_OPTIONS}
+                onChange={setStatus}
+                disabled={!canSave || submitting}
+              />
+            </FormField>
+            <FormField label="数据权限">
+              <SegmentField
+                value={dataScope}
+                options={SCOPE_OPTIONS}
+                onChange={setDataScope}
+                disabled={!canSave || submitting}
+              />
+            </FormField>
+          </FormSection>
+
+          <FormSection
+            title="权限配置"
+            hint="菜单与功能权限在独立的权限配置页维护，保存角色后生效。"
+          >
+            <LinkRow
+              label="配置权限"
+              value={isEdit ? '前往配置' : '保存后可配置'}
+              onClick={() => {
+                if (!isEdit) {
+                  Taro.showToast({ title: '请先保存角色', icon: 'none' })
+                  return
+                }
+                navigateTo(`/${SYSTEM_PAGES.rolePermissions}?id=${id}`)
+              }}
+            />
+          </FormSection>
+        </FormContent>
+
+        {canSave ? (
+          <FormSubmitBar text="保存" submitting={submitting} onSubmit={() => void handleSubmit()} />
+        ) : null}
+      </StateView>
+    </ManagementPage>
+  )
+}
+
+export default withAccountScope(RoleFormPage)

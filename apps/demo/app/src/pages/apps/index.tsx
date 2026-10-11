@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Text, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow, usePullDownRefresh } from '@tarojs/taro'
+import { useEffect, useRef, useState } from 'react'
 import { EmptyState, ErrorState } from '@/components/feedback'
 import { PageContainer } from '@/components/layout'
-import { getWorkbenchGroups, type WorkbenchApp } from '@/modules/registry'
-import { useModuleStore } from '@/stores/modules'
+import { getWorkbenchGroups } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
+import { useModuleStore } from '@/stores/modules'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { ApplicationGrid } from './ApplicationGrid'
-import { FavoritesEditor } from './FavoritesEditor'
-import { openWorkbenchApp } from './navigation'
 import styles from './index.module.scss'
+import { openWorkbenchApp } from './navigation'
+import { WorkbenchHeader } from './WorkbenchHeader'
 
 export default function AppsPage() {
   const guard = useRequireAuth()
@@ -18,11 +18,9 @@ export default function AppsPage() {
   const loading = useModuleStore((state) => state.loading)
   const error = useModuleStore((state) => state.error)
   const loaded = useModuleStore((state) => state.loaded)
-  const favorites = useModuleStore((state) => state.commonModuleIds)
   const user = useAuthStore((state) => state.user)
   const enabledModuleIds = useAuthStore((state) => state.enabledModuleIds)
   const [query, setQuery] = useState('')
-  const [editing, setEditing] = useState(false)
   const visible = useRef(false)
 
   useEffect(() => {
@@ -30,7 +28,6 @@ export default function AppsPage() {
   }, [guard.ready, loaded, user?.id, user?.permissions, enabledModuleIds])
   useEffect(() => {
     setQuery('')
-    setEditing(false)
   }, [user?.id])
   useDidShow(() => {
     visible.current = true
@@ -47,14 +44,13 @@ export default function AppsPage() {
     }
   })
 
-  const groups = getWorkbenchGroups(menus, user?.permissions, enabledModuleIds)
+  // 旧后台目录仍可能下发「常用」；它属于首页，不参与应用中心的分组和搜索。
+  const catalogMenus = menus.filter((group) => !['常用', '常用应用'].includes(group.name.trim()))
+  const groups = getWorkbenchGroups(catalogMenus, user?.permissions, enabledModuleIds)
   const apps = groups.flatMap((group) => group.apps)
   const searchGroups = query.trim()
-    ? getWorkbenchGroups(menus, user?.permissions, enabledModuleIds, query)
+    ? getWorkbenchGroups(catalogMenus, user?.permissions, enabledModuleIds, query)
     : groups
-  const common = favorites
-    .map((id) => apps.find((app) => app.id === id))
-    .filter((app): app is WorkbenchApp => Boolean(app))
   const retry = () => void useModuleStore.getState().load({ force: true })
   const open = (id: string) => {
     void openWorkbenchApp(id).catch((failure: unknown) => {
@@ -67,31 +63,21 @@ export default function AppsPage() {
 
   return (
     <PageContainer className={styles.apps}>
-      <View className={styles.apps__header}>
-        <Text className={styles.apps__pageTitle}>工作台</Text>
-        <Button className={styles.apps__action} disabled={loading} onClick={retry}>
-          {loading && loaded ? '刷新中' : '刷新'}
-        </Button>
+      <WorkbenchHeader loading={loading} loaded={loaded} onRefresh={retry} />
+      <View className={styles.apps__searchWrap}>
+        <View className={styles.apps__searchIcon} aria-hidden />
+        <Input
+          className={styles.apps__search}
+          value={query}
+          placeholder="搜索应用"
+          onInput={(event) => setQuery(event.detail.value)}
+        />
+        {query ? (
+          <Button className={styles.apps__clear} onClick={() => setQuery('')} aria-label="清空搜索">
+            清空
+          </Button>
+        ) : null}
       </View>
-      {!editing ? (
-        <View className={styles.apps__searchWrap}>
-          <Input
-            className={styles.apps__search}
-            value={query}
-            placeholder="搜索应用"
-            onInput={(event) => setQuery(event.detail.value)}
-          />
-          {query ? (
-            <Button
-              className={styles.apps__clear}
-              onClick={() => setQuery('')}
-              aria-label="清空搜索"
-            >
-              清空
-            </Button>
-          ) : null}
-        </View>
-      ) : null}
       {!loaded ? (
         error ? (
           <ErrorState text={error} onRetry={retry} />
@@ -118,45 +104,17 @@ export default function AppsPage() {
               </Button>
             </View>
           ) : null}
-          {editing ? (
-            <FavoritesEditor key={user?.id} apps={apps} onClose={() => setEditing(false)} />
-          ) : apps.length === 0 ? (
+          {apps.length === 0 ? (
             <EmptyState text="暂无可用应用" />
-          ) : (
-            <>
-              {!query.trim() ? (
-                <View className={styles.apps__section}>
-                  <View className={styles.apps__sectionHeader}>
-                    <Text className={styles.apps__title}>常用应用</Text>
-                    <Button className={styles.apps__action} onClick={() => setEditing(true)}>
-                      编辑
-                    </Button>
-                  </View>
-                  {common.length ? (
-                    <ApplicationGrid apps={common} onOpen={open} />
-                  ) : (
-                    <Text className={styles.apps__hint}>点击编辑，添加常用应用</Text>
-                  )}
-                </View>
-              ) : null}
-              <View className={styles.apps__section}>
-                <View className={styles.apps__sectionHeader}>
-                  <Text className={styles.apps__title}>
-                    {query.trim() ? '搜索结果' : '全部应用'}
-                  </Text>
-                </View>
-                {searchGroups.length ? (
-                  searchGroups.map((group) => (
-                    <View key={group.id} className={styles.apps__group}>
-                      <Text className={styles.apps__category}>{group.name}</Text>
-                      <ApplicationGrid apps={group.apps} onOpen={open} />
-                    </View>
-                  ))
-                ) : (
-                  <EmptyState text="未找到相关应用" />
-                )}
+          ) : searchGroups.length ? (
+            searchGroups.map((group) => (
+              <View key={group.id} className={styles.apps__section}>
+                <Text className={styles.apps__category}>{group.name}</Text>
+                <ApplicationGrid apps={group.apps} onOpen={open} />
               </View>
-            </>
+            ))
+          ) : (
+            <EmptyState text="未找到相关应用" />
           )}
         </>
       )}

@@ -1,0 +1,13 @@
+[
+  {
+    "name": "门户管理",
+    "sortOrder": 40,
+    "children": [
+      { "name": "分类管理", "icon": "FolderOutlined", "page": "pages/portal/categories/index", "sortOrder": 10 },
+      { "name": "文章管理", "icon": "FileTextOutlined", "page": "pages/portal/articles/index", "sortOrder": 20 },
+      { "name": "页面管理", "icon": "FileOutlined", "page": "pages/portal/pages/index", "sortOrder": 30 },
+      { "name": "文章模板", "icon": "CopyOutlined", "page": "pages/portal/article-templates/index", "sortOrder": 40 },
+      { "name": "页面模板", "icon": "SnippetsOutlined", "page": "pages/portal/page-templates/index", "sortOrder": 50 }
+    ]
+  }
+]

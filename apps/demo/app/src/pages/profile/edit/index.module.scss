@@ -1,14 +1,13 @@
 .edit {
   padding: 16px;
   background: var(--color-bg-base, #f7f8fa);
-  min-height: 100vh;
 }
 
 .edit__form {
   background: var(--color-bg-surface, #fff);
   border-radius: 8px;
   padding: 8px 16px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .edit__field {
@@ -40,40 +39,47 @@
   color: var(--color-text-quaternary, #c9cdd4);
 }
 
-.edit__picker {
-  flex: 1;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 15px;
-  color: var(--color-text-primary, #1d2129);
+// H5 下 Input 直接渲染原生 <input>（类名在其自身），placeholderClass 不生效，需用伪元素；weapp 走 placeholderClass
+.edit__input::placeholder {
+  color: var(--color-text-quaternary, #c9cdd4);
 }
 
-.edit__pickerArrow {
-  color: var(--color-text-tertiary, #86909c);
-  font-size: 18px;
-}
-
-.edit__submit {
+// Picker 行：整行可点，Picker 自身为块级撑满宽度，分割线放在 Picker 上
+.edit__row {
+  display: block;
   width: 100%;
-  height: 44px;
-  border-radius: 8px;
-  background: var(--color-primary, #1677ff);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-bottom: 1px solid var(--color-divider, #f2f3f5);
 
-  &::after { border: 0; }
-
-  &--disabled {
-    opacity: 0.6;
+  &:last-child {
+    border-bottom: none;
   }
 }
 
-.edit__submitText {
-  color: #fff;
+.edit__fieldBare {
+  border-bottom: none;
+}
+
+.edit__fieldHover {
+  background: var(--color-bg-base, #f7f8fa);
+}
+
+.edit__value {
+  flex: 1;
+  min-width: 0;
   font-size: 15px;
-  font-weight: 500;
-  letter-spacing: 4px;
+  line-height: 1;
+  color: var(--color-text-primary, #1d2129);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit__valueEmpty {
+  color: var(--color-text-quaternary, #c9cdd4);
+}
+
+.edit__arrow {
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--color-text-quaternary, #c9cdd4);
 }

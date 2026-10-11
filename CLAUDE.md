@@ -174,6 +174,10 @@ These rules were hardened while iterating the `demo` module pages (`/demo/quicks
 - Mini-program `YISHAN_APP_API_BASE_URL` remains an explicit gateway override; H5 defaults to same-origin requests and uses the configured development proxy.
 - Change product defaults in product configuration. Do not introduce a shared default product address.
 
+## App workbench menu (sys_workbench_menu)
+
+The mini-program workbench is configured independently of the Web `sys_menu`: tables `sys_workbench_menu` (group → entry, matched by `page`) and `sys_role_workbench_menu` (role grants), managed in Admin at `/system/app-menu` and per role through `appMenuIds`. They are distinct from the legacy multi-app `sys_app_menu`. `GET /api/v1/app/menus/authorized` returns the authorized group/entry tree (siblings by `sort_order`, then `id`; super_admin sees all; entries of disabled/unmounted `module_id`s and emptied groups are dropped). The App registry only shows entries whose `page` has a registered mobile page and whose API permission the user holds; there is no "建设中" placeholder. Seeds grant default entries to newly created roles only; existing custom roles need manual grants in the role form's "App 工作台" tab.
+
 ## Core App and mobile UI boundaries
 
 `packages/core/app` / `@yishan/core-app` owns generic Taro request/session/storage/env/hooks. Each product injects its API methods, URLs, storage keys and navigation; Core never imports an app or a backend/Admin runtime. UI is exported by `@yishan/ui/mobile`, with original tokens/styles. Product pages, business services, module registration and navigation remain in the full App. Never capture the uninitialized Taro default object in a storage adapter; delegate to live API methods at call time.

@@ -17,6 +17,7 @@ import {
 import { useSystemAdmin } from '../../../runtime';
 import type { DataNode } from 'antd/es/tree';
 import { getMenuTree } from '../../../services/generated/sysMenus';
+import { getAppMenuTree } from '../../../services/generated/sysAppMenus';
 import {
   createRole,
   getRoleDetail,
@@ -63,6 +64,10 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const [checkedMenuKeys, setCheckedMenuKeys] = useState<React.Key[]>([]);
   const [expandedMenuKeys, setExpandedMenuKeys] = useState<React.Key[]>([]);
   const [expandAll, setExpandAll] = useState(true);
+  const [appMenuTree, setAppMenuTree] = useState<SystemAPI.appMenuNode[]>([]);
+  const [checkedAppEntryKeys, setCheckedAppEntryKeys] = useState<React.Key[]>(
+    [],
+  );
   const [checkedPermissionCodes, setCheckedPermissionCodes] = useState<
     string[]
   >([]);
@@ -208,12 +213,49 @@ const RoleForm: React.FC<RoleFormProps> = ({
       setMenuTreeLoading(false);
     }
   };
-  const fetchRoleDetail = async (id: number) => {
+  const fetchAppMenuTree = async () => {
+    const response = await getAppMenuTree();
+    const data = response.data || [];
+    setAppMenuTree(data);
+    return data;
+  };
+  const appEntryIds = useMemo(
+    () =>
+      new Set(
+        appMenuTree.flatMap((group) =>
+          (group.children || []).map((entry) => entry.id),
+        ),
+      ),
+    [appMenuTree],
+  );
+  const appMenuTreeData = useMemo<DataNode[]>(
+    () =>
+      appMenuTree.map((group) => ({
+        key: group.id,
+        title: group.status === '1' ? group.name : `${group.name}（已禁用）`,
+        children: (group.children || []).map((entry) => ({
+          key: entry.id,
+          title:
+            entry.status === '1' ? entry.name : `${entry.name}（已禁用）`,
+        })),
+      })),
+    [appMenuTree],
+  );
+  const fetchRoleDetail = async (
+    id: number,
+    appTree: SystemAPI.appMenuNode[],
+  ) => {
     const response = await getRoleDetail({ id });
     if (!response.success || !response.data) return;
     formRef.current?.setFieldsValue(response.data);
     setCheckedMenuKeys(response.data.menuIds || []);
     setCheckedPermissionCodes(response.data.permissionCodes || []);
+    const entryIds = new Set(
+      appTree.flatMap((group) => (group.children || []).map((entry) => entry.id)),
+    );
+    setCheckedAppEntryKeys(
+      (response.data.appMenuIds || []).filter((menuId) => entryIds.has(menuId)),
+    );
   };
   const handleOpenChange = async (open: boolean) => {
     if (!open) return;
@@ -223,13 +265,10 @@ const RoleForm: React.FC<RoleFormProps> = ({
     if (!initialValues.id) {
       setCheckedMenuKeys([]);
       setCheckedPermissionCodes([]);
+      setCheckedAppEntryKeys([]);
     }
-    await Promise.all([
-      fetchMenuTree(),
-      initialValues.id
-        ? fetchRoleDetail(Number(initialValues.id))
-        : Promise.resolve(),
-    ]);
+    const [, appTree] = await Promise.all([fetchMenuTree(), fetchAppMenuTree()]);
+    if (initialValues.id) await fetchRoleDetail(Number(initialValues.id), appTree);
   };
 
   if (!trigger) return null;
@@ -257,6 +296,16 @@ const RoleForm: React.FC<RoleFormProps> = ({
             (id) => menuNodeById.get(id)?.type !== 2,
           ),
           permissionCodes: checkedPermissionCodes,
+          appMenuIds: [
+            ...checkedAppEntryKeys.map(Number),
+            ...appMenuTree
+              .filter((group) =>
+                (group.children || []).some((entry) =>
+                  checkedAppEntryKeys.includes(entry.id),
+                ),
+              )
+              .map((group) => group.id),
+          ],
         };
         const response = initialValues.id
           ? await updateRole(
@@ -409,6 +458,44 @@ const RoleForm: React.FC<RoleFormProps> = ({
                     />
                   </div>
                 </Spin>
+              </>
+            ),
+          },
+          {
+            key: 'app-workbench',
+            label: 'App 工作台',
+            children: (
+              <>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="勾选该角色在 App 工作台可见的应用入口，与 Web 菜单授权相互独立。"
+                  style={{ marginBottom: 16 }}
+                />
+                <div
+                  style={{
+                    minHeight: 360,
+                    maxHeight: 'calc(100vh - 330px)',
+                    overflow: 'auto',
+                  }}
+                >
+                  <Tree
+                    checkable
+                    selectable={false}
+                    defaultExpandAll
+                    key={appMenuTree.length}
+                    treeData={appMenuTreeData}
+                    checkedKeys={checkedAppEntryKeys}
+                    onCheck={(checked) =>
+                      setCheckedAppEntryKeys(
+                        (Array.isArray(checked)
+                          ? checked
+                          : checked.checked
+                        ).filter((key) => appEntryIds.has(Number(key))),
+                      )
+                    }
+                  />
+                </div>
               </>
             ),
           },

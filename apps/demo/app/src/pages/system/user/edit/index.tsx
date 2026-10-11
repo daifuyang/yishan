@@ -1,4 +1,4 @@
-import { View } from '@tarojs/components'
+import { Picker, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 
 import { Button, Tag } from '@/components/atoms'
@@ -7,12 +7,19 @@ import { PageContainer } from '@/components/layout'
 import { BottomActionBar, FormField, SectionHeader } from '@/components/molecules'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { useUserEditForm } from './hooks/useUserEditForm'
+import { useAuthStore } from '@/stores/auth'
 import styles from './index.module.scss'
 
 export default function UserEditPage() {
   const guard = useRequireAuth({ moduleId: 'system-user' })
   const { params } = useRouter()
-  const form = useUserEditForm(params.id, guard.ready && guard.allowed)
+  const identity = useAuthStore((state) => state.user?.id)
+  if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
+  return <UserEditContent key={`${identity}:${params.id ?? 'create'}`} id={params.id} />
+}
+
+function UserEditContent({ id }: { id?: string }) {
+  const form = useUserEditForm(id)
   const {
     values,
     errors,
@@ -38,7 +45,6 @@ export default function UserEditPage() {
           <FormField
             type="input"
             label="用户名"
-            required={!isEdit}
             error={errors.username}
             placeholder="请输入用户名"
             value={values.username}
@@ -73,8 +79,7 @@ export default function UserEditPage() {
             placeholder="请输入手机号"
             value={values.phone}
             onChange={values.setPhone}
-            inputType="phone"
-            maxLength={11}
+            maxLength={20}
           />
           <FormField
             type="input"
@@ -95,6 +100,10 @@ export default function UserEditPage() {
             onChange={values.setPassword}
           />
           <SectionHeader title="其他属性" />
+          <Picker mode="date" value={values.birthDate} onChange={(event) => values.setBirthDate(event.detail.value)}>
+            <FormField type="picker" label="出生日期" value={values.birthDate} error={errors.birthDate} placeholder="未设置" />
+          </Picker>
+          {values.birthDate ? <Button variant="text" onClick={() => values.setBirthDate('')}>清除出生日期</Button> : null}
           <FormField
             type="picker"
             label="性别"
@@ -118,7 +127,7 @@ export default function UserEditPage() {
           <SectionHeader title="所属部门" />
           <View className={styles.edit__chips}>
             {depts.map((dept) => (
-              <View key={dept.id} onClick={() => toggleDept(dept.id)}>
+              <View key={dept.id} onClick={() => !submitting && toggleDept(dept.id)}>
                 <Tag variant={values.deptIds.includes(dept.id) ? 'primary' : 'default'}>
                   {dept.name}
                 </Tag>
@@ -128,7 +137,7 @@ export default function UserEditPage() {
           <SectionHeader title="角色" />
           <View className={styles.edit__chips}>
             {roles.map((role) => (
-              <View key={role.id} onClick={() => toggleRole(role.id)}>
+              <View key={role.id} onClick={() => !submitting && toggleRole(role.id)}>
                 <Tag variant={values.roleIds.includes(role.id) ? 'success' : 'default'}>
                   {role.name}
                 </Tag>
@@ -137,7 +146,7 @@ export default function UserEditPage() {
           </View>
         </View>
         <BottomActionBar>
-          <Button variant="primary" size="lg" block loading={submitting} onClick={handleSubmit}>
+          <Button variant="primary" size="lg" block disabled={submitting || loading || Boolean(pageError)} loading={submitting} onClick={handleSubmit}>
             保存
           </Button>
         </BottomActionBar>

@@ -1,10 +1,6 @@
 export const APP_NAME = '移山'
 export const APP_VERSION = '0.1.0'
 
-export const PREFERENCE_KEYS = {
-  showLoginActivity: 'yishan:app:show-login-activity',
-} as const
-
 export const TAB_BAR = {
   color: '#86909C',
   selectedColor: '#1677FF',

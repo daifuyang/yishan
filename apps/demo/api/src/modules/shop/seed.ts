@@ -4,8 +4,9 @@
  * 读取 config/system-menu.json，经公开 System 服务写入菜单与权限声明。
  */
 
-import { resolveSeedActor, seedModuleMenus, type MenuSeedNode } from '@yishan/core-system-api'
+import { resolveSeedActor, seedModuleAppMenus, seedModuleMenus, type MenuSeedNode } from '@yishan/core-system-api'
 import adminMenu from './config/system-menu.json'
+import appMenu from './config/app-menu.json'
 
 export type AdminMenuNode = {
   type: 0 | 1 | 2
@@ -52,4 +53,5 @@ export default async function seedShop(): Promise<void> {
   const creatorId = admin?.id ?? 1
 
   await seedModuleMenus('shop', toMenuSeedNodes(menuTree), creatorId)
+  await seedModuleAppMenus('shop', appMenu, creatorId)
 }

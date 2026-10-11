@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from '@tarojs/taro'
 import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
@@ -8,14 +8,13 @@ import {
   hasRequiredPermissions,
   isMobileModuleAuthorized,
   isModuleEnabled,
-  normalizePage,
   type MobileModule,
 } from '@/modules/registry'
 import { redirectToLogin } from './router'
+import { getSessionVersion } from '@/api/client'
 
 export function canAccessModule(
   module: MobileModule | undefined,
-  accessPath: readonly string[] | undefined,
   permissions?: readonly string[],
   enabledModuleIds?: readonly string[] | null,
   requiredPermissions?: readonly string[],
@@ -23,7 +22,6 @@ export function canAccessModule(
   return Boolean(
     module &&
       module.implemented !== false &&
-      accessPath?.some((path) => normalizePage(path) === normalizePage(module.backendMenuPath)) &&
       hasRequiredPermissions(requiredPermissions ?? module.permissions, permissions) &&
       isModuleEnabled(module, enabledModuleIds),
   )
@@ -31,6 +29,26 @@ export function canAccessModule(
 
 export interface RequireAuthOptions {
   moduleId?: string
+}
+
+/** Recheck current capabilities after an asynchronous confirmation or form load. */
+export function canWriteModuleNow(moduleId: string, requiredPermissions: readonly string[]): boolean {
+  const auth = useAuthStore.getState()
+  const modules = useModuleStore.getState()
+  const module = getMobileModuleById(moduleId)
+  return Boolean(auth.bootstrapped && auth.token && auth.user && module && modules.loaded &&
+    isMobileModuleAuthorized(module, modules.menus, auth.user.permissions, auth.enabledModuleIds) &&
+    hasRequiredPermissions(requiredPermissions, auth.user.permissions))
+}
+
+export function useCurrentModuleAccess(moduleId: string) {
+  const mounted = useRef(true)
+  const session = useRef(getSessionVersion()).current
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+  return (requiredPermissions: readonly string[] = []) => mounted.current && session === getSessionVersion() && canWriteModuleNow(moduleId, requiredPermissions)
 }
 
 export function useRequireAuth(options: RequireAuthOptions = {}): {
@@ -65,7 +83,7 @@ export function useRequireAuth(options: RequireAuthOptions = {}): {
         module &&
           menusLoaded &&
           isMobileModuleAuthorized(module, menus, user?.permissions, enabledModuleIds) &&
-          canAccessModule(module, user?.accessPath, user?.permissions, enabledModuleIds, required),
+          canAccessModule(module, user?.permissions, enabledModuleIds, required),
       ))
 
   useEffect(() => {

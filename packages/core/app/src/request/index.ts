@@ -92,11 +92,11 @@ export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, r
   async function send<T>(
     opts: RequestOptions,
     token: string | null,
-  ): Promise<Taro.request.SuccessCallbackResult<ApiResponse<T>>> {
+  ): Promise<Omit<Taro.request.SuccessCallbackResult, 'data'> & { data: T }> {
     if (opts.signal?.aborted) throw new RequestCancelledError()
     const header = { ...opts.headers }
     if (!opts.skipAuth && token) header.Authorization = `Bearer ${token}`
-    const task = Taro.request<ApiResponse<T>>({
+    const task = Taro.request<T>({
       url: buildUrl(opts.path, opts.query),
       method: opts.method ?? 'GET',
       data: opts.data,
@@ -115,8 +115,10 @@ export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, r
     }
   }
 
-  function isUnauthorized(status: number, body?: ApiResponse<unknown>) {
-    return status === 401 || authPolicy(status, body)
+  function isUnauthorized(status: number, body: unknown) {
+    const envelope = body && typeof body === 'object' && 'success' in body && 'code' in body
+      ? body as ApiResponse<unknown> : undefined
+    return status === 401 || authPolicy(status, envelope)
   }
 
   function validate<T>(response: Taro.request.SuccessCallbackResult<ApiResponse<T>>): ApiResponse<T> {
@@ -137,7 +139,7 @@ export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, r
     const flight = { version, promise: Promise.resolve() }
     flight.promise = (async () => {
       try {
-        const response = await send<TokenData>(
+        const response = await send<ApiResponse<TokenData>>(
           {
             path: refreshPath,
             method: 'POST',
@@ -166,7 +168,7 @@ export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, r
     return flight.promise
   }
 
-  async function requestEnvelope<T>(opts: RequestOptions): Promise<ApiResponse<T>> {
+  async function requestResponse<T>(opts: RequestOptions): Promise<Omit<Taro.request.SuccessCallbackResult, 'data'> & { data: T }> {
     const version = sessionVersion
     const token = opts.skipAuth ? null : storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN)
     let response = await send<T>(opts, token)
@@ -181,7 +183,24 @@ export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, r
       if (isUnauthorized(response.statusCode, response.data)) return expireSession(version)
     }
     if (opts.signal?.aborted) throw new RequestCancelledError()
-    return validate(response)
+    return response
+  }
+
+  async function requestEnvelope<T>(opts: RequestOptions): Promise<ApiResponse<T>> {
+    return validate(await requestResponse<ApiResponse<T>>(opts))
+  }
+
+  /** Installed modules may explicitly use raw responses, including DELETE 204. */
+  async function requestRaw<T = unknown>(opts: RequestOptions): Promise<T> {
+    const response = await requestResponse<T>(opts)
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      const body = response.data
+      const message = body && typeof body === 'object' && 'message' in body && typeof body.message === 'string'
+        ? body.message : '请求失败，请重试'
+      throw new ApiError(response.statusCode, message, response.statusCode)
+    }
+    // HTTP 204 has no response body on either H5 or mini-program transports.
+    return response.statusCode === 204 ? undefined as T : response.data
   }
 
   async function request<T = unknown>(opts: RequestOptions): Promise<T> {
@@ -196,7 +215,7 @@ export function createApiClient({ baseUrl, storage, storageKeys: STORAGE_KEYS, r
     return { data: body.data, pagination: body.pagination }
   }
 
-  return { request, requestPaginated, getSessionVersion, invalidateSessionRequests, setUnauthorizedHandler, setTokenRefreshedHandler }
+  return { request, requestRaw, requestPaginated, getSessionVersion, invalidateSessionRequests, setUnauthorizedHandler, setTokenRefreshedHandler }
 }
 
 export type ApiClient = ReturnType<typeof createApiClient>

@@ -83,6 +83,12 @@
   flex: 1;
 }
 
+// H5 下 Input/Textarea 直接渲染原生控件，placeholderClass 不生效
+.mFormField__input::placeholder,
+.mFormField__textarea::placeholder {
+  color: var(--color-text-quaternary);
+}
+
 .mFormField__extra {
   flex-shrink: 0;
 }

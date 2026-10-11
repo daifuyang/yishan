@@ -148,6 +148,55 @@ describe('Admin Roles routes', () => {
     await app.close()
   })
 
+  it('POST / 创建角色可携带 App 工作台授权并透传到服务与响应', async () => {
+    const app = await buildApp()
+
+    const now = new Date().toISOString()
+    const create = vi.spyOn(RoleService, 'createRole').mockResolvedValue({
+      id: 102,
+      name: 'mobile',
+      status: 1,
+      dataScope: 1,
+      createdAt: now,
+      updatedAt: now,
+      menuIds: [],
+      appMenuIds: [3, 4],
+    } as any)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/',
+      payload: { name: 'mobile', status: 1, appMenuIds: [3, 4] }
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ appMenuIds: [3, 4] }), expect.anything())
+    expect(res.json().data.appMenuIds).toEqual([3, 4])
+
+    await app.close()
+  })
+
+  it('PUT /:id 未携带 appMenuIds 时不改动 App 工作台授权', async () => {
+    const app = await buildApp()
+
+    const now = new Date().toISOString()
+    const update = vi.spyOn(RoleService, 'updateRole').mockResolvedValue({
+      id: 7,
+      name: 'keep',
+      status: 1,
+      dataScope: 1,
+      createdAt: now,
+      updatedAt: now,
+    } as any)
+
+    const res = await app.inject({ method: 'PUT', url: '/7', payload: { name: 'keep' } })
+
+    expect(res.statusCode).toBe(200)
+    expect(update.mock.calls[0][1]).not.toHaveProperty('appMenuIds')
+
+    await app.close()
+  })
+
   it('POST / 当角色已存在返回业务错误码', async () => {
     const app = await buildApp()
 

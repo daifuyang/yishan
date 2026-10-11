@@ -104,7 +104,7 @@ export interface AdminDeptListQuery {
   keyword?: string
   status?: '0' | '1'
   parentId?: number
-  sortBy?: 'sort_order' | 'createdAt' | 'updatedAt'
+  sortBy?: 'sortOrder' | 'createdAt' | 'updatedAt'
   sortOrder?: 'asc' | 'desc'
   [key: string]: unknown
 }
@@ -143,7 +143,8 @@ export interface AdminDictType {
   id: number
   name: string
   type: string
-  status: '0' | '1'
+  status: 0 | 1
+  sort_order: number
   remark?: string
   createdAt: string
   updatedAt: string
@@ -156,17 +157,19 @@ export interface AdminDictData {
   label: string
   value: string
   tag?: string
-  sortOrder: number
+  sort_order: number
   isDefault: boolean
-  status: '0' | '1'
+  status: 0 | 1
   remark?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface AdminDictTypeListQuery {
   page?: number
   pageSize?: number
   keyword?: string
-  status?: '0' | '1'
+  status?: 0 | 1
   [key: string]: unknown
 }
 
@@ -175,7 +178,8 @@ export interface AdminDictDataListQuery {
   pageSize?: number
   typeId?: number
   keyword?: string
-  status?: '0' | '1'
+  status?: 0 | 1
+  type?: string
   [key: string]: unknown
 }
 
@@ -197,9 +201,11 @@ export interface AdminLoginLog {
 export interface AdminLoginLogListQuery {
   page?: number
   pageSize?: number
-  username?: string
+  keyword?: string
   status?: '0' | '1'
   startTime?: string
   endTime?: string
+  sortBy?: 'createdAt'
+  sortOrder?: 'asc' | 'desc'
   [key: string]: unknown
 }

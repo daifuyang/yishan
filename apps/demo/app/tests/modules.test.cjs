@@ -2,23 +2,36 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 const { loadTs, deferred } = require('./helpers/load-ts.cjs')
 const registry = loadTs('src/modules/registry.ts')
-const node = (overrides = {}) => ({
+
+const entry = (overrides = {}) => ({
   id: 1,
-  name: '用户管理',
-  path: '/system/user',
+  parentId: 10,
   type: 1,
+  name: '用户管理',
+  page: 'pages/system/user/index',
+  moduleId: 'core',
+  sortOrder: 10,
   status: '1',
-  hideInMenu: false,
-  isExternalLink: false,
-  sort_order: 1,
+  ...overrides,
+})
+const group = (children = [entry()], overrides = {}) => ({
+  id: 10,
+  type: 0,
+  name: '企业管理',
+  moduleId: 'core',
+  sortOrder: 10,
+  status: '1',
+  children,
   ...overrides,
 })
 
-test('only implemented, exact registered menu paths intersect genuine user permissions', () => {
+test('only implemented, registered pages intersect genuine user permissions', () => {
   const menus = [
-    node({ permissionCodes: ['system:user:list'] }),
-    node({ id: 2, path: '/crm/customers' }),
-    node({ id: 3, path: '/system/dept' }),
+    group([
+      entry(),
+      entry({ id: 2, page: 'pages/crm/customers/index' }),
+      entry({ id: 3, page: 'pages/system/dept/index' }),
+    ]),
   ]
   assert.deepEqual(registry.getAuthorizedMobileModules(menus), [])
   assert.deepEqual(registry.getAuthorizedMobileModules(menus, []), [])
@@ -26,35 +39,23 @@ test('only implemented, exact registered menu paths intersect genuine user permi
     registry.getAuthorizedMobileModules(menus, ['system:user:list']).map((module) => module.id),
     ['system-user'],
   )
-  assert.equal(registry.getMobileModule(node({ path: undefined })), undefined)
-  assert.equal(
-    registry.getMobileModule(node({ path: '/unregistered', name: '用户管理' })),
-    undefined,
-  )
+  assert.equal(registry.getMobileModuleByPage(undefined), undefined)
+  assert.equal(registry.getMobileModuleByPage('pages/unregistered/index'), undefined)
+  assert.equal(registry.getMobileModuleByPage('/pages/system/user/index').id, 'system-user')
 })
 
-test('menu labels and legacy permission associations cannot invent routes', () => {
-  const routes = loadTs('src/constants/menu-routes.ts')
-  assert.equal(
-    routes.resolveMenuRoute(node({ path: undefined, perm: 'system:user:list' })).type,
-    'none',
-  )
-  assert.equal(routes.resolveMenuRoute(node({ path: '/not-registered' })).type, 'none')
-  assert.equal(routes.resolveMenuRoute(node()).url, '/pages/system/user/index')
-})
-
-test('disabled, hidden, external, or ancestor-denied menus never surface', () => {
-  for (const override of [{ status: '0' }, { hideInMenu: true }, { isExternalLink: true }]) {
-    assert.deepEqual(
-      registry.getAuthorizedMobileModules([node(override)], ['system:user:list']),
-      [],
-    )
-  }
+test('disabled entries and groups never surface; stray top-level entries are ignored', () => {
+  const permissions = ['system:user:list']
   assert.deepEqual(
-    registry.getAuthorizedMobileModules(
-      [node({ id: 10, type: 0, status: '0', children: [node({ parentId: 10 })] })],
-      ['system:user:list'],
-    ),
+    registry.getAuthorizedMobileModules([group([entry({ status: '0' })])], permissions),
+    [],
+  )
+  assert.deepEqual(
+    registry.getAuthorizedMobileModules([group([entry()], { status: '0' })], permissions),
+    [],
+  )
+  assert.deepEqual(
+    registry.getAuthorizedMobileModules([entry({ parentId: undefined })], permissions),
     [],
   )
 })
@@ -84,21 +85,21 @@ test('secondary routes resolve to a module and edit guards distinguish create/up
   )
 })
 
-test('deep links need current user permissions, menu access, and the correct edit action', () => {
+test('deep links need current user permissions, workbench access, and the correct edit action', () => {
   const state = {
     bootstrapped: true,
     token: 'token',
-    user: { id: 1, accessPath: ['/system/user'], permissions: ['system:user:list'] },
+    user: { id: 1, permissions: ['system:user:list'] },
     enabledModuleIds: [],
   }
+  const menusState = { menus: [group()], loaded: true, error: null }
   const route = { path: '/pages/system/user/edit/index', params: { id: '7' } }
   const guard = loadTs('src/utils/auth-guard.ts', {
+    '@/api/client': { getSessionVersion: () => 0 },
     react: { useEffect() {} },
     '@tarojs/taro': { useRouter: () => route },
     '@/stores/auth': { useAuthStore: (select) => select(state) },
-    '@/stores/modules': {
-      useModuleStore: (select) => select({ menus: [node()], loaded: true, error: null }),
-    },
+    '@/stores/modules': { useModuleStore: (select) => select(menusState) },
     './router': { redirectToLogin() {} },
   })
   assert.equal(guard.useRequireAuth().denied, true)
@@ -108,8 +109,9 @@ test('deep links need current user permissions, menu access, and the correct edi
   assert.equal(guard.useRequireAuth().denied, true)
   state.user.permissions.push('system:user:create')
   assert.equal(guard.useRequireAuth().allowed, true)
-  state.user.accessPath = []
+  menusState.menus = []
   assert.equal(guard.useRequireAuth().denied, true)
+  menusState.menus = [group()]
   state.bootstrapped = false
   assert.equal(guard.useRequireAuth().ready, false)
   assert.equal(guard.useRequireAuth().allowed, false)
@@ -159,7 +161,7 @@ test('shared menu requests coalesce and stale user requests cannot repopulate me
   const second = modules.getState().load()
   assert.equal(calls, 1)
   auth.setState({ token: null, user: null })
-  pending.resolve([node()])
+  pending.resolve([group()])
   await Promise.all([first, second])
   assert.deepEqual(modules.getState().menus, [])
   assert.equal(modules.getState().loaded, false)
@@ -178,7 +180,7 @@ test('menu cache is reused within expiry and force refresh replaces it', async (
       menuApi: {
         getAuthorizedMenuTree: async () => {
           calls++
-          return [node({ id: calls })]
+          return [group([entry()], { id: calls })]
         },
       },
     },
@@ -205,7 +207,7 @@ test('common entries persist per user and never bleed into another account', asy
   })
   const modules = loadTs('src/stores/modules.ts', {
     '@/config': { API_BASE_URL: 'https://api.example' },
-    '@/api': { menuApi: { getAuthorizedMenuTree: async () => [node()] } },
+    '@/api': { menuApi: { getAuthorizedMenuTree: async () => [group()] } },
     './auth': { useAuthStore: auth },
     '@/utils/storage': {
       storage: { get: (key) => saved.get(key), set: (key, value) => saved.set(key, value) },
@@ -220,15 +222,15 @@ test('common entries persist per user and never bleed into another account', asy
   assert.deepEqual(modules.getState().commonModuleIds, ['system-user'])
 })
 
-test('placeholder modules deny direct access even with matching menu and permissions', () => {
+test('base placeholder modules allow navigation to their registered entry', () => {
   const module = registry.getMobileModuleById('system-dept')
   assert.equal(
     registry.isMobileModuleAuthorized(
       module,
-      [node({ path: '/system/department' })],
+      [group([entry({ page: 'pages/system/dept/index' })])],
       ['system:department:list'],
       [],
     ),
-    false,
+    true,
   )
 })

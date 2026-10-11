@@ -8,6 +8,7 @@ export interface UpdateMeParams {
   nickname?: string
   realName?: string
   email?: string
+  phone?: string
   gender?: '0' | '1' | '2'
   birthDate?: string
 }

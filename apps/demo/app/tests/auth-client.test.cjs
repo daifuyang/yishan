@@ -31,6 +31,28 @@ function harness(handler) {
   return { client, values, clears: () => clears }
 }
 
+test('raw module responses and HTTP 204 share authentication and token refresh', async () => {
+  const h = harness(async (opts) => {
+    if (opts.url.endsWith('/refresh')) return response({ token: 'new', refreshToken: 'new-refresh' })
+    if (opts.header.Authorization === 'Bearer old') return response(null, 401)
+    return opts.method === 'DELETE' ? { statusCode: 204, data: '' } : { statusCode: 200, data: { total: 1, items: [{ id: 7 }] } }
+  })
+  assert.deepEqual(await h.client.requestRaw({ path: '/api/demo/v1/todos' }), { total: 1, items: [{ id: 7 }] })
+  assert.equal(await h.client.requestRaw({ method: 'DELETE', path: '/api/demo/v1/todos/7' }), undefined)
+  assert.equal(h.values.get('yishan:app:accessToken'), 'new')
+})
+
+test('raw transport still rejects HTTP errors and cancelled sessions', async () => {
+  const h = harness(async () => response(null, 403))
+  await assert.rejects(h.client.requestRaw({ path: '/raw' }), /denied/)
+  const pending = deferred()
+  const stale = harness(async () => pending.promise)
+  const result = stale.client.requestRaw({ path: '/raw' })
+  stale.client.invalidateSessionRequests()
+  pending.resolve({ statusCode: 204, data: '' })
+  await assert.rejects(result, /请求已取消/)
+})
+
 test('concurrent ordinary and paginated requests refresh once and replay with rotated credentials', async () => {
   const refresh = deferred()
   let refreshes = 0

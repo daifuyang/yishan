@@ -1,0 +1,155 @@
+.list {
+  margin: 0 var(--space-4);
+  overflow: hidden;
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-xl);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  min-height: 76px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-bg-surface);
+}
+
+.rowBordered {
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.rowHover {
+  background: var(--color-bg-base);
+}
+
+.row__avatar {
+  width: 44px;
+  height: 44px;
+  color: var(--color-text-secondary);
+  background: #eef2f6;
+  font-size: var(--font-size-16);
+}
+
+.row__glyph {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-bg);
+}
+
+.row__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.row__titleLine {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.row__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row__tag {
+  flex: 0 0 auto;
+}
+
+.row__description {
+  display: block;
+  max-width: 100%;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-13);
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row__arrow {
+  flex: 0 0 auto;
+  margin-left: var(--space-1);
+  color: var(--color-text-quaternary);
+  font-size: var(--font-size-18);
+  line-height: 1;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4) 0;
+}
+
+/* ---------- 骨架屏 ---------- */
+
+.skeleton {
+  display: flex;
+  align-items: center;
+  min-height: 76px;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-bg-surface);
+}
+
+.skeleton:last-child {
+  border-bottom: 0;
+}
+
+.skeleton__glyph,
+.skeleton__title,
+.skeleton__line {
+  background: var(--color-bg-disabled);
+  animation: mg-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton__glyph {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+}
+
+.skeleton__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.skeleton__title,
+.skeleton__line {
+  height: 14px;
+  border-radius: var(--radius-xs);
+}
+
+.skeleton__title {
+  width: 42%;
+}
+
+.skeleton__line {
+  width: 68%;
+  margin-top: 9px;
+}
+
+@keyframes mg-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}

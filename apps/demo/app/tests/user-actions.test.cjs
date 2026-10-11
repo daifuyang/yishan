@@ -21,6 +21,8 @@ function renderPage(page, permissions) {
   let stateIndex = 0;
   let actions;
   const mocks = {
+    '../_shared/AdminUI': { withAccountScope: (component) => component },
+    '../../_shared/AdminUI': { withAccountScope: (component) => component },
     react: {
       useMemo: (compute) => compute(),
       useEffect() {},
@@ -45,6 +47,27 @@ function renderPage(page, permissions) {
     "@/components/feedback": { StateView: "StateView" },
     "@/components/organisms": { TabBar: "TabBar" },
     "@/components/layout": { PageContainer: "PageContainer" },
+    "@/components/management": {
+      ManagementPage: "ManagementPage",
+      ManagementPageHeader: "ManagementPageHeader",
+      ManagementHeaderAction: "ManagementHeaderAction",
+      ManagementFilterBar: "ManagementFilterBar",
+      ManagementSearchBar: "ManagementSearchBar",
+      ManagementFilterTabs: "ManagementFilterTabs",
+      ManagementList: "ManagementList",
+      ManagementCell: "ManagementCell",
+      ManagementStates: "ManagementStates",
+      ManagementListFooter: "ManagementListFooter",
+      DetailContent: "DetailContent",
+      DetailHero: "DetailHero",
+      DetailSection: "DetailSection",
+      DetailRow: "DetailRow",
+      DetailGroupList: "DetailGroupList",
+      BottomActionBar: "BottomActionBar",
+      ActionSheet: "ActionSheet",
+      PromptDialog: "PromptDialog",
+      LineIcon: "LineIcon",
+    },
     "@/utils/auth-guard": { useRequireAuth: () => ({ ready: true, allowed: true }) },
     "@/utils/router": { navigateTo() {}, navigateBack() {} },
     "@/hooks": {
@@ -74,21 +97,19 @@ function renderPage(page, permissions) {
 }
 
 test("create permission shows only the new-user entry, update permission shows status/password actions", async () => {
+  const headerAction = (nodes) =>
+    nodes.find((node) => node.type === "ManagementPageHeader")?.props?.action;
+
   const create = renderPage("index.tsx", ["system:user:list", "system:user:create"]);
-  assert.equal(
-    create.nodes.find((node) => node.type?.name === "UserPageHeader").props.canCreate,
-    true,
-  );
+  assert.equal(headerAction(create.nodes)?.type, "ManagementHeaderAction");
+  assert.equal(headerAction(create.nodes)?.props.label, "新建");
   await create.nodes
     .find((node) => typeof node.props?.onLongPress === "function")
     .props.onLongPress();
   assert.equal(create.getActions(), undefined);
 
   const update = renderPage("index.tsx", ["system:user:list", "system:user:update"]);
-  assert.equal(
-    update.nodes.find((node) => node.type?.name === "UserPageHeader").props.canCreate,
-    false,
-  );
+  assert.equal(headerAction(update.nodes), undefined);
   await update.nodes
     .find((node) => typeof node.props?.onLongPress === "function")
     .props.onLongPress();

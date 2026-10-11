@@ -17,7 +17,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
-import { sysRole, sysRoleMenu, sysRolePermission, sysUser } from "@/db/schema";
+import { sysRole, sysRoleWorkbenchMenu, sysRoleMenu, sysRolePermission, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
 import { clampOffset } from "./_pagination.js";
 
@@ -35,6 +35,7 @@ export interface CreateRoleInput extends RolePersistedFields {
   creatorId: number;
   updaterId: number;
   menuIds?: number[];
+  appMenuIds?: number[];
   permissionCodes?: string[];
 }
 
@@ -42,6 +43,7 @@ export interface CreateRoleInput extends RolePersistedFields {
 export interface UpdateRoleInput extends Partial<RolePersistedFields> {
   updaterId: number;
   menuIds?: number[];
+  appMenuIds?: number[];
   permissionCodes?: string[];
 }
 
@@ -59,6 +61,7 @@ interface RoleListRow extends PublicRoleRow {
 
 interface RoleDetailRow extends RoleListRow {
   menuIds: number[];
+  appMenuIds: number[];
   permissionCodes: string[];
 }
 
@@ -114,11 +117,15 @@ async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
 
   if (!row) return null;
 
-  const [roleMenus, rolePermissions] = await Promise.all([
+  const [roleMenus, roleAppMenus, rolePermissions] = await Promise.all([
     db
       .select({ menuId: sysRoleMenu.menuId })
       .from(sysRoleMenu)
       .where(and(eq(sysRoleMenu.roleId, id), isNull(sysRoleMenu.deletedAt))),
+    db
+      .select({ appMenuId: sysRoleWorkbenchMenu.workbenchMenuId })
+      .from(sysRoleWorkbenchMenu)
+      .where(and(eq(sysRoleWorkbenchMenu.roleId, id), isNull(sysRoleWorkbenchMenu.deletedAt))),
     db
       .select({ permissionCode: sysRolePermission.permissionCode })
       .from(sysRolePermission)
@@ -128,6 +135,7 @@ async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
   return {
     ...row,
     menuIds: roleMenus.map((rm) => rm.menuId),
+    appMenuIds: roleAppMenus.map((rm) => rm.appMenuId),
     permissionCodes: rolePermissions.map((rp) => rp.permissionCode),
   };
 }
@@ -189,8 +197,9 @@ export class RoleRepository {
 
   /** 创建角色 */
   static async create(input: CreateRoleInput, db: AppQueryDb = drizzleDb): Promise<RoleDetailRow> {
-    const { creatorId, updaterId, menuIds, permissionCodes, ...fields } = input;
+    const { creatorId, updaterId, menuIds, appMenuIds, permissionCodes, ...fields } = input;
     const uniqueMenuIds = menuIds ? [...new Set(menuIds)] : [];
+    const uniqueAppMenuIds = appMenuIds ? [...new Set(appMenuIds)] : [];
     const uniquePermissionCodes = permissionCodes ? [...new Set(permissionCodes)] : [];
     const now = dateUtils.now();
 
@@ -209,6 +218,9 @@ export class RoleRepository {
     if (uniqueMenuIds.length > 0) {
       await db.insert(sysRoleMenu).values(uniqueMenuIds.map((menuId) => ({ roleId: inserted.id, menuId })));
     }
+    if (uniqueAppMenuIds.length > 0) {
+      await db.insert(sysRoleWorkbenchMenu).values(uniqueAppMenuIds.map((appMenuId) => ({ roleId: inserted.id, workbenchMenuId: appMenuId })));
+    }
     if (uniquePermissionCodes.length > 0) {
       await db.insert(sysRolePermission).values(
         uniquePermissionCodes.map((permissionCode) => ({ roleId: inserted.id, permissionCode, creatorId })),
@@ -222,7 +234,7 @@ export class RoleRepository {
 
   /** 更新角色 */
   static async update(id: number, input: UpdateRoleInput, db: AppQueryDb = drizzleDb): Promise<RoleDetailRow> {
-    const { updaterId, menuIds, permissionCodes, ...fields } = input;
+    const { updaterId, menuIds, appMenuIds, permissionCodes, ...fields } = input;
 
     await db
       .update(sysRole)
@@ -243,6 +255,23 @@ export class RoleRepository {
       }
       if (toDelete.length) {
         await db.delete(sysRoleMenu).where(and(eq(sysRoleMenu.roleId, id), inArray(sysRoleMenu.menuId, toDelete)));
+      }
+    }
+
+    if (appMenuIds !== undefined) {
+      const uniqueAppMenuIds = [...new Set(appMenuIds)];
+      const existingLinks = await db
+        .select({ appMenuId: sysRoleWorkbenchMenu.workbenchMenuId })
+        .from(sysRoleWorkbenchMenu)
+        .where(and(eq(sysRoleWorkbenchMenu.roleId, id), isNull(sysRoleWorkbenchMenu.deletedAt)));
+      const existingIds = existingLinks.map((l) => l.appMenuId);
+      const toCreate = uniqueAppMenuIds.filter((m) => !existingIds.includes(m));
+      const toDelete = existingIds.filter((m) => !uniqueAppMenuIds.includes(m));
+      if (toCreate.length) {
+        await db.insert(sysRoleWorkbenchMenu).values(toCreate.map((appMenuId) => ({ roleId: id, workbenchMenuId: appMenuId })));
+      }
+      if (toDelete.length) {
+        await db.delete(sysRoleWorkbenchMenu).where(and(eq(sysRoleWorkbenchMenu.roleId, id), inArray(sysRoleWorkbenchMenu.workbenchMenuId, toDelete)));
       }
     }
 

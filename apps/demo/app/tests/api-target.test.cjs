@@ -145,3 +145,11 @@ test('production builds ignore development-only host overrides', async () => {
     assert.equal(config.h5.devServer, undefined)
   })
 })
+
+
+test('workbench navigation configuration invalidates the persistent build cache', async () => {
+  await withEnvironment({ TARO_ENV: 'h5', NODE_ENV: 'development' }, async () => {
+    const config = await appConfig()(merge, {})
+    assert.ok(config.cache.buildDependencies?.pages?.some(file => file.replace(/\\/g, '/').endsWith('/src/pages/apps/index.config.ts')))
+  })
+})

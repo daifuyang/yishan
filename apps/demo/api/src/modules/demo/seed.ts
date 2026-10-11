@@ -7,8 +7,9 @@
  * sys_module 行的首次写入由 core/module-loader 统一负责，本文件不再重复。
  */
 
-import { resolveSeedActor, seedModuleMenus, type MenuSeedNode } from '@yishan/core-system-api'
+import { resolveSeedActor, seedModuleAppMenus, seedModuleMenus, type MenuSeedNode } from '@yishan/core-system-api'
 import adminMenu from './config/system-menu.json'
+import appMenu from './config/app-menu.json'
 
 /**
  * demo 菜单的本地宽松类型。JSON 里所有"是否"字段都用 0/1 而非 true/false，
@@ -82,6 +83,8 @@ export default async function seedDemo(): Promise<void> {
   await seedModuleMenus('demo', toMenuSeedNodes(menuTree), creatorId, {
     allowedSystemPermissionCodes: ['region:list', 'region:tree', 'region:path', 'region:read'],
   })
+
+  await seedModuleAppMenus('demo', appMenu, creatorId)
 
   console.log('demo seed: 菜单已写入（递归铺平自 ./config/system-menu.json）')
 }

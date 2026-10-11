@@ -1,0 +1,50 @@
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding: 0 var(--space-4);
+  background-color: var(--color-bg-surface);
+}
+
+.cell_hover {
+  background-color: var(--color-bg-base);
+}
+
+// 分割线与标题左对齐，末行不显示
+.cell::after {
+  content: '';
+  position: absolute;
+  left: 48px;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background-color: var(--color-border-light);
+  transform: scaleY(0.5);
+  transform-origin: bottom;
+}
+
+.cell:last-child::after {
+  display: none;
+}
+
+.cell__icon {
+  margin-right: var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.cell__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-16);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+.cell__arrow {
+  margin-left: var(--space-2);
+  color: var(--color-text-quaternary);
+}

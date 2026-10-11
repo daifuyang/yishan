@@ -4,10 +4,11 @@
  * 菜单声明经公开 System 服务写入，示例业务数据仅在不存在时插入。
  */
 
-import { resolveSeedActor, seedModuleMenus, type MenuSeedNode } from '@yishan/core-system-api'
+import { resolveSeedActor, seedModuleAppMenus, seedModuleMenus, type MenuSeedNode } from '@yishan/core-system-api'
 import { eq } from 'drizzle-orm'
 import { drizzleDb } from '@yishan/core-system-api/database'
 import adminMenu from './config/system-menu.json'
+import appMenu from './config/app-menu.json'
 import { portalArticles, portalArticleCategories, portalCategories, portalPages, portalTemplates } from './db/schema.js'
 
 export type AdminMenuNode = {
@@ -61,6 +62,7 @@ export default async function seedPortal(): Promise<void> {
   const creatorId = admin?.id ?? 1
 
   await seedModuleMenus('portal', toMenuSeedNodes(menuTree), creatorId)
+  await seedModuleAppMenus('portal', appMenu, creatorId)
 
   // ─── 示例数据（来自 commit 164dd06 的 portal-*.json）───
   // 已有 slug 的记录直接跳过，避免覆盖用户维护的业务数据。

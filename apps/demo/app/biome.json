@@ -28,7 +28,12 @@
     "useIgnoreFile": true
   },
   "javascript": {
-    "jsxRuntime": "reactClassic"
+    "jsxRuntime": "reactClassic",
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "all"
+    }
   },
   "formatter": {
     "enabled": true,

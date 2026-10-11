@@ -1,4 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: '部门管理',
-  navigationStyle: 'custom',
-})
+  navigationBarTitleText: "部门管理",
+  navigationStyle: "custom",
+});

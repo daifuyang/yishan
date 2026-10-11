@@ -1,77 +1,42 @@
-import { useMemo } from 'react'
-import { View, Text, Input } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 
-import { AppText, Avatar, Tag } from '@/components/atoms'
-import { StateView } from '@/components/feedback'
+import { Tag } from '@/components/atoms'
 import { TabBar } from '@/components/organisms'
+import {
+  ManagementPage,
+  ManagementPageHeader,
+  ManagementHeaderAction,
+  ManagementFilterBar,
+  ManagementSearchBar,
+  ManagementFilterTabs,
+  ManagementList,
+  ManagementCell,
+  ManagementStates,
+  ManagementListFooter,
+} from '@/components/management'
 import { useListPagination, useCanWrite, confirmAction } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
-import { PageContainer } from '@/components/layout'
-import { navigateBack, navigateTo } from '@/utils/router'
+import { navigateTo } from '@/utils/router'
 import { adminUserApi } from '@/api'
 import type { AdminUser, AdminUserListQuery } from '@/api/admin/types'
 import { PERMS, SYSTEM_PAGES, TAB_PAGES } from '@/constants/routes'
 
-import styles from './index.module.scss'
+import { withAccountScope } from '../_shared/AdminUI'
 
-const STATUS_CHIPS = [
+const STATUS_TABS = [
   { key: '', label: '全部' },
   { key: '1', label: '启用' },
   { key: '0', label: '禁用' },
   { key: '2', label: '锁定' },
 ] as const
 
-const SKELETON_ROWS = ['first', 'second', 'third'] as const
-
-function UserPageHeader({ total, canCreate }: { total: number; canCreate: boolean }) {
-  return (
-    <View className={styles.userHeader}>
-      <View
-        className={styles.userHeader__back}
-        onClick={() => navigateBack(1)}
-        hoverClass={styles.userHeader__backHover}
-        aria-label="返回"
-      >
-        <Text className={styles.userHeader__backIcon}>‹</Text>
-      </View>
-      <View className={styles.userHeader__titleWrap}>
-        <Text className={styles.userHeader__title}>用户管理</Text>
-        <Text className={styles.userHeader__subtitle}>{total} 位成员</Text>
-      </View>
-      <View className={styles.userHeader__right}>
-        {canCreate ? (
-          <View
-            className={styles.userHeader__create}
-            onClick={() => navigateTo(`/${SYSTEM_PAGES.userEdit}`)}
-            hoverClass={styles.userHeader__createHover}
-          >
-            <Text className={styles.userHeader__createIcon}>+</Text>
-            <Text>新建</Text>
-          </View>
-        ) : null}
-      </View>
-    </View>
-  )
+function userStatus(user: AdminUser): { label: string; variant: 'success' | 'default' | 'warning' } {
+  if (user.status === '1') return { label: '启用', variant: 'success' }
+  if (user.status === '0') return { label: '禁用', variant: 'default' }
+  return { label: '锁定', variant: 'warning' }
 }
 
-function UserListSkeleton() {
-  return (
-    <View className={styles.userList} aria-label="加载中">
-      {SKELETON_ROWS.map((row) => (
-        <View className={styles.userSkeleton} key={row}>
-          <View className={styles.userSkeleton__avatar} />
-          <View className={styles.userSkeleton__content}>
-            <View className={styles.userSkeleton__name} />
-            <View className={styles.userSkeleton__meta} />
-          </View>
-        </View>
-      ))}
-    </View>
-  )
-}
-
-export default function UserIndexPage() {
+function UserIndexPage() {
   const guard = useRequireAuth({ moduleId: 'system-user' })
   const canCreate = useCanWrite(PERMS.userCreate)
   const canUpdate = useCanWrite(PERMS.userUpdate)
@@ -104,21 +69,15 @@ export default function UserIndexPage() {
     },
   })
 
-  const statusChips = useMemo(
-    () =>
-      STATUS_CHIPS.map((c) => ({
-        key: c.key,
-        label: c.label,
-        active: (filters.status ?? '') === c.key,
-      })),
-    [filters.status],
-  )
+  useDidShow(() => {
+    if (guard.ready && guard.allowed) void refresh()
+  })
+
+  if (!guard.ready || !guard.allowed) return <ManagementPage className="page-container">{null}</ManagementPage>
 
   const handleItemClick = (user: AdminUser) => {
     navigateTo(`/${SYSTEM_PAGES.userDetail}?id=${user.id}`)
   }
-
-  if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
 
   const handleLongPress = async (user: AdminUser) => {
     if (!canUpdate && !canDelete) return
@@ -217,124 +176,72 @@ export default function UserIndexPage() {
         : 'ready'
 
   return (
-    <View className="page-container">
-      <UserPageHeader total={total} canCreate={canCreate} />
+    <ManagementPage className="page-container">
+      <ManagementPageHeader
+        title="用户管理"
+        subtitle={`${total} 位成员`}
+        action={
+          canCreate ? (
+            <ManagementHeaderAction
+              label="新建"
+              onClick={() => navigateTo(`/${SYSTEM_PAGES.userEdit}`)}
+            />
+          ) : undefined
+        }
+      />
 
-      <View className={styles.userFilters}>
-        <View className={styles.userSearch}>
-          <Text className={styles.userSearch__icon}>⌕</Text>
-          <Input
-            className={styles.userSearch__input}
-            value={keyword}
-            placeholder="搜索用户"
-            onInput={(event) => setKeyword(event.detail.value)}
-          />
-          {keyword ? (
-            <View
-              className={styles.userSearch__clear}
-              onClick={() => setKeyword('')}
-              hoverClass={styles.userSearch__clearHover}
-              aria-label="清除搜索"
-            >
-              <Text className={styles.userSearch__clearIcon}>×</Text>
-            </View>
-          ) : null}
-        </View>
-        <View className={styles.userFilters__chips}>
-          {statusChips.map((chip) => (
-            <View
-              key={chip.key || 'all'}
-              className={[styles.userChip, chip.active ? styles['userChip--active'] : '']
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => setFilters({ status: chip.key })}
-              hoverClass={styles.userChip__hover}
-            >
-              <Text>{chip.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {kind === 'loading' ? <UserListSkeleton /> : null}
-      {kind === 'empty' ? (
-        <StateView
-          kind="empty"
-          text={keyword ? '未找到相关用户' : '暂无用户'}
-          minHeight={220}
+      <ManagementFilterBar>
+        <ManagementSearchBar value={keyword} onChange={setKeyword} placeholder="搜索用户" />
+        <ManagementFilterTabs
+          tabs={STATUS_TABS}
+          active={(filters.status as string | undefined) ?? ''}
+          onChange={(status) => setFilters({ status })}
         />
-      ) : null}
-      {kind === 'error' ? (
-        <StateView kind="error" text="加载失败，请重试" onRetry={refresh} minHeight={220} />
-      ) : null}
-      {kind === 'ready' ? (
-        <View className={styles.userList}>
+      </ManagementFilterBar>
+
+      <ManagementStates
+        kind={kind}
+        emptyText={keyword ? '未找到相关用户' : '暂无用户'}
+        errorText="加载失败，请重试"
+        onRetry={refresh}
+      >
+        <ManagementList>
           {list.map((u, index) => {
             const displayName = u.realName || u.username || u.phone
             const metadata = [u.username ? `@${u.username}` : '', u.phone || '']
               .filter(Boolean)
               .join(' · ')
-            const status =
-              u.status === '1'
-                ? { label: '启用', variant: 'success' as const }
-                : u.status === '0'
-                  ? { label: '禁用', variant: 'default' as const }
-                  : { label: '锁定', variant: 'warning' as const }
-
-            const longPressProps =
-              process.env.TARO_ENV !== 'h5'
-                ? { onLongPress: () => handleLongPress(u) }
-                : undefined
-
+            const status = userStatus(u)
             return (
-              <View
+              <ManagementCell
                 key={u.id}
-                className={[styles.userRow, index < list.length - 1 ? styles['userRow--bordered'] : '']
-                  .filter(Boolean)
-                  .join(' ')}
+                bordered={index < list.length - 1}
+                avatar={{ src: u.avatar, name: displayName }}
+                title={displayName}
+                tag={
+                  <Tag size="sm" variant={status.variant}>
+                    {status.label}
+                  </Tag>
+                }
+                description={metadata}
                 onClick={() => handleItemClick(u)}
-                hoverClass={styles.userRow__hover}
-                {...longPressProps}
-              >
-                <Avatar
-                  src={u.avatar}
-                  name={displayName}
-                  size="md"
-                  shape="circle"
-                  className={styles.userRow__avatar}
-                />
-                <View className={styles.userRow__content}>
-                  <View className={styles.userRow__nameLine}>
-                    <Text className={styles.userRow__name}>{displayName}</Text>
-                    <Tag variant={status.variant} size="sm" className={styles.userRow__status}>
-                      {status.label}
-                    </Tag>
-                  </View>
-                  {metadata ? <Text className={styles.userRow__meta}>{metadata}</Text> : null}
-                </View>
-                <Text className={styles.userRow__arrow}>›</Text>
-              </View>
+                onLongPress={() => void handleLongPress(u)}
+              />
             )
           })}
-        </View>
-      ) : null}
+        </ManagementList>
+      </ManagementStates>
 
-      {kind === 'ready' && !finished && list.length > 0 ? (
-        <View className={styles.userList__loadingMore}>
-          <AppText size={12} variant="tertiary">
-            {loadingMore ? '加载中…' : '上拉加载更多'}
-          </AppText>
-        </View>
-      ) : null}
-      {refreshing && kind === 'ready' ? (
-        <View className={styles.userList__loadingMore}>
-          <AppText size={12} variant="tertiary">
-            刷新中…
-          </AppText>
-        </View>
-      ) : null}
+      <ManagementListFooter
+        loadingMore={loadingMore}
+        refreshing={refreshing}
+        finished={finished}
+        empty={list.length === 0}
+      />
 
       <TabBar currentPath={TAB_PAGES.apps} />
-    </View>
+    </ManagementPage>
   )
 }
+
+export default withAccountScope(UserIndexPage)

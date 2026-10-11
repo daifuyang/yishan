@@ -1,6 +1,6 @@
 export { default as HomeHeader } from './HomeHeader'
 export { default as WorkbenchGrid } from './WorkbenchGrid'
-export { default as MineProfile } from './MineProfile'
+export { default as UserHeader } from './UserHeader'
 export { TabBar } from './TabBar'
 export { default as WorkbenchUserPanel } from './WorkbenchUserPanel'
 export { default as DashboardHero } from './DashboardHero'
@@ -13,7 +13,7 @@ export type {
   WorkbenchGroup,
   WorkbenchItem,
 } from './WorkbenchGrid'
-export type { MineProfileProps, MineMenuItem } from './MineProfile'
+export type { UserHeaderProps } from './UserHeader'
 export type { TabBarProps, TabBarItem } from './TabBar'
 export type { WorkbenchUserPanelProps } from './WorkbenchUserPanel'
 export type { DashboardHeroProps } from './DashboardHero'

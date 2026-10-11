@@ -20,6 +20,7 @@ import dictsJson from './config/dicts.json'
 import systemMenusJson from './config/system-menus.json'
 import accountMenusJson from './config/account-menus.json'
 import sysOptionsJson from './config/sys-options.json'
+import appMenusJson from './config/app-menus.json'
 
 // ---------------------------------------------------------------------------
 // 类型契约
@@ -48,6 +49,17 @@ export type MenuSeedNode = {
   /** 按钮是否为页面默认访问操作（通常为查看/列表）。 */
   isDefaultAction?: boolean;
   children?: MenuSeedNode[];
+};
+
+/** App 工作台种子：顶层为分组，children 为应用入口（page 为 App 页面路径）。 */
+export type AppMenuSeedNode = {
+  name: string;
+  sortOrder: number;
+  icon?: string;
+  page?: string;
+  /** 默认角色 normal_user 是否可见该入口。 */
+  normalUser?: boolean;
+  children?: AppMenuSeedNode[];
 };
 
 export type DictSeedConfig = {
@@ -108,6 +120,7 @@ export const seedConfig = {
   systemMenusSeed: systemMenusJson as MenuSeedNode,
   accountMenusSeed: accountMenusJson as MenuSeedNode,
   sysOptionsSeed: sysOptionsJson as SysOptionSeed[],
+  appMenusSeed: appMenusJson as AppMenuSeedNode[],
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -121,3 +134,4 @@ export const dictsSeed = seedConfig.dictsSeed;
 export const systemMenusSeed = seedConfig.systemMenusSeed;
 export const accountMenusSeed = seedConfig.accountMenusSeed;
 export const sysOptionsSeed = seedConfig.sysOptionsSeed;
+export const appMenusSeed = seedConfig.appMenusSeed;

@@ -54,6 +54,7 @@ export class RoleService {
       status: req.status ? parseInt(req.status, 10) : 1,
       dataScope: req.dataScope ? parseInt(req.dataScope, 10) : 1,
       menuIds: req.menuIds,
+      appMenuIds: req.appMenuIds,
       permissionCodes: req.permissionCodes,
       creatorId: operatorId,
       updaterId: operatorId,
@@ -86,6 +87,7 @@ export class RoleService {
     if (req.status !== undefined) input.status = parseInt(req.status, 10);
     if (req.dataScope !== undefined) input.dataScope = parseInt(req.dataScope, 10);
     if (req.menuIds !== undefined) input.menuIds = req.menuIds;
+    if (req.appMenuIds !== undefined) input.appMenuIds = req.appMenuIds;
     if (req.permissionCodes !== undefined) input.permissionCodes = req.permissionCodes;
 
     const role = await dbManager.transaction((tx) => RoleRepository.update(id, input, tx));

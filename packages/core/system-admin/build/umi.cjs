@@ -1,7 +1,7 @@
 const path = require('node:path')
 
 const pageNames = [
-  'user', 'role', 'department', 'position', 'menu', 'dict', 'region',
+  'user', 'role', 'department', 'position', 'menu', 'app-menu', 'dict', 'region',
   'site', 'storage', 'attachments', 'login-log', 'module-management',
 ]
 

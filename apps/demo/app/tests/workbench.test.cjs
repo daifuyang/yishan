@@ -7,94 +7,120 @@ const { loadTs, deferred, appRoot } = require('./helpers/load-ts.cjs')
 const registry = loadTs('src/modules/registry.ts')
 const menu = (overrides = {}) => ({
   id: 1,
-  name: '用户管理',
-  path: '/system/user',
+  parentId: 10,
   type: 1,
+  name: '用户管理',
+  page: 'pages/system/user/index',
+  moduleId: 'core',
+  sortOrder: 10,
   status: '1',
-  hideInMenu: false,
-  isExternalLink: false,
-  sort_order: 1,
   ...overrides,
 })
-const directory = (overrides = {}) =>
-  menu({
-    id: 10,
-    name: '企业管理',
-    path: '/system',
-    type: 0,
-    children: [menu()],
-    ...overrides,
-  })
+const contacts = (overrides = {}) =>
+  menu({ id: 2, name: '通讯录', page: 'pages/contacts/index/index', ...overrides })
+const directory = (overrides = {}) => ({
+  id: 10,
+  type: 0,
+  name: '企业管理',
+  moduleId: 'core',
+  sortOrder: 10,
+  status: '1',
+  children: [menu()],
+  ...overrides,
+})
+const ALL_PERMISSIONS = ['system:user:list', 'app:contacts:dept-tree']
 
-test('catalog follows top-level menu categories and configured order, deduplicating entries', () => {
-  assert.equal(typeof registry.getWorkbenchGroups, 'function')
+test('catalog keeps the server group/entry order, names and icons, deduplicating pages', () => {
   const groups = registry.getWorkbenchGroups(
     [
-      directory({ sort_order: 20 }),
       directory({
         id: 20,
         name: '协作',
-        sort_order: 10,
         children: [
-          menu({ id: 21, path: '/contacts', name: '企业通讯录', sort_order: 2 }),
-          menu({ id: 22, type: 2 }),
-          menu({ id: 23, path: '/not-built' }),
+          contacts({ id: 21, name: '企业通讯录', icon: 'users' }),
+          menu({ id: 22 }),
+          menu({ id: 23, page: 'pages/not-built/index' }),
         ],
       }),
-      directory({ id: 30, name: '重复目录', sort_order: 30 }),
+      directory({ id: 30, name: '重复目录', children: [menu({ id: 31 })] }),
     ],
-    ['system:user:list', 'app:contacts:dept-tree'],
+    ALL_PERMISSIONS,
     [],
   )
   assert.deepEqual(
     groups.map((g) => [g.name, g.apps.map((a) => a.id)]),
-    [
-      ['协作', ['menu-23', 'contacts']],
-      ['企业管理', ['system-user']],
-    ],
+    [['协作', ['contacts', 'system-user']]],
   )
-  assert.equal(groups[0].apps.find((app) => app.id === 'contacts').name, '企业通讯录')
+  const first = groups[0].apps[0]
+  assert.equal(first.name, '企业通讯录')
+  assert.equal(first.icon, 'users')
+  assert.equal(first.entry, 'pages/contacts/index/index')
 })
 
-test('catalog previews returned menus without extra permission filtering and search stays local', () => {
-  assert.equal(typeof registry.getWorkbenchGroups, 'function')
-  const menus = [directory({ children: [menu(), menu({ id: 2, path: '/contacts' })] })]
-  assert.equal(registry.getWorkbenchGroups(menus, [], [], '用户')[0].apps[0].id, 'system-user')
+test('entries the user lacks permission for are hidden and search stays local', () => {
+  const menus = [directory({ children: [menu(), contacts()] })]
+  assert.deepEqual(registry.getWorkbenchGroups(menus, [], []), [])
   assert.equal(
-    registry.getWorkbenchGroups(menus, ['system:user:list'], [], 'contacts')[0].apps[0].id,
+    registry.getWorkbenchGroups(menus, ALL_PERMISSIONS, [], '用户')[0].apps[0].id,
+    'system-user',
+  )
+  assert.equal(
+    registry.getWorkbenchGroups(menus, ALL_PERMISSIONS, [], 'contacts')[0].apps[0].id,
     'contacts',
   )
   assert.equal(
-    registry.getWorkbenchGroups(menus, ['system:user:list'], [], ' 用 户 ')[0].apps[0].id,
+    registry.getWorkbenchGroups(menus, ALL_PERMISSIONS, [], ' 用 户 ')[0].apps[0].id,
     'system-user',
   )
   assert.equal(
-    registry.getWorkbenchGroups(menus, ['system:user:list'], [], 'USER')[0].apps[0].id,
+    registry.getWorkbenchGroups(menus, ALL_PERMISSIONS, [], 'USER')[0].apps[0].id,
     'system-user',
   )
+  assert.deepEqual(registry.getWorkbenchGroups(menus, ALL_PERMISSIONS, [], '不存在'), [])
 })
 
-test('unadapted menus show searchable placeholder entries but never invent mobile routes', () => {
+test('unregistered and disabled entries are hidden and never invent routes', () => {
   const menus = [
     directory({
       children: [
-        menu({ id: 2, name: '角色管理', path: '/system/role' }),
-        menu({ id: 3, name: '部门管理', path: '/system/department' }),
-        menu({ id: 4, name: '重复角色', path: '/system/role' }),
-        menu({ id: 5, type: 2, name: '创建用户' }),
-        menu({ id: 6, path: '/disabled', status: '0' }),
-        menu({ id: 7, path: '/hidden', hideInMenu: true }),
+        menu({ id: 2, name: '角色管理', page: 'pages/system/role/index' }),
+        menu({ id: 3, name: '部门管理', page: 'pages/system/dept/index' }),
+        menu({ id: 4, name: '重复角色', page: 'pages/system/role/index' }),
+        menu({ id: 6, page: 'pages/contacts/index/index', status: '0' }),
       ],
     }),
   ]
-  const apps = registry.getWorkbenchGroups(menus, [], []).flatMap((group) => group.apps)
   assert.deepEqual(
-    apps.map((app) => app.name),
-    ['角色管理', '部门管理'],
+    registry.getWorkbenchGroups(menus, [...ALL_PERMISSIONS, 'system:department:list', 'system:role:list'], [])[0].apps.map((app) => app.id),
+    ['system-role', 'system-dept'],
   )
-  assert.ok(apps.every((app) => app.entry === undefined))
-  assert.equal(registry.getWorkbenchGroups(menus, [], [], '角色')[0].apps.length, 1)
-  assert.deepEqual(registry.getAuthorizedMobileModules(menus, [], []), [])
+  assert.deepEqual(registry.getAuthorizedMobileModules(menus, ALL_PERMISSIONS, []), [])
+})
+
+test('implemented system entries are registered and respect real backend permissions', () => {
+  const baseEntries = [
+    ['system-role', 'pages/system/role/index', '角色管理'],
+    ['system-dept', 'pages/system/dept/index', '部门管理'],
+    ['system-position', 'pages/system/position/index', '岗位管理'],
+    ['system-menu', 'pages/system/menu/index', '菜单管理'],
+    ['system-app-menu', 'pages/system/app-menu/index', '工作台配置'],
+    ['system-dict', 'pages/system/dict/index', '字典管理'],
+    ['system-region', 'pages/system/region/index', '地区管理'],
+    ['system-site', 'pages/system/site/index', '站点配置'],
+    ['system-storage', 'pages/system/storage/index', '云存储'],
+    ['system-attachments', 'pages/system/attachments/index', '媒体库'],
+    ['system-login-log', 'pages/system/login-log/index', '登录日志'],
+  ]
+  const menus = [directory({ children: baseEntries.map(([_id, page, name], index) => menu({
+    id: 100 + index, name, page, permissions: undefined,
+  })) })]
+  const groups = registry.getWorkbenchGroups(menus, [
+    'system:role:list', 'system:department:list', 'system:position:list', 'system:menu:list',
+    'system:app-menu:list', 'system:dict:list', 'region:tree', 'system:option:list',
+    'system:storage:list', 'system:attachment:list', 'system:login-log:list',
+  ], [])
+  assert.deepEqual(groups[0].apps.map((app) => app.id), baseEntries.map(([id]) => id))
+  assert.deepEqual(groups[0].apps.map((app) => app.entry), baseEntries.map(([, page]) => page))
 })
 
 test('an implemented registry entry still denies uncompiled or mobile-hidden routes', () => {
@@ -102,24 +128,19 @@ test('an implemented registry entry still denies uncompiled or mobile-hidden rou
   assert.equal(
     registry.isMobileModuleAuthorized(
       { ...user, entry: 'pages/missing/index' },
-      [menu()],
+      [directory({ children: [menu({ page: 'pages/missing/index' })] })],
       ['system:user:list'],
     ),
     false,
   )
   assert.equal(
-    registry.isMobileModuleAuthorized(
-      { ...user, showInWorkbench: false },
-      [menu()],
-      ['system:user:list'],
-    ),
+    registry.isMobileModuleAuthorized({ ...user, showInWorkbench: false }, [directory()], [
+      'system:user:list',
+    ]),
     false,
   )
   assert.deepEqual(
-    registry.getAuthorizedMobileModules(
-      [menu({ type: 2, children: [menu()] })],
-      ['system:user:list'],
-    ),
+    registry.getAuthorizedMobileModules([menu({ parentId: undefined })], ['system:user:list']),
     [],
   )
 })
@@ -150,7 +171,7 @@ function harness() {
   let identity = {
     bootstrapped: true,
     token: 'one',
-    user: { id: 1, permissions: ['system:user:list', 'app:contacts:dept-tree'] },
+    user: { id: 1, permissions: [...ALL_PERMISSIONS] },
     enabledModuleIds: [],
   }
   const subscribers = []
@@ -167,7 +188,7 @@ function harness() {
     },
   }
   const api = {
-    getAuthorizedMenuTree: async () => [menu(), menu({ id: 2, name: '通讯录', path: '/contacts' })],
+    getAuthorizedMenuTree: async () => [directory({ children: [menu(), contacts()] })],
   }
   const authApi = {
     getCurrentUser: async () => identity.user,
@@ -215,7 +236,6 @@ test('favorites default to accessible apps, persist edited order and respect exp
 test('account switches restore only that account preferences and revoked apps disappear', async () => {
   const h = harness()
   await h.store.getState().load()
-  assert.equal(typeof h.store.getState().setCommonModules, 'function')
   h.store.getState().setCommonModules(['contacts'])
   const first = h.auth.getState().user
   h.auth.setState({ token: 'two', user: { ...first, id: 2 } })
@@ -226,7 +246,7 @@ test('account switches restore only that account preferences and revoked apps di
   await h.store.getState().load()
   assert.deepEqual(h.store.getState().commonModuleIds, ['contacts'])
   h.auth.setState({ user: { ...first, permissions: ['system:user:list'] } })
-  h.api.getAuthorizedMenuTree = async () => [menu()]
+  h.api.getAuthorizedMenuTree = async () => [directory()]
   await h.store.getState().load()
   assert.deepEqual(h.store.getState().commonModuleIds, [])
   assert.ok(
@@ -239,16 +259,22 @@ test('account switches restore only that account preferences and revoked apps di
 test('forced refresh updates permissions and menus together; failure keeps prior content', async () => {
   const h = harness()
   await h.store.getState().load()
+  h.authApi.getCapabilities = async () => ({
+    permissions: [...ALL_PERMISSIONS],
+    enabledModuleIds: [],
+  })
+  await h.store.getState().load({ force: true })
+  assert.deepEqual(h.store.getState().commonModuleIds, ['system-user', 'contacts'])
   h.authApi.getCapabilities = async () => ({ permissions: [], enabledModuleIds: [] })
   await h.store.getState().load({ force: true })
   assert.deepEqual(h.auth.getState().user.permissions, [])
-  assert.deepEqual(h.store.getState().commonModuleIds, ['system-user', 'contacts'])
+  assert.deepEqual(h.store.getState().commonModuleIds, [])
   h.api.getAuthorizedMenuTree = async () => {
     throw new Error('offline')
   }
   await h.store.getState().load({ force: true })
   assert.equal(h.store.getState().loaded, true)
-  assert.equal(h.store.getState().menus.length, 2)
+  assert.equal(h.store.getState().menus[0].children.length, 2)
   assert.equal(h.store.getState().error, 'offline')
 })
 
@@ -267,13 +293,9 @@ test('late refresh from a signed-out account cannot update capabilities or prefe
 
 test('navigation refreshes authorization, refuses revoked apps and blocks consecutive clicks', async () => {
   const h = harness()
-  h.auth.setState({
-    user: { ...h.auth.getState().user, accessPath: ['/system/user', '/contacts'] },
-  })
   const calls = []
   const pending = deferred()
   const navigation = loadTs('src/pages/apps/navigation.ts', {
-    '@tarojs/taro': { showModal: async () => {} },
     '@/stores/auth': { useAuthStore: h.auth },
     '@/stores/modules': { useModuleStore: h.store },
     '@/utils/router': {
@@ -297,7 +319,7 @@ test('navigation refreshes authorization, refuses revoked apps and blocks consec
 test('workbench and profile refresh share identity requests so older permissions cannot overwrite newer ones', async () => {
   const pending = deferred()
   let capabilityCalls = 0
-  const user = { id: 1, accessPath: ['/system/user'], permissions: ['system:user:list'] }
+  const user = { id: 1, permissions: ['system:user:list'] }
   const api = {
     getCurrentUser: async () => user,
     getCapabilities: () => {
@@ -329,7 +351,7 @@ test('workbench and profile refresh share identity requests so older permissions
     enabledModuleIds: [],
   })
   const modules = loadTs('src/stores/modules.ts', {
-    '@/api': { authApi: api, menuApi: { getAuthorizedMenuTree: async () => [menu()] } },
+    '@/api': { authApi: api, menuApi: { getAuthorizedMenuTree: async () => [directory()] } },
     './auth': authModule,
     '@/config': { API_BASE_URL: 'https://tenant-a.example' },
     '@/utils/storage': { storage },
@@ -341,33 +363,24 @@ test('workbench and profile refresh share identity requests so older permissions
   await Promise.all([profile, workbench])
   await modules.getState().load()
   assert.deepEqual(authModule.useAuthStore.getState().user.permissions, [])
-  assert.deepEqual(modules.getState().commonModuleIds, ['system-user'])
+  assert.deepEqual(modules.getState().commonModuleIds, [])
 })
 
-test('placeholder favorites persist and clicking opens a modal without navigation', async () => {
+test('entries without a registered mobile page never become favorites or navigate', async () => {
   const h = harness()
   h.api.getAuthorizedMenuTree = async () => [
-    menu({ id: 8, name: '角色管理', path: '/system/role' }),
+    directory({ children: [menu({ id: 8, name: '角色管理', page: 'pages/system/role/index' })] }),
   ]
   await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, ['menu-8'])
-  h.store.getState().setCommonModules(['menu-8'])
-  h.store.getState().reset()
-  await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, ['menu-8'])
-  const modals = []
+  assert.deepEqual(h.store.getState().commonModuleIds, [])
   const navigation = loadTs('src/pages/apps/navigation.ts', {
-    '@tarojs/taro': { showModal: async (options) => modals.push(options) },
     '@/stores/auth': { useAuthStore: h.auth },
     '@/stores/modules': { useModuleStore: h.store },
     '@/utils/router': {
       navigateTo: () => {
-        throw new Error('Placeholder must never navigate')
+        throw new Error('Unregistered entries must never navigate')
       },
     },
   })
-  await navigation.openWorkbenchApp('menu-8')
-  assert.equal(modals[0].title, '角色管理')
-  assert.match(modals[0].content, /建设中/)
-  assert.equal(modals[0].showCancel, false)
+  await assert.rejects(navigation.openWorkbenchApp('menu-8'), /不可用/)
 })

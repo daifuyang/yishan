@@ -5,6 +5,7 @@ export default defineAppConfig({
   ...PAGE_CONFIG,
   window: {
     backgroundTextStyle: 'dark',
+    navigationStyle: 'default',
     navigationBarBackgroundColor: '#FFFFFF',
     navigationBarTitleText: APP_NAME,
     navigationBarTextStyle: 'black',

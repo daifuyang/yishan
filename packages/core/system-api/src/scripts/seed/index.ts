@@ -1,4 +1,4 @@
-import { accountMenusSeed, assertSeedEnvironment, deptTreeSeed, dictsSeed, postsSeed, sysOptionsSeed, systemMenusSeed, type MenuSeedNode } from './config'
+import { accountMenusSeed, appMenusSeed, assertSeedEnvironment, deptTreeSeed, dictsSeed, postsSeed, sysOptionsSeed, systemMenusSeed, type AppMenuSeedNode, type MenuSeedNode } from './config'
 import type { SeedDb } from './context'
 import { drizzleDb } from '../../db'
 import { currentSystemRuntime } from '../../runtime'
@@ -7,6 +7,7 @@ import { bindUserRole, ensureSystemRoles } from './modules/system-role'
 import { seedDepartments } from './modules/system-dept'
 import { seedPosts } from './modules/system-post'
 import { seedMenus, seedProductMenus } from './modules/system-menu'
+import { bindRoleAppMenusByDefault, seedAppMenus } from './modules/system-app-menu'
 import { bindRoleMenusByDefault } from './modules/system-role-menu'
 import { bindRolePermissionsByDefault } from './modules/system-role-permission'
 import { seedDicts } from './modules/system-dict'
@@ -24,7 +25,9 @@ async function runSeedTransaction(db: SeedDb) {
   await seedDepartments(db, adminUser.id, deptTreeSeed);
   await seedPosts(db, adminUser.id, postsSeed);
   await seedMenus(db, adminUser.id, [systemMenusSeed, accountMenusSeed]);
+  await seedAppMenus(db, adminUser.id, appMenusSeed);
   await bindRoleMenusByDefault(db, createdRoleIds);
+  await bindRoleAppMenusByDefault(db, createdRoleIds, appMenusSeed);
   await bindRolePermissionsByDefault(db, adminUser.id, createdRoleIds);
   await seedDicts(db, adminUser.id, dictsSeed);
   await seedSysOptions(db, adminUser.id, sysOptionsSeed);
@@ -47,6 +50,7 @@ export async function finalizeSystemSeed(): Promise<void> {
     const [admin] = await tx.select({ id: sysUser.id }).from(sysUser).where(eq(sysUser.username, 'admin')).limit(1);
     if (!admin) throw new Error('Seed System identities before finalizing product menus');
     await bindRoleMenusByDefault(tx as unknown as SeedDb, roleIds);
+    await bindRoleAppMenusByDefault(tx as unknown as SeedDb, roleIds, appMenusSeed);
     await bindRolePermissionsByDefault(tx as unknown as SeedDb, admin.id, roleIds);
   });
   runtime.pendingSeedRoleIds.clear();
@@ -88,6 +92,19 @@ export async function seedModuleMenus(moduleId: string, nodes: MenuSeedNode[], c
   }
   await drizzleDb.transaction(tx => seedProductMenus(tx as unknown as SeedDb, creatorId, nodes));
   currentSystemRuntime().caches.permissions.clear();
+}
+
+/** 业务模块声明自己的工作台入口：入口归属 moduleId，page 必须位于 pages/<moduleId>/ 下；分组按名称复用或新建。 */
+export async function seedModuleAppMenus(moduleId: string, nodes: AppMenuSeedNode[], creatorId = 1): Promise<void> {
+  assertContributionModule(moduleId);
+  for (const group of nodes) {
+    for (const entry of group.children ?? []) {
+      if (!entry.page?.startsWith(`pages/${moduleId}/`)) {
+        throw new Error(`Module ${moduleId} cannot contribute app page: ${entry.page}`);
+      }
+    }
+  }
+  await drizzleDb.transaction(tx => seedAppMenus(tx as unknown as SeedDb, creatorId, nodes, moduleId));
 }
 
 export async function resolveSeedActor(): Promise<UserIdentity | null> {

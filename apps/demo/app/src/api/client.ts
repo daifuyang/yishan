@@ -11,4 +11,4 @@ export const apiClient = createApiClient({
   refreshPath: '/api/v1/app/auth/refresh',
 })
 
-export const { request, requestPaginated, getSessionVersion, invalidateSessionRequests, setUnauthorizedHandler, setTokenRefreshedHandler } = apiClient
+export const { request, requestRaw, requestPaginated, getSessionVersion, invalidateSessionRequests, setUnauthorizedHandler, setTokenRefreshedHandler } = apiClient

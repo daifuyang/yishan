@@ -471,6 +471,51 @@ export const sysRoleMenu = mysqlTable(
   })
 )
 
+export const sysWorkbenchMenu = mysqlTable(
+  'sys_workbench_menu',
+  {
+  id: int('id').primaryKey().autoincrement().notNull(),
+  parentId: int('parent_id'),
+  type: tinyint('type').notNull().default(1),
+  name: varchar('name', { length: 100 }).notNull(),
+  icon: varchar('icon', { length: 100 }),
+  page: varchar('page', { length: 255 }),
+  moduleId: varchar('module_id', { length: 64 }).notNull().default('core'),
+  sortOrder: int('sort_order').notNull().default(0),
+  status: tinyint('status').notNull().default(1),
+  creatorId: int('creator_id'),
+  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  updaterId: int('updater_id'),
+  updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  deletedAt: datetime('deleted_at', { mode: 'date' }),
+  version: int('version').notNull().default(1),
+  },
+  (t) => ({
+    idxWorkbenchMenuParentId: index('idx_workbench_menu_parent_id').on(t.parentId),
+    idxWorkbenchMenuPage: index('idx_workbench_menu_page').on(t.page),
+    idxWorkbenchMenuModuleId: index('idx_workbench_menu_module_id').on(t.moduleId),
+    idxWorkbenchMenuDeletedAt: index('idx_workbench_menu_deleted_at').on(t.deletedAt),
+    idxWorkbenchMenuSortOrder: index('idx_workbench_menu_sort_order').on(t.sortOrder),
+  })
+)
+
+export const sysRoleWorkbenchMenu = mysqlTable(
+  'sys_role_workbench_menu',
+  {
+  id: int('id').primaryKey().autoincrement().notNull(),
+  roleId: int('role_id').notNull(),
+  workbenchMenuId: int('workbench_menu_id').notNull(),
+  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  deletedAt: datetime('deleted_at', { mode: 'date' }),
+  },
+  (t) => ({
+    idxRoleWorkbenchMenuRoleId: index('idx_role_workbench_menu_role_id').on(t.roleId),
+    idxRoleWorkbenchMenuMenuId: index('idx_role_workbench_menu_menu_id').on(t.workbenchMenuId),
+    uniqRoleWorkbenchMenu: uniqueIndex('uniq_role_workbench_menu').on(t.roleId, t.workbenchMenuId),
+  })
+)
+
 export const sysRolePermission = mysqlTable(
   'sys_role_permission',
   {

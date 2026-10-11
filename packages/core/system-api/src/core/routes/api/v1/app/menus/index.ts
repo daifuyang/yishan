@@ -1,7 +1,7 @@
 import { createRouteRegistrar } from '@yishan/core-api/routes/route-registrar';
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from "fastify";
 import { ResponseUtil } from "@yishan/core-api/response";
-import { MenuService } from "../../../../../services/menu.service.js";
+import { AppMenuService } from "../../../../../services/app-menu.service.js";
 import { registerRoutePermissions as registerPermissions } from '@/route-permissions'
 import type { PermissionRef } from '@yishan/core-api/permissions/catalog';
 
@@ -23,16 +23,16 @@ const menus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       access: { permission: PERMS.TREE_AUTHORIZED },
       schema: {
         summary: "获取已授权菜单树",
-        description: "根据当前用户角色并集返回授权菜单树，移动端用于渲染应用 Tab",
+        description: "返回当前用户可见的工作台分组与应用入口（独立于 Web 菜单），已按角色授权、模块启用状态过滤",
         operationId: "appGetAuthorizedMenuTree",
         tags: ["app-menus"],
         security: [{ bearerAuth: [] }],
-        response: { 200: { $ref: "menuTreeResp#" } },
+        response: { 200: { $ref: "appMenuTreeResp#" } },
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const roleIds = request.currentUser?.roleIds ?? [];
-      const tree = await MenuService.getAuthorizedMenuTree(roleIds);
+      const tree = await AppMenuService.getAuthorizedTree(roleIds, fastify.moduleLoader);
       return ResponseUtil.success(reply, tree, "获取菜单树成功");
     }
   );
@@ -44,7 +44,7 @@ const menus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       access: { permission: PERMS.FLATTEN_AUTHORIZED },
       schema: {
         summary: "获取已授权菜单（扁平）",
-        description: "根据当前用户角色并集返回授权菜单扁平列表，包含完整字段（icon, path, perm 等）",
+        description: "当前用户可见的工作台节点扁平列表（分组在前，入口随后，保持树的先序顺序）",
         operationId: "appGetAuthorizedMenuFlat",
         tags: ["app-menus"],
         security: [{ bearerAuth: [] }],
@@ -57,7 +57,7 @@ const menus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
               message: { type: "string" },
               data: {
                 type: "array",
-                items: { $ref: "menuTreeNode#" },
+                items: { $ref: "appMenuNode#" },
               },
               timestamp: { type: "string" },
             },
@@ -67,7 +67,7 @@ const menus: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       const roleIds = request.currentUser?.roleIds ?? [];
-      const tree = await MenuService.getAuthorizedMenuTree(roleIds);
+      const tree = await AppMenuService.getAuthorizedTree(roleIds, fastify.moduleLoader);
       // 拍平树
       const flatten: any[] = [];
       const walk = (nodes: any[]) => {

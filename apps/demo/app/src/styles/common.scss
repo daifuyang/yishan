@@ -14,6 +14,13 @@ page {
   -moz-osx-font-smoothing: grayscale;
 }
 
+
+/* H5：Taro 页面容器默认白底（.taro_router > .taro_page），需与 page 底色一致，否则内容不满一屏时底部露白 */
+html .taro_router > .taro_page {
+  background-color: var(--color-bg-base);
+  /* Taro 默认 overflow: hidden scroll，桌面浏览器内容不满一屏也常驻滚动条槽；改为按需出现 */
+  overflow-y: auto;
+}
 view, text, button, input, textarea, scroll-view, image,
 * {
   box-sizing: border-box;
@@ -189,7 +196,6 @@ view, text, button, input, textarea, scroll-view, image,
 
 /* ---------- 页面容器 ---------- */
 .page-container {
-  min-height: 100vh;
   background-color: var(--color-bg-base);
   padding-bottom: calc(var(--tab-bar-height) + var(--safe-area-bottom));
 }

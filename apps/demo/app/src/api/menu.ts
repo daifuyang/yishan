@@ -1,21 +1,13 @@
 /**
- * 菜单相关 API
+ * 工作台菜单 API
  */
 import { request } from './client'
-import type { SysMenuNode } from './types'
+import type { WorkbenchMenuNode } from './types'
 
-/** 获取当前用户已授权菜单（树形） */
+/** 获取当前用户可见的工作台分组与应用入口（树形，已按角色授权与模块启用状态过滤） */
 export function getAuthorizedMenuTree() {
-  return request<SysMenuNode[]>({
+  return request<WorkbenchMenuNode[]>({
     method: 'GET',
     path: '/api/v1/app/menus/authorized',
-  })
-}
-
-/** 获取当前用户已授权菜单（扁平） */
-export function getAuthorizedMenuFlat() {
-  return request<SysMenuNode[]>({
-    method: 'GET',
-    path: '/api/v1/app/menus/flatten',
   })
 }

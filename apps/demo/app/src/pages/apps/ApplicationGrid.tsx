@@ -1,6 +1,6 @@
 import { Text, View } from '@tarojs/components'
 import type { WorkbenchApp } from '@/modules/registry'
-import { appIconBackground } from './app-icons'
+import { appIconBackground, appIconPalette } from './app-icons'
 import styles from './index.module.scss'
 
 export function ApplicationGrid({
@@ -20,12 +20,15 @@ export function ApplicationGrid({
           onClick={() => onOpen(app.id)}
           aria-label={app.name}
         >
-          <View className={styles.apps__iconWrap}>
+          <View
+            className={styles.apps__iconWrap}
+            style={{ background: appIconPalette(app.id).background }}
+          >
             <View
               style={{
-                width: '24px',
-                height: '24px',
-                backgroundImage: appIconBackground(app.icon),
+                width: '28px',
+                height: '28px',
+                backgroundImage: appIconBackground(app.icon, appIconPalette(app.id).color),
                 backgroundRepeat: 'no-repeat',
                 backgroundSize: '100% 100%',
               }}

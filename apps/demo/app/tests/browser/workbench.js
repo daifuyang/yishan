@@ -1,26 +1,36 @@
-// Run against the built H5 at localhost:21803 with playwright-cli run-code --filename=...
+// Run against the built H5 at localhost:21003 with playwright-cli run-code --filename=...
 async (page) => {
   const check = (ok, message) => {
     if (!ok) throw new Error(message)
   }
-  const origin = 'http://127.0.0.1:21803'
+  const origin = 'http://127.0.0.1:21003'
   const url = `${origin}/#/pages/apps/index`
-  const node = (id, name, path, type = 1, children = []) => ({
+  const entry = (id, parentId, name, page) => ({
     id,
+    parentId,
+    type: 1,
     name,
-    path,
-    type,
+    page,
+    moduleId: 'core',
+    sortOrder: id,
     status: '1',
-    sort_order: id,
-    hideInMenu: false,
-    isExternalLink: false,
-    keepAlive: false,
+    children: null,
+  })
+  const group = (id, name, children, status = '1') => ({
+    id,
+    type: 0,
+    name,
+    moduleId: 'core',
+    sortOrder: id,
+    status,
     children,
-    createdAt: '2026-01-01',
-    updatedAt: '2026-01-01',
   })
   let userId = 1
-  let permissions = ['system:user:list', 'app:contacts:dept-tree', 'app:menu:authorized-tree']
+  const initialPermissions = ['system:user:list', 'app:contacts:dept-tree', 'app:menu:authorized-tree',
+    'system:role:list', 'system:department:list', 'system:position:list', 'system:menu:list',
+    'system:app-menu:list', 'region:tree', 'system:option:list', 'system:storage:list',
+    'system:attachment:list', 'system:login-log:list', 'demo:health:read', 'demo:todos:list', 'region:list']
+  let permissions = initialPermissions
   let disabled = false
   let empty = false
   let fail = false
@@ -56,7 +66,6 @@ async (page) => {
         loginCount: 1,
         createdAt: '2026-01-01',
         updatedAt: '2026-01-01',
-        accessPath: ['/system/user', '/contacts'],
       }
     if (path.endsWith('/auth/capabilities'))
       data = { permissions, enabledModuleIds: ['demo', 'portal', 'shop'] }
@@ -64,16 +73,32 @@ async (page) => {
       data = empty
         ? []
         : [
-            node(10, '系统管理', '/system', 0, [
-              node(11, '用户管理', '/system/user'),
-              node(12, '字典管理', '/system/dict'),
+            group(5, '常用', [entry(6, 5, '通讯录', 'pages/contacts/index/index'), entry(7, 5, '用户管理', 'pages/system/user/index')]),
+            group(10, '系统管理', [
+              entry(11, 10, '用户管理', 'pages/system/user/index'),
+              entry(12, 10, '字典管理', 'pages/system/dict/index'),
+              entry(13, 10, '角色管理', 'pages/system/role/index'),
+              entry(14, 10, '岗位管理', 'pages/system/position/index'),
+              entry(15, 10, '菜单管理', 'pages/system/menu/index'),
+              entry(16, 10, '工作台管理', 'pages/system/app-menu/index'),
+              entry(17, 10, '地区管理', 'pages/system/region/index'),
+              entry(18, 10, '站点配置', 'pages/system/site/index'),
+              entry(19, 10, '云存储', 'pages/system/storage/index'),
+              entry(22, 10, '媒体库', 'pages/system/attachments/index'),
+              entry(23, 10, '登录日志', 'pages/system/login-log/index'),
             ]),
-            {
-              ...node(20, '企业协作', '/collaboration', 0, [node(21, '通讯录', '/contacts')]),
-              status: disabled ? '0' : '1',
-            },
-            node(30, '未适配', '/not-built'),
-            node(31, '操作', '/system/user', 2),
+            group(
+              20,
+              '企业协作',
+              [entry(21, 20, '通讯录', 'pages/contacts/index/index')],
+              disabled ? '0' : '1',
+            ),
+            group(40, '示例插件', [
+              entry(41, 40, '健康检查', 'pages/demo/health/index'),
+              entry(42, 40, 'Todo 示例', 'pages/demo/todos/index'),
+              entry(43, 40, '省市级联', 'pages/demo/region/index'),
+            ]),
+            group(30, '未适配', [entry(31, 30, '未适配', 'pages/not-built/index')]),
           ]
     await route.fulfill({
       status: 200,
@@ -90,41 +115,71 @@ async (page) => {
   })
   // Seed before the app evaluates its initial auth state, only once per browser session.
   await page.addInitScript(() => {
-    if (sessionStorage.getItem('workbench-fixture')) return
+    if (location.protocol !== 'http:' || sessionStorage.getItem('workbench-fixture')) return
     localStorage.clear()
     localStorage.setItem('yishan:app:accessToken', JSON.stringify({ data: 'test-only' }))
     sessionStorage.setItem('workbench-fixture', 'seeded')
   })
   await page.goto(url)
-  await page.getByText('全部应用', { exact: true }).waitFor()
+  await page.reload()
+  await page.waitForLoadState('networkidle')
+  await page.goto(url)
+  await page.getByText('系统管理', { exact: true }).waitFor()
+  check((await page.getByText('常用', { exact: true }).count()) === 0, 'Server common category must be absent')
   check(
-    (await page.locator('[aria-label="用户管理"]').count()) === 2,
-    'Admin must see user app in common and all sections',
+    (await page.locator('[aria-label="用户管理"]').count()) === 1,
+    'Each authorized app appears once',
   )
-  check((await page.locator('[aria-label="通讯录"]').count()) === 2, 'Admin must see contacts')
+  check((await page.locator('[aria-label="通讯录"]').count()) === 1, 'Admin must see contacts')
   check(
-    (await page.locator('[aria-label="字典管理"]').count()) === 2,
-    'Unadapted menus must have icons in favorites and all apps',
+    (await page.locator('[aria-label="字典管理"]').count()) === 0,
+    'Pages without the current user permission must be hidden',
   )
   check(
-    (await page.locator('[aria-label="未适配"]').count()) === 2,
-    'Unregistered menu must appear as a placeholder',
+    (await page.locator('[aria-label="未适配"]').count()) === 0,
+    'Unregistered pages must be hidden, not shown as placeholders',
   )
-  check((await page.locator('[aria-label="操作"]').count()) === 0, 'Buttons are not apps')
-  await page.locator('[aria-label="字典管理"]').first().click()
-  await page.getByText('移动端功能正在建设中，敬请期待。', { exact: true }).waitFor()
-  check(page.url() === url, 'Placeholder must not navigate')
-  await page.getByText('我知道了', { exact: true }).click()
-  // Keep two favorites for the existing ordering/account regression scenarios.
-  await page.getByText('编辑', { exact: true }).click()
-  for (const name of ['字典管理', '未适配']) {
-    await page
-      .locator('[class*=apps__editRow]')
-      .filter({ has: page.getByText(name, { exact: true }) })
-      .getByText('移除', { exact: true })
-      .click()
-  }
-  await page.getByText('完成', { exact: true }).click()
+  check(
+    (await page.getByText('移动端功能正在建设中，敬请期待。', { exact: true }).count()) === 0,
+    'No under-construction placeholders',
+  )
+
+  await page.setViewportSize({ width: 375, height: 667 })
+  await page.waitForFunction(() => Math.abs(document.querySelector('[class*=apps__searchWrap]').getBoundingClientRect().height - 44) < 1)
+  const visual = await page.evaluate(() => {
+    const title = document.querySelector('[class*=apps__pageTitle]').getBoundingClientRect()
+    const grid = document.querySelector('[class*=apps__grid]')
+    const items = [...grid.children].map(el => el.getBoundingClientRect())
+    const icons = [...grid.querySelectorAll('[class*=apps__iconWrap]')]
+    const category = getComputedStyle(document.querySelector('[class*=apps__category]'))
+    return {
+      centered: Math.abs(title.left + title.width / 2 - innerWidth / 2) < 1,
+      fourColumns: items.slice(0, 4).every(item => Math.abs(item.top - items[0].top) < 1) && items[4].top > items[0].top,
+      iconSizes: icons.map(el => el.getBoundingClientRect().width),
+      iconRadii: icons.map(el => parseFloat(getComputedStyle(el).borderRadius)),
+      filledWhite: icons.every(el => {
+        const svg = decodeURIComponent(el.firstElementChild.style.backgroundImage)
+        return svg.includes('fill="#FFFFFF"') && !svg.includes('stroke=')
+      }),
+      labelSize: parseFloat(getComputedStyle(grid.querySelector('[class*=apps__label]')).fontSize),
+      cardRadius: parseFloat(getComputedStyle(grid.parentElement).borderRadius),
+      colors: new Set(icons.map(el => getComputedStyle(el).backgroundColor)).size,
+      titleSize: parseFloat(category.fontSize),
+      titleWeight: category.fontWeight,
+    }
+  })
+  check(visual.centered, 'Heading must be centered')
+  check(visual.fourColumns, 'Grid must wrap after four apps')
+  check(visual.iconSizes.every(size => Math.abs(size - 48) < 1), 'Icon bases must be 48px')
+  check(visual.colors >= 5, 'Apps must have independent palette colors')
+  check(visual.filledWhite, 'App glyphs must be white filled shapes')
+  check(visual.iconRadii.every(radius => radius === 14), 'Icon bases use 14px radii')
+  check(visual.labelSize === 14 && visual.cardRadius === 16, 'Labels and card corners follow mobile sizing')
+  check(visual.titleSize >= 16 && visual.titleSize <= 18 && visual.titleWeight === '600', 'Categories use plain semibold headings')
+  check(await page.locator('#taro-navigation-bar').isHidden(), 'Native title must not duplicate custom heading')
+  check((await page.locator('.weui-tabbar__label').allTextContents()).join(',') === '首页,工作台,我的', 'Three native navigation tabs must remain')
+  check((await page.locator('.weui-bar__item_on').innerText()) === '工作台', 'Workbench tab must be selected')
+  await page.screenshot({ path: '.playwright-cli/workbench-375.png', fullPage: true })
 
   await page.setViewportSize({ width: 320, height: 800 })
   await page.waitForFunction(
@@ -148,7 +203,6 @@ async (page) => {
 
   const beforeSearch = requests.length
   await page.getByPlaceholder('搜索应用').fill('用 户')
-  await page.getByText('搜索结果', { exact: true }).waitFor()
   check((await page.locator('[aria-label="用户管理"]').count()) === 1, 'Search must deduplicate')
   check((await page.locator('[aria-label="通讯录"]').count()) === 0, 'Search must filter locally')
   await page.getByPlaceholder('搜索应用').fill('不存在')
@@ -156,68 +210,15 @@ async (page) => {
   check(requests.length === beforeSearch, 'Search must not request APIs')
   await page.getByText('清空', { exact: true }).click()
 
-  await page.getByText('编辑', { exact: true }).click()
-  await page.getByText('下移', { exact: true }).first().click()
-  check(
-    (
-      await page
-        .locator('[class*=apps__editRow]')
-        .filter({ has: page.getByText('移除', { exact: true }) })
-        .locator('[class*=apps__editName]')
-        .allTextContents()
-    ).join(',') === '通讯录,用户管理',
-    'Down operation must reorder',
-  )
-  await page.getByText('完成', { exact: true }).click()
-  await page.reload()
-  await page.getByText('全部应用', { exact: true }).waitFor()
-  check(
-    (
-      await page
-        .locator('[class*=apps__section]')
-        .first()
-        .locator('[class*=apps__label]')
-        .allTextContents()
-    ).join(',') === '通讯录,用户管理',
-    'Saved order must survive reload',
-  )
-  await page.getByText('编辑', { exact: true }).click()
-  await page.getByText('移除', { exact: true }).first().click()
-  await page
-    .locator('[class*=apps__editRow]')
-    .filter({ has: page.getByText('通讯录', { exact: true }) })
-    .getByText('添加', { exact: true })
-    .click()
-  check(
-    (
-      await page
-        .locator('[class*=apps__editRow]')
-        .filter({ has: page.getByText('移除', { exact: true }) })
-        .locator('[class*=apps__editName]')
-        .allTextContents()
-    ).join(',') === '用户管理,通讯录',
-    'Remove and add must append the selected app',
-  )
-  await page.getByText('移除', { exact: true }).first().click()
-  await page.getByText('移除', { exact: true }).click()
-  await page.getByText('完成', { exact: true }).click()
-  await page.reload()
-  await page.getByText('点击编辑，添加常用应用', { exact: true }).waitFor()
-  check(
-    (await page.locator('[aria-label="用户管理"]').count()) === 1,
-    'Explicit empty favorites must not change all apps',
-  )
-
+  check((await page.getByText('常用应用', { exact: true }).count()) === 0, 'Workbench excludes favorites')
+  check((await page.getByText('全部应用', { exact: true }).count()) === 0, 'Workbench excludes redundant title')
   userId = 2
   await page.reload()
-  await page.getByText('全部应用', { exact: true }).waitFor()
-  check(
-    (await page.locator('[aria-label="用户管理"]').count()) === 2,
-    'New account must get its own defaults',
-  )
+  await page.getByText('系统管理', { exact: true }).waitFor()
+  check((await page.locator('[aria-label="用户管理"]').count()) === 1, 'Account switch preserves authorized catalog')
   userId = 1
   await page.reload()
-  await page.getByText('点击编辑，添加常用应用', { exact: true }).waitFor()
+  await page.getByText('系统管理', { exact: true }).waitFor()
 
   await page.getByPlaceholder('搜索应用').fill('user')
   await page.locator('[aria-label="用户管理"]').click()
@@ -248,12 +249,9 @@ async (page) => {
   await page.getByText('刷新中', { exact: true }).waitFor({ state: 'hidden' })
   await page.getByPlaceholder('搜索应用').fill('user')
   check(
-    (await page.locator('[aria-label="用户管理"]').count()) === 1,
-    'Preview does not add permission filtering',
+    (await page.locator('[aria-label="用户管理"]').count()) === 0,
+    'Entries without permission must be hidden',
   )
-  await page.locator('[aria-label="用户管理"]').click()
-  await page.getByText('应用已不可用或访问权限已变更', { exact: true }).waitFor()
-  check(page.url() === url, 'Existing business pages retain access checks')
   await page.getByText('清空', { exact: true }).click()
   disabled = true
   await page.getByText('刷新', { exact: true }).click()
@@ -263,7 +261,9 @@ async (page) => {
   await page.getByText('暂无可用应用', { exact: true }).waitFor()
   const beforeDirect = requests.filter((path) => path === '/api/v1/admin/users').length
   await page.goto(`${origin}/#/pages/system/user/index`)
-  await page.getByText('无权访问', { exact: true }).waitFor()
+  await page.reload()
+  await page.waitForLoadState('networkidle')
+  check((await page.locator('[class*=header__title]').count()) === 0, 'Unauthorized deep link must not render user management')
   check(
     requests.filter((path) => path === '/api/v1/admin/users').length === beforeDirect,
     'Unauthorized deep link must not fetch users',
@@ -272,14 +272,14 @@ async (page) => {
   return {
     passed: [
       'admin catalog',
-      'placeholder icons and modal',
-      '320px layout',
+      'unregistered entries hidden',
+      '375px visual geometry and 320px layout',
       'local search',
-      'favorites add/remove/order/reload',
+      'application center without favorites',
       'account isolation',
       'navigation and return',
       'refresh retry',
-      'preview with revoked permission and disabled menu',
+      'revoked permission and disabled group',
       'deep-link denial',
     ],
     apiFixtures: true,

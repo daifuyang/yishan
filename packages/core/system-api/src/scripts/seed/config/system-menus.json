@@ -266,6 +266,52 @@
     },
     {
       "type": 1,
+      "name": "工作台管理",
+      "path": "/system/app-menu",
+      "sortOrder": 5,
+      "component": "./system/app-menu",
+      "children": [
+        {
+          "type": 2,
+          "name": "查看",
+          "permissionCodes": [
+            "system:app-menu:list"
+          ],
+          "sortOrder": 1,
+          "hideInMenu": true,
+          "isDefaultAction": true
+        },
+        {
+          "type": 2,
+          "name": "新增",
+          "permissionCodes": [
+            "system:app-menu:create"
+          ],
+          "sortOrder": 2,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "编辑",
+          "permissionCodes": [
+            "system:app-menu:update"
+          ],
+          "sortOrder": 3,
+          "hideInMenu": true
+        },
+        {
+          "type": 2,
+          "name": "删除",
+          "permissionCodes": [
+            "system:app-menu:delete"
+          ],
+          "sortOrder": 4,
+          "hideInMenu": true
+        }
+      ]
+    },
+    {
+      "type": 1,
       "name": "字典管理",
       "path": "/system/dict",
       "sortOrder": 6,

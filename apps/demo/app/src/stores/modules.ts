@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { menuApi } from '@/api'
-import type { SysMenuNode } from '@/api/types'
+import type { WorkbenchMenuNode } from '@/api/types'
 import { API_BASE_URL } from '@/config'
 import { getWorkbenchGroups } from '@/modules/registry'
 import { storage } from '@/utils/storage'
 import { loadIdentity, useAuthStore } from './auth'
 
 interface ModuleState {
-  menus: SysMenuNode[]
+  menus: WorkbenchMenuNode[]
   loading: boolean
   error: string | null
   loaded: boolean
@@ -157,12 +157,8 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
 useAuthStore.subscribe((state, previous) => {
   if (syncingIdentity) return
   const authorizationChanged =
-    JSON.stringify([state.user?.permissions, state.user?.accessPath, state.enabledModuleIds]) !==
-    JSON.stringify([
-      previous.user?.permissions,
-      previous.user?.accessPath,
-      previous.enabledModuleIds,
-    ])
+    JSON.stringify([state.user?.permissions, state.enabledModuleIds]) !==
+    JSON.stringify([previous.user?.permissions, previous.enabledModuleIds])
   if (!state.token || state.user?.id !== previous.user?.id || authorizationChanged) {
     useModuleStore.getState().reset()
     // 请求由可见页面发起，避免鉴权刷新与菜单订阅互相触发重复请求。

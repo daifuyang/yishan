@@ -63,7 +63,13 @@ export default defineConfig(async (merge, _env) => {
       ],
       options: {},
     },
-    cache: { enable: true },
+    cache: {
+      enable: true,
+      // Taro 的默认缓存只跟踪 app.config，工作台导航配置也必须使旧路由缓存失效。
+      buildDependencies: {
+        pages: [path.resolve(__dirname, '../src/pages/apps/index.config.ts')],
+      },
+    },
     mini: {
       compile: { include: sharedSources },
       webpackChain(chain) {

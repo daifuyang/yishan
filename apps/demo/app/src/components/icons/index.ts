@@ -1,3 +1,5 @@
 export { IconFont } from './IconFont'
 export type { IconFontProps } from './IconFont'
 export { IconFont as default } from './IconFont'
+export { LineIcon } from './LineIcon'
+export type { LineIconName, LineIconProps } from './LineIcon'

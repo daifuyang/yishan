@@ -2,14 +2,14 @@
 
 采用 [Phosphor Icons](https://phosphoricons.com/)（`@phosphor-icons/core` 2.1.1，MIT）的配对图标，转换为六张 81×81 RGBA 透明 PNG。
 
-- 普通态：regular（outline），`#86909C`
+- 普通态：fill，`#86909C`
 - 激活态：fill，`#1677FF`
 
 | Tab | 上游图标 | 输出文件 |
 | --- | --- | --- |
-| 首页 | house / house-fill | home.png / home-active.png |
-| 工作台 | squares-four / squares-four-fill | apps.png / apps-active.png |
-| 我的 | user / user-fill | user.png / user-active.png |
+| 首页 | house-fill | home.png / home-active.png |
+| 工作台 | squares-four-fill | apps.png / apps-active.png |
+| 我的 | user-fill | user.png / user-active.png |
 
 SVG 路径来自官方 npm 包，仅设置尺寸和颜色。源文件及完整 MIT 许可保存在 `scripts/tabbar-icons/`。在仓库根目录使用 PowerShell 重新生成：
 

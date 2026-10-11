@@ -68,6 +68,7 @@ function mount({
     didShow,
     didHide;
   const Page = loadTs("src/pages/system/user/detail/index.tsx", {
+    '../../_shared/AdminUI': { withAccountScope: (component) => component },
     react: {
       useState(initial) {
         const index = stateIndex++;
@@ -113,6 +114,47 @@ function mount({
     "@/components/molecules": { PageHeader: "PageHeader", Card: "Card", ListItem: "ListItem" },
     "@/components/feedback": { StateView: "StateView" },
     "@/components/layout": { PageContainer: "PageContainer" },
+    "@/components/management": {
+      ManagementPage: "ManagementPage",
+      DetailContent: (props) => props.children,
+      DetailHero: (props) =>
+        [props.title, props.note, props.subtitle, props.footnote].filter(Boolean),
+      DetailSection: (props) => [props.title, props.children],
+      DetailRow: (props) => [props.label, props.value ?? '未设置'],
+      DetailGroupList: "DetailGroupList",
+      LineIcon: "LineIcon",
+      // 操作栏与面板展开成可遍历子节点，保持按 aria-label 查找按钮的契约
+      BottomActionBar: (props) =>
+        props.actions.map((action) => ({
+          type: "View",
+          props: { "aria-label": action.label, onClick: action.onClick },
+        })),
+      ActionSheet: (props) =>
+        props.open
+          ? [
+              ...props.items.map((item) => ({
+                type: "View",
+                props: { "aria-label": item.label, onClick: item.onClick },
+              })),
+              { type: "View", props: { "aria-label": "取消", onClick: props.onClose } },
+            ]
+          : null,
+      PromptDialog: (props) =>
+        props.open
+          ? [
+              props.error ?? null,
+              { type: "Input", props: { value: props.value, onInput: (e) => props.onChange(e.detail.value) } },
+              {
+                type: "View",
+                props: { "aria-label": props.cancelAriaLabel ?? "取消", onClick: props.onClose },
+              },
+              {
+                type: "View",
+                props: { "aria-label": props.confirmAriaLabel ?? props.confirmText, onClick: props.onSubmit },
+              },
+            ]
+          : null,
+    },
     "@/utils/auth-guard": { useRequireAuth: () => ({ ready: true, allowed: true }) },
     "@/utils/router": {
       navigateTo: (path) => routes.push(path),

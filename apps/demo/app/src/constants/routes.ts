@@ -5,19 +5,15 @@ export const LOGIN_PATH = 'login/index'
 
 export const TAB_PAGES = {
   home: 'pages/index/index',
-  customers: 'pages/customers/index',
   apps: 'pages/apps/index',
   mine: 'pages/mine/index',
 } as const
-
-export const CRM_ACTION_PAGE = 'pages/crm/action/index'
 
 export const SECONDARY_PAGES = {
   profileEdit: 'pages/profile/edit/index',
   profilePassword: 'pages/profile/password/index',
   profileLoginLog: 'pages/profile/login-log/index',
   messages: 'pages/messages/index',
-  settings: 'pages/settings/index',
   security: 'pages/security/index',
   about: 'pages/about/index',
   contactsIndex: 'pages/contacts/index/index',
@@ -33,6 +29,25 @@ export const SYSTEM_PAGES = {
   userEdit: 'pages/system/user/edit/index',
   dictIndex: 'pages/system/dict/index',
   dictItems: 'pages/system/dict/items/index',
+  role: 'pages/system/role/index',
+  roleDetail: 'pages/system/role/detail/index',
+  roleForm: 'pages/system/role/form/index',
+  rolePermissions: 'pages/system/role/permissions/index',
+  position: 'pages/system/position/index',
+  menu: 'pages/system/menu/index',
+  appMenu: 'pages/system/app-menu/index',
+  region: 'pages/system/region/index',
+  site: 'pages/system/site/index',
+  storage: 'pages/system/storage/index',
+  attachments: 'pages/system/attachments/index',
+  moduleManagement: 'pages/system/module-management/index',
+} as const
+
+export const DEMO_PAGES = {
+  quickstart: 'pages/demo/quickstart/index',
+  health: 'pages/demo/health/index',
+  todos: 'pages/demo/todos/index',
+  region: 'pages/demo/region/index',
 } as const
 
 /**
@@ -46,6 +61,15 @@ export const PERMS = {
   userCreate: 'system:user:create',
   userUpdate: 'system:user:update',
   userDelete: 'system:user:delete',
+  // 角色管理
+  roleList: 'system:role:list',
+  roleCreate: 'system:role:create',
+  roleUpdate: 'system:role:update',
+  roleDelete: 'system:role:delete',
+  roleGrant: 'system:role:grant',
+  // 菜单管理（角色授权需要读取菜单与权限目录）
+  menuList: 'system:menu:list',
+  permissionCatalog: 'system:permission:catalog',
   // 部门管理
   deptList: 'system:department:list',
   deptCreate: 'system:department:create',

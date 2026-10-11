@@ -26,10 +26,10 @@ function harness(initial = []) {
 test('primary navigation always uses switchTab while secondary navigation pushes normally', async () => {
   const h = harness()
   await h.router.navigateTo('pages/apps/index')
-  await h.router.navigateTo('/pages/settings/index')
+  await h.router.navigateTo('/pages/about/index')
   assert.deepEqual(h.calls, [
     ['switchTab', '/pages/apps/index'],
-    ['navigateTo', '/pages/settings/index'],
+    ['navigateTo', '/pages/about/index'],
   ])
 })
 test('session expiration clears the full stack and login restores a safe registered secondary destination', async () => {
@@ -59,7 +59,7 @@ test('concurrent login redirects coalesce and a direct login resumes home', asyn
   await Promise.all([one, two])
 })
 test('back navigation from a direct deep link returns to home instead of failing', async () => {
-  const h = harness([{ route: 'pages/settings/index' }])
+  const h = harness([{ route: 'pages/about/index' }])
   await h.router.navigateBack()
   assert.deepEqual(h.calls, [['reLaunch', '/pages/index/index']])
 })

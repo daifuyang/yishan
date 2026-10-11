@@ -2,20 +2,17 @@ import { hasRequiredPermissions } from '@yishan/core-app/permissions'
 export { hasRequiredPermissions } from '@yishan/core-app/permissions'
 import { normalizePage } from '@yishan/core-app/router'
 export { normalizePage } from '@yishan/core-app/router'
-import type { SysMenuNode } from '@/api/types'
+import type { WorkbenchMenuNode } from '@/api/types'
 import { isRegisteredPage } from '@/constants/page-config'
 
-/** 实际移动端页面注册；尚未适配的菜单由工作台展示占位入口。 */
+/** 实际移动端页面注册；工作台入口以 page 与 entry 匹配，未注册的入口不展示。 */
 export interface MobileModule {
   id: string
   name: string
   icon: string
   entry: string
-  backendMenuPath: string
   backendModuleId: string
   permissions: readonly string[]
-  category: string
-  sort: number
   implemented?: boolean
   showInWorkbench?: boolean
   keywords?: readonly string[]
@@ -28,10 +25,7 @@ export const MOBILE_MODULES: readonly MobileModule[] = [
     name: '通讯录',
     icon: 'ContactsOutlined',
     entry: 'pages/contacts/index/index',
-    backendMenuPath: '/contacts',
     permissions: ['app:contacts:dept-tree'],
-    category: '常用',
-    sort: 10,
     keywords: ['contacts', '成员'],
   },
   {
@@ -40,10 +34,7 @@ export const MOBILE_MODULES: readonly MobileModule[] = [
     name: '用户管理',
     icon: 'UserOutlined',
     entry: 'pages/system/user/index',
-    backendMenuPath: '/system/user',
     permissions: ['system:user:list'],
-    category: '系统管理',
-    sort: 20,
     keywords: ['user'],
   },
   {
@@ -52,11 +43,8 @@ export const MOBILE_MODULES: readonly MobileModule[] = [
     name: '部门管理',
     icon: 'ApartmentOutlined',
     entry: 'pages/system/dept/index',
-    backendMenuPath: '/system/department',
     permissions: ['system:department:list'],
-    category: '系统管理',
-    sort: 30,
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'system-login-log',
@@ -64,11 +52,8 @@ export const MOBILE_MODULES: readonly MobileModule[] = [
     name: '登录日志',
     icon: 'AuditOutlined',
     entry: 'pages/system/login-log/index',
-    backendMenuPath: '/system/login-log',
     permissions: ['system:login-log:list'],
-    category: '系统管理',
-    sort: 40,
-    implemented: false,
+    implemented: true,
   },
   {
     id: 'system-dict',
@@ -76,11 +61,60 @@ export const MOBILE_MODULES: readonly MobileModule[] = [
     name: '字典管理',
     icon: 'BookOutlined',
     entry: 'pages/system/dict/index',
-    backendMenuPath: '/system/dict',
     permissions: ['system:dict:list'],
-    category: '系统管理',
-    sort: 50,
-    implemented: false,
+    implemented: true,
+  },
+  {
+    id: 'system-role', backendModuleId: 'core', name: '角色管理', icon: 'SafetyCertificateOutlined',
+    entry: 'pages/system/role/index', permissions: ['system:role:list'],
+  },
+  {
+    id: 'system-position', backendModuleId: 'core', name: '岗位管理', icon: 'IdcardOutlined',
+    entry: 'pages/system/position/index', permissions: ['system:position:list'],
+  },
+  {
+    id: 'system-menu', backendModuleId: 'core', name: '菜单管理', icon: 'MenuOutlined',
+    entry: 'pages/system/menu/index', permissions: ['system:menu:list'],
+  },
+  {
+    id: 'system-app-menu', backendModuleId: 'core', name: '工作台管理', icon: 'AppstoreOutlined',
+    entry: 'pages/system/app-menu/index', permissions: ['system:app-menu:list'],
+  },
+  {
+    id: 'system-region', backendModuleId: 'core', name: '地区管理', icon: 'EnvironmentOutlined',
+    entry: 'pages/system/region/index', permissions: ['region:tree'],
+  },
+  {
+    id: 'system-site', backendModuleId: 'core', name: '站点配置', icon: 'GlobalOutlined',
+    entry: 'pages/system/site/index', permissions: ['system:option:list'],
+  },
+  {
+    id: 'system-storage', backendModuleId: 'core', name: '云存储', icon: 'CloudUploadOutlined',
+    entry: 'pages/system/storage/index', permissions: ['system:storage:list'],
+  },
+  {
+    id: 'system-attachments', backendModuleId: 'core', name: '媒体库', icon: 'PictureOutlined',
+    entry: 'pages/system/attachments/index', permissions: ['system:attachment:list'],
+  },
+  {
+    id: 'system-module-management', backendModuleId: 'core', name: '模块管理', icon: 'AppstoreOutlined',
+    entry: 'pages/system/module-management/index', permissions: ['system:module-management:list'],
+  },
+  {
+    id: 'demo-quickstart', backendModuleId: 'demo', name: '快速入门', icon: 'ReadOutlined',
+    entry: 'pages/demo/quickstart/index', permissions: ['demo:quickstart:read'], keywords: ['入门'],
+  },
+  {
+    id: 'demo-health', backendModuleId: 'demo', name: '健康检查', icon: 'SmileOutlined',
+    entry: 'pages/demo/health/index', permissions: ['demo:health:read'], keywords: ['运行状态'],
+  },
+  {
+    id: 'demo-todos', backendModuleId: 'demo', name: 'Todo 示例', icon: 'ClipboardListOutlined',
+    entry: 'pages/demo/todos/index', permissions: ['demo:todos:list'], keywords: ['待办', '任务'],
+  },
+  {
+    id: 'demo-region', backendModuleId: 'demo', name: '省市级联', icon: 'EnvironmentOutlined',
+    entry: 'pages/demo/region/index', permissions: ['region:list'], keywords: ['省份', '城市', '地区'],
   },
 ]
 
@@ -90,27 +124,14 @@ for (const field of ['id', 'entry'] as const) {
   }
 }
 
-export function flattenMenus(menus: readonly SysMenuNode[]): SysMenuNode[] {
-  const result: SysMenuNode[] = []
-  const walk = (nodes: readonly SysMenuNode[]) => {
-    for (const node of nodes) {
-      result.push(node)
-      if (node.children?.length) walk(node.children)
-    }
-  }
-  walk(menus)
-  return result
-}
-
 export function getMobileModuleById(id: string): MobileModule | undefined {
   return MOBILE_MODULES.find((module) => module.id === id)
 }
 
-export function getMobileModule(menu: SysMenuNode): MobileModule | undefined {
-  if (menu.type !== 1 || menu.isExternalLink || !menu.path) return undefined
-  return MOBILE_MODULES.find(
-    (module) => normalizePage(module.backendMenuPath) === normalizePage(menu.path ?? ''),
-  )
+export function getMobileModuleByPage(page: string | undefined): MobileModule | undefined {
+  if (!page) return undefined
+  const key = normalizePage(page)
+  return MOBILE_MODULES.find((module) => module.entry === key)
 }
 
 export function isModuleEnabled(
@@ -122,45 +143,40 @@ export function isModuleEnabled(
   )
 }
 
+/** 工作台里启用的应用入口（服务端已按角色授权，这里只做展示层兜底）。 */
+function visibleEntries(menus: readonly WorkbenchMenuNode[]): WorkbenchMenuNode[] {
+  return menus.flatMap((group) =>
+    group.type === 0 && group.status === '1'
+      ? [...(group.children ?? [])].filter((entry) => entry.type === 1 && entry.status === '1')
+      : [],
+  )
+}
+
 export function isMobileModuleAuthorized(
   module: MobileModule,
-  menus: readonly SysMenuNode[],
+  menus: readonly WorkbenchMenuNode[],
   permissions?: readonly string[],
   enabledModuleIds?: readonly string[] | null,
 ): boolean {
-  if (
-    module.implemented === false ||
-    module.showInWorkbench === false ||
-    !isRegisteredPage(module.entry)
-  )
-    return false
-  const visibleMenus: SysMenuNode[] = []
-  const visit = (nodes: readonly SysMenuNode[]) => {
-    for (const menu of nodes) {
-      if (menu.type === 2 || menu.status !== '1' || menu.hideInMenu || menu.isExternalLink) continue
-      visibleMenus.push(menu)
-      if (menu.children?.length) visit(menu.children)
-    }
-  }
-  visit(menus)
   return (
+    module.implemented !== false &&
+    module.showInWorkbench !== false &&
+    isRegisteredPage(module.entry) &&
     hasRequiredPermissions(module.permissions, permissions) &&
     isModuleEnabled(module, enabledModuleIds) &&
-    visibleMenus.some((menu) => getMobileModule(menu)?.id === module.id)
+    visibleEntries(menus).some((entry) => getMobileModuleByPage(entry.page)?.id === module.id)
   )
 }
 
 export function getAuthorizedMobileModules(
-  menus: readonly SysMenuNode[],
+  menus: readonly WorkbenchMenuNode[],
   permissions?: readonly string[],
   enabledModuleIds?: readonly string[] | null,
 ): MobileModule[] {
   return getWorkbenchGroups(menus, permissions, enabledModuleIds).flatMap((group) =>
     group.apps.flatMap((app) => {
       const module = getMobileModuleById(app.id)
-      return module && isMobileModuleAuthorized(module, menus, permissions, enabledModuleIds)
-        ? [{ ...module, name: app.name, icon: app.icon }]
-        : []
+      return module ? [{ ...module, name: app.name, icon: app.icon }] : []
     }),
   )
 }
@@ -170,8 +186,8 @@ export interface WorkbenchApp {
   name: string
   icon: string
   menuId: number
-  /** 只有已实现、已注册且当前可访问的移动端入口才有路由。 */
-  entry?: string
+  /** 已实现、已注册且当前可访问的移动端页面入口。 */
+  entry: string
 }
 
 export interface WorkbenchAppGroup {
@@ -180,53 +196,43 @@ export interface WorkbenchAppGroup {
   apps: WorkbenchApp[]
 }
 
+/**
+ * 工作台应用目录：分组与入口顺序、名称、图标均由后台「工作台配置」决定。
+ * App 内没有对应已注册页面的入口不展示，权限不足的入口同样隐藏。
+ */
 export function getWorkbenchGroups(
-  menus: readonly SysMenuNode[],
+  menus: readonly WorkbenchMenuNode[],
   permissions?: readonly string[],
   enabledModuleIds?: readonly string[] | null,
   query = '',
 ): WorkbenchAppGroup[] {
-  const groups = new Map<string, WorkbenchAppGroup>()
-  const seen = new Set<string>()
   const keyword = query.replace(/\s+/g, '').toLowerCase()
-  const visit = (nodes: readonly SysMenuNode[], category?: { id: string; name: string }) => {
-    for (const menu of [...nodes].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id)) {
-      if (menu.type === 2 || menu.status !== '1' || menu.hideInMenu || menu.isExternalLink) continue
-      const parent =
-        category ?? (menu.type === 0 ? { id: `menu-${menu.id}`, name: menu.name } : undefined)
-      const module = getMobileModule(menu)
-      const menuKey = menu.path ? normalizePage(menu.path) : ''
-      if (menu.type === 1 && menuKey && !seen.has(menuKey) && module?.showInWorkbench !== false) {
-        seen.add(menuKey)
-        const name = menu.name || module?.name || '应用'
-        const matches = [name, module?.name ?? '', ...(module?.keywords ?? [])].some((value) =>
-          value.replace(/\s+/g, '').toLowerCase().includes(keyword),
-        )
-        if (matches) {
-          const groupKey = parent?.id ?? `category-${module?.category ?? 'other'}`
-          const group = groups.get(groupKey) ?? {
-            id: groupKey,
-            name: parent?.name ?? module?.category ?? '其他应用',
-            apps: [],
-          }
-          group.apps.push({
-            id: module?.id ?? `menu-${menu.id}`,
-            name,
-            icon: menu.icon || module?.icon || menu.path || 'AppstoreOutlined',
-            menuId: menu.id,
-            entry:
-              module && isMobileModuleAuthorized(module, menus, permissions, enabledModuleIds)
-                ? module.entry
-                : undefined,
-          })
-          groups.set(groupKey, group)
-        }
-      }
-      if (menu.children?.length) visit(menu.children, parent)
+  const seen = new Set<string>()
+  const result: WorkbenchAppGroup[] = []
+  for (const group of menus) {
+    if (group.type !== 0 || group.status !== '1') continue
+    const apps: WorkbenchApp[] = []
+    for (const entry of group.children ?? []) {
+      if (entry.type !== 1 || entry.status !== '1') continue
+      const module = getMobileModuleByPage(entry.page)
+      if (!module || seen.has(module.id)) continue
+      if (!isMobileModuleAuthorized(module, menus, permissions, enabledModuleIds)) continue
+      const matches = [entry.name, module.name, ...(module.keywords ?? [])].some((value) =>
+        value.replace(/\s+/g, '').toLowerCase().includes(keyword),
+      )
+      if (!matches) continue
+      seen.add(module.id)
+      apps.push({
+        id: module.id,
+        name: entry.name || module.name,
+        icon: entry.icon || module.icon || 'AppstoreOutlined',
+        menuId: entry.id,
+        entry: module.entry,
+      })
     }
+    if (apps.length) result.push({ id: `group-${group.id}`, name: group.name, apps })
   }
-  visit(menus)
-  return [...groups.values()]
+  return result
 }
 
 export interface MobilePageAccess {
@@ -244,6 +250,15 @@ const SECONDARY_MODULE_PAGES: Record<
   'pages/system/user/edit/index': { moduleId: 'system-user', editUser: true },
   'pages/system/dept/detail/index': { moduleId: 'system-dept' },
   'pages/system/dict/items/index': { moduleId: 'system-dict' },
+  'pages/system/role/detail/index': { moduleId: 'system-role' },
+  'pages/system/role/form/index': {
+    moduleId: 'system-role',
+    permissions: ['system:role:update', 'system:role:grant'],
+  },
+  'pages/system/role/permissions/index': {
+    moduleId: 'system-role',
+    permissions: ['system:role:update', 'system:role:grant'],
+  },
 }
 
 export function getModuleForPage(path: string): MobilePageAccess | undefined {

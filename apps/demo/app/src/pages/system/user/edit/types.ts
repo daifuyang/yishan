@@ -5,6 +5,7 @@ export interface FormErrors {
   phone?: string;
   email?: string;
   password?: string;
+  birthDate?: string;
   gender?: string;
   status?: string;
   deptIds?: string;

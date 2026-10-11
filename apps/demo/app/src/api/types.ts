@@ -28,6 +28,21 @@ export interface CurrentUser {
   permissions?: string[]
 }
 
+/** 工作台配置节点：type 0 为分组，1 为应用入口（独立于 Web 菜单） */
+export interface WorkbenchMenuNode {
+  id: number
+  parentId?: number
+  type: 0 | 1
+  name: string
+  icon?: string
+  /** App 页面入口，如 pages/contacts/index/index；仅应用入口有值 */
+  page?: string
+  moduleId: string
+  sortOrder: number
+  status: '0' | '1'
+  children?: WorkbenchMenuNode[] | null
+}
+
 export interface SysMenuNode {
   id: number
   name: string

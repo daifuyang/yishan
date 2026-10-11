@@ -5,7 +5,7 @@ import { useEffect, useMemo } from 'react'
 import { PageContainer } from '@/components/layout'
 import { APP_NAME } from '@/constants'
 import { SECONDARY_PAGES, TAB_PAGES } from '@/constants/routes'
-import { flattenMenus, getAuthorizedMobileModules, getMobileModule } from '@/modules/registry'
+import { getAuthorizedMobileModules } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
 import { useRequireAuth } from '@/utils/auth-guard'
@@ -98,15 +98,11 @@ export default function IndexPage() {
   }
 
   const modules = getAuthorizedMobileModules(menus, user?.permissions, enabledModuleIds)
-  const allMenus = flattenMenus(menus)
   // 优先使用工作台里设置的常用应用；未设置时按注册顺序取有权限的应用
   const common = commonModuleIds.flatMap((id) => modules.filter((module) => module.id === id))
   const apps: FavoriteAppItem[] = (commonConfigured || common.length > 0 ? common : modules)
     .slice(0, MAX_APPS)
-    .map((module) => {
-      const menu = allMenus.find((candidate) => getMobileModule(candidate)?.id === module.id)
-      return { id: module.id, name: module.name, icon: resolveHomeIcon(menu?.icon, module.icon) }
-    })
+    .map((module) => ({ id: module.id, name: module.name, icon: resolveHomeIcon(module.icon) }))
 
   const openModule = (id: string) => {
     const module = modules.find((candidate) => candidate.id === id)

@@ -3,6 +3,7 @@
 // API 更新时间：
 // API 唯一标识：
 import * as moduleManagement from "./moduleManagement";
+import * as sysAppMenus from "./sysAppMenus";
 import * as attachments from "./attachments";
 import * as sysDepts from "./sysDepts";
 import * as sysDictTypes from "./sysDictTypes";
@@ -28,6 +29,7 @@ import * as auth from "./auth";
 import * as meApiTokens from "./meApiTokens";
 export default {
   moduleManagement,
+  sysAppMenus,
   attachments,
   sysDepts,
   sysDictTypes,
