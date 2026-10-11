@@ -85,7 +85,7 @@ export function buildProfileSections(options: BuildProfileOptions): ProfileSecti
     })
   }
 
-  return [
+  const sections: ProfileSection[] = [
     {
       key: 'basic',
       title: '基础信息',
@@ -139,5 +139,8 @@ export function buildProfileSections(options: BuildProfileOptions): ProfileSecti
         { kind: 'date', key: 'birthDate', label: '出生日期', value: text(user.birthDate), editable: true },
       ],
     },
-  ].filter((section) => section.fields.length > 0)
+  ]
+
+  // 无权限的分组会变成空数组，不要留下空标题
+  return sections.filter((section) => section.fields.length > 0)
 }

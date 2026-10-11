@@ -248,6 +248,7 @@ const SECONDARY_MODULE_PAGES: Record<
   'pages/contacts/dept/index': { moduleId: 'contacts', permissions: ['app:contacts:dept-users'] },
   'pages/system/user/detail/index': { moduleId: 'system-user' },
   'pages/system/user/edit/index': { moduleId: 'system-user', editUser: true },
+  'pages/system/user/departments/index': { moduleId: 'system-user', editUser: true },
   'pages/system/dept/detail/index': { moduleId: 'system-dept' },
   'pages/system/dict/items/index': { moduleId: 'system-dict' },
   'pages/system/role/detail/index': { moduleId: 'system-role' },
