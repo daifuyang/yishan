@@ -2,7 +2,7 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 const { loadTs } = require('./helpers/load-ts.cjs')
 const { validateUserForm } = loadTs('src/pages/system/user/edit/model.ts')
-const readSource = (rel) => require("node:fs").readFileSync(require("node:path").resolve(__dirname, "../" + rel), "utf8");
+const readSource = (rel) => require("node:fs").readFileSync(require("node:path").resolve(__dirname, `../${rel}`), "utf8");
 const base = { username: '', phone: '13800138000', email: '', password: 'Pass123', birthDate: '' }
 
 test('user form follows optional username and password contract without requiring extra business data', () => {

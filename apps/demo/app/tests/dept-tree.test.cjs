@@ -101,7 +101,9 @@ const { DepartmentTreeNavigator } = loadTs('src/components/management/Department
 
 function find(node, pred, out = []) {
   if (Array.isArray(node)) {
-    node.forEach((n) => find(n, pred, out))
+    node.forEach((n) => {
+      find(n, pred, out)
+    })
     return out
   }
   if (!node || typeof node === 'string' || typeof node === 'number') return out
