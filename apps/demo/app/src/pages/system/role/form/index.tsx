@@ -1,4 +1,5 @@
 import Taro, { useRouter } from '@tarojs/taro'
+import { Picker, Text, View } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import * as adminRoleApi from '@/api/admin/role'
 import type { AdminRoleDetail } from '@/api/admin/role'
@@ -9,13 +10,14 @@ import {
   FormField,
   FormSection,
   FormSubmitBar,
+  LineIcon,
   LinkRow,
   ManagementPage,
-  SegmentField,
   TextAreaField,
   TextField,
 } from '@/components/management'
 import { PageHeader } from '@/components/molecules'
+import styles from './index.module.scss'
 import { SYSTEM_PAGES } from '@/constants/routes'
 import { useCanWrite } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
@@ -147,7 +149,7 @@ function RoleFormPage() {
                 disabled={!canSave || submitting}
               />
             </FormField>
-            <FormField label="描述">
+            <FormField label="描述" stacked>
               <TextAreaField
                 value={description}
                 onChange={setDescription}
@@ -157,20 +159,41 @@ function RoleFormPage() {
               />
             </FormField>
             <FormField label="状态">
-              <SegmentField
-                value={status}
-                options={STATUS_OPTIONS}
-                onChange={setStatus}
-                disabled={!canSave || submitting}
-              />
+              <Picker
+                className={styles.picker}
+                mode="selector"
+                range={STATUS_OPTIONS.map((option) => option.label)}
+                value={Math.max(STATUS_OPTIONS.findIndex((option) => option.value === status), 0)}
+                onChange={(event) =>
+                  setStatus(STATUS_OPTIONS[Number(event.detail.value)]?.value ?? status)
+                }
+              >
+                <View className={styles.pickerValue}>
+                  <Text>{STATUS_OPTIONS.find((option) => option.value === status)?.label ?? '启用'}</Text>
+                  <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+                </View>
+              </Picker>
             </FormField>
             <FormField label="数据权限">
-              <SegmentField
-                value={dataScope}
-                options={SCOPE_OPTIONS}
-                onChange={setDataScope}
-                disabled={!canSave || submitting}
-              />
+              <Picker
+                className={styles.picker}
+                mode="selector"
+                range={SCOPE_OPTIONS.map((option) => option.label)}
+                value={Math.max(
+                  SCOPE_OPTIONS.findIndex((option) => option.value === dataScope),
+                  0,
+                )}
+                onChange={(event) =>
+                  setDataScope(SCOPE_OPTIONS[Number(event.detail.value)]?.value ?? dataScope)
+                }
+              >
+                <View className={styles.pickerValue}>
+                  <Text>
+                    {SCOPE_OPTIONS.find((option) => option.value === dataScope)?.label ?? '全部数据'}
+                  </Text>
+                  <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+                </View>
+              </Picker>
             </FormField>
           </FormSection>
 

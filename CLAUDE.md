@@ -162,7 +162,10 @@ explicit reason in the PR description.
   `Taro.showActionSheet` — both break the row rhythm and lose sight of the current value.
 - **Taro `Picker` needs `flex: 1` on the Picker itself.** In H5 it renders as a standalone `div`, so
   an inner `flex: 1` never participates in layout and the value won't reach the row end.
-- **Textarea stays left-aligned**; everything else is right-aligned.
+- **Textareas get `<FormField stacked>`** — label above, control full width, `resize: none`. A multi-line
+  field crammed into the 76px label column is unreadable.
+- **Segmented controls cap at 3 options.** Past that use a picker row — five options in the narrow column
+  get squeezed to one character per pill and wrap vertically.
 - **Enum values**: array index is the backend code, the array entry is the label. Render the label,
   submit the code — never render the raw code.
 - **Empty means unchanged**: an optional edit field left blank must not be added to the update

@@ -42,20 +42,29 @@ export interface FormFieldProps {
   error?: string
   /** 行尾补充说明，如「创建后不可修改」 */
   note?: string
+  /** 独占一行：label 在上、控件占满宽度。多行文本必须用这个 */
+  stacked?: boolean
   children: ReactNode
 }
 
-/** 表单字段：左侧标签 + 右侧控件，错误与说明在行尾右对齐。 */
+/** 表单字段：默认左侧标签 + 右侧控件；stacked 时 label 在上、控件占满整行。 */
 export function FormField({
   label,
   required = false,
   disabled = false,
   error,
   note,
+  stacked = false,
   children,
 }: FormFieldProps) {
   return (
-    <View className={cx(styles.field, disabled && styles['field--disabled'])}>
+    <View
+      className={cx(
+        styles.field,
+        stacked && styles['field--stacked'],
+        disabled && styles['field--disabled'],
+      )}
+    >
       <Text className={cx(styles.field__label, required && styles.field__required)}>{label}</Text>
       {children}
       {error ? (
