@@ -22,6 +22,10 @@ export {
 } from './DetailLayout'
 export { OrganizationPicker } from './OrganizationPicker'
 export type { OrganizationPickerProps } from './OrganizationPicker'
+export { DepartmentTreeNavigator } from './DepartmentTreeNavigator'
+export type { DepartmentTreeNavigatorProps } from './DepartmentTreeNavigator'
+export type { DeptPathNode, DeptFlatNode } from './deptTree'
+export { childOf, findDeptPath, flattenDepts, searchDepts, hasChildren } from './deptTree'
 export {
   FormContent,
   type FormContentProps,
