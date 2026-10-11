@@ -1,6 +1,8 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { loadTs, deferred } = require("./helpers/load-ts.cjs");
+const scssMock = () => new Proxy({}, { get: (_, key) => (key === "__esModule" ? false : key) });
+
 
 const USER = {
   id: 2,
@@ -61,6 +63,7 @@ function mount({
     confirmations = [],
     toasts = [],
     routes = [];
+  const heroProps = [];
   let stateIndex = 0,
     refIndex = 0,
     effectIndex = 0,
@@ -85,6 +88,7 @@ function mount({
         refs[index] ??= { current: initial };
         return refs[index];
       },
+      useMemo: (fn) => fn(),
       useEffect(effect, deps) {
         const index = effectIndex++;
         if (!dependencies[index] || deps.some((value, i) => value !== dependencies[index][i])) {
@@ -117,9 +121,21 @@ function mount({
     "@/components/management": {
       ManagementPage: "ManagementPage",
       DetailContent: (props) => props.children,
-      DetailHero: (props) =>
-        [props.title, props.note, props.subtitle, props.footnote].filter(Boolean),
-      DetailSection: (props) => [props.title, props.children],
+      DetailHero: (props) => {
+        heroProps.push(props);
+        return [props.title, props.subtitle].filter(Boolean);
+      },
+      OrganizationPicker: loadTs("src/components/management/OrganizationPicker.tsx", {
+        "@tarojs/components": { View: "View", Text: "Text" },
+        "./LineIcon": { LineIcon: "LineIcon" },
+        "./OrganizationPicker.module.scss": scssMock(),
+        "@/pages/system/user/profileSections": loadTs("src/pages/system/user/profileSections.ts"),
+      }).OrganizationPicker,
+      DetailSection: (props) => [
+        props.title,
+        props.collapsible ? { type: "View", props: { "aria-label": `折叠-${props.title}`, "aria-expanded": !props.defaultCollapsed } } : null,
+        props.defaultCollapsed ? null : props.children,
+      ],
       DetailRow: (props) => [props.label, props.value ?? '未设置'],
       DetailGroupList: "DetailGroupList",
       LineIcon: "LineIcon",
@@ -202,6 +218,7 @@ function mount({
     render();
   }
   return {
+    heroProps,
     settle,
     render,
     updates,
@@ -338,11 +355,6 @@ test("real association names and all records are displayed without mutating the 
     "审核员",
     "产品部",
     USER.email,
-    "用户 ID",
-    "创建时间",
-    "更新时间",
-    "更新人",
-    "本机地址",
   ]) {
     assert.ok(content.includes(value), `Missing ${value}`);
   }
@@ -363,7 +375,8 @@ test("missing lookup permission or a failed association query degrades without e
   });
   await denied.settle();
   assert.equal(calls, 0);
-  assert.ok(text(denied.tree).includes("名称暂不可用"));
+  // 无读取权限时整个「组织关系」分组不渲染，而不是退化成占位文案
+  assert.ok(!text(denied.tree).includes("组织关系"), "无权限时不应渲染组织关系分组");
   const partial = mount({
     permissions: ALL,
     roleLookup: async (id) => {
@@ -421,4 +434,59 @@ test("H5 reset dialog collects a password and retains input on API failure", asy
     if (previous === undefined) delete process.env.TARO_ENV;
     else process.env.TARO_ENV = previous;
   }
+});
+
+test('详情页按契约渲染全部分组标题', async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  const flat = text(page.tree);
+  for (const title of ["基础信息", "联系方式", "安全设置", "组织关系", "状态", "其他属性", "账号记录"]) {
+    assert.ok(flat.includes(title), `缺少分组 ${title}`);
+  }
+});
+
+test('账号记录默认收起，不渲染其内容', async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  const toggle = page.nodes.find((n) => n.props?.["aria-label"] === "折叠-账号记录");
+  assert.ok(toggle, "账号记录应是可折叠分组");
+  assert.equal(toggle.props["aria-expanded"], false);
+  assert.ok(!text(page.tree).includes("用户 ID"), "账号记录收起时不应渲染其内容");
+});
+
+test("组织关系行跳转到只读模式的选择页", async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  await page.click("所属部门");
+  assert.ok(
+    page.routes.some((r) => r.includes("departments") && r.includes("mode=readonly")),
+    `期望跳到只读部门选择页，实际路由：${JSON.stringify(page.routes)}`,
+  );
+});
+
+test("角色行也跳转到只读模式的选择页", async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  await page.click("角色");
+  assert.ok(
+    page.routes.some((r) => r.includes("roles") && r.includes("mode=readonly")),
+    `期望跳到只读角色选择页，实际路由：${JSON.stringify(page.routes)}`,
+  );
+});
+
+test("详情页头部不再渲染性别 note 与组织归属 footnote", async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  void page.nodes; // 遍历会调用函数型组件 mock，DetailHero 才会执行
+  const hero = page.heroProps.at(-1);
+  assert.ok(hero, "应渲染 DetailHero");
+  assert.equal(hero.footnote, undefined, "组织归属已下沉到组织关系分组");
+  assert.equal(hero.note, undefined, "性别已下沉到其他属性分组");
+});
+
+test("组织关系展示部门摘要而非整串 ID", async () => {
+  const page = mount({ permissions: ALL });
+  await page.settle();
+  const picker = page.nodes.find((n) => n.props?.["aria-label"] === "所属部门");
+  assert.ok(picker, "应渲染 OrganizationPicker");
 });

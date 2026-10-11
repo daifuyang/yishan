@@ -34,12 +34,13 @@ export function maskSecret(value: string): string {
 
 /**
  * 组织归属摘要：最多展示 2 个名称，溢出时补「等 N 个」。
- * 名称全部解析失败时回退为占位文案，避免渲染出空的顿号串。
+ * 名称解析不出的项保留「名称暂不可用」占位（沿用既有行为），
+ * 避免静默隐藏关联缺失；占位项计入总数但不产生空的顿号串。
  */
 export function formatOrgSummary(ids: number[], names: Map<number, string>): string {
   if (!ids.length) return UNSET
   const resolved = ids.map((id) => names.get(id)).filter((name): name is string => !!name)
-  if (!resolved.length) return UNRESOLVED
+  if (resolved.length < ids.length) resolved.push(UNRESOLVED)
   if (resolved.length <= 2) return resolved.join('、')
   return `${resolved.slice(0, 2).join('、')} 等 ${resolved.length} 个`
 }

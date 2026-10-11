@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Taro, { useRouter, useDidShow, useDidHide } from '@tarojs/taro'
 
 import { Tag } from '@/components/atoms'
@@ -10,6 +10,7 @@ import {
   DetailHero,
   DetailSection,
   DetailRow,
+  OrganizationPicker,
   BottomActionBar,
   ActionSheet,
   PromptDialog,
@@ -23,14 +24,8 @@ import { adminUserApi, adminRoleApi, adminDeptApi } from '@/api'
 import type { AdminUser } from '@/api/admin/types'
 import { PERMS, SYSTEM_PAGES } from '@/constants/routes'
 import { formatDateTime } from '@/utils/format'
+import { buildProfileSections, UNSET } from '../profileSections'
 import { withAccountScope } from '../../_shared/AdminUI'
-
-function associationText(ids: number[] | undefined, names: Record<number, string>) {
-  if (!ids?.length) return '未设置'
-  const available = ids.map((id) => names[id]).filter(Boolean)
-  if (available.length < ids.length) available.push('名称暂不可用')
-  return available.join('、')
-}
 
 function UserDetailPage() {
   const guard = useRequireAuth({ moduleId: 'system-user' })
@@ -125,6 +120,19 @@ function UserDetailPage() {
       active = false
     }
   }, [roleKey, deptKey, canReadRoles, canReadDepts, guard.allowed])
+
+  // 详情页与编辑页共用同一份字段契约，分组/顺序/空值文案只在这里定义一次
+  const sections = useMemo(
+    () =>
+      buildProfileSections({
+        user: (user ?? {}) as unknown as Record<string, unknown>,
+        deptNames: new Map(Object.entries(deptNames).map(([id, name]) => [Number(id), name])),
+        roleNames: new Map(Object.entries(roleNames).map(([id, name]) => [Number(id), name])),
+        canReadDepts,
+        canReadRoles,
+      }),
+    [user, deptNames, roleNames, canReadDepts, canReadRoles],
+  )
 
   const handleEdit = () => {
     if (!user || !canUpdate || submittingRef.current || loading) return
@@ -239,12 +247,6 @@ function UserDetailPage() {
   const kind = error ? 'error' : loading && !user ? 'loading' : !user ? 'empty' : 'ready'
   const hasMore = canUpdate || (canDelete && user?.id !== 1)
   const disabled = submitting || loading
-  const organizationSummary = [
-    user?.roleIds?.map((roleId) => roleNames[roleId]).filter(Boolean).join('、'),
-    user?.deptIds?.map((deptId) => deptNames[deptId]).filter(Boolean).join('、'),
-  ]
-    .filter(Boolean)
-    .join(' · ')
   const lastLoginIp = user?.lastLoginIp
   const loginIp =
     lastLoginIp && ['::1', '127.0.0.1', '::ffff:127.0.0.1'].includes(lastLoginIp) ? '本机地址' : lastLoginIp
@@ -315,27 +317,39 @@ function UserDetailPage() {
                     {user.status === '1' ? '启用' : user.status === '0' ? '禁用' : '锁定'}
                   </Tag>
                 }
-                note={user.genderName || undefined}
                 subtitle={user.username ? `@${user.username}` : undefined}
-                footnote={organizationSummary || undefined}
               />
-              <DetailSection title="基本信息">
-                <DetailRow label="手机号" value={user.phone} />
-                <DetailRow label="邮箱" value={user.email} />
-                <DetailRow label="昵称" value={user.nickname} />
-                <DetailRow label="出生日期" value={user.birthDate} />
-              </DetailSection>
-              <DetailSection title="组织信息">
-                <DetailRow
-                  label="所属部门"
-                  value={associationText(user.deptIds, canReadDepts ? deptNames : {})}
-                />
-                <DetailRow
-                  label="用户角色"
-                  value={associationText(user.roleIds, canReadRoles ? roleNames : {})}
-                />
-              </DetailSection>
-              <DetailSection title="账号记录">
+              {sections.map((section) => (
+                <DetailSection key={section.key} title={section.title}>
+                  {section.fields.map((field) =>
+                    field.kind === 'org' ? (
+                      <OrganizationPicker
+                        key={field.key}
+                        label={field.label}
+                        ids={field.ids}
+                        names={field.names}
+                        onPress={() => {
+                          const page =
+                            field.target === 'roles'
+                              ? SYSTEM_PAGES.userRoles
+                              : SYSTEM_PAGES.userDepartments
+                          navigateTo(
+                            `/${page}?id=${user.id}&ids=${field.ids.join(',')}&mode=readonly`,
+                          )
+                        }}
+                      />
+                    ) : (
+                      <DetailRow
+                        key={field.key}
+                        label={field.label}
+                        value={field.value}
+                        tone={field.value === UNSET ? 'muted' : 'default'}
+                      />
+                    ),
+                  )}
+                </DetailSection>
+              ))}
+              <DetailSection title="账号记录" collapsible defaultCollapsed>
                 <DetailRow label="用户 ID" value={user.id} />
                 <DetailRow
                   label="最后登录"
