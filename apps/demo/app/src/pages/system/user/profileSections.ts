@@ -6,7 +6,7 @@ export type ProfileOrgTarget = 'departments' | 'roles'
 export type ProfileField =
   | { kind: 'text'; key: string; label: string; value: string; editable: boolean }
   | { kind: 'date'; key: string; label: string; value: string; editable: boolean }
-  | { kind: 'secret'; key: string; label: string; value: string }
+  | { kind: 'secret'; key: string; label: string; value: string; editable: boolean }
   | { kind: 'enum'; key: string; label: string; value: string; options: readonly string[] }
   | {
       kind: 'org'
@@ -56,6 +56,8 @@ export interface BuildProfileOptions {
   roleNames: Map<number, string>
   canReadDepts: boolean
   canReadRoles: boolean
+  /** 新建态：密码可填（编辑态一律只读，重置密码走列表页长按菜单） */
+  isCreate?: boolean
 }
 
 export function buildProfileSections(options: BuildProfileOptions): ProfileSection[] {
@@ -108,8 +110,14 @@ export function buildProfileSections(options: BuildProfileOptions): ProfileSecti
       key: 'security',
       title: '安全设置',
       fields: [
-        { kind: 'secret', key: 'password', label: '密码', value: maskSecret(String(user.password ?? '')) },
-        { kind: 'secret', key: 'loginMethod', label: '登录方式', value: text(user.loginMethod) },
+        {
+          kind: 'secret',
+          key: 'password',
+          label: '密码',
+          value: options.isCreate ? String(user.password ?? '') : maskSecret(String(user.password ?? '')),
+          editable: options.isCreate === true,
+        },
+        { kind: 'secret', key: 'loginMethod', label: '登录方式', value: text(user.loginMethod), editable: false },
       ],
     },
     { key: 'org', title: '组织关系', fields: orgFields },

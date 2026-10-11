@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { adminUserApi, adminDeptApi, adminRoleApi } from '@/api'
 import type { FormErrors } from '../types'
 import type { AdminDept, AdminRole, UpdateAdminUserReq } from '@/api/admin/types'
@@ -7,6 +7,7 @@ import { useCanWrite } from '@/hooks/useCanWrite'
 import { validateUserForm } from '../model'
 import { getSessionVersion } from '@/api/client'
 import { canWriteModuleNow } from '@/utils/auth-guard'
+import { DRAFT_KEYS, useSelectionDraft } from '@/stores/selectionDraft'
 
 export function useUserEditForm(id: string | undefined, enabled = true) {
   const isEdit = id !== undefined
@@ -146,6 +147,15 @@ export function useUserEditForm(id: string | undefined, enabled = true) {
   const genderLabel = ['未知', '男', '女'][Number(gender)]
   const statusLabel = ['禁用', '启用', '锁定'][Number(status)]
 
+  // 二级选择页把结果写进 selectionDraft，返回时消费一次即清空
+  const consumeDraft = useSelectionDraft((state) => state.consumeDraft)
+  useDidShow(() => {
+    const deptDraft = consumeDraft(DRAFT_KEYS.userDepts)
+    if (deptDraft) setDeptIds(deptDraft)
+    const roleDraft = consumeDraft(DRAFT_KEYS.userRoles)
+    if (roleDraft) setRoleIds(roleDraft)
+  })
+
   return {
     values: {
       username,
@@ -188,9 +198,5 @@ export function useUserEditForm(id: string | undefined, enabled = true) {
       await loadOptions()
       if (id) await loadUser(id)
     },
-    toggleDept: (id: number) =>
-      setDeptIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])),
-    toggleRole: (id: number) =>
-      setRoleIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])),
   }
 }

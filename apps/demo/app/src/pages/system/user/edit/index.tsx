@@ -1,13 +1,24 @@
-import { Picker, View } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import { useMemo } from 'react'
+import { Picker, Text, View } from '@tarojs/components'
+import { useRouter } from '@tarojs/taro'
 
-import { Button, Tag } from '@/components/atoms'
 import { StateView } from '@/components/feedback'
 import { PageContainer } from '@/components/layout'
-import { BottomActionBar, FormField, SectionHeader } from '@/components/molecules'
+import {
+  FormContent,
+  FormField,
+  FormSection,
+  FormSubmitBar,
+  OrganizationPicker,
+  SegmentField,
+  TextField,
+} from '@/components/management'
+import { SYSTEM_PAGES } from '@/constants/routes'
+import { navigateTo } from '@/utils/router'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { useUserEditForm } from './hooks/useUserEditForm'
 import { useAuthStore } from '@/stores/auth'
+import { buildProfileSections, UNSET } from '../profileSections'
 import styles from './index.module.scss'
 
 export default function UserEditPage() {
@@ -29,127 +40,152 @@ function UserEditContent({ id }: { id?: string }) {
     depts,
     roles,
     isEdit,
-    genderLabel,
-    statusLabel,
+    canReadDepts,
+    canReadRoles,
     handleSubmit,
-    toggleDept,
-    toggleRole,
   } = form
   const kind = pageError ? 'error' : loading ? 'loading' : 'ready'
+
+  const sections = useMemo(
+    () =>
+      buildProfileSections({
+        user: {
+          username: values.username,
+          realName: values.realName,
+          nickname: values.nickname,
+          phone: values.phone,
+          email: values.email,
+          password: values.password,
+          loginMethod: '用户名密码',
+          gender: values.gender,
+          birthDate: values.birthDate,
+          status: values.status,
+          deptIds: values.deptIds,
+          roleIds: values.roleIds,
+        },
+        deptNames: new Map(depts.map((dept) => [dept.id, dept.name])),
+        roleNames: new Map(roles.map((role) => [role.id, role.name])),
+        canReadDepts,
+        canReadRoles,
+        isCreate: !isEdit,
+      }),
+    [values, depts, roles, canReadDepts, canReadRoles, isEdit],
+  )
+
+  const setterFor = (key: string): ((value: string) => void) | undefined => {
+    const name = `set${key.charAt(0).toUpperCase()}${key.slice(1)}`
+    return (values as unknown as Record<string, unknown>)[name] as
+      | ((value: string) => void)
+      | undefined
+  }
 
   return (
     <PageContainer>
       <StateView kind={kind} text={pageError} onRetry={form.reload}>
-        <View className="gutter">
-          <SectionHeader title="基本信息" />
-          <FormField
-            type="input"
-            label="用户名"
-            error={errors.username}
-            placeholder="请输入用户名"
-            value={values.username}
-            onChange={values.setUsername}
-            disabled={isEdit}
-            maxLength={50}
-          />
-          <FormField
-            type="input"
-            label="真实姓名"
-            error={errors.realName}
-            placeholder="请输入真实姓名"
-            value={values.realName}
-            onChange={values.setRealName}
-            maxLength={50}
-          />
-          <FormField
-            type="input"
-            label="昵称"
-            error={errors.nickname}
-            placeholder="请输入昵称"
-            value={values.nickname}
-            onChange={values.setNickname}
-            maxLength={50}
-          />
-          <SectionHeader title="联系方式与凭证" />
-          <FormField
-            type="input"
-            label="手机号"
-            required
-            error={errors.phone}
-            placeholder="请输入手机号"
-            value={values.phone}
-            onChange={values.setPhone}
-            maxLength={20}
-          />
-          <FormField
-            type="input"
-            label="邮箱"
-            error={errors.email}
-            placeholder="请输入邮箱"
-            value={values.email}
-            onChange={values.setEmail}
-          />
-          <FormField
-            type="input"
-            password
-            label="密码"
-            required={!isEdit}
-            error={errors.password}
-            placeholder={isEdit ? '留空则不修改' : '请输入密码'}
-            value={values.password}
-            onChange={values.setPassword}
-          />
-          <SectionHeader title="其他属性" />
-          <Picker mode="date" value={values.birthDate} onChange={(event) => values.setBirthDate(event.detail.value)}>
-            <FormField type="picker" label="出生日期" value={values.birthDate} error={errors.birthDate} placeholder="未设置" />
-          </Picker>
-          {values.birthDate ? <Button variant="text" onClick={() => values.setBirthDate('')}>清除出生日期</Button> : null}
-          <FormField
-            type="picker"
-            label="性别"
-            value={genderLabel}
-            onClick={() => {
-              void Taro.showActionSheet({ itemList: ['未知', '男', '女'] })
-                .then((result) => values.setGender(String(result.tapIndex) as '0' | '1' | '2'))
-                .catch(() => {})
-            }}
-          />
-          <FormField
-            type="picker"
-            label="状态"
-            value={statusLabel}
-            onClick={() => {
-              void Taro.showActionSheet({ itemList: ['禁用', '启用', '锁定'] })
-                .then((result) => values.setStatus(String(result.tapIndex) as '0' | '1' | '2'))
-                .catch(() => {})
-            }}
-          />
-          <SectionHeader title="所属部门" />
-          <View className={styles.edit__chips}>
-            {depts.map((dept) => (
-              <View key={dept.id} onClick={() => !submitting && toggleDept(dept.id)}>
-                <Tag variant={values.deptIds.includes(dept.id) ? 'primary' : 'default'}>
-                  {dept.name}
-                </Tag>
-              </View>
-            ))}
-          </View>
-          <SectionHeader title="角色" />
-          <View className={styles.edit__chips}>
-            {roles.map((role) => (
-              <View key={role.id} onClick={() => !submitting && toggleRole(role.id)}>
-                <Tag variant={values.roleIds.includes(role.id) ? 'success' : 'default'}>
-                  {role.name}
-                </Tag>
-              </View>
-            ))}
-          </View>
-        </View>
-        <BottomActionBar>
-          <Button variant="primary" size="lg" block disabled={submitting || loading || Boolean(pageError)} loading={submitting} onClick={handleSubmit}>
-            保存
-          </Button>
-        </BottomActionBar>
+        <FormContent>
+          {sections.map((section) => (
+            <View key={section.key} className={styles.group}>
+              <FormSection title={section.title}>
+                {section.fields.map((field) => {
+                  if (field.kind === 'org') {
+                    const page =
+                      field.target === 'roles'
+                        ? SYSTEM_PAGES.userRoles
+                        : SYSTEM_PAGES.userDepartments
+                    return (
+                      <OrganizationPicker
+                        key={field.key}
+                        label={field.label}
+                        ids={field.ids}
+                        names={field.names}
+                        onPress={() => navigateTo(`/${page}`)}
+                      />
+                    )
+                  }
+
+                  if (field.kind === 'secret') {
+                    // 新建时可填密码；编辑态只读展示，重置密码走列表页长按菜单
+                    return field.editable ? (
+                      <FormField
+                        key={field.key}
+                        label={field.label}
+                        required
+                        error={(errors as Record<string, string | undefined>)[field.key]}
+                      >
+                        <TextField
+                          value={field.value}
+                          onChange={(next) => setterFor(field.key)?.(next)}
+                        />
+                      </FormField>
+                    ) : (
+                      <FormField key={field.key} label={field.label}>
+                        <View className={styles.readonlyValue}>
+                          <Text>{field.value || UNSET}</Text>
+                        </View>
+                      </FormField>
+                    )
+                  }
+
+                  if (field.kind === 'enum') {
+                    return (
+                      <FormField key={field.key} label={field.label}>
+                        <SegmentField
+                          value={field.value}
+                          options={field.options.map((label, index) => ({
+                            label,
+                            value: String(index),
+                          }))}
+                          onChange={(next) => {
+                            const set = setterFor(field.key)
+                            if (set) set(next)
+                          }}
+                        />
+                      </FormField>
+                    )
+                  }
+
+                  if (field.kind === 'date') {
+                    const current = (values as unknown as Record<string, string>)[field.key] ?? ''
+                    return (
+                      <FormField
+                        key={field.key}
+                        label={field.label}
+                        error={(errors as Record<string, string | undefined>)[field.key]}
+                      >
+                        <Picker
+                          mode="date"
+                          value={current}
+                          onChange={(event) => setterFor(field.key)?.(String(event.detail.value))}
+                        >
+                          <View className={styles.pickerValue}>
+                            <Text>{current || UNSET}</Text>
+                          </View>
+                        </Picker>
+                      </FormField>
+                    )
+                  }
+
+                  const current = (values as unknown as Record<string, string>)[field.key] ?? ''
+                  return (
+                    <FormField
+                      key={field.key}
+                      label={field.label}
+                      error={(errors as Record<string, string | undefined>)[field.key]}
+                    >
+                      <TextField
+                        value={current === UNSET ? '' : current}
+                        placeholder={`请输入${field.label}`}
+                        disabled={field.key === 'username' && isEdit}
+                        onChange={(next) => setterFor(field.key)?.(next)}
+                      />
+                    </FormField>
+                  )
+                })}
+              </FormSection>
+            </View>
+          ))}
+        </FormContent>
+        <FormSubmitBar text="保存" submitting={submitting} onSubmit={handleSubmit} />
       </StateView>
     </PageContainer>
   )

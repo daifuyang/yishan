@@ -1,38 +1,23 @@
-.edit {
-  display: flex;
-  flex-direction: column;
-  padding: var(--space-3) 0 calc(var(--space-3) + 60px);
+.group {
+  margin-bottom: var(--space-3);
 }
 
-.edit__chips {
+.readonlyValue {
+  min-height: var(--list-item-height-sm);
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.edit__chip {
-  display: inline-flex;
   align-items: center;
-  height: 30px;
-  padding: 0 var(--space-3);
-  background-color: var(--color-bg-base);
-  color: var(--color-text-secondary);
-  border-radius: var(--radius-full);
-  border: 1px solid var(--color-border-light);
-  transition: all var(--transition-fast);
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-tertiary);
 }
 
-.edit__chip:active {
-  opacity: var(--opacity-pressed);
-}
-
-.edit__chip--active {
-  background-color: var(--color-primary-bg);
-  color: var(--color-primary);
-  border-color: var(--color-primary-border);
-}
-
-.edit__chipText {
-  font-size: var(--font-size-13);
-  line-height: 1;
+.pickerValue {
+  min-height: var(--list-item-height-sm);
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-primary);
 }
