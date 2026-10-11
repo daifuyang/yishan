@@ -23,6 +23,7 @@ export const PAGE_CONFIG: {
     'pages/system/user/detail/index',
     'pages/system/user/edit/index',
     'pages/system/user/departments/index',
+    'pages/system/user/roles/index',
     'pages/system/dict/index',
     'pages/system/dict/items/index',
     'pages/system/role/index', 'pages/system/role/detail/index',

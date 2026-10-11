@@ -28,6 +28,7 @@ export const SYSTEM_PAGES = {
   userDetail: 'pages/system/user/detail/index',
   userEdit: 'pages/system/user/edit/index',
   userDepartments: 'pages/system/user/departments/index',
+  userRoles: 'pages/system/user/roles/index',
   dictIndex: 'pages/system/dict/index',
   dictItems: 'pages/system/dict/items/index',
   role: 'pages/system/role/index',
