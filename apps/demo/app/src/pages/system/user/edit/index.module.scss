@@ -1,5 +1,7 @@
+/* 外层只做 key 容器；模块间距由 FormSection 的 sectionBlock 统一负责，
+   这里再加 margin 会和它叠成双倍间距。*/
 .group {
-  margin-bottom: var(--space-2);
+  margin-bottom: 0;
 }
 
 /* 日期取值跟在 label 右侧并右对齐，与输入框同构 */

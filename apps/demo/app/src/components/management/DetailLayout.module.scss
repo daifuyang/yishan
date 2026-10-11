@@ -2,16 +2,17 @@
   padding: 0 0 var(--space-6);
 }
 
-/* 头部：独立的身份模块，用白色卡片与下方分组区分。
-   裸排版时它会和「基础信息」这类灰标题糊成一片，缺少模块边界。 */
+/* 纵向节奏只有两级，全站统一：
+     模块间距（白底块之间）= --space-4 (16px)
+     标题到内容           = --space-2 (8px)
+   头部是全出血白底块，与下方分组靠这 16px 灰带区分，不做左右外边距。*/
 .hero {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin: var(--space-3);
+  margin: var(--space-4) 0;
   padding: var(--space-4);
   background: var(--color-bg-surface);
-  border-radius: var(--radius-lg);
 }
 
 .hero__glyph {
@@ -71,7 +72,7 @@
 
 /* 分组：标题浮在页面底色上，正文是一块无圆角、全出血的白底 */
 .sectionBlock {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .sectionBlock:last-child {
@@ -82,11 +83,12 @@
   background: var(--color-bg-surface);
 }
 
+/* 标题坐在模块间距的灰带里，自身不再带上内边距 —— 否则间距会叠成 16+12 */
 .section__title {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-4) var(--space-2);
+  padding: 0 var(--space-4) var(--space-2);
   background: var(--color-bg-base);
   font-size: var(--font-size-13);
   font-weight: var(--font-weight-regular);

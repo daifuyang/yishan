@@ -125,9 +125,16 @@ explicit reason in the PR description.
 - **No white cards for form groups.** Grey section title (`--font-size-13`, tertiary) floating on the
   page background, with a borderless full-bleed white sheet underneath. The group container adds no
   horizontal padding — each row carries its own `var(--space-4)`.
-- **Exception — the detail-page hero IS a white card** (`margin: var(--space-3)`, `radius-lg`). Set bare
-  on the page background it visually merges with the grey group title right below it and reads as one
-  undifferentiated block. Keep the avatar: it anchors the identity even when it is only an initial.
+- **Exception — the detail-page hero IS a white block** (`margin: var(--space-4) 0`, full-bleed, no
+  radius). Set bare on the page background it visually merges with the grey group title right below it
+  and reads as one undifferentiated block. It gets **no left/right margin** — a narrower hero beside
+  full-bleed lists reads as two different card widths. Keep the avatar: it anchors the identity even
+  when it is only an initial.
+- **Vertical spacing has exactly two levels, project-wide:** 16px (`--space-4`) between any two white
+  blocks (including the page top), 8px (`--space-2`) from a grey group title to its first row. Group
+  titles must have `padding-top: 0` — they already sit inside the 16px gap, and adding their own
+  produces irregular 28px spacing. Don't put a margin on a wrapper around a group either; it stacks
+  with the group's own margin into 32px.
 - **Rows that navigate carry `›`** (date picker, department/role rows). Reuse the existing
   `LineIcon name="chevronRight"`. **Read-only rows must not** — a detail-page row with an arrow
   reads as editable.
