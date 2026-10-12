@@ -112,7 +112,8 @@ export function folderPath(folders: AttachmentFolder[], id: number): AttachmentF
 }
 
 export function findFolder(folders: AttachmentFolder[], id: number): AttachmentFolder | undefined {
-  return folderPath(folders, id).at(-1)
+  const path = folderPath(folders, id)
+  return path[path.length - 1]
 }
 
 export function folderLabel(folders: AttachmentFolder[], id: number | undefined, empty: string): string {

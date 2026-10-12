@@ -20,6 +20,21 @@ test('媒体库新页面已注册路由、页面配置与模块访问', () => {
     const entry = new RegExp(`'${page}': \\{\\s*moduleId: 'system-attachments'${permissions ? `,\\s*permissions: ${permissions.replace(/[[\]]/g, '\\$&')}` : ''}`)
     assert.match(src('modules/registry.ts'), entry, page)
     assert.ok(fs.existsSync(path.resolve(__dirname, '../src', `${page}.tsx`)))
-    assert.match(src(`pages/system/attachments/${dir}/index.config.ts`), /navigationStyle: 'custom'/)
+    // folders/folder-form 全平台渲染 ManagementPageHeader → 'custom'；
+    // 其余页只在 H5 渲染 PageHeader → weapp 必须保留原生导航栏
+    assert.match(
+      src(`pages/system/attachments/${dir}/index.config.ts`),
+      /navigationStyle: (?:'custom'|process\.env\.TARO_ENV === 'h5' \? 'custom' : 'default'),/,
+    )
+  }
+})
+
+test('只在 H5 渲染 PageHeader 的媒体库页在 weapp 保留原生导航栏', () => {
+  for (const dir of ['detail', 'form', 'import']) {
+    assert.match(
+      src(`pages/system/attachments/${dir}/index.config.ts`),
+      /navigationStyle: process\.env\.TARO_ENV === 'h5' \? 'custom' : 'default',/,
+      dir,
+    )
   }
 })

@@ -78,3 +78,20 @@ test('导入链接解析：1–20 个 http(s) 链接', () => {
   assert.throws(() => m.parseImportLinks('ftp://x/1.png'), /HTTP/)
   assert.throws(() => m.parseImportLinks(Array.from({ length: 21 }, (_, i) => `https://a.test/${i}.png`).join('\n')), /20/)
 })
+
+test('媒体库源码不使用 Array.prototype.at（小程序 ES2017 无 polyfill）', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const root = path.resolve(__dirname, '../src')
+  const files = [path.join(root, 'utils/picker.ts')]
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (/\.tsx?$/.test(entry.name)) files.push(full)
+    }
+  }
+  walk(path.join(root, 'pages/system/attachments'))
+  const offenders = files.filter((file) => fs.readFileSync(file, 'utf8').includes('.at('))
+  assert.deepEqual(offenders.map((file) => path.relative(root, file)), [])
+})
