@@ -220,19 +220,12 @@ function RoleFormPage() {
           <FormSection title="权限配置">
             {/* 与角色详情页同一组、同一对标签：详情页看数量，编辑页从这里进内页 */}
             <LinkRow
-              label="菜单权限"
-              value={
-                isEdit ? `${menuCount} 个菜单` : '保存后可配置'
-              }
+              label="功能授权"
+              value={isEdit ? `${menuCount} 个菜单，${permissionCount} 项操作` : '保存后可配置'}
               onClick={() => goPermissions()}
             />
             <LinkRow
-              label="功能权限"
-              value={isEdit ? `${permissionCount} 项` : '保存后可配置'}
-              onClick={() => goPermissions()}
-            />
-            <LinkRow
-              label="工作台授权"
+              label="App 工作台"
               value={isEdit ? appMenuSummary : '保存后可配置'}
               onClick={() => goPermissions(SYSTEM_PAGES.roleWorkbench)}
             />

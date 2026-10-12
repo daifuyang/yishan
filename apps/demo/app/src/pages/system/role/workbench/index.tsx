@@ -13,7 +13,7 @@ import { navigateBack } from '@/utils/router'
 import { withAccountScope } from '../../_shared/AdminUI'
 import { buildRoleAuthorization } from '../permissions'
 
-// 与「配置权限」页同一套视觉
+// 与「功能授权」页同一套视觉
 import styles from '../permissions/permissions.module.scss'
 
 const REQUIRED = ['system:role:update', 'system:role:grant']
@@ -111,7 +111,7 @@ function RoleWorkbenchPage() {
 
   return (
     <ManagementPage className="page-container">
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="工作台授权" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <PageHeader title="App 工作台" /> : null}
 
       <View className={styles.content}>
         <ManagementStates

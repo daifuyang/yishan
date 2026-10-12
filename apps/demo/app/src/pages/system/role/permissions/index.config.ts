@@ -1,4 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: '配置权限',
+  navigationBarTitleText: '功能授权',
   navigationStyle: 'custom',
 })

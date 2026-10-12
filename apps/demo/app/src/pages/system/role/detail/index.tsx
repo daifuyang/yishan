@@ -178,7 +178,7 @@ function RoleDetailPage() {
   const sheetItems: ActionSheetItem[] = [
     {
       key: 'permissions',
-      label: '配置权限',
+      label: '功能授权',
       icon: 'lockKeyhole',
       onClick: () => {
         setMoreOpen(false)
@@ -229,9 +229,10 @@ function RoleDetailPage() {
               <DetailSection title="权限配置">
                 {/* 只给计数，具体清单到内页看 —— 内页是带搜索和勾选的完整树，
                     详情页铺一排 chip 既挤又看不全。 */}
+                {/* 与 PC「功能授权」页签一致：菜单控制页面入口，操作控制可执行范围 */}
                 <DetailRow
-                  label="菜单权限"
-                  value={`${role.menuIds?.length ?? 0} 个菜单`}
+                  label="功能授权"
+                  value={`${role.menuIds?.length ?? 0} 个菜单，${role.permissionCodes?.length ?? 0} 项操作`}
                   showArrow={canUpdate}
                   onClick={
                     canUpdate
@@ -240,17 +241,7 @@ function RoleDetailPage() {
                   }
                 />
                 <DetailRow
-                  label="功能权限"
-                  value={`${role.permissionCodes?.length ?? 0} 项`}
-                  showArrow={canUpdate}
-                  onClick={
-                    canUpdate
-                      ? () => navigateTo(`/${SYSTEM_PAGES.rolePermissions}?id=${role.id}`)
-                      : undefined
-                  }
-                />
-                <DetailRow
-                  label="工作台授权"
+                  label="App 工作台"
                   value={appMenuEntrySummary(role.appMenuIds, appMenuGroups)}
                   showArrow={canUpdate}
                   onClick={

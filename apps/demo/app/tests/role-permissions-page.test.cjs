@@ -347,10 +347,10 @@ test('勾选子节点不反推父节点', async () => {
   assert.ok(saved.permissionCodes.includes('system:role:update'))
 })
 
-test('底部计数区分菜单与功能', async () => {
+test('底部计数区分菜单与操作', async () => {
   const page = mount({ backend: fakeBackend(), menus: MENUS_WITH_ACTIONS })
   const tree = await page.settle()
-  assert.ok(page.texts(tree).includes('已选 2 个菜单 · 1 项功能'))
+  assert.ok(page.texts(tree).includes('已选 2 个菜单 · 1 项操作'))
 })
 
 test('搜索可按权限码命中按钮，并保留其父级链', async () => {

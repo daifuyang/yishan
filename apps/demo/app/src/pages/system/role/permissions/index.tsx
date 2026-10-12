@@ -202,7 +202,7 @@ function RolePermissionsPage() {
 
   return (
     <ManagementPage className="page-container">
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="配置权限" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <PageHeader title="功能授权" /> : null}
       <ManagementFilterBar>
         <ManagementSearchBar value={keyword} onChange={setKeyword} placeholder="搜索权限" />
       </ManagementFilterBar>
@@ -223,7 +223,7 @@ function RolePermissionsPage() {
         </ManagementStates>
         {kind === 'ready' ? (
           <Text className={styles.group__title}>
-            {`已选 ${menuCount} 个菜单 · ${actionCount} 项功能`}
+            {`已选 ${menuCount} 个菜单 · ${actionCount} 项操作`}
           </Text>
         ) : null}
       </View>

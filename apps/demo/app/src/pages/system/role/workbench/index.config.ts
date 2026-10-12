@@ -1,4 +1,4 @@
 export default definePageConfig({
-  navigationBarTitleText: '工作台授权',
+  navigationBarTitleText: 'App 工作台',
   navigationStyle: 'custom',
 })
