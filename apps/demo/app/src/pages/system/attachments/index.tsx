@@ -36,6 +36,7 @@ import {
 import { SYSTEM_PAGES } from '@/constants/routes'
 import { confirmAction, useCanWrite, useListPagination } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
+import { isPickerCancel } from '@/utils/picker'
 import { navigateTo } from '@/utils/router'
 import { errorMessage, withAccountScope } from '../_shared/AdminUI'
 import { chooseFiles } from './chooseFiles'
@@ -155,14 +156,6 @@ function AttachmentsPage() {
     }
   }
 
-  const cancelled = (reason: unknown) =>
-    Boolean(
-      reason &&
-        typeof reason === 'object' &&
-        'errMsg' in reason &&
-        String((reason as { errMsg: unknown }).errMsg).includes('cancel'),
-    )
-
   async function pickImages(useCloud: boolean) {
     const session = getSessionVersion()
     try {
@@ -178,7 +171,7 @@ function AttachmentsPage() {
         session,
       )
     } catch (reason) {
-      if (session === getSessionVersion() && !cancelled(reason))
+      if (session === getSessionVersion() && !isPickerCancel(reason))
         void Taro.showToast({ title: errorMessage(reason), icon: 'none' })
     }
   }
@@ -199,7 +192,7 @@ function AttachmentsPage() {
         session,
       )
     } catch (reason) {
-      if (session === getSessionVersion() && !cancelled(reason))
+      if (session === getSessionVersion() && !isPickerCancel(reason))
         void Taro.showToast({ title: errorMessage(reason), icon: 'none' })
     }
   }
@@ -407,7 +400,15 @@ function AttachmentsPage() {
       >
         <ManagementList>
           {list.list.map((item, index) => (
-            <View key={item.id} className={selecting ? styles.selectRow : undefined}>
+            // 多选时整行（含复选框与左侧留白）统一切换；Cell 不再挂 onClick，避免冒泡切换两次
+            <View
+              key={item.id}
+              className={selecting ? styles.selectRow : undefined}
+              aria-label={selecting ? `选择-${item.name || item.originalName}` : undefined}
+              aria-checked={selecting ? selected.includes(item.id) : undefined}
+              hoverClass={selecting ? styles.selectRowHover : undefined}
+              onClick={selecting ? () => toggle(item.id) : undefined}
+            >
               {selecting ? <Checkbox checked={selected.includes(item.id)} /> : null}
               <View className={styles.selectCell}>
                 <ManagementCell
@@ -429,10 +430,10 @@ function AttachmentsPage() {
                     ) : undefined
                   }
                   showArrow={!selecting}
-                  onClick={() =>
+                  onClick={
                     selecting
-                      ? toggle(item.id)
-                      : navigateTo(`/${SYSTEM_PAGES.attachmentDetail}?id=${item.id}`)
+                      ? undefined
+                      : () => navigateTo(`/${SYSTEM_PAGES.attachmentDetail}?id=${item.id}`)
                   }
                 />
               </View>

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { attachmentUrl, uploadAttachment } from '@/api/admin/attachments'
 import { ActionSheet, FormField, LineIcon } from '@/components/management'
 import { useCanWrite } from '@/hooks'
+import { isPickerCancel } from '@/utils/picker'
 import { errorMessage } from '../../_shared/AdminUI'
 import { previewImage } from '../model'
 import styles from './LogoField.module.scss'
@@ -49,7 +50,7 @@ export function LogoField({ value, onChange, onError, disabled = false }: LogoFi
       if (!url) throw new Error('上传成功但未返回图片地址')
       onChange(url)
     } catch (reason) {
-      if (reason && typeof reason === 'object' && 'errMsg' in reason && String(reason.errMsg).includes('cancel')) return
+      if (isPickerCancel(reason)) return
       onError(errorMessage(reason))
     } finally {
       locked.current = false

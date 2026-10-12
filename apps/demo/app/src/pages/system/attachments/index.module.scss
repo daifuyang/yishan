@@ -18,3 +18,7 @@
 .footerSpace {
   height: calc(72px + var(--safe-area-bottom));
 }
+
+.selectRowHover {
+  background: var(--color-bg-base);
+}

@@ -1,8 +1,6 @@
 import Taro from '@tarojs/taro'
 import type { UploadFile } from '@/api/admin/attachments'
-
-const cancelled = (reason: unknown) =>
-  Boolean(reason && typeof reason === 'object' && 'errMsg' in reason && String((reason as { errMsg: unknown }).errMsg).includes('cancel'))
+import { isPickerCancel } from '@/utils/picker'
 
 /** 小程序从会话选择文件；用户取消返回空数组。 */
 export async function chooseFiles(): Promise<UploadFile[]> {
@@ -15,7 +13,7 @@ export async function chooseFiles(): Promise<UploadFile[]> {
       mimeType: 'application/octet-stream',
     }))
   } catch (reason) {
-    if (cancelled(reason)) return []
+    if (isPickerCancel(reason)) return []
     throw reason
   }
 }
