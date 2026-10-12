@@ -45,12 +45,10 @@ export default function AppsPage() {
     }
   })
 
-  // 旧后台目录仍可能下发「常用」；它属于首页，不参与应用中心的分组和搜索。
-  const catalogMenus = menus.filter((group) => !['常用', '常用应用'].includes(group.name.trim()))
-  const groups = getWorkbenchGroups(catalogMenus, user?.permissions, enabledModuleIds)
+  const groups = getWorkbenchGroups(menus, user?.permissions, enabledModuleIds)
   const apps = groups.flatMap((group) => group.apps)
   const searchGroups = query.trim()
-    ? getWorkbenchGroups(catalogMenus, user?.permissions, enabledModuleIds, query)
+    ? getWorkbenchGroups(menus, user?.permissions, enabledModuleIds, query)
     : groups
   const retry = () => void useModuleStore.getState().load({ force: true })
   const open = (id: string) => {

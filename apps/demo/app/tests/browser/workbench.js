@@ -74,13 +74,15 @@ async (page) => {
         createdAt: '2026-01-01',
         updatedAt: '2026-01-01',
       }
+    if (path.endsWith('/menus/home')) data = { pinned: [], ranked: [] }
     if (path.endsWith('/auth/capabilities'))
       data = { permissions, enabledModuleIds: ['demo', 'portal', 'shop'] }
     if (path.endsWith('/menus/authorized'))
       data = empty
         ? []
         : [
-            group(5, '常用', [entry(6, 5, '通讯录', 'pages/contacts/index/index'), entry(7, 5, '用户管理', 'pages/system/user/index')]),
+            // 通讯录 only lives in 企业协作 so disabling that group still hides it below.
+            group(5, '协同办公', [entry(7, 5, '用户管理', 'pages/system/user/index')]),
             group(10, '系统管理', [
               entry(11, 10, '用户管理', 'pages/system/user/index'),
               entry(12, 10, '字典管理', 'pages/system/dict/index'),
@@ -132,7 +134,7 @@ async (page) => {
   await page.waitForLoadState('networkidle')
   await page.goto(url)
   await page.getByText('系统管理', { exact: true }).waitFor()
-  check((await page.getByText('常用', { exact: true }).count()) === 0, 'Server common category must be absent')
+  check((await page.getByText('协同办公', { exact: true }).count()) === 1, 'Server groups are shown as-is')
   check(
     (await page.locator('[aria-label="用户管理"]').count()) === 1,
     'Each authorized app appears once',
