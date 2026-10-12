@@ -128,7 +128,7 @@ function AttachmentFormPage() {
       >
         <FormContent>
           <FormSection title="基础信息">
-            <FormField label="名称" required>
+            <FormField label="名称" required disabled={disabled}>
               <TextField
                 value={name}
                 onChange={setName}
@@ -138,7 +138,12 @@ function AttachmentFormPage() {
               />
             </FormField>
             {/* 取值与箭头都能打开选择面板：取值撑满控件列，整行右侧可点 */}
-            <FormField label="分组" arrow disabled={disabled} onArrowClick={openPicker}>
+            <FormField
+              label="分组"
+              arrow={!disabled && !folderFailed}
+              disabled={disabled}
+              onArrowClick={openPicker}
+            >
               <Text className={styles.value} onClick={openPicker}>
                 {folderFailed ? '分组加载失败' : folderLabel(folders, folderId, '未分组')}
               </Text>

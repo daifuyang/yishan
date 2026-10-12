@@ -63,6 +63,8 @@ function FolderFormPage() {
   })
   const [folders, setFolders] = useState<AttachmentFolder[]>([])
   const [picking, setPicking] = useState(false)
+  // 分组树拉取失败：原上级既显示不出也无法重选，锁住上级行；保存照常提交原 parentId
+  const [folderFailed, setFolderFailed] = useState(false)
   const [more, setMore] = useState(false)
   const [loading, setLoading] = useState(Boolean(id))
   const [error, setError] = useState('')
@@ -90,13 +92,14 @@ function FolderFormPage() {
         try {
           if (id !== undefined && (!Number.isInteger(id) || id <= 0))
             throw new Error('分组 ID 缺失或无效')
-          // 分组树只用于上级显示与选择，拿不到时不阻塞编辑
+          // 分组树只用于上级显示与选择，拿不到时不阻塞编辑，只把上级行标成加载失败
           const [tree, folder] = await Promise.all([
-            getFolderTree().catch(() => [] as AttachmentFolder[]),
+            getFolderTree().catch(() => null),
             id ? getFolder(id) : Promise.resolve(null),
           ])
           if (!live()) return
-          setFolders(tree)
+          setFolders(tree ?? [])
+          setFolderFailed(tree === null)
           if (folder)
             setValues({
               name: folder.name,
@@ -123,7 +126,7 @@ function FolderFormPage() {
     setValues((previous) => ({ ...previous, ...next }))
   const disabled = !canSave || busy || loading
   const openPicker = () => {
-    if (!disabled) setPicking(true)
+    if (!disabled && !folderFailed) setPicking(true)
   }
 
   async function save() {
@@ -195,7 +198,7 @@ function FolderFormPage() {
       >
         <FormContent>
           <FormSection title="基础信息">
-            <FormField label="名称" required>
+            <FormField label="名称" required disabled={disabled}>
               <TextField
                 value={values.name}
                 onChange={(name) => patch({ name })}
@@ -205,9 +208,14 @@ function FolderFormPage() {
               />
             </FormField>
             {/* 取值与箭头都能打开选择面板：取值撑满控件列，整行右侧可点 */}
-            <FormField label="上级分组" arrow disabled={disabled} onArrowClick={openPicker}>
+            <FormField
+              label="上级分组"
+              arrow={!disabled && !folderFailed}
+              disabled={disabled}
+              onArrowClick={openPicker}
+            >
               <Text className={styles.value} onClick={openPicker}>
-                {folderLabel(folders, values.parentId, '顶级分组')}
+                {folderFailed ? '分组加载失败' : folderLabel(folders, values.parentId, '顶级分组')}
               </Text>
             </FormField>
             <EnumField
@@ -224,7 +232,7 @@ function FolderFormPage() {
               onChange={(status) => patch({ status })}
               disabled={disabled}
             />
-            <FormField label="排序">
+            <FormField label="排序" disabled={disabled}>
               <TextField
                 value={values.sort}
                 onChange={(sort) => patch({ sort })}
@@ -232,7 +240,7 @@ function FolderFormPage() {
                 disabled={disabled}
               />
             </FormField>
-            <FormField label="备注" stacked>
+            <FormField label="备注" stacked disabled={disabled}>
               <TextAreaField
                 value={values.remark}
                 onChange={(remark) => patch({ remark })}

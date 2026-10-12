@@ -94,6 +94,8 @@ test('新建入口受 create 权限控制', async () => {
 
 function mountForm({
   router = {},
+  tree = async () => TREE,
+  folder = async () => ({ ...TREE[0], remark: '旧备注' }),
   permissions = [
     'system:attachment:create',
     'system:attachment:update',
@@ -114,8 +116,8 @@ function mountForm({
         },
       },
       '@/api/admin/attachments': {
-        getFolderTree: async () => TREE,
-        getFolder: async () => ({ ...TREE[0], remark: '旧备注' }),
+        getFolderTree: tree,
+        getFolder: folder,
         createFolder: async (d) => calls.creates.push(d),
         updateFolder: async (id, d) => calls.updates.push({ id, d }),
         deleteFolder: async (id) => calls.deletes.push(id),
@@ -201,4 +203,36 @@ test('无 update/delete 权限：编辑态不显示保存栏与「更多」，�
   assert.equal(page.all('FormSubmitBar').length, 0)
   assert.equal(page.byLabel('更多'), undefined)
   assert.equal(page.all('TextField')[0].props.disabled, true)
+})
+
+test('无写权限：名称/上级分组/排序/备注整行置灰，上级分组行不带箭头', async () => {
+  const { page } = mountForm({ router: { id: '1' }, permissions: [] })
+  await page.settle()
+  const rows = Object.fromEntries(page.all('FormField').map((f) => [f.props.label, f.props]))
+  for (const label of ['名称', '上级分组', '排序', '备注']) assert.equal(rows[label].disabled, true, label)
+  assert.equal(rows.上级分组.arrow, false)
+})
+
+test('分组树加载失败：上级行提示失败且不能打开面板，保存仍提交原上级', async () => {
+  const { page: failing, calls } = mountForm({
+    router: { id: '2' },
+    tree: async () => {
+      throw new Error('网络错误')
+    },
+    folder: async () => ({ ...TREE[0].children[0], parentId: 1, remark: '' }),
+  })
+  await failing.settle()
+  const row = failing.all('FormField').find((f) => f.props.label === '上级分组')
+  assert.match(JSON.stringify(row.props.children), /分组加载失败/)
+  assert.doesNotMatch(JSON.stringify(row.props.children), /顶级分组/)
+  assert.equal(row.props.arrow, false)
+  row.props.onArrowClick()
+  row.props.children.props.onClick()
+  failing.rerender()
+  assert.equal(failing.one('FolderTreeSheet').props.open, false)
+  failing.one('FormSubmitBar').props.onSubmit()
+  await failing.settle()
+  assert.equal(calls.updates.length, 1)
+  assert.equal(calls.updates[0].d.parentId, 1)
+  assert.equal(calls.back, 1)
 })

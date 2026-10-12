@@ -120,3 +120,20 @@ test('保存期间会话切换：不返回', async () => {
   await ctx.page.settle()
   assert.equal(ctx.calls.back, 0)
 })
+
+test('无 update 权限：名称与分组行整行置灰，分组行不带箭头', async () => {
+  const { page } = mount({ permissions: [LIST] })
+  await page.settle()
+  const rows = Object.fromEntries(page.all('FormField').map((f) => [f.props.label, f.props]))
+  assert.equal(rows.名称.disabled, true)
+  assert.equal(rows.分组.disabled, true)
+  assert.equal(rows.分组.arrow, false)
+})
+
+test('分组树加载失败：分组行不带箭头', async () => {
+  const { page } = mount({ folders: async () => { throw new Error('网络错误') } })
+  await page.settle()
+  const row = page.all('FormField').find((f) => f.props.label === '分组')
+  assert.equal(row.props.arrow, false)
+  assert.equal(row.props.disabled, false)
+})
