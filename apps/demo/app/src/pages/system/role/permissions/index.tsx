@@ -223,7 +223,7 @@ function RolePermissionsPage() {
         </ManagementStates>
         {kind === 'ready' ? (
           <Text className={styles.group__title}>
-            {`已选 ${menuCount} 个菜单 · ${actionCount} 项操作`}
+            {`已选 ${menuCount} 个菜单，${actionCount} 项操作`}
           </Text>
         ) : null}
       </View>
