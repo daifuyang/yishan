@@ -1,3 +1,3 @@
-# Drizzle 记录的迁移 hash = sha256(SQL 文件原始字节)。SQL 必须在所有平台以 LF 检出，
-# 否则 Windows（core.autocrlf=true）上的 hash 与 Linux CI / 部署环境不同。
-*.sql text eol=lf
+# Migration hashes depend on exact published bytes, including line endings.
+/packages/core/system-api/drizzle/*.sql -text
+/apps/demo/api/src/modules/*/drizzle/*.sql -text

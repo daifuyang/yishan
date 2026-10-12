@@ -1,0 +1,288 @@
+.content {
+  padding: var(--space-4) 0 calc(66px + var(--safe-area-bottom));
+}
+
+/* 分组：与详情页 DetailSection 同一套「灰标题 + 无圆角贴边白底」结构，
+   纵向节奏也一致：模块间距 16px、标题到内容 8px。*/
+.sectionBlock {
+  margin-bottom: var(--space-4);
+  background: var(--color-bg-base);
+}
+
+.sectionBlock:last-child {
+  margin-bottom: 0;
+}
+
+.section {
+  /* 横向内边距由各行自带，便于 OrganizationPicker 等同一套行组件复用 */
+  padding: 0;
+  background: var(--color-bg-surface);
+}
+
+.section__title {
+  display: block;
+  padding: 0 var(--space-4) var(--space-2);
+  background: var(--color-bg-base);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-regular);
+  line-height: 20px;
+  color: var(--color-text-tertiary);
+}
+
+.section__hint {
+  display: block;
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  color: var(--color-text-tertiary);
+}
+
+/* 表单行：label 在左固定列，控件在右并右对齐 ——
+   与详情页 DetailRow、OrganizationPicker 保持同一种「左标签 / 右取值」结构。*/
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  min-height: var(--list-item-height-sm);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.field:last-child {
+  border-bottom: 0;
+}
+
+/* 独占一行：label 在上、控件占满宽度。
+   多行文本挤在 label 右侧的窄列里既难读又难编辑。*/
+.field--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.field--stacked .field__label {
+  width: auto;
+}
+
+/* 多行文本不画框：表单里每一行都是「白底 + 一条分隔线」，控件本身无边框。
+   给 textarea 加一圈边框 + 圆角会在无边框的行里凭空多出一个卡片块，
+   而且 --color-border 比行分隔线更重，越发像嵌了个原生控件。
+   保留 min-height 让它仍然读得出「这里能写多行」，行分隔线负责分组。 */
+.field--stacked .field__textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 72px;
+  padding: 0;
+  text-align: left;
+  /* 去掉浏览器默认的右下角拉伸把手 */
+  resize: none;
+}
+
+.field__label {
+  flex-shrink: 0;
+  width: 76px;
+  margin-bottom: 0;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-secondary);
+}
+
+.field__required::before {
+  content: '*';
+  margin-right: 2px;
+  color: var(--color-danger);
+}
+
+/* 禁用行：标签与取值统一弱化，行高与普通行一致 —— 靠颜色区分不可编辑，
+   不加灰底块也不加额外说明行，避免把表单撑高。 */
+.field--disabled {
+  cursor: not-allowed;
+}
+
+.field--disabled .field__label {
+  color: var(--color-text-tertiary);
+}
+
+.field__input--disabled {
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+/* textarea 没有边框后，禁用态失去了边框这个视觉锚点，值文字必须跟着一起弱化，
+   否则整行看起来和可编辑时一模一样。 */
+.field--disabled .field__textarea {
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+/* 行尾箭头：与 DetailRow / LinkRow 同一位置，显式垂直居中 */
+.field__arrow {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  margin-left: var(--space-1);
+}
+
+.field__input,
+.field__textarea {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  text-align: right;
+}
+
+.field__input {
+  height: 40px;
+}
+
+.field__textarea {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  min-height: 64px;
+  text-align: left;
+  line-height: 22px;
+}
+
+.field__input::placeholder,
+.field__textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.field__error {
+  flex-basis: 100%;
+  display: block;
+  margin-top: var(--space-1);
+  text-align: right;
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  color: var(--color-danger);
+}
+
+.field__note {
+  flex-basis: 100%;
+  display: block;
+  margin-top: var(--space-1);
+  text-align: right;
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  color: var(--color-text-tertiary);
+}
+
+.segment {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.segment__item {
+  flex: 0 1 auto;
+  min-width: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+}
+
+.segment__itemActive {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+/* Picker 在 H5 下渲染成独立 div，必须自己 flex: 1，否则行内值到不了行尾 */
+.enumPicker {
+  flex: 1;
+  min-width: 0;
+  display: block;
+}
+
+.enumPickerValue {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 40px;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-primary);
+}
+
+.enumPickerPlaceholder {
+  color: var(--color-text-tertiary);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--list-item-height-sm);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.link__label {
+  font-size: var(--font-size-14);
+  color: var(--color-text-primary);
+}
+
+.link__value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-14);
+  color: var(--color-text-tertiary);
+}
+
+.submit {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-fixed);
+  padding: var(--space-2) var(--space-4) calc(var(--space-2) + var(--safe-area-bottom));
+  background: var(--color-bg-surface);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.submit__button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-15);
+  font-weight: var(--font-weight-medium);
+}
+
+.submit__disabled {
+  opacity: var(--opacity-disabled);
+}
+/* 布尔开关右对齐：Switch 没有宽度，直接放进 FormField 会停在行中间 */
+.switchField {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}

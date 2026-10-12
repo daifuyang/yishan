@@ -1,0 +1,212 @@
+.content {
+  padding: 0 0 var(--space-6);
+}
+
+/* 纵向节奏只有两级，全站统一：
+     模块间距（白底块之间）= --space-4 (16px)
+     标题到内容           = --space-2 (8px)
+   头部是全出血白底块，与下方分组靠这 16px 灰带区分，不做左右外边距。*/
+.hero {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
+  background: var(--color-bg-surface);
+}
+
+/* 图标只做定位锚点，不做 52px 圆形色块 —— 色块在非头像场景（菜单、部门）
+   是纯装饰，却吃掉了将近一行的滚动空间。 */
+.hero__glyph {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero__titleLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.hero__title {
+  min-width: 0;
+  font-size: var(--font-size-18);
+  font-weight: var(--font-weight-semibold);
+  line-height: 26px;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 第二行：描述与补充信息可以并排，也可以各自换行 */
+.hero__metaLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 2px;
+}
+
+.hero__note {
+  flex-shrink: 0;
+  font-size: var(--font-size-12);
+  line-height: 20px;
+  color: var(--color-text-tertiary);
+}
+
+.hero__subtitle,
+.hero__footnote {
+  overflow: hidden;
+  font-size: var(--font-size-13);
+  line-height: 20px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hero__footnote {
+  color: var(--color-text-secondary);
+}
+
+/* 分组：标题浮在页面底色上，正文是一块无圆角、全出血的白底 */
+.sectionBlock {
+  margin-bottom: var(--space-4);
+}
+
+.sectionBlock:last-child {
+  margin-bottom: 0;
+}
+
+.section {
+  background: var(--color-bg-surface);
+}
+
+/* 标题坐在模块间距的灰带里，自身不再带上内边距 —— 否则间距会叠成 16+12 */
+.section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-4) var(--space-2);
+  background: var(--color-bg-base);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-regular);
+  line-height: 20px;
+  color: var(--color-text-tertiary);
+}
+
+.section__titleToggle {
+  cursor: pointer;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--list-item-height-sm);
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  font-size: var(--font-size-14);
+  line-height: 22px;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row--tappable {
+  cursor: pointer;
+}
+
+.row--hover {
+  background: var(--color-bg-disabled);
+}
+
+.row__label {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.row__tail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.row__value {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  color: var(--color-text-primary);
+}
+
+.row__value--muted {
+  color: var(--color-text-tertiary);
+}
+
+/* 长文本（描述/备注）：标签在上、正文占满整行。挤在右列会被压成一列
+   右对齐的窄条，长句断行后每行长度还不齐，读起来像坏了。 */
+.row--multiline {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-1);
+}
+
+.row__block {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* 权限分组：模块标题 + 成员列表，避免直接暴露关联 ID */
+.groupBlock {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.groupBlock:last-child {
+  border-bottom: 0;
+}
+
+.groupBlock__name {
+  display: block;
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.groupBlock__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-disabled);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-12);
+  line-height: 1;
+}

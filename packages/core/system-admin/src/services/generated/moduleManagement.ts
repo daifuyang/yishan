@@ -1,0 +1,56 @@
+// @ts-ignore
+/* eslint-disable */
+import { request } from "@umijs/max";
+
+/** 模块列表 显式安装清单中的业务模块及当前启停、挂载状态。 GET /api/v1/admin/system/module-management/list/ */
+export async function getModuleManagementList(options?: {
+  [key: string]: any;
+}) {
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    data: {
+      items: {
+        id: string;
+        name: string;
+        routePrefix: string;
+        tablePrefix: string;
+        version: string;
+        enabled: boolean;
+        mounted: boolean;
+      }[];
+    };
+    timestamp: string;
+  }>("/api/v1/admin/system/module-management/list/", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
+/** 切换模块启停 POST /api/v1/admin/system/module-management/toggle/${param0}/toggle */
+export async function toggleModuleManagement(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: SystemAPI.toggleModuleManagementParams,
+  body: {
+    enabled: boolean;
+  },
+  options?: { [key: string]: any }
+) {
+  const { id: param0, ...queryParams } = params;
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    data: { id: string; enabled: boolean };
+    timestamp: string;
+  }>(`/api/v1/admin/system/module-management/toggle/${param0}/toggle`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...queryParams },
+    data: body,
+    ...(options || {}),
+  });
+}

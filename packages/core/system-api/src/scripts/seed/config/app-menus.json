@@ -1,0 +1,34 @@
+[
+  {
+    "name": "常用",
+    "sortOrder": 10,
+    "children": [
+      {
+        "name": "通讯录",
+        "icon": "ContactsOutlined",
+        "page": "pages/contacts/index/index",
+        "sortOrder": 10,
+        "normalUser": true
+      }
+    ]
+  },
+  {
+    "name": "系统管理",
+    "sortOrder": 20,
+    "children": [
+      { "name": "用户管理", "icon": "UserOutlined", "page": "pages/system/user/index", "sortOrder": 10 },
+      { "name": "角色管理", "icon": "SafetyCertificateOutlined", "page": "pages/system/role/index", "sortOrder": 20 },
+      { "name": "部门管理", "icon": "ApartmentOutlined", "page": "pages/system/dept/index", "sortOrder": 30 },
+      { "name": "岗位管理", "icon": "IdcardOutlined", "page": "pages/system/position/index", "sortOrder": 40 },
+      { "name": "菜单管理", "icon": "MenuOutlined", "page": "pages/system/menu/index", "sortOrder": 50 },
+      { "name": "工作台管理", "icon": "AppstoreOutlined", "page": "pages/system/app-menu/index", "sortOrder": 55 },
+      { "name": "字典管理", "icon": "BookOutlined", "page": "pages/system/dict/index", "sortOrder": 60 },
+      { "name": "地区管理", "icon": "EnvironmentOutlined", "page": "pages/system/region/index", "sortOrder": 70 },
+      { "name": "站点配置", "icon": "GlobalOutlined", "page": "pages/system/site/index", "sortOrder": 80 },
+      { "name": "云存储", "icon": "CloudUploadOutlined", "page": "pages/system/storage/index", "sortOrder": 90 },
+      { "name": "媒体库", "icon": "PictureOutlined", "page": "pages/system/attachments/index", "sortOrder": 100 },
+      { "name": "登录日志", "icon": "AuditOutlined", "page": "pages/system/login-log/index", "sortOrder": 110 },
+      { "name": "模块管理", "icon": "AppstoreOutlined", "page": "pages/system/module-management/index", "sortOrder": 120 }
+    ]
+  }
+]

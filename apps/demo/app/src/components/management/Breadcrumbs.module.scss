@@ -1,0 +1,33 @@
+/* 层级面包屑：与筛选条、列表同一条纵向节奏，
+   面包屑坐在浅灰底上、白底列表之下，靠背景差分区而不是靠一条分隔线。 */
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg-base);
+}
+
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 20px;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-13);
+  line-height: 20px;
+}
+
+/* 当前层是「你在这里」，不该再是可点的返回目标 */
+.crumbCurrent {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.crumbLabel {
+  max-width: 9em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

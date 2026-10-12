@@ -1,0 +1,16 @@
+.tile {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.glyph {
+  width: 28px;
+  height: 28px;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}

@@ -1,0 +1,227 @@
+.apps {
+  background: #F5F7FA;
+  padding: 0 var(--space-4) var(--space-4);
+  box-sizing: border-box;
+}
+
+.apps__header, .apps__sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+}
+
+.apps__header {
+  position: relative;
+  justify-content: center;
+  height: 56px;
+}
+
+.apps__header > .apps__action {
+  position: absolute;
+  right: 0;
+}
+
+.apps__header > .apps__miniRefresh {
+  left: 0;
+  right: auto;
+}
+
+.apps__pageTitle {
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.apps__title {
+  color: var(--color-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+  white-space: nowrap;
+}
+
+.apps .apps__action, .apps .apps__clear {
+  margin: 0;
+  padding: 0 8px;
+  min-width: 44px;
+  width: auto;
+  min-height: 44px;
+  line-height: 44px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.apps .apps__action::after, .apps .apps__clear::after {
+  border: 0;
+}
+
+.apps .apps__action[disabled] {
+  color: var(--color-text-tertiary);
+  background: transparent;
+  opacity: 0.5;
+}
+
+.apps__pressed {
+  opacity: var(--opacity-pressed);
+}
+
+.apps__searchWrap {
+  display: flex;
+  align-items: center;
+  background: var(--color-bg-surface);
+  border-radius: 12px;
+  height: 44px;
+  border: 1px solid var(--color-border-light);
+  box-sizing: border-box;
+  padding-left: 14px;
+  margin-bottom: 20px;
+}
+
+.apps__searchIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20256%20256%22%20fill%3D%22%239CA3AF%22%3E%3Cpath%20d%3D%22M168%2C112a56%2C56%2C0%2C1%2C1-56-56A56%2C56%2C0%2C0%2C1%2C168%2C112Zm61.66%2C117.66a8%2C8%2C0%2C0%2C1-11.32%2C0l-50.06-50.07a88%2C88%2C0%2C1%2C1%2C11.32-11.31l50.06%2C50.06A8%2C8%2C0%2C0%2C1%2C229.66%2C229.66ZM112%2C184a72%2C72%2C0%2C1%2C0-72-72A72.08%2C72.08%2C0%2C0%2C0%2C112%2C184Z%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+}
+
+.apps__search {
+  min-width: 0;
+  flex: 1;
+  height: 42px;
+  padding: 0 10px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.apps__clear {
+  color: var(--color-text-tertiary);
+}
+
+.apps__section, .apps__editor {
+  background: var(--color-bg-surface);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.025);
+  padding: 16px 12px 20px;
+  margin-bottom: 20px;
+}
+
+.apps__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px 4px;
+}
+
+.apps__item {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+}
+
+.apps__skeletonIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary-bg);
+}
+
+.apps__label {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  line-height: 20px;
+  color: #374151;
+}
+
+.apps__category {
+  display: block;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 16px;
+}
+
+.apps__group + .apps__group {
+  margin-top: 20px;
+}
+
+.apps__hint {
+  display: block;
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  line-height: 22px;
+  padding: 4px 0 12px;
+}
+
+.apps__editRow {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.apps__editName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.apps__editor > .apps__category {
+  margin-top: 20px;
+}
+
+.apps__saveError {
+  display: block;
+  color: var(--color-danger);
+  font-size: 13px;
+  margin-top: 12px;
+}
+
+.apps__refreshError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.apps__skeletonTitle {
+  width: 80px;
+  height: 16px;
+  background: var(--color-bg-secondary);
+  margin: 16px 0;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.apps__skeletonIcon {
+  background: var(--color-bg-secondary);
+}
+
+.apps__skeletonLabel {
+  width: 48px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--color-bg-secondary);
+}

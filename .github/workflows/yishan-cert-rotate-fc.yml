@@ -27,7 +27,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.14.0
+          node-version: 22.22.1
 
       - name: Check current cert age
         id: cert_age
@@ -182,7 +182,7 @@ jobs:
 
       - name: Issue and install cert by DNS
         if: steps.cert_age.outputs.rotate == 'true'
-        working-directory: apps/yishan-api
+        working-directory: apps/demo/api
         env:
           Ali_Key: ${{ secrets.ALI_DNS_ACCESS_KEY_ID }}
           Ali_Secret: ${{ secrets.ALI_DNS_ACCESS_KEY_SECRET }}
@@ -206,7 +206,7 @@ jobs:
 
       - name: Deploy domain with renewed cert
         if: steps.cert_age.outputs.rotate == 'true'
-        working-directory: apps/yishan-api
+        working-directory: apps/demo/api
         run: |
           set -euo pipefail
           # domain.yaml template 通过 ${env(...)} 引用以下变量，必须显式导出

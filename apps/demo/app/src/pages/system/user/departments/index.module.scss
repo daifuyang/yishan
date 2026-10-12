@@ -1,0 +1,67 @@
+.page {
+  min-height: 100vh;
+  background: var(--color-bg-base);
+  /* 给固定底栏留出空间 */
+  padding-bottom: calc(72px + var(--safe-area-bottom));
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--nav-bar-height);
+  padding: 0 var(--space-4);
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.title {
+  font-size: var(--font-size-17);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.search {
+  padding: var(--space-3) var(--space-4);
+}
+
+.searchInput {
+  height: var(--search-bar-height);
+  padding: 0 var(--space-3);
+  border-radius: var(--search-bar-radius);
+  background: var(--search-bar-bg);
+  font-size: var(--font-size-14);
+  color: var(--color-text-primary);
+}
+
+.results {
+  background: var(--color-bg-surface);
+}
+
+.resultRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.resultPath {
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  color: var(--color-text-tertiary);
+}
+
+.resultName {
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-primary);
+}
+
+.empty {
+  display: block;
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-13);
+  color: var(--color-text-tertiary);
+}

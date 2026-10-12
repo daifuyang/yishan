@@ -4,16 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "dry-run inspects; apply runs pending migrations; reset-and-seed rebuilds the database"
+        description: "Inspect actual pending migrations or apply the checked-in plan"
         required: true
         default: dry-run
         type: choice
-        options:
-          - dry-run
-          - apply
-          - reset-and-seed
+        options: [dry-run, apply]
       confirm:
-        description: "For apply type APPLY; for reset-and-seed type RESET_AND_SEED."
+        description: "For apply type APPLY."
         required: false
         type: string
 
@@ -24,29 +21,12 @@ concurrency:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     environment: YISHAN_API
-    env:
-      FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
-      FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
-      FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
-      FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
-      FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
-      DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Validate deployment variables
-        run: |
-          set -euo pipefail
-          : "${FUNCTION_NAME:?Missing MIGRATION_RUNNER_NAME}"
-          : "${FUNCTION_DESCRIPTION:?Missing MIGRATION_RUNNER_DESCRIPTION}"
-          : "${FUNCTION_VPC_ID:?Missing FUNCTION_VPC_ID}"
-          : "${FUNCTION_VSWITCH_ID:?Missing FUNCTION_VSWITCH_ID}"
-          : "${FUNCTION_SECURITY_GROUP:?Missing FUNCTION_SECURITY_GROUP}"
-
       - name: Require explicit apply confirmation
         env:
           MIGRATION_MODE: ${{ inputs.mode }}
@@ -57,93 +37,57 @@ jobs:
             echo "Refusing apply: enter APPLY in the confirm field." >&2
             exit 1
           fi
-          if [ "$MIGRATION_MODE" = "reset-and-seed" ] && [ "$MIGRATION_CONFIRM" != "RESET_AND_SEED" ]; then
-            echo "Refusing reset-and-seed: enter RESET_AND_SEED in the confirm field." >&2
-            exit 1
-          fi
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.14.0
-
+          node-version-file: .tool-versions
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.14.0
+          node-version-file: .tool-versions
           cache: pnpm
-
-      - name: Install dependencies
+      - name: Install and compile checked-in migration plan
         run: |
-          pnpm install --no-frozen-lockfile
-
-      - name: Build migration runner package
-        working-directory: apps/yishan-api
-        run: bash ./deploy/fc3/scripts/prepare-migration-runner.sh
-
-      - name: Install and configure Serverless Devs
+          pnpm install --frozen-lockfile
+          pnpm -r --filter @yishan/demo-api... build
+          pnpm --filter @yishan/demo-api db:migrate --check
+      - name: Setup SSH tunnel to ECS internal MySQL
         env:
-          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
-          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
-          ALIBABA_CLOUD_ACCOUNT_ID: ${{ secrets.ALIBABA_CLOUD_ACCOUNT_ID }}
+          ECS_DEPLOYER_SSH_KEY: ${{ secrets.ECS_DEPLOYER_SSH_KEY }}
         run: |
           set -euo pipefail
-          npm i -g @serverless-devs/s
-          ACCOUNT_ID_CLEAN="$(echo "${ALIBABA_CLOUD_ACCOUNT_ID:-}" | tr -d '[:space:]')"
-          if [ -n "$ACCOUNT_ID_CLEAN" ] && echo "$ACCOUNT_ID_CLEAN" | grep -Eq '^[0-9]{16,32}$'; then
-            s config add --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" --AccountID "$ACCOUNT_ID_CLEAN" -a enterprise -f
-          else
-            s config add --AccessKeyID "$ALIBABA_CLOUD_ACCESS_KEY_ID" --AccessKeySecret "$ALIBABA_CLOUD_ACCESS_KEY_SECRET" -a enterprise -f
-          fi
-
-      - name: Deploy and invoke internal migration runner
-        working-directory: apps/yishan-api
+          test -n "$ECS_DEPLOYER_SSH_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$ECS_DEPLOYER_SSH_KEY" > ~/.ssh/ecs-deployer.pem
+          chmod 600 ~/.ssh/ecs-deployer.pem
+          ssh -fN -o StrictHostKeyChecking=accept-new -o ExitOnForwardFailure=yes \
+            -i ~/.ssh/ecs-deployer.pem -L 13306:127.0.0.1:3306 \
+            ecs-deployer@139.196.89.64 tunnel-dsh
+          for attempt in 1 2 3 4 5; do
+            if nc -z 127.0.0.1 13306; then break; fi
+            if [ "$attempt" -eq 5 ]; then exit 1; fi
+            sleep 1
+          done
+      - name: Inspect or apply application migrations
+        working-directory: apps/demo/api
         env:
           DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
           DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
-          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
-          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
-          ALLOW_PRODUCTION_SEED: ${{ inputs.mode == 'reset-and-seed' && 'true' || 'false' }}
-          SEED_ADMIN_PASSWORD: ${{ secrets.YISHAN_API_SEED_ADMIN_PASSWORD }}
+          DATABASE_HOST: 127.0.0.1
+          DATABASE_PORT: 13306
           MIGRATION_MODE: ${{ inputs.mode }}
-          FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
-          FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
-          FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
-          FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
-          FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
-          FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
         run: |
           set -euo pipefail
-          export DATABASE_PORT="${DATABASE_PORT:-3306}"
-          s deploy -t deploy/fc3/templates/runner.yaml -y
-          s invoke -t deploy/fc3/templates/runner.yaml --event "{\"mode\":\"${MIGRATION_MODE}\"}" | tee /tmp/migration_invoke.log
-          if grep -q '"error"' /tmp/migration_invoke.log; then
-            echo "Migration runner returned an error" >&2
-            exit 1
+          export DATABASE_URL="$(node -e 'process.stdout.write(`mysql://${encodeURIComponent(process.env.DATABASE_USER)}:${encodeURIComponent(process.env.DATABASE_PASSWORD)}@127.0.0.1:13306/${encodeURIComponent(process.env.DATABASE_NAME)}`)')"
+          if [ "$MIGRATION_MODE" = "dry-run" ]; then
+            pnpm db:migrate --dry-run
+          else
+            pnpm db:migrate --apply
           fi
-
-      - name: Remove temporary migration runner after success
-        if: success()
-        working-directory: apps/yishan-api
-        env:
-          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
-          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
-          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
-          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
-          ALLOW_PRODUCTION_SEED: 'false'
-          SEED_ADMIN_PASSWORD: unused
-          FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
-          FUNCTION_NAME: ${{ vars.MIGRATION_RUNNER_NAME }}
-          FUNCTION_DESCRIPTION: ${{ vars.MIGRATION_RUNNER_DESCRIPTION }}
-          FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
-          FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
-          FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
-        run: |
-          set -euo pipefail
-          export DATABASE_PORT="${DATABASE_PORT:-3306}"
-          s remove -t deploy/fc3/templates/runner.yaml -y
+      - name: Cleanup SSH tunnel
+        if: always()
+        run: pkill -f 'ssh.*13306.*ecs-deployer.*tunnel-dsh' || true

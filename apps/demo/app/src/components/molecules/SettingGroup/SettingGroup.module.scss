@@ -1,0 +1,18 @@
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.group__title {
+  padding: 0 var(--space-1) var(--space-2);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-tertiary);
+}
+
+.group__body {
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background-color: var(--color-bg-surface);
+}

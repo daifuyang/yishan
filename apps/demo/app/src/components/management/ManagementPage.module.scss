@@ -1,0 +1,109 @@
+/* ---------- 页面容器 ---------- */
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--color-bg-base);
+}
+
+/* 底部内边距由调用方决定：列表页复用全局 page-container（tabbar 安全区），
+   详情页用 pageWithActions 给固定操作栏留位。 */
+.pageWithActions {
+  padding-bottom: calc(50px + var(--safe-area-bottom));
+}
+
+/* ---------- 顶部导航 ---------- */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  min-height: var(--nav-bar-height);
+  padding: var(--safe-area-top) var(--space-3) 0;
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.header__side {
+  flex: 0 0 68px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+}
+
+.header__sideLeft {
+  justify-content: flex-start;
+  padding-left: var(--space-1);
+  border-radius: var(--radius-md);
+}
+
+.header__sideRight {
+  justify-content: flex-end;
+}
+
+.header__back {
+  display: block;
+  width: 32px;
+  color: var(--color-text-primary);
+  font-size: 30px;
+  line-height: 30px;
+  text-align: center;
+  transform: translateY(-1px);
+}
+
+.header__hover {
+  background: var(--color-bg-disabled);
+}
+
+.header__titleWrap {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  text-align: center;
+}
+
+.header__title {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-18);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.header__subtitle {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-12);
+  line-height: 1.2;
+}
+
+.header__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 58px;
+  height: 30px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-medium);
+}
+
+.header__actionDisabled {
+  opacity: var(--opacity-disabled);
+}
+
+.header__actionIcon {
+  font-size: var(--font-size-16);
+  line-height: 1;
+}

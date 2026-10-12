@@ -1,0 +1,17 @@
+.admin-page { min-height: 100%; background: var(--color-bg-base); padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.admin-header { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: var(--color-bg-surface); }
+.admin-title { flex: 1; font-size: 20px; font-weight: 600; }
+.admin-back { margin: 0; padding: 0; width: 48px; height: 48px; line-height: 48px; background: transparent; font-size: 28px; border: 0; }
+.admin-back::after { border: 0; }
+.admin-content { padding: 16px; }
+.admin-card { padding: 16px; margin-bottom: 12px; background: var(--color-bg-surface); border-radius: 8px; overflow-wrap: anywhere; }
+.admin-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; min-height: 48px; border-bottom: 1px solid var(--color-border, #eee); }
+.admin-row:last-child { border-bottom: 0; }
+.admin-name { display: block; font-size: 16px; font-weight: 500; }
+.admin-meta { display: block; margin-top: 6px; font-size: 14px; color: var(--color-text-secondary, #666); }
+.admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.admin-actions button { margin: 0; min-height: 48px; }
+.admin-actions > text, .admin-actions > .taro-text,
+.admin-header-action > text, .admin-header-action > .taro-text { min-height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; }
+.admin-notice { padding: 12px 0; font-size: 14px; color: var(--color-text-secondary, #666); }
+.admin-section-title { display: block; margin: 16px 0 12px; font-size: 17px; font-weight: 600; }

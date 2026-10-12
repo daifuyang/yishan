@@ -13,7 +13,7 @@
 #       postgres-local -> 127.0.0.1:5432  (postgres/dev-postgres-only)
 #   - 密码统一用 `dev-<role>-only-do-not-use-in-prod` 形式，明示用途。
 #   - 每个项目用**独立的 database / user / redis db 编号**实现隔离：
-#       yishan-api 数据库 -> yishan，redis db 0
+#       Demo API 数据库 -> yishan，redis db 0
 #       其他项目各自建自己的库/user 与 redis db 编号。
 #
 # 启停：

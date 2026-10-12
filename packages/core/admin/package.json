@@ -1,0 +1,50 @@
+{
+  "name": "@yishan/core-admin",
+  "version": "2.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Shared Admin runtime helpers and Umi compile-time module registry",
+  "exports": {
+    ".": "./src/index.ts",
+    "./menu": "./src/menu/routes.ts",
+    "./menu/types": "./src/menu/types.ts",
+    "./dynamic-routes": "./src/menu/dynamicRoutes.ts",
+    "./components": "./src/moduleComponents.ts",
+    "./public-path": "./src/publicPath.ts",
+    "./pro-table": "./src/proTable.ts",
+    "./token": "./src/token.ts",
+    "./permission": "./src/permission.ts",
+    "./request": "./src/request.ts",
+    "./manifest": {
+      "types": "./build/module-manifest.d.cts",
+      "default": "./build/module-manifest.cjs"
+    },
+    "./umi-plugin": {
+      "types": "./build/umi-plugin.d.cts",
+      "default": "./build/umi-plugin.cjs"
+    },
+    "./openapi": {
+      "types": "./build/openapi.d.cts",
+      "default": "./build/openapi.cjs"
+    },
+    "./menu/availability": "./src/menu/availability.ts"
+  },
+  "files": [
+    "src",
+    "build"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.cjs",
+    "lint": "biome lint . && pnpm typecheck"
+  },
+  "peerDependencies": {
+    "react": "^19.2.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
+    "@types/react": "^19.2.14",
+    "react": "^19.2.5",
+    "typescript": "^6.0.3"
+  }
+}

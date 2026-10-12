@@ -1,0 +1,47 @@
+.orgRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--list-item-height-sm);
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.orgRow:last-child {
+  border-bottom: 0;
+}
+
+.orgRow--hover {
+  background: var(--color-bg-disabled);
+}
+
+.orgLabel {
+  flex-shrink: 0;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-secondary);
+}
+
+.orgTail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.orgValue {
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-primary);
+}
+
+.orgValue--muted {
+  color: var(--color-text-tertiary);
+}

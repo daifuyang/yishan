@@ -1,0 +1,164 @@
+/* 底部不留内边距：筛选条与下方白色块之间的 16px 灰间隔由列表自身的
+   margin-top 承担，两处都给会叠成 32px。 */
+.filters {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4) 0;
+  background: var(--color-bg-surface);
+}
+
+.clear {
+  padding: var(--space-3) 0 0;
+}
+
+.clearAction {
+  color: var(--color-primary);
+  font-size: var(--font-size-13);
+}
+
+/* 48px 与列表行同高，搜索框和它下面的第一行在垂直方向上是齐的。
+   底色用 --color-bg-disabled 而不是 --color-bg-base：后者就是页面背景色，
+   搜索框会和页面糊在一起、看不出哪里能点。 */
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 48px;
+  padding: 0 var(--space-3);
+  background: var(--color-bg-disabled);
+  border: 1px solid var(--color-border-light);
+  border-radius: 12px;
+}
+
+.search:focus-within {
+  border-color: var(--color-primary-border);
+  background: var(--color-bg-surface);
+}
+
+.search__icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 1;
+}
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-14);
+}
+
+.search__input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.search__clear {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+}
+
+.search__clearHover {
+  background: var(--color-border-light);
+}
+
+.search__clearIcon {
+  color: var(--color-text-tertiary);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.chips {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: 1px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 33px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-surface);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-13);
+  line-height: 1;
+}
+
+.chipActive {
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.chipHover {
+  opacity: var(--opacity-pressed);
+}
+
+.triggers {
+  display: flex;
+}
+
+.trigger {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-14);
+}
+
+.triggerActive {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.triggerLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-primary);
+  font-size: var(--font-size-12);
+}
+
+.summaryText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+

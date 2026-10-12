@@ -1,0 +1,123 @@
+/* 表单行：label 在左固定列，控件在右并右对齐。
+   与 components/management 的 FormField 同一套设计语言，
+   详见 docs/design/mobile-form-spec.md。 */
+.mFormField {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-bg-surface);
+}
+
+.mFormField--error .mFormField__input,
+.mFormField--error .mFormField__textarea,
+.mFormField--error .mFormField__picker {
+  border-color: var(--color-danger);
+}
+
+.mFormField__label {
+  flex-shrink: 0;
+  width: 76px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  line-height: var(--line-height-normal);
+}
+
+.mFormField__required {
+  color: var(--color-danger);
+  font-size: var(--font-size-14);
+  line-height: 1;
+}
+
+.mFormField__control {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.mFormField__input,
+.mFormField__textarea {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-15);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-normal);
+  padding: 0;
+  background-color: transparent;
+  text-align: right;
+}
+
+.mFormField__textarea {
+  min-height: 60px;
+  width: 100%;
+  /* 多行文本保持左对齐，右对齐会难读 */
+  text-align: left;
+}
+
+.mFormField__switch {
+  flex-shrink: 0;
+}
+
+.mFormField__picker {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 24px;
+  padding: 0;
+}
+
+.mFormField__pickerValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mFormField__pickerArrow {
+  flex-shrink: 0;
+  color: var(--color-text-quaternary);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mFormField__placeholder {
+  color: var(--color-text-quaternary);
+  font-size: var(--font-size-15);
+  flex: 1;
+}
+
+// H5 下 Input/Textarea 直接渲染原生控件，placeholderClass 不生效
+.mFormField__input::placeholder,
+.mFormField__textarea::placeholder {
+  color: var(--color-text-quaternary);
+}
+
+.mFormField__extra {
+  flex-shrink: 0;
+}
+
+.mFormField__hintText {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: var(--font-size-12);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-normal);
+}
+
+.mFormField__errorText {
+  flex-basis: 100%;
+  text-align: right;
+  font-size: var(--font-size-12);
+  color: var(--color-danger);
+  line-height: var(--line-height-normal);
+}

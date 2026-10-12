@@ -10,7 +10,7 @@ Please do not report security vulnerabilities through public GitHub issues.
 
 Report privately to:
 
-- security@zerocmf.com
+- daifuyang96@qq.com
 
 Please include:
 

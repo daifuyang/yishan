@@ -1,0 +1,13 @@
+# 编码与前端列表规范
+
+全仓库工程规范以 [AGENTS.md](../../AGENTS.md) 为准；本页保留原前端列表规则，不创建第二套 UI 规范。
+
+本项目在列表页的数据与分页处理上采用统一规范，核心要点：
+
+- 参数：`page`、`pageSize`，排序：`sortBy`、`sortOrder`
+- 响应：严格依赖 `success` 字段判断成功与否
+- 列表数据：统一返回 `data: T[]`，分页信息位于 `pagination`
+- ProTable 的 `request` 统一处理响应并返回 `{ data, success, total }`
+- 操作列统一固定在右侧，使用 `<Space size={16}>` 排布链接；宽度按操作文本、间距及安全留白计算，参考源码表单模式的操作列约定。
+
+示例与最佳实践详见源码文档：[form-pattern.md](../../apps/demo/admin/docs/form-pattern.md)

@@ -4,28 +4,43 @@
   "description": "移山通用管理系统 - 基于 React/Ant Design Pro、Fastify、Docusaurus 的 monorepo 解决方案",
   "private": true,
   "scripts": {
-    "build": "pnpm --filter yishan-tiptap build && pnpm --filter yishan-admin build && pnpm --filter yishan-api build:ts && pnpm --filter yishan-app build:weapp && pnpm --filter yishan-docs build",
-    "dev:admin": "pnpm --filter yishan-admin dev",
-    "dev:api": "pnpm --filter yishan-api dev",
-    "dev:app": "pnpm --filter yishan-app dev:weapp",
-    "build:admin": "pnpm --filter yishan-admin build",
-    "build:api": "pnpm --filter yishan-api build:ts",
-    "build:app": "pnpm --filter yishan-app build:weapp",
-    "dev:docs": "pnpm --filter yishan-docs start",
-    "build:docs": "pnpm --filter yishan-docs build",
-    "build:tiptap": "pnpm --filter yishan-tiptap build",
-    "db:generate": "pnpm --filter yishan-api db:generate",
-    "db:seed": "pnpm --filter yishan-api db:seed",
-    "db:reset": "pnpm --filter yishan-api db:reset",
-    "lint": "pnpm --filter yishan-admin lint && pnpm --filter yishan-docs typecheck && pnpm --filter yishan-app biome:lint && pnpm typecheck:baseline && node scripts/check-module-naming.mjs && node scripts/check-main-baseline.mjs && pnpm check:boundaries && pnpm check:migrations",
-    "test": "pnpm --filter yishan-admin test && pnpm --filter yishan-api test && pnpm test:scripts",
-    "typecheck:baseline": "node scripts/check-tsc-baseline.mjs app && node scripts/check-tsc-baseline.mjs tiptap",
-    "check:boundaries": "node scripts/check-architecture-boundaries.mjs",
-    "check:migrations": "node scripts/check-migrations.mjs",
-    "check:toolchain": "node scripts/check-toolchain.mjs",
-    "check:openapi": "node scripts/openapi-diff.mjs apps/yishan-api/openapi.json",
-    "test:scripts": "node --test scripts/*.test.mjs",
-    "test:integration": "pnpm --filter yishan-api build:ts && pnpm --filter yishan-api test:integration"
+    "build": "pnpm build:mobile && pnpm build:app && pnpm build:api && pnpm build:admin && pnpm build:docs",
+    "dev:admin": "pnpm --filter @yishan/demo-admin dev",
+    "dev:api": "node scripts/dev-api.mjs",
+    "dev:app": "pnpm --filter @yishan/demo-app dev:weapp",
+    "typecheck:admin": "pnpm --filter @yishan/demo-admin exec max setup && pnpm --filter @yishan/core-admin typecheck && pnpm --filter @yishan/core-system-admin typecheck && pnpm --filter @yishan/demo-admin typecheck",
+    "build:admin": "pnpm build:tiptap && pnpm --filter @yishan/demo-admin build",
+    "build:api": "pnpm -r --filter @yishan/demo-api... build",
+    "build:app": "pnpm --filter @yishan/demo-app build:weapp",
+    "dev:docs": "pnpm --filter @yishan/demo-docs start",
+    "build:docs": "pnpm --filter @yishan/demo-docs build && pnpm --filter @yishan/portal-docs build",
+    "build:tiptap": "pnpm --filter @yishan/tiptap build",
+    "db:generate": "pnpm --filter @yishan/demo-api db:generate",
+    "db:seed": "pnpm --filter @yishan/demo-api db:seed",
+    "check:openapi": "node scripts/check-openapi-drift.mjs apps/demo/api/openapi.json",
+    "test:scripts": "node --test scripts/*.test.mjs scripts/test/*.test.mjs",
+    "lint": "pnpm --filter @yishan/core-admin lint && pnpm --filter @yishan/core-system-admin lint && pnpm --filter @yishan/demo-admin lint && pnpm --filter @yishan/demo-docs typecheck && pnpm --filter @yishan/portal-docs typecheck && pnpm --filter @yishan/demo-app lint && pnpm check:boundaries",
+    "test": "pnpm --filter @yishan/core-app test && pnpm --filter @yishan/demo-app test && pnpm --filter @yishan/core-admin test && pnpm --filter @yishan/demo-admin test && pnpm test:api",
+    "test:api": "pnpm build:api && pnpm -r --filter @yishan/demo-api... test",
+    "typecheck:api": "pnpm build:api && pnpm -r --filter @yishan/demo-api... typecheck",
+    "db:migrate": "pnpm --filter @yishan/demo-api db:migrate",
+    "check:boundaries": "node scripts/check-api-architecture.cjs && node scripts/check-main-baseline.mjs && node scripts/check-module-naming.mjs && node scripts/check-admin-boundaries.mjs && node scripts/check-app-boundaries.mjs",
+    "check:migrations": "node scripts/check-migration-history.mjs && pnpm --filter @yishan/demo-api db:migrate --check",
+    "test:integration": "pnpm build:api && pnpm --filter @yishan/core-database test:mysql && pnpm --filter @yishan/core-system-api test:integration && pnpm --filter @yishan/demo-api test:integration",
+    "build:mobile": "pnpm --filter @yishan/core-app build && pnpm --filter @yishan/ui typecheck",
+    "typecheck:mobile": "pnpm check:taro && pnpm --filter @yishan/core-app typecheck && pnpm --filter @yishan/ui typecheck && pnpm --filter @yishan/demo-app tsc",
+    "typecheck": "pnpm --filter @yishan/tiptap typecheck && pnpm typecheck:mobile && pnpm typecheck:api && pnpm typecheck:admin && pnpm --filter @yishan/docs-kit typecheck && pnpm --filter @yishan/demo-docs typecheck && pnpm --filter @yishan/portal-docs typecheck",
+    "check:taro": "node scripts/check-taro-versions.mjs",
+    "verify:tiptap": "node scripts/verify-tiptap-consumer.mjs"
+  },
+  "pnpm": {
+    "packageExtensions": {
+      "@floating-ui/react@*": {
+        "peerDependencies": {
+          "@types/react": "*"
+        }
+      }
+    }
   },
   "keywords": [
     "react",
@@ -45,6 +60,7 @@
     "pnpm": ">=8.0.0"
   },
   "devDependencies": {
+    "@yishan/core-admin": "workspace:*",
     "yaml": "^2.9.0"
   }
 }

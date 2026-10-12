@@ -1,0 +1,113 @@
+async (page) => {
+  const origin = 'http://127.0.0.1:21813'
+  const stamp = { createdAt: '2026-10-01T08:00:00Z', updatedAt: '2026-10-10T08:00:00Z' }
+  const position = { id: 101, name: '销售经理', status: '1', sort_order: 10, description: '负责销售团队', ...stamp }
+  const department = { id: 201, name: '销售部', parentId: 0, status: '1', sort_order: 1, description: '销售业务部门', leaderName: '王磊', ...stamp }
+  const child = { ...department, id: 202, name: '华东销售组', parentId: 201, parentName: '销售部' }
+  const dictType = { id: 301, name: '客户等级', type: 'customer_level', status: 1, sort_order: 1, remark: '客户等级选项', ...stamp }
+  const dictItem = { id: 401, typeId: 301, type: 'customer_level', label: '重点客户', value: 'important', tag: 'primary', status: 1, isDefault: false, sort_order: 1, remark: '重点跟进', ...stamp }
+  const user = { id: 900, username: 'reviewer', realName: '验收用户', phone: '13800138000', status: '1', gender: '0', loginCount: 1, ...stamp }
+  const permissions = [
+    'app:menu:authorized-tree', 'app:contacts:dept-users', 'system:user:list',
+    ...['position', 'department', 'dict'].flatMap((resource) => ['list', 'create', 'update', 'delete'].map((action) => `system:${resource}:${action}`)),
+  ]
+  const menus = [{ id: 1, name: '系统管理', type: 0, status: '1', moduleId: 'core', children: ['position', 'dept', 'dict'].map((name, index) => ({ id: index + 10, parentId: 1, name, type: 1, status: '1', moduleId: 'core', page: `pages/system/${name}/index` })) }]
+  const writes = []
+  const errors = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.unroute('**/api/**')
+  await page.route('**/api/**', async (route) => {
+    const path = route.request().url().split('?')[0].replace(/\/$/, '')
+    const method = route.request().method()
+    let data = []
+    if (method !== 'GET') writes.push({ path, method, data: route.request().postDataJSON() })
+    if (path.endsWith('/auth/me')) data = user
+    else if (path.endsWith('/auth/capabilities')) data = { permissions, enabledModuleIds: [] }
+    else if (path.endsWith('/menus/authorized')) data = menus
+    else if (path.endsWith('/positions/101')) data = position
+    else if (path.endsWith('/positions')) data = method === 'GET' ? [position] : position
+    else if (path.endsWith('/departments/tree')) data = [{ ...department, children: [child] }]
+    else if (path.endsWith('/departments/201')) data = department
+    else if (path.endsWith('/departments/202')) data = child
+    else if (path.endsWith('/departments')) data = method === 'GET' ? [department, child] : department
+    else if (path.endsWith('/users') || /\/contacts\/depts\/\d+\/users$/.test(path)) data = [user]
+    else if (path.endsWith('/dicts/types/301')) data = dictType
+    else if (path.endsWith('/dicts/types')) data = method === 'GET' ? [dictType] : dictType
+    else if (path.endsWith('/dicts/data/401')) data = dictItem
+    else if (path.endsWith('/dicts/data')) data = method === 'GET' ? [dictItem] : dictItem
+    await route.fulfill({ json: { success: true, code: 200, data, pagination: { page: 1, pageSize: 20, total: Array.isArray(data) ? data.length : 1, totalPages: 1 } } })
+  })
+  await page.goto(origin)
+  await page.evaluate((value) => {
+    localStorage.setItem('yishan:app:accessToken', JSON.stringify({ data: 'fixture-token' }))
+    localStorage.setItem('yishan:app:user', JSON.stringify({ data: value }))
+  }, user)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${origin}/#/pages/apps/index`)
+  await page.reload()
+  await page.locator('[aria-label="position"]').waitFor()
+  const pages = [
+    ['position/index', '销售经理'], ['position/detail/index?id=101', '销售经理'],
+    ['position/form/index?id=101', '岗位名称'], ['position/form/index', '岗位名称'],
+    ['dept/index', '销售部'], ['dept/detail/index?id=201', '销售部'],
+    ['dept/form/index?id=201', '部门名称'], ['dept/form/index?parentId=201', '部门名称'],
+    ['dict/index', '客户等级'], ['dict/detail/index?id=301', '客户等级'],
+    ['dict/form/index?id=301', '字典名称'],
+    ['dict/items/index?typeId=301', '重点客户'], ['dict/items/detail/index?id=401', '重点客户'],
+    ['dict/items/form/index?id=401&typeId=301', '字典标签'],
+  ]
+  for (const [route, text] of pages) {
+    await page.goto(`${origin}/#/pages/system/${route}`)
+    await page.getByText(text, { exact: true }).filter({ visible: true }).first().waitFor()
+    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error(`Overflow: ${route}`)
+  }
+  await page.goto(`${origin}/#/pages/system/position/index`)
+  await page.getByText('销售经理', { exact: true }).click()
+  await page.getByLabel('编辑', { exact: true }).click()
+  await page.getByPlaceholder('请输入岗位名称', { exact: true }).fill('销售主管')
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === 'PUT' && response.url().endsWith('/positions/101')),
+    page.getByLabel('保存', { exact: true }).click(),
+  ])
+  await page.waitForTimeout(400)
+  if (writes.at(-1).data.name !== '销售主管') throw new Error('Position edit payload incorrect')
+  await page.goto(`${origin}/#/pages/system/dept/form/index?parentId=201`)
+  await page.getByPlaceholder('请输入部门名称', { exact: true }).fill('销售支持组')
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === 'POST' && response.url().endsWith('/departments')),
+    page.getByLabel('保存', { exact: true }).click(),
+  ])
+  await page.waitForTimeout(400)
+  if (writes.at(-1).data.parentId !== 201) throw new Error('Department parent context lost')
+  await page.goto(`${origin}/#/pages/system/dict/items/detail/index?id=401`)
+  await page.getByLabel('编辑', { exact: true }).click()
+  await page.getByPlaceholder('请输入字典标签', { exact: true }).fill('核心客户')
+  await Promise.all([
+    page.waitForResponse((response) => response.request().method() === 'PUT' && response.url().endsWith('/dicts/data/401')),
+    page.getByLabel('保存', { exact: true }).click(),
+  ])
+  await page.waitForTimeout(400)
+  if (writes.at(-1).data.typeId !== 301 || writes.at(-1).data.label !== '核心客户') throw new Error('Dictionary context/edit payload incorrect')
+  await page.setViewportSize({ width: 320, height: 740 })
+  for (const [route, text] of pages) {
+    await page.goto(`${origin}/#/pages/system/${route}`)
+    await page.getByText(text, { exact: true }).filter({ visible: true }).first().waitFor()
+    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error(`320px overflow: ${route}`)
+  }
+  await page.goto(`${origin}/#/pages/system/position/detail/index?id=101`)
+  await page.getByText('岗位名称', { exact: true }).waitFor()
+  if (await page.getByText('岗位详情', { exact: true }).filter({ visible: true }).count() !== 1) throw new Error('Duplicate position navigation header')
+  await page.screenshot({ path: '.playwright-cli/management-position-detail.png' })
+  await page.goto(`${origin}/#/pages/system/dept/detail/index?id=201`)
+  await page.getByText('销售部', { exact: true }).first().waitFor()
+  await page.screenshot({ path: '.playwright-cli/management-dept-detail.png' })
+  await page.goto(`${origin}/#/pages/system/dict/detail/index?id=301`)
+  await page.getByText('客户等级', { exact: true }).first().waitFor()
+  await page.screenshot({ path: '.playwright-cli/management-dict-detail.png' })
+  if (errors.length) throw new Error(errors.join('\n'))
+  return { visited: pages.length, writes: writes.length, errors }
+}
+
+
+
+

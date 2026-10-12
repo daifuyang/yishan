@@ -1,0 +1,12 @@
+[
+  {
+    "name": "示例插件",
+    "sortOrder": 30,
+    "children": [
+      { "name": "快速入门", "icon": "ReadOutlined", "page": "pages/demo/quickstart/index", "sortOrder": 10 },
+      { "name": "健康检查", "icon": "SmileOutlined", "page": "pages/demo/health/index", "sortOrder": 20 },
+      { "name": "Todo 示例", "icon": "ClipboardListOutlined", "page": "pages/demo/todos/index", "sortOrder": 30 },
+      { "name": "省市级联", "icon": "EnvironmentOutlined", "page": "pages/demo/region/index", "sortOrder": 40 }
+    ]
+  }
+]

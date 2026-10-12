@@ -1,28 +1,41 @@
 name: yishan-fullstack-ci
 
-# 验证工作流（不部署）。生产部署由 yishan-fullstack-cd-fc.yml 负责，其触发分支与目标不受本文件影响。
 on:
   push:
     paths:
       - ".github/workflows/**"
-      - "apps/**"
-      - "packages/**"
+      - "apps/demo/admin/**"
+      - "apps/demo/api/**"
+      - "packages/core/**"
+      - "apps/demo/config/**"
       - "scripts/**"
-      - "docs/verification/**"
+      - "packages/yishan-tiptap/**"
+      - "packages/ui/**"
+      - "packages/core/docs-kit/**"
+      - "apps/demo/app/**"
+      - "apps/*/docs/**"
+      - "docs/**"
       - ".tool-versions"
-      - ".gitattributes"
+      - ".npmrc"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
   pull_request:
     paths:
       - ".github/workflows/**"
-      - "apps/**"
-      - "packages/**"
+      - "apps/demo/admin/**"
+      - "apps/demo/api/**"
+      - "packages/core/**"
+      - "apps/demo/config/**"
       - "scripts/**"
-      - "docs/verification/**"
+      - "packages/yishan-tiptap/**"
+      - "packages/ui/**"
+      - "packages/core/docs-kit/**"
+      - "apps/demo/app/**"
+      - "apps/*/docs/**"
+      - "docs/**"
       - ".tool-versions"
-      - ".gitattributes"
+      - ".npmrc"
       - "pnpm-lock.yaml"
       - "package.json"
       - "pnpm-workspace.yaml"
@@ -30,8 +43,8 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
-    # 临时服务库：只用于本次运行，不使用任何仓库 secrets 中的数据库凭据。
+    timeout-minutes: 45
+    environment: YISHAN_API
     services:
       mysql:
         image: mysql:8.4
@@ -54,12 +67,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    env:
-      # 从 main 拉出的分支按 main 基线检查；以 all 为目标的运行保持跳过。
-      YISHAN_BASELINE_TARGET: ${{ (github.base_ref || github.ref_name) == 'all' && 'all' || 'main' }}
-      DATABASE_URL: mysql://root:root@127.0.0.1:3306/yishan
-      REDIS_URL: redis://127.0.0.1:6379/0
-      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789
     steps:
       - uses: actions/checkout@v7
         with:
@@ -79,90 +86,158 @@ jobs:
           node-version-file: .tool-versions
           cache: pnpm
 
-      - name: Toolchain matches .tool-versions
-        run: pnpm check:toolchain
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
 
-      - name: Install (frozen lockfile)
-        run: pnpm install --frozen-lockfile
+      - name: Check installed Taro versions and local shim
+        run: pnpm check:taro
 
-      # Admin 依赖 TipTap 的 dist 产物，必须先构建。
-      - name: TipTap Build
-        run: pnpm --filter yishan-tiptap build
+      - name: Prepare yishan-tiptap
+        run: |
+          pnpm --filter @yishan/tiptap typecheck
+          pnpm --filter @yishan/tiptap build
+          pnpm --filter @yishan/tiptap verify:package
 
-      # Admin lint/jest 依赖 max setup 生成的 .umi/。
-      - name: Admin Setup
-        run: pnpm --filter yishan-admin exec max setup
+      - name: Verify independent TipTap tarball consumer
+        run: pnpm verify:tiptap --output "$RUNNER_TEMP/yishan-tiptap-consumer"
 
-      # admin lint + docs typecheck + app biome + tsc 基线（app/tiptap）+ 模块命名 + main 基线 + 架构边界
-      - name: Lint and guards
-        run: pnpm lint
+      - name: Core App and mobile product checks
+        run: |
+          pnpm typecheck:mobile
+          pnpm --filter @yishan/core-app test
+          pnpm --filter @yishan/demo-app lint
+          pnpm --filter @yishan/demo-app test
+          pnpm build:mobile
+          pnpm build:app
+          pnpm --filter @yishan/demo-app build:h5
+          node scripts/check-app-boundaries.mjs
 
-      - name: Script tests
-        run: pnpm test:scripts
+      - name: Admin Setup and strict public package typechecks
+        run: pnpm typecheck:admin
 
-      - name: Admin Test
-        run: pnpm --filter yishan-admin test
+      - name: Docs typecheck and production build
+        run: |
+          pnpm --filter @yishan/docs-kit typecheck
+          pnpm --filter @yishan/demo-docs typecheck
+          pnpm --filter @yishan/portal-docs typecheck
+          pnpm build:docs
+
+      - name: Admin public package lint and typechecks
+        run: |
+          pnpm --filter @yishan/core-admin lint
+          pnpm --filter @yishan/core-system-admin lint
+
+      - name: Core Admin build registry tests
+        run: pnpm --filter @yishan/core-admin test
+
+      - name: Admin Lint
+        run: pnpm --filter @yishan/demo-admin lint
+
+      - name: API and Admin architecture and product manifests
+        run: |
+          node scripts/check-api-architecture.cjs
+          node scripts/check-main-baseline.mjs
+          node scripts/check-module-naming.mjs
+          node scripts/check-admin-boundaries.mjs
+          node --test scripts/*.test.mjs scripts/test/*.test.mjs
 
       - name: Admin Build
-        run: pnpm --filter yishan-admin build
+        env:
+          PUBLIC_PATH: /admin/
+        run: pnpm --filter @yishan/demo-admin build
 
-      - name: API TypeScript Build
-        run: pnpm --filter yishan-api build:ts
+      # Admin Test 依赖 Admin Setup 生成的 .umi/ 产物；Max 不在 pretest 钩子上，
+      # 必须显式依赖 setup 步骤，确保 jest 能解析 .umi/plugin-initialState 等。
+      - name: Admin Test
+        run: pnpm --filter @yishan/demo-admin test
+
+      - name: Prepare API .env
+        working-directory: apps/demo/api
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/yishan
+          DATABASE_USER: root
+          DATABASE_PASSWORD: root
+          DATABASE_NAME: yishan
+          DATABASE_HOST: 127.0.0.1
+        run: |
+          ENV_FILE="$(pwd)/.env"
+          : > "$ENV_FILE"
+          printf '%s\n' "DATABASE_URL=${DATABASE_URL}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_USER=${DATABASE_USER}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_PASSWORD=${DATABASE_PASSWORD}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_NAME=${DATABASE_NAME}" >> "$ENV_FILE"
+          printf '%s\n' "DATABASE_HOST=${DATABASE_HOST}" >> "$ENV_FILE"
+
+      - name: API dependencies and TypeScript build
+        run: pnpm -r --filter @yishan/demo-api... build
+
+      - name: API strict typechecks and published migration history
+        run: |
+          pnpm typecheck:api
+          pnpm check:migrations
+
+      - name: API Schema Migrate
+        run: pnpm --filter @yishan/demo-api db:migrate --apply
+
+      - name: Verify standalone API artifact
+        run: node scripts/package-api.mjs --output /tmp/yishan-api-artifact --admin apps/demo/admin/dist
+
+      - name: Verify OpenAPI spec is in sync
+        shell: bash
+        run: |
+          PORT=3100 pnpm --filter @yishan/demo-api start > /tmp/yishan-api.log 2>&1 &
+          API_PID=$!
+          trap 'kill "$API_PID" 2>/dev/null || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3100/api/docs/json > /dev/null; then
+              break
+            fi
+            if ! kill -0 "$API_PID" 2>/dev/null; then
+              cat /tmp/yishan-api.log
+              exit 1
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/yishan-api.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          pnpm --filter @yishan/demo-api openapi:dump
+          pnpm check:openapi
+
+      - name: Verify generated Admin clients are in sync
+        run: |
+          pnpm --filter @yishan/demo-admin openapi
+          git diff --exit-code -- \
+            packages/core/system-admin/src/services/generated \
+            apps/demo/admin/src/services/generated \
+            apps/demo/admin/src/modules/crm/services/generated
+          if [ -n "$(git ls-files --others --exclude-standard -- packages/core/system-admin/src/services/generated apps/demo/admin/src/services/generated apps/demo/admin/src/modules/crm/services/generated)" ]; then
+            git status --short -- packages/core/system-admin/src/services/generated apps/demo/admin/src/services/generated apps/demo/admin/src/modules/crm/services/generated
+            echo "Generated Admin clients contain uncommitted files." >&2
+            exit 1
+          fi
+
+      - name: Install Chromium for isolated Admin verification
+        run: pnpm --filter @yishan/demo-admin exec playwright install --with-deps chromium
+
+      - name: Admin browser suite with disposable local resources
+        env:
+          YISHAN_TEST_MYSQL_PASSWORD: root
+        run: pnpm --filter @yishan/demo-admin exec playwright test e2e/product-v2.spec.ts --reporter=list
+
+      - name: Independent Admin package consumers and product module combinations
+        run: node scripts/verify-admin-reuse.mjs --mode all
 
       - name: API Test
-        run: pnpm --filter yishan-api test
+        run: pnpm test:api
 
-      - name: App Build
-        run: pnpm --filter yishan-app build:weapp
-
-      - name: Docs Build
-        run: pnpm --filter yishan-docs build
-
-      # Core 的 drizzle/meta 已提交（P0 J3 修复）：schema 与已提交的迁移/快照一致时 generate 不产生任何文件。
-      - name: Core schema matches committed migration
-        working-directory: apps/yishan-api
-        shell: bash
-        run: |
-          pnpm db:generate
-          test -z "$(git status --porcelain -- drizzle)" || { git status --porcelain -- drizzle; exit 1; }
-
-      # P0 R-01 已修复：每个模块使用独立历史表。这里刻意按曾经出错的顺序执行——
-      # 先用 drizzle-kit 迁移 Core，再用迁移脚本迁移模块（执行后核对历史与真实表结构，失败即非零退出）；
-      # 最后整体重跑一次验证幂等。
-      - name: Migrate disposable CI database
-        working-directory: apps/yishan-api
-        shell: bash
-        run: |
-          pnpm db:migrate
-          node dist/scripts/migrate.js --modules-only
-          node dist/scripts/migrate.js
-
-      - name: Module tables exist (read-only diagnostic)
-        run: node apps/yishan-api/scripts/check-module-tables.mjs
-
-      - name: Dump runtime OpenAPI
-        run: node apps/yishan-api/scripts/dump-openapi-from-build.mjs "$RUNNER_TEMP/openapi.runtime.json"
-
-      - name: Committed openapi.json matches runtime
-        run: pnpm check:openapi "$RUNNER_TEMP/openapi.runtime.json"
-
-      # 重构契约门禁：与 P0 记录的 main 运行时契约比较，只有 allow 文件逐项批准的差异可以通过。
-      - name: Runtime contract matches P0 baseline
-        run: >-
-          node scripts/openapi-diff.mjs
-          docs/verification/yishan-source-first-p0/evidence/openapi/main-6a5c62a-development.json
-          "$RUNNER_TEMP/openapi.runtime.json"
-          --allow scripts/baselines/openapi-allowed-changes.json
-
-      - name: Generated admin client matches openapi.json
-        shell: bash
-        run: |
-          pnpm --filter yishan-admin openapi
-          git diff --exit-code -- apps/yishan-admin/src/services/generated
-
-      - name: API Integration Tests (disposable MySQL/Redis)
+      - name: API isolated MySQL integration tests
         env:
-          YISHAN_RUN_INTEGRATION: "1"
-          YISHAN_TEST_MYSQL_URL: mysql://root:root@127.0.0.1:3306/yishan_it
-          YISHAN_TEST_REDIS_URL: redis://127.0.0.1:6379/1
-        run: pnpm --filter yishan-api test:integration
+          YISHAN_TEST_MYSQL_HOST: 127.0.0.1
+          YISHAN_TEST_MYSQL_PORT: '3306'
+          YISHAN_TEST_MYSQL_USER: root
+          YISHAN_TEST_MYSQL_PASSWORD: root
+        run: pnpm test:integration
