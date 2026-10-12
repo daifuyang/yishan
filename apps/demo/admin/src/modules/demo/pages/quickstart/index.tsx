@@ -1,8 +1,10 @@
 /**
- * 快速入门 — 演示模块如何从零搭建。
+ * 快速入门 — 按 API V2 模块契约从零搭建一个业务模块。
  *
- * 内容由本页面维护，与后端 `apps/demo/api/src/modules/demo/README.md`
- * 互为镜像。每次新增模块时把同样的要点复制过去即可。
+ * 五个步骤的标题与移动端 `apps/demo/app/src/pages/demo/quickstart` 保持一致；
+ * PC 端在正文里补充真实路径与命令。架构依据见
+ * `docs/architecture/api-v2.md`、`package-boundaries.md`、`database-ownership.md`
+ * 以及 `apps/demo/api/src/modules/demo/README.md`，契约变化时同步修改本页。
  */
 import { PageContainer, ProCard } from '@ant-design/pro-components'
 import { Alert, Avatar, Space, theme, Typography } from 'antd'
@@ -35,92 +37,113 @@ const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const STEPS: Array<{ tag: string; title: string; body: React.ReactNode }> = [
   {
     tag: '01',
-    title: '规划模块 ID',
+    title: '定义模块',
     body: (
       <>
-        选一个 <Text code>id</Text>，必须小写字母 / 数字 / 下划线，目录名与 ID 一致。
-        路由 prefix 由 Core 硬约定为 <CodeBlock>/api/&lt;id&gt;</CodeBlock>，表名约定以
-        <CodeBlock>&lt;id&gt;_</CodeBlock> 开头。
+        模块使用独立 ID，<Text code>module.ts</Text> 声明公开模块契约；业务表以模块 ID 为前缀。
+        在 <CodeBlock>apps/demo/api/src/modules/&lt;id&gt;/module.ts</CodeBlock>
+        默认导出 <Text code>ApiModule&lt;SystemRuntime&gt;</Text>：
+        <Text code>contractVersion: 2</Text>、<Text code>id</Text> / <Text code>version</Text>
+        元数据、<Text code>tablePrefix: &apos;&lt;id&gt;_&apos;</Text>、对 <Text code>system</Text>{' '}
+        的依赖声明、<Text code>register</Text>（挂载路由）、<Text code>migrations</Text>
+        （独立 <Text code>drizzle/</Text> 目录与 <Text code>__drizzle_migrations_&lt;id&gt;</Text>{' '}
+        历史表）以及可选的 <Text code>seed</Text>。Core 校验契约并按依赖拓扑排序，不扫描目录。
+        <CodeBlock>
+          {[
+            'module.ts            # ApiModule 契约',
+            'db/schema.ts         # <id>_ 前缀业务表',
+            'drizzle.config.ts    # 模块自有迁移配置',
+            'drizzle/             # 迁移 SQL + meta/_journal.json',
+            'routes/ services/ repositories/ schemas/ config/ tests/ seed.ts',
+          ].join('\n')}
+        </CodeBlock>
+        表名前缀由 <Text code>pnpm lint</Text> 中的{' '}
+        <Text code>scripts/check-module-naming.mjs</Text> 检查。
       </>
     ),
   },
   {
     tag: '02',
-    title: '建目录骨架',
+    title: '实现业务接口',
     body: (
       <>
-        在 <CodeBlock>apps/demo/api/src/modules/&lt;id&gt;/</CodeBlock> 下建：
-        <CodeBlock>
-          module.json      # id / build / version{'\n'}
-          routes.ts        # 默认 Fastify 插件（meta + autoload 路由）{'\n'}
-          routes/v1/*.ts   # 业务路由{'\n'}
-          db/schema.ts     # + drizzle/0000_init.sql{'\n'}
-          repositories/ services/ schemas/ tests/
-        </CodeBlock>
+        按 <Text code>routes → services → repositories → db/schema</Text>{' '}
+        组织，集中声明请求校验和权限。<Text code>routes/v1/&lt;resource&gt;/index.ts</Text>{' '}
+        由 autoload 映射为 <Text code>/api/&lt;id&gt;/v1/&lt;resource&gt;</Text>；路由在{' '}
+        <Text code>schema</Text> 中挂 TypeBox 请求 / 响应 schema（<Text code>schemas/</Text>
+        ，带 <Text code>$id</Text> 与 <Text code>operationId</Text>），在{' '}
+        <Text code>access.permission</Text> 引用文件顶部集中定义的 <Text code>PERMS</Text>
+        （例如 <Text code>demo:todos:list</Text>）。只有 repository 执行 SQL；模块不能访问{' '}
+        <Text code>sys_*</Text> 表或 System 私有 repository，用户身份走公开用户目录。
+        <CodeBlock>pnpm --filter @yishan/demo-api test</CodeBlock>
       </>
     ),
   },
   {
     tag: '03',
-    title: '前端页面',
+    title: '安装到产品',
     body: (
       <>
-        在 <CodeBlock>apps/demo/admin/src/modules/&lt;id&gt;/pages/&lt;page&gt;/index.tsx</CodeBlock>{' '}
-        放 React 页面。路径约定 <CodeBlock>./modules/&lt;id&gt;/&lt;page&gt;</CodeBlock>，由后端菜单的
-        <Text code>component</Text> 字段提供。
+        产品的显式 manifest 决定安装模块，数据库启用状态决定已安装模块是否提供服务。
+        把模块加入
+        <CodeBlock>apps/demo/api/src/manifest.ts   # export const demoModules = [...]</CodeBlock>
+        Admin 构建插件读取同一份 manifest，只编译已安装模块的{' '}
+        <Text code>apps/demo/admin/src/modules/&lt;id&gt;/</Text> 页面。运行时流量由{' '}
+        <Text code>sys_module.enabled</Text> 控制，可在模块管理页面启停。
+        卸载模块即从 manifest 移除，不需要修改 Core。
       </>
     ),
   },
   {
     tag: '04',
-    title: '写菜单 Seed',
+    title: '配置页面与入口',
     body: (
       <>
-        在 <CodeBlock>apps/demo/api/src/modules/&lt;id&gt;/seed.ts</CodeBlock>{' '}
-        调 <Text code>seedMenus()</Text> 写入模块菜单。模块级权限码
-        (例如 <Text code>demo:todos:list</Text>) 由路由层{' '}
-        <Text code>registerPermissions()</Text> 顶层副作用注册。
+        Web 与移动端分别实现页面，工作台配置选择已注册的移动页面，按角色授权。
+        <CodeBlock>
+          {[
+            '# Web 页面，菜单 component 写 ./modules/<id>/<page>',
+            'apps/demo/admin/src/modules/<id>/pages/<page>/index.tsx',
+            'apps/demo/api/src/modules/<id>/config/system-menu.json',
+            '',
+            '# 移动页面，注册后工作台入口按 page 匹配',
+            'apps/demo/app/src/pages/<id>/<page>/index.tsx',
+            'apps/demo/app/src/modules/registry.ts',
+            'apps/demo/api/src/modules/<id>/config/app-menu.json',
+          ].join('\n')}
+        </CodeBlock>
+        模块 <Text code>seed.ts</Text> 通过 System 公开的 <Text code>seedModuleMenus</Text> /{' '}
+        <Text code>seedModuleAppMenus</Text> 写入菜单；工作台入口在「系统管理 → 工作台管理」
+        维护，并在角色表单的「App 工作台」页签授权。接口变化后用
+        <CodeBlock>pnpm --filter @yishan/demo-admin openapi</CodeBlock>
+        重新生成 Admin 客户端。
       </>
     ),
   },
   {
     tag: '05',
-    title: '跑迁移 + 入驻',
+    title: '执行迁移与验证',
     body: (
       <>
-        <CodeBlock>pnpm --filter @yishan/demo-api db:seed:modules</CodeBlock>{' '}
-        会依次执行 migrate → 模块 seed.ts → 写菜单。后端在 <Text code>sys_module</Text>{' '}
-        表中维护 <Text code>enabled</Text> 字段，全局 onRequest gate 按{' '}
-        <Text code>sys_module.enabled</Text> 拦截。
-      </>
-    ),
-  },
-  {
-    tag: '06',
-    title: '启 dev 验证',
-    body: (
-      <>
+        数据库迁移单独执行；验证接口契约、权限、错误恢复以及 Web 和移动端实际流程。
+        应用启动不会迁移或运行 seed，写命令须在确认连接环境后显式执行：
         <CodeBlock>
-          pnpm --filter @yishan/demo-api dev{'\n'}
-          pnpm --filter @yishan/demo-admin dev
+          {[
+            '# 在模块目录生成迁移（schema 变更后）',
+            'cd apps/demo/api/src/modules/<id>',
+            'npx drizzle-kit generate --config=./drizzle.config.ts',
+            '',
+            '# 回到仓库根目录',
+            'pnpm build:api',
+            'pnpm --filter @yishan/demo-api db:migrate --check     # 只检查文件与 journal',
+            'pnpm --filter @yishan/demo-api db:migrate --dry-run   # 只读检查 pending',
+            'pnpm --filter @yishan/demo-api db:migrate --apply     # 显式写入',
+            'pnpm db:seed                                          # 显式 seed，不执行迁移',
+          ].join('\n')}
         </CodeBlock>
-        Admin 的 <Text code>require.context('@modules', ...)</Text> 在 Mako 编译期
-        扫描 <Text code>apps/demo/admin/src/modules/</Text>，运行时无需再次
-        拼路径或读 manifest。
-      </>
-    ),
-  },
-  {
-    tag: '07',
-    title: '拆除模块',
-    body: (
-      <>
-        <CodeBlock>
-          rm -rf apps/demo/api/src/modules/&lt;id&gt;{'\n'}
-          rm -rf apps/demo/admin/src/modules/&lt;id&gt;
-        </CodeBlock>
-        即可完整卸载：API 路由、数据库迁移、Admin 页面一并消失，无需改 Core
-        注册表或 routes.ts。
+        然后启动开发环境，走一遍 Web 与移动端的真实流程：
+        <CodeBlock>{['pnpm dev:api', 'pnpm --filter @yishan/demo-admin dev'].join('\n')}</CodeBlock>
+        已发布的迁移 SQL 不再修改，需要变更时追加新迁移。
       </>
     ),
   },
@@ -138,7 +161,7 @@ const Quickstart: React.FC = () => {
         <Alert
           showIcon
           type="info"
-          message="约定：模块代码与菜单 seed 都放在模块自己的目录里，Core 不会被修改。"
+          message="约定：模块通过公开契约接入产品，代码、迁移与菜单声明都在模块自己的目录里，Core 不会被修改。"
           style={{ borderRadius: 8 }}
         />
         {STEPS.map((step, idx) => (

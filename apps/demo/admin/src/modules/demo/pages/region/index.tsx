@@ -47,7 +47,6 @@ const RegionExample: React.FC = () => {
     <PageContainer
       header={{
         title: '省市级联示例',
-        subTitle: 'ProFormRegionCascader：懒加载 vs 整树加载两种策略的可运行对照',
       }}
     >
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>

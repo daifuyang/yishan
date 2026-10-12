@@ -1,5 +1,5 @@
 /**
- * 插件健康检查 — 调用后端 /api/demo/v1/info 展示模块与运行环境的只读信息。
+ * 健康检查 — 调用后端 /api/demo/v1/info 展示模块与运行环境的只读信息。
  *
  * 通过 openapi 生成的 services 访问，类型与后端 schema 同步。
  */
@@ -111,7 +111,7 @@ const Health: React.FC = () => {
   return (
     <PageContainer
       header={{
-        title: '插件健康检查',
+        title: '健康检查',
       }}
     >
       <Space direction="vertical" size="middle" style={{ width: '100%' }}>
