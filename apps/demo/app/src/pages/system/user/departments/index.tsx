@@ -5,11 +5,12 @@ import { useDidShow, useRouter } from '@tarojs/taro'
 import { adminDeptApi } from '@/api'
 import type { AdminDept } from '@/api/admin/types'
 import {
-  childOf,
+  collectExpandable,
   DepartmentTreeNavigator,
   findDeptPath,
-  searchDepts,
+  searchTree,
   SelectionFooter,
+  toggleExpanded,
 } from '@/components/management'
 import { StateView } from '@/components/feedback'
 import { useRequireAuth } from '@/utils/auth-guard'
@@ -25,6 +26,10 @@ function parseIds(raw?: string): number[] {
     .filter((value) => Number.isInteger(value) && value > 0)
 }
 
+function deptNameMatches(node: AdminDept, keyword: string): boolean {
+  return node.name.toLowerCase().includes(keyword)
+}
+
 export default function UserDepartmentsPage() {
   const guard = useRequireAuth({ moduleId: 'system-user' })
   const { params } = useRouter()
@@ -36,9 +41,8 @@ export default function UserDepartmentsPage() {
   const [tree, setTree] = useState<AdminDept[] | null>(null)
   const [error, setError] = useState<string | undefined>()
   const [loaded, setLoaded] = useState(false)
-  const [path, setPath] = useState<ReturnType<typeof findDeptPath>>([])
   const [keyword, setKeyword] = useState('')
-  const [highlightId, setHighlightId] = useState<number | null>(null)
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set())
 
   // 草稿优先于 ?ids=：草稿来自本次编辑会话，URL 只用于无草稿时的深链进入
   const initial = useMemo(() => {
@@ -54,7 +58,12 @@ export default function UserDepartmentsPage() {
     setError(undefined)
     adminDeptApi
       .getAdminDeptTree()
-      .then((result) => setTree(result ?? []))
+      .then((result) => {
+        const next = result ?? []
+        setTree(next)
+        // 默认展开全部分支，children 里的最子级才会直接出现在列表里
+        setExpandedIds(collectExpandable(next))
+      })
       .catch((err) => setError(err instanceof Error ? err.message : '加载失败'))
   }
 
@@ -64,9 +73,14 @@ export default function UserDepartmentsPage() {
     load()
   })
 
-  const currentId = path.length ? path[path.length - 1].id : null
-  const nodes = useMemo(() => childOf(tree, currentId), [tree, currentId])
-  const hits = useMemo(() => (keyword.trim() ? searchDepts(tree, keyword) : null), [tree, keyword])
+  const trimmed = keyword.trim()
+  const visible = useMemo(
+    () => (trimmed ? searchTree(tree, deptNameMatches, trimmed) : (tree ?? [])),
+    [tree, trimmed],
+  )
+  // 搜索时强制展开命中链，否则最子级仍然藏在折叠态里。
+  // 不写回 expandedIds，避免搜索期间点箭头污染用户自己的展开态。
+  const expandedNow = trimmed ? collectExpandable(visible) : expandedIds
 
   const selectedItems = useMemo(
     () =>
@@ -114,42 +128,23 @@ export default function UserDepartmentsPage() {
         text={error}
         onRetry={load}
       >
-        {hits ? (
-          <View className={styles.results}>
-            {hits.length === 0 ? (
-              <Text className={styles.empty}>没有匹配的部门</Text>
-            ) : (
-              hits.map((hit) => (
-                <View
-                  key={hit.node.id}
-                  className={styles.resultRow}
-                  aria-label={`搜索结果-${hit.node.name}`}
-                  onClick={() => {
-                    setPath(hit.path)
-                    setHighlightId(hit.node.id)
-                    setKeyword('')
-                  }}
-                >
-                  <Text className={styles.resultPath}>{hit.path.map((p) => p.name).join(' / ')}</Text>
-                  <Text className={styles.resultName}>{hit.node.name}</Text>
-                </View>
-              ))
-            )}
-          </View>
+        {trimmed && visible.length === 0 ? (
+          <Text className={styles.empty}>没有匹配的部门</Text>
         ) : (
           <DepartmentTreeNavigator
-            nodes={nodes}
-            path={path}
+            nodes={visible}
+            expandedIds={expandedNow}
             selectedIds={new Set(selected)}
-            highlightId={highlightId}
             readonly={readonly}
-            onEnter={(node) => setPath([...path, { id: node.id, name: node.name }])}
+            onToggleExpand={(id) => {
+              if (trimmed) return
+              setExpandedIds((prev) => toggleExpanded(prev, id))
+            }}
             onToggle={(id) =>
               setSelected((prev) =>
                 prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
               )
             }
-            onCrumb={(index) => setPath(path.slice(0, index + 1))}
           />
         )}
       </StateView>

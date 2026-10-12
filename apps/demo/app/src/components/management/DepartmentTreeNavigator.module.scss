@@ -2,28 +2,15 @@
   background: var(--color-bg-surface);
 }
 
-.crumbs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-divider);
-  background: var(--color-bg-base);
-}
-
-.crumb {
+/* 始终占位，叶子和分支的名称才对齐。箭头点击不冒泡到整行。 */
+.toggle {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  align-self: center;
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-size-13);
-  line-height: 20px;
-  color: var(--color-text-tertiary);
-}
-
-.crumb--current {
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-medium);
+  justify-content: center;
 }
 
 .empty {

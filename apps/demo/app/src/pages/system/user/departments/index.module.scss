@@ -34,30 +34,6 @@
   color: var(--color-text-primary);
 }
 
-.results {
-  background: var(--color-bg-surface);
-}
-
-.resultRow {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-divider);
-}
-
-.resultPath {
-  font-size: var(--font-size-12);
-  line-height: 18px;
-  color: var(--color-text-tertiary);
-}
-
-.resultName {
-  font-size: var(--font-size-14);
-  line-height: 22px;
-  color: var(--color-text-primary);
-}
-
 .empty {
   display: block;
   padding: var(--space-8) var(--space-4);

@@ -5,13 +5,18 @@ const { loadTs } = require('./helpers/load-ts.cjs')
 const scssMock = () => new Proxy({}, { get: (_, key) => (key === '__esModule' ? false : key) })
 
 const deptTree = loadTs('src/components/management/deptTree.ts')
+const menuTree = loadTs('src/components/management/menuTreeLogic.ts')
 
 const TREE = [
   {
     id: 1,
     name: '上海总公司',
     children: [
-      { id: 11, name: '研发部门', children: null },
+      {
+        id: 11,
+        name: '研发部门',
+        children: [{ id: 111, name: '前端组', children: null }],
+      },
       { id: 12, name: '市场部门', children: null },
     ],
   },
@@ -69,9 +74,10 @@ function mount({ params = {}, tree = TREE, draftIds, fetchTree } = {}) {
     '@/components/management': {
       DepartmentTreeNavigator: 'NAV',
       SelectionFooter: 'FOOT',
-      childOf: deptTree.childOf,
       findDeptPath: deptTree.findDeptPath,
-      searchDepts: deptTree.searchDepts,
+      searchTree: menuTree.searchTree,
+      collectExpandable: menuTree.collectExpandable,
+      toggleExpanded: menuTree.toggleExpanded,
     },
     '@/components/feedback': { StateView: 'SV' },
     '@/stores/selectionDraft': {
@@ -130,21 +136,24 @@ function mount({ params = {}, tree = TREE, draftIds, fetchTree } = {}) {
   return { render, settle, find, el, text, wrote, back, routes }
 }
 
-test('根层把整棵树交给导航器作为当前层节点', async () => {
+test('把整棵树交给列表，并默认展开到最子级', async () => {
   const page = mount()
   const tree = await page.settle()
-  assert.deepEqual(page.el(tree, 'NAV').props.nodes.map((n) => n.name), ['上海总公司'])
-  assert.deepEqual(page.el(tree, 'NAV').props.path, [])
+  const nav = page.el(tree, 'NAV')
+  assert.equal(nav.props.nodes[0].children[0].children[0].name, '前端组')
+  assert.equal(nav.props.expandedIds.has(1), true)
+  assert.equal(nav.props.expandedIds.has(11), true)
 })
 
-test('进入一级后当前层变成其子节点并累积面包屑', async () => {
+test('收起父节点只更新展开态，树数据仍保留子孙', async () => {
   const page = mount()
   let tree = await page.settle()
-  const rootNode = page.el(tree, 'NAV').props.nodes[0]
-  page.el(tree, 'NAV').props.onEnter(rootNode)
+  page.el(tree, 'NAV').props.onToggleExpand(11)
   tree = await page.settle()
-  assert.deepEqual(page.el(tree, 'NAV').props.nodes.map((n) => n.name), ['研发部门', '市场部门'])
-  assert.deepEqual(page.el(tree, 'NAV').props.path.map((p) => p.name), ['上海总公司'])
+  const nav = page.el(tree, 'NAV')
+  assert.equal(nav.props.expandedIds.has(11), false)
+  assert.equal(nav.props.expandedIds.has(1), true)
+  assert.equal(nav.props.nodes[0].children[0].children[0].name, '前端组')
 })
 
 test('勾选后确定把选中写入草稿并返回', async () => {
@@ -228,26 +237,27 @@ test('已选项按完整路径传给底栏，供跨分支消歧', async () => {
   ])
 })
 
-test('搜索后主体从导航器切换为扁平路径结果', async () => {
+test('搜索时仍用树列表，保留祖先链并展开到最子级', async () => {
   const page = mount()
   let tree = await page.settle()
-  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '研发' } })
+  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '前端' } })
   tree = await page.settle()
-  assert.equal(page.el(tree, 'NAV'), undefined)
-  assert.equal(page.find(tree, (n) => n.props?.['aria-label'] === '搜索结果-研发部门').length, 1)
-  assert.match(page.text(tree), /上海总公司 \/ 研发部门/)
+  const nav = page.el(tree, 'NAV')
+  assert.equal(nav.props.nodes[0].name, '上海总公司')
+  assert.equal(nav.props.nodes[0].children[0].children[0].name, '前端组')
+  assert.equal(nav.props.expandedIds.has(1), true)
+  assert.equal(nav.props.expandedIds.has(11), true)
 })
 
-test('点击搜索结果跳进该层级、清空关键词并高亮目标', async () => {
+test('搜索期间点箭头不改写用户自己的展开态', async () => {
   const page = mount()
   let tree = await page.settle()
-  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '研发' } })
+  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '前端' } })
   tree = await page.settle()
-  page.find(tree, (n) => n.props?.['aria-label'] === '搜索结果-研发部门')[0].props.onClick()
+  page.el(tree, 'NAV').props.onToggleExpand(11)
+  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '' } })
   tree = await page.settle()
-  assert.equal(page.el(tree, 'NAV').props.path.map((p) => p.name).join('>'), '上海总公司>研发部门')
-  assert.equal(page.el(tree, 'NAV').props.highlightId, 11)
-  assert.equal(page.find(tree, (n) => n.type === 'Input')[0].props.value, '')
+  assert.equal(page.el(tree, 'NAV').props.expandedIds.has(11), true)
 })
 
 test('搜索无结果时展示空态', async () => {

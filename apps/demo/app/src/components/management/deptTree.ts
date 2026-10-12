@@ -20,10 +20,18 @@ export function hasChildren(node: AdminDept): boolean {
   return kids(node).length > 0
 }
 
-/** 取某节点的直接子节点。parentId 为 null 表示根层。 */
+/** 取某节点的直接子节点。parentId 为 null 表示根层。必须沿 children 下钻，不能只查根数组。 */
 export function childOf(nodes: AdminDept[] | null | undefined, parentId: number | null): AdminDept[] {
   if (!parentId) return nodes ?? []
-  return kids((nodes ?? []).find((node) => node.id === parentId))
+  const walk = (list: AdminDept[]): AdminDept[] | null => {
+    for (const node of list) {
+      if (node.id === parentId) return kids(node)
+      const found = walk(kids(node))
+      if (found) return found
+    }
+    return null
+  }
+  return walk(nodes ?? []) ?? []
 }
 
 /** 深度优先查找从根到 id 的路径。找不到返回空数组。 */

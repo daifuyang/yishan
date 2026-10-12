@@ -3,92 +3,96 @@ import type { AdminDept } from '@/api/admin/types'
 
 import { Checkbox } from './Checkbox'
 import styles from './DepartmentTreeNavigator.module.scss'
-import { type DeptPathNode, hasChildren } from './deptTree'
 import { LineIcon } from './LineIcon'
+import { flattenTree } from './menuTreeLogic'
 
 const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ')
 
+/** 与 ManagementTreeCell 一致：每层 14px，超过 4 层不再加，避免深树把标题挤没。 */
+const INDENT_PX = 14
+const MAX_INDENT_DEPTH = 4
+const ROW_PADDING_LEFT = 16
+
 export interface DepartmentTreeNavigatorProps {
-  /** 当前层的子节点 */
+  /** 整棵部门树。按 children 递归展平，不再只渲染当前层。 */
   nodes: AdminDept[]
-  /** 从根到当前节点的路径 */
-  path: DeptPathNode[]
+  /** 处于展开态的节点 id。未包含的父节点会藏起全部子孙。 */
+  expandedIds: ReadonlySet<number>
   selectedIds: ReadonlySet<number>
-  /** 搜索跳转后需要高亮的节点 */
+  /** 搜索定位后需要高亮的节点 */
   highlightId?: number | null
   readonly?: boolean
-  onEnter: (node: AdminDept) => void
+  onToggleExpand: (id: number) => void
   onToggle: (id: number) => void
-  onCrumb: (index: number) => void
 }
 
 /**
- * 层级导航：面包屑 + 当前层子节点列表。纯展示，不持有选中态、不发请求。
- * 行点击进入下一层，checkbox 独立可点用于选中（任意层级均可选）。
+ * 可展开的缩进树列表。纯展示，不持有选中态、不发请求。
+ * 箭头只负责展开/收起；行与 checkbox 都用于选中，任意层级均可选。
  */
 export function DepartmentTreeNavigator({
   nodes,
-  path,
+  expandedIds,
   selectedIds,
   highlightId = null,
   readonly = false,
-  onEnter,
+  onToggleExpand,
   onToggle,
-  onCrumb,
 }: DepartmentTreeNavigatorProps) {
+  const rows = flattenTree(nodes, expandedIds)
+  if (rows.length === 0) {
+    return (
+      <View className={styles.tree}>
+        <Text className={styles.empty}>暂无部门</Text>
+      </View>
+    )
+  }
+
   return (
     <View className={styles.tree}>
-      <View className={styles.crumbs}>
-        {path.map((crumb, index) => (
+      {rows.map(({ node, depth, hasChildren, expanded }) => {
+        const checked = selectedIds.has(node.id)
+        const indent = Math.min(depth, MAX_INDENT_DEPTH) * INDENT_PX
+        return (
           <View
-            key={crumb.id}
-            className={styles.crumb}
-            aria-label={`面包屑-${crumb.name}`}
-            onClick={() => onCrumb(index)}
+            key={node.id}
+            className={cx(styles.treeRow, node.id === highlightId && styles['treeRow--highlight'])}
+            aria-label={`部门-${node.name}`}
+            hoverClass={readonly ? undefined : styles['treeRow--hover']}
+            style={indent ? { paddingLeft: `${ROW_PADDING_LEFT + indent}px` } : undefined}
+            onClick={readonly ? undefined : () => onToggle(node.id)}
           >
-            <Text className={index === path.length - 1 ? styles['crumb--current'] : styles.crumb}>
-              {crumb.name}
-            </Text>
-            {index < path.length - 1 ? (
-              <LineIcon name="chevronRight" size={12} color="#C9CDD4" />
-            ) : null}
-          </View>
-        ))}
-      </View>
-
-      {nodes.length === 0 ? (
-        <Text className={styles.empty}>没有下级部门</Text>
-      ) : (
-        nodes.map((node) => {
-          const branch = hasChildren(node)
-          const checked = selectedIds.has(node.id)
-          return (
             <View
-              key={node.id}
-              className={cx(styles.treeRow, node.id === highlightId && styles['treeRow--highlight'])}
-              aria-label={`部门-${node.name}`}
-              hoverClass={styles['treeRow--hover']}
+              className={styles.toggle}
+              aria-label={hasChildren ? `${expanded ? '收起' : '展开'}-${node.name}` : undefined}
+              aria-expanded={hasChildren ? expanded : undefined}
               onClick={
-                branch
-                  ? () => onEnter(node)
-                  : readonly
-                    ? undefined
-                    : () => onToggle(node.id)
+                hasChildren
+                  ? (event) => {
+                      event.stopPropagation()
+                      onToggleExpand(node.id)
+                    }
+                  : undefined
               }
             >
-              {/* checkbox 独立可点：任意层级均可被选中；内部已阻止冒泡 */}
-              <Checkbox
-                checked={checked}
-                disabled={readonly}
-                aria-label={`勾选-${node.name}`}
-                onClick={() => onToggle(node.id)}
-              />
-              <Text className={styles.treeName}>{node.name}</Text>
-              {branch ? <LineIcon name="chevronRight" size={16} color="#C9CDD4" /> : null}
+              {hasChildren ? (
+                <LineIcon
+                  name={expanded ? 'chevronDown' : 'chevronRight'}
+                  size={14}
+                  color="#86909C"
+                />
+              ) : null}
             </View>
-          )
-        })
-      )}
+            <Checkbox
+              checked={checked}
+              disabled={readonly}
+              aria-label={`勾选-${node.name}`}
+              onClick={readonly ? undefined : () => onToggle(node.id)}
+            />
+            <Text className={styles.treeName}>{node.name}</Text>
+          </View>
+        )
+      })}
     </View>
   )
 }

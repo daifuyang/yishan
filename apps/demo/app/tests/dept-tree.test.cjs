@@ -43,6 +43,14 @@ test('childOf 按 id 返回子节点，children: null 时返回空数组', () =>
   assert.deepEqual(childOf(tree, 2), [])
 })
 
+test('childOf 能取到非根节点的直接子节点', () => {
+  assert.deepEqual(
+    childOf(tree, 11).map((n) => n.id),
+    [111],
+  )
+  assert.deepEqual(childOf(tree, 999), [])
+})
+
 test('findDeptPath 返回从根到目标节点的路径名', () => {
   assert.deepEqual(findDeptPath(tree, 111), [
     { id: 1, name: '上海总公司' },
@@ -125,108 +133,80 @@ function text(node) {
   return text(node.props?.children)
 }
 
-test('面包屑渲染路径各级并可回跳', () => {
-  let crumbIndex = null
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [
-      { id: 1, name: '上海总公司' },
-      { id: 11, name: '研发部门' },
-    ],
+function treeProps(overrides = {}) {
+  return {
+    nodes: tree,
+    expandedIds: new Set([1, 11]),
     selectedIds: new Set(),
-    onEnter: () => {},
+    onToggleExpand: () => {},
     onToggle: () => {},
-    onCrumb: (i) => (crumbIndex = i),
-  })
-  assert.match(text(t), /上海总公司/)
+    ...overrides,
+  }
+}
+
+test('展开祖先后渲染最子级，并按层级缩进', () => {
+  const t = DepartmentTreeNavigator(treeProps())
+  assert.match(text(t), /前端组/)
+  const leaf = find(t, (n) => n.props?.['aria-label'] === '部门-前端组')[0]
+  // 16px 行内边距 + 2 层 * 14px
+  assert.equal(leaf.props.style.paddingLeft, '44px')
+  const mid = find(t, (n) => n.props?.['aria-label'] === '部门-研发部门')[0]
+  assert.equal(mid.props.style.paddingLeft, '30px')
+})
+
+test('折叠父节点时不渲染其子孙', () => {
+  const t = DepartmentTreeNavigator(treeProps({ expandedIds: new Set([1]) }))
   assert.match(text(t), /研发部门/)
-  const crumbs = find(
-    t,
-    (n) => typeof n.props?.['aria-label'] === 'string' && n.props['aria-label'].startsWith('面包屑'),
+  assert.doesNotMatch(text(t), /前端组/)
+})
+
+test('展开箭头只切换展开态并阻止冒泡', () => {
+  let expanded = null
+  let toggled = null
+  const t = DepartmentTreeNavigator(
+    treeProps({
+      expandedIds: new Set([1]),
+      onToggleExpand: (id) => (expanded = id),
+      onToggle: (id) => (toggled = id),
+    }),
   )
-  assert.equal(crumbs.length, 2)
-  crumbs[0].props.onClick()
-  assert.equal(crumbIndex, 0)
-})
-
-test('有子节点的行触发 onEnter 而非 onToggle', () => {
-  let entered = null
-  let toggled = null
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [{ id: 1, name: '上海总公司' }],
-    selectedIds: new Set(),
-    onEnter: (n) => (entered = n.id),
-    onToggle: (id) => (toggled = id),
-    onCrumb: () => {},
+  const stopped = []
+  find(t, (n) => n.props?.['aria-label'] === '展开-研发部门')[0].props.onClick({
+    stopPropagation: () => stopped.push(true),
   })
-  const row = find(t, (n) => n.props?.['aria-label'] === '部门-研发部门')[0]
-  row.props.onClick()
-  assert.equal(entered, 11)
+  assert.equal(expanded, 11)
   assert.equal(toggled, null)
+  assert.equal(stopped.length, 1)
 })
 
-test('叶子节点的行触发 onToggle', () => {
-  let entered = null
+test('行点击选中该部门，叶子和分支都一样', () => {
   let toggled = null
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [{ id: 1, name: '上海总公司' }],
-    selectedIds: new Set(),
-    onEnter: (n) => (entered = n.id),
-    onToggle: (id) => (toggled = id),
-    onCrumb: () => {},
-  })
-  find(t, (n) => n.props?.['aria-label'] === '部门-市场部门')[0].props.onClick()
-  assert.equal(toggled, 12)
-  assert.equal(entered, null)
+  const t = DepartmentTreeNavigator(treeProps({ onToggle: (id) => (toggled = id) }))
+  find(t, (n) => n.props?.['aria-label'] === '部门-前端组')[0].props.onClick()
+  assert.equal(toggled, 111)
+  find(t, (n) => n.props?.['aria-label'] === '部门-研发部门')[0].props.onClick()
+  assert.equal(toggled, 11)
 })
 
 test('已选中的节点渲染 checked 状态', () => {
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [{ id: 1, name: '上海总公司' }],
-    selectedIds: new Set([12]),
-    onEnter: () => {},
-    onToggle: () => {},
-    onCrumb: () => {},
-  })
-  // find() 不调用函数型组件节点（text()/nodes() 会），所以要显式取渲染结果
-  const box = render(
-    find(t, (n) => n.props?.['aria-label'] === '勾选-市场部门')[0],
-  )
+  const t = DepartmentTreeNavigator(treeProps({ selectedIds: new Set([111]) }))
+  const box = render(find(t, (n) => n.props?.['aria-label'] === '勾选-前端组')[0])
   assert.equal(box.props['aria-checked'], true)
 })
 
-test('任意层级均可选中：勾选分支节点只触发 onToggle 且阻止冒泡', () => {
-  let entered = null
+test('勾选分支节点只触发 onToggle 且阻止冒泡', () => {
   let toggled = null
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [{ id: 1, name: '上海总公司' }],
-    selectedIds: new Set(),
-    onEnter: (n) => (entered = n.id),
-    onToggle: (id) => (toggled = id),
-    onCrumb: () => {},
-  })
+  const t = DepartmentTreeNavigator(treeProps({ onToggle: (id) => (toggled = id) }))
   const stopped = []
   const box = render(find(t, (n) => n.props?.['aria-label'] === '勾选-研发部门')[0])
   box.props.onClick({ stopPropagation: () => stopped.push(true) })
   assert.equal(toggled, 11)
-  assert.equal(entered, null)
-  assert.equal(stopped.length, 1, 'checkbox 点击必须阻止冒泡，否则会连带进入层级')
+  assert.equal(stopped.length, 1)
 })
 
-test('父部门自身也可被勾选（能力保持，非仅叶子可选）', () => {
+test('父部门自身也可被勾选', () => {
   let toggled = null
-  const t = DepartmentTreeNavigator({
-    nodes: tree,
-    path: [],
-    selectedIds: new Set(),
-    onEnter: () => {},
-    onToggle: (id) => (toggled = id),
-    onCrumb: () => {},
-  })
+  const t = DepartmentTreeNavigator(treeProps({ onToggle: (id) => (toggled = id) }))
   find(t, (n) => n.props?.['aria-label'] === '勾选-上海总公司')[0].props.onClick({
     stopPropagation: () => {},
   })
@@ -235,15 +215,13 @@ test('父部门自身也可被勾选（能力保持，非仅叶子可选）', ()
 
 test('readonly 模式下 checkbox 不可点击且不渲染 checked', () => {
   let toggled = null
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [{ id: 1, name: '上海总公司' }],
-    selectedIds: new Set(),
-    readonly: true,
-    onEnter: () => {},
-    onToggle: (id) => (toggled = id),
-    onCrumb: () => {},
-  })
+  const t = DepartmentTreeNavigator(
+    treeProps({
+      nodes: tree[0].children,
+      readonly: true,
+      onToggle: (id) => (toggled = id),
+    }),
+  )
   const box = render(find(t, (n) => n.props?.['aria-label'] === '勾选-市场部门')[0])
   assert.equal(box.props['aria-checked'], undefined, '只读态不应暴露 checked 语义')
   assert.equal(box.props.onClick, undefined, '只读态 checkbox 不可点')
@@ -251,56 +229,42 @@ test('readonly 模式下 checkbox 不可点击且不渲染 checked', () => {
 })
 
 test('highlightId 对应行带高亮类名', () => {
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [{ id: 1, name: '上海总公司' }],
-    selectedIds: new Set(),
-    highlightId: 12,
-    onEnter: () => {},
-    onToggle: () => {},
-    onCrumb: () => {},
-  })
+  const t = DepartmentTreeNavigator(treeProps({ nodes: tree[0].children, highlightId: 12 }))
   assert.equal(find(t, (n) => String(n.props?.className ?? '').includes('treeRow--highlight')).length, 1)
 })
 
-test('当前层为空时渲染空态文案', () => {
-  const t = DepartmentTreeNavigator({
-    nodes: [],
-    path: [{ id: 2, name: '北京分公司' }],
-    selectedIds: new Set(),
-    onEnter: () => {},
-    onToggle: () => {},
-    onCrumb: () => {},
-  })
-  assert.match(text(t), /没有下级部门/)
+test('树为空时渲染空态文案', () => {
+  const t = DepartmentTreeNavigator(treeProps({ nodes: [], expandedIds: new Set() }))
+  assert.match(text(t), /暂无部门/)
 })
-test('readonly 模式下点击叶子行不会改变选中（只读浏览不应污染计数）', () => {
+
+test('readonly 模式下点击行不会改变选中', () => {
   let toggled = null
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [{ id: 1, name: '上海总公司' }],
-    selectedIds: new Set([12]),
-    readonly: true,
-    onEnter: () => {},
-    onToggle: (id) => (toggled = id),
-    onCrumb: () => {},
-  })
-  const row = find(t, (n) => n.props?.['aria-label'] === '部门-市场部门')[0]
-  assert.equal(row.props.onClick, undefined, '只读模式叶子行不应绑定 onClick')
+  const t = DepartmentTreeNavigator(
+    treeProps({
+      readonly: true,
+      selectedIds: new Set([111]),
+      onToggle: (id) => (toggled = id),
+    }),
+  )
+  const row = find(t, (n) => n.props?.['aria-label'] === '部门-前端组')[0]
+  assert.equal(row.props.onClick, undefined, '只读模式行不应绑定 onClick')
   assert.equal(toggled, null)
 })
 
-test('readonly 模式下仍可点击分支行进入下一层（只读≠不可浏览）', () => {
-  let entered = null
-  const t = DepartmentTreeNavigator({
-    nodes: tree[0].children,
-    path: [{ id: 1, name: '上海总公司' }],
-    selectedIds: new Set(),
-    readonly: true,
-    onEnter: (n) => (entered = n.id),
-    onToggle: () => {},
-    onCrumb: () => {},
+test('readonly 模式下仍可展开收起（只读≠不可浏览）', () => {
+  let expanded = null
+  const t = DepartmentTreeNavigator(
+    treeProps({
+      expandedIds: new Set([1]),
+      readonly: true,
+      onToggleExpand: (id) => (expanded = id),
+    }),
+  )
+  find(t, (n) => n.props?.['aria-label'] === '展开-研发部门')[0].props.onClick({
+    stopPropagation: () => {},
   })
-  find(t, (n) => n.props?.['aria-label'] === '部门-研发部门')[0].props.onClick()
-  assert.equal(entered, 11)
+  assert.equal(expanded, 11)
+  assert.match(text(t), /研发部门/)
+  assert.doesNotMatch(text(t), /前端组/)
 })
