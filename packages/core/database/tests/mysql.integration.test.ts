@@ -124,24 +124,27 @@ describe.skipIf(process.env.YISHAN_DATABASE_MYSQL_TEST !== '1')('isolated local 
     })
   })
 
-  it('reports the unchanged CRM baseline failure without claiming the failed migration completed', async () => {
+  it('reports a later journal failure without claiming the failed migration completed', async () => {
     await isolatedDatabase(async (database) => {
-      const declarations = [{ id: 'crm', folder: join(__dirname, '../../../../apps/demo/api/src/modules/crm/drizzle'), historyTable: '__drizzle_migrations_crm' }]
+      const declarations = [manifest([
+        'CREATE TABLE probe (id INT PRIMARY KEY, value VARCHAR(80));',
+        'CREATE TABLE extra (id INT PRIMARY KEY);',
+        'CREATE TABLE extra (id INT PRIMARY KEY, note VARCHAR(8));',
+      ])]
       let failure: unknown
       try { await migrateDatabase(database.db, declarations) } catch (error) { failure = error }
       expect(failure).toBeInstanceOf(Error)
       const message = failure instanceof Error ? failure.message : ''
-      expect(message).toMatch(/Migration crm\/.+ failed at statement \d+/)
+      expect(message).toMatch(/Migration probe\/.+ failed at statement \d+/)
       let cause: unknown = failure
       while (cause instanceof Error && cause.cause) cause = cause.cause
       expect(String(cause)).toMatch(/already exists|duplicate column/i)
-      const [history] = await database.pool.query<HistoryRecord[]>('SELECT * FROM __drizzle_migrations_crm ORDER BY id')
+      const [history] = await database.pool.query<HistoryRecord[]>('SELECT * FROM __drizzle_migrations_probe ORDER BY id')
       const plan = readMigrationPlan(declarations)[0]
       expect(history.length).toBeGreaterThan(0)
       expect(history.length).toBeLessThan(plan.migrations.length)
       expect(message).toContain(plan.migrations[history.length].tag)
       await expect(migrateDatabase(database.db, declarations)).rejects.toThrow(/ambiguous/i)
-      console.log(`Unchanged CRM baseline: ${message}; ${String(cause)}`)
     })
   })
   it('inspects an empty database without creating history or business tables', async () => {
