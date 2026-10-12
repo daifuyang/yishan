@@ -22,9 +22,10 @@ export default {
       port: 21003,
       allowedHosts: [...new Set(['localhost', '127.0.0.1', '[::1]', 'debug.daifuyang.com', ...extraHosts])],
       // An outer reverse proxy may route /api itself; direct development requests use this proxy.
+      // /uploads serves local-storage attachments, matching the Admin dev proxy.
       proxy: [
         {
-          context: ['/api'],
+          context: ['/api', '/uploads'],
           target: apiTarget,
           changeOrigin: true,
           secure: false,

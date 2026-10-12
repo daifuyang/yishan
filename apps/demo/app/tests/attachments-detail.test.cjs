@@ -146,3 +146,23 @@ test('其他类型：预览区显示文件图标与原始文件名', async () =>
   assert.ok(page.all('LineIcon').some((i) => i.props.name === 'file'))
   assert.ok(page.text().split('|').includes('contract-v2.pdf'))
 })
+
+test('图片加载失败：回退到占位提示，不留破图', async () => {
+  const { page } = mount()
+  await page.settle()
+  page.one('Image').props.onError()
+  await page.settle()
+  assert.equal(page.one('Image'), undefined)
+  assert.match(page.text(), /图片无法加载/)
+  // 复制链接仍可用：链接本身存在，只是当前环境加载不到
+  assert.ok(page.one('BottomActionBar').props.actions.some((a) => a.key === 'copy'))
+})
+
+test('视频播放失败：回退到占位提示', async () => {
+  const { page } = mount({ item: { ...IMAGE, kind: 'video', path: '/u/v.mp4', mimeType: 'video/mp4' } })
+  await page.settle()
+  page.one('Video').props.onError()
+  await page.settle()
+  assert.equal(page.one('Video'), undefined)
+  assert.match(page.text(), /视频无法播放/)
+})

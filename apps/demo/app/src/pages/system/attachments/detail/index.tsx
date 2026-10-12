@@ -45,6 +45,8 @@ function AttachmentDetailPage() {
   const [error, setError] = useState('')
   const [more, setMore] = useState(false)
   const [busy, setBusy] = useState(false)
+  // 预览加载失败时回退到占位，而不是留一个破图；记录失败的地址，换链接后重新尝试
+  const [failedUrl, setFailedUrl] = useState('')
   const locked = useRef(false)
   const sequence = useRef(0)
   const refreshOnShow = useRef(false)
@@ -176,15 +178,17 @@ function AttachmentDetailPage() {
           {item ? (
             <>
               <View className={styles.preview}>
-                {!url ? (
+                {!url || failedUrl === url ? (
                   <View className={styles.placeholder}>
                     <LineIcon name={KIND_GLYPH[item.kind]} size={32} color="#86909C" />
-                    <Text className={styles.placeholderText}>暂无可预览链接</Text>
+                    <Text className={styles.placeholderText}>
+                      {!url ? '暂无可预览链接' : item.kind === 'video' ? '视频无法播放' : '图片无法加载'}
+                    </Text>
                   </View>
                 ) : item.kind === 'image' ? (
-                  <Image className={styles.media} src={url} mode="widthFix" onClick={() => Taro.previewImage({ current: url, urls: [url] })} />
+                  <Image className={styles.media} src={url} mode="widthFix" onError={() => setFailedUrl(url)} onClick={() => Taro.previewImage({ current: url, urls: [url] })} />
                 ) : item.kind === 'video' ? (
-                  <Video className={styles.media} src={url} controls />
+                  <Video className={styles.media} src={url} controls onError={() => setFailedUrl(url)} />
                 ) : item.kind === 'audio' ? (
                   <View className={styles.audio}>
                     <View className={styles.audioButton} aria-label="播放" onClick={playAudio}><Text>播放</Text></View>
