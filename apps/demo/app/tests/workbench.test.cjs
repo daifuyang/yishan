@@ -254,6 +254,18 @@ test('savePins stores the server answer and refuses results that land after an a
   assert.equal(h.store.getState().home, null)
 })
 
+test('an older load that lands after savePins keeps the freshly saved home', async () => {
+  const h = harness()
+  await h.store.getState().load()
+  const pending = deferred()
+  h.api.getHomeApps = () => pending.promise
+  const loading = h.store.getState().load({ force: true })
+  await h.store.getState().savePins([2])
+  pending.resolve({ pinned: [], ranked: [1, 2] })
+  await loading
+  assert.deepEqual(h.store.getState().home, { pinned: [2], ranked: [] })
+})
+
 test('savePins requires a loaded catalog for the current account', async () => {
   const h = harness()
   await assert.rejects(h.store.getState().savePins([1]), /请刷新应用列表后重试/)

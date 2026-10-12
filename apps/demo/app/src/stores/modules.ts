@@ -18,6 +18,8 @@ interface ModuleState {
 const CACHE_MS = 60_000
 let loadedAt = 0
 let generation = 0
+/** 每次保存固定项后递增：保存前发出的 load 回来时不得用旧排序覆盖刚保存的结果 */
+let homeVersion = 0
 let inFlight: { force: boolean; promise: Promise<void> } | null = null
 let ownerId: number | null = null
 let syncingIdentity = false
@@ -57,6 +59,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
     }
     if (!options.force && get().loaded && Date.now() - loadedAt < CACHE_MS) return
     const requestGeneration = generation
+    const requestHomeVersion = homeVersion
     set({ loading: true, error: null })
     const request = (async () => {
       try {
@@ -76,7 +79,12 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
           }
         }
         loadedAt = Date.now()
-        set({ menus, home: home ?? get().home, loaded: true, error: null })
+        set({
+          menus,
+          home: homeVersion === requestHomeVersion ? (home ?? get().home) : get().home,
+          loaded: true,
+          error: null,
+        })
       } catch (error) {
         if (generation !== requestGeneration) return
         set({ error: error instanceof Error ? error.message : '应用加载失败' })
@@ -101,6 +109,7 @@ export const useModuleStore = create<ModuleState>((set, get) => ({
     if (generation !== requestGeneration || useAuthStore.getState().user?.id !== userId) {
       throw new Error('登录状态已变化，请重新登录')
     }
+    homeVersion += 1
     set({ home })
   },
   reset() {
