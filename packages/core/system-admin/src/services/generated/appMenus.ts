@@ -27,3 +27,41 @@ export async function appGetAuthorizedMenuFlat(options?: {
     ...(options || {}),
   });
 }
+
+/** 获取首页常用应用 pinned 为用户固定的入口（用户顺序），ranked 为其余已授权入口按使用习惯排序；均为工作台入口 ID GET /api/v1/app/menus/home */
+export async function appGetHomeApps(options?: { [key: string]: any }) {
+  return request<SystemAPI.appHomeAppsResp>("/api/v1/app/menus/home", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
+/** 保存首页固定应用 按数组顺序整体覆盖当前用户固定的入口；不可用的入口被丢弃，最多 8 个 PUT /api/v1/app/menus/pins */
+export async function appSaveHomePins(
+  body: SystemAPI.saveAppHomePinsReq,
+  options?: { [key: string]: any }
+) {
+  return request<SystemAPI.appHomeAppsResp>("/api/v1/app/menus/pins", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 记录应用打开 累加当前用户对某个工作台入口的打开次数；入口不可用时不记录 POST /api/v1/app/menus/usage */
+export async function appReportAppUsage(
+  body: SystemAPI.reportAppUsageReq,
+  options?: { [key: string]: any }
+) {
+  return request<SystemAPI.reportAppUsageResp>("/api/v1/app/menus/usage", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}

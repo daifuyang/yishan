@@ -98,6 +98,21 @@ declare namespace SystemAPI {
     pageSize?: number;
   };
 
+  type appHomeApps = {
+    /** 用户固定的入口，按用户排序 */
+    pinned: number[];
+    /** 其余已授权入口，按使用习惯排序；无记录时按工作台顺序 */
+    ranked: number[];
+  };
+
+  type appHomeAppsResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: appHomeApps;
+    timestamp: string;
+  };
+
   type appMenuDeleteResp = {
     code: number;
     message: string;
@@ -1100,6 +1115,19 @@ declare namespace SystemAPI {
     orderedIds: number[];
   };
 
+  type reportAppUsageReq = {
+    /** 工作台入口ID */
+    menuId: number;
+  };
+
+  type reportAppUsageResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: { recorded: boolean };
+    timestamp: string;
+  };
+
   type roleDeleteResp = {
     code: number;
     message: string;
@@ -1123,6 +1151,11 @@ declare namespace SystemAPI {
     data: sysRole[];
     timestamp: string;
     pagination: paginationResponse;
+  };
+
+  type saveAppHomePinsReq = {
+    /** 固定的入口，按显示顺序；空数组表示全部取消 */
+    menuIds: number[];
   };
 
   type saveAppMenuReq = {

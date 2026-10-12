@@ -3726,6 +3726,135 @@
           "timestamp"
         ]
       },
+      "appHomeApps": {
+        "type": "object",
+        "properties": {
+          "pinned": {
+            "description": "用户固定的入口，按用户排序",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "description": "工作台入口ID",
+              "type": "integer"
+            }
+          },
+          "ranked": {
+            "description": "其余已授权入口，按使用习惯排序；无记录时按工作台顺序",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "description": "工作台入口ID",
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "pinned",
+          "ranked"
+        ]
+      },
+      "appHomeAppsResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "获取常用应用成功",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/appHomeApps"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "saveAppHomePinsReq": {
+        "type": "object",
+        "properties": {
+          "menuIds": {
+            "maxItems": 8,
+            "description": "固定的入口，按显示顺序；空数组表示全部取消",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "description": "工作台入口ID",
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "menuIds"
+        ]
+      },
+      "reportAppUsageReq": {
+        "type": "object",
+        "properties": {
+          "menuId": {
+            "minimum": 1,
+            "description": "工作台入口ID",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "menuId"
+        ]
+      },
+      "reportAppUsageResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "已记录",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "recorded": {
+                "description": "是否计入（入口不可用时为 false）",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "recorded"
+            ]
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
       "sysDictType": {
         "type": "object",
         "properties": {
@@ -11883,6 +12012,114 @@
                       "type": "string"
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/app/menus/home": {
+      "get": {
+        "operationId": "appGetHomeApps",
+        "summary": "获取首页常用应用",
+        "tags": [
+          "app-menus"
+        ],
+        "description": "pinned 为用户固定的入口（用户顺序），ranked 为其余已授权入口按使用习惯排序；均为工作台入口 ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "app:menu:authorized-tree",
+        "x-permission-label": "移动端-已授权菜单树",
+        "x-permission-group": "app",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appHomeAppsResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/app/menus/pins": {
+      "put": {
+        "operationId": "appSaveHomePins",
+        "summary": "保存首页固定应用",
+        "tags": [
+          "app-menus"
+        ],
+        "description": "按数组顺序整体覆盖当前用户固定的入口；不可用的入口被丢弃，最多 8 个",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/saveAppHomePinsReq"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "app:menu:authorized-tree",
+        "x-permission-label": "移动端-已授权菜单树",
+        "x-permission-group": "app",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appHomeAppsResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/app/menus/usage": {
+      "post": {
+        "operationId": "appReportAppUsage",
+        "summary": "记录应用打开",
+        "tags": [
+          "app-menus"
+        ],
+        "description": "累加当前用户对某个工作台入口的打开次数；入口不可用时不记录",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/reportAppUsageReq"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "app:menu:authorized-tree",
+        "x-permission-label": "移动端-已授权菜单树",
+        "x-permission-group": "app",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reportAppUsageResp"
                 }
               }
             }

@@ -8,6 +8,7 @@ import registerDepartment from "./department.js";
 import registerPosition from "./position.js";
 import registerMenu from "./menu.js";
 import registerAppMenu from "./app-menu.js";
+import registerAppHome from "./app-home.js";
 import registerDict from "./dict.js";
 import registerAttachment from "./attachment.js";
 import registerLoginLog from "./login-log.js";
@@ -25,6 +26,7 @@ export default fp(async (fastify, opts) => {
   registerPosition(fastify);
   registerMenu(fastify);
   registerAppMenu(fastify);
+  registerAppHome(fastify);
   registerDict(fastify);
   registerAttachment(fastify);
   registerLoginLog(fastify);
