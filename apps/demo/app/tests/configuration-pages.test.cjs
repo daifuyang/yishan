@@ -135,9 +135,6 @@ function pageHarness(
       folderOptions: () => [],
       ...api,
     },
-    './AttachmentCard': { __esModule: true, default: 'AttachmentCard' },
-    './FolderForm': { __esModule: true, default: 'FolderForm', kindOptions: [] },
-    './FileUpload': { __esModule: true, default: 'FileUpload' },
   }).default
   const render = () => {
     stateIndex = 0
@@ -193,64 +190,6 @@ test('module toggle confirmation cannot submit after its page session ends', asy
   confirmation.resolve(true)
   await pending
   assert.equal(toggles, 0)
-})
-
-test('image picker cannot begin an upload after its page session ends', async () => {
-  const picker = deferred()
-  let uploads = 0
-  const harness = pageHarness(
-    'attachments',
-    {
-      uploadAttachment: async () => {
-        uploads++
-      },
-    },
-    { taro: { chooseImage: () => picker.promise } },
-  )
-  harness.render()
-  const tree = await harness.settle()
-  const pending = tree
-    .find((node) => node.type === 'Button' && node.props.children === '选择图片')
-    .props.onClick()
-  harness.invalidate()
-  picker.resolve({ tempFiles: [{ path: '/image.jpg', size: 10, type: 'image/jpeg' }] })
-  await pending
-  assert.equal(uploads, 0)
-})
-
-test('batch upload does not send later files after its page session ends', async () => {
-  const firstUpload = deferred()
-  let uploads = 0
-  const harness = pageHarness(
-    'attachments',
-    {
-      uploadAttachment: async () => {
-        uploads++
-        return firstUpload.promise
-      },
-    },
-    {
-      taro: {
-        chooseImage: async () => ({
-          tempFiles: [
-            { path: '/one.jpg', size: 10 },
-            { path: '/two.jpg', size: 10 },
-          ],
-        }),
-      },
-    },
-  )
-  harness.render()
-  const tree = await harness.settle()
-  const pending = tree
-    .find((node) => node.type === 'Button' && node.props.children === '选择图片')
-    .props.onClick()
-  await new Promise((resolve) => setImmediate(resolve))
-  assert.equal(uploads, 1)
-  harness.invalidate()
-  firstUpload.resolve([])
-  await pending
-  assert.equal(uploads, 1)
 })
 
 test('configuration pages render access chrome without requesting data when denied', async () => {

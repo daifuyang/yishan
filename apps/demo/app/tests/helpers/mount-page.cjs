@@ -49,7 +49,11 @@ function mountPage(entry, mocks, { router = {} } = {}) {
       ...taro,
     },
   }).default
-  const nodes = (value) => !value || typeof value !== 'object' ? [] : Array.isArray(value) ? value.flatMap(nodes) : [value, ...nodes(value.props?.children)]
+  // 除 children 外，也展开以元素为值的 props（如顶栏的 action、单元格的 tag），否则这些插槽里的元素无法断言
+  const isElement = (value) => Boolean(value && typeof value === 'object' && 'type' in value && 'props' in value)
+  const slotted = (props) => Object.entries(props || {}).flatMap(([key, value]) =>
+    key === 'children' ? [] : isElement(value) ? [value] : Array.isArray(value) ? value.filter(isElement) : [])
+  const nodes = (value) => !value || typeof value !== 'object' ? [] : Array.isArray(value) ? value.flatMap(nodes) : [value, ...nodes(value.props?.children), ...nodes(slotted(value.props))]
   const flush = () => {
     let guard = 0
     while (dirty && guard++ < 50) {

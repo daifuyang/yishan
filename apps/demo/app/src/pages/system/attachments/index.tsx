@@ -1,174 +1,473 @@
-import { withAccountScope } from '../_shared/AdminUI'
+import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import { View } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
-import { Text, View } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { batchDeleteAttachments, deleteFolder, getCloudUploadConfig, getFolderTree, importImages, listAttachments, uploadAttachment, folderOptions, type Attachment, type AttachmentFolder, type AttachmentKind, type CloudUploadConfig, type UploadFile } from '@/api/admin/attachments'
-import { Button } from '@/components/atoms'
-import { FormField } from '@/components/molecules'
-import { StateView } from '@/components/feedback'
+import {
+  type Attachment,
+  type AttachmentFolder,
+  attachmentUrl,
+  batchDeleteAttachments,
+  type CloudUploadConfig,
+  getCloudUploadConfig,
+  getFolderTree,
+  listAttachments,
+  type UploadFile,
+  uploadAttachment,
+} from '@/api/admin/attachments'
+import { getSessionVersion } from '@/api/client'
+import { Tag } from '@/components/atoms'
+import {
+  ActionSheet,
+  type ActionSheetItem,
+  BottomSelectSheet,
+  Checkbox,
+  ManagementCell,
+  ManagementFilterBar,
+  ManagementFilterClear,
+  ManagementFilterTriggers,
+  ManagementHeaderAction,
+  ManagementList,
+  ManagementListFooter,
+  ManagementPage,
+  ManagementPageHeader,
+  ManagementSearchBar,
+  ManagementStates,
+  SelectionFooter,
+} from '@/components/management'
+import { SYSTEM_PAGES } from '@/constants/routes'
 import { confirmAction, useCanWrite, useListPagination } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
-import { AdminNotice, AdminPage, AdminSelect, errorMessage } from '../_shared/AdminUI'
-import AttachmentCard from './AttachmentCard'
-import FolderForm, { kindOptions } from './FolderForm'
-import FileUpload from './FileUpload'
+import { navigateTo } from '@/utils/router'
+import { errorMessage, withAccountScope } from '../_shared/AdminUI'
+import { chooseFiles } from './chooseFiles'
+import { FolderTreeSheet } from './FolderTreeSheet'
+import styles from './index.module.scss'
+import {
+  buildAttachmentQuery,
+  DEFAULT_ATTACHMENT_FILTERS,
+  folderLabel,
+  formatSize,
+  KIND_GLYPH,
+  KIND_OPTIONS,
+  kindOfFile,
+  readAttachmentFilters,
+  STATUS_OPTIONS,
+} from './model'
 
-function kindOf(file: UploadFile): AttachmentKind {
-  if (file.mimeType.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(file.name)) return 'image'
-  if (file.mimeType.startsWith('video/') || /\.(mp4|mov|webm|avi)$/i.test(file.name)) return 'video'
-  if (file.mimeType.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|aac|flac)$/i.test(file.name)) return 'audio'
-  return 'other'
-}
+const CREATE = 'system:attachment:create'
+const DELETE = 'system:attachment:delete'
+const CLOUD = [CREATE, 'system:option:list', 'system:storage:upload-token']
 
 function AttachmentsPage() {
   const guard = useRequireAuth({ moduleId: 'system-attachments' })
   const isCurrent = useCurrentModuleAccess('system-attachments')
-  const canCreate = useCanWrite('system:attachment:create')
-  const canDelete = useCanWrite('system:attachment:delete')
+  const canCreate = useCanWrite(CREATE)
+  const canDelete = useCanWrite(DELETE)
+  const canCloud = useCanWrite(...CLOUD)
   const canReadOptions = useCanWrite('system:option:list')
-  const canCloudUpload = useCanWrite('system:storage:upload-token')
-  const [folders, setFolders] = useState<AttachmentFolder[]>([])
-  const [foldersLoading, setFoldersLoading] = useState(false)
-  const [foldersError, setFoldersError] = useState('')
-  const [cloud, setCloud] = useState<CloudUploadConfig | undefined>()
-  const [folderRevision, setFolderRevision] = useState(0)
-  const [showFolders, setShowFolders] = useState(false)
-  const [showImport, setShowImport] = useState(false)
-  const [links, setLinks] = useState('')
+  const [panel, setPanel] = useState<string | null>(null)
+  const [uploadSheet, setUploadSheet] = useState<'local' | 'cloud' | null>(null)
+  const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<number[]>([])
+  const [folders, setFolders] = useState<AttachmentFolder[]>([])
+  const [cloud, setCloud] = useState<CloudUploadConfig | undefined>()
   const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState('')
-  const [error, setError] = useState('')
   const locked = useRef(false)
-  const access = useRef({ allowed: false, create: false, remove: false, cloud: false })
-  access.current = { allowed: guard.allowed, create: guard.allowed && canCreate, remove: guard.allowed && canDelete, cloud: guard.allowed && canReadOptions && canCloudUpload }
-  const list = useListPagination<Attachment>({ enabled: guard.ready && guard.allowed, fetcher: async ({ page, pageSize, keyword, filters }) => {
-    const kind = filters.kind
-    const status = filters.status
-    const result = await listAttachments({ page, pageSize, keyword: keyword || undefined, folderId: Number(filters.folderId) || undefined,
-      kind: kind === 'image' || kind === 'audio' || kind === 'video' || kind === 'other' ? kind : undefined,
-      status: status === '0' || status === '1' ? status : undefined })
-    return { list: result.data, total: result.pagination.total }
-  } })
-  useEffect(() => { setSelected([]) }, [list.keyword, list.filters])
+  const list = useListPagination<Attachment>({
+    enabled: guard.ready && guard.allowed,
+    initialFilters: { ...DEFAULT_ATTACHMENT_FILTERS },
+    fetcher: async ({ page, pageSize, keyword, filters }) => {
+      const result = await listAttachments(
+        buildAttachmentQuery(page, pageSize, keyword, readAttachmentFilters(filters)),
+      )
+      return { list: result.data, total: result.pagination.total }
+    },
+  })
+  const filters = readAttachmentFilters(list.filters)
+
+  // 筛选变化后看不到的素材不能还挂在已选里，否则会被一起删掉
   useEffect(() => {
-    if (!guard.allowed) return
-    let active = true
-    setFoldersLoading(true)
-    setFoldersError('')
-    getFolderTree().then((data) => { if (active) setFolders(data) })
-      .catch((reason) => { if (active) setFoldersError(errorMessage(reason)) })
-      .finally(() => { if (active) setFoldersLoading(false) })
-    return () => { active = false }
-  }, [guard.allowed, folderRevision])
+    setSelected([])
+  }, [list.keyword, list.filters])
+
+  const loadFolders = () => {
+    getFolderTree()
+      .then((data) => setFolders(data))
+      .catch(() => {
+        // 分组树只用于筛选与显示名称，失败时保留「全部分组」
+      })
+  }
   useEffect(() => {
-    setCloud(undefined)
-    if (!guard.allowed || !canReadOptions) return
-    let active = true
-    getCloudUploadConfig().then((data) => { if (active) setCloud(data) })
-      .catch((reason) => { if (active) setNotice(`云存储配置加载失败：${errorMessage(reason)}，可使用本地上传。`) })
-    return () => { active = false }
-  }, [guard.allowed, canReadOptions])
-  const refresh = () => { setSelected([]); void list.refresh() }
-  const refreshFolders = () => { setFolderRevision((value) => value + 1); refresh() }
-  const upload = async (files: UploadFile[], useCloud = false) => {
-    const required = useCloud ? ['system:attachment:create', 'system:option:list', 'system:storage:upload-token'] : ['system:attachment:create']
-    if (!isCurrent(required) || !access.current.create || locked.current || (useCloud && !access.current.cloud)) return
+    if (!guard.ready || !guard.allowed) return
+    loadFolders()
+    if (!canReadOptions) return
+    getCloudUploadConfig()
+      .then(setCloud)
+      .catch(() => setCloud(undefined))
+  }, [guard.ready, guard.allowed, canReadOptions])
+  useDidShow(() => {
+    if (!guard.ready || !guard.allowed) return
+    loadFolders()
+    void list.refresh()
+  })
+  useDidHide(() => {
+    setPanel(null)
+    setUploadSheet(null)
+  })
+
+  const changeFilters = (patch: Record<string, unknown>) => {
+    list.setFilters(patch)
+    void Taro.pageScrollTo({ scrollTop: 0, duration: 0 })
+  }
+  const clearFilters = () => {
+    list.setKeyword('')
+    changeFilters({ ...DEFAULT_ATTACHMENT_FILTERS })
+  }
+
+  /** session 在打开选择器前取得：选择期间切换账号，选完也不能开始上传 */
+  async function upload(files: UploadFile[], useCloud: boolean, session: number) {
+    const required = useCloud ? CLOUD : [CREATE]
+    const current = () => session === getSessionVersion() && isCurrent(required)
+    if (!files.length || locked.current || !current()) return
     locked.current = true
     setBusy(true)
-    setError('')
     let uploaded = 0
     try {
       for (const file of files) {
-        if (!access.current.create || !isCurrent(required)) return
-        await uploadAttachment(file, { folderId: Number(list.filters.folderId) || undefined, kind: kindOf(file) }, useCloud ? cloud : undefined)
-        if (!isCurrent(required)) return
+        if (!current()) return
+        await uploadAttachment(
+          file,
+          { folderId: filters.folderId || undefined, kind: kindOfFile(file) },
+          useCloud ? cloud : undefined,
+        )
+        if (!current()) return
         uploaded++
       }
-      if (uploaded) { setNotice(`已上传 ${uploaded} 个文件`); refresh() }
-    } catch (reason) { if (isCurrent()) { setError(`${errorMessage(reason)}${uploaded ? `；已成功上传 ${uploaded} 个文件` : ''}`); if (uploaded) refresh() } }
-    finally { locked.current = false; if (isCurrent()) setBusy(false) }
-  }
-  const choose = async (kind: 'image' | 'video', useCloud = false) => {
-    if (!access.current.create || !isCurrent(['system:attachment:create']) || locked.current) return
-    try {
-      if (kind === 'image') {
-        const result = await Taro.chooseImage({ count: 9 })
-        if (!isCurrent(['system:attachment:create'])) return
-        await upload(result.tempFiles.map((file) => ({ path: file.path, name: file.originalFileObj?.name || file.path.split('/').pop() || 'image.jpg', size: file.size, mimeType: file.type || 'image/jpeg' })), useCloud)
-      } else {
-        const result = await Taro.chooseVideo({ sourceType: ['album', 'camera'] })
-        if (!isCurrent(['system:attachment:create'])) return
-        await upload([{ path: result.tempFilePath, name: result.tempFilePath.split('/').pop() || 'video.mp4', size: result.size, mimeType: 'video/mp4' }], useCloud)
-      }
+      void Taro.showToast({ title: `已上传 ${uploaded} 个文件`, icon: 'success' })
+      void list.refresh()
     } catch (reason) {
-      if (reason && typeof reason === 'object' && 'errMsg' in reason && String(reason.errMsg).includes('cancel')) return
-      if (isCurrent()) setError(errorMessage(reason))
+      if (!current()) return
+      const done = uploaded ? `，已成功上传 ${uploaded} 个` : ''
+      void Taro.showToast({ title: `${errorMessage(reason)}${done}`, icon: 'none' })
+      if (uploaded) void list.refresh()
+    } finally {
+      locked.current = false
+      setBusy(false)
     }
   }
-  const remove = async (folder?: AttachmentFolder) => {
-    if (!access.current.remove || !isCurrent(['system:attachment:delete']) || locked.current || (!folder && !selected.length)) return
+
+  const cancelled = (reason: unknown) =>
+    Boolean(
+      reason &&
+        typeof reason === 'object' &&
+        'errMsg' in reason &&
+        String((reason as { errMsg: unknown }).errMsg).includes('cancel'),
+    )
+
+  async function pickImages(useCloud: boolean) {
+    const session = getSessionVersion()
+    try {
+      const result = await Taro.chooseImage({ count: 9 })
+      await upload(
+        result.tempFiles.map((file) => ({
+          path: file.path,
+          name: file.originalFileObj?.name || file.path.split('/').pop() || 'image.jpg',
+          size: file.size,
+          mimeType: file.type || 'image/jpeg',
+        })),
+        useCloud,
+        session,
+      )
+    } catch (reason) {
+      if (session === getSessionVersion() && !cancelled(reason))
+        void Taro.showToast({ title: errorMessage(reason), icon: 'none' })
+    }
+  }
+  async function pickVideo(useCloud: boolean) {
+    const session = getSessionVersion()
+    try {
+      const result = await Taro.chooseVideo({ sourceType: ['album', 'camera'] })
+      await upload(
+        [
+          {
+            path: result.tempFilePath,
+            name: result.tempFilePath.split('/').pop() || 'video.mp4',
+            size: result.size,
+            mimeType: 'video/mp4',
+          },
+        ],
+        useCloud,
+        session,
+      )
+    } catch (reason) {
+      if (session === getSessionVersion() && !cancelled(reason))
+        void Taro.showToast({ title: errorMessage(reason), icon: 'none' })
+    }
+  }
+  function pickFiles(useCloud: boolean) {
+    const session = getSessionVersion()
+    // H5 下 chooseFiles 内部同步 click()，这里不能先 await 别的东西
+    chooseFiles()
+      .then(async (files) => {
+        try {
+          await upload(files, useCloud, session)
+        } finally {
+          if (process.env.TARO_ENV === 'h5')
+            for (const file of files) URL.revokeObjectURL(file.path)
+        }
+      })
+      .catch((reason) => {
+        if (session === getSessionVersion())
+          void Taro.showToast({ title: errorMessage(reason), icon: 'none' })
+      })
+  }
+
+  const sourceItems = (useCloud: boolean): ActionSheetItem[] => [
+    {
+      key: 'image',
+      label: '图片',
+      icon: 'image',
+      onClick: () => {
+        setUploadSheet(null)
+        void pickImages(useCloud)
+      },
+    },
+    {
+      key: 'video',
+      label: '视频',
+      icon: 'video',
+      onClick: () => {
+        setUploadSheet(null)
+        void pickVideo(useCloud)
+      },
+    },
+    {
+      key: 'file',
+      label: '文件',
+      icon: 'file',
+      onClick: () => {
+        setUploadSheet(null)
+        pickFiles(useCloud)
+      },
+    },
+  ]
+  const uploadItems: ActionSheetItem[] =
+    uploadSheet === 'cloud'
+      ? sourceItems(true)
+      : [
+          ...sourceItems(false),
+          {
+            key: 'import',
+            label: '链接导入',
+            icon: 'globe',
+            onClick: () => {
+              setUploadSheet(null)
+              navigateTo(
+                `/${SYSTEM_PAGES.attachmentImport}${filters.folderId ? `?folderId=${filters.folderId}` : ''}`,
+              )
+            },
+          },
+          ...(cloud?.provider === 'qiniu' && canCloud
+            ? [
+                {
+                  key: 'cloud',
+                  label: '上传到七牛云',
+                  icon: 'cloud' as const,
+                  onClick: () => setUploadSheet('cloud'),
+                },
+              ]
+            : []),
+        ]
+
+  async function removeSelected() {
+    if (!selected.length || locked.current || !isCurrent([DELETE])) return
+    const session = getSessionVersion()
+    const current = () => session === getSessionVersion() && isCurrent([DELETE])
     locked.current = true
     setBusy(true)
-    setError('')
     try {
-      if (!await confirmAction({ title: folder ? '删除分组' : '批量删除素材', content: folder ? `确认删除「${folder.name}」？包含子分组或素材的分组不能删除。` : `确认删除已选择的 ${selected.length} 个素材？` }) || !access.current.remove || !isCurrent(['system:attachment:delete'])) return
-      if (folder) {
-        await deleteFolder(folder.id)
-        if (!isCurrent(['system:attachment:delete'])) return
-        if (Number(list.filters.folderId) === folder.id) list.setFilters({ folderId: '0' })
-        refreshFolders()
-      } else { await batchDeleteAttachments(selected); if (!isCurrent(['system:attachment:delete'])) return; refresh() }
-      await Taro.showToast({ title: '已删除', icon: 'success' })
-    } catch (reason) { if (isCurrent()) setError(errorMessage(reason)) }
-    finally { locked.current = false; if (isCurrent()) setBusy(false) }
+      const ok = await confirmAction({
+        title: '删除素材',
+        content: `确认删除已选择的 ${selected.length} 个素材？`,
+      })
+      if (!ok || !current()) return
+      await batchDeleteAttachments(selected)
+      if (!current()) return
+      setSelected([])
+      setSelecting(false)
+      void Taro.showToast({ title: '已删除', icon: 'success' })
+      void list.refresh()
+    } catch (reason) {
+      if (current()) void Taro.showToast({ title: errorMessage(reason), icon: 'none' })
+    } finally {
+      locked.current = false
+      setBusy(false)
+    }
   }
-  const importLinks = async () => {
-    if (!access.current.create || !isCurrent(['system:attachment:create']) || locked.current) return
-    const urls = links.split(/\s+/).map((value) => value.trim()).filter(Boolean)
-    if (!urls.length || urls.length > 20 || urls.some((url) => !/^https?:\/\//i.test(url))) { setError('请输入 1–20 个 HTTP 或 HTTPS 图片链接，每行一个'); return }
-    locked.current = true
-    setBusy(true)
-    setError('')
-    try {
-      await importImages(urls, Number(list.filters.folderId) || undefined)
-      if (!isCurrent(['system:attachment:create'])) return
-      setLinks(''); setShowImport(false); refresh()
-      await Taro.showToast({ title: '导入成功', icon: 'success' })
-    } catch (reason) { if (isCurrent()) setError(errorMessage(reason)) }
-    finally { locked.current = false; if (isCurrent()) setBusy(false) }
-  }
-  const flatFolders: AttachmentFolder[] = []
-  const flatten = (nodes: AttachmentFolder[]) => { for (const node of nodes) { flatFolders.push(node); flatten(node.children || []) } }
-  flatten(folders)
-  if (!guard.ready || !guard.allowed) return <AdminPage title="媒体库">{null}</AdminPage>
-  return <AdminPage title="媒体库">
-    <View className="admin-card">
-      <FormField type="input" label="搜索素材" value={list.keyword} onInput={list.setKeyword} />
-      <AdminSelect label="分组" value={String(list.filters.folderId || '0')} options={folderOptions(folders).map((option) => option.value === '0' ? { ...option, label: '全部分组' } : option)} onChange={(folderId) => list.setFilters({ folderId })} />
-      <AdminSelect label="素材类型" value={String(list.filters.kind || 'all')} options={kindOptions} onChange={(kind) => list.setFilters({ kind })} />
-      <AdminSelect label="状态" value={String(list.filters.status || '')} options={[{ label: '全部', value: '' }, { label: '启用', value: '1' }, { label: '禁用', value: '0' }]} onChange={(status) => list.setFilters({ status })} />
-      <View className="admin-actions"><Button size="sm" variant="secondary" disabled={busy} onClick={refresh}>刷新</Button><Button size="sm" variant="secondary" onClick={() => setShowFolders(!showFolders)}>管理分组</Button></View>
-      {canCreate && <>
-        <Text className="admin-section-title">上传到当前分组</Text>
-        <View className="admin-actions"><Button size="sm" disabled={busy} onClick={() => choose('image')}>选择图片</Button><Button size="sm" disabled={busy} onClick={() => choose('video')}>选择视频</Button><FileUpload disabled={busy} onFiles={upload} onError={(reason) => setError(errorMessage(reason))} /><Button size="sm" variant="secondary" disabled={busy} onClick={() => setShowImport(!showImport)}>链接导入</Button></View>
-        {cloud?.provider === 'qiniu' && canCloudUpload && <View className="admin-actions"><Button size="sm" disabled={busy} onClick={() => choose('image', true)}>七牛云图片上传</Button><FileUpload label="七牛云文件上传" disabled={busy} onFiles={(files) => upload(files, true)} onError={(reason) => setError(errorMessage(reason))} /></View>}
-        <AdminNotice>普通上传保存到本地存储。图片链接导入每次最多 20 个。</AdminNotice>
-      </>}
-      {showImport && canCreate && <><FormField type="textarea" label="图片链接（每行一个）" value={links} disabled={busy} maxLength={-1} onInput={setLinks} /><Button loading={busy} onClick={importLinks}>导入到当前分组</Button></>}
-    </View>
-    {notice && <AdminNotice>{notice}</AdminNotice>}
-    {error && <AdminNotice>{error}</AdminNotice>}
-    {foldersError && <StateView kind="error" text={`分组加载失败：${foldersError}`} onRetry={() => setFolderRevision(folderRevision + 1)} />}
-    {showFolders && <View className="admin-card">
-      <Text className="admin-section-title">素材分组</Text><FolderForm folders={folders} onSaved={refreshFolders} />
-      {foldersLoading ? <StateView kind="loading" /> : flatFolders.map((folder) => <View key={folder.id} className="admin-row"><View><Text className="admin-name">{folder.name}</Text><Text className="admin-meta">{folder.kind} · {folder.status === '1' ? '启用' : '禁用'} · 排序 {folder.sort_order}</Text><FolderForm folder={folder} folders={folders} onSaved={refreshFolders} />{canDelete && <Button size="sm" variant="danger" disabled={busy} onClick={() => remove(folder)}>删除分组</Button>}</View></View>)}
-    </View>}
-    <Text className="admin-section-title">素材 · {list.total} 个</Text>
-    {selected.length > 0 && canDelete && <View className="admin-actions"><Button size="sm" variant="danger" loading={busy} onClick={() => remove()}>删除已选 {selected.length} 项</Button><Button size="sm" variant="secondary" onClick={() => setSelected([])}>取消选择</Button></View>}
-    {list.loading && !list.list.length ? <StateView kind="loading" /> : list.error ? <StateView kind="error" text={list.error} onRetry={list.refresh} /> : !list.list.length ? <StateView kind="empty" text="暂无素材" /> : list.list.map((item) => <AttachmentCard key={item.id} item={item} folders={folders} domain={cloud?.domain} selected={selected.includes(item.id)} onSelect={() => setSelected((values) => values.includes(item.id) ? values.filter((id) => id !== item.id) : [...values, item.id])} onSaved={refresh} />)}
-    {!list.finished && list.list.length > 0 && <Button variant="secondary" loading={list.loadingMore} onClick={list.loadMore}>加载更多</Button>}
-  </AdminPage>
+
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+
+  const filtered = Boolean(list.keyword || filters.folderId || filters.kind || filters.status)
+  const kind = list.error
+    ? 'error'
+    : list.loading && !list.list.length
+      ? 'loading'
+      : !list.list.length
+        ? 'empty'
+        : 'ready'
+  const kindLabel = KIND_OPTIONS.find((option) => option.key === filters.kind)?.label ?? '全部类型'
+  const statusLabel =
+    STATUS_OPTIONS.find((option) => option.key === filters.status)?.label ?? '全部状态'
+  const toggle = (id: number) =>
+    setSelected((previous) =>
+      previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id],
+    )
+
+  return (
+    <ManagementPage>
+      <ManagementPageHeader
+        title="媒体库"
+        action={
+          selecting ? (
+            <ManagementHeaderAction
+              label="完成"
+              onClick={() => {
+                setSelecting(false)
+                setSelected([])
+              }}
+            />
+          ) : (
+            <View className={styles.headerActions}>
+              {canDelete ? (
+                <ManagementHeaderAction label="管理" onClick={() => setSelecting(true)} />
+              ) : null}
+              {canCreate ? (
+                <ManagementHeaderAction label="上传" onClick={() => setUploadSheet('local')} />
+              ) : null}
+            </View>
+          )
+        }
+      />
+      <ManagementFilterBar>
+        <ManagementSearchBar
+          value={list.keyword}
+          onChange={list.setKeyword}
+          placeholder="搜索素材名称"
+        />
+        <ManagementFilterTriggers
+          panel={panel}
+          onPanelChange={(key) => setPanel(panel === key ? null : key)}
+          triggers={[
+            {
+              key: 'folder',
+              label: folderLabel(folders, filters.folderId, '全部分组'),
+              active: Boolean(filters.folderId),
+            },
+            { key: 'kind', label: kindLabel, active: Boolean(filters.kind) },
+            { key: 'status', label: statusLabel, active: Boolean(filters.status) },
+          ]}
+        />
+      </ManagementFilterBar>
+      <FolderTreeSheet
+        open={panel === 'folder'}
+        title="选择分组"
+        folders={folders}
+        value={filters.folderId}
+        rootLabel="全部分组"
+        footer={{
+          label: '管理分组',
+          onClick: () => navigateTo(`/${SYSTEM_PAGES.attachmentFolders}`),
+        }}
+        onSelect={(folderId) => changeFilters({ folderId })}
+        onClose={() => setPanel(null)}
+      />
+      <BottomSelectSheet
+        open={panel === 'kind' || panel === 'status'}
+        title={panel === 'kind' ? '素材类型' : '素材状态'}
+        options={panel === 'kind' ? KIND_OPTIONS : STATUS_OPTIONS}
+        value={panel === 'kind' ? filters.kind : filters.status}
+        onSelect={(key) => changeFilters(panel === 'kind' ? { kind: key } : { status: key })}
+        onClose={() => setPanel(null)}
+      />
+      <ActionSheet
+        open={uploadSheet !== null}
+        title={
+          uploadSheet === 'cloud'
+            ? '上传到七牛云'
+            : `上传到「${folderLabel(folders, filters.folderId, '未分组')}」`
+        }
+        items={uploadItems}
+        onClose={() => setUploadSheet(null)}
+      />
+      {kind === 'empty' && filtered ? <ManagementFilterClear onClick={clearFilters} /> : null}
+      <ManagementStates
+        kind={kind}
+        errorText={list.error || undefined}
+        emptyText={filtered ? '未找到符合条件的素材' : '暂无素材'}
+        onRetry={list.refresh}
+      >
+        <ManagementList>
+          {list.list.map((item, index) => (
+            <View key={item.id} className={selecting ? styles.selectRow : undefined}>
+              {selecting ? <Checkbox checked={selected.includes(item.id)} /> : null}
+              <View className={styles.selectCell}>
+                <ManagementCell
+                  bordered={index < list.list.length - 1}
+                  thumb={{
+                    src:
+                      item.kind === 'image'
+                        ? attachmentUrl(item, cloud?.domain) || undefined
+                        : undefined,
+                    glyph: KIND_GLYPH[item.kind],
+                  }}
+                  title={item.name || item.originalName}
+                  description={formatSize(item.size)}
+                  tag={
+                    item.status === '0' ? (
+                      <Tag size="sm" variant="default">
+                        禁用
+                      </Tag>
+                    ) : undefined
+                  }
+                  showArrow={!selecting}
+                  onClick={() =>
+                    selecting
+                      ? toggle(item.id)
+                      : navigateTo(`/${SYSTEM_PAGES.attachmentDetail}?id=${item.id}`)
+                  }
+                />
+              </View>
+            </View>
+          ))}
+        </ManagementList>
+      </ManagementStates>
+      {selecting ? <View className={styles.footerSpace} /> : null}
+      {selecting ? (
+        <SelectionFooter
+          count={selected.length}
+          unit="个素材"
+          items={list.list
+            .filter((item) => selected.includes(item.id))
+            .map((item) => ({ id: item.id, label: item.name || item.originalName, path: [] }))}
+          confirmLabel="删除"
+          confirmDanger
+          onRemoveItem={toggle}
+          onCancel={() => {
+            setSelecting(false)
+            setSelected([])
+          }}
+          onConfirm={() => void (busy ? undefined : removeSelected())}
+        />
+      ) : (
+        <ManagementListFooter
+          loadingMore={list.loadingMore}
+          refreshing={list.refreshing}
+          finished={list.finished}
+          empty={!list.list.length}
+          summary={kind === 'ready' ? `共 ${list.total} 个素材` : undefined}
+        />
+      )}
+    </ManagementPage>
+  )
 }
 
 export default withAccountScope(AttachmentsPage)

@@ -1,0 +1,20 @@
+.headerActions {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.selectRow {
+  display: flex;
+  align-items: center;
+  padding-left: var(--space-4);
+}
+
+.selectCell {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 多选时底部固定的 SelectionFooter 会盖住最后几行，留出同高空间（与用户部门/角色选择页一致） */
+.footerSpace {
+  height: calc(72px + var(--safe-area-bottom));
+}
