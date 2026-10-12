@@ -267,8 +267,8 @@ function UserDetailPage() {
       ? [
           {
             key: 'more',
-            label: '更多操作',
-            icon: 'ellipsis' as const,
+            label: '更多',
+            icon: 'moreVertical' as const,
             tone: 'muted' as const,
             onClick: () => setMoreOpen(true),
           },

@@ -10,6 +10,10 @@ const ICONS = {
   check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
   ellipsis:
     '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  // 竖排三点：底部操作栏按钮等宽，横排三点在窄按钮里视觉上偏宽、显得头重。
+  // 路径取自 lucide-static v1.55.0 的 more-vertical（ISC），非手绘近似。
+  moreVertical:
+    '<circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>',
   chevronRight: '<path d="m9 18 6-6-6-6"/>',
   close: '<path d="m6 6 12 12M6 18 18 6"/>',
   trash: '<path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/>',
@@ -23,6 +27,18 @@ const ICONS = {
     '<circle cx="12" cy="16" r="1"/><rect width="18" height="12" x="3" y="10" rx="2"/><path d="M7 10V7a5 5 0 0 1 9.9-1"/>',
   folder:
     '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+  // 菜单资源的三种语义各给一个形状：目录=文件夹、页面=带正文的文档、
+  // 操作=指针点击。靠形状区分而不是靠颜色，色弱用户也能分辨层级语义。
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5"/>',
+  // 路径取自 lucide-static v1.55.0 的 file-text（ISC），非手绘近似。
+  fileText:
+    '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+  // 指针点击 = 「页面上可执行的动作」。刻意不用齿轮 / 闪电 / 盾牌：
+  // 那些图标自带「配置 / 自动化 / 安全策略」的业务含义，会盖过「操作权限」。
+  // 路径取自 lucide-static v1.55.0 的 square-mouse-pointer（ISC），非手绘近似。
+  mousePointerClick:
+    '<path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/><path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>',
+  square: '<rect width="16" height="16" x="4" y="4" rx="2"/>',
   chevronDown: '<path d="m6 9 6 6 6-6"/>',
 } as const
 

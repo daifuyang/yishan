@@ -1,256 +1,164 @@
-import { withAccountScope } from '../_shared/AdminUI'
-import { Text, View } from "@tarojs/components";
-import Taro from "@tarojs/taro";
-import { useEffect, useRef, useState } from "react";
+import Taro, { useDidHide } from '@tarojs/taro'
+import { useEffect, useMemo, useState } from 'react'
+import { getAdminAppMenuTree, type AdminAppMenu } from '@/api/admin/appMenu'
 import {
-  type AdminAppMenu,
-  deleteAdminAppMenu,
-  getAdminAppMenuTree,
-  reorderAdminAppMenus,
-  updateAdminAppMenu,
-} from "@/api/admin/appMenu";
-import { getSessionVersion } from "@/api/client";
-import { Button } from "@/components/atoms";
-import { confirmAction, useCanWrite } from "@/hooks";
-import { canWriteModuleNow, useRequireAuth } from "@/utils/auth-guard";
-import { AdminNotice, AdminPage, errorMessage } from "../_shared/AdminUI";
-import { AppMenuEditor } from "./AppMenuEditor";
-import { moveAppMenu } from "./order";
+  ManagementFilterBar,
+  ManagementFilterClear,
+  ManagementHeaderAction,
+  MenuTree,
+  ManagementListFooter,
+  ManagementPage,
+  ManagementPageHeader,
+  ManagementSearchBar,
+  ManagementStates,
+  collectExpandable,
+  flattenTree,
+  searchTree,
+  toggleExpanded,
+} from '@/components/management'
+import { SYSTEM_PAGES } from '@/constants/routes'
+import { useCanWrite } from '@/hooks'
+import { useRequireAuth } from '@/utils/auth-guard'
+import { navigateTo } from '@/utils/router'
+import { errorMessage, withAccountScope } from '../_shared/AdminUI'
 
-function AppMenuPage() {
-  const guard = useRequireAuth({ moduleId: "system-app-menu" });
-  const allowed = guard.ready && guard.allowed;
-  const canCreate = useCanWrite("system:app-menu:create");
-  const canUpdate = useCanWrite("system:app-menu:update");
-  const canDelete = useCanWrite("system:app-menu:delete");
-  const [tree, setTree] = useState<AdminAppMenu[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [retry, setRetry] = useState(0);
-  const [editor, setEditor] = useState<{
-    id?: number;
-    parentId?: number;
-    editable: boolean;
-  } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const locked = useRef(false);
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-  useEffect(() => {
-    let active = true;
-    if (allowed) {
-      setLoading(true);
-      setError("");
-      getAdminAppMenuTree()
-        .then((nodes) => {
-          if (active) setTree(nodes);
-        })
-        .catch((cause) => {
-          if (active) setError(errorMessage(cause));
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
-    } else setTree([]);
-    return () => {
-      active = false;
-    };
-  }, [allowed, retry]);
-  async function mutate(
-    required: string[],
-    operation: () => Promise<unknown>,
-    confirmation?: string,
-  ) {
-    if (!mounted.current || locked.current || !canWriteModuleNow("system-app-menu", required))
-      return;
-    const session = getSessionVersion();
-    locked.current = true;
-    setBusy(true);
-    try {
-      if (confirmation && !(await confirmAction({ content: confirmation }))) return;
-      if (
-        !mounted.current ||
-        session !== getSessionVersion() ||
-        !canWriteModuleNow("system-app-menu", required)
-      )
-        return;
-      await operation();
-      if (
-        !mounted.current ||
-        session !== getSessionVersion() ||
-        !canWriteModuleNow("system-app-menu", required)
-      )
-        return;
-      void Taro.showToast({ title: "操作成功", icon: "success" });
-      setRetry((value) => value + 1);
-    } catch (cause) {
-      if (
-        mounted.current &&
-        session === getSessionVersion() &&
-        canWriteModuleNow("system-app-menu", required)
-      )
-        void Taro.showToast({ title: errorMessage(cause), icon: "none" });
-    } finally {
-      locked.current = false;
-      if (mounted.current) setBusy(false);
-    }
-  }
-  function move(record: AdminAppMenu, direction: -1 | 1) {
-    const payload = moveAppMenu(tree, record, direction);
-    if (payload && canUpdate)
-      void mutate(["system:app-menu:update"], () => reorderAdminAppMenus(payload));
-  }
-  function renderNode(record: AdminAppMenu) {
-    return (
-      <View className="admin-card" key={record.id}>
-        <Text className="admin-name">{record.name}</Text>
-        <Text className="admin-meta">
-          {record.type === 0 ? "分组" : "应用入口"} · {record.status === "1" ? "启用" : "禁用"} ·
-          排序 {record.sortOrder}
-        </Text>
-        {record.page && <Text className="admin-meta">{record.page}</Text>}
-        {record.type === 1 && <Text className="admin-meta">模块：{record.moduleId}</Text>}
-        <View className="admin-actions">
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={busy || loading}
-            onClick={() => setEditor({ id: record.id, editable: false })}
-          >
-            详情
-          </Button>
-          {canUpdate && (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={busy || loading}
-              onClick={() => setEditor({ id: record.id, editable: true })}
-            >
-              编辑
-            </Button>
-          )}
-          {canCreate && record.type === 0 && (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={busy || loading}
-              onClick={() => setEditor({ parentId: record.id, editable: true })}
-            >
-              添加入口
-            </Button>
-          )}
-          {canUpdate && (
-            <>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={busy || loading || !moveAppMenu(tree, record, -1)}
-                onClick={() => move(record, -1)}
-              >
-                上移
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={busy || loading || !moveAppMenu(tree, record, 1)}
-                onClick={() => move(record, 1)}
-              >
-                下移
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={busy || loading}
-                onClick={() =>
-                  void mutate(["system:app-menu:update"], () =>
-                    updateAdminAppMenu(record.id, { status: record.status === "1" ? "0" : "1" }),
-                  )
-                }
-              >
-                {record.status === "1" ? "禁用" : "启用"}
-              </Button>
-            </>
-          )}
-          {canDelete && !record.children?.length && (
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={busy || loading}
-              onClick={() =>
-                void mutate(
-                  ["system:app-menu:delete"],
-                  () => deleteAdminAppMenu(record.id),
-                  `确定删除“${record.name}”？关联角色的入口授权将同步移除。`,
-                )
-              }
-            >
-              删除
-            </Button>
-          )}
-        </View>
-      </View>
-    );
-  }
-  return (
-    <AdminPage
-      title="工作台管理"
-      action={
-        allowed && canCreate && !editor ? (
-          <Button
-            size="sm"
-            disabled={busy || loading}
-            onClick={() => setEditor({ editable: true })}
-          >
-            新建
-          </Button>
-        ) : undefined
-      }
-    >
-      {!allowed ? (
-        <AdminNotice>
-          {guard.denied ? "无权访问工作台管理" : guard.accessError || "正在验证访问权限"}
-        </AdminNotice>
-      ) : editor ? (
-        <AppMenuEditor
-          key={`${editor.id ?? `new-${editor.parentId || 0}`}:${getSessionVersion()}`}
-          {...editor}
-          groups={tree}
-          onClose={() => setEditor(null)}
-          onSaved={() => {
-            setEditor(null);
-            setRetry((value) => value + 1);
-          }}
-        />
-      ) : (
-        <>
-          {error && (
-            <AdminNotice>
-              {error}
-              <Button variant="text" onClick={() => setRetry((value) => value + 1)}>
-                重试
-              </Button>
-            </AdminNotice>
-          )}
-          {loading ? (
-            <AdminNotice>加载中…</AdminNotice>
-          ) : (
-            tree.map((group) => (
-              <View key={group.id}>
-                {renderNode(group)}
-                <View style={{ marginLeft: "12px" }}>{(group.children || []).map(renderNode)}</View>
-              </View>
-            ))
-          )}
-          {!loading && !tree.length && !error && <AdminNotice>暂无工作台分组</AdminNotice>}
-        </>
-      )}
-    </AdminPage>
-  );
+
+
+function appMenuMatches(node: AdminAppMenu, needle: string): boolean {
+  return `${node.name} ${node.page || ''} ${node.moduleId || ''}`.toLowerCase().includes(needle)
 }
 
+/** 分组才允许挂入口；筛选时若把分组滤掉，入口就成了看不见的孤儿。 */
+function filterAppMenuTree(
+  nodes: readonly AdminAppMenu[],
+  type: string,
+  status: string,
+): AdminAppMenu[] {
+  const keep = (node: AdminAppMenu): AdminAppMenu | null => {
+    const children = (node.children ?? []).flatMap((child) => {
+      const matched = keep(child)
+      return matched ? [matched] : []
+    })
+    const typeOk = !type || String(node.type) === type
+    const statusOk = !status || node.status === status
+    if ((typeOk && statusOk) || children.length) return { ...node, children }
+    return null
+  }
+  return nodes.flatMap((node) => {
+    const matched = keep(node)
+    return matched ? [matched] : []
+  })
+}
+
+function AppMenuPage() {
+  const guard = useRequireAuth({ moduleId: 'system-app-menu' })
+  const canCreate = useCanWrite('system:app-menu:create')
+  const [keyword, setKeyword] = useState('')
+  const [tree, setTree] = useState<AdminAppMenu[]>([])
+  const [type, setType] = useState('')
+  const [status, setStatus] = useState('')
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set())
+  // 当前展开的一级分组。手风琴：一次只展开一个。
+  const [openModuleId, setOpenModuleId] = useState<number | null | undefined>(undefined)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState('')
+  const enabled = guard.ready && guard.allowed
+
+  async function load() {
+    if (!enabled) return
+    setLoading(true)
+    setError('')
+    try {
+      setTree(await getAdminAppMenuTree())
+    } catch (cause) {
+      setError(errorMessage(cause))
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+  useEffect(() => {
+    void load()
+  }, [enabled])
+  useDidHide(() => undefined)
+
+  const filtered = useMemo(
+    () => filterAppMenuTree(searchTree(tree, appMenuMatches, keyword), type, status),
+    [tree, keyword, type, status],
+  )
+  // 搜索/筛选时全展开，否则命中的深层节点藏在折叠态里看不见。
+  const searching = Boolean(keyword || type || status)
+  const expandedNow = searching ? collectExpandable(filtered) : expanded
+  const visibleCount = useMemo(
+    () => flattenTree(filtered, expandedNow).length,
+    [filtered, expandedNow],
+  )
+
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+  const kind = error ? 'error' : loading && !tree.length ? 'loading' : !tree.length ? 'empty' : 'ready'
+  const active = Boolean(keyword || type || status)
+  return (
+    <ManagementPage>
+      <ManagementPageHeader
+        title="工作台管理"
+        action={
+          canCreate ? (
+            <ManagementHeaderAction
+              label="新建"
+              onClick={() => navigateTo(`/${SYSTEM_PAGES.appMenuForm}`)}
+            />
+          ) : undefined
+        }
+      />
+      <ManagementFilterBar>
+        <ManagementSearchBar
+          value={keyword}
+          onChange={setKeyword}
+          placeholder="搜索名称、页面路径或模块"
+        />
+      </ManagementFilterBar>
+      {kind === 'empty' && active ? (
+        <ManagementFilterClear
+          onClick={() => {
+            setKeyword('')
+            setType('')
+            setStatus('')
+            void Taro.pageScrollTo({ scrollTop: 0, duration: 0 })
+          }}
+        />
+      ) : null}
+      <ManagementStates
+        kind={kind}
+        errorText={error || undefined}
+        emptyText={active ? '未找到符合条件的工作台菜单' : '暂无工作台菜单'}
+        onRetry={() => void load()}
+      >
+        <MenuTree
+          tree={filtered}
+          openModuleId={
+            searching ? null : openModuleId !== undefined ? openModuleId : (filtered[0]?.id ?? null)
+          }
+          onToggleModule={(id) => setOpenModuleId((current) => (current === id ? null : id))}
+          expanded={searching ? collectExpandable(filtered) : expanded}
+          onToggle={(id) => setExpanded((current) => toggleExpanded(current, id))}
+          renderNode={(node, depth) => ({
+            title: node.name,
+            description: depth === 1 ? node.page || node.moduleId : undefined,
+            // 分组沿用「目录」的视觉，入口沿用「页面」
+            type: node.type === 0 ? 'directory' : 'page',
+          })}
+          onSelect={(node) => navigateTo(`/${SYSTEM_PAGES.appMenuDetail}?id=${node.id}`)}
+        />
+      </ManagementStates>
+      <ManagementListFooter
+        loadingMore={false}
+        refreshing={refreshing}
+        finished
+        empty={!visibleCount}
+        summary={kind === 'ready' ? `共 ${visibleCount} 项` : undefined}
+      />
+    </ManagementPage>
+  )
+}
 export default withAccountScope(AppMenuPage)

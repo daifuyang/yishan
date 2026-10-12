@@ -42,14 +42,20 @@ export {
   type FormSubmitBarProps,
   LinkRow,
   type LinkRowProps,
+  EnumField,
+  type EnumFieldProps,
+  type EnumOption,
   SegmentField,
   type SegmentFieldProps,
   type SegmentOption,
+  SwitchField,
+  type SwitchFieldProps,
   TextAreaField,
   type TextAreaFieldProps,
   TextField,
   type TextFieldProps,
 } from './FormLayout'
+export { Breadcrumbs, type BreadcrumbItem, type BreadcrumbsProps } from './Breadcrumbs'
 export { LineIcon, type LineIconName, type LineIconProps } from './LineIcon'
 export {
   ManagementCell,
@@ -62,7 +68,33 @@ export {
   type ManagementSkeletonProps,
   ManagementStates,
   type ManagementStatesProps,
+  ManagementTreeCell,
+  type ManagementTreeCellProps,
 } from './ManagementList'
+export {
+  collectExpandable,
+  flattenTree,
+  type Matches,
+  searchTree,
+  toggleExpanded,
+  type TreeNode,
+  type TreeRow,
+} from './menuTreeLogic'
+export {
+  MenuModuleHeader,
+  type MenuModuleHeaderProps,
+  MenuTree,
+  type MenuTreeProps,
+  MenuTreeRow,
+  type MenuTreeRowProps,
+  MenuTypeBadge,
+  type MenuTypeBadgeProps,
+  MenuTypeIcon,
+  type MenuTypeIconProps,
+  type MenuResourceType,
+  menuResourceType,
+  menuTypeLabel,
+} from './MenuTree'
 export {
   ManagementHeaderAction,
   type ManagementHeaderActionProps,

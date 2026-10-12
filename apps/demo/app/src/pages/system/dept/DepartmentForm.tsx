@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Picker, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import {
+  EnumField,
   FormContent,
   FormSection,
   FormField,
   TextField,
   TextAreaField,
-  SegmentField,
   FormSubmitBar,
   LineIcon,
 } from '@/components/management'
@@ -167,21 +167,21 @@ export default function DepartmentForm({
               </View>
             </Picker>
           </FormField>
-          <FormField label="状态">
-            <SegmentField
-              value={values.status}
-              options={[
-                { value: '1', label: '启用' },
-                { value: '0', label: '禁用' },
-              ]}
-              disabled={disabled}
-              onChange={(value) => field('status', value)}
-            />
-          </FormField>
-          <FormField label="排序" note="非负整数，数值越小越靠前">
+          <EnumField
+            label="状态"
+            value={values.status}
+            options={[
+              { value: '1', label: '启用' },
+              { value: '0', label: '禁用' },
+            ]}
+            disabled={disabled}
+            onChange={(value) => field('status', value)}
+          />
+          <FormField label="排序">
             <TextField
               value={values.sort}
               disabled={disabled}
+              placeholder="非负整数，越小越靠前"
               onChange={(value) => field('sort', value)}
             />
           </FormField>

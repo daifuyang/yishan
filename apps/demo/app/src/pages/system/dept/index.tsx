@@ -77,7 +77,6 @@ function DeptIndexPage() {
     <ManagementPage>
       <ManagementPageHeader
         title="部门管理"
-        subtitle={filtered ? `找到 ${list.total} 个部门` : `${list.total} 个部门`}
         action={
           canCreate ? (
             <ManagementHeaderAction

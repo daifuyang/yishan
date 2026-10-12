@@ -1,0 +1,60 @@
+.error {
+  display: block;
+  padding: var(--space-3) var(--space-4) 0;
+  color: #f53f3f;
+  font-size: var(--font-size-13);
+  line-height: 20px;
+}
+
+.hint {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-13);
+  line-height: 20px;
+}
+
+.search {
+  padding: var(--space-3) var(--space-4);
+}
+
+/* 关联功能行：文字左、勾选框右，与列表行同一套节奏。
+   整行可点，勾选框只是行内的指示物（不给它传 onClick 时不阻止冒泡）。 */
+.permissionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  min-height: var(--list-item-height-sm);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.permissionRowHover {
+  background: var(--color-bg-base);
+}
+
+.permissionText {
+  flex: 1;
+  min-width: 0;
+}
+
+.permissionLabel {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.permissionCode {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

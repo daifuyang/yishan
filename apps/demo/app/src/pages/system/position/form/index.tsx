@@ -5,12 +5,12 @@ import { createAdminPosition, getAdminPosition, updateAdminPosition } from '@/ap
 import { getSessionVersion } from '@/api/client'
 import { StateView } from '@/components/feedback'
 import {
+  EnumField,
   FormContent,
   FormField,
   FormSection,
   FormSubmitBar,
   ManagementPage,
-  SegmentField,
   TextAreaField,
   TextField,
 } from '@/components/management'
@@ -130,22 +130,21 @@ function PositionFormPage() {
                 disabled={disabled}
               />
             </FormField>
-            <FormField label="状态">
-              <SegmentField
-                value={status}
-                options={[
-                  { value: '1', label: '启用' },
-                  { value: '0', label: '禁用' },
-                ]}
-                onChange={setStatus}
-                disabled={disabled}
-              />
-            </FormField>
-            <FormField label="排序" note="数值越小越靠前">
+            <EnumField
+              label="状态"
+              value={status}
+              options={[
+                { value: '1', label: '启用' },
+                { value: '0', label: '禁用' },
+              ]}
+              onChange={setStatus}
+              disabled={disabled}
+            />
+            <FormField label="排序">
               <TextField
                 value={sort}
                 onChange={setSort}
-                placeholder="请输入非负数字"
+                placeholder="非负整数，越小越靠前"
                 disabled={disabled}
               />
             </FormField>

@@ -76,7 +76,6 @@ function PositionPage() {
     <ManagementPage>
       <ManagementPageHeader
         title="岗位管理"
-        subtitle={filtered ? `找到 ${list.total} 个岗位` : `${list.total} 个岗位`}
         action={
           canCreate ? (
             <ManagementHeaderAction

@@ -97,7 +97,6 @@ function RolePage() {
     <ManagementPage className="page-container">
       <ManagementPageHeader
         title="角色管理"
-        subtitle={filtered ? `找到 ${total} 个角色` : `${total} 个角色`}
         action={
           canCreate ? (
             <ManagementHeaderAction

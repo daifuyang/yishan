@@ -74,7 +74,7 @@ function ModuleManagementPage() {
   )
   return (
     <ManagementPage>
-      <ManagementPageHeader title="模块管理" subtitle={`${rows.length} 个模块`} />
+      <ManagementPageHeader title="模块管理" />
       <ManagementFilterBar>
         <ManagementSearchBar
           value={keyword}

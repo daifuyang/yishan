@@ -96,7 +96,7 @@ function mountForm({ id, permissions, api }) {
         'FormSection',
         'FormSubmitBar',
         'ManagementPage',
-        'SegmentField',
+        'EnumField',
         'TextAreaField',
         'TextField',
       ].map((key) => [key, key]),

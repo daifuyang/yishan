@@ -101,11 +101,6 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
     <ManagementPage>
       <ManagementPageHeader
         title={typeId ? context?.name || '字典项' : '字典管理'}
-        subtitle={
-          filtered
-            ? `找到 ${list.total} 个${typeId ? '字典项' : '字典类型'}`
-            : `${list.total} 个${typeId ? '字典项' : '字典类型'}`
-        }
         action={
           canCreate && (!typeId || context) ? (
             <ManagementHeaderAction
@@ -200,6 +195,9 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
         refreshing={list.refreshing}
         finished={list.finished}
         empty={!list.list.length}
+        summary={
+          kind === 'ready' ? `共 ${list.total} 个${typeId ? '字典项' : '字典类型'}` : undefined
+        }
       />
     </ManagementPage>
   )

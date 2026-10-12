@@ -259,6 +259,11 @@ const SECONDARY_MODULE_PAGES: Record<
   'pages/system/dict/items/form/index': { moduleId: 'system-dict' },
   'pages/system/position/detail/index': { moduleId: 'system-position' },
   'pages/system/position/form/index': { moduleId: 'system-position' },
+  'pages/system/menu/detail/index': { moduleId: 'system-menu' },
+  'pages/system/menu/form/index': { moduleId: 'system-menu' },
+  'pages/system/menu/permissions/index': { moduleId: 'system-menu' },
+  'pages/system/app-menu/detail/index': { moduleId: 'system-app-menu' },
+  'pages/system/app-menu/form/index': { moduleId: 'system-app-menu' },
   'pages/system/role/detail/index': { moduleId: 'system-role' },
   'pages/system/role/form/index': {
     moduleId: 'system-role',

@@ -110,7 +110,7 @@ export default function ProfileLoginLog() {
   </ManagementPage>
   const kind = loading && !list.length ? 'loading' : error && !list.length ? 'error' : !list.length ? 'empty' : 'ready'
   return <ManagementPage>
-    <ManagementPageHeader title="我的登录记录" subtitle="按时间倒序" showBack={process.env.TARO_ENV === 'h5'} />
+    <ManagementPageHeader title="我的登录记录" showBack={process.env.TARO_ENV === 'h5'} />
     <ManagementStates kind={kind} errorText={error || undefined} emptyText="暂无登录记录" onRetry={() => void load(retry.current.page, retry.current.reset)}>
       <ManagementList>{list.map((log, index) => <ManagementCell key={log.id} glyph="shield" title={formatDateTime(log.createdAt)} description={log.ipAddress || '未知IP'} tag={<Tag size="sm" variant={log.status === '1' ? 'success' : 'danger'}>{log.status === '1' ? '成功' : '失败'}</Tag>} bordered={index < list.length - 1} onClick={() => setSelected(log)} />)}</ManagementList>
     </ManagementStates>

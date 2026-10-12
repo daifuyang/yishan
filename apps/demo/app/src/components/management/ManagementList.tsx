@@ -97,11 +97,87 @@ export function ManagementCell({
   )
 }
 
+export interface ManagementTreeCellProps {
+  title: ReactNode
+  /** 单行次要信息（路由路径、模块），与标题同行右对齐，不再另起一行 */
+  description?: ReactNode
+  /** 标题右侧的类型/状态标签 */
+  tag?: ReactNode
+  glyph?: LineIconName
+  glyphColor?: string
+  /** 层级深度，顶层为 0。每层缩进 14px，最多 4 层后再缩也不加，避免深树挤成一条缝 */
+  depth?: number
+  /** 该节点还有子节点：显示展开/收起箭头 */
+  hasChildren?: boolean
+  /** 当前是否展开，决定箭头朝向 */
+  expanded?: boolean
+  /** 切换展开态。与行点击分开，否则点行既进详情又折叠 */
+  onToggle?: () => void
+  bordered?: boolean
+  onClick?: () => void
+}
+
+/**
+ * 树形列表行：单行、紧凑。
+ *
+ * 树天然比平铺列表长（菜单树动辄几十行），沿用 ManagementCell 的 76px 行高加
+ * 44px 图标，一屏只能看三四行，滚动成本极高。所以这里另起一套密度：
+ * 行高 48px、图标 16px 无底色、标题与次要信息同行 —— 一屏能看到两倍的节点。
+ *
+ * 展开箭头是行内独立元素且 stopPropagation：点箭头是折叠，点行是进详情，
+ * 共用一个点击区会让用户永远点不准。无子节点的行不画箭头，留白让标题仍然对齐。
+ */
+export function ManagementTreeCell({
+  title,
+  description,
+  tag,
+  glyph,
+  glyphColor = '#86909C',
+  depth = 0,
+  hasChildren = false,
+  expanded = false,
+  onToggle,
+  bordered = true,
+  onClick,
+}: ManagementTreeCellProps) {
+  const indent = Math.min(depth, 4) * 14
+  return (
+    <View
+      className={cx(styles.treeRow, bordered && styles.rowBordered)}
+      onClick={onClick}
+      hoverClass={onClick ? styles.rowHover : undefined}
+      style={indent ? { paddingLeft: `${indent}px` } : undefined}
+    >
+      {hasChildren ? (
+        <View
+          className={styles.treeRow__toggle}
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggle?.()
+          }}
+          hoverClass={styles.rowHover}
+          aria-label={expanded ? '收起' : '展开'}
+          aria-expanded={expanded}
+        >
+          <LineIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={14} color="#86909C" />
+        </View>
+      ) : null}
+      {glyph ? (
+        <View className={styles.treeRow__glyph}>
+          <LineIcon name={glyph} size={16} color={glyphColor} />
+        </View>
+      ) : null}
+      <Text className={styles.treeRow__title}>{title}</Text>
+      {description ? <Text className={styles.treeRow__description}>{description}</Text> : null}
+      {tag ? <View className={styles.treeRow__tag}>{tag}</View> : null}
+    </View>
+  )
+}
+
 export interface ManagementSkeletonProps {
   rows?: number
   className?: string
 }
-
 /** 列表骨架屏。 */
 export function ManagementSkeleton({ rows = 3, className = '' }: ManagementSkeletonProps) {
   const placeholders = useMemo(

@@ -184,7 +184,6 @@ function UserIndexPage() {
     <ManagementPage className="page-container">
       <ManagementPageHeader
         title="用户管理"
-        subtitle={filtered ? `找到 ${total} 位成员` : `${total} 位成员`}
         action={
           canCreate ? (
             <ManagementHeaderAction
@@ -239,6 +238,7 @@ function UserIndexPage() {
         refreshing={refreshing}
         finished={finished}
         empty={list.length === 0}
+        summary={list.length ? `共 ${total} 位成员` : undefined}
       />
 
       <TabBar currentPath={TAB_PAGES.apps} />

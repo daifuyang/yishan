@@ -136,8 +136,8 @@ function PositionDetailPage() {
       ? [
           {
             key: 'more',
-            label: '更多操作',
-            icon: 'ellipsis' as const,
+            label: '更多',
+            icon: 'moreVertical' as const,
             tone: 'muted' as const,
             onClick: () => setMore(true),
           },
@@ -163,13 +163,12 @@ function PositionDetailPage() {
                     {position.status === '1' ? '启用' : '禁用'}
                   </Tag>
                 }
-                subtitle={position.description || '暂无描述'}
               />
               <DetailSection title="基本信息">
                 <DetailRow label="岗位名称" value={position.name} />
                 <DetailRow label="状态" value={position.status === '1' ? '启用' : '禁用'} />
                 <DetailRow label="排序" value={position.sort_order} />
-                <DetailRow label="岗位描述" value={position.description} />
+                <DetailRow label="岗位描述" value={position.description} multiline />
               </DetailSection>
               <DetailSection title="岗位记录" collapsible defaultCollapsed>
                 <DetailRow label="岗位 ID" value={position.id} />

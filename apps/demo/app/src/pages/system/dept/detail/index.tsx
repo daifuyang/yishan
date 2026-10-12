@@ -156,6 +156,8 @@ function DeptDetailPage() {
     }
   }
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+  // 底部最多三个：编辑、新建子部门、更多。启用/禁用是低频且可逆的操作，
+  // 长期占着底部的黄金位置不如收进「更多」。
   const actions: BottomAction[] = [
     ...(canUpdate
       ? [
@@ -165,13 +167,6 @@ function DeptDetailPage() {
             icon: 'pencil' as const,
             tone: 'primary' as const,
             onClick: () => navigateTo(`/${SYSTEM_PAGES.deptForm}?id=${id}`),
-          },
-          {
-            key: 'toggle',
-            label: department?.status === '1' ? '禁用' : '启用',
-            icon: 'ban' as const,
-            tone: 'warning' as const,
-            onClick: () => void mutate(false),
           },
         ]
       : []),
@@ -186,12 +181,12 @@ function DeptDetailPage() {
           },
         ]
       : []),
-    ...(canDelete
+    ...((canUpdate || canDelete)
       ? [
           {
             key: 'more',
             label: '更多',
-            icon: 'ellipsis' as const,
+            icon: 'moreVertical' as const,
             onClick: () => setMoreOpen(true),
           },
         ]
@@ -329,13 +324,28 @@ function DeptDetailPage() {
       <ActionSheet
         open={moreOpen}
         items={[
-          {
-            key: 'delete',
-            label: '删除部门',
-            icon: 'trash',
-            danger: true,
-            onClick: () => void mutate(true),
-          },
+          // 删除排在最后：不可逆，误触代价最高
+          ...(canUpdate
+            ? [
+                {
+                  key: 'toggle',
+                  label: department?.status === '1' ? '禁用部门' : '启用部门',
+                  icon: 'ban' as const,
+                  onClick: () => void mutate(false),
+                },
+              ]
+            : []),
+          ...(canDelete
+            ? [
+                {
+                  key: 'delete',
+                  label: '删除部门',
+                  icon: 'trash' as const,
+                  danger: true,
+                  onClick: () => void mutate(true),
+                },
+              ]
+            : []),
         ]}
         onClose={() => setMoreOpen(false)}
       />

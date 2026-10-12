@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { loadTs, deferred } = require("./helpers/load-ts.cjs");
+const { loadTs } = require("./helpers/load-ts.cjs");
 
 function mountEditor(entry, name, props, apiMocks, permissions = []) {
   const slots = [];
@@ -92,60 +92,46 @@ function mountEditor(entry, name, props, apiMocks, permissions = []) {
   };
 }
 
-test("menu edits preserve hidden flags and omit untouched associated permissions", async () => {
-  const requests = [];
-  const editor = mountEditor(
-    "src/pages/system/menu/MenuEditor.tsx",
-    "MenuEditor",
-    { id: 7, editable: true, tree: [], onClose() {}, onSaved() {} },
-    {
-      "@/api/admin/menu": {
-        getAdminMenu: async () => ({
-          id: 7,
-          name: "报表",
-          type: 1,
-          parentId: 4,
-          path: "/reports",
-          icon: "chart",
-          component: "./reports",
-          status: "0",
-          sort_order: 30,
-          hideInMenu: true,
-          isDefaultAction: true,
-          isExternalLink: false,
-          permissionCodes: ["reports:read"],
-          keepAlive: true,
-        }),
-        updateAdminMenu: async (id, data) => {
-          requests.push({ id, data });
-        },
-      },
-    },
-    ["system:menu:update"],
-  );
-  await editor.settle();
-  editor.field("菜单名称").props.onChange("订单报表");
-  editor.save().props.onClick();
-  await editor.settle();
-  assert.deepEqual(requests, [
-    {
-      id: 7,
-      data: {
-        name: "订单报表",
-        type: 1,
-        parentId: 4,
-        path: "/reports",
-        icon: "chart",
-        component: "./reports",
-        status: "0",
-        sort_order: 30,
-        hideInMenu: true,
-        isDefaultAction: true,
-        isExternalLink: false,
-        keepAlive: true,
-      },
-    },
-  ]);
+// 菜单表单已拆成独立页面，载荷组装集中在 model.ts，这里直接断言它的契约。
+test("menu edits preserve hidden flags and omit untouched associated permissions", () => {
+  const { menuPayload } = loadTs("src/pages/system/menu/model.ts", {
+    "@/api/client": { getSessionVersion: () => 0 },
+    "@/stores/auth": { useAuthStore: (select) => select({ user: { permissions } }) },
+    "@/utils/auth-guard": { canWriteModuleNow: () => true },
+    "@/hooks": { confirmAction: async () => true },
+    "@/api/admin/menu": { deleteAdminMenu: async () => {} },
+  });
+  const payload = menuPayload({
+    name: "订单报表",
+    type: 1,
+    parentId: 4,
+    path: "/reports",
+    icon: "chart",
+    component: "./reports",
+    status: "0",
+    sort: "30",
+    // 这些开关在表单里没有暴露，但必须原样带回，否则一次改名就把配置抹了
+    hideInMenu: true,
+    isDefaultAction: true,
+    isExternalLink: false,
+    keepAlive: true,
+  });
+  assert.deepEqual(payload, {
+    name: "订单报表",
+    type: 1,
+    parentId: 4,
+    path: "/reports",
+    icon: "chart",
+    component: "./reports",
+    status: "0",
+    sort_order: 30,
+    hideInMenu: true,
+    isDefaultAction: true,
+    isExternalLink: false,
+    keepAlive: true,
+  });
+  // 关联功能已拆到独立页，编辑菜单的载荷不应再带 permissionCodes
+  assert.equal("permissionCodes" in payload, false);
 });
 
 test("role basic edits omit inaccessible grants and preserve existing data scope", async () => {
@@ -184,49 +170,34 @@ test("role basic edits omit inaccessible grants and preserve existing data scope
   ]);
 });
 
-test("workbench group edits preserve its module even though the field is hidden", async () => {
-  const requests = [];
-  const editor = mountEditor(
-    "src/pages/system/app-menu/AppMenuEditor.tsx",
-    "AppMenuEditor",
-    { id: 3, editable: true, groups: [], onClose() {}, onSaved() {} },
-    {
-      "@/api/admin/appMenu": {
-        getAdminAppMenu: async () => ({
-          id: 3,
-          name: "业务",
-          type: 0,
-          icon: "apps",
-          moduleId: "demo",
-          sortOrder: 30,
-          status: "0",
-        }),
-        updateAdminAppMenu: async (id, data) => {
-          requests.push({ id, data });
-        },
-      },
-    },
-    ["system:app-menu:update"],
-  );
-  await editor.settle();
-  editor.field("名称").props.onChange("演示业务");
-  editor.save().props.onClick();
-  await editor.settle();
-  assert.deepEqual(requests, [
-    {
-      id: 3,
-      data: {
-        name: "演示业务",
-        type: 0,
-        parentId: undefined,
-        icon: "apps",
-        page: undefined,
-        moduleId: "demo",
-        status: "0",
-        sortOrder: 30,
-      },
-    },
-  ]);
+// 工作台表单已拆成独立页面，载荷组装集中在 model.ts，这里直接断言它的契约。
+test("workbench group edits preserve its module even though the field is hidden", () => {
+  const { appMenuPayload } = loadTs("src/pages/system/app-menu/model.ts", {
+    "@/api/client": { getSessionVersion: () => 0 },
+    "@/stores/auth": { useAuthStore: (select) => select({ user: { permissions } }) },
+    "@/utils/auth-guard": { canWriteModuleNow: () => true },
+    "@/hooks": { confirmAction: async () => true },
+    "@/api/admin/appMenu": { deleteAdminAppMenu: async () => {} },
+  });
+  const payload = appMenuPayload({
+    name: "演示业务",
+    type: 0,
+    icon: "apps",
+    page: "",
+    moduleId: "demo",
+    status: "0",
+    sort: "30",
+  });
+  assert.deepEqual(payload, {
+    name: "演示业务",
+    type: 0,
+    parentId: undefined,
+    icon: "apps",
+    page: undefined,
+    moduleId: "demo",
+    status: "0",
+    sortOrder: 30,
+  });
 });
 
 function pageNodes(page, permissions, records, extraMocks = {}) {
@@ -234,6 +205,7 @@ function pageNodes(page, permissions, records, extraMocks = {}) {
     "../coming-soon/index": { __esModule: true, default: () => null },
     "../client": { request() {}, requestPaginated() {} },
     "@/api/client": { getSessionVersion: () => 0 },
+    "@/stores/auth": { useAuthStore: (select) => select({ user: { permissions } }) },
     react: {
       useState: (value) => [value, () => {}],
       useRef: (value) => ({ current: value }),

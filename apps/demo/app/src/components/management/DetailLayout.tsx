@@ -1,7 +1,7 @@
 import { Text, View } from '@tarojs/components'
 import { useState, type ReactNode } from 'react'
 
-import { Avatar, Tag } from '@/components/atoms'
+import { Avatar } from '@/components/atoms'
 import styles from './DetailLayout.module.scss'
 import { LineIcon, type LineIconName } from './LineIcon'
 
@@ -31,6 +31,11 @@ export interface DetailHeroProps {
   avatarClassName?: string
   glyph?: LineIconName
   glyphColor?: string
+  /**
+   * 自定义图标节点，优先于 glyph。用于「同一语义在不同页面必须长得一样」的场景
+   * （如菜单资源类型：列表和详情复用同一个 MenuTypeIcon）。
+   */
+  icon?: ReactNode
 }
 
 /** 详情页顶部摘要：头像/图标 + 名称 + 标签 + 副标题。 */
@@ -44,6 +49,7 @@ export function DetailHero({
   avatarClassName,
   glyph,
   glyphColor = '#1677FF',
+  icon,
 }: DetailHeroProps) {
   return (
     <View className={styles.hero}>
@@ -55,19 +61,29 @@ export function DetailHero({
           shape="circle"
           className={avatarClassName}
         />
+      ) : icon ? (
+        <View className={styles.hero__glyph}>{icon}</View>
       ) : glyph ? (
         <View className={styles.hero__glyph}>
           <LineIcon name={glyph} size={24} color={glyphColor} />
         </View>
       ) : null}
       <View className={styles.hero__info}>
+        {/* 第一行只放标题和状态 —— 这两个是「这是什么、现在什么状态」，
+            是扫一眼就要拿到的东西。 */}
         <View className={styles.hero__titleLine}>
           <Text className={styles.hero__title}>{title}</Text>
-          {tag ? <Tag>{tag}</Tag> : null}
-          {note ? <Text className={styles.hero__note}>{note}</Text> : null}
+          {tag}
         </View>
-        {subtitle ? <Text className={styles.hero__subtitle}>{subtitle}</Text> : null}
-        {footnote ? <Text className={styles.hero__footnote}>{footnote}</Text> : null}
+        {/* 第二行放补充说明（描述、类型、备注）。跟状态挤在一行会让标题行
+            横向拉得很长，扫读时反而找不到标题。 */}
+        {subtitle || note || footnote ? (
+          <View className={styles.hero__metaLine}>
+            {subtitle ? <Text className={styles.hero__subtitle}>{subtitle}</Text> : null}
+            {note ? <Text className={styles.hero__note}>{note}</Text> : null}
+            {footnote ? <Text className={styles.hero__footnote}>{footnote}</Text> : null}
+          </View>
+        ) : null}
       </View>
     </View>
   )
@@ -120,12 +136,31 @@ export interface DetailRowProps {
   onClick?: () => void
   /** 'muted' 弱化值文字，用于未设置态 */
   tone?: 'default' | 'muted'
+  /** 长文本（描述、备注）：占满整行、左对齐换行，不挤在右列 */
+  multiline?: boolean
 }
 
 /** 分组内的「标签 : 值」行，空值统一显示「未设置」。 */
-export function DetailRow({ label, value, showArrow, onClick, tone = 'default' }: DetailRowProps) {
+export function DetailRow({
+  label,
+  value,
+  showArrow,
+  onClick,
+  tone = 'default',
+  multiline = false,
+}: DetailRowProps) {
   const empty = value === undefined || value === null || value === ''
   const arrow = showArrow ?? Boolean(onClick)
+  if (multiline) {
+    return (
+      <View className={cx(styles.row, styles['row--multiline'], onClick && styles['row--tappable'])} onClick={onClick} hoverClass={onClick ? styles['row--hover'] : undefined}>
+        <Text className={styles.row__label}>{label}</Text>
+        <Text className={cx(styles.row__block, (empty || tone === 'muted') && styles['row__value--muted'])} selectable={!onClick}>
+          {empty ? '未设置' : value}
+        </Text>
+      </View>
+    )
+  }
   return (
     <View
       className={cx(styles.row, onClick && styles['row--tappable'])}

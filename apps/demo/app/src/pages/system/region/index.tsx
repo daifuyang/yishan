@@ -1,8 +1,9 @@
-import { Text, View } from '@tarojs/components'
 import Taro, { usePullDownRefresh, useReachBottom } from '@tarojs/taro'
 import { useEffect, useState } from 'react'
 import { getRegionTree, type RegionNode } from '@/api/admin/region'
+import { Tag } from '@/components/atoms'
 import {
+  Breadcrumbs,
   DetailRow,
   DetailSection,
   ManagementCell,
@@ -16,7 +17,6 @@ import {
 } from '@/components/management'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { errorMessage, withAccountScope } from '../_shared/AdminUI'
-import styles from './index.module.scss'
 
 function RegionPage() {
   const guard = useRequireAuth({ moduleId: 'system-region' })
@@ -82,10 +82,7 @@ function RegionPage() {
   }
   return (
     <ManagementPage>
-      <ManagementPageHeader
-        title="地区管理"
-        subtitle={search ? `找到 ${rows.length} 个地区` : '省 / 市 / 区县 · 只读'}
-      />
+      <ManagementPageHeader title="地区管理" />
       <ManagementFilterBar>
         <ManagementSearchBar
           value={keyword}
@@ -96,15 +93,10 @@ function RegionPage() {
           placeholder="搜索地区名称或代码"
         />
       </ManagementFilterBar>
-      <View className={styles.path}>
-        <Text onClick={() => browse([])}>全部地区</Text>
-        {path.map((node, index) => (
-          <Text key={node.code} onClick={() => browse(path.slice(0, index + 1))}>
-            {' '}
-            / {node.name}
-          </Text>
-        ))}
-      </View>
+      <Breadcrumbs
+        items={path.map((node) => ({ key: node.code, label: node.name }))}
+        onNavigate={(index) => browse(index < 0 ? [] : path.slice(0, index + 1))}
+      />
       <ManagementStates
         kind={loading ? 'loading' : error ? 'error' : leaf || rows.length ? 'ready' : 'empty'}
         errorText={error}
@@ -130,20 +122,28 @@ function RegionPage() {
           </DetailSection>
         ) : (
           <ManagementList>
-            {rows.slice(0, limit).map(({ node, ancestors }, index) => (
-              <ManagementCell
-                key={node.code}
-                glyph="folder"
-                title={node.name}
-                description={
-                  search
-                    ? [...ancestors.map((item) => item.name), String(node.code)].join(' / ')
-                    : `${levelName(node.level)} · ${node.code}${node.children?.length ? ` · ${node.children.length} 个下级` : ''}`
-                }
-                bordered={index < Math.min(rows.length, limit) - 1}
-                onClick={() => browse([...ancestors, node])}
-              />
-            ))}
+            {rows.slice(0, limit).map(({ node, ancestors }, index) => {
+              const hasChildren = Boolean(node.children?.length)
+              return (
+                <ManagementCell
+                  key={node.code}
+                  glyph={hasChildren ? 'folder' : 'square'}
+                  glyphColor={hasChildren ? '#1677FF' : '#86909C'}
+                  title={node.name}
+                  // 描述只承载一条信息；行政层级进右列标签，父子路径只在搜索时显示
+                  description={
+                    search
+                      ? [...ancestors.map((item) => item.name), node.name].join(' / ')
+                      : String(node.code)
+                  }
+                  tag={<Tag size="sm">{levelName(node.level)}</Tag>}
+                  // 叶子没有下级可进，箭头是假的导航承诺
+                  showArrow={hasChildren}
+                  bordered={index < Math.min(rows.length, limit) - 1}
+                  onClick={() => browse([...ancestors, node])}
+                />
+              )
+            })}
           </ManagementList>
         )}
       </ManagementStates>
@@ -153,11 +153,6 @@ function RegionPage() {
           empty={!rows.length}
           summary={`共 ${rows.length} 个地区`}
         />
-      ) : null}
-      {!loading && !error && limit < rows.length ? (
-        <View className={styles.more} onClick={() => setLimit((value) => value + 50)}>
-          加载更多
-        </View>
       ) : null}
     </ManagementPage>
   )

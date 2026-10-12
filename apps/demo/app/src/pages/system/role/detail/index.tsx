@@ -151,8 +151,8 @@ function RoleDetailPage() {
       ? [
           {
             key: 'more',
-            label: '更多操作',
-            icon: 'ellipsis' as const,
+            label: '更多',
+            icon: 'moreVertical' as const,
             tone: 'muted' as const,
             onClick: () => setMoreOpen(true),
           },
@@ -201,7 +201,6 @@ function RoleDetailPage() {
                 title={role.name}
                 tag={status ? <Tag variant={status.variant}>{status.label}</Tag> : undefined}
                 note={roleTypeLabel(role)}
-                subtitle={role.description || '暂无描述'}
               />
 
               <DetailSection title="基本信息">
@@ -209,7 +208,7 @@ function RoleDetailPage() {
                 <DetailRow label="角色类型" value={roleTypeLabel(role)} />
                 <DetailRow label="状态" value={status?.label} />
                 <DetailRow label="数据权限" value={DATA_SCOPE_LABELS[role.dataScope]} />
-                <DetailRow label="描述" value={role.description} />
+                <DetailRow label="描述" value={role.description} multiline />
               </DetailSection>
 
               <DetailSection title="权限配置">

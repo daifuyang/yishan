@@ -1,0 +1,209 @@
+/* ---------- 菜单树 ----------
+   目标：简约、克制。层级靠留白 + 背景 + 字号表达，不用阴影、不用连接线。
+   配色只有一套品牌蓝 + 中性灰阶，绿色只出现在「页面」badge 上做轻量区分。 */
+
+.tree {
+  padding: var(--space-3) 0;
+  background: transparent;
+}
+
+/* 模块卡片：默认白底浮在浅灰白页面上，靠留白而非阴影分层 */
+.module {
+  margin: 0 var(--space-3) var(--space-3);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #fff;
+}
+
+/* ---------- 一级模块头 ---------- */
+
+.moduleHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4);
+  background: #fff;
+}
+
+/* 展开态才染极淡蓝白：白卡片在灰页面上的层级已经很够，
+   再给每个模块常驻一块蓝底会显得发飘。 */
+.moduleHeaderOpen {
+  background: #f7faff;
+}
+
+.moduleHeader__toggle {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 22px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moduleHeader__icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moduleHeader__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #1f2329;
+  font-size: var(--font-size-15);
+  font-weight: var(--font-weight-semibold);
+  line-height: 22px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 数量徽标：弱背景 + 主色字，只是「里面有多少」的一个提示 */
+.moduleHeader__count {
+  flex: 0 0 auto;
+  min-width: 18px;
+  padding: 0 var(--space-1);
+  border-radius: 10px;
+  background: #eaf3ff;
+  color: #1677ff;
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  text-align: center;
+}
+
+/* 模块体：白底 */
+.moduleBody {
+  background: #fff;
+}
+
+/* ---------- 模块内的页面 / 按钮行 ---------- */
+
+.nodeHover {
+  background: #f5f7fa;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  background: #fff;
+  border-bottom: 1px solid #eef1f4;
+}
+
+/* 页面行：48px，常规字号，路由同行显示 */
+.row--page {
+  min-height: var(--list-item-height-sm);
+  padding: var(--space-2) var(--space-4) var(--space-2) 20px;
+}
+
+/* 按钮行：40px + 更小字号。层级到第三层时读者已经不需要数缩进了，
+   视觉重量递减比继续缩进更容易扫读。 */
+.row--action {
+  min-height: 40px;
+  padding: var(--space-1) var(--space-4) var(--space-1) 32px;
+  font-size: var(--font-size-13);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row__toggle {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 16px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row__icon {
+  flex: 0 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #1f2329;
+  font-size: var(--font-size-14);
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 按钮层级整体退到次要位置：更小一号、颜色更浅 */
+.row--action .title {
+  font-size: var(--font-size-13);
+  color: var(--color-text-secondary);
+}
+
+.description {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #86909c;
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row--action .description {
+  color: #a9b1bc;
+}
+
+.badgeSlot {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.arrow {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c9cdd4;
+}
+
+/* ---------- 类型标签 ----------
+   轻量辅助信息：小字号 + 大圆角，只做区分，不抢标题。 */
+
+.badge {
+  padding: 1px var(--space-2);
+  border-radius: 10px;
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  font-weight: var(--font-weight-regular);
+  white-space: nowrap;
+}
+
+.badge--directory {
+  background: #eaf3ff;
+  color: #1677ff;
+}
+
+.badge--page {
+  background: #eef9f1;
+  color: #2ba471;
+}
+
+.badge--action {
+  background: #f2f3f5;
+  color: #86909c;
+}

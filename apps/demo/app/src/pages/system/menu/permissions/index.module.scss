@@ -1,0 +1,62 @@
+.content {
+  padding: 0 0 calc(66px + var(--safe-area-bottom));
+}
+
+/* 全出血白底列表：与其它管理列表同一套「白块 + 行分隔线」，不加圆角不加阴影 */
+.list {
+  margin: var(--space-4) 0;
+  background: var(--color-bg-surface);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  box-sizing: border-box;
+  min-height: var(--list-item-height-sm);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg-surface);
+}
+
+.rowBordered {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.rowHover {
+  background: var(--color-bg-base);
+}
+
+.row__text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 两行：功能名称 + 权限编码。编码是这页的检索对象，必须完整可读，不能省略号截断 */
+.row__label {
+  display: block;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-14);
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row__code {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.summary {
+  display: block;
+  padding: 0 var(--space-4);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-12);
+  line-height: 18px;
+}

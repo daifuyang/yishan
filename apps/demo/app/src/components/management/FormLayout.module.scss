@@ -66,14 +66,15 @@
   width: auto;
 }
 
+/* 多行文本不画框：表单里每一行都是「白底 + 一条分隔线」，控件本身无边框。
+   给 textarea 加一圈边框 + 圆角会在无边框的行里凭空多出一个卡片块，
+   而且 --color-border 比行分隔线更重，越发像嵌了个原生控件。
+   保留 min-height 让它仍然读得出「这里能写多行」，行分隔线负责分组。 */
 .field--stacked .field__textarea {
   box-sizing: border-box;
   width: 100%;
   min-height: 72px;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-surface);
+  padding: 0;
   text-align: left;
   /* 去掉浏览器默认的右下角拉伸把手 */
   resize: none;
@@ -105,6 +106,13 @@
 }
 
 .field__input--disabled {
+  color: var(--color-text-tertiary);
+  cursor: not-allowed;
+}
+
+/* textarea 没有边框后，禁用态失去了边框这个视觉锚点，值文字必须跟着一起弱化，
+   否则整行看起来和可编辑时一模一样。 */
+.field--disabled .field__textarea {
   color: var(--color-text-tertiary);
   cursor: not-allowed;
 }
@@ -200,6 +208,27 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* Picker 在 H5 下渲染成独立 div，必须自己 flex: 1，否则行内值到不了行尾 */
+.enumPicker {
+  flex: 1;
+  min-width: 0;
+  display: block;
+}
+
+.enumPickerValue {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 40px;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-primary);
+}
+
+.enumPickerPlaceholder {
+  color: var(--color-text-tertiary);
+}
+
 .link {
   display: flex;
   align-items: center;
@@ -248,4 +277,12 @@
 
 .submit__disabled {
   opacity: var(--opacity-disabled);
+}
+/* 布尔开关右对齐：Switch 没有宽度，直接放进 FormField 会停在行中间 */
+.switchField {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }

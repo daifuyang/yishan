@@ -1,15 +1,15 @@
 import Taro, { useRouter } from '@tarojs/taro'
-import { Switch } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import * as api from '@/api/admin/dict'
 import { StateView } from '@/components/feedback'
 import {
+  EnumField,
+  SwitchField,
   FormContent,
   FormField,
   FormSection,
   FormSubmitBar,
   ManagementPage,
-  SegmentField,
   TextAreaField,
   TextField,
 } from '@/components/management'
@@ -156,29 +156,27 @@ export default function DictionaryForm({ item = false }: { item?: boolean }) {
                 {text('type', '字典类型', true)}
               </>
             )}
-            <FormField label="状态">
-              <SegmentField
-                value={values.status}
-                options={[
-                  { value: '1', label: '启用' },
-                  { value: '0', label: '禁用' },
-                ]}
-                disabled={disabled}
-                onChange={(value) => field('status', value)}
-              />
-            </FormField>
+            <EnumField
+              label="状态"
+              value={values.status}
+              options={[
+                { value: '1', label: '启用' },
+                { value: '0', label: '禁用' },
+              ]}
+              disabled={disabled}
+              onChange={(value) => field('status', value)}
+            />
             {text('sort', '排序')}
           </FormSection>
           {item ? (
             <FormSection title="展示设置">
               {text('tag', '标签样式', false, 50)}
-              <FormField label="默认值">
-                <Switch
-                  checked={values.isDefault}
-                  disabled={disabled}
-                  onChange={(event) => field('isDefault', event.detail.value)}
-                />
-              </FormField>
+              <SwitchField
+                label="默认值"
+                checked={values.isDefault}
+                disabled={disabled}
+                onChange={(isDefault: boolean) => field('isDefault', isDefault)}
+              />
             </FormSection>
           ) : null}
           <FormSection title="备注">

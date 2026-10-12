@@ -250,12 +250,12 @@ test("detail exposes only authorized actions and keeps edit on the existing rout
   const read = mount({ permissions: ["system:user:create"] });
   await read.settle();
   assert.equal(read.button("编辑"), undefined);
-  assert.equal(read.button("更多操作"), undefined);
+  assert.equal(read.button("更多"), undefined);
   const update = mount({ permissions: UPDATE });
   await update.settle();
   await update.click("编辑");
   assert.deepEqual(update.routes, ["/pages/system/user/edit/index?id=2"]);
-  await update.click("更多操作");
+  await update.click("更多");
   assert.ok(update.button("重置密码"));
   assert.equal(update.button("删除用户"), undefined);
   await update.click("取消");
@@ -263,12 +263,12 @@ test("detail exposes only authorized actions and keeps edit on the existing rout
   const remove = mount({ permissions: ["system:user:delete"] });
   await remove.settle();
   assert.equal(remove.button("编辑"), undefined);
-  await remove.click("更多操作");
+  await remove.click("更多");
   assert.ok(remove.button("删除用户"));
   assert.equal(remove.button("重置密码"), undefined);
   const protectedUser = mount({ permissions: ["system:user:delete"], user: { ...USER, id: 1 } });
   await protectedUser.settle();
-  assert.equal(protectedUser.button("更多操作"), undefined);
+  assert.equal(protectedUser.button("更多"), undefined);
 });
 
 test("status confirmation is serialized, updates the page, and can be reversed", async () => {
@@ -313,17 +313,17 @@ test("cancelled or failed status changes preserve status and release the submit 
 test("more menu resets a supplied valid password, and deletion requires a destructive confirmation", async () => {
   const page = mount({ permissions: ALL });
   await page.settle();
-  await page.click("更多操作");
+  await page.click("更多");
   await page.click("重置密码");
   assert.deepEqual(page.passwords, [{ id: 2, password: "Newpass123" }]);
-  await page.click("更多操作");
+  await page.click("更多");
   await page.click("删除用户");
   assert.deepEqual(page.deletions, [2]);
   assert.equal(page.confirmations[0].confirmColor, "#F53F3F");
   assert.match(page.confirmations[0].content, /不可恢复/);
   const cancelled = mount({ permissions: ALL, confirm: async () => false });
   await cancelled.settle();
-  await cancelled.click("更多操作");
+  await cancelled.click("更多");
   await cancelled.click("删除用户");
   assert.equal(cancelled.deletions.length, 0);
 });
@@ -332,7 +332,7 @@ test("invalid passwords never reach the API", async () => {
   for (const password of ["short", "12345678", "onlyletters", `${"a".repeat(50)}1`]) {
     const page = mount({ permissions: UPDATE, password });
     await page.settle();
-    await page.click("更多操作");
+    await page.click("更多");
     await page.click("重置密码");
     assert.equal(page.passwords.length, 0);
     assert.ok(page.toasts.length > 0);
@@ -407,7 +407,7 @@ test("H5 reset dialog collects a password and retains input on API failure", asy
       },
     });
     await page.settle();
-    await page.click("更多操作");
+    await page.click("更多");
     await page.click("重置密码");
     let input = page.nodes.find((node) => node.type === "Input");
     assert.ok(input, "H5 must expose a real password input");

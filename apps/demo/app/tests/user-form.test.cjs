@@ -36,7 +36,7 @@ test('编辑页不再使用平铺 Tag 承载部门与角色', () => {
 
 test('编辑页不再使用 showActionSheet 做性别与状态选择', () => {
   const source = readSource('src/pages/system/user/edit/index.tsx')
-  assert.ok(!source.includes('showActionSheet'), '性别与状态应改用 SegmentField')
+  assert.ok(!source.includes('showActionSheet'), '性别与状态应改用 Picker 选择器')
 })
 
 test('编辑页使用 OrganizationPicker 承载组织关系', () => {

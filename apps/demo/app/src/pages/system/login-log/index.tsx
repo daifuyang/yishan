@@ -29,7 +29,7 @@ function LoginLogPage() {
   const hasDates = Boolean(startDate || endDate)
   const kind = list.error ? 'error' : list.loading && !list.list.length ? 'loading' : !list.list.length ? 'empty' : 'ready'
   return <ManagementPage>
-    <ManagementPageHeader title="登录日志" subtitle={`${list.total} 条记录`} showBack={process.env.TARO_ENV === 'h5'} />
+    <ManagementPageHeader title="登录日志" showBack={process.env.TARO_ENV === 'h5'} />
     <ManagementFilterBar>
       <ManagementSearchBar value={list.keyword} onChange={list.setKeyword} placeholder="搜索账号、姓名、IP或提示" />
       <ManagementFilterTriggers panel={panel} onPanelChange={setPanel} triggers={[{ key: 'status', label: STATUS.find(item => item.key === status)?.label || '全部状态', active: Boolean(status) }, { key: 'sort', label: sort === 'asc' ? '最早登录' : '最近登录', active: sort === 'asc' }, { key: 'dates', label: hasDates ? '时间 · 1' : '登录时间', active: hasDates }]} />

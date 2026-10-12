@@ -76,8 +76,74 @@
   text-overflow: ellipsis;
 }
 
-.row__arrow {
+/* ---------- 树形行（紧凑） ----------
+   树比平铺列表长得多，沿用 76px 行高 + 44px 图标的话一屏只看得到三四行。
+   这里压到 48px 行高、16px 无底色图标，标题与次要信息同行，一屏能看到两倍节点。 */
+
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-height: var(--list-item-height-sm);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg-surface);
+}
+
+/* 固定宽度 + 始终占位：有无子节点的行标题才对得齐。
+   align-self: center 是为了不被 align-items: stretch 拉成竖条。 */
+.treeRow__toggle {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  color: var(--color-text-tertiary);
+}
+
+.treeRow__glyph {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.treeRow__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-14);
+  line-height: 20px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 次要信息自行压缩，标题优先保留完整 */
+.treeRow__description {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-12);
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.treeRow__tag {
   flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.row__arrow {  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;

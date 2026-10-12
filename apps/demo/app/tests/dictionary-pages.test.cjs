@@ -76,7 +76,7 @@ function mount(path, api, params = {}) {
     'FormField',
     'FormSection',
     'FormSubmitBar',
-    'SegmentField',
+    'EnumField',
     'TextAreaField',
     'TextField',
     'ActionSheet',

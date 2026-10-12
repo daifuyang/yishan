@@ -2,6 +2,7 @@ const assert = require('node:assert/strict')
 const test = require('node:test')
 const { loadTs } = require('./helpers/load-ts.cjs')
 function mount(entry, api, options = {}) {
+  const reachBottom = []
   let cursor = 0,
     effects = [],
     session = 1,
@@ -16,6 +17,8 @@ function mount(entry, api, options = {}) {
     'ManagementCell',
     'ManagementStates',
     'ManagementListFooter',
+    'Breadcrumbs',
+    'Tag',
     'DetailContent',
     'DetailHero',
     'DetailSection',
@@ -51,7 +54,7 @@ function mount(entry, api, options = {}) {
       useDidShow: (fn) => (show = fn),
       useDidHide: () => {},
       usePullDownRefresh: () => {},
-      useReachBottom: () => {},
+      useReachBottom: (fn) => { reachBottom.push(fn) },
       stopPullDownRefresh: async () => {},
       showToast: async () => {},
     },
@@ -97,7 +100,14 @@ function mount(entry, api, options = {}) {
     await new Promise((r) => setImmediate(r))
     return render()
   }
-  return { render, settle, invalidate: () => session++, show: () => show?.() }
+  return {
+    render,
+    settle,
+    invalidate: () => session++,
+    show: () => show?.(),
+    // 触底加载：与其它列表页一样由 useReachBottom 驱动，不再有手写「加载更多」按钮
+    reachBottom: () => { for (const fn of reachBottom) fn(); },
+  }
 }
 test('region browsing opens read-only leaf details and returns to ancestor', async () => {
   const h = mount('region', {
@@ -122,7 +132,8 @@ test('region browsing opens read-only leaf details and returns to ancestor', asy
     t.some((n) => n.type === 'BottomActionBar'),
     false,
   )
-  t.find((n) => n.props?.children === '全部地区').props.onClick()
+  const crumbs = t.find((n) => n.type === 'Breadcrumbs')
+  crumbs.props.onNavigate(-1)
   assert.equal(h.render().find((n) => n.type === 'ManagementCell').props.title, '省')
 })
 test('module list opens independent detail without inline mutation', async () => {
@@ -182,11 +193,12 @@ test('region search keeps all results accessible through load more', async () =>
   tree.find((n) => n.type === 'ManagementSearchBar').props.onChange('地区')
   tree = h.render()
   assert.equal(tree.filter((n) => n.type === 'ManagementCell').length, 50)
-  tree.find((n) => n.props?.children === '加载更多').props.onClick()
+  h.reachBottom()
   tree = h.render()
-  tree.find((n) => n.props?.children === '加载更多').props.onClick()
+  h.reachBottom()
   tree = h.render()
-  tree.find((n) => n.props?.children === '加载更多').props.onClick()
+  h.reachBottom()
+  tree = h.render()
   assert.equal(h.render().filter((n) => n.type === 'ManagementCell').length, 151)
 })
 test('read-only module detail hides toggle and unavailable list explains capability', async () => {
