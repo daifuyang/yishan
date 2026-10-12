@@ -119,12 +119,14 @@ function RolePermissionsPage() {
     setSubmitting(true)
     const session = getSessionVersion()
     try {
-      const payload = buildRoleAuthorization(
+      // 本页只管菜单授权：只提交 menuIds。后端对缺省字段不做修改，
+      // 带上空的 permissionCodes / appMenuIds 会清空角色的功能与工作台授权。
+      const { menuIds } = buildRoleAuthorization(
         { menuIds: [...selected], permissionCodes: [], appMenuIds: [] },
         menus,
         [],
       )
-      await adminRoleApi.updateAdminRole(id, payload)
+      await adminRoleApi.updateAdminRole(id, { menuIds })
       if (session !== getSessionVersion()) return
       Taro.showToast({ title: '权限已保存', icon: 'success' })
       setTimeout(() => navigateBack(1), 600)
