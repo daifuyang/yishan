@@ -25,6 +25,10 @@ test('没有下级的地区不显示箭头', () => {
   assert.match(regionPage, /showArrow=\{hasChildren\}/, '箭头应取决于是否有下级')
 })
 
+test('区县级使用定位图标，不再用方块占位', () => {
+  assert.match(regionPage, /node\.level === 3 \? 'mapPin'/, '第三级区县应使用定位针')
+})
+
 // useReachBottom 已经在自动加载，再摆一个「加载更多」按钮等于两套机制抢同一件事，
 // 而且它绕开了 ManagementListFooter 的统一提示。
 test('地区页不再自建「加载更多」按钮，统一交给 ManagementListFooter', () => {

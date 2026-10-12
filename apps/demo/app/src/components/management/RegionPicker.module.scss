@@ -1,0 +1,80 @@
+/* 外壳与 BottomSelectSheet 同一套：遮罩 + 底部圆角白底 + 56px 标题栏 */
+.layer { position: fixed; inset: 0; z-index: var(--z-modal, 1000); }
+.mask { position: absolute; inset: 0; background: var(--color-bg-mask); }
+.sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-bg-surface);
+  border-radius: 16px 16px 0 0;
+  padding-bottom: var(--safe-area-bottom);
+  overflow: hidden;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 56px;
+  padding: 0 16px;
+  font-weight: 600;
+  font-size: 16px;
+}
+.close { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: -12px; }
+
+/* 层级页签：已选名称 + 末尾「请选择」，当前层级主色加下划线 */
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-5);
+  height: 44px;
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  overflow: hidden;
+}
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 33%;
+  font-size: var(--font-size-14);
+  color: var(--color-text-primary);
+}
+.tab__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tabPending {
+  color: var(--color-text-tertiary);
+}
+.tabActive {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+.tabActive::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-primary);
+}
+
+/* 固定高度：切换层级时面板不跳动 */
+.options { height: 50vh; }
+.option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 52px;
+  padding: 0 16px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--color-divider);
+  color: var(--color-text-primary);
+}
+.option:last-child { border-bottom: 0; }
+.selected { color: var(--color-primary); font-weight: 500; }

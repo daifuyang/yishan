@@ -127,8 +127,8 @@ function RegionPage() {
               return (
                 <ManagementCell
                   key={node.code}
-                  glyph={hasChildren ? 'folder' : 'square'}
-                  glyphColor={hasChildren ? '#1677FF' : '#86909C'}
+                  glyph={node.level === 3 ? 'mapPin' : hasChildren ? 'folder' : 'square'}
+                  glyphColor={node.level === 3 || hasChildren ? '#1677FF' : '#86909C'}
                   title={node.name}
                   // 描述只承载一条信息；行政层级进右列标签，父子路径只在搜索时显示
                   description={

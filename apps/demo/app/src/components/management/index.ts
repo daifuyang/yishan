@@ -22,6 +22,22 @@ export {
 } from './DetailLayout'
 export { OrganizationPicker } from './OrganizationPicker'
 export { BottomSelectSheet, type BottomSelectSheetProps } from './BottomSelectSheet'
+export { RegionPicker, type RegionPickerProps } from './RegionPicker'
+export {
+  formatRegionPath,
+  isRegionLeaf,
+  REGION_LEVEL_LABELS,
+  REGION_MAX_DEPTH,
+  REGION_PENDING_LABEL,
+  type RegionNode,
+  regionOptionsInTree,
+  regionParentKey,
+  type RegionPickerMode,
+  type RegionTab,
+  regionTabs,
+  sameRegion,
+  selectRegion,
+} from './regionPickerLogic'
 export type { OrganizationPickerProps } from './OrganizationPicker'
 export { DepartmentTreeNavigator } from './DepartmentTreeNavigator'
 export type { DepartmentTreeNavigatorProps } from './DepartmentTreeNavigator'
