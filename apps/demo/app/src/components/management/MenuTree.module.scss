@@ -97,17 +97,21 @@
   border-bottom: 1px solid #eef1f4;
 }
 
+/* 缩进网格：每深一级右移 16px（模块头的 16px 左内边距是第 0 级）。
+   箭头槽 20px、图标槽 18px 在每一层宽度都相同，且叶子行也保留箭头槽，
+   所以同层的箭头、图标、标题始终落在同一条竖线上。 */
+
 /* 页面行：48px，常规字号，路由同行显示 */
 .row--page {
   min-height: var(--list-item-height-sm);
-  padding: var(--space-2) var(--space-4) var(--space-2) 20px;
+  padding: var(--space-2) var(--space-4) var(--space-2) 32px;
 }
 
 /* 按钮行：40px + 更小字号。层级到第三层时读者已经不需要数缩进了，
    视觉重量递减比继续缩进更容易扫读。 */
 .row--action {
   min-height: 40px;
-  padding: var(--space-1) var(--space-4) var(--space-1) 32px;
+  padding: var(--space-1) var(--space-4) var(--space-1) 48px;
   font-size: var(--font-size-13);
 }
 
@@ -116,8 +120,8 @@
 }
 
 .row__toggle {
-  flex: 0 0 14px;
-  width: 14px;
+  flex: 0 0 20px;
+  width: 20px;
   height: 16px;
   align-self: center;
   display: flex;
@@ -126,7 +130,8 @@
 }
 
 .row__icon {
-  flex: 0 0 15px;
+  flex: 0 0 18px;
+  width: 18px;
   display: flex;
   align-items: center;
   justify-content: center;

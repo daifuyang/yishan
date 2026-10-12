@@ -4,6 +4,7 @@ import {
   type SaveAdminAppMenu,
 } from '@/api/admin/appMenu'
 import { getSessionVersion } from '@/api/client'
+import type { MenuResourceType } from '@/components/management/menuResourceTypes'
 import { confirmAction } from '@/hooks'
 import { canWriteModuleNow } from '@/utils/auth-guard'
 
@@ -42,8 +43,25 @@ export function appMenuGroupOptions(
     .map((node) => ({ value: String(node.id), label: node.name }))
 }
 
-export function isAppMenuGroup(node: AdminAppMenu): boolean {
+export function isAppMenuGroup(node: Pick<AdminAppMenu, 'type'>): boolean {
   return node.type === 0
+}
+
+/** 列表、详情、表单、筛选共用同一份类型文案 */
+export const APP_MENU_TYPE_LABELS: Record<AdminAppMenu['type'], string> = {
+  0: '分组',
+  1: '应用入口',
+}
+
+export const APP_MENU_TYPE_OPTIONS = [
+  { key: '', label: '全部类型' },
+  { key: '0', label: APP_MENU_TYPE_LABELS[0] },
+  { key: '1', label: APP_MENU_TYPE_LABELS[1] },
+] as const
+
+/** 图标与菜单管理共用同一套资源类型：分组沿用「目录」，入口沿用「页面」 */
+export function appMenuResourceType(node: Pick<AdminAppMenu, 'type'>): MenuResourceType {
+  return isAppMenuGroup(node) ? 'directory' : 'page'
 }
 
 export function appMenuPayload(

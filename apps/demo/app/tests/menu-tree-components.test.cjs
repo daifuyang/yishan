@@ -320,3 +320,30 @@ test('主色统一为一套品牌蓝，旧的绿色系已清除', () => {
   // 要清掉的是上一版遗留的 #00B42A。
   assert.doesNotMatch(css, /#00b42a/i, '不应残留上一版的亮绿色')
 })
+
+// ---- 对齐：菜单管理与工作台管理必须落在同一套缩进网格上 ----
+
+// 叶子行不留箭头槽时，有子节点的行与叶子行的图标会错开一个箭头宽度 ——
+// 工作台的入口全是叶子，菜单的页面大多有按钮子节点，两页因此看起来像两套缩进。
+test('叶子行也保留箭头槽，图标与有子节点的行对齐', () => {
+  const { MenuTreeRow } = mod
+  const toggles = (hasChildren) =>
+    walk(
+      MenuTreeRow({ title: 'x', type: 'page', depth: 1, hasChildren, expanded: false }),
+      (n) => n.props?.className === 'row__toggle',
+    ).length
+  assert.equal(toggles(true), 1)
+  assert.equal(toggles(false), 1)
+})
+
+test('箭头槽与图标槽在模块头和各级行里宽度一致', () => {
+  const width = (selector) =>
+    css.match(new RegExp(`${selector.replace('.', '\\.')} \\{[^}]*?\\bwidth:\\s*(\\d+)px`))[1]
+  assert.equal(width('.row__toggle'), width('.moduleHeader__toggle'))
+  assert.equal(width('.row__icon'), width('.moduleHeader__icon'))
+})
+
+test('搜索/筛选时 allOpen 展开全部模块，命中节点不会藏在折叠的模块里', () => {
+  const tree = renderTree({ openModuleId: null, allOpen: true })
+  assert.equal(walk(tree, (n) => n.props?.className === 'moduleBody').length, 2)
+})

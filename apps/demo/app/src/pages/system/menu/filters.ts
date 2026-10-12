@@ -1,5 +1,6 @@
 import type { AdminMenu } from '@/api/admin/menu'
 import { menuResourceType, menuTypeLabel } from '@/components/management/menuResourceTypes'
+import { filterTreeByTypeStatus, TREE_STATUS_OPTIONS } from '../_shared/menuTreeFilters'
 
 // 类型文案统一由 MenuTypeBadge 提供，避免列表、详情、表单各写一套
 export const MENU_TYPE_OPTIONS = [
@@ -9,11 +10,7 @@ export const MENU_TYPE_OPTIONS = [
   { key: '2', label: menuTypeLabel(menuResourceType(2)) },
 ] as const
 
-export const MENU_STATUS_OPTIONS = [
-  { key: '', label: '全部状态' },
-  { key: '1', label: '启用' },
-  { key: '0', label: '禁用' },
-] as const
+export const MENU_STATUS_OPTIONS = TREE_STATUS_OPTIONS
 
 export const MENU_TYPE_LABELS: Record<AdminMenu['type'], string> = {
   0: menuTypeLabel(menuResourceType(0)),
@@ -50,25 +47,10 @@ export function menuMatches(node: AdminMenu, needle: string): boolean {
     .includes(needle)
 }
 
-/** 类型/状态筛选保留命中的节点和它的祖先链，否则父级被筛掉后子节点就成了孤儿。 */
+/** 类型/状态筛选与工作台管理共用同一实现，保留命中节点的祖先链。 */
 export function filterMenuTree(
   nodes: readonly AdminMenu[],
   filters: MenuFilters,
 ): AdminMenu[] {
-  const keep = (node: AdminMenu): AdminMenu | null => {
-    const children = (node.children ?? []).flatMap((child) => {
-      const matched = keep(child)
-      return matched ? [matched] : []
-    })
-    const typeOk = !filters.type || String(node.type) === filters.type
-    const statusOk = !filters.status || node.status === filters.status
-    if ((typeOk && statusOk) || children.length) {
-      return { ...node, children }
-    }
-    return null
-  }
-  return nodes.flatMap((node) => {
-    const matched = keep(node)
-    return matched ? [matched] : []
-  })
+  return filterTreeByTypeStatus(nodes, filters)
 }

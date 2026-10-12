@@ -63,3 +63,19 @@ test('按钮类型不能挂下级', () => {
   assert.equal(filters.menuCanHaveChildren(0), true)
   assert.equal(filters.menuCanHaveChildren(1), true)
 })
+
+// 菜单管理与工作台管理用同一份列表页骨架，默认行为不能各写一份。
+test('菜单与工作台列表页共用同一骨架，默认全部折叠', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const src = (file) => fs.readFileSync(path.resolve(__dirname, '../src', file), 'utf8')
+  for (const page of ['pages/system/menu/index.tsx', 'pages/system/app-menu/index.tsx']) {
+    assert.match(src(page), /<MenuTreeListPage/, `${page} 应使用共享列表页`)
+    assert.doesNotMatch(src(page), /filtered\[0\]/, `${page} 不应默认展开第一个模块`)
+  }
+  assert.match(
+    src('pages/system/_shared/MenuTreeListPage.tsx'),
+    /useState<number \| null>\(null\)/,
+    '手风琴初始应全部折叠',
+  )
+})

@@ -145,8 +145,11 @@ export function MenuTreeRow({
       onClick={onClick}
       hoverClass={onClick ? styles.nodeHover : undefined}
     >
-      <View style={{ width: Math.max(depth - 1, 0) * 12 }} />
+      {/* 一、二级缩进由 row--page / row--action 的左内边距承担；更深的目录嵌套再逐级补一格 */}
+      {depth > 2 ? <View style={{ width: (depth - 2) * 16 }} /> : null}
 
+      {/* 箭头槽位始终占位：否则有子节点的行和叶子行的图标会错开，
+          同一棵树里（以及菜单管理、工作台管理之间）看起来就像两套缩进。 */}
       {hasChildren ? (
         <View
           className={styles.row__toggle}
@@ -160,10 +163,12 @@ export function MenuTreeRow({
         >
           <LineIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={12} color="#86909C" />
         </View>
-      ) : null}
+      ) : (
+        <View className={styles.row__toggle} />
+      )}
 
       <View className={styles.row__icon}>
-        <MenuNodeIcon type={type} size={depth === 1 ? 15 : 13} />
+        <MenuNodeIcon type={type} size={depth === 1 ? 16 : 14} />
       </View>
       <Text className={styles.title}>{title}</Text>
       {description ? <Text className={styles.description}>{description}</Text> : null}
@@ -181,6 +186,8 @@ export interface MenuTreeProps<T extends TreeNode<T>> {
   tree: readonly T[]
   /** 当前展开的一级模块；null 表示全部折叠。同一时刻只展开一个，避免长列表被拉散 */
   openModuleId: number | null
+  /** 搜索/筛选时展开全部模块，否则命中的节点藏在折叠的模块里看不见 */
+  allOpen?: boolean
   onToggleModule: (id: number) => void
   /** 模块内更深层级的展开态 */
   expanded: ReadonlySet<number>
@@ -204,6 +211,7 @@ export interface MenuTreeProps<T extends TreeNode<T>> {
 export function MenuTree<T extends TreeNode<T>>({
   tree,
   openModuleId,
+  allOpen = false,
   onToggleModule,
   expanded,
   onToggle,
@@ -213,7 +221,7 @@ export function MenuTree<T extends TreeNode<T>>({
   return (
     <View className={styles.tree}>
       {tree.map((module) => {
-        const isOpen = openModuleId === module.id
+        const isOpen = allOpen || openModuleId === module.id
         // 模块体里 depth 从 1 起算：一级模块自己不在体内
         const rows = flattenTree(module.children ?? [], expanded, 1)
         return (
