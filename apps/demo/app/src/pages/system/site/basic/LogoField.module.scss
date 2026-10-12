@@ -1,0 +1,33 @@
+/* Logo 值区：与同表单其它控件一样 flex: 1 推到行尾，缩略图高度不超过普通行 */
+.logo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 40px;
+}
+
+.logo__image {
+  width: 72px;
+  height: 32px;
+}
+
+.logo__empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.logo__placeholder {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-14);
+}
+
+.logo__path {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-14);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -47,7 +47,7 @@ function pageHarness(
         }
       },
     },
-    '@tarojs/components': { View: 'View', Text: 'Text' },
+    '@tarojs/components': { View: 'View', Text: 'Text', Image: 'Image', Input: 'Input' },
     '@tarojs/taro': {
       useRouter: () => ({ params: { id: 'demo' } }),
       useDidHide: () => {},
@@ -60,7 +60,7 @@ function pageHarness(
     },
     '@/api/client': { getSessionVersion: () => (current ? 1 : 2) },
     '@/constants/routes': { SYSTEM_PAGES: {} },
-    '@/utils/router': { navigateTo: () => {} },
+    '@/utils/router': { navigateTo: () => {}, navigateBack: () => {} },
     '@/components/management': Object.fromEntries(
       [
         'ManagementPage',
@@ -76,10 +76,18 @@ function pageHarness(
         'DetailSection',
         'DetailRow',
         'BottomActionBar',
+        'ActionSheet',
+        'FormContent',
+        'FormField',
+        'FormSection',
+        'FormSubmitBar',
+        'LineIcon',
+        'TextAreaField',
+        'TextField',
       ].map((name) => [name, name]),
     ),
     '@/components/atoms': { Button: 'Button', Tag: 'Tag' },
-    '@/components/molecules': { FormField: 'FormField' },
+    '@/components/molecules': { FormField: 'FormField', PageHeader: 'PageHeader' },
     '@/components/feedback': { StateView: 'StateView' },
     '@/hooks': {
       useCanWrite: () => write,
@@ -103,6 +111,8 @@ function pageHarness(
       errorMessage: (error) => error.message,
     },
     './index.module.scss': {},
+    '../form.module.scss': {},
+    './LogoField.module.scss': {},
     '../_shared/AdminUI': {
       withAccountScope: (component) => component,
       AdminPage: 'AdminPage',
@@ -282,61 +292,90 @@ test('configuration pages render access chrome without requesting data when deni
     )
     assert.equal(
       harness.render()[0].type,
-      ['region', 'module-management'].includes(page) ? 'ManagementPage' : 'AdminPage',
+      ['site', 'region', 'module-management'].includes(page) ? 'ManagementPage' : 'AdminPage',
     )
     await harness.settle()
     assert.equal(calls, 0)
   }
 })
 
+const fieldControl = (tree, label) =>
+  tree.find((node) => node.type === 'FormField' && node.props.label === label).props.children
+
+test('site overview lists only the categories backed by basicConfig', async () => {
+  const harness = pageHarness('site', {
+    getSiteConfig: async () => ({ siteName: 'Demo', siteDomain: 'https://example.com/', siteLogo: '' }),
+  })
+  harness.render()
+  const tree = await harness.settle()
+  const hero = tree.find((node) => node.type === 'DetailHero').props
+  assert.equal(hero.title, 'Demo')
+  assert.equal(hero.subtitle, 'example.com')
+  assert.deepEqual(
+    tree.filter((node) => node.type === 'ManagementCell').map((node) => node.props.title),
+    ['基础信息', 'SEO 优化', '备案与页脚'],
+  )
+})
+
 test('read-only site access hides save action after configuration loads', async () => {
   const harness = pageHarness(
-    'site',
-    { getSiteConfig: async () => ({ siteName: 'Demo' }) },
+    'site/basic',
+    { getSiteConfig: async () => ({ siteName: 'Demo', siteDomain: '', siteFavicon: '', contactPhone: '', contactEmail: '', contactAddress: '', siteLogo: '' }) },
     { write: false },
   )
   harness.render()
   const tree = await harness.settle()
+  assert.equal(tree.some((node) => node.type === 'FormSubmitBar'), false)
   assert.equal(
-    tree.some((node) => node.type === 'Button' && node.props.children === '保存'),
-    false,
-  )
-  assert.equal(
-    tree.filter((node) => node.type === 'FormField').every((node) => node.props.disabled),
+    tree.filter((node) => node.type === 'TextField').every((node) => node.props.disabled),
     true,
   )
 })
 
-test('site save locks duplicate submits and retains edited fields after failure', async () => {
-  const pending = deferred()
+test('site basic save rejects a blank name before calling the API', async () => {
   let saves = 0
-  const harness = pageHarness('site', {
-    getSiteConfig: async () => ({ siteName: 'Old' }),
-    saveSiteConfig: async () => {
+  const harness = pageHarness('site/basic', {
+    getSiteConfig: async () => ({ ...emptySite(), siteName: 'Old' }),
+    updateSiteConfig: async () => {
       saves++
+    },
+  })
+  harness.render()
+  let tree = await harness.settle()
+  fieldControl(tree, '站点名称').props.onChange('  ')
+  tree = harness.render()
+  await tree.find((node) => node.type === 'FormSubmitBar').props.onSubmit()
+  tree = harness.render()
+  assert.equal(saves, 0)
+  assert.equal(tree.some((node) => node.type === 'Text' && node.props.children === '请输入站点名称'), true)
+})
+
+test('site save sends only its own fields, locks duplicate submits and keeps edits after failure', async () => {
+  const pending = deferred()
+  const patches = []
+  const harness = pageHarness('site/seo', {
+    getSiteConfig: async () => ({ ...emptySite(), siteName: 'Demo', siteTitle: 'Old' }),
+    updateSiteConfig: async (patch) => {
+      patches.push(patch)
       return pending.promise
     },
   })
   harness.render()
   let tree = await harness.settle()
-  tree
-    .find((node) => node.type === 'FormField' && node.props.label === '站点名称')
-    .props.onInput('New')
+  fieldControl(tree, '站点标题').props.onChange('New')
   tree = harness.render()
-  const submit = tree.find((node) => node.type === 'Button' && node.props.children === '保存').props
-    .onClick
-  const first = submit()
-  await submit()
-  assert.equal(saves, 1)
+  const submit = tree.find((node) => node.type === 'FormSubmitBar').props.onSubmit
+  submit()
+  submit()
+  assert.equal(patches.length, 1)
+  assert.deepEqual(patches[0], { siteTitle: 'New', seoKeywords: '', seoDescription: '' })
   pending.reject(new Error('保存失败'))
-  await first
+  await new Promise((resolve) => setImmediate(resolve))
   tree = harness.render()
-  assert.equal(
-    tree.find((node) => node.type === 'FormField' && node.props.label === '站点名称').props.value,
-    'New',
-  )
-  assert.equal(
-    tree.some((node) => node.type === 'AdminNotice' && node.props.children === '保存失败'),
-    true,
-  )
+  assert.equal(fieldControl(tree, '站点标题').props.value, 'New')
+  assert.equal(tree.some((node) => node.type === 'Text' && node.props.children === '保存失败'), true)
 })
+
+function emptySite() {
+  return loadTs('src/api/admin/site.ts', { '../client': {} }).emptySiteConfig()
+}

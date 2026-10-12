@@ -34,3 +34,13 @@ export async function saveSiteConfig(config: SiteConfig) {
   const saved = response.results.find((item) => item.key === 'basicConfig')
   if (!saved?.success) throw new Error(saved?.message || '站点配置保存失败')
 }
+
+/**
+ * 只改动一部分字段：先取最新配置再合并，避免分类页各自持有的旧快照
+ * 覆盖掉其它分类刚保存的值（整份 basicConfig 存在同一个 option 里）。
+ */
+export async function updateSiteConfig(patch: Partial<SiteConfig>): Promise<SiteConfig> {
+  const next = { ...(await getSiteConfig()), ...patch }
+  await saveSiteConfig(next)
+  return next
+}
