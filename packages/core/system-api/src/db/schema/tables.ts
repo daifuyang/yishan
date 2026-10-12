@@ -516,6 +516,39 @@ export const sysRoleWorkbenchMenu = mysqlTable(
   })
 )
 
+/** 用户固定到首页的工作台入口；整体覆盖写，不做软删除 */
+export const sysUserWorkbenchPin = mysqlTable(
+  'sys_user_workbench_pin',
+  {
+  id: int('id').primaryKey().autoincrement().notNull(),
+  userId: int('user_id').notNull(),
+  workbenchMenuId: int('workbench_menu_id').notNull(),
+  sortOrder: int('sort_order').notNull().default(0),
+  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  },
+  (t) => ({
+    uniqUserWorkbenchPin: uniqueIndex('uniq_user_workbench_pin').on(t.userId, t.workbenchMenuId),
+  })
+)
+
+/** 用户打开工作台入口的计数，用于首页推荐 */
+export const sysUserWorkbenchUsage = mysqlTable(
+  'sys_user_workbench_usage',
+  {
+  id: int('id').primaryKey().autoincrement().notNull(),
+  userId: int('user_id').notNull(),
+  workbenchMenuId: int('workbench_menu_id').notNull(),
+  openCount: int('open_count').notNull().default(0),
+  lastOpenedAt: datetime('last_opened_at', { mode: 'date' }).notNull(),
+  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  },
+  (t) => ({
+    uniqUserWorkbenchUsage: uniqueIndex('uniq_user_workbench_usage').on(t.userId, t.workbenchMenuId),
+  })
+)
+
 export const sysRolePermission = mysqlTable(
   'sys_role_permission',
   {
