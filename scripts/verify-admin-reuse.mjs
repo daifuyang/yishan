@@ -6,7 +6,7 @@
 // PLAYWRIGHT_CHANNEL=chrome selects installed Chrome; default is Playwright Chromium.
 // Temp logs, screenshots and report.json are retained for review.
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -102,7 +102,7 @@ function executable(requireFromAdmin, packageName, binary) {
   return resolve(dirname(manifest), typeof config.bin === 'string' ? config.bin : config.bin[binary])
 }
 
-function startCommand(binary, args, cwd, logPath, extraEnv = {}) {
+export function startCommand(binary, args, cwd, logPath, extraEnv = {}) {
   const output = createWriteStream(logPath)
   const env = { ...process.env, BROWSER: 'none', ...extraEnv }
   delete env.UMI_ENV
@@ -118,11 +118,47 @@ function startCommand(binary, args, cwd, logPath, extraEnv = {}) {
   return { child, completion, logPath }
 }
 
-async function stopCommand(command) {
+function descendantPids(pid) {
+  const result = spawnSync('ps', ['-o', 'pid=', '--ppid', String(pid)], { encoding: 'utf8' })
+  if (result.status !== 0 || !result.stdout) return []
+  const children = result.stdout.split(/\s+/).map(Number).filter(n => n > 1)
+  return children.flatMap(child => [child, ...descendantPids(child)])
+}
+
+function killProcessTree(pid, signal) {
+  for (const child of descendantPids(pid).reverse()) {
+    try { process.kill(child, signal) } catch {}
+  }
+  try { process.kill(pid, signal) } catch {}
+}
+
+export async function stopCommand(command) {
   if (command.child.exitCode !== null) return
-  if (process.platform === 'win32') {
-    await new Promise(accept => { const killer = spawn('taskkill', ['/PID', String(command.child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' }); killer.once('close', accept); killer.once('error', accept) })
-  } else command.child.kill('SIGTERM')
+  const pid = command.child.pid
+  await new Promise(accept => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      accept()
+    }
+    command.child.once('close', finish)
+    const timer = setTimeout(() => {
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
+      } else {
+        killProcessTree(pid, 'SIGKILL')
+      }
+      setTimeout(finish, 1000)
+    }, 5000)
+    if (process.platform === 'win32') {
+      const killer = spawn('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' })
+      killer.once('error', finish)
+    } else {
+      killProcessTree(pid, 'SIGTERM')
+    }
+  })
 }
 
 async function runCommand(binary, args, cwd, logPath, env = {}) {
@@ -367,4 +403,11 @@ export async function main(args = process.argv.slice(2)) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main().catch(error => { console.error(error.message); process.exitCode = 1 })
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main()
+    .then(() => process.exit(0))
+    .catch(error => {
+      console.error(error.message)
+      process.exit(1)
+    })
+}

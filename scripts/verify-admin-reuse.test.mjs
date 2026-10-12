@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseArguments, fixtureSources, copyOwnedSystemPackage } from './verify-admin-reuse.mjs'
+import { parseArguments, fixtureSources, copyOwnedSystemPackage, startCommand, stopCommand } from './verify-admin-reuse.mjs'
 
 test('reuse verifier accepts one installed module or two and rejects unknown modules', () => {
   assert.deepEqual(parseArguments(['--admin', 'apps/example/admin', '--modules', 'catalog,other']).combinations, [['catalog', 'other']])
@@ -40,4 +40,16 @@ test('throwaway consumer uses public System exports and lazy generated registry 
   assert.doesNotMatch(files['api/src/manifest.ts'], /import.*other/)
   assert.ok(files['admin/src/modules/excluded/pages/index/index.tsx'])
   for (const text of Object.values(files)) assert.doesNotMatch(text, /apps\/demo|packages\/core|@yishan\/(?:core-admin|core-system-admin)\/src/)
+})
+
+test('stopCommand waits until the child process has exited', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'yishan-admin-reuse-stop-'))
+  try {
+    const command = startCommand(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], root, join(root, 'proc.log'))
+    assert.equal(command.child.exitCode, null)
+    await stopCommand(command)
+    assert.notEqual(command.child.exitCode, null)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
