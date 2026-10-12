@@ -1,0 +1,10 @@
+/* 分组行的取值：撑满控件列并右对齐，整块可点，与 EnumField 的取值同一位置 */
+.value {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  font-size: var(--font-size-14);
+  line-height: 40px;
+  text-align: right;
+  color: var(--color-text-primary);
+}
