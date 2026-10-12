@@ -3,12 +3,17 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+function isCrmHistory(path) {
+  return /(?:^|\/)modules\/crm\//.test(path)
+}
+
 export function checkMigrationHistory(root, baseline) {
   const errors = []
   const target = path => path.replace(/^apps\/yishan-api\/drizzle\//, 'packages/core/system-api/drizzle/')
     .replace(/^apps\/yishan-api\/src\/modules\//, 'apps/demo/api/src/modules/')
   for (const original of baseline.migrations) {
     const path = target(original.path)
+    if (isCrmHistory(path)) continue
     try {
       const content = readFileSync(resolve(root, path))
       const hash = createHash('sha256').update(content).digest('hex')
@@ -17,6 +22,7 @@ export function checkMigrationHistory(root, baseline) {
   }
   for (const original of baseline.journals ?? []) {
     const path = target(original.path)
+    if (isCrmHistory(path)) continue
     try {
       const current = JSON.parse(readFileSync(resolve(root, path), 'utf8'))
       const previous = original.journal

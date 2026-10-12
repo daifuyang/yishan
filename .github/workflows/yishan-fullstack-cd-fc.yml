@@ -1,6 +1,29 @@
 name: yishan-fullstack-cd-fc
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      # 与 yishan-fullstack-ci.yml 的 paths 保持一致：
+      # 只要 CD 被触发，同一 commit 的 CI 也一定会被触发，ci-gate 不会永久等待。
+      - ".github/workflows/**"
+      - "apps/demo/admin/**"
+      - "apps/demo/api/**"
+      - "packages/core/**"
+      - "apps/demo/config/**"
+      - "scripts/**"
+      - "packages/yishan-tiptap/**"
+      - "packages/ui/**"
+      - "packages/core/docs-kit/**"
+      - "apps/demo/app/**"
+      - "apps/*/docs/**"
+      - "docs/**"
+      - ".tool-versions"
+      - ".npmrc"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
   workflow_dispatch:
     inputs:
       skip_ci_gate:
@@ -14,7 +37,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 人工触发后等待同一 commit 的 CI；保留既有的显式紧急覆盖选项。
+  # CI 必须先在同一 commit 上通过，才允许部署。
+  # 背景：此前 CD 与 CI 完全并行，CI 连续失败时 CD 照常下发。
+  # 注意：CD 的 paths 已与 CI 对齐，push 触发 CD 时 CI 必然也在跑。
   ci-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 60
