@@ -5,6 +5,13 @@ const test = require('node:test')
 const { loadTs, deferred, appRoot } = require('./helpers/load-ts.cjs')
 
 const registry = loadTs('src/modules/registry.ts')
+
+test('工作台搜索图标与管理页同一套线框搜索', () => {
+  const page = fs.readFileSync(path.join(appRoot, 'src/pages/apps/index.tsx'), 'utf8')
+  const scss = fs.readFileSync(path.join(appRoot, 'src/pages/apps/index.module.scss'), 'utf8')
+  assert.match(page, /<LineIcon name="search"/, '应使用共享 LineIcon search')
+  assert.doesNotMatch(scss, /apps__searchIcon/, '不应再内嵌另一套搜索图标')
+})
 const menu = (overrides = {}) => ({
   id: 1,
   parentId: 10,

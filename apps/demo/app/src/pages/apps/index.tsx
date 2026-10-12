@@ -3,6 +3,7 @@ import Taro, { useDidHide, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
 import { EmptyState, ErrorState } from '@/components/feedback'
 import { PageContainer } from '@/components/layout'
+import { LineIcon } from '@/components/management'
 import { getWorkbenchGroups } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
@@ -65,7 +66,7 @@ export default function AppsPage() {
     <PageContainer className={styles.apps}>
       <WorkbenchHeader />
       <View className={styles.apps__searchWrap}>
-        <View className={styles.apps__searchIcon} aria-hidden />
+        <LineIcon name="search" size={18} color="#86909C" />
         <Input
           className={styles.apps__search}
           value={query}
