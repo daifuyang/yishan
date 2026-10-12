@@ -1451,6 +1451,76 @@
           }
         }
       },
+      "storageConnectionTestReq": {
+        "type": "object",
+        "description": "待测试的云存储配置草稿；密钥留空时使用已保存的密钥",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/storageProvider"
+          },
+          "qiniu": {
+            "$ref": "#/components/schemas/qiniuConfigSchema"
+          },
+          "aliyunOss": {
+            "$ref": "#/components/schemas/aliyunOssConfigSchema"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "additionalProperties": false
+      },
+      "storageConnectionTestResp": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "ok": {
+                "type": "boolean",
+                "description": "是否连接成功"
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "qiniu",
+                  "aliyunOss"
+                ]
+              },
+              "bucket": {
+                "type": "string"
+              },
+              "latencyMs": {
+                "type": "integer",
+                "description": "探测耗时（毫秒）"
+              },
+              "message": {
+                "type": "string",
+                "description": "失败原因"
+              }
+            },
+            "required": [
+              "ok",
+              "provider",
+              "bucket",
+              "latencyMs"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
       "sysRole": {
         "type": "object",
         "properties": {
@@ -10726,6 +10796,45 @@
         }
       }
     },
+    "/api/v1/admin/system/storage/test": {
+      "post": {
+        "operationId": "testStorageConnection",
+        "summary": "测试云存储连接",
+        "tags": [
+          "storage"
+        ],
+        "description": "用表单草稿（无需先保存）请求服务商的空间信息，返回是否连通、空间与耗时；密钥留空时使用已保存的密钥",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/storageConnectionTestReq"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:storage:update",
+        "x-permission-label": "存储管理-更新",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/storageConnectionTestResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/users/": {
       "get": {
         "operationId": "getUserList",
@@ -12466,6 +12575,48 @@
         "summary": "Todo 列表",
         "tags": [
           "demo"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          },
+          {
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "keyword",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "maximum": 2,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
         ],
         "security": [
           {

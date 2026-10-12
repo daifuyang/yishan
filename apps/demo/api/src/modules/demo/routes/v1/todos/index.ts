@@ -6,7 +6,9 @@ import { TodosService } from '../../../services/todos.service.js'
 import { drizzleDb } from '@yishan/core-system-api/database'
 import {
   TodoCreateReqSchema,
+  TodoListQuerySchema,
   TodoUpdateReqSchema,
+  type TodoListQuery,
 } from '../../../schemas/todos.schema.js'
 import {
   ROUTE_TAG,
@@ -43,10 +45,11 @@ export default (async (app) => {
         tags: [ROUTE_TAG],
         summary: 'Todo 列表',
          operationId: 'demoTodosList',
+        querystring: TodoListQuerySchema,
         response: { 200: TodoListRespSchema },
       },
     },
-    async () => todos.list(),
+    async (request) => todos.list(request.query as TodoListQuery),
   )
 
   // Todo 详情

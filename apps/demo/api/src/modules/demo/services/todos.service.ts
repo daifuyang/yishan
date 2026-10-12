@@ -16,12 +16,31 @@ import type { AppQueryDb } from '@yishan/core-system-api/database'
  *   - 路由层只调 service
  */
 
+export interface TodoListParams {
+  page?: number
+  pageSize?: number
+  keyword?: string
+  status?: number
+}
+
 export class TodosService {
   constructor(private readonly db: AppQueryDb) {}
 
-  async list(): Promise<{ total: number; items: TodoRow[] }> {
-    const items = await TodosRepository.list(this.db)
-    return { total: items.length, items }
+  /**
+   * 分页 + 过滤列表。total 为过滤后、分页前的总数。
+   * keyword 先 trim，空串视为不过滤。
+   */
+  async list(query: TodoListParams = {}): Promise<{ total: number; items: TodoRow[] }> {
+    const keyword = query.keyword?.trim() || undefined
+    const status = query.status === undefined ? undefined : normalizeStatus(query.status)
+    const filter = { keyword, status }
+    const page = query.page ?? 1
+    const pageSize = query.pageSize ?? 20
+    const [items, total] = await Promise.all([
+      TodosRepository.list({ ...filter, page, pageSize }, this.db),
+      TodosRepository.count(filter, this.db),
+    ])
+    return { total, items }
   }
 
   async findById(id: number): Promise<TodoRow> {

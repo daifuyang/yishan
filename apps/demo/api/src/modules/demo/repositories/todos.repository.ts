@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, like, or, sql, type SQL } from 'drizzle-orm'
 import { drizzleDb, type AppQueryDb } from '@yishan/core-system-api/database'
 import { demoTodos } from '../db/schema.js'
 
@@ -35,13 +35,51 @@ export interface UpdateTodoInput {
   dueAt?: Date | null
 }
 
+export interface TodoListFilter {
+  /** 已 trim 的关键词；空串 / undefined 表示不过滤 */
+  keyword?: string
+  status?: TodoStatus
+}
+
+export interface TodoListQuery extends TodoListFilter {
+  page: number
+  pageSize: number
+}
+
+/** 转义 LIKE 通配符（MySQL 默认转义符为 `\`），让用户输入按字面匹配。 */
+export function escapeLikePattern(input: string): string {
+  return input.replace(/[\\%_]/g, (ch) => `\\${ch}`)
+}
+
+function buildListWhere(filter: TodoListFilter): SQL | undefined {
+  const conds: SQL[] = []
+  if (filter.keyword) {
+    const pattern = `%${escapeLikePattern(filter.keyword)}%`
+    const keywordCond = or(like(demoTodos.title, pattern), like(demoTodos.description, pattern))
+    if (keywordCond) conds.push(keywordCond)
+  }
+  if (filter.status !== undefined) conds.push(eq(demoTodos.status, filter.status))
+  return conds.length > 0 ? and(...conds) : undefined
+}
+
 export class TodosRepository {
-  static async list(db: AppQueryDb = drizzleDb): Promise<TodoRow[]> {
+  static async list(query: TodoListQuery, db: AppQueryDb = drizzleDb): Promise<TodoRow[]> {
     const rows = await db
       .select()
       .from(demoTodos)
+      .where(buildListWhere(query))
       .orderBy(desc(demoTodos.id))
+      .limit(query.pageSize)
+      .offset((query.page - 1) * query.pageSize)
     return rows as TodoRow[]
+  }
+
+  static async count(filter: TodoListFilter, db: AppQueryDb = drizzleDb): Promise<number> {
+    const [row] = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(demoTodos)
+      .where(buildListWhere(filter))
+    return Number(row?.c ?? 0)
   }
 
   static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<TodoRow | null> {

@@ -49,7 +49,11 @@ export async function demoUserProfile(options?: { [key: string]: any }) {
 }
 
 /** Todo 列表 GET /api/demo/v1/todos/ */
-export async function demoTodosList(options?: { [key: string]: any }) {
+export async function demoTodosList(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.demoTodosListParams,
+  options?: { [key: string]: any }
+) {
   return request<{
     total: number;
     items: {
@@ -63,6 +67,14 @@ export async function demoTodosList(options?: { [key: string]: any }) {
     }[];
   }>("/api/demo/v1/todos/", {
     method: "GET",
+    params: {
+      // page has a default value: 1
+      page: "1",
+      // pageSize has a default value: 20
+      pageSize: "20",
+
+      ...params,
+    },
     ...(options || {}),
   });
 }

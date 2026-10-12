@@ -46,6 +46,14 @@ interface ListResp {
   items: Todo[]
 }
 
+/** ProTable request 参数：分页 + 搜索表单字段 */
+interface TodoQueryParams {
+  current?: number
+  pageSize?: number
+  keyword?: string
+  status?: number | string
+}
+
 interface FormValues {
   title: string
   description?: string
@@ -64,8 +72,16 @@ const Todos: React.FC = () => {
   const [editing, setEditing] = useState<Todo | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
 
-  const fetchList = async () => {
-    const res = await demoTodosList({})
+  const fetchList = async (params: TodoQueryParams) => {
+    const keyword = params.keyword?.trim()
+    const status =
+      params.status === undefined || params.status === '' ? undefined : Number(params.status)
+    const res = await demoTodosList({
+      page: params.current,
+      pageSize: params.pageSize,
+      keyword: keyword || undefined,
+      status,
+    })
     // generated service 返回业务响应（data 字段已是列表）
     const data = (res as unknown as ListResp) ?? null
     return {
@@ -114,11 +130,18 @@ const Todos: React.FC = () => {
   }
 
   const columns: ProColumns<Todo>[] = [
+    {
+      title: '关键词',
+      dataIndex: 'keyword',
+      hideInTable: true,
+      fieldProps: { placeholder: '搜索标题或描述', maxLength: 100 },
+    },
     { title: 'ID', dataIndex: 'id', width: 80, search: false },
     {
       title: '标题',
       dataIndex: 'title',
       width: 220,
+      search: false,
     },
     {
       title: '描述',

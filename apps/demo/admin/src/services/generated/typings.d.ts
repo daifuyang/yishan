@@ -51,6 +51,13 @@ declare namespace API {
     id: string;
   };
 
+  type demoTodosListParams = {
+    page?: number;
+    pageSize?: number;
+    keyword?: string;
+    status?: number;
+  };
+
   type demoTodosUpdateParams = {
     id: string;
   };

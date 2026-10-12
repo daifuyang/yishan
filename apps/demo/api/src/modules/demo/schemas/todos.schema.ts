@@ -7,6 +7,21 @@ import { Type, type Static } from '@sinclair/typebox'
  * 路由层通过 Fastify 的 schema 选项挂入，Fastify 内置 ajv 自动校验。
  */
 
+/**
+ * Todo 列表查询参数。querystring 的数字以字符串到达，由 Fastify 内置 ajv
+ * 的 coerceTypes 转成 integer，useDefaults 填充 page / pageSize 默认值。
+ */
+export const TodoListQuerySchema = Type.Object(
+  {
+    page: Type.Optional(Type.Integer({ minimum: 1, default: 1 })),
+    pageSize: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, default: 20 })),
+    keyword: Type.Optional(Type.String({ maxLength: 100 })),
+    status: Type.Optional(Type.Integer({ minimum: 0, maximum: 2 })),
+  },
+  { $id: 'demoTodoListQuery' },
+)
+export type TodoListQuery = Static<typeof TodoListQuerySchema>
+
 export const TodoCreateReqSchema = Type.Object(
   {
     title: Type.String({ minLength: 1, maxLength: 200 }),

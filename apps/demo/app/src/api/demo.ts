@@ -31,7 +31,15 @@ export interface ServerInfo {
   timestamp: string
 }
 
-export const listTodos = () => requestRaw<{ total: number; items: DemoTodo[] }>({ method: 'GET', path: '/api/demo/v1/todos' })
+/** 列表查询：全部可选；keyword 同时匹配标题与描述，total 是筛选后的总数。 */
+export type DemoTodoListQuery = {
+  page?: number
+  pageSize?: number
+  keyword?: string
+  status?: 0 | 1 | 2
+}
+
+export const listTodos = (query: DemoTodoListQuery = {}) => requestRaw<{ total: number; items: DemoTodo[] }>({ method: 'GET', path: '/api/demo/v1/todos', query })
 export const getTodo = (id: number) => requestRaw<DemoTodo>({ method: 'GET', path: `/api/demo/v1/todos/${id}` })
 export const createTodo = (data: Omit<TodoInput, 'dueAt'> & { dueAt?: string }) => requestRaw<DemoTodo>({ method: 'POST', path: '/api/demo/v1/todos', data })
 export const updateTodo = (id: number, data: Partial<TodoInput>) => requestRaw<DemoTodo>({ method: 'PATCH', path: `/api/demo/v1/todos/${id}`, data })
