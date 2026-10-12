@@ -11,8 +11,11 @@ test('LineIcon 提供 video 与 music', () => {
   assert.match(src, /\n\s+music:/)
 })
 
+const reactStub = () => ({ useState: (v) => [v, () => {}], useMemo: (fn) => fn() })
+
 test('ManagementCell 的 thumb 渲染方形缩略图并以图标兜底', () => {
   const { ManagementCell } = loadTs('src/components/management/ManagementList.tsx', {
+    react: reactStub(),
     '@tarojs/components': { View: 'View', Text: 'Text', Image: 'Image' },
     '@/components/atoms': { AppText: 'AppText', Avatar: 'Avatar' },
     '@/components/feedback': { StateView: 'StateView' },
@@ -28,6 +31,40 @@ test('ManagementCell 的 thumb 渲染方形缩略图并以图标兜底', () => {
   assert.equal(noSrc.find((n) => n.type === 'Image'), undefined)
   assert.ok(noSrc.some((n) => n.className === 'row__thumb' || n.props?.className === 'row__thumb'))
   assert.equal(flat(ManagementCell({ title: 'c', thumb: { glyph: 'file' }, avatar: { name: 'x' } })).find((n) => n.type === 'Avatar'), undefined)
+})
+
+test('ManagementCell 缩略图加载失败后移除 Image，只留图标', () => {
+  // 单组件的极简 hooks：按调用顺序存状态，setState 后由测试手动重渲染
+  const slots = []
+  let cursor = 0
+  const react = {
+    useState(initial) {
+      const index = cursor++
+      if (!(index in slots)) slots[index] = initial
+      return [slots[index], (next) => {
+        slots[index] = typeof next === 'function' ? next(slots[index]) : next
+      }]
+    },
+    useMemo: (fn) => fn(),
+  }
+  const { ManagementCell } = loadTs('src/components/management/ManagementList.tsx', {
+    react,
+    '@tarojs/components': { View: 'View', Text: 'Text', Image: 'Image' },
+    '@/components/atoms': { AppText: 'AppText', Avatar: 'Avatar' },
+    '@/components/feedback': { StateView: 'StateView' },
+    './LineIcon': { LineIcon: 'LineIcon' },
+    './ManagementList.module.scss': scss,
+  })
+  const render = () => {
+    cursor = 0
+    return flat(ManagementCell({ title: 'a.png', thumb: { src: 'https://x/broken.png', glyph: 'image' } }))
+  }
+  const image = render().find((n) => n.type === 'Image')
+  assert.equal(typeof image.props.onError, 'function')
+  image.props.onError()
+  const after = render()
+  assert.equal(after.find((n) => n.type === 'Image'), undefined, '加载失败后不再渲染 Image')
+  assert.ok(after.some((n) => n.type === 'LineIcon' && n.props.name === 'image'), '图标仍在')
 })
 
 test('SelectionFooter 支持自定义确认文案与危险样式，默认仍是「确定」', () => {

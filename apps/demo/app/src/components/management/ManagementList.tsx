@@ -1,6 +1,6 @@
 import { Image, Text, View } from '@tarojs/components'
 import type { ReactNode } from 'react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 import { AppText, Avatar } from '@/components/atoms'
 import { StateView } from '@/components/feedback'
@@ -61,6 +61,8 @@ export function ManagementCell({
   onLongPress,
 }: ManagementCellProps) {
   const longPressProps = process.env.TARO_ENV !== 'h5' && onLongPress ? { onLongPress } : undefined
+  // 加载失败的缩略图 src：H5 的破图会盖住下层图标，失败后不再渲染 Image；换了 src 自动重试
+  const [brokenSrc, setBrokenSrc] = useState<string | undefined>()
   return (
     <View
       className={cx(styles.row, bordered && styles.rowBordered)}
@@ -71,8 +73,14 @@ export function ManagementCell({
       {thumb ? (
         <View className={styles.row__thumb}>
           <LineIcon name={thumb.glyph} size={20} color={glyphColor} />
-          {thumb.src ? (
-            <Image className={styles.row__thumbImage} src={thumb.src} mode="aspectFill" lazyLoad />
+          {thumb.src && thumb.src !== brokenSrc ? (
+            <Image
+              className={styles.row__thumbImage}
+              src={thumb.src}
+              mode="aspectFill"
+              lazyLoad
+              onError={() => setBrokenSrc(thumb.src)}
+            />
           ) : null}
         </View>
       ) : avatar ? (
