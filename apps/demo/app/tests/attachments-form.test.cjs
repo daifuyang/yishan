@@ -7,7 +7,7 @@ const FOLDERS = [{ id: 7, name: '首页素材', status: '1', children: [] }]
 const scss = new Proxy({}, { get: (_, k) => (k === '__esModule' ? false : k) })
 const LIST = 'system:attachment:list'
 
-function mount({ permissions = [LIST, 'system:attachment:update'], update } = {}) {
+function mount({ permissions = [LIST, 'system:attachment:update'], update, folders } = {}) {
   const calls = { updates: [], back: 0 }
   let version = 1
   const page = mountPage('src/pages/system/attachments/form/index.tsx', {
@@ -15,7 +15,7 @@ function mount({ permissions = [LIST, 'system:attachment:update'], update } = {}
     '@tarojs/taro': { showToast() {}, setNavigationBarTitle() {} },
     '@/api/admin/attachments': {
       getAttachment: async () => ITEM,
-      getFolderTree: async () => FOLDERS,
+      getFolderTree: folders || (async () => FOLDERS),
       updateAttachment: update || (async (id, data) => { calls.updates.push({ id, data }); return ITEM }),
     },
     '@/api/client': { getSessionVersion: () => version },
@@ -87,6 +87,27 @@ test('无 update 权限不显示提交栏', async () => {
   const { page } = mount({ permissions: [LIST] })
   await page.settle()
   assert.equal(page.one('FormSubmitBar'), undefined)
+  // 表单本身照常渲染并回填，只是整体禁用
+  assert.equal(page.one('TextField').props.value, 'banner.png')
+  assert.equal(page.one('TextField').props.disabled, true)
+  assert.equal(page.one('EnumField').props.disabled, true)
+})
+
+test('分组树加载失败：分组行提示失败且不能打开面板，保存仍提交原分组', async () => {
+  const { page, calls } = mount({ folders: async () => { throw new Error('网络错误') } })
+  await page.settle()
+  const row = page.all('FormField').find((f) => f.props.label === '分组')
+  assert.match(JSON.stringify(row.props.children), /分组加载失败/)
+  assert.doesNotMatch(JSON.stringify(row.props.children), /未分组/)
+  row.props.onArrowClick()
+  row.props.children.props.onClick()
+  page.rerender()
+  assert.equal(page.one('FolderTreeSheet').props.open, false)
+  page.one('FormSubmitBar').props.onSubmit()
+  await page.settle()
+  assert.equal(calls.updates.length, 1)
+  assert.deepEqual(calls.updates[0].data, { name: 'banner.png', folderId: 7, status: '1' })
+  assert.equal(calls.back, 1)
 })
 
 test('保存期间会话切换：不返回', async () => {

@@ -36,6 +36,8 @@ function AttachmentFormPage() {
   const [status, setStatus] = useState<'0' | '1'>('1')
   const [folders, setFolders] = useState<AttachmentFolder[]>([])
   const [picking, setPicking] = useState(false)
+  // 分组树拉取失败：原分组既显示不出也无法重选，锁住分组行；保存照常提交原 folderId
+  const [folderFailed, setFolderFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [submitError, setSubmitError] = useState('')
@@ -60,13 +62,17 @@ function AttachmentFormPage() {
       void (async () => {
         try {
           if (!Number.isInteger(id) || id <= 0) throw new Error('素材 ID 缺失或无效')
-          // 分组树拿不到时退化为「未分组」，不阻塞编辑名称和状态
-          const [item, tree] = await Promise.all([getAttachment(id), getFolderTree().catch(() => [])])
+          // 分组树拿不到时不阻塞编辑名称和状态，只把分组行标成加载失败
+          const [item, tree] = await Promise.all([
+            getAttachment(id),
+            getFolderTree().catch(() => null),
+          ])
           if (!live()) return
           setName(item.name || item.originalName)
           setFolderId(item.folderId || 0)
           setStatus(item.status)
-          setFolders(tree)
+          setFolders(tree ?? [])
+          setFolderFailed(tree === null)
         } catch (cause) {
           if (live()) setError(errorMessage(cause))
         } finally {
@@ -82,7 +88,7 @@ function AttachmentFormPage() {
 
   const disabled = !canSave || busy || loading
   const openPicker = () => {
-    if (!disabled) setPicking(true)
+    if (!disabled && !folderFailed) setPicking(true)
   }
   async function save() {
     if (disabled || locked.current || !active() || !canWriteModuleNow(MODULE, [UPDATE])) return
@@ -134,7 +140,7 @@ function AttachmentFormPage() {
             {/* 取值与箭头都能打开选择面板：取值撑满控件列，整行右侧可点 */}
             <FormField label="分组" arrow disabled={disabled} onArrowClick={openPicker}>
               <Text className={styles.value} onClick={openPicker}>
-                {folderLabel(folders, folderId, '未分组')}
+                {folderFailed ? '分组加载失败' : folderLabel(folders, folderId, '未分组')}
               </Text>
             </FormField>
             <EnumField
