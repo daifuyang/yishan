@@ -6271,7 +6271,7 @@
           }
         ],
         "x-permission-code": "system:app-menu:list",
-        "x-permission-label": "工作台配置-列表",
+        "x-permission-label": "工作台管理-列表",
         "x-permission-group": "system",
         "responses": {
           "200": {
@@ -6312,7 +6312,7 @@
           }
         ],
         "x-permission-code": "system:app-menu:list",
-        "x-permission-label": "工作台配置-列表",
+        "x-permission-label": "工作台管理-列表",
         "x-permission-group": "system",
         "responses": {
           "200": {
@@ -6360,7 +6360,7 @@
           }
         ],
         "x-permission-code": "system:app-menu:update",
-        "x-permission-label": "工作台配置-更新",
+        "x-permission-label": "工作台管理-更新",
         "x-permission-group": "system",
         "responses": {
           "200": {
@@ -6399,7 +6399,7 @@
           }
         ],
         "x-permission-code": "system:app-menu:delete",
-        "x-permission-label": "工作台配置-删除",
+        "x-permission-label": "工作台管理-删除",
         "x-permission-group": "system",
         "responses": {
           "200": {
@@ -6438,7 +6438,7 @@
           }
         ],
         "x-permission-code": "system:app-menu:create",
-        "x-permission-label": "工作台配置-创建",
+        "x-permission-label": "工作台管理-创建",
         "x-permission-group": "system",
         "responses": {
           "200": {
@@ -6477,7 +6477,7 @@
           }
         ],
         "x-permission-code": "system:app-menu:update",
-        "x-permission-label": "工作台配置-更新",
+        "x-permission-label": "工作台管理-更新",
         "x-permission-group": "system",
         "responses": {
           "200": {
