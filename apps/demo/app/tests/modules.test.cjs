@@ -198,28 +198,25 @@ test('menu cache is reused within expiry and force refresh replaces it', async (
   assert.equal(modules.getState().menus[0].id, 2)
 })
 
-test('common entries persist per user and never bleed into another account', async () => {
-  const saved = new Map()
+test('home apps are dropped when the account changes', async () => {
   const auth = authStore({
     bootstrapped: true,
     token: 'one',
     user: { id: 1, permissions: ['system:user:list'] },
   })
   const modules = loadTs('src/stores/modules.ts', {
-    '@/config': { API_BASE_URL: 'https://api.example' },
-    '@/api': { menuApi: { getAuthorizedMenuTree: async () => [group()] } },
-    './auth': { useAuthStore: auth },
-    '@/utils/storage': {
-      storage: { get: (key) => saved.get(key), set: (key, value) => saved.set(key, value) },
+    '@/api': {
+      menuApi: {
+        getAuthorizedMenuTree: async () => [group()],
+        getHomeApps: async () => ({ pinned: [1], ranked: [] }),
+      },
     },
+    './auth': { useAuthStore: auth },
   }).useModuleStore
   await modules.getState().load()
-  modules.getState().setCommonModules(['system-user'])
-  assert.deepEqual(modules.getState().commonModuleIds, ['system-user'])
+  assert.deepEqual(modules.getState().home, { pinned: [1], ranked: [] })
   auth.setState({ token: 'two', user: { id: 2, permissions: [] } })
-  assert.deepEqual(modules.getState().commonModuleIds, [])
-  auth.setState({ token: 'one', user: { id: 1, permissions: [] } })
-  assert.deepEqual(modules.getState().commonModuleIds, ['system-user'])
+  assert.equal(modules.getState().home, null)
 })
 
 test('base placeholder modules allow navigation to their registered entry', () => {

@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 const test = require('node:test')
-const { loadTs } = require('./helpers/load-ts.cjs')
+const { loadTs, appRoot } = require('./helpers/load-ts.cjs')
 
 const metrics = loadTs('src/pages/index/home-metrics.ts')
 const todos = loadTs('src/pages/index/home-todos.ts')
@@ -53,4 +55,13 @@ test('home app icons resolve antd/menu names and fall back to a grid glyph', () 
   assert.equal(icons.resolveHomeIcon('user', 'UserOutlined'), 'user')
   assert.equal(icons.resolveHomeIcon('unknown-icon', null), 'layoutGrid')
   assert.match(icons.homeIconBackground('bell', '#1D2129'), /^url\("data:image\/svg\+xml,/)
+})
+
+test('首页常用应用来自后端排序并统一走工作台打开', () => {
+  const page = fs.readFileSync(path.join(appRoot, 'src/pages/index/index.tsx'), 'utf8')
+  assert.match(page, /getHomeApps\(/)
+  assert.match(page, /openWorkbenchApp\(/)
+  assert.match(page, /SECONDARY_PAGES\.homeApps/)
+  assert.match(page, /<SectionLink text="编辑"/)
+  assert.doesNotMatch(page, /commonModuleIds|commonConfigured/)
 })

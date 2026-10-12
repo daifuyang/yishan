@@ -182,7 +182,6 @@ function harness() {
     enabledModuleIds: [],
   }
   const subscribers = []
-  const saved = new Map()
   const auth = {
     getState: () => identity,
     subscribe: (fn) => subscribers.push(fn),
@@ -196,6 +195,9 @@ function harness() {
   }
   const api = {
     getAuthorizedMenuTree: async () => [directory({ children: [menu(), contacts()] })],
+    getHomeApps: async () => ({ pinned: [], ranked: [1, 2] }),
+    saveHomePins: async (menuIds) => ({ pinned: [...menuIds], ranked: [] }),
+    reportAppUsage: async () => ({ recorded: true }),
   }
   const authApi = {
     getCurrentUser: async () => identity.user,
@@ -216,51 +218,45 @@ function harness() {
         }
       },
     },
-    '@/config': { API_BASE_URL: 'https://tenant-a.example' },
-    '@/utils/storage': {
-      storage: { get: (key) => saved.get(key) ?? null, set: (key, value) => saved.set(key, value) },
-    },
   }).useModuleStore
-  return { store, auth, api, authApi, saved }
+  return { store, auth, api, authApi }
 }
 
-test('favorites default to accessible apps, persist edited order and respect explicit empty selection', async () => {
+test('load fetches menus and home apps together; a failing home list keeps menus usable', async () => {
   const h = harness()
   await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, ['system-user', 'contacts'])
-  assert.equal(typeof h.store.getState().setCommonModules, 'function')
-  h.store.getState().setCommonModules(['contacts', 'system-user', 'contacts', 'not-built'])
-  assert.deepEqual(h.store.getState().commonModuleIds, ['contacts', 'system-user'])
+  assert.deepEqual(h.store.getState().home, { pinned: [], ranked: [1, 2] })
+  assert.equal(h.store.getState().menus[0].children.length, 2)
+  h.api.getHomeApps = async () => {
+    throw new Error('404')
+  }
+  await h.store.getState().load({ force: true })
+  assert.equal(h.store.getState().error, null)
+  assert.deepEqual(h.store.getState().home, { pinned: [], ranked: [1, 2] }, 'keeps the last good home list')
   h.store.getState().reset()
   await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, ['contacts', 'system-user'])
-  h.store.getState().setCommonModules([])
-  h.store.getState().reset()
-  await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, [])
+  assert.equal(h.store.getState().home, null)
+  assert.equal(h.store.getState().loaded, true)
 })
 
-test('account switches restore only that account preferences and revoked apps disappear', async () => {
+test('savePins stores the server answer and refuses results that land after an account switch', async () => {
   const h = harness()
   await h.store.getState().load()
-  h.store.getState().setCommonModules(['contacts'])
+  await h.store.getState().savePins([2, 1])
+  assert.deepEqual(h.store.getState().home, { pinned: [2, 1], ranked: [] })
+  const pending = deferred()
+  h.api.saveHomePins = () => pending.promise
+  const saving = h.store.getState().savePins([1])
   const first = h.auth.getState().user
   h.auth.setState({ token: 'two', user: { ...first, id: 2 } })
-  await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, ['system-user', 'contacts'])
-  h.store.getState().setCommonModules(['system-user'])
-  h.auth.setState({ token: 'one', user: first })
-  await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, ['contacts'])
-  h.auth.setState({ user: { ...first, permissions: ['system:user:list'] } })
-  h.api.getAuthorizedMenuTree = async () => [directory()]
-  await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, [])
-  assert.ok(
-    [...h.saved.keys()].every((key) =>
-      key.includes(encodeURIComponent('https://tenant-a.example')),
-    ),
-  )
+  pending.resolve({ pinned: [1], ranked: [] })
+  await assert.rejects(saving, /登录状态已变化/)
+  assert.equal(h.store.getState().home, null)
+})
+
+test('savePins requires a loaded catalog for the current account', async () => {
+  const h = harness()
+  await assert.rejects(h.store.getState().savePins([1]), /请刷新应用列表后重试/)
 })
 
 test('forced refresh updates permissions and menus together; failure keeps prior content', async () => {
@@ -271,11 +267,9 @@ test('forced refresh updates permissions and menus together; failure keeps prior
     enabledModuleIds: [],
   })
   await h.store.getState().load({ force: true })
-  assert.deepEqual(h.store.getState().commonModuleIds, ['system-user', 'contacts'])
   h.authApi.getCapabilities = async () => ({ permissions: [], enabledModuleIds: [] })
   await h.store.getState().load({ force: true })
   assert.deepEqual(h.auth.getState().user.permissions, [])
-  assert.deepEqual(h.store.getState().commonModuleIds, [])
   h.api.getAuthorizedMenuTree = async () => {
     throw new Error('offline')
   }
@@ -303,6 +297,7 @@ test('navigation refreshes authorization, refuses revoked apps and blocks consec
   const calls = []
   const pending = deferred()
   const navigation = loadTs('src/pages/apps/navigation.ts', {
+    '@/api': { menuApi: h.api },
     '@/stores/auth': { useAuthStore: h.auth },
     '@/stores/modules': { useModuleStore: h.store },
     '@/utils/router': {
@@ -370,7 +365,6 @@ test('workbench and profile refresh share identity requests so older permissions
   await Promise.all([profile, workbench])
   await modules.getState().load()
   assert.deepEqual(authModule.useAuthStore.getState().user.permissions, [])
-  assert.deepEqual(modules.getState().commonModuleIds, [])
 })
 
 test('entries without a registered mobile page never become favorites or navigate', async () => {
@@ -379,8 +373,10 @@ test('entries without a registered mobile page never become favorites or navigat
     directory({ children: [menu({ id: 8, name: '角色管理', page: 'pages/system/role/index' })] }),
   ]
   await h.store.getState().load()
-  assert.deepEqual(h.store.getState().commonModuleIds, [])
+  const groups = registry.getWorkbenchGroups(h.store.getState().menus, ALL_PERMISSIONS, [])
+  assert.deepEqual(registry.getHomeApps(groups, { pinned: [8], ranked: [] }), [])
   const navigation = loadTs('src/pages/apps/navigation.ts', {
+    '@/api': { menuApi: h.api },
     '@/stores/auth': { useAuthStore: h.auth },
     '@/stores/modules': { useModuleStore: h.store },
     '@/utils/router': {
@@ -390,4 +386,39 @@ test('entries without a registered mobile page never become favorites or navigat
     },
   })
   await assert.rejects(navigation.openWorkbenchApp('menu-8'), /不可用/)
+})
+
+test('opening an app reports usage once after navigation; reporting failures are swallowed', async () => {
+  const h = harness()
+  const reported = []
+  h.api.reportAppUsage = async (menuId) => {
+    reported.push(menuId)
+    throw new Error('offline')
+  }
+  const calls = []
+  const navigation = loadTs('src/pages/apps/navigation.ts', {
+    '@/api': { menuApi: h.api },
+    '@/stores/auth': { useAuthStore: h.auth },
+    '@/stores/modules': { useModuleStore: h.store },
+    '@/utils/router': { navigateTo: async (url) => calls.push(url) },
+  })
+  await navigation.openWorkbenchApp('contacts')
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(calls, ['/pages/contacts/index/index'])
+  assert.deepEqual(reported, [2])
+})
+
+test('a refused app is never reported', async () => {
+  const h = harness()
+  const reported = []
+  h.api.reportAppUsage = async (menuId) => reported.push(menuId)
+  h.authApi.getCapabilities = async () => ({ permissions: [], enabledModuleIds: [] })
+  const navigation = loadTs('src/pages/apps/navigation.ts', {
+    '@/api': { menuApi: h.api },
+    '@/stores/auth': { useAuthStore: h.auth },
+    '@/stores/modules': { useModuleStore: h.store },
+    '@/utils/router': { navigateTo: async () => undefined },
+  })
+  await assert.rejects(navigation.openWorkbenchApp('contacts'), /权限|不可用/)
+  assert.deepEqual(reported, [])
 })

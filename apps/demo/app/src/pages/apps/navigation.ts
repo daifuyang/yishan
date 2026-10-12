@@ -1,3 +1,4 @@
+import { menuApi } from '@/api'
 import { getWorkbenchGroups } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
@@ -22,6 +23,10 @@ export async function openWorkbenchApp(id: string): Promise<void> {
       .find((app) => app.id === id)
     if (!app) throw new Error('应用已不可用或访问权限已变更')
     await navigateTo(`/${app.entry}`)
+    // 使用记录只服务首页推荐：不等待、不提示，接口缺失或失败都不影响打开应用
+    void Promise.resolve()
+      .then(() => menuApi.reportAppUsage(app.menuId))
+      .catch(() => undefined)
   } finally {
     navigating = false
   }

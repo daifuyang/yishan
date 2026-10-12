@@ -4,14 +4,15 @@ import { useEffect, useMemo } from 'react'
 
 import { PageContainer } from '@/components/layout'
 import { APP_NAME } from '@/constants'
-import { SECONDARY_PAGES, TAB_PAGES } from '@/constants/routes'
-import { getAuthorizedMobileModules } from '@/modules/registry'
+import { SECONDARY_PAGES } from '@/constants/routes'
+import { getAuthorizedMobileModules, getHomeApps, getWorkbenchGroups } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
 import { useRequireAuth } from '@/utils/auth-guard'
-import { navigateTo, switchTab } from '@/utils/router'
+import { navigateTo } from '@/utils/router'
 
 import logo from '@/assets/brand/logo.png'
+import { openWorkbenchApp } from '../apps/navigation'
 import { DashboardMetrics } from './components/DashboardMetrics'
 import { type FavoriteAppItem, FavoriteApps } from './components/FavoriteApps'
 import { HomeIcon } from './components/HomeIcon'
@@ -21,8 +22,6 @@ import type { HomeMetricDef } from './home-metrics'
 import { useHomeMetrics } from './useHomeMetrics'
 import { useHomeTodos } from './useHomeTodos'
 import styles from './index.module.scss'
-
-const MAX_APPS = 8
 
 interface TopBarMetrics {
   /** 状态栏高度（自定义导航栏时由页面自行让出） */
@@ -56,8 +55,7 @@ export default function IndexPage() {
   const modulesLoading = useModuleStore((state) => state.loading)
   const modulesError = useModuleStore((state) => state.error)
   const modulesLoaded = useModuleStore((state) => state.loaded)
-  const commonModuleIds = useModuleStore((state) => state.commonModuleIds)
-  const commonConfigured = useModuleStore((state) => state.commonConfigured)
+  const home = useModuleStore((state) => state.home)
   const auth = useRequireAuth()
   const metrics = useHomeMetrics()
   const todos = useHomeTodos()
@@ -97,15 +95,19 @@ export default function IndexPage() {
   }
 
   const modules = getAuthorizedMobileModules(menus, user?.permissions, enabledModuleIds)
-  // 优先使用工作台里设置的常用应用；未设置时按注册顺序取有权限的应用
-  const common = commonModuleIds.flatMap((id) => modules.filter((module) => module.id === id))
-  const apps: FavoriteAppItem[] = (commonConfigured || common.length > 0 ? common : modules)
-    .slice(0, MAX_APPS)
-    .map((module) => ({ id: module.id, name: module.name, icon: module.icon }))
+  // 用户固定的在前，其余按使用习惯补位；首页排序不可用时按工作台顺序
+  const apps: FavoriteAppItem[] = getHomeApps(
+    getWorkbenchGroups(menus, user?.permissions, enabledModuleIds),
+    home,
+  ).map((app) => ({ id: app.id, name: app.name, icon: app.icon }))
 
   const openModule = (id: string) => {
-    const module = modules.find((candidate) => candidate.id === id)
-    if (module) navigateTo(`/${module.entry}`)
+    void openWorkbenchApp(id).catch((failure: unknown) => {
+      Taro.showToast({
+        title: failure instanceof Error ? failure.message : '无法打开应用，请重试',
+        icon: 'none',
+      })
+    })
   }
 
   const getMetricDetail = (def: HomeMetricDef) => {
@@ -166,7 +168,9 @@ export default function IndexPage() {
 
       <HomeSection
         title="常用应用"
-        extra={<SectionLink text="全部" onClick={() => switchTab(`/${TAB_PAGES.apps}`)} />}
+        extra={
+          <SectionLink text="编辑" onClick={() => navigateTo(`/${SECONDARY_PAGES.homeApps}`)} />
+        }
       >
         <FavoriteApps
           apps={apps}

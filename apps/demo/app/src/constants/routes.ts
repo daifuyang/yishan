@@ -16,6 +16,7 @@ export const SECONDARY_PAGES = {
   messages: 'pages/messages/index',
   security: 'pages/security/index',
   about: 'pages/about/index',
+  homeApps: 'pages/apps/pinned/index',
   contactsIndex: 'pages/contacts/index/index',
   contactsDept: 'pages/contacts/dept/index',
 } as const
