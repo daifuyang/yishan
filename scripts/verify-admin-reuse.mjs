@@ -133,7 +133,7 @@ function killProcessTree(pid, signal) {
 }
 
 export async function stopCommand(command) {
-  if (command.child.exitCode !== null) return
+  if (command.child.exitCode !== null || command.child.signalCode !== null) return
   const pid = command.child.pid
   await new Promise(accept => {
     let settled = false

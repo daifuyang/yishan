@@ -45,10 +45,13 @@ test('throwaway consumer uses public System exports and lazy generated registry 
 test('stopCommand waits until the child process has exited', async () => {
   const root = mkdtempSync(join(tmpdir(), 'yishan-admin-reuse-stop-'))
   try {
-    const command = startCommand(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], root, join(root, 'proc.log'))
+    const script = join(root, 'keep-alive.js')
+    writeFileSync(script, 'setInterval(() => {}, 1000)\n')
+    const command = startCommand(script, [], root, join(root, 'proc.log'))
     assert.equal(command.child.exitCode, null)
+    assert.equal(command.child.signalCode, null)
     await stopCommand(command)
-    assert.notEqual(command.child.exitCode, null)
+    assert.ok(command.child.exitCode !== null || command.child.signalCode !== null)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
