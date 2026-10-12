@@ -106,3 +106,9 @@
   background: var(--color-primary);
   color: var(--color-text-inverse);
 }
+
+.action--danger {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+}

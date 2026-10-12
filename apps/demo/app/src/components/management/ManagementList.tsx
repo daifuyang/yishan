@@ -1,4 +1,4 @@
-import { Text, View } from '@tarojs/components'
+import { Image, Text, View } from '@tarojs/components'
 import type { ReactNode } from 'react'
 import { useMemo } from 'react'
 
@@ -27,6 +27,8 @@ export interface ManagementCellProps {
   description?: ReactNode
   /** 标题右侧的状态标签，直接渲染节点（通常是 <Tag>） */
   tag?: ReactNode
+  /** 行首方形缩略图（媒体类列表）；有 src 时图片覆盖在图标上，加载失败露出图标 */
+  thumb?: { src?: string; glyph: LineIconName }
   /** 行首头像；不传则用 glyph 图标 */
   avatar?: { src?: string; name: string }
   glyph?: LineIconName
@@ -48,6 +50,7 @@ export function ManagementCell({
   title,
   description,
   tag,
+  thumb,
   avatar,
   glyph,
   glyphColor = '#1677FF',
@@ -65,7 +68,14 @@ export function ManagementCell({
       hoverClass={onClick ? styles.rowHover : undefined}
       {...longPressProps}
     >
-      {avatar ? (
+      {thumb ? (
+        <View className={styles.row__thumb}>
+          <LineIcon name={thumb.glyph} size={20} color={glyphColor} />
+          {thumb.src ? (
+            <Image className={styles.row__thumbImage} src={thumb.src} mode="aspectFill" lazyLoad />
+          ) : null}
+        </View>
+      ) : avatar ? (
         <Avatar
           src={avatar.src}
           name={avatar.name}

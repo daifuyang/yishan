@@ -21,6 +21,10 @@ export interface SelectionFooterProps {
   onCancel: () => void
   onConfirm: () => void
   onRemoveItem?: (id: number) => void
+  /** 右侧主按钮文案，默认「确定」；删除场景传「删除」 */
+  confirmLabel?: string
+  /** 主按钮用危险色 */
+  confirmDanger?: boolean
 }
 
 /** 底部固定操作条：已选计数（可展开清单）+ 取消 / 确定。 */
@@ -32,6 +36,8 @@ export function SelectionFooter({
   onCancel,
   onConfirm,
   onRemoveItem,
+  confirmLabel = '确定',
+  confirmDanger = false,
 }: SelectionFooterProps) {
   const [open, setOpen] = useState(false)
   const summary =
@@ -91,11 +97,15 @@ export function SelectionFooter({
               <Text>取消</Text>
             </View>
             <View
-              className={cx(styles.action, styles['action--primary'])}
-              aria-label="确定"
+              className={cx(
+                styles.action,
+                styles['action--primary'],
+                confirmDanger && styles['action--danger'],
+              )}
+              aria-label={confirmLabel}
               onClick={onConfirm}
             >
-              <Text>确定</Text>
+              <Text>{confirmLabel}</Text>
             </View>
           </View>
         )}
