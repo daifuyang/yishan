@@ -45,27 +45,90 @@ test('SelectionFooter 支持自定义确认文案与危险样式，默认仍是�
   assert.ok(flat(SelectionFooter(base)).find((n) => n.props?.['aria-label'] === '确定'))
 })
 
-test('H5 chooseFiles 在同一调用栈内创建并点击 input（不被浏览器拦截）', async () => {
-  const clicks = []
-  let input
+function mockH5Dom() {
+  const env = { clicks: [], removed: [], listeners: {}, input: undefined }
   global.document = {
     createElement: (tag) => {
-      input = { tag, style: {}, files: [], click() { clicks.push(tag) }, set onchange(fn) { this._change = fn }, set oncancel(fn) { this._cancel = fn } }
-      return input
+      env.input = { tag, style: {}, files: [], click() { env.clicks.push(tag) }, set onchange(fn) { this._change = fn }, set oncancel(fn) { this._cancel = fn } }
+      return env.input
     },
-    body: { appendChild() {}, removeChild() {} },
+    body: { appendChild() {}, removeChild(node) { env.removed.push(node) } },
+  }
+  global.window = {
+    addEventListener: (type, fn) => { env.listeners[type] = fn },
+    removeEventListener: (type, fn) => { if (env.listeners[type] === fn) delete env.listeners[type] },
   }
   global.URL = { createObjectURL: (f) => `blob:${f.name}` }
-  const { chooseFiles } = loadTs('src/pages/system/attachments/chooseFiles.h5.ts', {})
-  const pending = chooseFiles()
-  assert.deepEqual(clicks, ['input'], 'click 必须同步发生')
-  assert.equal(input.type, 'file')
-  assert.equal(input.multiple, true)
-  input.files = [{ name: 'a.pdf', size: 3, type: 'application/pdf' }]
-  input._change()
-  assert.deepEqual(await pending, [{ path: 'blob:a.pdf', name: 'a.pdf', size: 3, mimeType: 'application/pdf' }])
+  return env
+}
+
+function cleanupH5Dom() {
   delete global.document
+  delete global.window
   delete global.URL
+}
+
+const loadH5 = () => loadTs('src/pages/system/attachments/chooseFiles.h5.ts', {})
+
+test('H5 chooseFiles 在同一调用栈内创建并点击 input（不被浏览器拦截）', async () => {
+  try {
+    const env = mockH5Dom()
+    const { chooseFiles } = loadH5()
+    const pending = chooseFiles()
+    assert.deepEqual(env.clicks, ['input'], 'click 必须同步发生')
+    const { input } = env
+    assert.equal(input.type, 'file')
+    assert.equal(input.multiple, true)
+    input.files = [{ name: 'a.pdf', size: 3, type: 'application/pdf' }]
+    input._change()
+    assert.deepEqual(await pending, [{ path: 'blob:a.pdf', name: 'a.pdf', size: 3, mimeType: 'application/pdf' }])
+    assert.deepEqual(env.removed, [input])
+    assert.equal(env.listeners.focus, undefined, '落地后移除 focus 监听')
+  } finally {
+    cleanupH5Dom()
+  }
+})
+
+test('H5 chooseFiles 取消时返回空数组并移除 input', async () => {
+  try {
+    const env = mockH5Dom()
+    const { chooseFiles } = loadH5()
+    const pending = chooseFiles()
+    env.input._cancel()
+    assert.deepEqual(await pending, [])
+    assert.deepEqual(env.removed, [env.input])
+    assert.equal(env.listeners.focus, undefined)
+  } finally {
+    cleanupH5Dom()
+  }
+})
+
+test('H5 chooseFiles 不触发 change/cancel 时靠窗口 focus 兜底落地，且只落地一次', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  try {
+    const env = mockH5Dom()
+    const { chooseFiles } = loadH5()
+    let resolved = 0
+    const pending = chooseFiles().then((files) => {
+      resolved += 1
+      return files
+    })
+    assert.equal(typeof env.listeners.focus, 'function', 'click 之后监听窗口 focus')
+    env.listeners.focus()
+    t.mock.timers.tick(299)
+    assert.deepEqual(env.removed, [], '等待期内不提前落地，给迟到的 change 留时间')
+    t.mock.timers.tick(1)
+    assert.deepEqual(await pending, [])
+    assert.deepEqual(env.removed, [env.input])
+    env.input.files = [{ name: 'late.pdf', size: 1, type: 'application/pdf' }]
+    env.input._change()
+    env.input._cancel()
+    await Promise.resolve()
+    assert.equal(resolved, 1)
+    assert.deepEqual(env.removed, [env.input], '不重复移除 input')
+  } finally {
+    cleanupH5Dom()
+  }
 })
 
 test('小程序 chooseFiles 用户取消返回空数组', async () => {
