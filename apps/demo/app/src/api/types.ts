@@ -43,6 +43,12 @@ export interface WorkbenchMenuNode {
   children?: WorkbenchMenuNode[] | null
 }
 
+/** 首页常用应用：均为工作台入口 ID。pinned 为用户固定顺序，ranked 为其余已授权入口按使用习惯排序 */
+export interface HomeAppIds {
+  pinned: number[]
+  ranked: number[]
+}
+
 export interface SysMenuNode {
   id: number
   name: string

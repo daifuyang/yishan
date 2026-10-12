@@ -2,7 +2,7 @@ import { hasRequiredPermissions } from '@yishan/core-app/permissions'
 export { hasRequiredPermissions } from '@yishan/core-app/permissions'
 import { normalizePage } from '@yishan/core-app/router'
 export { normalizePage } from '@yishan/core-app/router'
-import type { WorkbenchMenuNode } from '@/api/types'
+import type { HomeAppIds, WorkbenchMenuNode } from '@/api/types'
 import { isRegisteredPage } from '@/constants/page-config'
 
 /** 实际移动端页面注册；工作台入口以 page 与 entry 匹配，未注册的入口不展示。 */
@@ -231,6 +231,32 @@ export function getWorkbenchGroups(
       })
     }
     if (apps.length) result.push({ id: `group-${group.id}`, name: group.name, apps })
+  }
+  return result
+}
+
+export const MAX_HOME_APPS = 8
+
+/**
+ * 首页常用应用：先取用户固定的，再按推荐顺序补位。
+ * 以工作台目录为准——没有已注册页面或无权限的入口不会出现；首页列表不可用时按工作台顺序。
+ */
+export function getHomeApps(
+  groups: readonly WorkbenchAppGroup[],
+  home: HomeAppIds | null,
+  max = MAX_HOME_APPS,
+): WorkbenchApp[] {
+  const apps = groups.flatMap((group) => group.apps)
+  if (!home) return apps.slice(0, max)
+  const byMenuId = new Map(apps.map((app) => [app.menuId, app]))
+  const result: WorkbenchApp[] = []
+  const seen = new Set<number>()
+  for (const id of [...home.pinned, ...home.ranked]) {
+    const app = byMenuId.get(id)
+    if (!app || seen.has(id)) continue
+    seen.add(id)
+    result.push(app)
+    if (result.length >= max) break
   }
   return result
 }
