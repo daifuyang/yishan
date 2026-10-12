@@ -24,6 +24,42 @@ const MENUS = [
   },
 ]
 
+/**
+ * 带按钮（type 2）的完整菜单树：按钮挂 permissionCodes，与 PC 授权树同构。
+ * 测试角色已拥有 system:user:create，因此「新增用户」初始为勾选。
+ */
+const MENUS_WITH_ACTIONS = [
+  {
+    id: 1,
+    name: '系统管理',
+    type: 0,
+    parentId: 0,
+    children: [
+      {
+        id: 11,
+        name: '用户管理',
+        type: 1,
+        parentId: 1,
+        path: '/system/user',
+        children: [
+          { id: 111, name: '新增用户', type: 2, parentId: 11, permissionCodes: ['system:user:create'] },
+          { id: 112, name: '删除用户', type: 2, parentId: 11, permissionCodes: ['system:user:delete'] },
+        ],
+      },
+      {
+        id: 12,
+        name: '角色管理',
+        type: 1,
+        parentId: 1,
+        path: '/system/role',
+        children: [
+          { id: 121, name: '编辑角色', type: 2, parentId: 12, permissionCodes: ['system:role:update'] },
+        ],
+      },
+    ],
+  },
+]
+
 /** 同时拥有菜单、功能、工作台授权的测试角色。 */
 function seedRole() {
   return {
@@ -64,7 +100,7 @@ function fakeBackend({ failUpdate = false } = {}) {
   }
 }
 
-function mount({ backend, canWrite = true } = {}) {
+function mount({ backend, canWrite = true, menus = MENUS } = {}) {
   const toasts = []
   const back = []
   const states = []
@@ -106,7 +142,7 @@ function mount({ backend, canWrite = true } = {}) {
       showToast: (options) => toasts.push(options),
     },
     '@/api/admin/role': backend.api,
-    '@/api/admin/menu': { getAdminMenuTree: async () => structuredClone(MENUS) },
+    '@/api/admin/menu': { getAdminMenuTree: async () => structuredClone(menus) },
     '@/api/client': { getSessionVersion: () => 1 },
     '@/components/management': {
       Checkbox: 'Checkbox',
@@ -164,7 +200,23 @@ function mount({ backend, canWrite = true } = {}) {
   function submitBar(tree) {
     return find(tree, (n) => n.type === 'FSB')[0]
   }
-  return { settle, click, submitBar, toasts, back }
+  function labels(tree) {
+    return find(tree, (n) => typeof n.props?.['aria-label'] === 'string').map(
+      (n) => n.props['aria-label'],
+    )
+  }
+  function search(tree, keyword) {
+    find(tree, (n) => n.type === 'MSB')[0].props.onChange(keyword)
+  }
+  function texts(tree) {
+    return find(tree, (n) => n.type === 'Text').map((n) => [].concat(n.props.children).join(''))
+  }
+  async function save() {
+    const tree = await settle()
+    submitBar(tree).props.onSubmit()
+    await settle()
+  }
+  return { settle, click, submitBar, labels, search, texts, save, toasts, back }
 }
 
 test('保存菜单授权只提交 menuIds，功能与工作台授权保持不变', async () => {
@@ -225,4 +277,92 @@ test('保存失败时提示错误、不返回上一页且已有授权不被破�
   assert.deepEqual(backend.snapshot(), seedRole())
   assert.equal(page.toasts.at(-1).title, '网络异常')
   assert.equal(page.back.length, 0)
+})
+
+const sorted = (list) => [...list].sort()
+const sortedIds = (list) => [...list].sort((a, b) => a - b)
+
+test('勾选按钮会提交 permissionCodes：保留非按钮码，menuIds 不含按钮 id', async () => {
+  const backend = fakeBackend()
+  const page = mount({ backend, menus: MENUS_WITH_ACTIONS })
+  page.click(await page.settle(), '删除用户')
+  await page.save()
+
+  assert.equal(backend.updates.length, 1)
+  assert.deepEqual(sorted(Object.keys(backend.updates[0].data)), ['menuIds', 'permissionCodes'])
+  const saved = backend.snapshot()
+  assert.deepEqual(sortedIds(saved.menuIds), [1, 11])
+  assert.deepEqual(sorted(saved.permissionCodes), [
+    'system:user:create',
+    'system:user:delete',
+    'system:user:read',
+  ])
+  assert.deepEqual(saved.appMenuIds, seedRole().appMenuIds)
+})
+
+test('树里有按钮但未改动按钮时仍只提交 menuIds', async () => {
+  const backend = fakeBackend()
+  const page = mount({ backend, menus: MENUS_WITH_ACTIONS })
+  await page.save()
+
+  assert.deepEqual(Object.keys(backend.updates[0].data), ['menuIds'])
+  assert.deepEqual(backend.snapshot(), seedRole())
+})
+
+test('勾选父节点连同全部后代（含按钮）一起勾选，按钮码随之加入', async () => {
+  const backend = fakeBackend()
+  const page = mount({ backend, menus: MENUS_WITH_ACTIONS })
+  page.click(await page.settle(), '角色管理')
+  await page.save()
+
+  const saved = backend.snapshot()
+  assert.deepEqual(sortedIds(saved.menuIds), [1, 11, 12])
+  assert.deepEqual(sorted(saved.permissionCodes), [
+    'system:role:update',
+    'system:user:create',
+    'system:user:read',
+  ])
+})
+
+test('取消父节点连同全部后代一起取消，按钮码随之移除，非按钮码保留', async () => {
+  const backend = fakeBackend()
+  const page = mount({ backend, menus: MENUS_WITH_ACTIONS })
+  page.click(await page.settle(), '系统管理')
+  await page.save()
+
+  const saved = backend.snapshot()
+  assert.deepEqual(saved.menuIds, [])
+  assert.deepEqual(saved.permissionCodes, ['system:user:read'])
+  assert.deepEqual(saved.appMenuIds, seedRole().appMenuIds)
+})
+
+test('勾选子节点不反推父节点', async () => {
+  const backend = fakeBackend()
+  const page = mount({ backend, menus: MENUS_WITH_ACTIONS })
+  page.click(await page.settle(), '编辑角色')
+  await page.save()
+
+  const saved = backend.snapshot()
+  assert.deepEqual(sortedIds(saved.menuIds), [1, 11], '父菜单「角色管理」不应被自动勾选')
+  assert.ok(saved.permissionCodes.includes('system:role:update'))
+})
+
+test('底部计数区分菜单与功能', async () => {
+  const page = mount({ backend: fakeBackend(), menus: MENUS_WITH_ACTIONS })
+  const tree = await page.settle()
+  assert.ok(page.texts(tree).includes('已选 2 个菜单 · 1 项功能'))
+})
+
+test('搜索可按权限码命中按钮，并保留其父级链', async () => {
+  const page = mount({ backend: fakeBackend(), menus: MENUS_WITH_ACTIONS })
+  page.search(await page.settle(), 'system:role:update')
+  const tree = await page.settle()
+  const shown = page.labels(tree)
+  assert.ok(shown.includes('编辑角色'))
+  assert.ok(shown.includes('角色管理'))
+  assert.ok(shown.includes('系统管理'))
+  assert.ok(!shown.includes('用户管理'))
+  assert.ok(!shown.includes('新增用户'))
+  // 按钮第二行展示其权限码
+  assert.ok(page.texts(tree).includes('system:role:update'))
 })

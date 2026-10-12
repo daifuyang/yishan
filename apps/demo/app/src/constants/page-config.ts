@@ -34,6 +34,7 @@ export const PAGE_CONFIG: {
     'pages/system/dict/items/form/index',
     'pages/system/role/index', 'pages/system/role/detail/index',
     'pages/system/role/form/index', 'pages/system/role/permissions/index',
+    'pages/system/role/workbench/index',
     'pages/system/position/index',
     'pages/system/position/detail/index',
     'pages/system/position/form/index',

@@ -2,6 +2,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { Picker, Text, View } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import * as adminRoleApi from '@/api/admin/role'
+import * as adminAppMenuApi from '@/api/admin/appMenu'
 import type { AdminRoleDetail } from '@/api/admin/role'
 import { getSessionVersion } from '@/api/client'
 import { StateView } from '@/components/feedback'
@@ -17,12 +18,13 @@ import {
 } from '@/components/management'
 import { PageHeader } from '@/components/molecules'
 import styles from './index.module.scss'
-import { SYSTEM_PAGES } from '@/constants/routes'
+import { PERMS, SYSTEM_PAGES } from '@/constants/routes'
 import { useCanWrite } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack, navigateTo } from '@/utils/router'
 import { withAccountScope } from '../../_shared/AdminUI'
 import { DATA_SCOPE_LABELS } from '../model'
+import { appMenuEntrySummary } from '../permissions'
 
 const STATUS_OPTIONS = [
   { value: '1', label: '启用' },
@@ -44,6 +46,7 @@ function RoleFormPage() {
     isEdit ? 'system:role:update' : 'system:role:create',
     'system:role:grant',
   )
+  const canListAppMenus = useCanWrite(PERMS.appMenuList)
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -53,6 +56,7 @@ function RoleFormPage() {
   const [error, setError] = useState<string | null>(null)
   const [menuCount, setMenuCount] = useState(0)
   const [permissionCount, setPermissionCount] = useState(0)
+  const [appMenuSummary, setAppMenuSummary] = useState('')
   const [nameError, setNameError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const submittingRef = useRef(false)
@@ -65,7 +69,13 @@ function RoleFormPage() {
     void (async () => {
       setLoading(true)
       try {
-        const role = await adminRoleApi.getAdminRole(id as number)
+        // 工作台树只用来只数入口；拿不到时摘要退化为「已配置/未配置」
+        const [role, groups] = await Promise.all([
+          adminRoleApi.getAdminRole(id as number),
+          canListAppMenus
+            ? adminAppMenuApi.getAdminAppMenuTree().catch(() => null)
+            : Promise.resolve(null),
+        ])
         if (!active) return
         setName(role.name)
         setDescription(role.description ?? '')
@@ -73,6 +83,7 @@ function RoleFormPage() {
         setDataScope(role.dataScope)
         setMenuCount(role.menuIds?.length ?? 0)
         setPermissionCount(role.permissionCodes?.length ?? 0)
+        setAppMenuSummary(appMenuEntrySummary(role.appMenuIds, groups))
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : '加载失败')
       } finally {
@@ -84,12 +95,12 @@ function RoleFormPage() {
     }
   }, [isEdit, id])
 
-  const goPermissions = () => {
+  const goPermissions = (page: string = SYSTEM_PAGES.rolePermissions) => {
     if (!isEdit) {
       Taro.showToast({ title: '请先保存角色', icon: 'none' })
       return
     }
-    navigateTo(`/${SYSTEM_PAGES.rolePermissions}?id=${id}`)
+    navigateTo(`/${page}?id=${id}`)
   }
 
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
@@ -213,12 +224,17 @@ function RoleFormPage() {
               value={
                 isEdit ? `${menuCount} 个菜单` : '保存后可配置'
               }
-              onClick={goPermissions}
+              onClick={() => goPermissions()}
             />
             <LinkRow
               label="功能权限"
               value={isEdit ? `${permissionCount} 项` : '保存后可配置'}
-              onClick={goPermissions}
+              onClick={() => goPermissions()}
+            />
+            <LinkRow
+              label="工作台授权"
+              value={isEdit ? appMenuSummary : '保存后可配置'}
+              onClick={() => goPermissions(SYSTEM_PAGES.roleWorkbench)}
             />
           </FormSection>
         </FormContent>

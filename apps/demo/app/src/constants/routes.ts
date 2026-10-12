@@ -41,6 +41,7 @@ export const SYSTEM_PAGES = {
   roleDetail: 'pages/system/role/detail/index',
   roleForm: 'pages/system/role/form/index',
   rolePermissions: 'pages/system/role/permissions/index',
+  roleWorkbench: 'pages/system/role/workbench/index',
   position: 'pages/system/position/index',
   positionDetail: 'pages/system/position/detail/index',
   positionForm: 'pages/system/position/form/index',
@@ -92,6 +93,8 @@ export const PERMS = {
   // 菜单管理（角色授权需要读取菜单与权限目录）
   menuList: 'system:menu:list',
   permissionCatalog: 'system:permission:catalog',
+  // 工作台管理（角色授权计数需要读取工作台树）
+  appMenuList: 'system:app-menu:list',
   // 部门管理
   deptList: 'system:department:list',
   deptCreate: 'system:department:create',

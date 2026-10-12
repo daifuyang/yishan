@@ -129,3 +129,40 @@ export function parentCheckState(
   if (hit === 0) return 'unchecked'
   return hit === children.length ? 'checked' : 'indeterminate'
 }
+
+/**
+ * 按钮（type 2）授权折回 permissionCodes，与 PC 授权树一致：
+ * 不属于任何按钮的码原样保留，再并上已勾选按钮的全部码。
+ */
+export function buildActionPermissionCodes(
+  roleCodes: readonly string[],
+  menus: readonly AdminMenu[],
+  selectedIds: ReadonlySet<number>,
+): string[] {
+  const actions = flattenMenus(menus).filter((node) => node.type === 2)
+  const actionCodes = new Set(actions.flatMap((node) => node.permissionCodes || []))
+  return [
+    ...new Set([
+      ...roleCodes.filter((code) => !actionCodes.has(code)),
+      ...actions
+        .filter((node) => selectedIds.has(node.id))
+        .flatMap((node) => node.permissionCodes || []),
+    ]),
+  ]
+}
+
+/**
+ * 工作台授权摘要：appMenuIds 里同时存了入口与分组，只数入口。
+ * 拿不到工作台树（无 system:app-menu:list 或拉取失败）时退化为不带数字的文案。
+ */
+export function appMenuEntrySummary(
+  appMenuIds: readonly number[] | undefined,
+  groups: readonly AdminAppMenu[] | null,
+): string {
+  if (!groups) return appMenuIds?.length ? '已配置' : '未配置'
+  const selected = new Set(appMenuIds ?? [])
+  const count = groups
+    .flatMap((group) => group.children || [])
+    .filter((entry) => selected.has(entry.id)).length
+  return `${count} 个入口`
+}

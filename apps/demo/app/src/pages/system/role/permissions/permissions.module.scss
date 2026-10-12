@@ -60,3 +60,8 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
 }
+
+/* 按钮（type 2）挂在菜单下，再缩进一级 */
+.node--grandchild {
+  padding-left: calc(var(--space-8) * 2);
+}

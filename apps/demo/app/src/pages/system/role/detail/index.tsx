@@ -1,6 +1,8 @@
 import Taro, { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
 import * as adminRoleApi from '@/api/admin/role'
+import * as adminAppMenuApi from '@/api/admin/appMenu'
+import type { AdminAppMenu } from '@/api/admin/appMenu'
 import type { AdminRoleDetail } from '@/api/admin/role'
 import { Tag } from '@/components/atoms'
 import { StateView } from '@/components/feedback'
@@ -29,6 +31,7 @@ import {
   roleTypeLabel,
   toggleRoleStatus,
 } from '../model'
+import { appMenuEntrySummary } from '../permissions'
 
 function RoleDetailPage() {
   const guard = useRequireAuth({ moduleId: 'system-role' })
@@ -37,8 +40,11 @@ function RoleDetailPage() {
   // AND 语义：权限内页要求 update + grant 同时具备，用它决定是否给跳转箭头
   const canUpdate = useCanWrite(PERMS.roleUpdate, PERMS.roleGrant)
   const canDelete = useCanWrite(PERMS.roleDelete)
+  const canListAppMenus = useCanWrite(PERMS.appMenuList)
 
   const [role, setRole] = useState<AdminRoleDetail | null>(null)
+  // 工作台树只用来区分入口与分组；拿不到时计数退化为「已配置/未配置」
+  const [appMenuGroups, setAppMenuGroups] = useState<AdminAppMenu[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -58,8 +64,16 @@ function RoleDetailPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await adminRoleApi.getAdminRole(id)
-      if (sequence === loadSequence.current) setRole(data)
+      const [data, groups] = await Promise.all([
+        adminRoleApi.getAdminRole(id),
+        canListAppMenus
+          ? adminAppMenuApi.getAdminAppMenuTree().catch(() => null)
+          : Promise.resolve(null),
+      ])
+      if (sequence === loadSequence.current) {
+        setRole(data)
+        setAppMenuGroups(groups)
+      }
     } catch (e) {
       if (sequence === loadSequence.current) setError(e instanceof Error ? e.message : '加载失败')
     } finally {
@@ -88,6 +102,7 @@ function RoleDetailPage() {
   })
 
   // 菜单树与权限目录不再在详情页拉取：详情只展示计数，清单由权限内页负责。
+  // 工作台树例外：appMenuIds 混有分组 id，只有拿到树才能只数入口。
 
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
 
@@ -231,6 +246,16 @@ function RoleDetailPage() {
                   onClick={
                     canUpdate
                       ? () => navigateTo(`/${SYSTEM_PAGES.rolePermissions}?id=${role.id}`)
+                      : undefined
+                  }
+                />
+                <DetailRow
+                  label="工作台授权"
+                  value={appMenuEntrySummary(role.appMenuIds, appMenuGroups)}
+                  showArrow={canUpdate}
+                  onClick={
+                    canUpdate
+                      ? () => navigateTo(`/${SYSTEM_PAGES.roleWorkbench}?id=${role.id}`)
                       : undefined
                   }
                 />

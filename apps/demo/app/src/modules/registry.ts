@@ -273,6 +273,10 @@ const SECONDARY_MODULE_PAGES: Record<
     moduleId: 'system-role',
     permissions: ['system:role:update', 'system:role:grant'],
   },
+  'pages/system/role/workbench/index': {
+    moduleId: 'system-role',
+    permissions: ['system:role:update', 'system:role:grant'],
+  },
 }
 
 export function getModuleForPage(path: string): MobilePageAccess | undefined {
