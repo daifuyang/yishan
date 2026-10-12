@@ -36,7 +36,7 @@
 | sort_order | int NOT NULL DEFAULT 0 | 用户排序，0 起 |
 | created_at / updated_at | datetime | 与现有表一致 |
 
-唯一 `uniq_user_workbench_pin(user_id, workbench_menu_id)`；索引 `idx_user_workbench_pin_user_id`。
+唯一 `uniq_user_workbench_pin(user_id, workbench_menu_id)`（以 user_id 开头，兼作按用户查询的索引）。
 整体覆盖写，不做软删除。
 
 `sys_user_workbench_usage` — 使用计数
@@ -50,7 +50,7 @@
 | last_opened_at | datetime NOT NULL | |
 | created_at / updated_at | datetime | |
 
-唯一 `uniq_user_workbench_usage(user_id, workbench_menu_id)`；索引 `idx_user_workbench_usage_user_id`。
+唯一 `uniq_user_workbench_usage(user_id, workbench_menu_id)`（同上，不另建 user_id 索引）。
 
 项目不使用外键：菜单被删除、停用、取消授权或所属模块禁用后，相关行在**读取时**按授权树过滤掉，
 在下次 `PUT /pins` 时被自然清除；usage 残留行无害（不参与排序）。
@@ -58,7 +58,7 @@
 ### 接口（`/api/v1/app/menus`，只作用于 `request.currentUser`）
 
 所有授权判断复用 `AppMenuService.getAuthorizedTree(roleIds, moduleLoader)` 得到的入口集合（以下称「可用入口」）。
-权限点按现有 `PERMS` + `registerPermissions` 方式登记，`group: 'app'`，并给默认角色授权（与 `app:menu:authorized-tree` 一致）。
+三个接口复用现有权限点 `app:menu:authorized-tree`：能看到工作台的人就能管理自己的常用应用；不新增权限码，已部署环境的存量角色无需补授权。
 
 **`GET /home`**（`appGetHomeApps`）→ `{ pinned: number[], ranked: number[] }`
 
@@ -74,9 +74,9 @@
 - 去重、保序；丢弃不在可用入口中的 id（越权、分组节点、已删除）；超过 8 个返回 400。
 - 事务内删除该用户全部 pin 后按数组下标写入 `sort_order`。
 
-**`POST /usage`**（`appReportAppUsage`）body `{ menuId: number }` → 204
+**`POST /usage`**（`appReportAppUsage`）body `{ menuId: number }` → `{ recorded: boolean }`（统一响应信封）
 
-- 不在可用入口中则 204 且不写（不泄露存在性，也不报错打断前端）。
+- 不在可用入口中则 `recorded: false` 且不写，不报错打断前端。
 - `INSERT ... ON DUPLICATE KEY UPDATE open_count = open_count + 1, last_opened_at = NOW()`。
 
 分层遵循 routes → service → repository；SQL 只在 repository。TypeBox schema 注册到现有 schema 集合，
@@ -84,7 +84,7 @@
 
 ### 种子
 
-删除 `src/scripts/seed/config/app-menus.json` 中名为「常用」的分组（其中「通讯录」入口移到合适分组）。
+`src/scripts/seed/config/app-menus.json` 中名为「常用」的分组改名为「协同办公」（「通讯录」仍在其中）。种子按分组名 / page 幂等，已部署库重跑只会多出一个空分组，空分组会被授权树过滤。
 已部署环境的「常用」分组不自动删除，PR 中注明由运维在 `/system/app-menu` 手动处理。
 
 ## 前端（apps/demo/app）
@@ -132,7 +132,8 @@ ManagementPage withActions
 └─ FormSubmitBar text="保存"  → store.savePins → toast → navigateBack
 ```
 
-- 图标：若 `ManagementCell` 不能承载 `ApplicationIcon`，给它增加通用的 `icon?: ReactNode` 插槽，而不是在页面里手写行。
+- 图标与置灰：给 `ManagementCell` 增加通用的 `leading?: ReactNode`（行首自定义图形）与 `disabled?: boolean`（整行三级灰、不响应点击），不在页面里手写行。
+- Checkbox 放在 `ManagementCell` 的 `tag` 右侧列，不传 `onClick`，由整行切换。
 - 空固定列表时「已固定」区块显示一行说明「未固定的位置会按你的使用习惯自动推荐」。
 - 草稿只在本页 state，未保存离开不提示（与现有表单页一致）。
 
