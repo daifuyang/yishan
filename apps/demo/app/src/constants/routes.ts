@@ -62,6 +62,11 @@ export const SYSTEM_PAGES = {
   storageAccess: 'pages/system/storage/access/index',
   storageUpload: 'pages/system/storage/upload/index',
   attachments: 'pages/system/attachments/index',
+  attachmentDetail: 'pages/system/attachments/detail/index',
+  attachmentForm: 'pages/system/attachments/form/index',
+  attachmentImport: 'pages/system/attachments/import/index',
+  attachmentFolders: 'pages/system/attachments/folders/index',
+  attachmentFolderForm: 'pages/system/attachments/folder-form/index',
   moduleManagement: 'pages/system/module-management/index',
   moduleDetail: 'pages/system/module-management/detail/index',
 } as const

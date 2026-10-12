@@ -277,6 +277,17 @@ const SECONDARY_MODULE_PAGES: Record<
     moduleId: 'system-role',
     permissions: ['system:role:update', 'system:role:grant'],
   },
+  'pages/system/attachments/detail/index': { moduleId: 'system-attachments' },
+  'pages/system/attachments/form/index': {
+    moduleId: 'system-attachments',
+    permissions: ['system:attachment:update'],
+  },
+  'pages/system/attachments/import/index': {
+    moduleId: 'system-attachments',
+    permissions: ['system:attachment:create'],
+  },
+  'pages/system/attachments/folders/index': { moduleId: 'system-attachments' },
+  'pages/system/attachments/folder-form/index': { moduleId: 'system-attachments' },
 }
 
 export function getModuleForPage(path: string): MobilePageAccess | undefined {
