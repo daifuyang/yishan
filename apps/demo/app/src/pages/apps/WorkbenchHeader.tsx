@@ -1,9 +1,9 @@
-import { Button, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState } from 'react'
 import styles from './index.module.scss'
 
-// 与首页一致：自绘导航需要让出状态栏和微信胶囊，刷新放在胶囊对侧。
+// 与首页一致：自绘导航需要让出状态栏和微信胶囊。刷新走下拉与回到页面时的自动加载。
 function getHeaderMetrics() {
   if (process.env.TARO_ENV !== 'weapp') return { statusBar: 0, height: 56 }
   try {
@@ -18,27 +18,12 @@ function getHeaderMetrics() {
   }
 }
 
-export function WorkbenchHeader({
-  loading,
-  loaded,
-  onRefresh,
-}: {
-  loading: boolean
-  loaded: boolean
-  onRefresh: () => void
-}) {
+export function WorkbenchHeader() {
   const [metrics] = useState(getHeaderMetrics)
   return (
     <View style={{ paddingTop: `${metrics.statusBar}px` }}>
       <View className={styles.apps__header} style={{ height: `${metrics.height}px` }}>
         <Text className={styles.apps__pageTitle}>工作台</Text>
-        <Button
-          className={`${styles.apps__action} ${process.env.TARO_ENV === 'weapp' ? styles.apps__miniRefresh : ''}`}
-          disabled={loading}
-          onClick={onRefresh}
-        >
-          {loading && loaded ? '刷新中' : '刷新'}
-        </Button>
       </View>
     </View>
   )

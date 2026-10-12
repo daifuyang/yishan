@@ -63,7 +63,7 @@ export default function AppsPage() {
 
   return (
     <PageContainer className={styles.apps}>
-      <WorkbenchHeader loading={loading} loaded={loaded} onRefresh={retry} />
+      <WorkbenchHeader />
       <View className={styles.apps__searchWrap}>
         <View className={styles.apps__searchIcon} aria-hidden />
         <Input

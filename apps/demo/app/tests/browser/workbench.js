@@ -4,6 +4,13 @@ async (page) => {
     if (!ok) throw new Error(message)
   }
   const origin = 'http://127.0.0.1:21003'
+  // 工作台没有刷新按钮：回到 Tab 时 useDidShow 强制重新加载，与真实用户路径一致。
+  const refreshWorkbench = async () => {
+    await page.locator('.weui-tabbar__label', { hasText: '我的' }).click()
+    await page.waitForTimeout(300)
+    await page.locator('.weui-tabbar__label', { hasText: '工作台' }).click()
+    await page.waitForLoadState('networkidle')
+  }
   const url = `${origin}/#/pages/apps/index`
   const entry = (id, parentId, name, page) => ({
     id,
@@ -187,18 +194,16 @@ async (page) => {
   )
   const geometry = await page.evaluate(() => {
     const title = document.querySelector('[class*=apps__pageTitle]')
-    const action = document.querySelector('[class*=apps__action]')
     return {
       width: document.documentElement.scrollWidth,
       viewport: innerWidth,
       titleHeight: title.getBoundingClientRect().height,
-      actionWidth: action.getBoundingClientRect().width,
     }
   })
   check(geometry.width <= geometry.viewport, 'Small screen must not overflow horizontally')
   check(
-    geometry.titleHeight < 40 && geometry.actionWidth < 80,
-    'Taro default buttons must not squeeze titles',
+    geometry.titleHeight < 40,
+    'Workbench title must stay on one line',
   )
 
   const beforeSearch = requests.length
@@ -234,7 +239,7 @@ async (page) => {
   )
   await page.getByText('清空', { exact: true }).click()
   fail = true
-  await page.getByText('刷新', { exact: true }).click()
+  await refreshWorkbench()
   await page.getByText('刷新失败，请重试', { exact: true }).waitFor()
   check(
     (await page.locator('[aria-label="用户管理"]').count()) === 1,
@@ -245,8 +250,7 @@ async (page) => {
   await page.getByText('刷新失败，请重试', { exact: true }).waitFor({ state: 'hidden' })
 
   permissions = ['app:contacts:dept-tree', 'app:menu:authorized-tree']
-  await page.getByText('刷新', { exact: true }).click()
-  await page.getByText('刷新中', { exact: true }).waitFor({ state: 'hidden' })
+  await refreshWorkbench()
   await page.getByPlaceholder('搜索应用').fill('user')
   check(
     (await page.locator('[aria-label="用户管理"]').count()) === 0,
@@ -254,10 +258,10 @@ async (page) => {
   )
   await page.getByText('清空', { exact: true }).click()
   disabled = true
-  await page.getByText('刷新', { exact: true }).click()
+  await refreshWorkbench()
   await page.locator('[aria-label="通讯录"]').waitFor({ state: 'hidden' })
   empty = true
-  await page.getByText('刷新', { exact: true }).click()
+  await refreshWorkbench()
   await page.getByText('暂无可用应用', { exact: true }).waitFor()
   const beforeDirect = requests.filter((path) => path === '/api/v1/admin/users').length
   await page.goto(`${origin}/#/pages/system/user/index`)
