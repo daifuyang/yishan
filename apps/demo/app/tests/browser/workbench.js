@@ -81,7 +81,9 @@ async (page) => {
       data = empty
         ? []
         : [
-            // 通讯录 only lives in 企业协作 so disabling that group still hides it below.
+            // 协同办公 must keep 用户管理 (also listed under 系统管理) so the cross-group dedup check stays
+            // exercised and the group stays non-empty; 通讯录 only lives in 企业协作 so disabling that
+            // group still hides it below.
             group(5, '协同办公', [entry(7, 5, '用户管理', 'pages/system/user/index')]),
             group(10, '系统管理', [
               entry(11, 10, '用户管理', 'pages/system/user/index'),
@@ -157,10 +159,14 @@ async (page) => {
   await page.waitForFunction(() => Math.abs(document.querySelector('[class*=apps__searchWrap]').getBoundingClientRect().height - 44) < 1)
   const visual = await page.evaluate(() => {
     const title = document.querySelector('[class*=apps__pageTitle]').getBoundingClientRect()
-    const grid = document.querySelector('[class*=apps__grid]')
+    // Sample the 系统管理 section: it is the only group with enough apps to wrap and vary colors.
+    const section = [...document.querySelectorAll('[class*=apps__section]')].find(
+      el => el.querySelector('[class*=apps__category]')?.textContent.trim() === '系统管理',
+    )
+    const grid = section.querySelector('[class*=apps__grid]')
     const items = [...grid.children].map(el => el.getBoundingClientRect())
     const icons = [...grid.querySelectorAll('[class*=apps__iconWrap]')]
-    const category = getComputedStyle(document.querySelector('[class*=apps__category]'))
+    const category = getComputedStyle(section.querySelector('[class*=apps__category]'))
     return {
       centered: Math.abs(title.left + title.width / 2 - innerWidth / 2) < 1,
       fourColumns: items.slice(0, 4).every(item => Math.abs(item.top - items[0].top) < 1) && items[4].top > items[0].top,
