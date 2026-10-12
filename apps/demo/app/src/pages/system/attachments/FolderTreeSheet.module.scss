@@ -14,8 +14,6 @@
   font-weight: 600; font-size: 16px;
 }
 .close { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-right: -12px; }
-.crumbs { padding: var(--space-3) var(--space-4); font-size: var(--font-size-13); color: var(--color-text-tertiary); }
-.crumb:first-child, .crumb:not(:last-child) { color: var(--color-primary); }
 .options { max-height: 50vh; }
 .option {
   display: flex; align-items: center; height: 52px; padding: 0 16px;

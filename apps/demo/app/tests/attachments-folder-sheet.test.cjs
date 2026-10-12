@@ -16,7 +16,7 @@ function mount(props) {
   // FolderTreeSheet 是具名导出，包一层 default 交给驱动器
   const page = mountPage('tests/fixtures/folder-sheet-host.tsx', {
     '@tarojs/components': { View: 'View', Text: 'Text', ScrollView: 'ScrollView' },
-    '@/components/management': { LineIcon: 'LineIcon' },
+    '@/components/management': { LineIcon: 'LineIcon', Breadcrumbs: 'Breadcrumbs' },
     './FolderTreeSheet.module.scss': scss,
     '@host/props': {
       props: {
@@ -53,7 +53,10 @@ test('下钻后选择子分组；禁用分组带后缀', () => {
 test('打开时定位到当前值所在层，面包屑可返回根', () => {
   const { page } = mount({ value: 4 })
   assert.ok(page.byLabel('双十一'))
-  page.byLabel('面包屑-全部').props.onClick()
+  // Breadcrumbs 被 mock 成字符串，直接驱动它的 onNavigate(-1) 回根
+  const crumbs = page.one('Breadcrumbs')
+  assert.deepEqual(crumbs.props.items.map((item) => item.label), ['营销素材', '活动海报'])
+  crumbs.props.onNavigate(-1)
   page.rerender()
   assert.ok(page.byLabel('营销素材'))
 })

@@ -1,7 +1,7 @@
 import { ScrollView, Text, View } from '@tarojs/components'
 import { useEffect, useState } from 'react'
 import type { AttachmentFolder } from '@/api/admin/attachments'
-import { LineIcon } from '@/components/management'
+import { Breadcrumbs, LineIcon } from '@/components/management'
 import { folderPath } from './model'
 import styles from './FolderTreeSheet.module.scss'
 
@@ -54,7 +54,12 @@ export function FolderTreeSheet({
   const selfValue = current ? current.id : 0
   return (
     <View className={styles.layer}>
-      <View className={styles.mask} onClick={onClose} aria-label="取消选择" />
+      <View
+        className={styles.mask}
+        onClick={onClose}
+        aria-label="取消选择"
+        {...(process.env.TARO_ENV === 'h5' ? {} : { catchMove: true })}
+      />
       <View className={styles.sheet}>
         <View className={styles.header}>
           <Text>{title}</Text>
@@ -62,25 +67,15 @@ export function FolderTreeSheet({
             <LineIcon name="close" size={20} />
           </View>
         </View>
-        <View className={styles.crumbs}>
-          <Text className={styles.crumb} aria-label="面包屑-全部" onClick={() => setPath([])}>
-            全部
-          </Text>
-          {path.map((folder, index) => (
-            <Text
-              key={folder.id}
-              className={styles.crumb}
-              aria-label={`面包屑-${folder.name}`}
-              onClick={() => setPath(path.slice(0, index + 1))}
-            >
-              {` / ${folder.name}`}
-            </Text>
-          ))}
-        </View>
+        <Breadcrumbs
+          items={path.map((folder) => ({ key: folder.id, label: folder.name }))}
+          onNavigate={(index) => setPath(index < 0 ? [] : path.slice(0, index + 1))}
+        />
         <ScrollView scrollY className={styles.options}>
           <View
             className={`${styles.option} ${value === selfValue ? styles.selected : ''}`}
             aria-label={selfLabel}
+            aria-selected={value === selfValue}
             onClick={() => choose(selfValue)}
           >
             <Text>{selfLabel}</Text>
@@ -93,6 +88,7 @@ export function FolderTreeSheet({
                 <View
                   className={`${styles.optionName} ${value === folder.id ? styles.selected : ''}`}
                   aria-label={nameOf(folder)}
+                  aria-selected={value === folder.id}
                   onClick={() => choose(folder.id)}
                 >
                   <Text>{nameOf(folder)}</Text>
