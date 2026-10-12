@@ -1,6 +1,7 @@
 import { BusinessError } from "@yishan/core-api/errors";
 import { ValidationErrorCode } from "@yishan/core-api/business-codes/validation";
 import { SystemOptionService } from "./system-option.service.js";
+import { probeAliyunOss, probeQiniu } from "./storage-connection.js";
 
 export type QiniuRegion = "z0" | "z1" | "z2" | "na0" | "as0";
 export type StorageProvider = "disabled" | "qiniu" | "aliyunOss";
@@ -32,14 +33,17 @@ export type AliyunOssConfig = {
   useHttps?: boolean;
 };
 
+export type AliyunOssConfigPublic = Omit<AliyunOssConfig, "accessKeySecret">;
+
 export type StorageConfig = {
   provider: StorageProvider;
   qiniu: QiniuConfig;
   aliyunOss: AliyunOssConfig;
 };
 
-export type StorageConfigPublic = Omit<StorageConfig, "qiniu"> & {
+export type StorageConfigPublic = Omit<StorageConfig, "qiniu" | "aliyunOss"> & {
   qiniu: QiniuConfigPublic;
+  aliyunOss: AliyunOssConfigPublic;
 };
 
 export type StorageConfigExportPayload = {
@@ -51,8 +55,23 @@ export type StorageConfigExportPayload = {
   aliyunOss: AliyunOssConfig;
 };
 
-export type StorageConfigExportPayloadPublic = Omit<StorageConfigExportPayload, "qiniu"> & {
+export type StorageConfigExportPayloadPublic = Omit<StorageConfigExportPayload, "qiniu" | "aliyunOss"> & {
   qiniu: QiniuConfigPublic;
+  aliyunOss: AliyunOssConfigPublic;
+};
+
+export type StorageConnectionResult = {
+  ok: boolean;
+  provider: Exclude<StorageProvider, "disabled">;
+  bucket: string;
+  latencyMs: number;
+  message?: string;
+};
+
+type StorageConfigPayload = {
+  provider: StorageProvider;
+  qiniu?: Partial<QiniuConfig>;
+  aliyunOss?: Partial<AliyunOssConfig>;
 };
 
 const SYSTEM_OPTION_KEYS = {
@@ -140,6 +159,28 @@ const toPublicQiniu = (cfg: QiniuConfig): QiniuConfigPublic => {
   return rest;
 };
 
+const toPublicAliyunOss = (cfg: AliyunOssConfig): AliyunOssConfigPublic => {
+  const { accessKeySecret: _accessKeySecret, ...rest } = cfg;
+  return rest;
+};
+
+/** 表单草稿叠加到已存配置上；草稿密钥留空表示沿用已存密钥（前端拿不到明文密钥）。 */
+const mergeQiniuDraft = (current: QiniuConfig, patch: Partial<QiniuConfig> = {}): QiniuConfig => {
+  const prev = { ...DEFAULT_QINIU, ...(current || {}), provider: "qiniu" as const };
+  const next: QiniuConfig = { ...prev, ...patch, provider: "qiniu" as const };
+  const nextSecret = typeof patch.secretKey === "string" ? patch.secretKey.trim() : "";
+  next.secretKey = nextSecret || prev.secretKey;
+  return next;
+};
+
+const mergeAliyunOssDraft = (current: AliyunOssConfig, patch: Partial<AliyunOssConfig> = {}): AliyunOssConfig => {
+  const prev = { ...DEFAULT_ALIYUN_OSS, ...(current || {}), provider: "aliyunOss" as const };
+  const next: AliyunOssConfig = { ...prev, ...patch, provider: "aliyunOss" as const };
+  const nextSecret = typeof patch.accessKeySecret === "string" ? patch.accessKeySecret.trim() : "";
+  next.accessKeySecret = nextSecret || prev.accessKeySecret;
+  return next;
+};
+
 export class StorageConfigService {
   private static async getInternalConfig(): Promise<StorageConfig> {
     const map = await SystemOptionService.getOptions([
@@ -157,7 +198,7 @@ export class StorageConfigService {
 
   static async getConfig(): Promise<StorageConfigPublic> {
     const cfg = await this.getInternalConfig();
-    return { ...cfg, qiniu: toPublicQiniu(cfg.qiniu) };
+    return { ...cfg, qiniu: toPublicQiniu(cfg.qiniu), aliyunOss: toPublicAliyunOss(cfg.aliyunOss) };
   }
 
   static async upsertConfig(
@@ -180,7 +221,7 @@ export class StorageConfigService {
       exportedAt: new Date().toISOString(),
       provider: cfg.provider,
       qiniu: toPublicQiniu(cfg.qiniu),
-      aliyunOss: cfg.aliyunOss,
+      aliyunOss: toPublicAliyunOss(cfg.aliyunOss),
     };
   }
 
@@ -206,15 +247,7 @@ export class StorageConfigService {
     }
 
     if (provider === "qiniu") {
-      const prev = { ...DEFAULT_QINIU, ...(current.qiniu || {}), provider: "qiniu" as const };
-      const patch = payload.qiniu || {};
-      const next: QiniuConfig = { ...prev, ...patch, provider: "qiniu" as const };
-      const nextSecret = typeof patch.secretKey === "string" ? patch.secretKey.trim() : "";
-      if (nextSecret) {
-        next.secretKey = nextSecret;
-      } else {
-        next.secretKey = prev.secretKey;
-      }
+      const next = mergeQiniuDraft(current.qiniu, payload.qiniu);
 
       validateQiniuConfig(next);
       items.push(
@@ -225,15 +258,7 @@ export class StorageConfigService {
     }
 
     if (provider === "aliyunOss") {
-      const prev = { ...DEFAULT_ALIYUN_OSS, ...(current.aliyunOss || {}), provider: "aliyunOss" as const };
-      const patch = payload.aliyunOss || {};
-      const next: AliyunOssConfig = { ...prev, ...patch, provider: "aliyunOss" as const };
-      const nextSecret = typeof patch.accessKeySecret === "string" ? patch.accessKeySecret.trim() : "";
-      if (nextSecret) {
-        next.accessKeySecret = nextSecret;
-      } else {
-        next.accessKeySecret = prev.accessKeySecret;
-      }
+      const next = mergeAliyunOssDraft(current.aliyunOss, payload.aliyunOss);
 
       validateAliyunOssConfig(next);
       items.push(
@@ -248,5 +273,28 @@ export class StorageConfigService {
     }
 
     return { provider };
+  }
+
+  /**
+   * 用表单草稿（未保存）测试连接：与保存走同一套合并与校验，测试通过的配置保存后行为一致。
+   * 连接失败是正常的测试结果（ok=false），只有草稿本身不完整才抛校验错误。
+   */
+  static async testConnection(payload: StorageConfigPayload): Promise<StorageConnectionResult> {
+    const provider = validateProvider(payload.provider);
+    if (provider === "disabled") {
+      throw new BusinessError(ValidationErrorCode.INVALID_PARAMETER, "未启用云存储，无需测试连接");
+    }
+    const current = await this.getInternalConfig();
+    const startedAt = Date.now();
+    if (provider === "qiniu") {
+      const cfg = mergeQiniuDraft(current.qiniu, payload.qiniu);
+      validateQiniuConfig(cfg);
+      const result = await probeQiniu(cfg);
+      return { ...result, provider, bucket: cfg.bucket, latencyMs: Date.now() - startedAt };
+    }
+    const cfg = mergeAliyunOssDraft(current.aliyunOss, payload.aliyunOss);
+    validateAliyunOssConfig(cfg);
+    const result = await probeAliyunOss(cfg);
+    return { ...result, provider, bucket: cfg.bucket, latencyMs: Date.now() - startedAt };
   }
 }

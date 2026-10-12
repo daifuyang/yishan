@@ -59,3 +59,21 @@ export async function importStorageConfig(
     }
   );
 }
+
+/** 测试云存储连接 用表单草稿（无需先保存）请求服务商的空间信息，返回是否连通、空间与耗时；密钥留空时使用已保存的密钥 POST /api/v1/admin/system/storage/test */
+export async function testStorageConnection(
+  body: SystemAPI.storageConnectionTestReq,
+  options?: { [key: string]: any }
+) {
+  return request<SystemAPI.storageConnectionTestResp>(
+    "/api/v1/admin/system/storage/test",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      data: body,
+      ...(options || {}),
+    }
+  );
+}

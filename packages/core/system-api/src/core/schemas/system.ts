@@ -389,6 +389,42 @@ export const storageConfigImportResp = {
   },
 } as const;
 
+export const storageConnectionTestReq = {
+  $id: "storageConnectionTestReq",
+  type: "object",
+  description: "待测试的云存储配置草稿；密钥留空时使用已保存的密钥",
+  properties: {
+    provider: { $ref: "storageProvider#" },
+    qiniu: { $ref: "qiniuConfigSchema#" },
+    aliyunOss: { $ref: "aliyunOssConfigSchema#" },
+  },
+  required: ["provider"],
+  additionalProperties: false,
+} as const;
+
+export const storageConnectionTestResp = {
+  $id: "storageConnectionTestResp",
+  type: "object",
+  properties: {
+    success: { type: "boolean" },
+    code: { type: "number" },
+    message: { type: "string" },
+    timestamp: { type: "string" },
+    data: {
+      type: "object",
+      properties: {
+        ok: { type: "boolean", description: "是否连接成功" },
+        provider: { type: "string", enum: ["qiniu", "aliyunOss"] },
+        bucket: { type: "string" },
+        latencyMs: { type: "integer", description: "探测耗时（毫秒）" },
+        message: { type: "string", description: "失败原因" },
+      },
+      required: ["ok", "provider", "bucket", "latencyMs"],
+      additionalProperties: false,
+    },
+  },
+} as const;
+
 /**
  * 注册系统管理相关模式
  */
@@ -417,6 +453,8 @@ export default function registerSystem(fastify: any) {
   fastify.addSchema(storageConfigExportResp);
   fastify.addSchema(storageConfigImportReq);
   fastify.addSchema(storageConfigImportResp);
+  fastify.addSchema(storageConnectionTestReq);
+  fastify.addSchema(storageConnectionTestResp);
 }
 
 // Plugin management schemas (sysPlugin*, etc.) were removed together with

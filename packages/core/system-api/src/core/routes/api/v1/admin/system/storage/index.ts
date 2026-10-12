@@ -130,6 +130,31 @@ const adminSystemStorage: FastifyPluginAsync = async (fastify): Promise<void> =>
       return ResponseUtil.success(reply, result, message);
     }
   );
+
+  route.post(
+    "/test",
+    {
+      access: { permission: PERMS.UPDATE },
+      schema: {
+        summary: "测试云存储连接",
+        description: "用表单草稿（无需先保存）请求服务商的空间信息，返回是否连通、空间与耗时；密钥留空时使用已保存的密钥",
+        operationId: "testStorageConnection",
+        tags: ["storage"],
+        security: [{ bearerAuth: [] }],
+        body: { $ref: "storageConnectionTestReq#" },
+        response: { 200: { $ref: "storageConnectionTestResp#" } },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = (request.body || {}) as any;
+      const result = await StorageConfigService.testConnection({
+        provider: body.provider,
+        qiniu: body.qiniu,
+        aliyunOss: body.aliyunOss,
+      });
+      return ResponseUtil.success(reply, result, result.ok ? "连接成功" : "连接失败");
+    }
+  );
 };
 
 export default adminSystemStorage;

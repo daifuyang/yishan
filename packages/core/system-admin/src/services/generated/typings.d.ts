@@ -1268,6 +1268,26 @@ declare namespace SystemAPI {
     aliyunOss: aliyunOssConfigSchema;
   };
 
+  type storageConnectionTestReq = {
+    provider: storageProvider;
+    qiniu?: qiniuConfigSchema;
+    aliyunOss?: aliyunOssConfigSchema;
+  };
+
+  type storageConnectionTestResp = {
+    success?: boolean;
+    code?: number;
+    message?: string;
+    timestamp?: string;
+    data?: {
+      ok: boolean;
+      provider: "qiniu" | "aliyunOss";
+      bucket: string;
+      latencyMs: number;
+      message?: string;
+    };
+  };
+
   type storageProvider = "disabled" | "qiniu" | "aliyunOss";
 
   type sysAttachment = {
