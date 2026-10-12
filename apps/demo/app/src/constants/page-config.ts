@@ -6,6 +6,7 @@ export const PAGE_CONFIG: {
   pages: [
     'pages/index/index',
     'pages/apps/index',
+    'pages/apps/pinned/index',
     'pages/mine/index',
     'pages/login/index',
     'pages/messages/index',

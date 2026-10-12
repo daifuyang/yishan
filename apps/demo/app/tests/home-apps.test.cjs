@@ -24,3 +24,60 @@ test('getHomeApps truncates to the limit and never repeats an app', () => {
 test('getHomeApps falls back to workbench order when the home list is unavailable', () => {
   assert.deepEqual(registry.getHomeApps(groups, null, 3).map((a) => a.menuId), [11, 12, 13])
 })
+
+const fs = require('node:fs')
+const path = require('node:path')
+const { appRoot } = require('./helpers/load-ts.cjs')
+
+const model = loadTs('src/pages/apps/pinned/model.ts', {
+  '@/modules/registry': { MAX_HOME_APPS: 8 },
+})
+
+test('togglePin adds at the end, removes in place and refuses past the limit', () => {
+  assert.deepEqual(model.togglePin([1, 2], 3), [1, 2, 3])
+  assert.deepEqual(model.togglePin([1, 2, 3], 2), [1, 3])
+  assert.deepEqual(model.togglePin([1, 2], 3, 2), [1, 2])
+  assert.deepEqual(model.togglePin([1, 2], 2, 2), [1], 'removing still works when full')
+})
+
+test('movePin swaps neighbours and ignores moves past either end', () => {
+  assert.deepEqual(model.movePin([1, 2, 3], 1, -1), [2, 1, 3])
+  assert.deepEqual(model.movePin([1, 2, 3], 1, 1), [1, 3, 2])
+  assert.deepEqual(model.movePin([1, 2, 3], 0, -1), [1, 2, 3])
+  assert.deepEqual(model.movePin([1, 2, 3], 2, 1), [1, 2, 3])
+})
+
+const scss = new Proxy({}, { get: (_, k) => (k === '__esModule' ? false : k) })
+const flat = (v) => (!v || typeof v !== 'object' ? [] : Array.isArray(v) ? v.flatMap(flat) : [v, ...flat(v.props?.children)])
+
+test('ManagementCell renders a leading node and a disabled row ignores taps', () => {
+  const { ManagementCell } = loadTs('src/components/management/ManagementList.tsx', {
+    react: { useState: (v) => [v, () => {}], useMemo: (fn) => fn() },
+    '@tarojs/components': { View: 'View', Text: 'Text', Image: 'Image' },
+    '@/components/atoms': { AppText: 'AppText', Avatar: 'Avatar' },
+    '@/components/feedback': { StateView: 'StateView' },
+    './LineIcon': { LineIcon: 'LineIcon' },
+    './ManagementList.module.scss': scss,
+  })
+  const onClick = () => {}
+  const enabled = ManagementCell({ title: '用户', leading: { type: 'AppIcon', props: {} }, onClick })
+  assert.ok(flat(enabled).some((n) => n.type === 'AppIcon'))
+  assert.equal(enabled.props.onClick, onClick)
+  const disabled = ManagementCell({ title: '用户', disabled: true, onClick })
+  assert.equal(disabled.props.onClick, undefined)
+  assert.equal(disabled.props.hoverClass, undefined)
+  assert.match(disabled.props.className, /rowDisabled/)
+})
+
+test('编辑页只用现成管理组件并完成路由登记', () => {
+  const page = fs.readFileSync(path.join(appRoot, 'src/pages/apps/pinned/index.tsx'), 'utf8')
+  for (const name of ['ManagementPageHeader', 'ManagementSearchBar', 'DetailSection', 'ManagementCell', 'Checkbox', 'ActionSheet', 'FormSubmitBar', 'ManagementStates']) {
+    assert.match(page, new RegExp(`<${name}\\b`), name)
+  }
+  assert.doesNotMatch(page, /<Checkbox[^>]*onClick/, 'Checkbox 不拦截点击，由整行切换')
+  assert.match(page, /export default withAccountScope\(/)
+  const config = fs.readFileSync(path.join(appRoot, 'src/pages/apps/pinned/index.config.ts'), 'utf8')
+  assert.match(config, /navigationStyle: 'custom'/)
+  const pages = fs.readFileSync(path.join(appRoot, 'src/constants/page-config.ts'), 'utf8')
+  assert.match(pages, /'pages\/apps\/pinned\/index'/)
+})

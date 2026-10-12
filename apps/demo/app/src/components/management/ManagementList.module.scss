@@ -22,6 +22,21 @@
   background: var(--color-bg-base);
 }
 
+/* 整行置灰：标题与描述一起降到三级灰，行高不变 */
+.rowDisabled .row__title,
+.rowDisabled .row__description {
+  color: var(--color-text-tertiary);
+}
+
+.row__leading {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.rowDisabled .row__leading {
+  opacity: 0.5;
+}
+
 .row__avatar {
   width: 44px;
   height: 44px;

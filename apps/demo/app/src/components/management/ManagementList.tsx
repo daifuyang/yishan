@@ -33,6 +33,10 @@ export interface ManagementCellProps {
   avatar?: { src?: string; name: string }
   glyph?: LineIconName
   glyphColor?: string
+  /** 行首自定义图形（如应用图标）；thumb / avatar / glyph 都未提供时使用 */
+  leading?: ReactNode
+  /** 不可操作：整行转为三级灰，不响应点击 */
+  disabled?: boolean
   /** 末行补充说明，位于副标题之下 */
   footnote?: ReactNode
   /** 非末行时画分割线，由列表遍历统一注入 */
@@ -54,6 +58,8 @@ export function ManagementCell({
   avatar,
   glyph,
   glyphColor = '#1677FF',
+  leading,
+  disabled = false,
   footnote,
   bordered = true,
   showArrow = true,
@@ -65,9 +71,9 @@ export function ManagementCell({
   const [brokenSrc, setBrokenSrc] = useState<string | undefined>()
   return (
     <View
-      className={cx(styles.row, bordered && styles.rowBordered)}
-      onClick={onClick}
-      hoverClass={onClick ? styles.rowHover : undefined}
+      className={cx(styles.row, bordered && styles.rowBordered, disabled && styles.rowDisabled)}
+      onClick={disabled ? undefined : onClick}
+      hoverClass={onClick && !disabled ? styles.rowHover : undefined}
       {...longPressProps}
     >
       {thumb ? (
@@ -95,6 +101,8 @@ export function ManagementCell({
         <View className={styles.row__glyph}>
           <LineIcon name={glyph} size={20} color={glyphColor} />
         </View>
+      ) : leading ? (
+        <View className={styles.row__leading}>{leading}</View>
       ) : null}
       <View className={styles.row__content}>
         <Text className={styles.row__title}>{title}</Text>
