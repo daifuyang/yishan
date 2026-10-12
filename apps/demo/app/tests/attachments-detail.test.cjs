@@ -55,6 +55,8 @@ test('图片详情：预览可点开大图，分组信息完整，只读行不�
   assert.equal(r['大小'].value, '1.2 MB')
   assert.equal(r['尺寸'].value, '1920 × 800')
   assert.equal(r['分组'].showArrow, undefined)
+  // 复制不是导航：有 onClick 的「文件链接」行必须显式关掉箭头，否则 DetailRow 默认会画 ›
+  assert.equal(r['文件链接'].showArrow, false)
   assert.ok(page.all('DetailSection').some((s) => s.props.title === '扩展信息'))
 })
 
@@ -135,4 +137,12 @@ test('加载返回前切换账号：不回写旧账号的素材', async () => {
   await page.settle()
   assert.notEqual(page.one('StateView').props.kind, 'ready')
   assert.equal(page.all('DetailRow').length, 0)
+})
+
+test('其他类型：预览区显示文件图标与原始文件名', async () => {
+  const { page } = mount({ item: { ...IMAGE, kind: 'other', name: '合同', originalName: 'contract-v2.pdf', mimeType: 'application/pdf', path: '/u/c.pdf', width: undefined, height: undefined } })
+  await page.settle()
+  assert.equal(page.all('Image').length, 0)
+  assert.ok(page.all('LineIcon').some((i) => i.props.name === 'file'))
+  assert.ok(page.text().split('|').includes('contract-v2.pdf'))
 })

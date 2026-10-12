@@ -193,6 +193,7 @@ function AttachmentDetailPage() {
                 ) : (
                   <View className={styles.placeholder}>
                     <LineIcon name="file" size={32} color="#1677FF" />
+                    <Text className={styles.placeholderText}>{item.originalName}</Text>
                   </View>
                 )}
                 <Text className={styles.name}>{item.name || item.originalName}</Text>
@@ -213,7 +214,7 @@ function AttachmentDetailPage() {
                 <DetailRow label="原始文件" value={item.originalName} />
                 <DetailRow label="MIME" value={item.mimeType} />
                 <DetailRow label="存储" value={item.storage === 'qiniu' ? '七牛云' : item.storage === 'local' ? '本地存储' : item.storage} />
-                {url ? <DetailRow label="文件链接" value="点击复制" onClick={copy} /> : null}
+                {url ? <DetailRow label="文件链接" value="点击复制" showArrow={false} onClick={copy} /> : null}
               </DetailSection>
 
               {metadata ? (
