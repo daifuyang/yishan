@@ -1,1 +1,5 @@
-export default definePageConfig({ navigationStyle: 'custom', navigationBarTitleText: 'Todo 示例', enablePullDownRefresh: true })
+export default definePageConfig({
+  navigationBarTitleText: 'Todo 示例',
+  navigationStyle: 'custom',
+  enablePullDownRefresh: true,
+})

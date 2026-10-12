@@ -65,6 +65,8 @@ export const PAGE_CONFIG: {
     'pages/demo/quickstart/index',
     'pages/demo/health/index',
     'pages/demo/todos/index',
+    'pages/demo/todos/detail/index',
+    'pages/demo/todos/form/index',
     'pages/demo/region/index',
   ],
   subPackages: [],

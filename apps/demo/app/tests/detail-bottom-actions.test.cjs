@@ -9,9 +9,10 @@ const DETAIL_PAGES = [
   'pages/system/user/detail/index.tsx',
   'pages/system/role/detail/index.tsx',
   'pages/system/position/detail/index.tsx',
+  'pages/demo/todos/detail/index.tsx',
   'pages/system/dept/detail/index.tsx',
-  'pages/system/menu/detail/index.tsx',
-  'pages/system/app-menu/detail/index.tsx',
+  // 菜单与工作台菜单详情共用同一骨架，操作栏只在骨架里声明一次
+  'pages/system/_shared/MenuDetailScaffold.tsx',
   'pages/system/dict/DictionaryDetail.tsx',
   'pages/system/module-management/detail/index.tsx',
 ]
@@ -75,10 +76,7 @@ function isMutuallyExclusive(file) {
   )
 }
 
-const CONDITIONAL_PAGES = [
-  'pages/system/menu/detail/index.tsx',
-  'pages/system/app-menu/detail/index.tsx',
-]
+const CONDITIONAL_PAGES = ['pages/system/_shared/MenuDetailScaffold.tsx']
 
 // 启用/禁用低频但可逆，不是该藏的东西：底部分得开（没有新建操作）就放出来，
 // 挤到三个时才收进「更多」。两个位置必须由同一个条件互补决定，否则会同时出现。
@@ -136,8 +134,7 @@ function actionSheetOf(source, file) {
 
 test('ActionSheet 里的删除仍是危险操作，排在最后', () => {
   for (const file of [
-    'pages/system/menu/detail/index.tsx',
-    'pages/system/app-menu/detail/index.tsx',
+    'pages/system/_shared/MenuDetailScaffold.tsx',
     'pages/system/dept/detail/index.tsx',
   ]) {
     const source = read(file)

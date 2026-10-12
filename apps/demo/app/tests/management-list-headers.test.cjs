@@ -13,6 +13,7 @@ const LIST_PAGES = [
   'pages/system/login-log/index.tsx',
   'pages/system/module-management/index.tsx',
   'pages/system/position/index.tsx',
+  'pages/demo/todos/index.tsx',
   'pages/system/region/index.tsx',
   'pages/system/role/index.tsx',
   'pages/system/user/index.tsx',

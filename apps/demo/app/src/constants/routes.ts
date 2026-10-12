@@ -75,6 +75,8 @@ export const DEMO_PAGES = {
   quickstart: 'pages/demo/quickstart/index',
   health: 'pages/demo/health/index',
   todos: 'pages/demo/todos/index',
+  todoDetail: 'pages/demo/todos/detail/index',
+  todoForm: 'pages/demo/todos/form/index',
   region: 'pages/demo/region/index',
 } as const
 

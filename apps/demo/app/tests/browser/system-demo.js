@@ -7,7 +7,7 @@ async (page) => {
   const entries = [
     ['用户管理', 'system/user', 'system:user:list'], ['部门管理', 'system/dept', 'system:department:list'],
     ['角色管理', 'system/role', 'system:role:list'], ['岗位管理', 'system/position', 'system:position:list'],
-    ['菜单管理', 'system/menu', 'system:menu:list'], ['工作台配置', 'system/app-menu', 'system:app-menu:list'],
+    ['菜单管理', 'system/menu', 'system:menu:list'], ['工作台管理', 'system/app-menu', 'system:app-menu:list'],
     ['字典管理', 'system/dict', 'system:dict:list'], ['地区管理', 'system/region', 'region:tree'],
     ['站点配置', 'system/site', 'system:option:list'], ['云存储', 'system/storage', 'system:storage:list'],
     ['媒体库', 'system/attachments', 'system:attachment:list'], ['登录日志', 'system/login-log', 'system:login-log:list'],
@@ -36,7 +36,16 @@ async (page) => {
         const input = route.request().postDataJSON()
         data = { ...input, id: nextId++, dueAt: input.dueAt ?? null, createdAt: '2026-10-10T00:00:00Z', updatedAt: '2026-10-10T00:00:00Z' }
         todos.push(data)
-      } else data = { items: todos, total: todos.length }
+      } else {
+        // run-code 沙箱没有全局 URL，手动解析查询串
+        const query = Object.fromEntries((route.request().url().split('?')[1] || '').split('&').filter(Boolean).map((pair) => pair.split('=').map(decodeURIComponent)))
+        const keyword = (query.keyword || '').trim()
+        const status = query.status ?? null
+        const page = Number(query.page || 1)
+        const pageSize = Number(query.pageSize || 20)
+        const matched = todos.filter((todo) => (!keyword || `${todo.title} ${todo.description || ''}`.includes(keyword)) && (status === null || String(todo.status) === status))
+        data = { items: matched.slice((page - 1) * pageSize, page * pageSize), total: matched.length }
+      }
       await route.fulfill({ json: data }); return
     } else if (/^\/api\/demo\/v1\/todos\/\d+$/.test(path)) {
       const id = Number(path.split('/').pop())
@@ -66,7 +75,7 @@ async (page) => {
   const passed = []
   for (const [name, route] of entries) {
     await page.goto(`${origin}/#/pages/${route}/index`)
-    await page.getByText(name === '云存储' ? '云存储配置' : name, { exact: true }).filter({ visible: true }).first().waitFor()
+    await page.getByText(name, { exact: true }).filter({ visible: true }).first().waitFor()
     await page.waitForLoadState('networkidle')
     if (await page.getByText('移动端功能正在建设中，敬请期待。', { exact: true }).filter({ visible: true }).count()) throw new Error(`${name} remains placeholder`)
     const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
@@ -75,6 +84,7 @@ async (page) => {
   }
   await page.goto(`${origin}/#/pages/demo/todos/index`)
   await page.getByText('新建', { exact: true }).filter({ visible: true }).click()
+  await page.getByText('新建 Todo', { exact: true }).filter({ visible: true }).waitFor()
   const inputs = page.locator('input:visible')
   await inputs.first().fill('移动验收 Todo')
   failSave = true
@@ -83,20 +93,31 @@ async (page) => {
   if (await inputs.first().inputValue() !== '移动验收 Todo') throw new Error('failed create lost input')
   failSave = false
   await page.getByText('保存', { exact: true }).filter({ visible: true }).click()
-  await page.getByText('移动验收 Todo', { exact: true }).filter({ visible: true }).waitFor()
+  // 保存后回到列表，列表在 didShow 时刷新
+  await page.getByText('移动验收 Todo', { exact: true }).filter({ visible: true }).click()
+  await page.getByText('Todo 详情', { exact: true }).filter({ visible: true }).waitFor()
+  await page.getByText('基本信息', { exact: true }).filter({ visible: true }).waitFor()
   await page.getByText('编辑', { exact: true }).filter({ visible: true }).click()
+  await page.getByText('编辑 Todo', { exact: true }).filter({ visible: true }).waitFor()
   await page.locator('input:visible').first().fill('移动验收已修改')
   await page.getByText('保存', { exact: true }).filter({ visible: true }).click()
-  await page.getByText('移动验收已修改', { exact: true }).filter({ visible: true }).waitFor()
-  await page.getByText('移动验收已修改', { exact: true }).filter({ visible: true }).click()
-  await page.getByText('删除', { exact: true }).filter({ visible: true }).click()
+  // 回到详情，详情在 didShow 时重新拉取
+  await page.getByText('移动验收已修改', { exact: true }).filter({ visible: true }).first().waitFor()
+  await page.getByText('更多', { exact: true }).filter({ visible: true }).click()
+  await page.getByText('删除 Todo', { exact: true }).filter({ visible: true }).click()
   await page.locator('.taro-model__confirm').filter({ visible: true }).click()
   await page.getByText('暂无 Todo', { exact: true }).filter({ visible: true }).waitFor()
-  passed.push('Todo failure retention / create / edit / 204 delete')
+  passed.push('Todo list / form failure retention / detail / edit / 204 delete')
+  await page.goto(`${origin}/#/pages/demo/region/index`)
+  await page.getByText('请选择', { exact: true }).filter({ visible: true }).first().click()
+  await page.getByText('北京市', { exact: true }).filter({ visible: true }).click()
+  await page.getByText('北京市', { exact: true }).filter({ visible: true }).first().waitFor()
+  passed.push('Region picker selects a leaf region')
   permissions = ['app:menu:authorized-tree']
   const before = requests.filter((request) => request.path === '/api/demo/v1/todos').length
   await page.goto(`${origin}/#/pages/apps/index`)
-  await page.getByText('刷新', { exact: true }).filter({ visible: true }).click()
+  // 工作台已无刷新按钮，重载页面以重新拉取权限
+  await page.reload()
   await page.getByText('暂无可用应用', { exact: true }).filter({ visible: true }).waitFor()
   await page.goto(`${origin}/#/pages/demo/todos/index`)
   await page.getByText('无权访问', { exact: true }).filter({ visible: true }).waitFor()

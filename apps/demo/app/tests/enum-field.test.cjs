@@ -87,6 +87,7 @@ const ENUM_FORM_PAGES = [
   'pages/system/position/form/index.tsx',
   'pages/system/dept/DepartmentForm.tsx',
   'pages/system/dict/DictionaryForm.tsx',
+  'pages/demo/todos/form/index.tsx',
 ]
 
 test('表单页的状态用 EnumField 而不是分段控件', () => {
