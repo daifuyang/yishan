@@ -1,5 +1,4 @@
 import Taro, { useRouter } from '@tarojs/taro'
-import { Text } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import {
   createAdminAppMenu,
@@ -13,6 +12,7 @@ import { StateView } from '@/components/feedback'
 import {
   EnumField,
   FormContent,
+  FormError,
   FormField,
   FormSection,
   FormSubmitBar,
@@ -25,7 +25,6 @@ import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
 import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
 import { appMenuDraft, appMenuGroupOptions, appMenuPayload, type AppMenuFormValues } from '../model'
-import styles from './index.module.scss'
 
 function AppMenuFormPage() {
   const guard = useRequireAuth({ moduleId: 'system-app-menu' })
@@ -220,7 +219,7 @@ function AppMenuFormPage() {
             </FormField>
           </FormSection>
 
-          {submitError ? <Text className={styles.error}>{submitError}</Text> : null}
+          <FormError>{submitError}</FormError>
         </FormContent>
         {canSave && loaded ? (
           <FormSubmitBar text="保存" submitting={busy} onSubmit={() => void save()} />

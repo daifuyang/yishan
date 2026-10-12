@@ -1,5 +1,4 @@
 import Taro, { useRouter } from '@tarojs/taro'
-import { Text } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import {
   createAdminMenu,
@@ -13,6 +12,7 @@ import { StateView } from '@/components/feedback'
 import {
   EnumField,
   FormContent,
+  FormError,
   FormField,
   FormSection,
   FormSubmitBar,
@@ -30,7 +30,6 @@ import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
 import { MENU_TYPE_LABELS } from '../filters'
 import { menuDraft, menuPayload, type MenuFormValues } from '../model'
 import { menuParentOptions } from '../parents'
-import styles from './index.module.scss'
 
 // 类型文案与列表、详情一致：都来自 MenuTypeBadge，不再各写一套「按钮/操作」
 const TYPE_OPTIONS = [
@@ -285,7 +284,7 @@ function MenuFormPage() {
             </FormSection>
           ) : null}
 
-          {submitError ? <Text className={styles.error}>{submitError}</Text> : null}
+          <FormError>{submitError}</FormError>
         </FormContent>
         {canSave && loaded ? (
           <FormSubmitBar text="保存" submitting={busy} onSubmit={() => void save()} />

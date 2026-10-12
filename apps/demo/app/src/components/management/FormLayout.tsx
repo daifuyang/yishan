@@ -1,5 +1,5 @@
 import { Input, Picker, Switch, Text, Textarea, View } from '@tarojs/components'
-import type { ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import styles from './FormLayout.module.scss'
 import { LineIcon } from './LineIcon'
 
@@ -270,6 +270,56 @@ export function LinkRow({ label, value, onClick, showArrow = true }: LinkRowProp
       </View>
     </View>
   )
+}
+
+export interface SecretFieldProps extends TextFieldProps {
+  label: string
+  required?: boolean
+}
+
+/**
+ * 密钥 / 凭证输入行：默认掩码，行尾眼睛图标切换明文。
+ * 切换按钮是行级元素，放在控件后面，与 FormField 的 › 同一位置。
+ */
+export function SecretField({
+  label,
+  required = false,
+  value,
+  onChange,
+  placeholder,
+  maxlength = 200,
+  disabled = false,
+}: SecretFieldProps) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <FormField label={label} required={required} disabled={disabled}>
+      <Input
+        className={cx(styles.field__input, disabled && styles['field__input--disabled'])}
+        value={value}
+        password={!visible}
+        placeholder={placeholder}
+        maxlength={maxlength}
+        disabled={disabled}
+        onInput={(event) => onChange(event.detail.value)}
+      />
+      <View
+        className={styles.field__toggle}
+        aria-label={visible ? `隐藏${label}` : `显示${label}`}
+        onClick={() => setVisible(!visible)}
+      >
+        <LineIcon name={visible ? 'eyeOff' : 'eye'} size={18} color="#86909C" />
+      </View>
+    </FormField>
+  )
+}
+
+export interface FormErrorProps {
+  children?: ReactNode
+}
+
+/** 表单级错误（保存失败、提交前校验），位于最后一个分组之后、底部保存栏之上。 */
+export function FormError({ children }: FormErrorProps) {
+  return children ? <Text className={styles.error}>{children}</Text> : null
 }
 
 export interface FormSubmitBarProps {

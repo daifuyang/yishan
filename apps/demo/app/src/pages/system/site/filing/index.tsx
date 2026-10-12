@@ -1,7 +1,7 @@
-import { Text } from '@tarojs/components'
 import { StateView } from '@/components/feedback'
 import {
   FormContent,
+  FormError,
   FormField,
   FormSection,
   FormSubmitBar,
@@ -11,7 +11,6 @@ import {
 } from '@/components/management'
 import { PageHeader } from '@/components/molecules'
 import { withAccountScope } from '../../_shared/AdminUI'
-import formStyles from '../form.module.scss'
 import { sectionOf } from '../model'
 import { useSiteConfig } from '../useSiteConfig'
 
@@ -43,7 +42,7 @@ function SiteFilingPage() {
               <TextAreaField value={config.footerHtml} onChange={(value) => setField('footerHtml', value)} placeholder="请输入页脚内容" maxlength={-1} disabled={disabled} />
             </FormField>
           </FormSection>
-          {site.submitError ? <Text className={formStyles.error}>{site.submitError}</Text> : null}
+          <FormError>{site.submitError}</FormError>
         </FormContent>
         {site.canUpdate && site.loaded ? (
           <FormSubmitBar text="保存" submitting={site.saving} onSubmit={() => void site.save(section.fields)} />

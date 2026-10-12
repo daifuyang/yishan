@@ -1,0 +1,30 @@
+/* 行内动作：主色文字居中，与表单行同高，表达「执行」而非「进入下一级」，所以不带 › */
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--list-item-height-sm);
+  border-bottom: 1px solid var(--color-divider);
+  color: var(--color-primary);
+  font-size: var(--font-size-15);
+}
+
+.action:last-child {
+  border-bottom: 0;
+}
+
+.action--hover {
+  background: var(--color-bg-disabled);
+}
+
+.action--disabled {
+  color: var(--color-text-tertiary);
+}
+
+.ok {
+  color: var(--color-success);
+}
+
+.fail {
+  color: var(--color-danger);
+}

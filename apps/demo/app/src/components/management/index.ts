@@ -34,6 +34,8 @@ export type { SelectionFooterProps, SelectionFooterItem } from './SelectionFoote
 export {
   FormContent,
   type FormContentProps,
+  FormError,
+  type FormErrorProps,
   FormField,
   type FormFieldProps,
   FormSection,
@@ -45,6 +47,8 @@ export {
   EnumField,
   type EnumFieldProps,
   type EnumOption,
+  SecretField,
+  type SecretFieldProps,
   SegmentField,
   type SegmentFieldProps,
   type SegmentOption,

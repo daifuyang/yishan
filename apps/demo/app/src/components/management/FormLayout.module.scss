@@ -286,3 +286,21 @@
   align-items: center;
   justify-content: flex-end;
 }
+
+/* 密钥行的显示 / 隐藏切换：热区比图标大，贴在行尾 */
+.field__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: calc(var(--space-1) * -1);
+}
+
+.error {
+  display: block;
+  padding: var(--space-3) var(--space-4) 0;
+  color: var(--color-danger);
+  font-size: var(--font-size-14);
+  line-height: 22px;
+}

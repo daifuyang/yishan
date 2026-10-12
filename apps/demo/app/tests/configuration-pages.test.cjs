@@ -77,6 +77,10 @@ function pageHarness(
         'DetailRow',
         'BottomActionBar',
         'ActionSheet',
+        'EnumField',
+        'FormError',
+        'SecretField',
+        'SwitchField',
         'FormContent',
         'FormField',
         'FormSection',
@@ -113,6 +117,7 @@ function pageHarness(
     './index.module.scss': {},
     '../form.module.scss': {},
     './LogoField.module.scss': {},
+    './ConnectionTest.module.scss': {},
     '../_shared/AdminUI': {
       withAccountScope: (component) => component,
       AdminPage: 'AdminPage',
@@ -155,31 +160,6 @@ function pageHarness(
     },
   }
 }
-
-test('storage disable confirmation cannot submit after its page session ends', async () => {
-  const confirmation = deferred()
-  let saves = 0
-  const harness = pageHarness(
-    'storage',
-    {
-      getStorageConfig: async () => ({ provider: 'disabled', qiniu: {}, aliyunOss: {} }),
-      saveStorageConfig: async () => {
-        saves++
-        return { provider: 'disabled', qiniu: {}, aliyunOss: {} }
-      },
-    },
-    { confirm: () => confirmation.promise },
-  )
-  harness.render()
-  const tree = await harness.settle()
-  const pending = tree
-    .find((node) => node.type === 'Button' && node.props.children === '保存')
-    .props.onClick()
-  harness.invalidate()
-  confirmation.resolve(true)
-  await pending
-  assert.equal(saves, 0)
-})
 
 test('module toggle confirmation cannot submit after its page session ends', async () => {
   const confirmation = deferred()
@@ -292,7 +272,7 @@ test('configuration pages render access chrome without requesting data when deni
     )
     assert.equal(
       harness.render()[0].type,
-      ['site', 'region', 'module-management'].includes(page) ? 'ManagementPage' : 'AdminPage',
+      ['site', 'storage', 'region', 'module-management'].includes(page) ? 'ManagementPage' : 'AdminPage',
     )
     await harness.settle()
     assert.equal(calls, 0)
@@ -347,7 +327,7 @@ test('site basic save rejects a blank name before calling the API', async () => 
   await tree.find((node) => node.type === 'FormSubmitBar').props.onSubmit()
   tree = harness.render()
   assert.equal(saves, 0)
-  assert.equal(tree.some((node) => node.type === 'Text' && node.props.children === '请输入站点名称'), true)
+  assert.equal(tree.some((node) => node.type === 'FormError' && node.props.children === '请输入站点名称'), true)
 })
 
 test('site save sends only its own fields, locks duplicate submits and keeps edits after failure', async () => {
@@ -373,7 +353,106 @@ test('site save sends only its own fields, locks duplicate submits and keeps edi
   await new Promise((resolve) => setImmediate(resolve))
   tree = harness.render()
   assert.equal(fieldControl(tree, '站点标题').props.value, 'New')
-  assert.equal(tree.some((node) => node.type === 'Text' && node.props.children === '保存失败'), true)
+  assert.equal(tree.some((node) => node.type === 'FormError' && node.props.children === '保存失败'), true)
+})
+
+const qiniuStored = () => ({
+  provider: 'qiniu',
+  qiniu: { accessKey: 'ak', bucket: 'media', region: 'z1', domain: 'https://cdn.example.com', useHttps: true, tokenExpires: 3600 },
+  aliyunOss: {},
+})
+
+test('storage overview summarises the active provider and only offers its categories', async () => {
+  for (const [config, titles] of [
+    [qiniuStored(), ['基础配置', '访问配置', '上传设置']],
+    [{ provider: 'aliyunOss', qiniu: {}, aliyunOss: { bucket: 'b', region: 'oss-cn-hangzhou' } }, ['基础配置', '访问配置']],
+    [{ provider: 'disabled', qiniu: {}, aliyunOss: {} }, ['基础配置']],
+  ]) {
+    const harness = pageHarness('storage', { getStorageConfig: async () => config })
+    harness.render()
+    const tree = await harness.settle()
+    assert.deepEqual(tree.filter((node) => node.type === 'ManagementCell').map((node) => node.props.title), titles)
+    if (config.provider === 'qiniu') {
+      assert.equal(tree.find((node) => node.type === 'DetailHero').props.title, '七牛云')
+      const rows = Object.fromEntries(tree.filter((node) => node.type === 'DetailRow').map((node) => [node.props.label, node.props.value]))
+      assert.deepEqual(rows, { 空间: 'media', 区域: '华北', 访问域名: 'https://cdn.example.com' })
+    }
+  }
+})
+
+test('storage basic save submits only its own fields and keeps keys masked by default', async () => {
+  const saved = []
+  const harness = pageHarness('storage/basic', {
+    getStorageConfig: async () => qiniuStored(),
+    saveStorageConfig: async (config) => saved.push(config),
+  })
+  harness.render()
+  let tree = await harness.settle()
+  const secrets = tree.filter((node) => node.type === 'SecretField').map((node) => node.props.label)
+  assert.deepEqual(secrets, ['AccessKey', 'SecretKey'])
+  tree.find((node) => node.type === 'FormField' && node.props.label === 'Bucket').props.children.props.onChange('media-2')
+  tree = harness.render()
+  await tree.find((node) => node.type === 'FormSubmitBar').props.onSubmit()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(saved.length, 1)
+  assert.deepEqual(Object.keys(saved[0].qiniu).sort(), ['accessKey', 'bucket', 'region', 'secretKey'])
+  assert.equal(saved[0].qiniu.bucket, 'media-2')
+})
+
+test('storage switching provider asks first and cannot submit after its page session ends', async () => {
+  const confirmation = deferred()
+  let saves = 0
+  const harness = pageHarness(
+    'storage/basic',
+    { getStorageConfig: async () => qiniuStored(), saveStorageConfig: async () => { saves++ } },
+    { confirm: () => confirmation.promise },
+  )
+  harness.render()
+  let tree = await harness.settle()
+  tree.find((node) => node.type === 'EnumField' && node.props.label === '存储服务商').props.onChange('disabled')
+  tree = harness.render()
+  tree.find((node) => node.type === 'FormSubmitBar').props.onSubmit()
+  harness.invalidate()
+  confirmation.resolve(true)
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(saves, 0)
+})
+
+test('storage connection test reports the probe result and drops it once the draft changes', async () => {
+  const drafts = []
+  const harness = pageHarness('storage/basic', {
+    getStorageConfig: async () => qiniuStored(),
+    testStorageConnection: async (config) => {
+      drafts.push(config)
+      return { ok: false, provider: 'qiniu', bucket: 'media', latencyMs: 120, message: 'AccessKey 或 SecretKey 不正确' }
+    },
+  })
+  harness.render()
+  let tree = await harness.settle()
+  tree.find((node) => node.type?.name === 'ConnectionTest').props.onTest()
+  await new Promise((resolve) => setImmediate(resolve))
+  tree = harness.render()
+  assert.equal(drafts[0].qiniu.bucket, 'media')
+  assert.equal(tree.find((node) => node.type?.name === 'ConnectionTest').props.result.latencyMs, 120)
+  tree.find((node) => node.type === 'SecretField' && node.props.label === 'SecretKey').props.onChange('new-secret')
+  tree = harness.render()
+  assert.equal(tree.find((node) => node.type?.name === 'ConnectionTest').props.result, null)
+})
+
+test('storage upload settings validate the token lifetime before saving', async () => {
+  let saves = 0
+  const harness = pageHarness('storage/upload', {
+    getStorageConfig: async () => qiniuStored(),
+    saveStorageConfig: async () => { saves++ },
+  })
+  harness.render()
+  let tree = await harness.settle()
+  tree.find((node) => node.type === 'FormField' && node.props.label === '有效期(秒)').props.children.props.onChange('30')
+  tree = harness.render()
+  await tree.find((node) => node.type === 'FormSubmitBar').props.onSubmit()
+  tree = harness.render()
+  assert.equal(saves, 0)
+  assert.equal(tree.find((node) => node.type === 'FormError').props.children, '凭证有效期须为 60–86400 秒的整数')
 })
 
 function emptySite() {

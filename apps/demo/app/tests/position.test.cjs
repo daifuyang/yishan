@@ -52,7 +52,6 @@ function mountForm({ id, permissions, api }) {
   let backs = 0
   const mocks = {
     '@tarojs/components': { Text: 'Text' },
-    './index.module.scss': { error: 'error' },
     react: {
       useState(initial) {
         const index = cursor++
@@ -92,6 +91,7 @@ function mountForm({ id, permissions, api }) {
     '@/components/management': Object.fromEntries(
       [
         'FormContent',
+        'FormError',
         'FormField',
         'FormSection',
         'FormSubmitBar',

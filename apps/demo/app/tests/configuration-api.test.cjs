@@ -77,3 +77,12 @@ test('site keywords accept both comma styles, trim and dedupe, and join with an 
   assert.equal(model.previewImage('/assets/logo.png'), undefined)
   assert.equal(model.previewImage('//cdn.example.com/a.png'), 'https://cdn.example.com/a.png')
 })
+
+test('storage connection test posts the draft through the save payload so blank secrets stay server-side', async () => {
+  const { api, calls } = client('storage', { ok: true, provider: 'qiniu', bucket: 'b', latencyMs: 80 })
+  const result = await api.testStorageConnection({ provider: 'qiniu', qiniu: { accessKey: 'ak', secretKey: '  ', bucket: 'b', region: 'z0' }, aliyunOss: { accessKeySecret: 'other' } })
+  assert.equal(result.latencyMs, 80)
+  assert.equal(calls[0].method, 'POST')
+  assert.equal(calls[0].path, '/api/v1/admin/system/storage/test')
+  assert.deepEqual(calls[0].data, { provider: 'qiniu', qiniu: { accessKey: 'ak', bucket: 'b', region: 'z0' } })
+})

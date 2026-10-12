@@ -1,7 +1,7 @@
-import { Text } from '@tarojs/components'
 import { StateView } from '@/components/feedback'
 import {
   FormContent,
+  FormError,
   FormField,
   FormSection,
   FormSubmitBar,
@@ -12,7 +12,6 @@ import { PageHeader } from '@/components/molecules'
 import { withAccountScope } from '../../_shared/AdminUI'
 import { sectionOf } from '../model'
 import { useSiteConfig } from '../useSiteConfig'
-import formStyles from '../form.module.scss'
 import { LogoField } from './LogoField'
 
 const section = sectionOf('basic')
@@ -58,7 +57,7 @@ function SiteBasicPage() {
               <TextField value={config.contactAddress} onChange={(value) => setField('contactAddress', value)} placeholder="用于页脚或联系我们" maxlength={255} disabled={disabled} />
             </FormField>
           </FormSection>
-          {site.submitError ? <Text className={formStyles.error}>{site.submitError}</Text> : null}
+          <FormError>{site.submitError}</FormError>
         </FormContent>
         {site.canUpdate && site.loaded ? (
           <FormSubmitBar

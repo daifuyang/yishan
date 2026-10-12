@@ -34,6 +34,17 @@ export async function getStorageConfig() {
 export async function saveStorageConfig(config: StorageConfig) {
   return sanitizeStorageConfig(await request<StorageConfig>({ method: 'PUT', path: '/api/v1/admin/system/storage/config', data: storageSavePayload(config) }))
 }
+export interface StorageConnectionResult {
+  ok: boolean
+  provider: Exclude<StorageProvider, 'disabled'>
+  bucket: string
+  latencyMs: number
+  message?: string
+}
+/** 用未保存的草稿测试连接；密钥留空时服务端使用已保存的密钥。连不上返回 ok=false，不抛错。 */
+export function testStorageConnection(config: StorageConfig) {
+  return request<StorageConnectionResult>({ method: 'POST', path: '/api/v1/admin/system/storage/test', data: storageSavePayload(config) })
+}
 export async function exportStorageConfig() {
   return sanitizeStorageConfig(await request<StorageExport>({ path: '/api/v1/admin/system/storage/export' }))
 }

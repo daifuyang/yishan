@@ -1,7 +1,7 @@
-import { Text } from '@tarojs/components'
 import { StateView } from '@/components/feedback'
 import {
   FormContent,
+  FormError,
   FormField,
   FormSection,
   FormSubmitBar,
@@ -11,7 +11,6 @@ import {
 } from '@/components/management'
 import { PageHeader } from '@/components/molecules'
 import { withAccountScope } from '../../_shared/AdminUI'
-import formStyles from '../form.module.scss'
 import { sectionOf } from '../model'
 import { useSiteConfig } from '../useSiteConfig'
 import { KeywordsField } from './KeywordsField'
@@ -46,7 +45,7 @@ function SiteSeoPage() {
               <TextAreaField value={config.seoDescription} onChange={(value) => setField('seoDescription', value)} placeholder="用于搜索结果中的摘要，建议 80～120 字" maxlength={-1} disabled={disabled} />
             </FormField>
           </FormSection>
-          {site.submitError ? <Text className={formStyles.error}>{site.submitError}</Text> : null}
+          <FormError>{site.submitError}</FormError>
         </FormContent>
         {site.canUpdate && site.loaded ? (
           <FormSubmitBar text="保存" submitting={site.saving} onSubmit={() => void site.save(section.fields)} />

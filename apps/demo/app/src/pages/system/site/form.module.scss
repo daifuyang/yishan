@@ -1,7 +1,0 @@
-/* 站点配置各编辑页共用：保存失败提示，位于表单末尾、底部保存栏之上 */
-.error {
-  display: block;
-  margin: var(--space-3) var(--space-4);
-  color: var(--color-danger);
-  font-size: var(--font-size-14);
-}

@@ -1,5 +1,4 @@
 import Taro, { useRouter } from '@tarojs/taro'
-import { Text } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import { createAdminPosition, getAdminPosition, updateAdminPosition } from '@/api/admin/position'
 import { getSessionVersion } from '@/api/client'
@@ -7,6 +6,7 @@ import { StateView } from '@/components/feedback'
 import {
   EnumField,
   FormContent,
+  FormError,
   FormField,
   FormSection,
   FormSubmitBar,
@@ -20,7 +20,6 @@ import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
 import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
 import { positionPayload } from '../model'
-import styles from './index.module.scss'
 
 function PositionFormPage() {
   const guard = useRequireAuth({ moduleId: 'system-position' })
@@ -158,11 +157,7 @@ function PositionFormPage() {
               />
             </FormField>
           </FormSection>
-          {submitError ? (
-            <Text className={styles.error}>
-              {submitError}
-            </Text>
-          ) : null}
+          <FormError>{submitError}</FormError>
         </FormContent>
         {canSave && loaded ? (
           <FormSubmitBar text="保存" submitting={busy} onSubmit={() => void save()} />
