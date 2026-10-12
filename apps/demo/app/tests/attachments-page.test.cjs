@@ -366,3 +366,59 @@ test('多选时点整行（含复选框区域）切换一次，Cell 与复选框
   assert.equal(page.one('SelectionFooter').props.count, 0)
   assert.deepEqual(calls.navigate, [])
 })
+
+test('刷新后列表缩小：已选只保留仍可见的素材，删除只发可见 id', async () => {
+  const { page, list, calls } = mount()
+  await page.settle()
+  page.byLabel('管理').props.onClick()
+  page.rerender()
+  page.byLabel('选择-banner.png').props.onClick()
+  page.byLabel('选择-介绍.mp4').props.onClick()
+  page.rerender()
+  assert.equal(page.one('SelectionFooter').props.count, 2)
+  // 下拉刷新 / useDidShow 刷新回到第 1 页，后续页的素材不再可见
+  list.list = [ITEMS[0]]
+  await page.settle()
+  assert.equal(page.one('SelectionFooter').props.count, 1)
+  page.one('SelectionFooter').props.onConfirm()
+  await page.settle()
+  assert.deepEqual(calls.deleted, [[1]])
+})
+
+test('H5 选图 / 选视频上传后释放 blob URL，非 blob 路径不释放', async () => {
+  const revoked = []
+  const original = URL.revokeObjectURL
+  const env = process.env.TARO_ENV
+  URL.revokeObjectURL = (url) => revoked.push(url)
+  process.env.TARO_ENV = 'h5'
+  try {
+    const { page } = mount({
+      taro: {
+        chooseImage: async () => ({
+          tempFiles: [
+            { path: 'blob:http://h5/a', size: 10, type: 'image/png', originalFileObj: { name: 'a.png' } },
+            { path: 'p2', size: 10, type: 'image/png', originalFileObj: { name: 'b.png' } },
+          ],
+        }),
+        chooseVideo: async () => ({ tempFilePath: 'blob:http://h5/v', size: 20 }),
+      },
+      upload: () => {
+        throw new Error('上传失败')
+      },
+    })
+    await page.settle()
+    for (const label of ['图片', '视频']) {
+      page.byLabel('上传').props.onClick()
+      page
+        .one('ActionSheet')
+        .props.items.find((i) => i.label === label)
+        .onClick()
+      await page.settle()
+    }
+    assert.deepEqual(revoked, ['blob:http://h5/a', 'blob:http://h5/v'])
+  } finally {
+    URL.revokeObjectURL = original
+    if (env === undefined) delete process.env.TARO_ENV
+    else process.env.TARO_ENV = env
+  }
+})

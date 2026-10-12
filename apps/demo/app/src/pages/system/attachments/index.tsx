@@ -89,6 +89,15 @@ function AttachmentsPage() {
   useEffect(() => {
     setSelected([])
   }, [list.keyword, list.filters])
+  // 刷新回到第 1 页后，后续页的已选素材看不到了，同样要剔除；无变化时返回原数组，不触发重渲染
+  useEffect(() => {
+    const visible = new Set(list.list.map((item) => item.id))
+    setSelected((previous) =>
+      previous.every((id) => visible.has(id))
+        ? previous
+        : previous.filter((id) => visible.has(id)),
+    )
+  }, [list.list])
 
   const loadFolders = () => {
     getFolderTree()
@@ -156,20 +165,27 @@ function AttachmentsPage() {
     }
   }
 
+  /** H5 的 chooseImage / chooseVideo 返回 blob URL，上传完要释放，否则一直占着内存 */
+  const revokeBlobs = (files: UploadFile[]) => {
+    if (process.env.TARO_ENV !== 'h5') return
+    for (const file of files) if (file.path.startsWith('blob:')) URL.revokeObjectURL(file.path)
+  }
+
   async function pickImages(useCloud: boolean) {
     const session = getSessionVersion()
     try {
       const result = await Taro.chooseImage({ count: 9 })
-      await upload(
-        result.tempFiles.map((file) => ({
-          path: file.path,
-          name: file.originalFileObj?.name || file.path.split('/').pop() || 'image.jpg',
-          size: file.size,
-          mimeType: file.type || 'image/jpeg',
-        })),
-        useCloud,
-        session,
-      )
+      const files = result.tempFiles.map((file) => ({
+        path: file.path,
+        name: file.originalFileObj?.name || file.path.split('/').pop() || 'image.jpg',
+        size: file.size,
+        mimeType: file.type || 'image/jpeg',
+      }))
+      try {
+        await upload(files, useCloud, session)
+      } finally {
+        revokeBlobs(files)
+      }
     } catch (reason) {
       if (session === getSessionVersion() && !isPickerCancel(reason))
         void Taro.showToast({ title: errorMessage(reason), icon: 'none' })
@@ -179,18 +195,19 @@ function AttachmentsPage() {
     const session = getSessionVersion()
     try {
       const result = await Taro.chooseVideo({ sourceType: ['album', 'camera'] })
-      await upload(
-        [
-          {
-            path: result.tempFilePath,
-            name: result.tempFilePath.split('/').pop() || 'video.mp4',
-            size: result.size,
-            mimeType: 'video/mp4',
-          },
-        ],
-        useCloud,
-        session,
-      )
+      const files = [
+        {
+          path: result.tempFilePath,
+          name: result.tempFilePath.split('/').pop() || 'video.mp4',
+          size: result.size,
+          mimeType: 'video/mp4',
+        },
+      ]
+      try {
+        await upload(files, useCloud, session)
+      } finally {
+        revokeBlobs(files)
+      }
     } catch (reason) {
       if (session === getSessionVersion() && !isPickerCancel(reason))
         void Taro.showToast({ title: errorMessage(reason), icon: 'none' })

@@ -45,11 +45,14 @@ test('SelectionFooter 支持自定义确认文案与危险样式，默认仍是�
   assert.ok(flat(SelectionFooter(base)).find((n) => n.props?.['aria-label'] === '确定'))
 })
 
-function mockH5Dom() {
+/** cancelEvent=false 模拟不支持 input cancel 事件的旧浏览器：input 上没有 oncancel 属性 */
+function mockH5Dom({ cancelEvent = true } = {}) {
   const env = { clicks: [], removed: [], listeners: {}, input: undefined }
   global.document = {
     createElement: (tag) => {
-      env.input = { tag, style: {}, files: [], click() { env.clicks.push(tag) }, set onchange(fn) { this._change = fn }, set oncancel(fn) { this._cancel = fn } }
+      env.input = { tag, style: {}, files: [], click() { env.clicks.push(tag) }, set onchange(fn) { this._change = fn } }
+      if (cancelEvent)
+        Object.defineProperty(env.input, 'oncancel', { set(fn) { this._cancel = fn }, configurable: true })
       return env.input
     },
     body: { appendChild() {}, removeChild(node) { env.removed.push(node) } },
@@ -103,10 +106,10 @@ test('H5 chooseFiles 取消时返回空数组并移除 input', async () => {
   }
 })
 
-test('H5 chooseFiles 不触发 change/cancel 时靠窗口 focus 兜底落地，且只落地一次', async (t) => {
+test('H5 chooseFiles 不支持 cancel 事件时靠窗口 focus 兜底落地，且只落地一次', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   try {
-    const env = mockH5Dom()
+    const env = mockH5Dom({ cancelEvent: false })
     const { chooseFiles } = loadH5()
     let resolved = 0
     const pending = chooseFiles().then((files) => {
@@ -115,17 +118,41 @@ test('H5 chooseFiles 不触发 change/cancel 时靠窗口 focus 兜底落地，�
     })
     assert.equal(typeof env.listeners.focus, 'function', 'click 之后监听窗口 focus')
     env.listeners.focus()
-    t.mock.timers.tick(299)
+    t.mock.timers.tick(999)
     assert.deepEqual(env.removed, [], '等待期内不提前落地，给迟到的 change 留时间')
     t.mock.timers.tick(1)
     assert.deepEqual(await pending, [])
     assert.deepEqual(env.removed, [env.input])
     env.input.files = [{ name: 'late.pdf', size: 1, type: 'application/pdf' }]
     env.input._change()
-    env.input._cancel()
+    env.input.oncancel?.()
     await Promise.resolve()
     assert.equal(resolved, 1)
     assert.deepEqual(env.removed, [env.input], '不重复移除 input')
+  } finally {
+    cleanupH5Dom()
+  }
+})
+
+test('H5 chooseFiles 支持 cancel 事件时不注册 focus 兜底，窗口回焦不会丢掉选择', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  try {
+    const env = mockH5Dom()
+    const { chooseFiles } = loadH5()
+    let result
+    const pending = chooseFiles().then((files) => {
+      result = files
+      return files
+    })
+    assert.equal(env.listeners.focus, undefined, '浏览器有 cancel 事件就不监听 focus')
+    env.listeners.focus?.()
+    t.mock.timers.tick(5000)
+    await Promise.resolve()
+    assert.equal(result, undefined, '回焦后不落地为空数组')
+    assert.deepEqual(env.removed, [])
+    env.input.files = [{ name: 'slow.pdf', size: 2, type: 'application/pdf' }]
+    env.input._change()
+    assert.deepEqual(await pending, [{ path: 'blob:slow.pdf', name: 'slow.pdf', size: 2, mimeType: 'application/pdf' }])
   } finally {
     cleanupH5Dom()
   }
