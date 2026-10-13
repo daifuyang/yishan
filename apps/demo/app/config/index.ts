@@ -69,6 +69,8 @@ export default defineConfig(async (merge, _env) => {
       enable: true,
       // Taro 的默认缓存只跟踪 app.config，工作台导航配置也必须使旧路由缓存失效。
       buildDependencies: {
+        // pnpm 依赖补丁变更后，不能继续复用旧的 Taro 编译缓存。
+        dependencies: [path.resolve(__dirname, '../../../../pnpm-lock.yaml')],
         pages: [
           path.resolve(__dirname, '../src/app.config.ts'),
           path.resolve(__dirname, '../src/constants/page-config.ts'),

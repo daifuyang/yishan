@@ -1,0 +1,28 @@
+diff --git a/dist/components/pull-down-refresh/index.js b/dist/components/pull-down-refresh/index.js
+index c3853986c76f6989480b9c0ae243202835860f00..48c9317afed665b4f4bf5fbcd72373b238fb83d2 100644
+--- a/dist/components/pull-down-refresh/index.js
++++ b/dist/components/pull-down-refresh/index.js
+@@ -196,6 +196,9 @@ class PullDownRefresh extends React__default.Component {
+     };
+   }
+   get scrollContainer() {
++    // Taro scrolls the page, not the non-scrolling refresh content wrapper.
++    const page = this.contentRef?.closest('.taro_page');
++    if (page) return page;
+     var _a, _b;
+     return ((_a = this.contentRef) === null || _a === void 0 ? void 0 : _a.parentElement) || ((_b = this.contentRef) === null || _b === void 0 ? void 0 : _b.closest('.taro_page_stationed')) || document.querySelector('.taro_page_stationed') || document.querySelector('.taro_page') || document.querySelector('.taro_router') || document.querySelector('.taro-tabbar__panel') || document.body;
+   }
+diff --git a/dist/original/components/pull-down-refresh/index.js b/dist/original/components/pull-down-refresh/index.js
+index a3fcb5db6add5788607def8d6b0f13119ab94dc0..8826ba95480cce0910627283d09571fd2781803d 100644
+--- a/dist/original/components/pull-down-refresh/index.js
++++ b/dist/original/components/pull-down-refresh/index.js
+@@ -196,6 +196,9 @@ class PullDownRefresh extends React__default.Component {
+     };
+   }
+   get scrollContainer() {
++    // Taro scrolls the page, not the non-scrolling refresh content wrapper.
++    const page = this.contentRef?.closest('.taro_page');
++    if (page) return page;
+     var _a, _b;
+     return ((_a = this.contentRef) === null || _a === void 0 ? void 0 : _a.parentElement) || ((_b = this.contentRef) === null || _b === void 0 ? void 0 : _b.closest('.taro_page_stationed')) || document.querySelector('.taro_page_stationed') || document.querySelector('.taro_page') || document.querySelector('.taro_router') || document.querySelector('.taro-tabbar__panel') || document.body;
+   }

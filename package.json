@@ -40,6 +40,9 @@
           "@types/react": "*"
         }
       }
+    },
+    "patchedDependencies": {
+      "@tarojs/components-react@4.2.0": "patches/@tarojs__components-react@4.2.0.patch"
     }
   },
   "keywords": [
