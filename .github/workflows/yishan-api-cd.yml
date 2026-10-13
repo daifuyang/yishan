@@ -1,24 +1,18 @@
-name: yishan-fullstack-cd-fc
+name: yishan-api-cd
 
+# 只发布后端：Fastify API → 阿里云 FC 函数 yishan-demo-layered（同时承载 Admin 静态资源）。
+# 迁移是部署的前置条件：先跑迁移，失败就不部署代码。
 on:
   push:
     branches:
       - main
     paths:
-      # 与 yishan-fullstack-ci.yml 的 paths 保持一致：
-      # 只要 CD 被触发，同一 commit 的 CI 也一定会被触发，ci-gate 不会永久等待。
-      - ".github/workflows/**"
-      - "apps/demo/admin/**"
+      - ".github/workflows/yishan-api-cd.yml"
+      - ".github/workflows/yishan-fc-migrate.yml"
       - "apps/demo/api/**"
       - "packages/core/**"
       - "apps/demo/config/**"
       - "scripts/**"
-      - "packages/yishan-tiptap/**"
-      - "packages/ui/**"
-      - "packages/core/docs-kit/**"
-      - "apps/demo/app/**"
-      - "apps/*/docs/**"
-      - "docs/**"
       - ".tool-versions"
       - ".npmrc"
       - "pnpm-lock.yaml"
@@ -31,15 +25,17 @@ on:
         required: false
         default: false
         type: boolean
+      skip_migrations:
+        description: "跳过本次迁移（仅在刚手动执行过迁移时勾选）。"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
-  group: yishan-fullstack-cd-fc
+  group: yishan-api-cd
   cancel-in-progress: true
 
 jobs:
-  # CI 必须先在同一 commit 上通过，才允许部署。
-  # 背景：此前 CD 与 CI 完全并行，CI 连续失败时 CD 照常下发。
-  # 注意：CD 的 paths 已与 CI 对齐，push 触发 CD 时 CI 必然也在跑。
   ci-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -87,8 +83,79 @@ jobs:
             sleep 15
           done
 
-  deploy:
+  migrate:
     needs: ci-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: YISHAN_API
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install and compile checked-in migrations
+        if: inputs.skip_migrations != true
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm -r --filter @yishan/demo-api... build
+          pnpm --filter @yishan/demo-api db:migrate --check
+
+      - name: Setup SSH tunnel to ECS internal MySQL
+        if: inputs.skip_migrations != true
+        env:
+          ECS_DEPLOYER_SSH_KEY: ${{ secrets.ECS_DEPLOYER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$ECS_DEPLOYER_SSH_KEY"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$ECS_DEPLOYER_SSH_KEY" > ~/.ssh/ecs-deployer.pem
+          chmod 600 ~/.ssh/ecs-deployer.pem
+          ssh -fN -o StrictHostKeyChecking=accept-new -o ExitOnForwardFailure=yes \
+            -i ~/.ssh/ecs-deployer.pem -L 13306:127.0.0.1:3306 \
+            ecs-deployer@139.196.89.64 tunnel-dsh
+          for attempt in 1 2 3 4 5; do
+            if nc -z 127.0.0.1 13306; then break; fi
+            if [ "$attempt" -eq 5 ]; then exit 1; fi
+            sleep 1
+          done
+
+      # 迁移失败即失败：needs 关系保证不会继续部署代码，
+      # 避免"代码已上线、表还没建"这种需要人工救火的中间态。
+      - name: Apply pending migrations
+        if: inputs.skip_migrations != true
+        working-directory: apps/demo/api
+        env:
+          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
+        run: |
+          set -euo pipefail
+          export DATABASE_URL="$(node -e 'process.stdout.write(`mysql://${encodeURIComponent(process.env.DATABASE_USER)}:${encodeURIComponent(process.env.DATABASE_PASSWORD)}@127.0.0.1:13306/${encodeURIComponent(process.env.DATABASE_NAME)}`)')"
+          pnpm db:migrate --dry-run
+          pnpm db:migrate --apply
+          # 迁移后再确认一次：仍有 pending 说明没迁干净，不允许继续部署代码。
+          if pnpm db:migrate --dry-run 2>&1 | grep -q 'pending'; then
+            echo "::error::迁移后仍有待执行项，判定部署失败。"; exit 1
+          fi
+          echo "Migrations up to date."
+
+      - name: Cleanup SSH tunnel
+        if: always()
+        run: pkill -f 'ssh.*13306.*ecs-deployer.*tunnel-dsh' || true
+
+  deploy:
+    needs: [ci-gate, migrate]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: YISHAN_API
@@ -127,19 +194,12 @@ jobs:
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.22.1
-          cache: pnpm
-
       - name: Install
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --prod=false
 
       - name: Prepare yishan-tiptap
         working-directory: packages/yishan-tiptap
-        run: |
-          pnpm install --filter @yishan/tiptap --frozen-lockfile
-          pnpm build --filter @yishan/tiptap
+        run: pnpm install --frozen-lockfile && pnpm build
 
       - name: Generate Admin plugin routes
         run: pnpm --filter @yishan/demo-admin exec max setup
@@ -147,116 +207,9 @@ jobs:
       - name: Build Demo Admin
         env:
           # 与 API 端的 ADMIN_BASE_PATH（默认 /admin/）保持一致，让 admin 静态资源
-          # 也以 /admin/ 路径前缀打包，CDN/函数挂载在 /admin/* 时才能正确命中。
+          # 也以 /admin/ 路径前缀打包，函数挂载在 /admin/* 时才能正确命中。
           PUBLIC_PATH: ${{ vars.ADMIN_BASE_PATH || '/admin/' }}
         run: pnpm --filter @yishan/demo-admin build
-
-      - name: Install qshell
-        env:
-          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
-          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
-          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
-        run: |
-          if [ -z "${QINIU_ACCESS_KEY:-}" ] || [ -z "${QINIU_SECRET_KEY:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
-            echo "Skip qshell install: Qiniu secrets not configured"
-            exit 0
-          fi
-          VER='v2.19.7'
-          ARCH="$(uname -m)"
-          case "$ARCH" in
-            x86_64) PKG='linux-amd64' ;;
-            aarch64|arm64) PKG='linux-arm64' ;;
-            *) echo "Unsupported arch: $ARCH"; exit 1 ;;
-          esac
-          TMP="$(mktemp -d)"
-          curl -fL "https://github.com/qiniu/qshell/releases/download/${VER}/qshell-${VER}-${PKG}.tar.gz" -o "$TMP/qshell.tgz"
-          tar -xzf "$TMP/qshell.tgz" -C "$TMP"
-          sudo install -m 755 "$TMP/qshell" /usr/local/bin/qshell
-          rm -rf "$TMP"
-          qshell version
-
-      - name: Upload admin dist to Qiniu bucket
-        env:
-          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
-          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
-          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
-          QINIU_CDN_DOMAIN: ${{ secrets.QINIU_CDN_DOMAIN }}
-        run: |
-          if [ -z "${QINIU_ACCESS_KEY:-}" ] || [ -z "${QINIU_SECRET_KEY:-}" ] || [ -z "${QINIU_BUCKET:-}" ]; then
-            echo "Skip upload: Qiniu secrets not configured"
-            exit 0
-          fi
-          cat > "$HOME/.qshell.json" <<EOF
-          {
-            "access_key": "${QINIU_ACCESS_KEY}",
-            "secret_key": "${QINIU_SECRET_KEY}",
-            "use_https": true
-          }
-          EOF
-          chmod 600 "$HOME/.qshell.json"
-          qshell qupload2 \
-            --src-dir apps/demo/admin/dist \
-            --bucket "${QINIU_BUCKET}" \
-            --key-prefix admin/ \
-            --overwrite \
-            --rescan-local \
-            --log-level info \
-            --thread-count 4
-          if [ -n "${QINIU_CDN_DOMAIN:-}" ]; then
-            printf '%s\n' "https://${QINIU_CDN_DOMAIN}/admin/index.html" > /tmp/qshell_refresh_urls.txt
-            qshell cdnrefresh -i /tmp/qshell_refresh_urls.txt
-          fi
-
-      - name: Prepare .env
-        working-directory: apps/demo/api
-        env:
-          LOG_LEVEL: info
-          DATABASE_USER: ${{ secrets.YISHAN_API_DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.YISHAN_API_DATABASE_PASSWORD }}
-          DATABASE_NAME: ${{ secrets.YISHAN_API_DATABASE_NAME }}
-          DATABASE_HOST: ${{ secrets.YISHAN_API_DATABASE_HOST }}
-          DATABASE_PORT: ${{ secrets.YISHAN_API_DATABASE_PORT }}
-          REDIS_URL: ${{ secrets.YISHAN_API_REDIS_URL }}
-          REDIS_HOST: ${{ vars.REDIS_HOST }}
-          CACHE_NAMESPACE: ${{ vars.CACHE_NAMESPACE || 'yishan:demo' }}
-        run: |
-          set -euo pipefail
-          ENV_FILE="$(pwd)/.env"
-          node <<'NODE' > "$ENV_FILE"
-          let redisUrl = process.env.REDIS_URL || '';
-          let redisPort = '6379';
-          let redisHost = process.env.REDIS_HOST || '';
-          let redisPassword = '';
-          let redisDb = '0';
-          if (redisUrl) {
-            const parsed = new URL(redisUrl);
-            redisHost = redisHost || parsed.hostname;
-            redisPort = parsed.port || redisPort;
-            redisPassword = decodeURIComponent(parsed.password || '');
-            redisDb = (parsed.pathname || '/0').replace(/^\//, '') || redisDb;
-            // 函数跑在 VPC 内且没有公网出口：API 优先读 REDIS_URL，
-            // 所以 URL 的主机必须与内网 REDIS_HOST 一致，否则启动时 Redis 插件超时、实例起不来。
-            if (parsed.hostname !== redisHost) {
-              parsed.hostname = redisHost;
-              redisUrl = parsed.toString();
-            }
-          }
-          const lines = [
-            `LOG_LEVEL=${process.env.LOG_LEVEL || 'info'}`,
-            `DATABASE_USER=${process.env.DATABASE_USER || ''}`,
-            `DATABASE_PASSWORD=${process.env.DATABASE_PASSWORD || ''}`,
-            `DATABASE_NAME=${process.env.DATABASE_NAME || ''}`,
-            `DATABASE_HOST=${process.env.DATABASE_HOST || ''}`,
-            `DATABASE_PORT=${process.env.DATABASE_PORT || '3306'}`,
-            `REDIS_URL=${redisUrl}`,
-            `REDIS_HOST=${redisHost}`,
-            `REDIS_PORT=${redisPort}`,
-            `REDIS_PASSWORD=${redisPassword}`,
-            `REDIS_DB=${redisDb}`,
-            `CACHE_NAMESPACE=${process.env.CACHE_NAMESPACE || 'yishan:demo'}`,
-          ];
-          process.stdout.write(lines.join('\n') + '\n');
-          NODE
 
       - name: Install Serverless Devs
         run: npm i -g @serverless-devs/s
@@ -321,12 +274,6 @@ jobs:
           REDIS_HOST: ${{ vars.REDIS_HOST }}
           CACHE_NAMESPACE: ${{ vars.CACHE_NAMESPACE || 'yishan:demo' }}
           JWT_SECRET: ${{ secrets.YISHAN_API_JWT_SECRET }}
-          FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
-          FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
-          FUNCTION_DESCRIPTION: ${{ vars.FUNCTION_DESCRIPTION }}
-          FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
-          FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
-          FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
           ADMIN_BASE_PATH: ${{ vars.ADMIN_BASE_PATH || '/admin/' }}
           ADMIN_REDIRECT_ROOT: ${{ vars.ADMIN_REDIRECT_ROOT || 'true' }}
         run: |
@@ -381,7 +328,6 @@ jobs:
           BASE="${SMOKE_BASE_URL:-}"
           if [ -z "$BASE" ]; then
             echo "::warning::SMOKE_BASE_URL 未配置，跳过部署后 smoke 检查。"
-            echo "::warning::请在 GitHub Environment YISHAN_API 中设置 variable SMOKE_BASE_URL（例如 https://yishan.zerocmf.com）以启用校验。"
             exit 0
           fi
           BASE="${BASE%/}"

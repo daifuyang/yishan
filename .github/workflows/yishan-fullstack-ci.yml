@@ -139,6 +139,7 @@ jobs:
           node scripts/check-main-baseline.mjs
           node scripts/check-module-naming.mjs
           node scripts/check-admin-boundaries.mjs
+          node scripts/check-deploy-workflows.mjs
           node --test scripts/*.test.mjs scripts/test/*.test.mjs
 
       - name: Admin Build

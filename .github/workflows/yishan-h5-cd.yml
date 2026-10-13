@@ -1,0 +1,277 @@
+name: yishan-h5-cd
+
+# 只发布小程序 H5：构建后部署到 FC 函数 yishan-h5，由自定义域名 h5.zerocmf.com 提供。
+# /api/* 由域名路由转给 API 函数，本工作流不涉及后端。
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/yishan-h5-cd.yml"
+      - "apps/demo/app/**"
+      - "packages/core/app/**"
+      - "packages/ui/**"
+      - "apps/demo/config/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - ".tool-versions"
+      - ".npmrc"
+  workflow_dispatch:
+    inputs:
+      skip_ci_gate:
+        description: "紧急覆盖：跳过对 yishan-fullstack-ci 的等待。"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: yishan-h5-cd
+  cancel-in-progress: true
+
+jobs:
+  ci-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require green yishan-fullstack-ci on this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          SKIP_GATE: ${{ inputs.skip_ci_gate }}
+        run: |
+          set -euo pipefail
+          if [ "$SKIP_GATE" = "true" ]; then
+            echo "::warning::skip_ci_gate=true — 跳过 CI 门禁（紧急覆盖），直接部署。"
+            exit 0
+          fi
+          echo "等待 yishan-fullstack-ci @ ${SHA}"
+          deadline=$(( $(date +%s) + 3000 ))
+          while :; do
+            json="$(gh api "repos/${REPO}/actions/workflows/yishan-fullstack-ci.yml/runs?head_sha=${SHA}&per_page=100" 2>/dev/null || echo '{}')"
+            status="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request")] | sort_by(.created_at) | last | .status // "missing"')"
+            conclusion="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request")] | sort_by(.created_at) | last | .conclusion // ""')"
+            echo "ci status=${status} conclusion=${conclusion}"
+            # workflow_dispatch 落在从未跑过 CI 的 commit 上时，"missing" 会一直保持，
+            # 白等到超时没有意义，直接给出可操作的提示。
+            if [ "$status" = "missing" ] && [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+              echo "::error::${SHA} 上不存在 yishan-fullstack-ci 运行；如需跳过门禁请勾选 skip_ci_gate。"
+              exit 1
+            fi
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" = "success" ]; then
+                echo "CI 已通过，继续部署。"
+                exit 0
+              fi
+              echo "::error::yishan-fullstack-ci 在该 commit 上结论为 ${conclusion}，拒绝部署。"
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::等待 yishan-fullstack-ci（${SHA}）超时；如需紧急部署，请用 workflow_dispatch 并勾选 skip_ci_gate。"
+              exit 1
+            fi
+            sleep 15
+          done
+
+  deploy:
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write   # 必需：允许 actions 拿 OIDC token
+    env:
+      FUNCTION_REGION: ${{ vars.H5_FUNCTION_REGION || vars.FUNCTION_REGION || 'cn-shanghai' }}
+      H5_FUNCTION_NAME: ${{ vars.H5_FUNCTION_NAME || 'yishan-h5' }}
+      H5_DOMAIN: ${{ vars.H5_DOMAIN || 'h5.zerocmf.com' }}
+      ALIBABA_CLOUD_OIDC_AUDIENCE: github-actions
+      ALIBABA_CLOUD_OIDC_PROVIDER_ARN: acs:ram::1650595695532785:oidc-provider/github-actions
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.1
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Install Serverless Devs
+        run: npm i -g @serverless-devs/s
+
+      - name: Assume FC deploy role via OIDC
+        env:
+          ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          : "${ROLE_ARN:?Missing FC_DEPLOY_ROLE_ARN in the YISHAN_API environment}"
+          curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" -o /tmp/aliyun.tgz
+          tar -xzf /tmp/aliyun.tgz -C /tmp
+          if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
+          aliyun --version
+          mkdir -p ~/.aliyun
+          cat >~/.aliyun/config.json <<'CFG'
+          {"current":"fcdeploy","profiles":[{"name":"fcdeploy","mode":"AK","access_key_id":"placeholder","access_key_secret":"placeholder","sts_token":"","ram_role_name":"","ram_role_arn":"","private_key":"","key_pairs_cmd":"","key_pairs_dir":"","language":"en","site":"","retry_timeout":0,"retry_count":0,"process_command":"","credentials_uri":"","oidc_provider_arn":"","oidc_token_file":"","external_id":"","using_oidc":false,"oidc_token_endpoint":"","ram_role_session_name":"","expiration":"","region_id":"cn-shanghai","output_format":"json","timeout":0,"insecure":false,"ssl_verify":true}],"meta_path":""}
+          CFG
+          chmod 600 ~/.aliyun/config.json
+          TOKEN=$(curl -fsS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${ALIBABA_CLOUD_OIDC_AUDIENCE}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
+          RESP=$(aliyun sts AssumeRoleWithOIDC \
+            --region cn-hangzhou \
+            --RoleArn "$ROLE_ARN" \
+            --OIDCProviderArn "$ALIBABA_CLOUD_OIDC_PROVIDER_ARN" \
+            --OIDCToken "$TOKEN" \
+            --RoleSessionName "gha-h5-${{ github.run_id }}" \
+            --DurationSeconds 3600)
+          AK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeyId'])")
+          SK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeySecret'])")
+          ST=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecurityToken'])")
+          mkdir -p ~/.s
+          cat >~/.s/access.yaml <<SSHA
+          default:
+            AccessKeyID: ${AK}
+            AccessKeySecret: ${SK}
+            SecurityToken: ${ST}
+            type: sts
+            AccountID: '1650595695532785'
+            __provider: Alibaba Cloud
+          SSHA
+          chmod 600 ~/.s/access.yaml
+          echo "  STS issued OK, expires in 1h"
+
+      # 日常只更新函数；域名（DNS + 证书 + 路由）已建好，不需要重复执行。
+      - name: Build H5 and deploy function
+        run: bash apps/demo/app/deploy/fc3/scripts/deploy.sh
+
+      - name: Verify H5 is reachable
+        run: |
+          set -euo pipefail
+          BASE="https://${H5_DOMAIN}"
+          CODE="000"
+          for attempt in 1 2 3 4 5; do
+            CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${BASE}/" || true)"
+            if [ "$CODE" = "200" ]; then break; fi
+            echo "第 ${attempt} 次校验返回 ${CODE}，10s 后重试…"
+            sleep 10
+          done
+          [ "$CODE" = "200" ] || { echo "::error::${BASE}/ 持续返回 ${CODE}，判定部署失败。"; exit 1; }
+          # 入口页必须包含应用标题，避免把 404/占位 HTML 当成发布成功。
+          curl -fsS --max-time 15 "${BASE}/" | grep -q '<title>yishan-app</title>' \
+            || { echo "::error::${BASE}/ 未返回预期的 H5 入口页。"; exit 1; }
+          echo "H5 可达：${BASE}/ -> 200"
+
+  # 域名（DNS + 证书 + 路由）已建好，日常不需要重复执行。
+  # 换证书或改路由时手动触发一次。
+  deploy-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: YISHAN_API
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      FUNCTION_REGION: ${{ vars.H5_FUNCTION_REGION || vars.FUNCTION_REGION || 'cn-shanghai' }}
+      H5_FUNCTION_NAME: ${{ vars.H5_FUNCTION_NAME || 'yishan-h5' }}
+      API_FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
+      H5_DOMAIN: ${{ vars.H5_DOMAIN || 'h5.zerocmf.com' }}
+      H5_CERT_NAME: ${{ vars.H5_CERT_NAME || 'yishan-h5-zerocmf-com' }}
+      ALIBABA_CLOUD_OIDC_AUDIENCE: github-actions
+      ALIBABA_CLOUD_OIDC_PROVIDER_ARN: acs:ram::1650595695532785:oidc-provider/github-actions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.1
+
+      - name: Install acme.sh
+        env:
+          Ali_Key: ${{ secrets.ALI_DNS_ACCESS_KEY_ID }}
+          Ali_Secret: ${{ secrets.ALI_DNS_ACCESS_KEY_SECRET }}
+          ACME_ACCOUNT_EMAIL: ${{ secrets.ACME_ACCOUNT_EMAIL }}
+        run: |
+          set -euo pipefail
+          : "${Ali_Key:?Missing ALI_DNS_ACCESS_KEY_ID}"
+          : "${Ali_Secret:?Missing ALI_DNS_ACCESS_KEY_SECRET}"
+          curl -fsSL https://get.acme.sh | sh
+          ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+          if [ -n "${ACME_ACCOUNT_EMAIL:-}" ]; then
+            ~/.acme.sh/acme.sh --register-account -m "$ACME_ACCOUNT_EMAIL" --server letsencrypt || true
+          fi
+
+      - name: Issue certificate
+        env:
+          Ali_Key: ${{ secrets.ALI_DNS_ACCESS_KEY_ID }}
+          Ali_Secret: ${{ secrets.ALI_DNS_ACCESS_KEY_SECRET }}
+        run: |
+          set -euo pipefail
+          mkdir -p apps/demo/app/deploy/fc3/certs
+          ~/.acme.sh/acme.sh --issue --dns dns_ali -d "$H5_DOMAIN" --keylength 2048 --server letsencrypt
+          ~/.acme.sh/acme.sh --install-cert -d "$H5_DOMAIN" \
+            --fullchain-file "$(pwd)/apps/demo/app/deploy/fc3/certs/fullchain.cer" \
+            --key-file "$(pwd)/apps/demo/app/deploy/fc3/certs/private.key"
+
+      - name: Install Serverless Devs
+        run: npm i -g @serverless-devs/s
+
+      - name: Assume FC deploy role via OIDC
+        env:
+          ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          : "${ROLE_ARN:?Missing FC_DEPLOY_ROLE_ARN in the YISHAN_API environment}"
+          curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" -o /tmp/aliyun.tgz
+          tar -xzf /tmp/aliyun.tgz -C /tmp
+          if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
+          mkdir -p ~/.aliyun
+          cat >~/.aliyun/config.json <<'CFG'
+          {"current":"fcdeploy","profiles":[{"name":"fcdeploy","mode":"AK","access_key_id":"placeholder","access_key_secret":"placeholder","sts_token":"","ram_role_name":"","ram_role_arn":"","private_key":"","key_pairs_cmd":"","key_pairs_dir":"","language":"en","site":"","retry_timeout":0,"retry_count":0,"process_command":"","credentials_uri":"","oidc_provider_arn":"","oidc_token_file":"","external_id":"","using_oidc":false,"oidc_token_endpoint":"","ram_role_session_name":"","expiration":"","region_id":"cn-shanghai","output_format":"json","timeout":0,"insecure":false,"ssl_verify":true}],"meta_path":""}
+          CFG
+          chmod 600 ~/.aliyun/config.json
+          TOKEN=$(curl -fsS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${ALIBABA_CLOUD_OIDC_AUDIENCE}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
+          RESP=$(aliyun sts AssumeRoleWithOIDC \
+            --region cn-hangzhou \
+            --RoleArn "$ROLE_ARN" \
+            --OIDCProviderArn "$ALIBABA_CLOUD_OIDC_PROVIDER_ARN" \
+            --OIDCToken "$TOKEN" \
+            --RoleSessionName "gha-h5-domain-${{ github.run_id }}" \
+            --DurationSeconds 3600)
+          AK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeyId'])")
+          SK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeySecret'])")
+          ST=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecurityToken'])")
+          mkdir -p ~/.s
+          cat >~/.s/access.yaml <<SSHA
+          default:
+            AccessKeyID: ${AK}
+            AccessKeySecret: ${SK}
+            SecurityToken: ${ST}
+            type: sts
+            AccountID: '1650595695532785'
+            __provider: Alibaba Cloud
+          SSHA
+          chmod 600 ~/.s/access.yaml
+
+      - name: Deploy domain with certificate
+        run: bash apps/demo/app/deploy/fc3/scripts/deploy.sh --domain
+
+      - name: Verify certificate
+        run: |
+          set -euo pipefail
+          echo | openssl s_client -servername "$H5_DOMAIN" -connect "$H5_DOMAIN:443" 2>/dev/null \
+            | openssl x509 -noout -subject -enddate

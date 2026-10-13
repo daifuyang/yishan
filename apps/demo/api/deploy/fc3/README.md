@@ -15,6 +15,6 @@ The installed business modules come only from `src/manifest.ts`. Uninstalled mod
 
 CI verifies the same production package in a directory outside the repository. Deployment uses the existing OIDC `default` Serverless Devs profile. Domain configuration remains in `templates/domain.yaml`; runtime settings are described in [environment variables](docs/environment-variables.md).
 
-The `yishan-fullstack-cd-fc.yml` workflow deploys only after manual `workflow_dispatch`; pushes do not release production. Its default gate requires successful CI for the selected commit. The existing explicit emergency `skip_ci_gate` input remains available for manual use.
+The `yishan-api-cd.yml` workflow deploys this function on pushes to `main` that touch the API paths. Its default gate requires successful CI for the same commit, and pending migrations run before the deploy: a failed migration blocks it. Manual `workflow_dispatch` runs can bypass the gate with `skip_ci_gate` or the migration step with `skip_migrations`.
 
-Database migrations run separately through the manual `yishan-fc-migrate.yml` SSH tunnel workflow. It builds the explicit application migration plan and supports read-only `dry-run` or confirmed `apply`. The obsolete FC migration runner and Layer packaging scripts have been removed. Production reset is not exposed.
+Database migrations also remain available on demand through the manual `yishan-fc-migrate.yml` SSH tunnel workflow, which supports read-only `dry-run` or confirmed `apply`. The obsolete FC migration runner and Layer packaging scripts have been removed. Production reset is not exposed.

@@ -12,6 +12,6 @@ CD 将 `YISHAN_API_REDIS_URL` Secret 原样传给函数的 `REDIS_URL`；`rediss
 
 编译、打包、API启动不生成/执行迁移或 seed。发布前单独审查 `--dry-run`，只有明确 `--apply` 才能写数据库；不要自动 reset 或删除历史。
 
-生产 CD 工作流 `yishan-fullstack-cd-fc.yml` 仅支持 `workflow_dispatch`，提交代码不会自动发布生产。人工选择 commit 后，默认等待该 commit 的 CI 通过，再构建 Web 和独立 API 产物并部署。保留既有的人工紧急 `skip_ci_gate` 选项，只有显式勾选时才跳过该等待。
+生产按应用拆成三条 CD 工作流，推送 `main` 后按路径自动触发：`yishan-api-cd.yml` 发布 API（先跑数据库迁移，迁移失败即不部署代码），`yishan-admin-cd.yml` 把 Web 构建上传到七牛，`yishan-h5-cd.yml` 发布小程序 H5 到 FC 函数。三者都先等待该 commit 的 CI 通过；`workflow_dispatch` 提供人工触发的 `skip_ci_gate`（跳过 CI 等待）与 `skip_migrations`（仅在刚手动执行过迁移时勾选）。
 
 CI 覆盖 API类型/构建/单元/隔离数据库集成、包边界、迁移哈希及 OpenAPI一致性。Web/App 的构建与业务行为保持现状。

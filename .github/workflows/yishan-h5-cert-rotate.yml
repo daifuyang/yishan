@@ -1,0 +1,174 @@
+name: yishan-h5-cert-rotate
+
+# h5.zerocmf.com 的证书轮换：ACME DNS-01 签发 → 更新 FC 自定义域名。
+# 与 yishan-cert-rotate-fc.yml（yishan.zerocmf.com）结构一致，只是模板路径不同。
+# 每日检查一次；证书剩余不足 30 天、或生产模式下发现 staging 证书时才实际轮换。
+on:
+  schedule:
+    - cron: '45 19 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: yishan-h5-cert-rotate
+  cancel-in-progress: false
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: YISHAN_API
+    permissions:
+      contents: read
+      id-token: write   # 必需：允许 actions 拿 OIDC token
+    env:
+      H5_DOMAIN: ${{ vars.H5_DOMAIN || 'h5.zerocmf.com' }}
+      H5_FUNCTION_NAME: ${{ vars.H5_FUNCTION_NAME || 'yishan-h5' }}
+      API_FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
+      H5_CERT_NAME: ${{ vars.H5_CERT_NAME || 'yishan-h5-zerocmf-com' }}
+      CERT_MIN_AGE_DAYS: '30'
+      ACME_MODE: ${{ vars.ACME_MODE || 'staging' }}
+      ACME_CA: ${{ vars.ACME_CA || 'letsencrypt' }}
+      H5_FC_REGION: ${{ vars.H5_FUNCTION_REGION || vars.FUNCTION_REGION || 'cn-shanghai' }}
+      ALIBABA_CLOUD_OIDC_AUDIENCE: github-actions
+      ALIBABA_CLOUD_OIDC_PROVIDER_ARN: acs:ram::1650595695532785:oidc-provider/github-actions
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.1
+
+      - name: Check current cert age
+        id: cert_age
+        run: |
+          set -euo pipefail
+          probe() { openssl s_client -servername "$H5_DOMAIN" -connect "$H5_DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout "$1"; }
+          cert_issuer="$(probe -issuer)"; cert_issuer="${cert_issuer#issuer=}"
+          cert_start="$(probe -startdate)"; cert_start="${cert_start#notBefore=}"
+          cert_end="$(probe -enddate)"; cert_end="${cert_end#notAfter=}"
+          start_ts="$(date -u -d "$cert_start" +%s)"
+          end_ts="$(date -u -d "$cert_end" +%s)"
+          now_ts="$(date -u +%s)"
+          cert_age_days="$(( (now_ts - start_ts) / 86400 ))"
+          cert_left_days="$(( (end_ts - now_ts) / 86400 ))"
+          cert_is_staging=false
+          if echo "$cert_issuer" | grep -qi 'staging'; then cert_is_staging=true; fi
+
+          echo "H5 cert issuer: $cert_issuer"
+          echo "H5 cert start: $cert_start"
+          echo "H5 cert end: $cert_end (left ${cert_left_days} days)"
+
+          rotate=false
+          rotate_reason="age-not-reached"
+          if [ "${ACME_MODE}" = "production" ] && [ "$cert_is_staging" = true ]; then
+            rotate=true
+            rotate_reason="staging-cert-found-in-production-mode"
+          elif [ "$cert_age_days" -ge "$CERT_MIN_AGE_DAYS" ]; then
+            rotate=true
+            rotate_reason="age-threshold-reached"
+          fi
+
+          echo "rotate=$rotate" >> "$GITHUB_OUTPUT"
+          echo "rotate_reason=$rotate_reason" >> "$GITHUB_OUTPUT"
+          {
+            echo "### H5 Certificate"
+            echo "- domain: ${H5_DOMAIN}"
+            echo "- issuer: ${cert_issuer}"
+            echo "- notAfter: ${cert_end}"
+            echo "- daysLeft: ${cert_left_days}"
+            echo "- rotate: ${rotate} (${rotate_reason})"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Serverless Devs
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: npm i -g @serverless-devs/s
+
+      - name: Install acme.sh
+        if: steps.cert_age.outputs.rotate == 'true'
+        env:
+          Ali_Key: ${{ secrets.ALI_DNS_ACCESS_KEY_ID }}
+          Ali_Secret: ${{ secrets.ALI_DNS_ACCESS_KEY_SECRET }}
+          ACME_ACCOUNT_EMAIL: ${{ secrets.ACME_ACCOUNT_EMAIL }}
+        run: |
+          set -euo pipefail
+          : "${Ali_Key:?Missing ALI_DNS_ACCESS_KEY_ID}"
+          : "${Ali_Secret:?Missing ALI_DNS_ACCESS_KEY_SECRET}"
+          curl -fsSL https://get.acme.sh | sh
+          ~/.acme.sh/acme.sh --set-default-ca --server "$ACME_CA"
+          if [ -n "${ACME_ACCOUNT_EMAIL:-}" ]; then
+            ~/.acme.sh/acme.sh --register-account -m "$ACME_ACCOUNT_EMAIL" --server "$ACME_CA" || true
+          fi
+
+      - name: Issue and install cert by DNS
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p apps/demo/app/deploy/fc3/certs
+          acme_args=(--issue --dns dns_ali -d "$H5_DOMAIN" --keylength 2048 --server "$ACME_CA")
+          if [ "$ACME_MODE" = "staging" ]; then acme_args+=(--staging); fi
+          ~/.acme.sh/acme.sh "${acme_args[@]}"
+          ~/.acme.sh/acme.sh --install-cert -d "$H5_DOMAIN" \
+            --fullchain-file "$(pwd)/apps/demo/app/deploy/fc3/certs/fullchain.cer" \
+            --key-file "$(pwd)/apps/demo/app/deploy/fc3/certs/private.key"
+
+      - name: Assume FC deploy role via OIDC
+        if: steps.cert_age.outputs.rotate == 'true'
+        env:
+          ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          : "${ROLE_ARN:?Missing FC_DEPLOY_ROLE_ARN in the YISHAN_API environment}"
+          curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" -o /tmp/aliyun.tgz
+          tar -xzf /tmp/aliyun.tgz -C /tmp
+          if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
+          aliyun --version
+          mkdir -p ~/.aliyun
+          cat >~/.aliyun/config.json <<'CFG'
+          {"current":"fcdeploy","profiles":[{"name":"fcdeploy","mode":"AK","access_key_id":"placeholder","access_key_secret":"placeholder","sts_token":"","ram_role_name":"","ram_role_arn":"","private_key":"","key_pairs_cmd":"","key_pairs_dir":"","language":"en","site":"","retry_timeout":0,"retry_count":0,"process_command":"","credentials_uri":"","oidc_provider_arn":"","oidc_token_file":"","external_id":"","using_oidc":false,"oidc_token_endpoint":"","ram_role_session_name":"","expiration":"","region_id":"cn-shanghai","output_format":"json","timeout":0,"insecure":false,"ssl_verify":true}],"meta_path":""}
+          CFG
+          chmod 600 ~/.aliyun/config.json
+          TOKEN=$(curl -fsS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${ALIBABA_CLOUD_OIDC_AUDIENCE}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
+          RESP=$(aliyun sts AssumeRoleWithOIDC \
+            --region cn-hangzhou \
+            --RoleArn "$ROLE_ARN" \
+            --OIDCProviderArn "$ALIBABA_CLOUD_OIDC_PROVIDER_ARN" \
+            --OIDCToken "$TOKEN" \
+            --RoleSessionName "gha-h5-cert-${{ github.run_id }}" \
+            --DurationSeconds 3600)
+          AK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeyId'])")
+          SK=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeySecret'])")
+          ST=$(echo "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecurityToken'])")
+          mkdir -p ~/.s
+          cat >~/.s/access.yaml <<SSHA
+          default:
+            AccessKeyID: ${AK}
+            AccessKeySecret: ${SK}
+            SecurityToken: ${ST}
+            type: sts
+            AccountID: '1650595695532785'
+            __provider: Alibaba Cloud
+          SSHA
+          chmod 600 ~/.s/access.yaml
+          echo "  STS issued OK, expires in 1h"
+
+      - name: Deploy H5 domain with renewed cert
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: |
+          set -euo pipefail
+          export FUNCTION_REGION="$H5_FC_REGION" H5_FUNCTION_NAME H5_DOMAIN H5_CERT_NAME
+          export API_FUNCTION_NAME="$API_FUNCTION_NAME"
+          bash apps/demo/app/deploy/fc3/scripts/deploy.sh --domain
+
+      - name: Verify H5 cert after deploy
+        if: steps.cert_age.outputs.rotate == 'true'
+        run: |
+          set -euo pipefail
+          cert_end="$(openssl s_client -servername "$H5_DOMAIN" -connect "$H5_DOMAIN:443" < /dev/null 2>/dev/null | openssl x509 -noout -enddate)"
+          echo "H5 cert end after deploy: ${cert_end#notAfter=}"
+          {
+            echo "### H5 Certificate After Deploy"
+            echo "- notAfter: ${cert_end#notAfter=}"
+          } >> "$GITHUB_STEP_SUMMARY"
