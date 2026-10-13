@@ -45,7 +45,9 @@ function HomeAppsEditPage() {
   const groups = getWorkbenchGroups(menus, user?.permissions, enabledModuleIds)
   const byMenuId = new Map(groups.flatMap((group) => group.apps).map((app) => [app.menuId, app]))
 
-  // 草稿只在首次拿到数据时初始化，之后的刷新不覆盖用户正在做的调整
+  // 草稿只在首次拿到数据时初始化，之后的刷新不覆盖用户正在做的调整。
+  // 依赖刻意只取 [loaded, home]：byMenuId 每次渲染都重建，放进依赖会让 effect 每轮都跑；
+  // draft 由 null 守卫，初始化后不再变化。草稿里因授权变化而不可见的 id 由下方 ids 过滤
   useEffect(() => {
     if (draft === null && loaded && home) setDraft(home.pinned.filter((id) => byMenuId.has(id)))
   }, [loaded, home])
@@ -53,7 +55,9 @@ function HomeAppsEditPage() {
   if (!ready) return <ManagementPage>{null}</ManagementPage>
 
   const pinned = (draft ?? []).flatMap((id) => byMenuId.get(id) ?? [])
-  const full = pinned.length >= MAX_HOME_APPS
+  // 所有操作都落在可见列表上：草稿可能残留刷新后已不可见的 id，直接对 draft 取下标或计数会错位
+  const ids = pinned.map((app) => app.menuId)
+  const full = ids.length >= MAX_HOME_APPS
   const searchGroups = query.trim()
     ? getWorkbenchGroups(menus, user?.permissions, enabledModuleIds, query)
     : groups
@@ -65,7 +69,7 @@ function HomeAppsEditPage() {
     locked.current = true
     setSaving(true)
     try {
-      await useModuleStore.getState().savePins(pinned.map((app) => app.menuId))
+      await useModuleStore.getState().savePins(ids)
       Taro.showToast({ title: '已保存', icon: 'success' })
       await navigateBack()
     } catch (failure) {
@@ -91,7 +95,7 @@ function HomeAppsEditPage() {
                   key: 'up',
                   label: '上移',
                   onClick: () => {
-                    setDraft(movePin(draft, active, -1))
+                    setDraft(movePin(ids, active, -1))
                     setActive(null)
                   },
                 },
@@ -103,7 +107,7 @@ function HomeAppsEditPage() {
                   key: 'down',
                   label: '下移',
                   onClick: () => {
-                    setDraft(movePin(draft, active, 1))
+                    setDraft(movePin(ids, active, 1))
                     setActive(null)
                   },
                 },
@@ -114,7 +118,7 @@ function HomeAppsEditPage() {
             label: '取消固定',
             danger: true,
             onClick: () => {
-              if (activeApp) setDraft(togglePin(draft, activeApp.menuId))
+              if (activeApp) setDraft(togglePin(ids, activeApp.menuId))
               setActive(null)
             },
           },
@@ -151,7 +155,7 @@ function HomeAppsEditPage() {
           {searchGroups.map((group) => (
             <DetailSection key={group.id} title={group.name}>
               {group.apps.map((app, index) => {
-                const checked = (draft ?? []).includes(app.menuId)
+                const checked = ids.includes(app.menuId)
                 const disabled = !checked && full
                 return (
                   <ManagementCell
@@ -162,7 +166,7 @@ function HomeAppsEditPage() {
                     disabled={disabled}
                     bordered={index < group.apps.length - 1}
                     showArrow={false}
-                    onClick={() => draft && setDraft(togglePin(draft, app.menuId))}
+                    onClick={() => draft && setDraft(togglePin(ids, app.menuId))}
                   />
                 )
               })}
