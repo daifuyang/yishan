@@ -80,12 +80,25 @@ function localNoon(year, month, day) {
 }
 
 function profileHarness(options = {}) {
-  const navigate = [], queries = [], calls = { hook: null, auth: null }
-  const records = options.records ?? []
+  const navigate = [], queries = [], calls = { hook: null, auth: null, loads: [] }
+  // pages 表达「服务端一次只给一页」：只有一页时就是已经到底，多页时 loadMore 才有效。
+  const pages = options.pages ?? [options.records ?? []]
+  const records = pages[0]
+  let cursor = 0
   const listState = {
     list: records, total: 0, page: 1, loading: false, refreshing: false, loadingMore: false,
-    finished: true, error: null, keyword: '', filters: {},
-    setKeyword() {}, setFilters() {}, refresh: async () => {}, loadMore: async () => {}, reset: async () => {},
+    finished: pages.length <= 1, error: null, keyword: '', filters: {},
+    setKeyword() {}, setFilters() {}, refresh: async () => {}, reset: async () => {},
+    // 按真实 hook 的语义推进：把下一页并进 list，最后一页之后置 finished。
+    loadMore: async () => {
+      calls.loads.push(listState.page)
+      const next = pages[cursor + 1]
+      if (!next) return
+      cursor += 1
+      listState.list = listState.list.concat(next)
+      listState.page = cursor + 1
+      listState.finished = cursor + 1 >= pages.length
+    },
   }
   const mount = harness('src/pages/profile/login-log/index.tsx', {
     '@tarojs/taro': { useDidHide() {} },
@@ -96,6 +109,26 @@ function profileHarness(options = {}) {
     '@/utils/router': { navigateTo: (url) => navigate.push(url) },
   })
   return { mount, navigate, queries, listState, calls }
+}
+
+// 应用一次「登录状态」筛选：打开面板 → 选中 → 重渲染，返回选中后的那棵树。
+function pickStatus(h, key) {
+  let tree = h.mount.render()
+  nodesOf(tree, 'ManagementFilterTriggers')[0].props.onPanelChange('status')
+  tree = h.mount.render()
+  nodesOf(tree, 'BottomSelectSheet')[0].props.onSelect(key)
+  return h.mount.render()
+}
+
+// 续拉靠「渲染 → effect → setState → 再渲染」推进；测试里手动把这几轮跑完。
+function settle(h, limit = 10) {
+  let tree = h.mount.render()
+  for (let round = 0; round < limit; round += 1) {
+    const loads = h.calls.loads.length
+    tree = h.mount.render()
+    if (h.calls.loads.length === loads) break
+  }
+  return tree
 }
 
 test('profile 登录日志列表不再把记录交接到详情页', () => {
@@ -189,6 +222,77 @@ test('profile 登录日志列表按时间范围客户端筛选，底部只报已
   summary.props.onClear()
   tree = h.mount.render()
   assert.equal(nodesOf(tree, 'ManagementCell').length, 2)
+})
+
+// ---- 筛选只作用于已加载的记录：首屏整页不匹配时要自己续拉，否则空态就是在替服务端下结论 ----
+
+test('profile 登录日志列表筛选为空时继续翻页，直到匹配项出现', () => {
+  // 服务端一次只给一页：第一页满页且整页不匹配，匹配项落在第二页。
+  // 空态只有 220px、页面不滚动，useReachBottom 永远不会触发，只能由页面自己续拉。
+  const pages = [
+    Array.from({ length: 10 }, (_, index) => logRow(index + 1, '1', localNoon(2026, 10, 12), '1.1.1.1')),
+    [logRow(99, '0', localNoon(2026, 10, 1), '9.9.9.9')],
+  ]
+  const h = profileHarness({ pages })
+  const seeking = pickStatus(h, '0')
+  // 还在翻页时不能先说「未找到符合条件的登录日志」
+  assert.equal(nodesOf(seeking, 'ManagementStates')[0].props.kind, 'loading')
+  const tree = settle(h)
+  assert.deepEqual(h.calls.loads, [1], '续拉到第二页找到匹配项后应停下')
+  const cells = nodesOf(tree, 'ManagementCell')
+  assert.equal(cells.length, 1)
+  assert.equal(cells[0].props.description, '9.9.9.9')
+  assert.equal(nodesOf(tree, 'ManagementStates')[0].props.kind, 'ready')
+})
+
+test('profile 登录日志列表筛选一个都不匹配时续拉到数据用完就停', () => {
+  const noMatch = (page) => Array.from({ length: 10 }, (_, index) => logRow(page * 10 + index + 1, '1', localNoon(2026, 10, 12), '1.1.1.1'))
+  const pages = [noMatch(0), noMatch(1), [logRow(30, '1', localNoon(2026, 10, 12), '1.1.1.1')]]
+  const h = profileHarness({ pages })
+  pickStatus(h, '0')
+  const tree = settle(h)
+  assert.deepEqual(h.calls.loads, [1, 2], '数据用完（短页）后不再续拉')
+  assert.equal(nodesOf(tree, 'ManagementCell').length, 0)
+  const states = nodesOf(tree, 'ManagementStates')[0]
+  assert.equal(states.props.kind, 'empty')
+  assert.equal(states.props.emptyText, '未找到符合条件的登录日志')
+})
+
+test('profile 登录日志列表的续拉封顶，不会变成无限请求', () => {
+  // 12 页全不匹配：续拉必须停在固定上限，而不是把服务端一直拉下去。
+  const pages = Array.from({ length: 12 }, (_, page) =>
+    Array.from({ length: 10 }, (_, index) => logRow(page * 10 + index + 1, '1', localNoon(2026, 10, 12), '1.1.1.1')),
+  )
+  const h = profileHarness({ pages })
+  pickStatus(h, '0')
+  const tree = settle(h, 20)
+  assert.deepEqual(h.calls.loads, [1, 2, 3, 4, 5], '封顶 5 页')
+  assert.equal(nodesOf(tree, 'ManagementCell').length, 0)
+  // 已加载的记录非空、只是筛选没命中：底部不能谎称没有更多，要留出「上拉加载更多」的手动出口
+  assert.equal(nodesOf(tree, 'ManagementListFooter')[0].props.empty, false)
+  // 上限用尽后不再显示骨架（否则用户永远停在「加载中」）
+  assert.equal(nodesOf(tree, 'ManagementStates')[0].props.kind, 'empty')
+})
+
+test('profile 登录日志列表换筛选后重新计数续拉', () => {
+  // 前 6 页都不匹配「登录时间 = 2026-09-01」，续拉会把配额用完；
+  // 换成「状态 = 失败」（匹配项在第 7 页）后必须重新获得配额，否则永远拉不到。
+  const dated = (page) => Array.from({ length: 10 }, (_, index) => logRow(page * 10 + index + 1, '1', localNoon(2026, 10, 12), '1.1.1.1'))
+  const pages = [dated(0), dated(1), dated(2), dated(3), dated(4), dated(5), [logRow(99, '0', localNoon(2026, 10, 1), '9.9.9.9')]]
+  const h = profileHarness({ pages })
+  let tree = h.mount.render()
+  nodesOf(tree, 'ManagementFilterTriggers')[0].props.onPanelChange('dates')
+  tree = h.mount.render()
+  nodesOf(tree, 'DateRangeSheet')[0].props.onConfirm({ startDate: '2026-09-01', endDate: '2026-09-01' })
+  tree = settle(h)
+  assert.deepEqual(h.calls.loads, [1, 2, 3, 4, 5], '时间筛选先耗尽续拉配额')
+  assert.equal(nodesOf(tree, 'ManagementStates')[0].props.kind, 'empty')
+  nodesOf(tree, 'ManagementFilterSummary')[0].props.onClear()
+  tree = pickStatus(h, '0')
+  tree = settle(h)
+  const cells = nodesOf(tree, 'ManagementCell')
+  assert.equal(cells.length, 1)
+  assert.equal(cells[0].props.description, '9.9.9.9')
 })
 
 test('profile 登录日志列表失败时给出可重试错误态', () => {

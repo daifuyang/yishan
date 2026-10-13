@@ -1,5 +1,5 @@
 import { useDidHide } from '@tarojs/taro'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { userApi } from '@/api'
 import type { LoginLog } from '@/api/types'
 import { Tag } from '@/components/atoms'
@@ -36,6 +36,11 @@ const PAGE_SIZE = 10
  * 让 useListPagination 的分页保持未完成；短页（含空页）即视为到底。
  */
 const UNKNOWN_TOTAL = Number.MAX_SAFE_INTEGER
+/**
+ * 自动续拉的上限（页）：筛选一个匹配都没有时最多再翻这么多页就停手，
+ * 让「怎么筛都没有」不至于变成无限请求。
+ */
+const AUTO_CONTINUE_LIMIT = 5
 
 /**
  * 状态 / 排序 / 时间范围都在客户端完成。
@@ -66,6 +71,7 @@ function ProfileLoginLog() {
   const guard = useRequireAuth()
   const [panel, setPanel] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})
+  const [autoContinued, setAutoContinued] = useState(0)
   const list = useListPagination<LoginLog>({
     enabled: guard.ready && guard.allowed,
     pageSize: PAGE_SIZE,
@@ -78,15 +84,40 @@ function ProfileLoginLog() {
     },
   })
   useDidHide(() => setPanel(''))
-  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+
   const status = String(filters.status || '')
   const sort = String(filters.sort || 'desc')
   const startDate = String(filters.startDate || '')
   const endDate = String(filters.endDate || '')
   const hasDates = Boolean(startDate || endDate)
+  const hasFilter = Boolean(status) || hasDates
   const records = filterLogs(list.list, filters)
   const empty = !records.length
-  const kind = list.error ? 'error' : list.loading && empty ? 'loading' : empty ? 'empty' : 'ready'
+  // 筛选只作用于已加载的记录，命中项可能落在还没拉到的页里。空态下页面不滚动，
+  // useReachBottom 永远不会触发，所以要主动续拉；但封顶 AUTO_CONTINUE_LIMIT 页。
+  const seeking =
+    hasFilter && empty && !list.error && !list.finished && autoContinued < AUTO_CONTINUE_LIMIT
+  // 还在替这个筛选翻页时，空态不能替服务端下结论。
+  const kind = list.error
+    ? 'error'
+    : empty && (list.loading || seeking)
+      ? 'loading'
+      : empty
+        ? 'empty'
+        : 'ready'
+
+  // 换筛选就重新计数：上一轮续拉掉的配额不属于新筛选。
+  const filterKey = `${status}|${startDate}|${endDate}`
+  useEffect(() => {
+    setAutoContinued(0)
+  }, [filterKey])
+  useEffect(() => {
+    if (!seeking || list.loading || list.loadingMore) return
+    setAutoContinued((previous) => previous + 1)
+    void list.loadMore()
+  }, [seeking, autoContinued, list.loading, list.loadingMore, list.loadMore])
+
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
   return (
     <ManagementPage>
       <ManagementPageHeader title="登录日志" showBack={process.env.TARO_ENV === 'h5'} />
@@ -135,12 +166,13 @@ function ProfileLoginLog() {
           ))}
         </ManagementList>
       </ManagementStates>
-      {/* 接口不返回总数，筛选也只是客户端行为：底部只报「当前显示」，绝不写成会被读成服务端统计的总数。 */}
+      {/* 接口不返回总数，筛选也只是客户端行为：底部只报「当前显示」，绝不写成会被读成服务端统计的总数。
+          没命中的只是筛选：已加载的记录非空时 footer 仍要留出「上拉加载更多」的手动出口。 */}
       <ManagementListFooter
         loadingMore={list.loadingMore}
         refreshing={list.refreshing}
         finished={list.finished}
-        empty={!records.length}
+        empty={!list.list.length}
         summary={kind === 'ready' && records.length ? `当前显示 ${records.length} 条` : undefined}
       />
       <BottomSelectSheet

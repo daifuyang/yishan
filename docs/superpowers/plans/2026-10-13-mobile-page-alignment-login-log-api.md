@@ -16,7 +16,7 @@
 - Return `LOGIN_LOG_NOT_FOUND` for missing, soft-deleted, and other-user records.
 - Do not add a table or migration; preserve `sysLoginLog` response semantics.
 - `apps/demo/app` uses a hand-written client under `src/api`; only the OpenAPI JSON artifacts are dumped and committed.
-- The OpenAPI path and the hand-written client method/path must be checked together with `pnpm check:openapi`.
+- The OpenAPI path and the hand-written client method/path must be checked together — `pnpm check:openapi` only compares the two JSON artifacts, so the client's path is pinned by a client-path test (`apps/demo/app/tests/organization.test.cjs`).
 
 ---
 

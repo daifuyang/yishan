@@ -88,6 +88,26 @@ test("dictionary details and login-log details use the supported GET endpoints",
   );
 });
 
+test("app login-log client keeps the list path and appends the detail id", async () => {
+  const calls = [];
+  const boundary = {
+    request: async (options) => {
+      calls.push(options);
+      return [];
+    },
+  };
+  const user = loadTs("src/api/user.ts", { "./client": boundary });
+  await user.getMyLoginLogs({ page: 1, pageSize: 10 });
+  await user.getMyLoginLog(7);
+  assert.deepEqual(
+    calls.map(({ method, path }) => ({ method, path })),
+    [
+      { method: "GET", path: "/api/v1/app/users/me/login-logs" },
+      { method: "GET", path: "/api/v1/app/users/me/login-logs/7" },
+    ],
+  );
+});
+
 test("login-log dates validate ordering and serialize a complete inclusive date range", () => {
   const { loginLogTimeRange } = loadTs("src/pages/system/login-log/query.ts");
   assert.deepEqual(loginLogTimeRange("2026-10-10", "2026-10-10"), {

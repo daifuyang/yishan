@@ -184,7 +184,7 @@ getMyLoginLogById(userId: number, id: number): Promise<SysLoginLogResp>
 1. 运行 `pnpm --filter @yishan/demo-api openapi:dump`；
 2. 同步 `apps/demo/api/openapi.json` 和 `docs/architecture/api-v1-runtime-openapi.json`；
 3. 在 `apps/demo/app/src/api/user.ts` 增加手写 API 方法，并在 `apps/demo/app/src/api/types.ts` 复用或补充响应类型；
-4. 运行 `pnpm check:openapi`，确认 OpenAPI 路径与手写 client 的 method/path/query 一致。
+4. 运行 `pnpm check:openapi`：它只比对 `HEAD:` 与工作区的两份 JSON 产物，不读 `src/api`，所以确认不了手写 client 的 method/path/query。App 手写 client 的路径由 client-path 测试固定（见 `apps/demo/app/tests/organization.test.cjs`）。
 
 本 App 当前使用手写 API client，不生成新的 App 客户端；不得把 admin 端生成 client 的实现复制到 App，也不得新增数据库迁移。
 
