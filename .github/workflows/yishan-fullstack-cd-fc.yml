@@ -223,7 +223,7 @@ jobs:
           set -euo pipefail
           ENV_FILE="$(pwd)/.env"
           node <<'NODE' > "$ENV_FILE"
-          const redisUrl = process.env.REDIS_URL || '';
+          let redisUrl = process.env.REDIS_URL || '';
           let redisPort = '6379';
           let redisHost = process.env.REDIS_HOST || '';
           let redisPassword = '';
@@ -234,6 +234,12 @@ jobs:
             redisPort = parsed.port || redisPort;
             redisPassword = decodeURIComponent(parsed.password || '');
             redisDb = (parsed.pathname || '/0').replace(/^\//, '') || redisDb;
+            // 函数跑在 VPC 内且没有公网出口：API 优先读 REDIS_URL，
+            // 所以 URL 的主机必须与内网 REDIS_HOST 一致，否则启动时 Redis 插件超时、实例起不来。
+            if (parsed.hostname !== redisHost) {
+              parsed.hostname = redisHost;
+              redisUrl = parsed.toString();
+            }
           }
           const lines = [
             `LOG_LEVEL=${process.env.LOG_LEVEL || 'info'}`,
@@ -327,7 +333,7 @@ jobs:
           set -euo pipefail
           export DATABASE_PORT="${DATABASE_PORT:-3306}"
           node <<'NODE'
-          const redisUrl = process.env.REDIS_URL || '';
+          let redisUrl = process.env.REDIS_URL || '';
           let redisPort = '6379';
           let redisHost = process.env.REDIS_HOST || '';
           let redisPassword = '';
@@ -338,6 +344,12 @@ jobs:
             redisPort = parsed.port || redisPort;
             redisPassword = decodeURIComponent(parsed.password || '');
             redisDb = (parsed.pathname || '/0').replace(/^\//, '') || redisDb;
+            // 函数跑在 VPC 内且没有公网出口：API 优先读 REDIS_URL，
+            // 所以 URL 的主机必须与内网 REDIS_HOST 一致，否则启动时 Redis 插件超时、实例起不来。
+            if (parsed.hostname !== redisHost) {
+              parsed.hostname = redisHost;
+              redisUrl = parsed.toString();
+            }
           }
           const entries = {
             LOG_LEVEL: process.env.LOG_LEVEL || 'info',
