@@ -17,6 +17,12 @@ import {
   ManagementStates,
 } from '@/components/management'
 import { parseDateBoundary } from '@/components/management/dateRange'
+import {
+  LOGIN_LOG_SORT,
+  LOGIN_LOG_STATUS,
+  loginLogSortLabel,
+  loginLogStatusLabel,
+} from '@/constants/login-log'
 import { SECONDARY_PAGES } from '@/constants/routes'
 import { useListPagination } from '@/hooks'
 import { withAccountScope } from '@/utils/account-scope'
@@ -25,15 +31,6 @@ import { formatDateTime } from '@/utils/format'
 import { navigateTo } from '@/utils/router'
 
 const PAGE_SIZE = 10
-const STATUS = [
-  { key: '', label: '全部状态' },
-  { key: '1', label: '登录成功' },
-  { key: '0', label: '登录失败' },
-]
-const SORT = [
-  { key: 'desc', label: '最近登录' },
-  { key: 'asc', label: '最早登录' },
-]
 /**
  * 应用接口只返回一页、不给总数：满页时用一个「至少还有下一页」的哨兵值，
  * 让 useListPagination 的分页保持未完成；短页（含空页）即视为到底。
@@ -98,16 +95,8 @@ function ProfileLoginLog() {
           panel={panel}
           onPanelChange={setPanel}
           triggers={[
-            {
-              key: 'status',
-              label: STATUS.find((item) => item.key === status)?.label || '全部状态',
-              active: Boolean(status),
-            },
-            {
-              key: 'sort',
-              label: sort === 'asc' ? '最早登录' : '最近登录',
-              active: sort === 'asc',
-            },
+            { key: 'status', label: loginLogStatusLabel(status), active: Boolean(status) },
+            { key: 'sort', label: loginLogSortLabel(sort), active: sort === 'asc' },
             { key: 'dates', label: hasDates ? '时间 · 1' : '登录时间', active: hasDates },
           ]}
         />
@@ -152,12 +141,12 @@ function ProfileLoginLog() {
         refreshing={list.refreshing}
         finished={list.finished}
         empty={!records.length}
-        summary={records.length ? `当前显示 ${records.length} 条` : undefined}
+        summary={kind === 'ready' && records.length ? `当前显示 ${records.length} 条` : undefined}
       />
       <BottomSelectSheet
         open={panel === 'status' || panel === 'sort'}
         title={panel === 'status' ? '登录状态' : '排序方式'}
-        options={panel === 'status' ? STATUS : SORT}
+        options={panel === 'status' ? LOGIN_LOG_STATUS : LOGIN_LOG_SORT}
         value={panel === 'status' ? status : sort}
         onSelect={(key) =>
           setFilters((previous) =>

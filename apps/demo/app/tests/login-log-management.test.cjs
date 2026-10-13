@@ -74,6 +74,11 @@ function logRow(id, status, createdAt, ipAddress) {
   return { id, username: 'me', status, createdAt, updatedAt: createdAt, ipAddress }
 }
 
+// parseDateBoundary 按本地时区取日界，用本地日中午的瞬时值可让日期断言与时区无关。
+function localNoon(year, month, day) {
+  return new Date(year, month - 1, day, 12).toISOString()
+}
+
 function profileHarness(options = {}) {
   const navigate = [], queries = [], calls = { hook: null, auth: null }
   const records = options.records ?? []
@@ -98,7 +103,8 @@ test('profile 登录日志列表不再把记录交接到详情页', () => {
   const path = require('node:path')
   const { appRoot } = require('./helpers/load-ts.cjs')
   const source = fs.readFileSync(path.join(appRoot, 'src/pages/profile/login-log/index.tsx'), 'utf8')
-  assert.doesNotMatch(source, /handoff/)
+  // 只针对 import 说明符：裸词 handoff 会被无关注释或路径误伤
+  assert.doesNotMatch(source, /from\s+['"][^'"]*handoff['"]/)
   assert.doesNotMatch(source, /rememberLoginLog/)
   assert.match(source, /withAccountScope/)
 })
@@ -162,7 +168,7 @@ test('profile 登录日志列表按登录时间客户端排序', () => {
 })
 
 test('profile 登录日志列表按时间范围客户端筛选，底部只报已显示条数', () => {
-  const h = profileHarness({ records: [logRow(3, '1', '2026-10-12T12:00:00.000Z', '1.1.1.1'), logRow(2, '0', '2026-10-01T12:00:00.000Z', '2.2.2.2')] })
+  const h = profileHarness({ records: [logRow(3, '1', localNoon(2026, 10, 12), '1.1.1.1'), logRow(2, '0', localNoon(2026, 9, 1), '2.2.2.2')] })
   let tree = h.mount.render()
   // 接口不给总数：底部只说明「当前显示」，不得出现「共 / 总数 / 已加载」这类会被读成服务端统计的措辞
   const footer = nodesOf(tree, 'ManagementListFooter')[0].props.summary
@@ -193,6 +199,19 @@ test('profile 登录日志列表失败时给出可重试错误态', () => {
   assert.equal(states.props.kind, 'error')
   assert.equal(states.props.errorText, '网络异常')
   assert.equal(states.props.onRetry, h.listState.refresh)
+})
+
+test('profile 登录日志列表加载更多失败时不再谎报已显示条数', () => {
+  // 加载更多失败的真实状态：useListPagination 的 catch 只置 error、不清空已加载的 list，
+  // ManagementStates 以错误态顶替列表。footer 挂在它外面，此刻必须与 kind 同源地收起计数。
+  const records = Array.from({ length: 10 }, (_, index) => logRow(index + 1, '1', localNoon(2026, 10, 12), '1.1.1.1'))
+  const h = profileHarness({ records })
+  let tree = h.mount.render()
+  assert.equal(nodesOf(tree, 'ManagementListFooter')[0].props.summary, '当前显示 10 条')
+  h.listState.error = '加载失败，请重试'
+  tree = h.mount.render()
+  assert.equal(nodesOf(tree, 'ManagementStates')[0].props.kind, 'error')
+  assert.equal(nodesOf(tree, 'ManagementListFooter')[0].props.summary, undefined)
 })
 
 test('profile 登录日志列表保留原权限守卫且不传 moduleId', () => {
