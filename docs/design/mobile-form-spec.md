@@ -265,6 +265,33 @@ H5 下 `Picker` 渲染成一个独立 `div`，不是 flex 子项，内部的 `fl
 
 ---
 
+## 11. 卡片型页面：布局可自由，token 不可自由
+
+首页、工作台、登录这类**卡片型页面**保留卡片布局 —— 它们不是列表/详情，不套用全出血白底那一套。但卡片本身必须 token 化：
+
+- 卡片容器用 `components/management` 的 `SurfaceCard`（白底 + 圆角，本身**不带内边距**，块内的行、指标各自带 `var(--space-4)`）；指标卡用 `MetricCard`（复用 `SurfaceCard`，只保留标题、数值和辅助文案）
+- **卡片内的选择行、搜索框、跳转箭头、错误提示和图标仍然用共享原子** —— 卡片自由的是排布，不是控件。自绘一个搜索框或一枚裸 `›` 不因为「这是卡片页」而成立
+- 所有颜色/间距/圆角/阴影一律 `var(--token)`；卡片的圆角与阴影是卡片品类的**显式例外**，值必须来自 token，不新建第二套主题
+
+**无 hero 页的页顶距由卡片自己补**：第一块内容传 `SurfaceCard lead`（`margin-top: var(--space-4)`），不要在页面 SCSS 里再各写一份 —— 以前这段灰带在三份页面里各复制一遍，漏一处就少 16px。
+
+品牌自绘图标（首页、登录）保留，但颜色必须走 token；通用操作图标一律用 `LineIcon`，不要把裸 `›` 字符当箭头。
+
+> 这里的「卡片」是**页面品类**，与 §6 禁止的「每个字段组一张白卡」不冲突：表单 / 详情页仍不把字段组包成卡片。
+
+---
+
+## 12. H5 页头：只有 `ManagementPageHeader`
+
+`ManagementPageHeader` 是全站**唯一的页面头**，旧的 `molecules/PageHeader` 已删除，不要再引用 —— 同一个页面里不存在第二套页头。
+
+- **页头两端都渲染**：是否挂载按页面 config 的 `navigationStyle` 决定，不是平台规则。保留原生导航栏（`navigationStyle: 'default'`）的页面由原生栏承载，页头只在 H5 渲染，并在原生栏已提供返回时置 `showBack={false}`，否则会出现两个返回键；`navigationStyle: 'custom'` 的页面（如用户管理、常用应用）在小程序端也渲染页头，返回键照常由页头自绘
+- **H5 二级页**按需使用 `showBack`：需要自绘返回时保留（不传 `onBack` 默认为 `navigateBack(1)`，传 `onBack` 覆盖）；页面自带返回入口或由外层壳承载时置 `showBack={false}`
+- `title` / `subtitle` 均接受 `ReactNode`；右上角操作用 `action`，底部分隔线用 `bordered`（嵌进白色内容块里置 `false`）
+- 页面外壳职责不变：`PageContainer` 继续是通用会话 / 权限门禁，`ManagementPage` 只负责背景、内边距、滚动和安全区
+
+---
+
 ## 快速自查
 
 改完表单页，对照检查：
@@ -286,3 +313,8 @@ H5 下 `Picker` 渲染成一个独立 `div`，不是 flex 子项，内部的 `fl
 - [ ] 多选框用的是共享 `Checkbox`（22px 圆角方框、白底 + 主色勾），没有自绘，也没有实心蓝块
 - [ ] 复选框不传 onClick 时点击能冒泡到整行（点框和点标题行为一致）
 - [ ] 箭头由 `FormField arrow` / `DetailRow` 渲染在行末，没有塞进控件内部
+- [ ] 卡片型页面（首页 / 工作台 / 登录）用 `SurfaceCard` / `MetricCard`，颜色、圆角、间距、阴影全部走 token
+- [ ] 无 hero 页的页顶距由 `SurfaceCard lead` 提供，没有在页面 SCSS 里另写一份
+- [ ] 卡片内的选择行 / 搜索框 / 箭头 / 错误提示 / 图标仍用共享原子，没有因为「卡片页」而自绘
+- [ ] 页面头只有 `ManagementPageHeader` 一个实现，没有引用已删除的 `molecules/PageHeader`
+- [ ] 页头两端都渲染：`navigationStyle: 'default'`（原生栏承载）的页面只在 H5 渲染并置 `showBack={false}`，`navigationStyle: 'custom'` 的页面（用户管理、常用应用）小程序端也渲染

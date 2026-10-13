@@ -23,7 +23,7 @@ export function ManagementList({ children, className = '' }: ManagementListProps
 
 export interface ManagementCellProps {
   title: ReactNode
-  /** 副标题：用户页是 @账号 · 手机，角色页是「类型 · 状态」 */
+  /** 副标题：只放一行非结构化说明（如「拥有基础管理权限」）；结构化属性放详情页，状态走 tag 列，不用 · 拼接 */
   description?: ReactNode
   /** 标题右侧的状态标签，直接渲染节点（通常是 <Tag>）。只表达状态，不放按钮 */
   tag?: ReactNode
