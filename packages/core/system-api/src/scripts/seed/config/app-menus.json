@@ -1,18 +1,5 @@
 [
   {
-    "name": "协同办公",
-    "sortOrder": 10,
-    "children": [
-      {
-        "name": "通讯录",
-        "icon": "ContactsOutlined",
-        "page": "pages/contacts/index/index",
-        "sortOrder": 10,
-        "normalUser": true
-      }
-    ]
-  },
-  {
     "name": "系统管理",
     "sortOrder": 20,
     "children": [
@@ -28,7 +15,14 @@
       { "name": "云存储", "icon": "CloudUploadOutlined", "page": "pages/system/storage/index", "sortOrder": 90 },
       { "name": "媒体库", "icon": "PictureOutlined", "page": "pages/system/attachments/index", "sortOrder": 100 },
       { "name": "登录日志", "icon": "AuditOutlined", "page": "pages/system/login-log/index", "sortOrder": 110 },
-      { "name": "模块管理", "icon": "AppstoreOutlined", "page": "pages/system/module-management/index", "sortOrder": 120 }
+      { "name": "模块管理", "icon": "AppstoreOutlined", "page": "pages/system/module-management/index", "sortOrder": 120 },
+      {
+        "name": "通讯录",
+        "icon": "ContactsOutlined",
+        "page": "pages/contacts/index/index",
+        "sortOrder": 130,
+        "normalUser": true
+      }
     ]
   }
 ]
