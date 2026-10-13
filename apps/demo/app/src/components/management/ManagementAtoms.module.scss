@@ -33,7 +33,8 @@
 }
 
 /* 取值占满标签右侧并右对齐。Taro Picker 在 H5 下渲染成独立 div，
-   所以 Picker 自身（.dateField）必须 flex: 1，值才到得了行尾。 */
+   所以 Picker 自身（.dateField）必须 flex: 1，值才到得了行尾。
+   与 FormLayout.module.scss 的 .enumPickerValue 是同一份样式的双胞胎，改一处必须同步另一处。 */
 .pickerRow__value {
   flex: 1;
   min-width: 0;

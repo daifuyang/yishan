@@ -16,7 +16,7 @@ export interface ManagementListProps {
   className?: string
 }
 
-/** 白色圆角列表容器，自动在相邻行之间画分割线。 */
+/** 白色全出血列表容器（无左右外边距、无圆角），自动在相邻行之间画分割线。 */
 export function ManagementList({ children, className = '' }: ManagementListProps) {
   return <View className={cx(styles.list, className)}>{children}</View>
 }

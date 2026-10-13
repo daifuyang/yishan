@@ -25,7 +25,13 @@ export function DateField({ value, placeholder = '请选择', disabled = false, 
       mode="date"
       value={value}
       disabled={disabled}
-      onChange={(event) => onChange(String(event.detail.value))}
+      onChange={(event) => {
+        // 事件里没有 value 时直接 `String(...)` 会把字符串 "undefined" 回传给调用方，
+        // 所以先判空再回传（和 FormLayout 的枚举 picker 同一套防法：拿不到就不回调）。
+        const next = event.detail.value
+        if (next == null) return
+        onChange(String(next))
+      }}
     >
       <PickerValue value={value} placeholder={placeholder} />
     </Picker>

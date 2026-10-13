@@ -58,7 +58,6 @@ const loadCell = () =>
   }).ManagementCell
 
 const find = (nodes, key) => nodes.find((node) => classOf(node) === key)
-const indexOf = (nodes, key) => nodes.findIndex((node) => classOf(node) === key)
 
 // ---------- PickerRow ----------
 
@@ -83,14 +82,20 @@ test('PickerRow 默认不画行尾箭头，arrow 时才画，且箭头是行级�
   const withoutArrow = flat(loadPickerRow()({ label: '所在地区', value: '', placeholder: '请选择' }))
   assert.equal(find(withoutArrow, 'pickerRow__arrow'), undefined, '箭头是显式开关，不默认出现')
 
-  const withArrow = flat(
-    loadPickerRow()({ label: '所在地区', value: '浙江', placeholder: '请选择', arrow: true }),
-  )
+  const row = loadPickerRow()({ label: '所在地区', value: '浙江', placeholder: '请选择', arrow: true })
+  const withArrow = flat(row)
   const arrow = find(withArrow, 'pickerRow__arrow')
   assert.ok(arrow, 'arrow 时应渲染行尾箭头')
-  // 箭头必须是行的最后一个子节点：塞进取值里会跟着取值的盒子走偏
+  // 箭头必须是行的最后一个子节点：塞进取值里会跟着取值的盒子走偏。
   assert.equal(flat(arrow.props.children)[0].props.name, 'chevronRight')
-  assert.ok(indexOf(withArrow, 'pickerRow__arrow') > indexOf(withArrow, 'pickerRow__value'))
+  // flat 是前序摊平，箭头嵌进取值内部时 indexOf(arrow) > indexOf(value) 依然成立，
+  // 用摊平下标断言就永远抓不到这个回归 —— 顺序必须直接看容器的子节点数组，末项就是箭头本身。
+  const rowChildren = row.props.children.filter(Boolean)
+  assert.equal(
+    rowChildren[rowChildren.length - 1],
+    arrow,
+    '箭头是行的最后一个直接子节点，不能嵌进取值内部',
+  )
 })
 
 test('PickerRow 禁用时点击不触发，且不渲染箭头以外的交互', () => {
@@ -176,17 +181,26 @@ test('ManagementCell 渲染顺序固定为 内容 → tag → selection → trai
   const tagNode = { type: 'TagMark', props: { className: 'tag-mark' } }
   const selectionNode = { type: 'CheckMark', props: { className: 'check-mark' } }
   const actionNode = { type: 'ActionMark', props: { className: 'action-mark' } }
-  const nodes = flat(
-    loadCell()({ title: '应用', tag: tagNode, selection: selectionNode, trailingAction: actionNode }),
+  const cell = loadCell()({
+    title: '应用',
+    tag: tagNode,
+    selection: selectionNode,
+    trailingAction: actionNode,
+  })
+  const nodes = flat(cell)
+  // 顺序直接看行的子节点数组：flat 是前序摊平，槽位嵌进别的槽位内部时 indexOf 依然靠后，
+  // 用摊平下标断言抓不到「箭头被塞进动作槽 / 内容里」这类回归（末项必须还是箭头）。
+  const rowChildren = cell.props.children.filter(Boolean)
+  assert.deepEqual(
+    rowChildren.map(classOf),
+    ['row__content', 'row__tag', 'row__selection', 'row__action', 'row__arrow'],
+    '槽位顺序固定为 内容 → tag → selection → trailingAction → 箭头，且箭头是行的最后一个子节点',
   )
-  const tag = indexOf(nodes, 'row__tag')
-  const selection = indexOf(nodes, 'row__selection')
-  const action = indexOf(nodes, 'row__action')
-  const arrow = indexOf(nodes, 'row__arrow')
-  assert.ok(indexOf(nodes, 'row__content') < tag, '内容在状态列之前')
-  assert.ok(tag >= 0 && selection > tag, 'selection 紧跟 tag 之后')
-  assert.ok(action > selection, 'trailingAction 在 selection 之后')
-  assert.ok(arrow > action, '箭头是行的最后一个元素')
+  assert.equal(
+    rowChildren[rowChildren.length - 1].props.children.props.name,
+    'chevronRight',
+    '末项是 chevronRight 箭头',
+  )
   assert.equal(find(nodes, 'row__tag').props.children, tagNode)
   assert.equal(find(nodes, 'row__selection').props.children, selectionNode)
   assert.equal(find(nodes, 'row__action').props.children, actionNode)

@@ -16,7 +16,7 @@ export interface SurfaceCardProps {
   className?: string
 }
 
-/** 卡片型页面（首页、工作台）的白色内容块：圆角、token 底色与内边距。 */
+/** 卡片型页面（首页、工作台）的白色内容块：圆角与 token 底色，本身不带内边距。 */
 export function SurfaceCard({ children, lead = false, onClick, className = '' }: SurfaceCardProps) {
   return (
     <View
