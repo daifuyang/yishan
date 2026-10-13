@@ -1,106 +1,187 @@
-import { useEffect, useRef, useState } from 'react'
-import { Tag } from '@/components/atoms'
-import Taro, { usePullDownRefresh, useReachBottom } from '@tarojs/taro'
-
+import { useDidHide } from '@tarojs/taro'
+import { useState } from 'react'
 import { userApi } from '@/api'
 import type { LoginLog } from '@/api/types'
-import { ManagementCell, ManagementList, ManagementListFooter, ManagementPage, ManagementPageHeader, ManagementStates } from '@/components/management'
-import { ErrorState } from '@/components/feedback'
-
-
-import { useAuthStore } from '@/stores/auth'
+import { Tag } from '@/components/atoms'
+import {
+  BottomSelectSheet,
+  DateRangeSheet,
+  ManagementCell,
+  ManagementFilterBar,
+  ManagementFilterSummary,
+  ManagementFilterTriggers,
+  ManagementList,
+  ManagementListFooter,
+  ManagementPage,
+  ManagementPageHeader,
+  ManagementStates,
+} from '@/components/management'
+import { parseDateBoundary } from '@/components/management/dateRange'
+import { SECONDARY_PAGES } from '@/constants/routes'
+import { useListPagination } from '@/hooks'
+import { withAccountScope } from '@/utils/account-scope'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
-import { SECONDARY_PAGES } from '@/constants/routes'
 import { navigateTo } from '@/utils/router'
-import { rememberLoginLog } from './handoff'
-
-
 
 const PAGE_SIZE = 10
+const STATUS = [
+  { key: '', label: '全部状态' },
+  { key: '1', label: '登录成功' },
+  { key: '0', label: '登录失败' },
+]
+const SORT = [
+  { key: 'desc', label: '最近登录' },
+  { key: 'asc', label: '最早登录' },
+]
+/**
+ * 应用接口只返回一页、不给总数：满页时用一个「至少还有下一页」的哨兵值，
+ * 让 useListPagination 的分页保持未完成；短页（含空页）即视为到底。
+ */
+const UNKNOWN_TOTAL = Number.MAX_SAFE_INTEGER
 
-export default function ProfileLoginLog() {
-  const userId = useAuthStore((state) => state.user?.id)
-  const token = useAuthStore((state) => state.token)
-  const auth = useRequireAuth()
-  const [list, setList] = useState<LoginLog[]>([])
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const loadingRef = useRef(false)
-  const generation = useRef(0)
-  const retry = useRef({ page: 1, reset: true })
-
-  const load = async (requestedPage: number, reset: boolean) => {
-    const session = useAuthStore.getState()
-    if (!session.bootstrapped || !session.user || !session.token || loadingRef.current) return
-    const ownerId = session.user.id
-    const requestToken = session.token
-    const requestGeneration = generation.current
-    const isCurrent = () => {
-      const current = useAuthStore.getState()
-      return (
-        generation.current === requestGeneration &&
-        current.user?.id === ownerId &&
-        current.token === requestToken
-      )
-    }
-    loadingRef.current = true
-    setLoading(true)
-    setError(null)
-    retry.current = { page: requestedPage, reset }
-    try {
-      const items = await userApi.getMyLoginLogs({ page: requestedPage, pageSize: PAGE_SIZE })
-      if (!isCurrent()) return
-      setList((previous) => (reset ? items : [...previous, ...items]))
-      setPage(requestedPage)
-      setHasMore(items.length >= PAGE_SIZE)
-    } catch (failure) {
-      if (isCurrent()) setError(failure instanceof Error ? failure.message : '登录日志加载失败')
-    } finally {
-      if (isCurrent()) {
-        loadingRef.current = false
-        setLoading(false)
-      }
-    }
-  }
-
-  useEffect(() => {
-    generation.current += 1
-    loadingRef.current = false
-    setList([])
-    setError(null)
-    setLoading(false)
-    setPage(1)
-    setHasMore(true)
-    if (auth.ready && auth.allowed) void load(1, true)
-    return () => {
-      generation.current += 1
-    }
-  }, [auth.ready, auth.allowed, userId, token])
-
-  usePullDownRefresh(() => {
-    void load(1, true).finally(() => Taro.stopPullDownRefresh())
+/**
+ * 状态 / 排序 / 时间范围都在客户端完成。
+ *
+ * `/api/v1/app/users/me/login-logs` 只接受 `page` + `pageSize`（服务端刻意不开放关键词与状态筛选），
+ * 传筛选参数会被 Fastify 静默丢弃，所以筛选绝不能退回给接口，只能作用于已加载的记录。
+ */
+function filterLogs(records: LoginLog[], filters: Record<string, string>): LoginLog[] {
+  const status = filters.status === '0' || filters.status === '1' ? filters.status : ''
+  const start = parseDateBoundary(filters.startDate || '')
+  const end = parseDateBoundary(filters.endDate || '', true)
+  const startAt = start ? new Date(start).getTime() : null
+  const endAt = end ? new Date(end).getTime() : null
+  const matched = records.filter((record) => {
+    if (status && record.status !== status) return false
+    const at = new Date(record.createdAt).getTime()
+    if (startAt !== null && !(at >= startAt)) return false
+    if (endAt !== null && !(at <= endAt)) return false
+    return true
   })
-
-  useReachBottom(() => {
-    if (hasMore && !error) void load(page + 1, false)
-  })
-
-  const openDetail = (log: LoginLog) => {
-    if (userId === undefined) return
-    rememberLoginLog(userId, log)
-    navigateTo(`/${SECONDARY_PAGES.profileLoginLogDetail}?id=${log.id}`)
-  }
-  if (!auth.ready || !auth.allowed) return <ManagementPage>{null}</ManagementPage>
-  const kind = loading && !list.length ? 'loading' : error && !list.length ? 'error' : !list.length ? 'empty' : 'ready'
-  return <ManagementPage>
-    <ManagementPageHeader title="登录日志" showBack={process.env.TARO_ENV === 'h5'} />
-    <ManagementStates kind={kind} errorText={error || undefined} emptyText="暂无登录记录" onRetry={() => void load(retry.current.page, retry.current.reset)}>
-      <ManagementList>{list.map((log, index) => <ManagementCell key={log.id} glyph="shield" title={formatDateTime(log.createdAt)} description={log.ipAddress || '未知IP'} tag={<Tag size="sm" variant={log.status === '1' ? 'success' : 'danger'}>{log.status === '1' ? '成功' : '失败'}</Tag>} bordered={index < list.length - 1} onClick={() => openDetail(log)} />)}</ManagementList>
-    </ManagementStates>
-    {error && list.length ? <ErrorState text={error} onRetry={() => void load(retry.current.page, retry.current.reset)} /> : null}
-    <ManagementListFooter loadingMore={loading} finished={!hasMore} empty={!list.length} summary={list.length ? `已加载 ${list.length} 条记录${hasMore ? '' : ' · 没有更多了'}` : undefined} />
-  </ManagementPage>
+  const direction = filters.sort === 'asc' ? 1 : -1
+  return matched.sort(
+    (a, b) => (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * direction,
+  )
 }
+
+function ProfileLoginLog() {
+  const guard = useRequireAuth()
+  const [panel, setPanel] = useState('')
+  const [filters, setFilters] = useState<Record<string, string>>({})
+  const list = useListPagination<LoginLog>({
+    enabled: guard.ready && guard.allowed,
+    pageSize: PAGE_SIZE,
+    fetcher: async ({ page, pageSize }) => {
+      const items = await userApi.getMyLoginLogs({ page, pageSize })
+      return {
+        list: items,
+        total: items.length < pageSize ? (page - 1) * pageSize + items.length : UNKNOWN_TOTAL,
+      }
+    },
+  })
+  useDidHide(() => setPanel(''))
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
+  const status = String(filters.status || '')
+  const sort = String(filters.sort || 'desc')
+  const startDate = String(filters.startDate || '')
+  const endDate = String(filters.endDate || '')
+  const hasDates = Boolean(startDate || endDate)
+  const records = filterLogs(list.list, filters)
+  const empty = !records.length
+  const kind = list.error ? 'error' : list.loading && empty ? 'loading' : empty ? 'empty' : 'ready'
+  return (
+    <ManagementPage>
+      <ManagementPageHeader title="登录日志" showBack={process.env.TARO_ENV === 'h5'} />
+      <ManagementFilterBar>
+        <ManagementFilterTriggers
+          panel={panel}
+          onPanelChange={setPanel}
+          triggers={[
+            {
+              key: 'status',
+              label: STATUS.find((item) => item.key === status)?.label || '全部状态',
+              active: Boolean(status),
+            },
+            {
+              key: 'sort',
+              label: sort === 'asc' ? '最早登录' : '最近登录',
+              active: sort === 'asc',
+            },
+            { key: 'dates', label: hasDates ? '时间 · 1' : '登录时间', active: hasDates },
+          ]}
+        />
+        {hasDates ? (
+          <ManagementFilterSummary
+            onClear={() => setFilters((previous) => ({ ...previous, startDate: '', endDate: '' }))}
+            clearLabel="清除登录时间筛选"
+          >
+            {startDate || '不限'} 至 {endDate || '不限'}
+          </ManagementFilterSummary>
+        ) : null}
+      </ManagementFilterBar>
+      <ManagementStates
+        kind={kind}
+        errorText={list.error || undefined}
+        emptyText={status || hasDates ? '未找到符合条件的登录日志' : '暂无登录日志'}
+        onRetry={list.refresh}
+      >
+        <ManagementList>
+          {records.map((record, index) => (
+            <ManagementCell
+              key={record.id}
+              bordered={index < records.length - 1}
+              glyph="shield"
+              title={formatDateTime(record.createdAt)}
+              description={record.ipAddress || '未知IP'}
+              tag={
+                <Tag size="sm" variant={record.status === '1' ? 'success' : 'danger'}>
+                  {record.status === '1' ? '成功' : '失败'}
+                </Tag>
+              }
+              onClick={() =>
+                navigateTo(`/${SECONDARY_PAGES.profileLoginLogDetail}?id=${record.id}`)
+              }
+            />
+          ))}
+        </ManagementList>
+      </ManagementStates>
+      {/* 接口不返回总数，筛选也只是客户端行为：底部只报「当前显示」，绝不写成会被读成服务端统计的总数。 */}
+      <ManagementListFooter
+        loadingMore={list.loadingMore}
+        refreshing={list.refreshing}
+        finished={list.finished}
+        empty={!records.length}
+        summary={records.length ? `当前显示 ${records.length} 条` : undefined}
+      />
+      <BottomSelectSheet
+        open={panel === 'status' || panel === 'sort'}
+        title={panel === 'status' ? '登录状态' : '排序方式'}
+        options={panel === 'status' ? STATUS : SORT}
+        value={panel === 'status' ? status : sort}
+        onSelect={(key) =>
+          setFilters((previous) =>
+            panel === 'status' ? { ...previous, status: key } : { ...previous, sort: key },
+          )
+        }
+        onClose={() => setPanel('')}
+      />
+      {panel === 'dates' ? (
+        <DateRangeSheet
+          title="登录时间"
+          heading="选择日期范围，开始或结束可单独设置"
+          allowPartial
+          startDate={startDate}
+          endDate={endDate}
+          onClose={() => setPanel('')}
+          onConfirm={(dates) => {
+            setFilters((previous) => ({ ...previous, ...dates }))
+            setPanel('')
+          }}
+        />
+      ) : null}
+    </ManagementPage>
+  )
+}
+
+export default withAccountScope(ProfileLoginLog)

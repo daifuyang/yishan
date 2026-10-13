@@ -65,3 +65,141 @@ test('system log detail ignores late account response and exposes retry on failu
   auth.allowed = false
   assert.equal(all(failure.render()).some(node => node.type === 'DetailHero'), false)
 })
+
+// ---- profile 登录日志列表：与 system 列表同形，但状态 / 排序 / 时间范围在客户端完成 ----
+
+function nodesOf(tree, type) { return all(tree).filter(node => node.type === type) }
+
+function logRow(id, status, createdAt, ipAddress) {
+  return { id, username: 'me', status, createdAt, updatedAt: createdAt, ipAddress }
+}
+
+function profileHarness(options = {}) {
+  const navigate = [], queries = [], calls = { hook: null, auth: null }
+  const records = options.records ?? []
+  const listState = {
+    list: records, total: 0, page: 1, loading: false, refreshing: false, loadingMore: false,
+    finished: true, error: null, keyword: '', filters: {},
+    setKeyword() {}, setFilters() {}, refresh: async () => {}, loadMore: async () => {}, reset: async () => {},
+  }
+  const mount = harness('src/pages/profile/login-log/index.tsx', {
+    '@tarojs/taro': { useDidHide() {} },
+    '@/components/atoms': { Tag: 'Tag' },
+    '@/api': { userApi: { getMyLoginLogs: async (params) => { queries.push(params); return records } } },
+    '@/hooks': { useListPagination: (o) => { calls.hook = o; return listState } },
+    '@/utils/auth-guard': { useRequireAuth: (o) => { calls.auth = o; return options.auth ?? { ready: true, allowed: true } } },
+    '@/utils/router': { navigateTo: (url) => navigate.push(url) },
+  })
+  return { mount, navigate, queries, listState, calls }
+}
+
+test('profile 登录日志列表不再把记录交接到详情页', () => {
+  const fs = require('node:fs')
+  const path = require('node:path')
+  const { appRoot } = require('./helpers/load-ts.cjs')
+  const source = fs.readFileSync(path.join(appRoot, 'src/pages/profile/login-log/index.tsx'), 'utf8')
+  assert.doesNotMatch(source, /handoff/)
+  assert.doesNotMatch(source, /rememberLoginLog/)
+  assert.match(source, /withAccountScope/)
+})
+
+test('profile 登录日志列表用 useListPagination 拉取，接口只收 page/pageSize，点行只带 id', async () => {
+  const records = [logRow(2, '0', '2026-10-12T12:00:00.000Z', '2.2.2.2'), logRow(1, '1', '2026-10-01T12:00:00.000Z', '1.1.1.1')]
+  const h = profileHarness({ records })
+  const tree = h.mount.render()
+  assert.equal(h.calls.hook.enabled, true)
+  assert.equal(h.calls.hook.pageSize, 10)
+  assert.equal(typeof h.calls.hook.fetcher, 'function')
+  // fetcher 即使收到 keyword / filters 也不透传给接口
+  const result = await h.calls.hook.fetcher({ page: 1, pageSize: 10, keyword: 'abc', filters: { status: '0' } })
+  assert.deepEqual(h.queries, [{ page: 1, pageSize: 10 }])
+  assert.deepEqual(result.list, records)
+  assert.equal(result.total, 2)
+  const cells = nodesOf(tree, 'ManagementCell')
+  assert.equal(cells.length, 2)
+  cells[0].props.onClick()
+  assert.deepEqual(h.navigate, ['/pages/profile/login-log/detail/index?id=2'])
+})
+
+test('profile 登录日志列表满页时把分页标成未结束', async () => {
+  const records = Array.from({ length: 10 }, (_, index) => logRow(index + 1, '1', '2026-10-12T12:00:00.000Z', '1.1.1.1'))
+  const h = profileHarness({ records })
+  h.mount.render()
+  const result = await h.calls.hook.fetcher({ page: 1, pageSize: 10, keyword: '', filters: {} })
+  assert.equal(result.list.length, 10)
+  assert.ok(result.total > 10)
+})
+
+test('profile 登录日志列表按状态客户端筛选', () => {
+  const h = profileHarness({ records: [logRow(3, '1', '2026-10-12T12:00:00.000Z', '1.1.1.1'), logRow(2, '0', '2026-10-01T12:00:00.000Z', '2.2.2.2')] })
+  let tree = h.mount.render()
+  assert.equal(nodesOf(tree, 'ManagementCell').length, 2)
+  const triggers = nodesOf(tree, 'ManagementFilterTriggers')[0]
+  assert.deepEqual(triggers.props.triggers.map(trigger => trigger.key), ['status', 'sort', 'dates'])
+  triggers.props.onPanelChange('status')
+  tree = h.mount.render()
+  const sheet = nodesOf(tree, 'BottomSelectSheet')[0]
+  assert.equal(sheet.props.title, '登录状态')
+  sheet.props.onSelect('0')
+  tree = h.mount.render()
+  const cells = nodesOf(tree, 'ManagementCell')
+  assert.equal(cells.length, 1)
+  assert.equal(cells[0].props.description, '2.2.2.2')
+  assert.equal(cells[0].props.tag.props.variant, 'danger')
+})
+
+test('profile 登录日志列表按登录时间客户端排序', () => {
+  const h = profileHarness({ records: [logRow(3, '1', '2026-10-12T12:00:00.000Z', '1.1.1.1'), logRow(2, '0', '2026-10-01T12:00:00.000Z', '2.2.2.2')] })
+  let tree = h.mount.render()
+  assert.equal(nodesOf(tree, 'ManagementCell')[0].props.description, '1.1.1.1')
+  nodesOf(tree, 'ManagementFilterTriggers')[0].props.onPanelChange('sort')
+  tree = h.mount.render()
+  const sheet = nodesOf(tree, 'BottomSelectSheet')[0]
+  assert.equal(sheet.props.title, '排序方式')
+  sheet.props.onSelect('asc')
+  tree = h.mount.render()
+  assert.equal(nodesOf(tree, 'ManagementCell')[0].props.description, '2.2.2.2')
+})
+
+test('profile 登录日志列表按时间范围客户端筛选，底部只报已显示条数', () => {
+  const h = profileHarness({ records: [logRow(3, '1', '2026-10-12T12:00:00.000Z', '1.1.1.1'), logRow(2, '0', '2026-10-01T12:00:00.000Z', '2.2.2.2')] })
+  let tree = h.mount.render()
+  // 接口不给总数：底部只说明「当前显示」，不得出现「共 / 总数 / 已加载」这类会被读成服务端统计的措辞
+  const footer = nodesOf(tree, 'ManagementListFooter')[0].props.summary
+  assert.match(footer, /^当前显示 \d+ 条$/)
+  assert.doesNotMatch(footer, /共|总数|已加载/)
+  assert.equal(nodesOf(tree, 'DateRangeSheet').length, 0)
+  nodesOf(tree, 'ManagementFilterTriggers')[0].props.onPanelChange('dates')
+  tree = h.mount.render()
+  const sheet = nodesOf(tree, 'DateRangeSheet')[0]
+  sheet.props.onConfirm({ startDate: '2026-10-12', endDate: '2026-10-12' })
+  tree = h.mount.render()
+  const cells = nodesOf(tree, 'ManagementCell')
+  assert.equal(cells.length, 1)
+  assert.equal(cells[0].props.description, '1.1.1.1')
+  assert.equal(nodesOf(tree, 'ManagementListFooter')[0].props.summary, '当前显示 1 条')
+  const summary = nodesOf(tree, 'ManagementFilterSummary')[0]
+  assert.match(summary.props.children.join(''), /2026-10-12/)
+  summary.props.onClear()
+  tree = h.mount.render()
+  assert.equal(nodesOf(tree, 'ManagementCell').length, 2)
+})
+
+test('profile 登录日志列表失败时给出可重试错误态', () => {
+  const h = profileHarness({ records: [] })
+  h.listState.error = '网络异常'
+  const tree = h.mount.render()
+  const states = nodesOf(tree, 'ManagementStates')[0]
+  assert.equal(states.props.kind, 'error')
+  assert.equal(states.props.errorText, '网络异常')
+  assert.equal(states.props.onRetry, h.listState.refresh)
+})
+
+test('profile 登录日志列表保留原权限守卫且不传 moduleId', () => {
+  const h = profileHarness({ records: [logRow(1, '1', '2026-10-12T12:00:00.000Z', '1.1.1.1')], auth: { ready: true, allowed: false } })
+  const tree = h.mount.render()
+  assert.equal(h.calls.auth, undefined)
+  assert.equal(h.calls.hook.enabled, false)
+  assert.equal(nodesOf(tree, 'ManagementFilterBar').length, 0)
+  assert.equal(nodesOf(tree, 'ManagementCell').length, 0)
+})
