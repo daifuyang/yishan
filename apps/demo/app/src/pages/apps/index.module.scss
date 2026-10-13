@@ -1,6 +1,9 @@
+/* 页面容器横向全出血：横向内缩由各自的块自己给（筛选条、白色分组卡），
+   容器再加一层会和共享 ManagementFilterBar 的 var(--space-4) 叠成 32px。
+   纵向（底部 --space-4）保持不变。 */
 .apps {
   background: #F5F7FA;
-  padding: 0 var(--space-4) var(--space-4);
+  padding: 0 0 var(--space-4);
   box-sizing: border-box;
 }
 
@@ -67,12 +70,14 @@
   opacity: var(--opacity-pressed);
 }
 
+/* 分组卡自带 var(--space-4) 横向外边距：容器已全出血，这里不补就会贴到屏幕边缘。
+   纵向间距（下 20px）保持原样。 */
 .apps__section, .apps__editor {
   background: var(--color-bg-surface);
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.025);
   padding: 16px 12px 20px;
-  margin-bottom: 20px;
+  margin: 0 var(--space-4) 20px;
 }
 
 .apps__grid {
@@ -151,10 +156,12 @@
   margin-top: 12px;
 }
 
+/* 提示行不是白块，但容器全出血后它需要自己的横向内缩，否则文案贴到屏幕边缘 */
 .apps__refreshError {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 0 var(--space-4);
   color: var(--color-text-secondary);
   font-size: 13px;
   margin-bottom: 8px;
