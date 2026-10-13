@@ -71,13 +71,15 @@
 }
 
 /* 分组卡自带 var(--space-4) 横向外边距：容器已全出血，这里不补就会贴到屏幕边缘。
-   纵向间距（下 20px）保持原样。 */
+   纵向的 16px 上外边距是筛选条契约的一部分：筛选条底部不留内边距，由它下面的
+   第一块补出那 16px 灰间隔；卡片之间因为块级兄弟的上下外边距会折叠，仍是 16px，
+   不会叠成 32px（.apps 是块容器，不是 flex/grid）。 */
 .apps__section, .apps__editor {
   background: var(--color-bg-surface);
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.025);
   padding: 16px 12px 20px;
-  margin: 0 var(--space-4) 20px;
+  margin: var(--space-4) var(--space-4);
 }
 
 .apps__grid {
@@ -156,7 +158,9 @@
   margin-top: 12px;
 }
 
-/* 提示行不是白块，但容器全出血后它需要自己的横向内缩，否则文案贴到屏幕边缘 */
+/* 提示行不是白块，但容器全出血后它需要自己的横向内缩，否则文案贴到屏幕边缘。
+   刷新失败时它也可能紧跟在筛选条之后，同样要补上筛选条契约里的 16px 灰间隔；
+   与下一张卡的上外边距折叠，所以不会叠成 32px。 */
 .apps__refreshError {
   display: flex;
   align-items: center;
@@ -164,5 +168,5 @@
   padding: 0 var(--space-4);
   color: var(--color-text-secondary);
   font-size: 13px;
-  margin-bottom: 8px;
+  margin: var(--space-4) 0 0;
 }
