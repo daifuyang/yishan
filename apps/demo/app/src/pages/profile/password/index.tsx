@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import { useAuthStore } from '@/stores/auth'
@@ -11,55 +10,17 @@ import {
   ManagementPageHeader,
   FormContent,
   FormSection,
-  FormField,
+  FormError,
   FormSubmitBar,
+  SecretField,
 } from '@/components/management'
 import { getSessionVersion } from '@/api/client'
-import { LineIcon } from '@/components/icons'
 import { redirectToLogin } from '@/utils/router'
-
-import styles from './index.module.scss'
 
 const PASSWORD_MIN = 6
 const PASSWORD_MAX = 50
 const PASSWORD_PATTERN = /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]+$/
 const SUCCESS_TOAST_MS = 1500
-
-interface PasswordRowProps {
-  label: string
-  placeholder: string
-  value: string
-  onInput: (value: string) => void
-  disabled?: boolean
-}
-
-function PasswordRow({ label, placeholder, value, onInput, disabled }: PasswordRowProps) {
-  const [visible, setVisible] = useState(false)
-  return (
-    <FormField label={label} required disabled={disabled}>
-      <View className={styles.pwd__control}>
-        <Input
-          className={styles.pwd__input}
-          placeholder={placeholder}
-          placeholderClass={styles.pwd__placeholder}
-          password={!visible}
-          disabled={disabled}
-          value={value}
-          onInput={(e) => onInput(e.detail.value)}
-          maxlength={PASSWORD_MAX}
-        />
-        <View
-          className={styles.pwd__eye}
-          hoverClass={styles['pwd__eye--pressed']}
-          aria-label={visible ? '隐藏密码' : '显示密码'}
-          onClick={disabled ? undefined : () => setVisible((v) => !v)}
-        >
-          <LineIcon name={visible ? 'eye' : 'eyeOff'} size={20} />
-        </View>
-      </View>
-    </FormField>
-  )
-}
 
 function validate(oldPwd: string, newPwd: string, confirmPwd: string): string | null {
   if (
@@ -80,6 +41,7 @@ export default function ProfilePassword() {
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const submitLocked = useRef(false)
   const alive = useRef(true)
   const session = useRef(getSessionVersion()).current
@@ -95,14 +57,21 @@ export default function ProfilePassword() {
   const auth = useRequireAuth()
   const ready = Boolean(oldPwd && newPwd && confirmPwd)
 
+  // 改动任一字段就把上一次的失败信息收起来：留着旧错误，用户会以为新值仍然不合法
+  const editField = (setter: (value: string) => void) => (value: string) => {
+    setter(value)
+    if (error) setError(null)
+  }
+
   const handleSubmit = async () => {
     // 三项未填完时按钮已置灰不可点，这里只做兜底，不再另行提示
     if (!auth.ready || !auth.allowed || !isCurrent() || submitLocked.current || !ready) return
     const invalid = validate(oldPwd, newPwd, confirmPwd)
     if (invalid) {
-      Taro.showToast({ title: invalid, icon: 'none' })
+      setError(invalid)
       return
     }
+    setError(null)
     submitLocked.current = true
     setSubmitting(true)
     try {
@@ -124,7 +93,8 @@ export default function ProfilePassword() {
     } catch (e) {
       if (!isCurrent()) return
       const msg = e instanceof ApiError ? e.message : (e as Error).message
-      Taro.showToast({ title: msg || '修改失败，请稍后重试', icon: 'none' })
+      // 失败保留页面与已填内容，错误就地呈现，不再弹 toast 打断
+      if (alive.current) setError(msg || '修改失败，请稍后重试')
     } finally {
       submitLocked.current = false
       if (alive.current) setSubmitting(false)
@@ -140,28 +110,36 @@ export default function ProfilePassword() {
           title="密码信息"
           hint="6-50 位，须同时包含字母和数字，可含特殊字符 @$!%*?&；修改后需重新登录"
         >
-          <PasswordRow
+          <SecretField
             label="当前密码"
-            placeholder="请输入当前密码"
+            required
             value={oldPwd}
-            onInput={setOldPwd}
+            onChange={editField(setOldPwd)}
+            placeholder="请输入当前密码"
+            maxlength={PASSWORD_MAX}
             disabled={disabled}
           />
-          <PasswordRow
+          <SecretField
             label="新密码"
-            placeholder="请输入新密码"
+            required
             value={newPwd}
-            onInput={setNewPwd}
+            onChange={editField(setNewPwd)}
+            placeholder="请输入新密码"
+            maxlength={PASSWORD_MAX}
             disabled={disabled}
           />
-          <PasswordRow
+          <SecretField
             label="确认密码"
-            placeholder="请再次输入新密码"
+            required
             value={confirmPwd}
-            onInput={setConfirmPwd}
+            onChange={editField(setConfirmPwd)}
+            placeholder="请再次输入新密码"
+            maxlength={PASSWORD_MAX}
             disabled={disabled}
           />
         </FormSection>
+        {/* 校验与提交失败都落在表单边界，由共享 FormError 统一呈现 */}
+        <FormError>{error}</FormError>
       </FormContent>
       <FormSubmitBar text="确认修改" submitting={submitting} disabled={disabled || !ready} onSubmit={handleSubmit} />
     </ManagementPage>

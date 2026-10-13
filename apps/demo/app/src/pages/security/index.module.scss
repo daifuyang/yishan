@@ -1,4 +1,5 @@
-/* 页面顶部 16px 模块间距；分组标题坐在这条灰带里，自身 padding-top 为 0 */
+/* 页面顶部那 16px 灰间隔由 ManagementList 自己的 margin 提供，
+   这里再补 padding-top 就会叠成 32px。*/
 .page {
-  padding-top: var(--space-4);
+  display: block;
 }

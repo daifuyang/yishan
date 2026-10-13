@@ -1,7 +1,7 @@
 import { View } from '@tarojs/components'
 
 import { PageContainer } from '@/components/layout'
-import { SettingCell, SettingGroup } from '@/components/molecules'
+import { ManagementCell, ManagementList } from '@/components/management'
 import { SECONDARY_PAGES } from '@/constants/routes'
 import { navigateTo } from '@/utils/router'
 
@@ -11,18 +11,18 @@ export default function SecurityPage() {
   return (
     <PageContainer>
       <View className={styles.page}>
-        <SettingGroup title="登录与安全">
-          <SettingCell
-            icon="lock"
+        <ManagementList>
+          <ManagementCell
+            glyph="lock"
             title="修改密码"
             onClick={() => navigateTo(`/${SECONDARY_PAGES.profilePassword}`)}
           />
-          <SettingCell
-            icon="history"
+          <ManagementCell
+            glyph="fileText"
             title="登录日志"
             onClick={() => navigateTo(`/${SECONDARY_PAGES.profileLoginLog}`)}
           />
-        </SettingGroup>
+        </ManagementList>
       </View>
     </PageContainer>
   )

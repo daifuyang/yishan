@@ -1,5 +1,0 @@
-.pwd__control { display: flex; align-items: center; flex: 1; min-width: 0; }
-.pwd__input { flex: 1; min-width: 0; height: 40px; padding: 0; border: 0; background: transparent; text-align: right; font-size: var(--font-size-14); color: var(--color-text-primary); }
-.pwd__placeholder, .pwd__input::placeholder { color: var(--color-text-tertiary); }
-.pwd__eye { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 44px; margin-right: -8px; color: var(--color-text-tertiary); }
-.pwd__eye--pressed { color: var(--color-text-primary); }

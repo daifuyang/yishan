@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 const test = require('node:test')
-const { loadTs } = require('./helpers/load-ts.cjs')
+const { loadTs, appRoot } = require('./helpers/load-ts.cjs')
 
 const {
   buildProfileSections,
@@ -106,4 +108,147 @@ test('formatOrgSummary 的「等 N 个」按实际选中数计，不把占位算
 test('formatOrgSummary 部分解析失败时保留占位文案', () => {
   const names = new Map([[1, '甲']])
   assert.equal(formatOrgSummary([1, 9], names), '甲、名称暂不可用')
+})
+
+const pageSource = (file) => fs.readFileSync(path.join(appRoot, file), 'utf8')
+
+const LEGACY_SETTINGS_ATOMS = /SettingCell|SettingGroup|DangerAction/
+
+test('个人中心与账户安全改用 ManagementList/ManagementCell，不再引用旧设置组件', () => {
+  for (const file of ['src/pages/mine/index.tsx', 'src/pages/security/index.tsx']) {
+    const page = pageSource(file)
+    assert.doesNotMatch(page, LEGACY_SETTINGS_ATOMS, `${file} 不应再引用旧设置组件`)
+    assert.doesNotMatch(page, /from '@\/components\/molecules'/, `${file} 不再从 molecules 取设置行`)
+    const shared = page.match(/import \{([^}]*)\} from '@\/components\/management'/)
+    assert.ok(shared, `${file} 应从 @/components/management 引入共享原子`)
+    assert.match(shared[1], /\bManagementList\b/, '设置分组用共享 ManagementList')
+    assert.match(shared[1], /\bManagementCell\b/, '设置行用共享 ManagementCell')
+    assert.match(page, /<ManagementList\b/, '渲染共享 ManagementList')
+    assert.match(page, /<ManagementCell\b/, '渲染共享 ManagementCell')
+  }
+})
+
+test('账户安全列表保留现有跳转目标', () => {
+  const page = pageSource('src/pages/security/index.tsx')
+  assert.match(page, /SECONDARY_PAGES\.profilePassword/, '修改密码入口不变')
+  assert.match(page, /SECONDARY_PAGES\.profileLoginLog/, '登录日志入口不变')
+})
+
+// 个人中心在迷你渲染器里跑：state 持久化，才能断言行点击打开 ActionSheet 的真实行为。
+function mineHarness(confirm) {
+  const actions = []
+  const states = []
+  const refs = []
+  let stateIndex = 0
+  let refIndex = 0
+  const user = { id: 1, nickname: '三三', realName: '张三', email: 'a@b.com' }
+  const store = (selector) =>
+    selector({
+      user,
+      logout: async () => {
+        actions.push('logout')
+      },
+    })
+  store.getState = () => ({
+    bootstrapped: true,
+    token: 'token',
+    user,
+    refreshMe: async () => actions.push('refresh'),
+    logout: async () => {
+      actions.push('logout')
+    },
+  })
+  const component = loadTs('src/pages/mine/index.tsx', {
+    react: {
+      useState(initial) {
+        const index = stateIndex++
+        if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial
+        return [
+          states[index],
+          (value) => {
+            states[index] = typeof value === 'function' ? value(states[index]) : value
+          },
+        ]
+      },
+      useRef(initial) {
+        const index = refIndex++
+        refs[index] ||= { current: initial }
+        return refs[index]
+      },
+      useEffect: () => {},
+    },
+    '@tarojs/components': { View: 'View', Text: 'Text' },
+    '@tarojs/taro': { useDidShow: () => {} },
+    '@/components/layout': { PageContainer: 'PageContainer' },
+    '@/components/organisms': { UserHeader: 'UserHeader' },
+    '@/components/management': Object.fromEntries(
+      ['ManagementList', 'ManagementCell', 'ActionSheet'].map((name) => [name, name]),
+    ),
+    // 迁移后个人中心不应再从旧 molecules 取设置行；这里留空对象，误引用会渲染成 undefined 节点而不是加载失败
+    '@/components/molecules': {},
+    '@/hooks': { confirmAction: async () => confirm },
+    '@/stores/auth': { useAuthStore: store },
+    '@/utils/router': {
+      navigateTo: (url) => actions.push(`to:${url}`),
+      redirectToLogin: () => actions.push('login'),
+    },
+    './index.module.scss': {},
+  }).default
+  const elements = []
+  const render = () => {
+    stateIndex = 0
+    refIndex = 0
+    elements.length = 0
+    ;(function collect(node) {
+      if (!node || typeof node !== 'object') return
+      elements.push(node)
+      for (const child of [node.props?.children].flat(Infinity)) collect(child)
+    })(component())
+    return elements
+  }
+  render()
+  return {
+    actions,
+    render,
+    tree: () => elements,
+    row: (title) =>
+      elements.find((node) => node.type === 'ManagementCell' && node.props.title === title),
+    sheet: () => elements.find((node) => node.type === 'ActionSheet'),
+  }
+}
+
+test('个人中心退出登录经 ActionSheet 确认后清理会话并回到登录页', async () => {
+  const h = mineHarness(true)
+  const row = h.row('退出登录')
+  assert.ok(row, '退出登录是管理列表中的一行')
+  assert.equal(row.props.showArrow, false, '打开 ActionSheet 的行不显示箭头')
+  await row.props.onClick()
+  const opened = h.render().find((node) => node.type === 'ActionSheet')
+  assert.equal(opened.props.open, true, '点击行打开操作面板')
+  const item = opened.props.items.find((entry) => entry.key === 'logout')
+  assert.equal(item.danger, true, '退出登录是危险项')
+  await item.onClick()
+  // 行内动作是 void handleLogout()，拿不到 promise：等一轮宏任务把确认与登出链路跑完
+  await new Promise((resolve) => setImmediate(resolve))
+  h.render()
+  assert.deepEqual(h.actions, ['logout', 'login'])
+  assert.equal(h.sheet().props.open, false, '确认后关闭操作面板')
+})
+
+test('个人中心取消退出登录时不动会话与路由', async () => {
+  const h = mineHarness(false)
+  await h.row('退出登录').props.onClick()
+  const item = h.sheet().props.items.find((entry) => entry.key === 'logout')
+  await item.onClick()
+  await new Promise((resolve) => setImmediate(resolve))
+  h.render()
+  assert.deepEqual(h.actions, [])
+})
+
+test('个人中心保留四个现有入口的跳转目标', () => {
+  const page = pageSource('src/pages/mine/index.tsx')
+  for (const target of ['profileEdit', 'security', 'messages', 'about']) {
+    assert.match(page, new RegExp(`SECONDARY_PAGES\\.${target}`), `${target} 入口不变`)
+  }
+  assert.match(page, /\{`关于\$\{APP_NAME\}`\}/, '关于入口标题仍带应用名')
 })

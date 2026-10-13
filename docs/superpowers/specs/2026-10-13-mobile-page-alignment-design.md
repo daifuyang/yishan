@@ -119,7 +119,7 @@ selection?: ReactNode
 
 ### B1. 认证、首页和工作台
 
-- 登录页：使用共享 `Checkbox`；失败信息使用 `FormError`，错误文字 12px、右对齐；禁用态不绘制灰底块；颜色全部改为 token。label 上下堆叠作为唯一登录页例外，原因是 16px 防 iOS 缩放和窄屏标签列宽度。
+- 登录页：使用共享 `Checkbox`；失败信息使用 `FormError`，字号与对齐由原子自身决定（14px、左对齐，与全应用其它 `FormError` 一致）—— 给 `FormError` 加尺寸/缩进变体是**基础线**的后续项，已记入 `TODO.md`；禁用态不绘制灰底块；颜色全部改为 token。label 上下堆叠作为唯一登录页例外，原因是 16px 防 iOS 缩放和窄屏标签列宽度。
 - 首页：使用 `SurfaceCard`/`MetricCard`；裸 `›` 替换为 `LineIcon`；保留品牌自绘图标但登记例外；复用导航避让 hook。
 - 应用页：手写搜索框替换为 `ManagementSearchBar`，筛选入口使用 `ManagementFilterBar`，loading/error/empty 使用 `ManagementStates`。
 - `apps/pinned`：动作按钮使用 `trailingAction`，不把按钮放入 `tag`。
@@ -145,7 +145,7 @@ selection?: ReactNode
 
 ### B4. 示例页和 system 基准尾巴
 
-- demo 六页移除对 `pages/system/_shared/AdminUI` 的反向依赖，改用公开 management/feedback/form 组件；health、quickstart、region 文件头明确“组件演示，非页面样板”。
+- demo 六页对 `pages/system/_shared/AdminUI` 的反向依赖本就不存在（`src/pages/demo/` 下没有任何页面引用 `AdminUI`/`AdminPage`/`AdminSelect`/`AdminNotice`；该模块的源码调用方只有 Task 5 负责的三个 system 页面），这一项要求已经满足、只需守住不回退；改用公开 management/feedback/form 组件，health、quickstart、region 文件头明确“组件演示，非页面样板”。
 - health 删除重复的内存指标和一行多属性；region 统一 `FormSection`/`DetailRow` 语义；quickstart/region 删除重复 `.content` 和错误注释。
 - `dict/items`、`role/RoleEditor`、`dept/DepartmentForm` 移除遗留 `AdminPage`/`AdminSelect`/`AdminNotice`。
 - 修复 `system/position/form` 中 `FormField.disabled` 未向控件透传的问题；补充回归断言。

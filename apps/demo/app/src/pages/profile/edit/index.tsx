@@ -8,6 +8,7 @@ import {
   FormContent,
   FormSection,
   FormField,
+  FormError,
   EnumField,
   TextField,
   FormSubmitBar,
@@ -80,6 +81,7 @@ export default function ProfileEdit() {
   const [gender, setGender] = useState<string>(user?.gender || '0')
   const [genderOptions, setGenderOptions] = useState<DictItem[]>(GENDER_OPTIONS)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const initializedUserId = useRef<number | null>(null)
   const submitLocked = useRef(false)
   const alive = useRef(true)
@@ -120,16 +122,27 @@ export default function ProfileEdit() {
     }
   }, [auth.ready, auth.allowed])
 
+  const clearError = () => {
+    if (error) setError(null)
+  }
+
+  // 改动任一字段就把上一次的失败信息收起来：留着旧错误，用户会以为新值仍然不合法
+  const editField = (setter: (value: string) => void) => (value: string) => {
+    setter(value)
+    clearError()
+  }
+
   const handleSave = async () => {
     if (!auth.ready || !auth.allowed || submitLocked.current) return
     if (email && !/^[\w.+-]+@[\w-]+\.[\w.-]+$/.test(email)) {
-      Taro.showToast({ title: '邮箱格式不正确', icon: 'none' })
+      setError('邮箱格式不正确')
       return
     }
     if (phone && !PHONE_PATTERN.test(phone)) {
-      Taro.showToast({ title: '手机号格式不正确', icon: 'none' })
+      setError('手机号格式不正确')
       return
     }
+    setError(null)
     const session = getSessionVersion()
     const userId = user?.id
     if (!userId || initializedUserId.current !== userId) return
@@ -167,7 +180,8 @@ export default function ProfileEdit() {
     } catch (e) {
       if (!isCurrent()) return
       const msg = e instanceof ApiError ? e.message : (e as Error).message
-      Taro.showToast({ title: msg || '保存失败', icon: 'none' })
+      // 失败保留页面与已填内容，错误就地呈现，不再弹 toast 打断
+      if (alive.current) setError(msg || '保存失败')
     } finally {
       submitLocked.current = false
       if (alive.current) setSubmitting(false)
@@ -184,7 +198,7 @@ export default function ProfileEdit() {
           <FormField label="昵称" disabled={disabled}>
             <TextField
               value={nickname}
-              onChange={setNickname}
+              onChange={editField(setNickname)}
               placeholder="请输入昵称"
               disabled={disabled}
             />
@@ -192,12 +206,18 @@ export default function ProfileEdit() {
           <FormField label="真实姓名" disabled={disabled}>
             <TextField
               value={realName}
-              onChange={setRealName}
+              onChange={editField(setRealName)}
               placeholder="请输入真实姓名"
               disabled={disabled}
             />
           </FormField>
-          <EnumField label="性别" value={gender} options={genderEnum} onChange={setGender} disabled={disabled} />
+          <EnumField
+            label="性别"
+            value={gender}
+            options={genderEnum}
+            onChange={editField(setGender)}
+            disabled={disabled}
+          />
           <FormField label="出生日期" disabled={disabled} arrow>
             <Picker
               className={styles.picker}
@@ -205,7 +225,10 @@ export default function ProfileEdit() {
               disabled={disabled}
               value={birthDate}
               end={today()}
-              onChange={(event) => setBirthDate(String(event.detail.value))}
+              onChange={(event) => {
+                setBirthDate(String(event.detail.value))
+                clearError()
+              }}
             >
               <View className={`${styles.pickerValue} ${birthDate && !disabled ? '' : styles.empty}`}>
                 <Text>{birthDate || '请选择出生日期'}</Text>
@@ -217,7 +240,7 @@ export default function ProfileEdit() {
           <FormField label="邮箱" disabled={disabled}>
             <TextField
               value={email}
-              onChange={setEmail}
+              onChange={editField(setEmail)}
               placeholder="请输入邮箱"
               maxlength={100}
               disabled={disabled}
@@ -227,13 +250,15 @@ export default function ProfileEdit() {
             <TextField
               type="number"
               value={phone}
-              onChange={setPhone}
+              onChange={editField(setPhone)}
               placeholder="请输入手机号"
               maxlength={11}
               disabled={disabled}
             />
           </FormField>
         </FormSection>
+        {/* 校验与提交失败都落在表单边界，由共享 FormError 统一呈现 */}
+        <FormError>{error}</FormError>
       </FormContent>
       <FormSubmitBar text="保存" submitting={submitting} disabled={disabled} onSubmit={handleSave} />
     </ManagementPage>
