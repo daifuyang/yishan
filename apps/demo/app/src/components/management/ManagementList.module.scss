@@ -99,6 +99,21 @@
   align-items: center;
 }
 
+/* 选择槽：与状态列同一种「独立成列 + 垂直居中」，不与标题抢基线 */
+.row__selection {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+/* 动作槽：行内按钮组。拦冒泡在组件里，这里只负责对齐与按钮间距 */
+.row__action {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .row__description {
   display: block;
   max-width: 100%;

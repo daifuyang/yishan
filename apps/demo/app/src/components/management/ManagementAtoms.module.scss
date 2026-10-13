@@ -1,0 +1,134 @@
+/* 管理族的共享行原子与卡片容器。
+   颜色 / 间距 / 圆角全部取 tokens.scss，语义与 FormLayout、DetailLayout 对齐。 */
+
+/* ---------- 选择行（PickerRow / DateField） ---------- */
+
+/* 左标签（76px 固定列）+ 右取值 + 可选行尾 ›，与表单行同一套节奏。
+   行自带横向内边距与分隔线，可整行放进 FormSection。 */
+.pickerRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  box-sizing: border-box;
+  min-height: var(--list-item-height-sm);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-bg-surface);
+}
+
+.pickerRow:last-child {
+  border-bottom: 0;
+}
+
+.pickerRow--pressed {
+  background: var(--color-bg-base);
+}
+
+.pickerRow__label {
+  flex-shrink: 0;
+  width: 76px;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-secondary);
+}
+
+/* 取值占满标签右侧并右对齐。Taro Picker 在 H5 下渲染成独立 div，
+   所以 Picker 自身（.dateField）必须 flex: 1，值才到得了行尾。 */
+.pickerRow__value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 40px;
+  font-size: var(--font-size-14);
+  line-height: 22px;
+  color: var(--color-text-primary);
+  text-align: right;
+}
+
+.pickerRow__placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* 禁用：标签与取值一起降到三级灰，行高不变 —— 不加灰底块，否则同一张表单里
+   这一行会比别的行看起来高一档。 */
+.pickerRow--disabled .pickerRow__label,
+.pickerRow--disabled .pickerRow__value {
+  color: var(--color-text-tertiary);
+}
+
+/* 箭头是行级元素，贴在行尾；放进取值里会跟着取值的盒子居中 */
+.pickerRow__arrow {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* DateField 的 Picker：H5 下它是独立 div，没有 flex: 1 就撑不满行 */
+.dateField {
+  flex: 1;
+  min-width: 0;
+  display: block;
+}
+
+/* ---------- 白色内容块（SurfaceCard / MetricCard） ---------- */
+
+/* 只提供「白底 + 圆角」，不带内边距：块内的列表行、指标卡各自带 var(--space-4)，
+   容器再加一层就叠成 32px，和全出血列表的横向节奏对不上。 */
+.surfaceCard {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--color-bg-surface);
+}
+
+/* 无 hero 页的第一块内容由卡片自己补页顶距：这段灰带以前在三份页面 SCSS 里各写一遍，
+   漏一处就少 16px。 */
+.surfaceCard--lead {
+  margin-top: var(--space-4);
+}
+
+.surfaceCard--pressed {
+  background: var(--color-bg-disabled);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  padding: var(--space-4);
+}
+
+.metric__label {
+  overflow: hidden;
+  font-size: var(--font-size-13);
+  line-height: 18px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.metric__body {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.metric__value {
+  font-size: var(--font-size-28);
+  font-weight: var(--font-weight-semibold);
+  line-height: 32px;
+  color: var(--color-text-primary);
+  /* 数字等宽：并排两张卡的数值才会对齐 */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.metric__auxiliary {
+  margin-left: var(--space-1);
+  font-size: var(--font-size-12);
+  line-height: 16px;
+  color: var(--color-text-tertiary);
+}

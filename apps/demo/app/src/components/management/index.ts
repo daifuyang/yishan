@@ -77,6 +77,10 @@ export {
 } from './FormLayout'
 export { Breadcrumbs, type BreadcrumbItem, type BreadcrumbsProps } from './Breadcrumbs'
 export { LineIcon, type LineIconName, type LineIconProps } from './LineIcon'
+export { PickerRow, type PickerRowProps } from './PickerRow'
+export { DateField, type DateFieldProps } from './DateField'
+export { SurfaceCard, type SurfaceCardProps } from './SurfaceCard'
+export { MetricCard, type MetricCardProps } from './MetricCard'
 export {
   ManagementCell,
   type ManagementCellProps,

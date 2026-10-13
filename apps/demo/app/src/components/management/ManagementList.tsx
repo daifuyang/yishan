@@ -25,8 +25,12 @@ export interface ManagementCellProps {
   title: ReactNode
   /** 副标题：用户页是 @账号 · 手机，角色页是「类型 · 状态」 */
   description?: ReactNode
-  /** 标题右侧的状态标签，直接渲染节点（通常是 <Tag>） */
+  /** 标题右侧的状态标签，直接渲染节点（通常是 <Tag>）。只表达状态，不放按钮 */
   tag?: ReactNode
+  /** 选择态槽位（勾选框等），渲染在状态列之后、动作槽之前 */
+  selection?: ReactNode
+  /** 行内动作槽位（上移/下移等按钮）。点击阻止冒泡，不会连带触发整行跳转 */
+  trailingAction?: ReactNode
   /** 行首方形缩略图（媒体类列表）；有 src 时图片覆盖在图标上，加载失败露出图标 */
   thumb?: { src?: string; glyph: LineIconName }
   /** 行首头像；不传则用 glyph 图标 */
@@ -48,12 +52,14 @@ export interface ManagementCellProps {
 
 /**
  * 管理类列表统一 Cell：头像/图标 + 标题 + 标签 + 副标题 + 可选箭头。
- * 只有详情入口才显示箭头；行内不放按钮。
+ * 只有详情入口才显示箭头；行内动作走 trailingAction（点击阻止冒泡），状态仍由 tag 承载。
  */
 export function ManagementCell({
   title,
   description,
   tag,
+  selection,
+  trailingAction,
   thumb,
   avatar,
   glyph,
@@ -114,6 +120,14 @@ export function ManagementCell({
       </View>
       {/* 状态放在右侧独立成列：与整行垂直居中，不必和标题抢同一条基线 */}
       {tag ? <View className={styles.row__tag}>{tag}</View> : null}
+      {selection ? <View className={styles.row__selection}>{selection}</View> : null}
+      {/* 动作槽拦住冒泡：点行内按钮不应顺带触发整行跳转。拦截放在容器上，
+          调用方传什么按钮都成立，不必每个调用点各写一次 stopPropagation。 */}
+      {trailingAction ? (
+        <View className={styles.row__action} onClick={(event) => event.stopPropagation()}>
+          {trailingAction}
+        </View>
+      ) : null}
       {showArrow ? (
         <View className={styles.row__arrow}>
           <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
