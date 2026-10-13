@@ -41,3 +41,10 @@ export function getMyLoginLogs(params: { page?: number; pageSize?: number } = {}
     query: params,
   })
 }
+
+export function getMyLoginLog(id: number) {
+  return request<LoginLog>({
+    method: 'GET',
+    path: `/api/v1/app/users/me/login-logs/${id}`,
+  })
+}

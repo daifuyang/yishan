@@ -19840,6 +19840,48 @@
         }
       }
     },
+    "/api/v1/app/users/me/login-logs/{id}": {
+      "get": {
+        "operationId": "appGetMyLoginLog",
+        "summary": "我的登录日志详情",
+        "tags": [
+          "app-users"
+        ],
+        "description": "根据日志ID获取当前用户的单条登录日志详情（越权与不存在均返回 LOGIN_LOG_NOT_FOUND）",
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "日志ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "app:user:my-logins",
+        "x-permission-label": "移动端-自己登录日志",
+        "x-permission-group": "app",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/sysLoginLogDetailResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "authLogin",
