@@ -142,6 +142,30 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       );
     },
   );
+
+  // GET /api/v1/app/users/me/login-logs/:id - 我的登录日志详情
+  route.get(
+    "/me/login-logs/:id",
+    {
+      access: { permission: PERMS.LIST_MY_LOGINS },
+      schema: {
+        summary: "我的登录日志详情",
+        description: "根据日志ID获取当前用户的单条登录日志详情（越权与不存在均返回 LOGIN_LOG_NOT_FOUND）",
+        operationId: "appGetMyLoginLog",
+        tags: ["app-users"],
+        security: [{ bearerAuth: [] }],
+        params: Type.Object({
+          id: Type.Integer({ description: "日志ID", minimum: 1 }),
+        }),
+        response: { 200: { $ref: "sysLoginLogDetailResp#" } },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: number } }>, reply: FastifyReply) => {
+      const userId = request.currentUser.id;
+      const item = await LoginLogService.getMyLoginLogById(userId, request.params.id);
+      return ResponseUtil.success(reply, item, "获取成功");
+    },
+  );
 };
 
 export default users;
