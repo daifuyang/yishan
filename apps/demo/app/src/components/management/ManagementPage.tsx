@@ -28,10 +28,13 @@ export function ManagementPage({
 }
 
 export interface ManagementPageHeaderProps {
-  title: string
-  subtitle?: string
+  title: ReactNode
+  subtitle?: ReactNode
   /** 右上角操作，通常是「新建」 */
   action?: ReactNode
+  /** 底部分隔线，默认 true；嵌在白色内容块里时置 false */
+  bordered?: boolean
+  className?: string
   onBack?: () => void
   /** H5 需要自绘导航栏时置 false，其余端由原生导航栏承载 */
   showBack?: boolean
@@ -42,11 +45,13 @@ export function ManagementPageHeader({
   title,
   subtitle,
   action,
+  bordered = true,
+  className = '',
   onBack,
   showBack = true,
 }: ManagementPageHeaderProps) {
   return (
-    <View className={styles.header}>
+    <View className={cx(styles.header, bordered && styles.headerBordered, className)}>
       <View className={cx(styles.header__side, styles.header__sideLeft)}>
         {showBack ? (
           <View
