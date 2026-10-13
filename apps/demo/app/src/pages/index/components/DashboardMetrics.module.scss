@@ -1,69 +1,18 @@
+/* 白底卡片由共享 SurfaceCard / MetricCard 提供，这里只留两列网格与骨架块 */
+
 .grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  row-gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.card {
+/* 骨架卡：内边距与 MetricCard 对齐，占位块负责高度 */
+.skeletonCard {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: calc(50% - 6px);
   padding: 16px;
   box-sizing: border-box;
-  border-radius: 12px;
-  background-color: var(--color-bg-surface, #ffffff);
-}
-
-.card--pressed {
-  background-color: var(--color-bg-disabled, #f2f3f5);
-}
-
-.card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.card__label {
-  min-width: 0;
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--color-text-tertiary, #86909c);
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.card__body {
-  display: flex;
-  align-items: baseline;
-  min-width: 0;
-}
-
-.card__value {
-  font-size: 26px;
-  font-weight: 600;
-  line-height: 32px;
-  color: var(--color-text-primary, #1d2129);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.card__unit {
-  margin-left: 4px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--color-text-tertiary, #86909c);
-}
-
-.card__chevron {
-  margin-left: auto;
-  font-size: 16px;
-  line-height: 16px;
-  color: var(--color-text-quaternary, #c9cdd4);
 }
 
 .skeleton {

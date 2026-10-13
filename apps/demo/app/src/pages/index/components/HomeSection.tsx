@@ -1,5 +1,7 @@
 import { Text, View } from '@tarojs/components'
 
+import { LineIcon } from '@/components/management'
+
 import styles from './HomeSection.module.scss'
 
 export interface HomeSectionProps {
@@ -31,7 +33,7 @@ export function SectionLink({ text, onClick }: SectionLinkProps) {
   return (
     <View className={styles.section__link} hoverClass={styles['section__link--pressed']} onClick={onClick}>
       <Text>{text}</Text>
-      <Text className={styles.section__chevron}>›</Text>
+      <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
     </View>
   )
 }

@@ -4,6 +4,12 @@
   box-sizing: border-box;
 }
 
+/* H5 没有原生导航栏，自绘页头用全局安全区变量避让刘海；
+   小程序由 WorkbenchHeader 的 inline 状态栏高度覆盖（inline 优先，不会叠加）。 */
+.apps__top {
+  padding-top: var(--safe-area-top);
+}
+
 .apps__header, .apps__sectionHeader {
   display: flex;
   align-items: center;
@@ -32,7 +38,7 @@
   white-space: nowrap;
 }
 
-.apps .apps__action, .apps .apps__clear {
+.apps .apps__action {
   margin: 0;
   padding: 0 8px;
   min-width: 44px;
@@ -47,7 +53,7 @@
   flex-shrink: 0;
 }
 
-.apps .apps__action::after, .apps .apps__clear::after {
+.apps .apps__action::after {
   border: 0;
 }
 
@@ -59,31 +65,6 @@
 
 .apps__pressed {
   opacity: var(--opacity-pressed);
-}
-
-.apps__searchWrap {
-  display: flex;
-  align-items: center;
-  background: var(--color-bg-surface);
-  border-radius: 12px;
-  height: 44px;
-  border: 1px solid var(--color-border-light);
-  box-sizing: border-box;
-  padding-left: 14px;
-  margin-bottom: 20px;
-}
-
-.apps__search {
-  min-width: 0;
-  flex: 1;
-  height: 42px;
-  padding: 0 10px;
-  color: var(--color-text-primary);
-  font-size: 14px;
-}
-
-.apps__clear {
-  color: var(--color-text-tertiary);
 }
 
 .apps__section, .apps__editor {
@@ -107,16 +88,6 @@
   align-items: center;
   gap: 8px;
   padding: 0;
-}
-
-.apps__skeletonIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-primary-bg);
 }
 
 .apps__label {
@@ -187,24 +158,4 @@
   color: var(--color-text-secondary);
   font-size: 13px;
   margin-bottom: 8px;
-}
-
-.apps__skeletonTitle {
-  width: 80px;
-  height: 16px;
-  background: var(--color-bg-secondary);
-  margin: 16px 0;
-  display: inline-block;
-  border-radius: 4px;
-}
-
-.apps__skeletonIcon {
-  background: var(--color-bg-secondary);
-}
-
-.apps__skeletonLabel {
-  width: 48px;
-  height: 12px;
-  border-radius: 4px;
-  background: var(--color-bg-secondary);
 }

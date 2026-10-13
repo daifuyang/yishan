@@ -24,7 +24,7 @@ import { useHomeTodos } from './useHomeTodos'
 import styles from './index.module.scss'
 
 interface TopBarMetrics {
-  /** 状态栏高度（自定义导航栏时由页面自行让出） */
+  /** 状态栏高度（自定义导航栏时由页面自行让出）；H5 取 0，改由全局 --safe-area-top 兜底 */
   statusBar: number
   /** 与胶囊按钮等高的导航行高度 */
   height: number
@@ -117,7 +117,12 @@ export default function IndexPage() {
 
   return (
     <PageContainer className={styles.home}>
-      <View className={styles.home__topBar} style={{ paddingTop: `${topBar.statusBar}px` }}>
+      {/* 小程序用运行时量出的状态栏高度（inline 覆盖页顶距），H5 没有原生导航栏，
+          交给 .home__topBar 的 var(--safe-area-top) 避让刘海 */}
+      <View
+        className={styles.home__topBar}
+        style={topBar.statusBar ? { paddingTop: `${topBar.statusBar}px` } : undefined}
+      >
         <View
           className={styles.home__topRow}
           style={{ height: `${topBar.height}px`, paddingRight: `${topBar.right}px` }}

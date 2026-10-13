@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 const test = require('node:test')
-const { loadTs } = require('./helpers/load-ts.cjs')
+const { loadTs, appRoot } = require('./helpers/load-ts.cjs')
 
 function setup(initial = {}) {
   const values = new Map(Object.entries(initial))
@@ -64,4 +66,32 @@ test('remember account stores only the trimmed account and can be cleared', () =
 test('remembered account ignores corrupted storage values', () => {
   const { form } = setup({ 'yishan:app:login:rememberedAccount': { password: 'x' } })
   assert.equal(form.readRememberedAccount(), '')
+})
+
+const loginPage = () => fs.readFileSync(path.join(appRoot, 'src/pages/login/index.tsx'), 'utf8')
+const loginScss = () => fs.readFileSync(path.join(appRoot, 'src/pages/login/index.module.scss'), 'utf8')
+
+test('登录页记住账号与失败信息复用共享 Checkbox / FormError', () => {
+  const page = loginPage()
+  const shared = page.match(/import \{([^}]*)\} from '@\/components\/management'/)
+  assert.ok(shared, '登录页应从 @/components/management 引入共享原子')
+  assert.match(shared[1], /\bCheckbox\b/, '记住账号复用共享 Checkbox')
+  assert.match(shared[1], /\bFormError\b/, '失败信息复用共享 FormError')
+  assert.match(page, /<Checkbox\b/, '记住账号渲染共享 Checkbox')
+  assert.match(page, /<FormError>/, '失败信息渲染在表单边界')
+  assert.doesNotMatch(page, /remember__box/, '不再自绘勾选框')
+  assert.doesNotMatch(page, /styles\.form__error/, '不再自绘错误行')
+})
+
+test('登录页禁用态不画灰底块，标签与取值一起弱化', () => {
+  const scss = loginScss()
+  assert.doesNotMatch(scss, /\.field__box--disabled[^}]*background/, '禁用行不加灰底块')
+  assert.match(scss, /\.field--disabled\b/, '禁用时标签与取值一起降到三级灰')
+})
+
+test('登录页颜色与字号走 token，保留 label 堆叠与 16px 输入字号的登记例外', () => {
+  const scss = loginScss()
+  assert.doesNotMatch(scss, /#[0-9a-fA-F]{3,8}\b/, '不再写死颜色')
+  assert.match(scss, /\.field \{[\s\S]*?flex-direction: column/, 'label 上下堆叠是登记例外')
+  assert.match(scss, /\.field__input \{[\s\S]*?font-size: var\(--font-size-16\)/, '输入框 16px 防 iOS 缩放')
 })

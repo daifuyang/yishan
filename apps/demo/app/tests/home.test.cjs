@@ -65,3 +65,50 @@ test('首页常用应用来自后端排序并统一走工作台打开', () => {
   assert.match(page, /<SectionLink text="编辑"/)
   assert.doesNotMatch(page, /commonModuleIds|commonConfigured/)
 })
+
+// 首页源码目录（含本地组件）的一次性读取，供下面几条页面线契约断言共用
+function homeSources() {
+  const dir = path.join(appRoot, 'src/pages/index')
+  const walk = (current, out) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const full = path.join(current, entry.name)
+      if (entry.isDirectory()) walk(full, out)
+      else if (entry.name.endsWith('.tsx')) out.push(full)
+    }
+    return out
+  }
+  return { dir, files: walk(dir, []) }
+}
+
+test('首页跳转箭头统一走 LineIcon，不再渲染裸 ›', () => {
+  const { dir, files } = homeSources()
+  assert.ok(files.length > 0, '首页源码目录不应为空')
+  const arrows = files.filter((file) => fs.readFileSync(file, 'utf8').includes('›'))
+  assert.deepEqual(
+    arrows.map((file) => path.relative(dir, file)),
+    [],
+    '裸 › 必须替换为共享 LineIcon',
+  )
+  assert.ok(
+    files.some((file) => /<LineIcon\b/.test(fs.readFileSync(file, 'utf8'))),
+    '跳转箭头改用共享 LineIcon',
+  )
+})
+
+test('首页卡片复用共享 SurfaceCard / MetricCard，不再自绘白色卡片', () => {
+  const read = (file) =>
+    fs.readFileSync(path.join(appRoot, 'src/pages/index/components', file), 'utf8')
+  const metrics = read('DashboardMetrics.tsx')
+  assert.match(
+    metrics,
+    /import \{[^}]*\bMetricCard\b[^}]*\} from '@\/components\/management'/,
+    '指标卡复用共享 MetricCard',
+  )
+  assert.doesNotMatch(metrics, /export function MetricCard/, '不再本地自绘指标卡')
+  assert.match(read('FavoriteApps.tsx'), /<SurfaceCard\b/, '常用应用白块复用共享 SurfaceCard')
+})
+
+test('首页自绘导航栏用全局安全区变量避让 H5 刘海', () => {
+  const scss = fs.readFileSync(path.join(appRoot, 'src/pages/index/index.module.scss'), 'utf8')
+  assert.match(scss, /\.home__topBar \{[\s\S]*?--safe-area-top/, 'H5 自绘导航栏需避让安全区')
+})

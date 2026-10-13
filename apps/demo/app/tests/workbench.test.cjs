@@ -6,11 +6,25 @@ const { loadTs, deferred, appRoot } = require('./helpers/load-ts.cjs')
 
 const registry = loadTs('src/modules/registry.ts')
 
-test('工作台搜索图标与管理页同一套线框搜索', () => {
+test('工作台搜索与管理页同一套线框搜索', () => {
   const page = fs.readFileSync(path.join(appRoot, 'src/pages/apps/index.tsx'), 'utf8')
   const scss = fs.readFileSync(path.join(appRoot, 'src/pages/apps/index.module.scss'), 'utf8')
-  assert.match(page, /<LineIcon name="search"/, '应使用共享 LineIcon search')
+  // 页面不再自绘搜索框：直接复用 ManagementSearchBar，线框搜索图标由它内部渲染。
+  // 断言仍要覆盖「同一套线框搜索」，所以同时钉住共享组件的实现，而不是只钉页面。
+  assert.match(page, /<ManagementSearchBar\b/, '应复用共享搜索框')
+  assert.doesNotMatch(page, /<Input\b/, '不应再自绘搜索输入')
+  const shared = fs.readFileSync(
+    path.join(appRoot, 'src/components/management/ManagementSearch.tsx'),
+    'utf8',
+  )
+  assert.match(shared, /<LineIcon name="search"/, '共享搜索框内部使用 LineIcon search')
   assert.doesNotMatch(scss, /apps__searchIcon/, '不应再内嵌另一套搜索图标')
+  assert.doesNotMatch(scss, /apps__searchWrap/, '私有的搜索外框已由共享 ManagementSearchBar 取代')
+})
+
+test('工作台自绘页头用全局安全区变量避让 H5 刘海', () => {
+  const scss = fs.readFileSync(path.join(appRoot, 'src/pages/apps/index.module.scss'), 'utf8')
+  assert.match(scss, /\.apps__top \{[\s\S]*?--safe-area-top/, 'H5 自绘页头需避让安全区')
 })
 const menu = (overrides = {}) => ({
   id: 1,

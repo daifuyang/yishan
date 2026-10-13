@@ -156,7 +156,12 @@ async (page) => {
   )
 
   await page.setViewportSize({ width: 375, height: 667 })
-  await page.waitForFunction(() => Math.abs(document.querySelector('[class*=apps__searchWrap]').getBoundingClientRect().height - 44) < 1)
+  // 搜索框已改为复用共享 ManagementSearchBar：页面不再有私有的 apps__searchWrap，
+  // 改为断言共享搜索框仍是它自己的 48px 高度（与列表行同高），布局塌陷依旧会被抓到。
+  const sharedSearch = page.locator('[class*="ManagementSearch-module__search___"]').first()
+  await sharedSearch.waitFor()
+  const searchBoxHeight = await sharedSearch.evaluate(el => el.getBoundingClientRect().height)
+  check(Math.abs(searchBoxHeight - 48) < 1, 'Shared search bar must keep its 48px height')
   const visual = await page.evaluate(() => {
     const title = document.querySelector('[class*=apps__pageTitle]').getBoundingClientRect()
     // Sample the 系统管理 section: it is the only group with enough apps to wrap and vary colors.
@@ -221,7 +226,8 @@ async (page) => {
   await page.getByPlaceholder('搜索应用').fill('不存在')
   await page.getByText('未找到相关应用', { exact: true }).waitFor()
   check(requests.length === beforeSearch, 'Search must not request APIs')
-  await page.getByText('清空', { exact: true }).click()
+  // 私有「清空」按钮已移除，清除入口由共享 ManagementSearchBar 提供
+  await page.locator('[aria-label="清除搜索"]').click()
 
   check((await page.getByText('常用应用', { exact: true }).count()) === 0, 'Workbench excludes favorites')
   check((await page.getByText('全部应用', { exact: true }).count()) === 0, 'Workbench excludes redundant title')
@@ -245,7 +251,8 @@ async (page) => {
     (await page.getByPlaceholder('搜索应用').inputValue()) === 'user',
     'Returning must preserve search state',
   )
-  await page.getByText('清空', { exact: true }).click()
+  // 私有「清空」按钮已移除，清除入口由共享 ManagementSearchBar 提供
+  await page.locator('[aria-label="清除搜索"]').click()
   fail = true
   await refreshWorkbench()
   await page.getByText('刷新失败，请重试', { exact: true }).waitFor()
@@ -264,7 +271,8 @@ async (page) => {
     (await page.locator('[aria-label="用户管理"]').count()) === 0,
     'Entries without permission must be hidden',
   )
-  await page.getByText('清空', { exact: true }).click()
+  // 私有「清空」按钮已移除，清除入口由共享 ManagementSearchBar 提供
+  await page.locator('[aria-label="清除搜索"]').click()
   disabled = true
   await refreshWorkbench()
   await page.locator('[aria-label="通讯录"]').waitFor({ state: 'hidden' })

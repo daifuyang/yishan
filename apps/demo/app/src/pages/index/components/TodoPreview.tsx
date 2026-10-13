@@ -1,5 +1,7 @@
 import { Text, View } from '@tarojs/components'
 
+import { LineIcon } from '@/components/management'
+
 import type { HomeTodoItem } from '../home-todos'
 import { HomeIcon } from './HomeIcon'
 import { InlineState } from './HomeSection'
@@ -40,7 +42,7 @@ export function TodoPreview({ items, loaded, loading, error, onRetry, onOpen }: 
             <Text className={styles.row__title}>{item.title}</Text>
             {item.meta ? <Text className={styles.row__meta}>{item.meta}</Text> : null}
           </View>
-          <Text className={styles.row__arrow}>›</Text>
+          <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
         </View>
       ))}
     </View>

@@ -1,9 +1,8 @@
+/* 白底与圆角由共享 SurfaceCard 提供，这里只留四列网格 */
 .panel {
   display: flex;
   flex-wrap: wrap;
   padding: 8px;
-  border-radius: 12px;
-  background-color: var(--color-bg-surface, #ffffff);
 }
 
 .app {

@@ -44,7 +44,8 @@ export function LoginField({
     .join(' ')
 
   return (
-    <View className={styles.field}>
+    // 禁用时整行（标签 + 取值）一起弱化，不画灰底块
+    <View className={[styles.field, disabled ? styles['field--disabled'] : ''].filter(Boolean).join(' ')}>
       <Text className={styles.field__label}>{label}</Text>
       <View className={boxClass}>
         <Input

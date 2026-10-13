@@ -1,9 +1,8 @@
-import { Button, Input, Text, View } from '@tarojs/components'
+import { Button, Text, View } from '@tarojs/components'
 import Taro, { useDidHide, useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
-import { EmptyState, ErrorState } from '@/components/feedback'
 import { PageContainer } from '@/components/layout'
-import { LineIcon } from '@/components/management'
+import { ManagementFilterBar, ManagementSearchBar, ManagementStates } from '@/components/management'
 import { getWorkbenchGroups } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
@@ -60,63 +59,38 @@ export default function AppsPage() {
     })
   }
 
+  // 加载/错误/空与列表统一交给共享 ManagementStates：没有任何应用时才叫「暂无可用应用」
+  const emptyText = query.trim() && apps.length > 0 ? '未找到相关应用' : '暂无可用应用'
+  const kind = !loaded ? (error ? 'error' : 'loading') : searchGroups.length ? 'ready' : 'empty'
+
   return (
     <PageContainer className={styles.apps}>
       <WorkbenchHeader />
-      <View className={styles.apps__searchWrap}>
-        <LineIcon name="search" size={18} color="#86909C" />
-        <Input
-          className={styles.apps__search}
-          value={query}
-          placeholder="搜索应用"
-          onInput={(event) => setQuery(event.detail.value)}
-        />
-        {query ? (
-          <Button className={styles.apps__clear} onClick={() => setQuery('')} aria-label="清空搜索">
-            清空
+      <ManagementFilterBar>
+        <ManagementSearchBar value={query} onChange={setQuery} placeholder="搜索应用" />
+      </ManagementFilterBar>
+      {/* 已加载但刷新失败：数据还在，只在列表上方提示，不用整屏错误态 */}
+      {loaded && error ? (
+        <View className={styles.apps__refreshError}>
+          <Text>刷新失败，请重试</Text>
+          <Button className={styles.apps__action} disabled={loading} onClick={retry}>
+            重试
           </Button>
-        ) : null}
-      </View>
-      {!loaded ? (
-        error ? (
-          <ErrorState text={error} onRetry={retry} />
-        ) : (
-          <View className={styles.apps__section} aria-label="应用加载中">
-            <View className={styles.apps__skeletonTitle} />
-            <View className={styles.apps__grid}>
-              {['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => (
-                <View key={id} className={styles.apps__item}>
-                  <View className={styles.apps__skeletonIcon} />
-                  <View className={styles.apps__skeletonLabel} />
-                </View>
-              ))}
-            </View>
+        </View>
+      ) : null}
+      <ManagementStates
+        kind={kind}
+        errorText={error ?? undefined}
+        emptyText={emptyText}
+        onRetry={retry}
+      >
+        {searchGroups.map((group) => (
+          <View key={group.id} className={styles.apps__section}>
+            <Text className={styles.apps__category}>{group.name}</Text>
+            <ApplicationGrid apps={group.apps} onOpen={open} />
           </View>
-        )
-      ) : (
-        <>
-          {error ? (
-            <View className={styles.apps__refreshError}>
-              <Text>刷新失败，请重试</Text>
-              <Button className={styles.apps__action} disabled={loading} onClick={retry}>
-                重试
-              </Button>
-            </View>
-          ) : null}
-          {apps.length === 0 ? (
-            <EmptyState text="暂无可用应用" />
-          ) : searchGroups.length ? (
-            searchGroups.map((group) => (
-              <View key={group.id} className={styles.apps__section}>
-                <Text className={styles.apps__category}>{group.name}</Text>
-                <ApplicationGrid apps={group.apps} onOpen={open} />
-              </View>
-            ))
-          ) : (
-            <EmptyState text="未找到相关应用" />
-          )}
-        </>
-      )}
+        ))}
+      </ManagementStates>
     </PageContainer>
   )
 }

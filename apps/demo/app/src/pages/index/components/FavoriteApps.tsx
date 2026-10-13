@@ -1,6 +1,7 @@
 import { Text, View } from '@tarojs/components'
 
 import { ApplicationIcon } from '@/components/ApplicationIcon'
+import { SurfaceCard } from '@/components/management'
 import { InlineState } from './HomeSection'
 import styles from './FavoriteApps.module.scss'
 
@@ -24,19 +25,19 @@ export function FavoriteApps({ apps, loading, error, onRetry, onOpen }: Favorite
   if (error && apps.length === 0) return <InlineState text={error} onRetry={onRetry} />
   if (loading && apps.length === 0) {
     return (
-      <View className={styles.panel}>
+      <SurfaceCard className={styles.panel}>
         {SKELETON_KEYS.map((key) => (
           <View key={key} className={styles.app}>
             <View className={`${styles.app__icon} ${styles['app__icon--skeleton']}`} />
             <View className={styles.app__labelSkeleton} />
           </View>
         ))}
-      </View>
+      </SurfaceCard>
     )
   }
   if (apps.length === 0) return <InlineState text="暂无可用应用，请联系管理员开通" />
   return (
-    <View className={styles.panel}>
+    <SurfaceCard className={styles.panel}>
       {apps.map((app) => (
         <View
           key={app.id}
@@ -48,7 +49,7 @@ export function FavoriteApps({ apps, loading, error, onRetry, onOpen }: Favorite
           <Text className={styles.app__label}>{app.name}</Text>
         </View>
       ))}
-    </View>
+    </SurfaceCard>
   )
 }
 

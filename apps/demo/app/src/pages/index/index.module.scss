@@ -10,6 +10,12 @@
 
 /* ---------- 顶部品牌行（自定义导航栏，避让状态栏与胶囊） ---------- */
 
+/* H5 没有原生导航栏，用全局安全区变量避让刘海；小程序由 index.tsx 的 inline
+   状态栏高度覆盖这里（inline 优先，不会叠加）。 */
+.home__topBar {
+  padding-top: var(--safe-area-top);
+}
+
 .home__topRow {
   display: flex;
   align-items: center;

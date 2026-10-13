@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import logo from '@/assets/brand/logo.png'
+import { Checkbox, FormError } from '@/components/management'
 import { APP_NAME } from '@/constants'
 import { useAuthStore } from '@/stores/auth'
 import { resumeAfterLogin } from '@/utils/router'
@@ -156,15 +157,13 @@ export default function LoginPage() {
             }
           />
 
-          {error ? <Text className={styles.form__error}>{error}</Text> : null}
+          {/* 校验与提交失败都落在表单边界，由共享 FormError 统一呈现 */}
+          <FormError>{error}</FormError>
 
           <View className={styles.options}>
             <View className={styles.remember} onClick={toggleRemember}>
-              <View
-                className={`${styles.remember__box} ${remember ? styles['remember__box--checked'] : ''}`}
-              >
-                {remember ? <LoginIcon name="check" size={12} color="#FFFFFF" strokeWidth={3} /> : null}
-              </View>
+              {/* 不传 onClick：Checkbox 只在自带处理函数时才拦冒泡，否则点框会失灵 */}
+              <Checkbox checked={remember} />
               <Text className={styles.remember__text}>记住账号</Text>
             </View>
           </View>

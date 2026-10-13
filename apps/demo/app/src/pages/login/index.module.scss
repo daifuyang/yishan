@@ -2,7 +2,7 @@
 
 .login {
   min-height: 100vh;
-  background-color: #ffffff;
+  background-color: var(--color-bg-surface);
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   overflow-x: hidden;
@@ -37,7 +37,7 @@
   font-weight: 600;
   line-height: 30px;
   letter-spacing: 1px;
-  color: var(--color-text-primary, #1d2129);
+  color: var(--color-text-primary);
 }
 
 /* ---------- 标题 ---------- */
@@ -53,13 +53,13 @@
   font-size: 26px;
   font-weight: 600;
   line-height: 36px;
-  color: var(--color-text-primary, #1d2129);
+  color: var(--color-text-primary);
 }
 
 .heading__subtitle {
   font-size: 14px;
   line-height: 20px;
-  color: var(--color-text-tertiary, #86909c);
+  color: var(--color-text-tertiary);
 }
 
 /* ---------- 表单 ---------- */
@@ -71,6 +71,8 @@
   margin-top: 36px;
 }
 
+/* 登录页登记例外：标签在控件上方，不做 76px 左标签列。
+   窄屏横向放不下固定标签列，且输入框要保持 16px 防 iOS 聚焦缩放。 */
 .field {
   display: flex;
   flex-direction: column;
@@ -81,7 +83,7 @@
   font-size: 14px;
   font-weight: 500;
   line-height: 20px;
-  color: var(--color-text-primary, #1d2129);
+  color: var(--color-text-primary);
 }
 
 .field__box {
@@ -90,18 +92,21 @@
   height: 52px;
   padding: 0 4px 0 16px;
   box-sizing: border-box;
-  border: 1px solid #e5e8ef;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  background-color: #ffffff;
+  background-color: var(--color-bg-surface);
   transition: border-color 120ms linear;
 }
 
 .field__box--focused {
-  border-color: var(--color-primary, #1677ff);
+  border-color: var(--color-primary);
 }
 
-.field__box--disabled {
-  background-color: var(--color-bg-base, #f7f8fa);
+/* 禁用 = 标签与取值一起降到三级灰：灰底块会让这一行看起来是另一种控件 */
+.field--disabled .field__label,
+.field__box--disabled .field__input,
+.field__box--disabled .field__placeholder {
+  color: var(--color-text-tertiary);
 }
 
 .field__input {
@@ -109,17 +114,17 @@
   min-width: 0;
   height: 50px;
   /* 16px 避免 iOS Safari 聚焦时自动缩放 */
-  font-size: 16px;
+  font-size: var(--font-size-16);
   line-height: 50px;
-  color: var(--color-text-primary, #1d2129);
+  color: var(--color-text-primary);
 }
 
 .field__placeholder {
-  color: var(--color-text-quaternary, #c9cdd4);
+  color: var(--color-text-quaternary);
 }
 
 .field__input::placeholder {
-  color: var(--color-text-quaternary, #c9cdd4);
+  color: var(--color-text-quaternary);
 }
 
 .field__trailing {
@@ -141,13 +146,6 @@
   opacity: 0.6;
 }
 
-.form__error {
-  margin-top: -8px;
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--color-danger, #f53f3f);
-}
-
 /* ---------- 辅助操作 ---------- */
 
 .options {
@@ -165,27 +163,10 @@
   padding-right: 8px;
 }
 
-.remember__box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  box-sizing: border-box;
-  border: 1px solid #c9cdd4;
-  border-radius: 4px;
-  background-color: #ffffff;
-}
-
-.remember__box--checked {
-  border-color: var(--color-primary, #1677ff);
-  background-color: var(--color-primary, #1677ff);
-}
-
 .remember__text {
   font-size: 14px;
   line-height: 20px;
-  color: var(--color-text-secondary, #4e5969);
+  color: var(--color-text-secondary);
 }
 
 /* ---------- 登录按钮 ---------- */
@@ -198,11 +179,11 @@
   height: 50px;
   margin-top: 8px;
   border-radius: 10px;
-  background-color: var(--color-primary, #1677ff);
+  background-color: var(--color-primary);
 }
 
 .submit--pressed {
-  background-color: var(--color-primary-pressed, #0958d9);
+  background-color: var(--color-primary-pressed);
 }
 
 .submit--disabled {
@@ -217,7 +198,7 @@
   font-size: 16px;
   font-weight: 500;
   line-height: 22px;
-  color: #ffffff;
+  color: var(--color-text-inverse);
 }
 
 .submit__spinner {
@@ -225,7 +206,7 @@
   height: 16px;
   box-sizing: border-box;
   border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #ffffff;
+  border-top-color: var(--color-text-inverse);
   border-radius: 50%;
   animation: login-spin 0.8s linear infinite;
 }

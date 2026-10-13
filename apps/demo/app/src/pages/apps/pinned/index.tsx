@@ -102,7 +102,8 @@ function HomeAppsEditPage() {
       ]
     : []
 
-  // 排序是已固定区块的主要操作，所以按钮直接放在行上；拦截冒泡，避免同时弹出整行的操作面板
+  // 排序是已固定区块的主要操作，所以按钮直接放在行上；动作走 trailingAction
+  // （tag 只表达状态），槽位容器已拦冒泡，这里再拦一次是双保险
   const orderButton = (index: number, delta: -1 | 1) => {
     const disabled = index + delta < 0 || index + delta >= ids.length
     const label = delta < 0 ? '上移' : '下移'
@@ -141,7 +142,7 @@ function HomeAppsEditPage() {
                   key={app.menuId}
                   leading={<ApplicationIcon id={app.id} icon={app.icon} />}
                   title={app.name}
-                  tag={
+                  trailingAction={
                     <View className={styles.order}>
                       {orderButton(index, -1)}
                       {orderButton(index, 1)}

@@ -133,12 +133,12 @@ function mountEditPage({ pinned, max = 8 }) {
     state.menus = state.menus.map((group) => ({ ...group, apps: group.apps.filter((a) => a.menuId !== menuId) }))
     page.rerender()
   }
-  // 已固定行的 tag 是排序按钮组，分组行的 tag 是 Checkbox
+  // 已固定行的动作走 trailingAction（不再占用 tag 槽），分组行的 tag 是 Checkbox
   const pinnedCells = () => page.all('ManagementCell').filter((n) => n.props.tag?.type !== 'Checkbox')
   const pickerCell = (menuId) =>
     page.all('ManagementCell').find((n) => n.props.tag?.type === 'Checkbox' && n.props.title === `app-${menuId}`)
   const orderButton = (row, label) =>
-    [row.props.tag.props.children].flat().find((n) => n?.props?.['aria-label'] === label)
+    [row.props.trailingAction.props.children].flat().find((n) => n?.props?.['aria-label'] === label)
   const save = async () => {
     await page.one('FormSubmitBar').props.onSubmit()
     await new Promise(setImmediate)
@@ -206,4 +206,24 @@ test('点击已固定行只提供取消固定，排序已移到行内按钮', ()
   assert.deepEqual(items.map((item) => item.key), ['remove'])
   items[0].onClick()
   assert.deepEqual(edit.pinnedCells().map((n) => n.props.title), ['app-11', 'app-13'])
+})
+
+test('应用页复用共享搜索框、筛选条与四态，不再自绘搜索输入', () => {
+  const page = fs.readFileSync(path.join(appRoot, 'src/pages/apps/index.tsx'), 'utf8')
+  assert.doesNotMatch(page, /<Input\b/, '不再自绘搜索输入')
+  assert.doesNotMatch(page, /EmptyState|ErrorState/, 'loading/error/empty 交给 ManagementStates')
+  assert.match(page, /<ManagementFilterBar\b/)
+  assert.match(page, /<ManagementSearchBar\b/)
+  assert.match(page, /<ManagementStates\b/)
+})
+
+test('已固定行的排序按钮走 trailingAction，不占用状态 tag 槽', () => {
+  const page = fs.readFileSync(path.join(appRoot, 'src/pages/apps/pinned/index.tsx'), 'utf8')
+  assert.match(page, /trailingAction=\{/, '排序按钮走行内动作槽')
+  assert.doesNotMatch(page, /tag=\{\s*<View className=\{styles\.order\}/, '动作不得放进状态 tag')
+  const edit = mountEditPage({ pinned: [11, 12] })
+  for (const row of edit.pinnedCells()) {
+    assert.equal(row.props.tag, undefined, '已固定行不再用 tag 承载动作')
+    assert.ok(row.props.trailingAction, '动作走 trailingAction')
+  }
 })

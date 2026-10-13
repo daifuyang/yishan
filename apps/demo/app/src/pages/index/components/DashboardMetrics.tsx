@@ -1,36 +1,10 @@
-import { Text, View } from '@tarojs/components'
+import { View } from '@tarojs/components'
+
+import { MetricCard, SurfaceCard } from '@/components/management'
 
 import { formatMetricValue, type HomeMetricDef, type MetricSourceData } from '../home-metrics'
-import { HomeIcon } from './HomeIcon'
 import { InlineState } from './HomeSection'
 import styles from './DashboardMetrics.module.scss'
-
-export interface MetricCardProps {
-  def: HomeMetricDef
-  value: string | null
-  onClick?: () => void
-}
-
-export function MetricCard({ def, value, onClick }: MetricCardProps) {
-  return (
-    <View
-      className={styles.card}
-      hoverClass={onClick ? styles['card--pressed'] : 'none'}
-      onClick={onClick}
-    >
-      <View className={styles.card__head}>
-        <Text className={styles.card__label}>{def.label}</Text>
-        <HomeIcon name={def.icon} size={18} color="#1677FF" />
-      </View>
-      <View className={styles.card__body}>
-        {/* 取值失败显示占位符，绝不伪装为 0 */}
-        <Text className={styles.card__value}>{value ?? '--'}</Text>
-        {value !== null && def.unit ? <Text className={styles.card__unit}>{def.unit}</Text> : null}
-        {onClick ? <Text className={styles.card__chevron}>›</Text> : null}
-      </View>
-    </View>
-  )
-}
 
 export interface DashboardMetricsProps {
   defs: readonly HomeMetricDef[]
@@ -55,24 +29,29 @@ export function DashboardMetrics({
     return (
       <View className={styles.grid} aria-label={loading ? '加载中' : undefined}>
         {defs.map((def) => (
-          <View key={def.key} className={styles.card}>
+          <SurfaceCard key={def.key} className={styles.skeletonCard}>
             <View className={`${styles.skeleton} ${styles['skeleton--label']}`} />
             <View className={`${styles.skeleton} ${styles['skeleton--value']}`} />
-          </View>
+          </SurfaceCard>
         ))}
       </View>
     )
   }
   return (
     <View className={styles.grid}>
-      {defs.map((def) => (
-        <MetricCard
-          key={def.key}
-          def={def}
-          value={formatMetricValue(def.pick(data))}
-          onClick={getDetailAction(def)}
-        />
-      ))}
+      {defs.map((def) => {
+        const value = formatMetricValue(def.pick(data))
+        return (
+          <MetricCard
+            key={def.key}
+            label={def.label}
+            // 取值失败显示占位符，绝不伪装为 0
+            value={value ?? '--'}
+            auxiliary={value !== null ? def.unit : undefined}
+            onClick={getDetailAction(def)}
+          />
+        )
+      })}
     </View>
   )
 }
