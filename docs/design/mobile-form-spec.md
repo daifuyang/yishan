@@ -286,7 +286,7 @@ H5 下 `Picker` 渲染成一个独立 `div`，不是 flex 子项，内部的 `fl
 `ManagementPageHeader` 是全站**唯一的页面头**，旧的 `molecules/PageHeader` 已删除，不要再引用 —— 同一个页面里不存在第二套页头。
 
 - **页头挂不挂载，是每个页面自己的决定**：`ManagementPageHeader` 里没有任何平台判断，渲染与否由页面代码决定，不是平台规则。挂载必须和页面 `index.config.ts` 的 `navigationStyle` 一致 —— `navigationStyle: 'custom'` 的页面（如用户管理、常用应用）在小程序端也渲染页头，返回键照常由页头自绘；`navigationStyle: 'default'` 的页面由原生导航栏承载标题，页头**不得**再渲染一份自己的标题
-- **`showBack` 只在原生栏也提供返回键时才置 `false`**：原生栏和页头同时存在才会出现两个返回键，此时关掉页头自绘的那个；原生栏没有返回键、页头是唯一返回入口（`custom` 页面）时必须保留
+- **原生栏也提供返回键时，`showBack` 置 `false`**：原生栏和页头同时存在才会出现两个返回键，此时关掉页头自绘的那个；原生栏没有返回键、页头是唯一返回入口（`custom` 页面）时必须保留
 - **H5 二级页**按需使用 `showBack`：需要自绘返回时保留（不传 `onBack` 默认为 `navigateBack(1)`，传 `onBack` 覆盖）；页面自带返回入口或由外层壳承载时置 `showBack={false}`
 - `title` / `subtitle` 均接受 `ReactNode`；右上角操作用 `action`，底部分隔线用 `bordered`（嵌进白色内容块里置 `false`）
 - 页面外壳职责不变：`PageContainer` 继续是通用会话 / 权限门禁，`ManagementPage` 只负责背景、内边距、滚动和安全区
@@ -318,4 +318,4 @@ H5 下 `Picker` 渲染成一个独立 `div`，不是 flex 子项，内部的 `fl
 - [ ] 无 hero 页的页顶距由 `SurfaceCard lead` 提供，没有在页面 SCSS 里另写一份
 - [ ] 卡片内的选择行 / 搜索框 / 箭头 / 错误提示 / 图标仍用共享原子，没有因为「卡片页」而自绘
 - [ ] 页面头只有 `ManagementPageHeader` 一个实现，没有引用已删除的 `molecules/PageHeader`
-- [ ] 页头挂载和页面 `navigationStyle` 一致：`custom` 的页面小程序端也渲染页头、返回键由页头自绘；`default` 的页面由原生栏承载标题，不再渲染第二个标题；`showBack` 只在原生栏也有返回键时才置 `false`
+- [ ] 页头挂载和页面 `navigationStyle` 一致：`custom` 的页面小程序端也渲染页头、返回键由页头自绘；`default` 的页面由原生栏承载标题，不再渲染第二个标题；原生栏也有返回键时 `showBack` 置 `false`
