@@ -34,7 +34,7 @@ resources:
         DATABASE_HOST: ${env(DATABASE_HOST)}
         DATABASE_PORT: ${env(DATABASE_PORT)}
         JWT_SECRET: ${env(JWT_SECRET)}
-        REDIS_URL: ${env(REDIS_URL, '')}
+        REDIS_URL: ${env(REDIS_URL)}
         CACHE_NAMESPACE: ${env(CACHE_NAMESPACE, 'yishan:demo')}
         REDIS_HOST: ${env(REDIS_HOST)}
         REDIS_PORT: ${env(REDIS_PORT)}
