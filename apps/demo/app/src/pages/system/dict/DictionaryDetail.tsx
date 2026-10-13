@@ -12,9 +12,9 @@ import {
   DetailRow,
   DetailSection,
   ManagementPage,
+  ManagementPageHeader,
   type BottomAction,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { SYSTEM_PAGES } from '@/constants/routes'
 import { confirmAction, useCanWrite } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
@@ -140,7 +140,7 @@ export default function DictionaryDetail({ item = false }: { item?: boolean }) {
   return (
     <ManagementPage withActions={Boolean(actions.length)}>
       {process.env.TARO_ENV === 'h5' ? (
-        <PageHeader title={item ? '字典项详情' : '字典详情'} />
+        <ManagementPageHeader title={item ? '字典项详情' : '字典详情'} />
       ) : null}
       <DetailContent>
         <StateView

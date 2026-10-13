@@ -20,8 +20,7 @@ function mount({ permissions = [LIST, 'system:attachment:update'], update, folde
     },
     '@/api/client': { getSessionVersion: () => version },
     '@/components/feedback': { StateView: 'StateView' },
-    '@/components/management': Object.fromEntries(['EnumField', 'FormContent', 'FormError', 'FormField', 'FormSection', 'FormSubmitBar', 'ManagementPage', 'TextField'].map((k) => [k, k])),
-    '@/components/molecules': { PageHeader: 'PageHeader' },
+    '@/components/management': Object.fromEntries(['EnumField', 'FormContent', 'FormError', 'FormField', 'FormSection', 'FormSubmitBar', 'ManagementPage', 'ManagementPageHeader', 'TextField'].map((k) => [k, k])),
     '@/hooks': { useCanWrite: (...c) => c.every((x) => permissions.includes(x)) },
     '@/utils/auth-guard': {
       useRequireAuth: () => ({ ready: true, allowed: true }),

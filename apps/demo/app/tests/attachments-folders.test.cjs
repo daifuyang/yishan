@@ -21,7 +21,6 @@ const common = (permissions) => ({
   '@/api/client': { getSessionVersion: () => 1 },
   '@/components/atoms': { Tag: 'Tag' },
   '@/components/feedback': { StateView: 'StateView' },
-  '@/components/molecules': { PageHeader: 'PageHeader' },
   '@/constants/routes': { SYSTEM_PAGES: { attachmentFolderForm: 'FF' } },
   '@/hooks': {
     useCanWrite: (...c) => c.every((x) => permissions.includes(x)),

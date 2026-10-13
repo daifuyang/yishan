@@ -25,8 +25,7 @@ function mount({ item = IMAGE, permissions = ALL, confirm = true, session = { ve
     '@/api/client': { getSessionVersion: () => session.version },
     '@/components/atoms': { Tag: 'Tag' },
     '@/components/feedback': { StateView: 'StateView' },
-    '@/components/management': Object.fromEntries(['ActionSheet', 'BottomActionBar', 'DetailContent', 'DetailRow', 'DetailSection', 'LineIcon', 'ManagementPage'].map((k) => [k, k])),
-    '@/components/molecules': { PageHeader: 'PageHeader' },
+    '@/components/management': Object.fromEntries(['ActionSheet', 'BottomActionBar', 'DetailContent', 'DetailRow', 'DetailSection', 'LineIcon', 'ManagementPage', 'ManagementPageHeader'].map((k) => [k, k])),
     '@/constants/routes': { SYSTEM_PAGES: { attachmentForm: 'E' } },
     '@/hooks': { useCanWrite: (...c) => c.every((x) => permissions.includes(x)), confirmAction: async () => { onConfirm?.(); return confirm } },
     '@/utils/auth-guard': {

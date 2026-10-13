@@ -10,10 +10,10 @@ import {
   FormSection,
   FormSubmitBar,
   ManagementPage,
+  ManagementPageHeader,
   TextAreaField,
   TextField,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { useCanWrite } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
@@ -134,7 +134,7 @@ export default function DictionaryForm({ item = false }: { item?: boolean }) {
   return (
     <ManagementPage>
       {process.env.TARO_ENV === 'h5' ? (
-        <PageHeader
+        <ManagementPageHeader
           title={`${id !== undefined ? '编辑' : '新建'}${item ? '字典项' : '字典类型'}`}
         />
       ) : null}

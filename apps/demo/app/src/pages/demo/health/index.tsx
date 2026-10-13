@@ -12,8 +12,8 @@ import {
   DetailSection,
   ManagementHeaderAction,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
 import { errorMessage, withAccountScope } from '../../system/_shared/AdminUI'
@@ -75,9 +75,9 @@ function HealthPage() {
     <ManagementPage>
       {/* 小程序端由原生导航栏承载标题，刷新走下拉；H5 自绘顶栏，右上角补一个刷新入口 */}
       {process.env.TARO_ENV === 'h5' ? (
-        <PageHeader
+        <ManagementPageHeader
           title="健康检查"
-          right={
+          action={
             <ManagementHeaderAction label="刷新" showIcon={false} disabled={loading} onClick={() => void load()} />
           }
         />

@@ -14,8 +14,8 @@ import {
   ManagementList,
   ManagementListFooter,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { SYSTEM_PAGES } from '@/constants/routes'
 import { confirmAction, useCanWrite, useListPagination } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
@@ -195,7 +195,7 @@ function DeptDetailPage() {
   const kind = !validId || error ? 'error' : loading ? 'loading' : department ? 'ready' : 'empty'
   return (
     <ManagementPage withActions={actions.length > 0}>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="部门详情" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="部门详情" /> : null}
       <DetailContent>
         <StateView
           kind={kind}

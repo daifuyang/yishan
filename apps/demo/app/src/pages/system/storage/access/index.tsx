@@ -6,10 +6,10 @@ import {
   FormSection,
   FormSubmitBar,
   ManagementPage,
+  ManagementPageHeader,
   SwitchField,
   TextField,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { withAccountScope } from '../../_shared/AdminUI'
 import { activeCloud, QINIU_DEFAULTS, sectionOf } from '../model'
 import { useStorageConfig } from '../useStorageConfig'
@@ -31,7 +31,7 @@ function StorageAccessPage() {
     )
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title={section.title} /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title={section.title} /> : null}
       <StateView
         kind={storage.error && !storage.loaded ? 'error' : storage.loading && !storage.loaded ? 'loading' : 'ready'}
         text={storage.error || undefined}

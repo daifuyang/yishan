@@ -14,8 +14,8 @@ import {
   DetailRow,
   DetailSection,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { DEMO_PAGES } from '@/constants/routes'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
@@ -124,7 +124,7 @@ function TodoDetailPage() {
   ]
   return (
     <ManagementPage withActions={actions.length > 0}>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="Todo 详情" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="Todo 详情" /> : null}
       <DetailContent>
         <StateView
           kind={error ? 'error' : loading && !todo ? 'loading' : !todo ? 'empty' : 'ready'}

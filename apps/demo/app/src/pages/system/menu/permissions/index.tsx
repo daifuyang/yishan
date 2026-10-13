@@ -13,10 +13,10 @@ import {
   FormSubmitBar,
   ManagementFilterBar,
   ManagementPage,
+  ManagementPageHeader,
   ManagementSearchBar,
   ManagementStates,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
@@ -127,7 +127,7 @@ function MenuPermissionsPage() {
 
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="关联功能" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="关联功能" /> : null}
       <ManagementFilterBar>
         <ManagementSearchBar
           value={keyword}

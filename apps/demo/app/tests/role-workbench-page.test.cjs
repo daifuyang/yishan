@@ -109,9 +109,9 @@ function mount({ backend, canWrite = true } = {}) {
       Checkbox: 'Checkbox',
       FormSubmitBar: 'FSB',
       ManagementPage: 'MP',
+      ManagementPageHeader: 'MPH',
       ManagementStates: 'MS',
     },
-    '@/components/molecules': { PageHeader: 'PH' },
     '@/hooks': { useCanWrite: () => canWrite },
     '@/utils/auth-guard': {
       useRequireAuth: () => ({ ready: true, allowed: true }),

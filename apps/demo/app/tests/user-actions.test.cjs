@@ -39,7 +39,6 @@ function renderPage(page, permissions) {
     },
     "@/components/atoms": { AppText: "AppText", Avatar: "Avatar", Tag: "Tag", Button: "Button" },
     "@/components/molecules": {
-      PageHeader: "PageHeader",
       ListFilter: "ListFilter",
       ListItem: "ListItem",
       Card: "Card",

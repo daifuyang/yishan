@@ -12,8 +12,8 @@ import {
   DetailRow,
   DetailSection,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { confirmAction, useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
@@ -114,7 +114,7 @@ function ModuleDetailPage() {
     : []
   return (
     <ManagementPage withActions={actions.length > 0}>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="模块详情" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="模块详情" /> : null}
       <DetailContent>
         <StateView
           kind={error ? 'error' : loading ? 'loading' : item ? 'ready' : 'empty'}

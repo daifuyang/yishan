@@ -12,10 +12,10 @@ import {
   DetailRow,
   DetailSection,
   ManagementPage,
+  ManagementPageHeader,
   type MenuResourceType,
   MenuTypeIcon,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
@@ -206,7 +206,7 @@ export function MenuDetailScaffold<T extends MenuDetailNode>({
   ]
   return (
     <ManagementPage withActions={actions.length > 0}>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title={`${noun}详情`} /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title={`${noun}详情`} /> : null}
       <DetailContent>
         <StateView
           kind={

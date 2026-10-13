@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import Taro, { useRouter, useDidShow, useDidHide } from '@tarojs/taro'
 
 import { Tag } from '@/components/atoms'
-import { PageHeader } from '@/components/molecules'
 import { StateView } from '@/components/feedback'
 import {
   ManagementPage,
+  ManagementPageHeader,
   DetailContent,
   DetailHero,
   DetailSection,
@@ -294,7 +294,7 @@ function UserDetailPage() {
 
   return (
     <ManagementPage withActions={actions.length > 0}>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="用户详情" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="用户详情" /> : null}
       <DetailContent>
         <StateView
           kind={kind}

@@ -149,10 +149,10 @@ function mount({ backend, canWrite = true, menus = MENUS } = {}) {
       FormSubmitBar: 'FSB',
       ManagementFilterBar: 'MFB',
       ManagementPage: 'MP',
+      ManagementPageHeader: 'MPH',
       ManagementSearchBar: 'MSB',
       ManagementStates: 'MS',
     },
-    '@/components/molecules': { PageHeader: 'PH' },
     '@/hooks': { useCanWrite: () => canWrite },
     '@/utils/auth-guard': {
       useRequireAuth: () => ({ ready: true, allowed: true }),

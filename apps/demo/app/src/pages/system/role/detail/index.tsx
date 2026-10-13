@@ -16,8 +16,8 @@ import {
   DetailRow,
   DetailSection,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { PERMS, SYSTEM_PAGES } from '@/constants/routes'
 import { useCanWrite } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
@@ -200,7 +200,7 @@ function RoleDetailPage() {
 
   return (
     <ManagementPage withActions={actions.length > 0}>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="角色详情" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="角色详情" /> : null}
       <DetailContent>
         <StateView
           kind={kind}

@@ -7,8 +7,8 @@ import {
   DetailSection,
   ManagementCell,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { navigateTo } from '@/utils/router'
 import { withAccountScope } from '../_shared/AdminUI'
 import { activeCloud, providerLabel, regionLabel, STORAGE_SECTIONS } from './model'
@@ -23,7 +23,7 @@ function StorageOverviewPage() {
   const sections = STORAGE_SECTIONS.filter((section) => section.providers.includes(config.provider))
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="云存储" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="云存储" /> : null}
       <DetailContent>
         <StateView
           kind={error && !loaded ? 'error' : loading && !loaded ? 'loading' : 'ready'}

@@ -96,12 +96,12 @@ function mountForm({ id, permissions, api }) {
         'FormSection',
         'FormSubmitBar',
         'ManagementPage',
+        'ManagementPageHeader',
         'EnumField',
         'TextAreaField',
         'TextField',
       ].map((key) => [key, key]),
     ),
-    '@/components/molecules': { PageHeader: 'PageHeader' },
     '@/hooks': {
       useCanWrite: (permission) => permissions.includes(permission),
       confirmAction: async () => true,

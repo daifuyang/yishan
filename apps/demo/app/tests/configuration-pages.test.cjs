@@ -91,7 +91,7 @@ function pageHarness(
       ].map((name) => [name, name]),
     ),
     '@/components/atoms': { Button: 'Button', Tag: 'Tag' },
-    '@/components/molecules': { FormField: 'FormField', PageHeader: 'PageHeader' },
+    '@/components/molecules': { FormField: 'FormField' },
     '@/components/feedback': { StateView: 'StateView' },
     '@/hooks': {
       useCanWrite: () => write,

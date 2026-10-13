@@ -6,10 +6,10 @@ import {
   FormSection,
   FormSubmitBar,
   ManagementPage,
+  ManagementPageHeader,
   TextAreaField,
   TextField,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { withAccountScope } from '../../_shared/AdminUI'
 import { sectionOf } from '../model'
 import { useSiteConfig } from '../useSiteConfig'
@@ -22,7 +22,7 @@ function SiteFilingPage() {
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title={section.title} /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title={section.title} /> : null}
       <StateView
         kind={site.error && !site.loaded ? 'error' : site.loading && !site.loaded ? 'loading' : 'ready'}
         text={site.error || undefined}

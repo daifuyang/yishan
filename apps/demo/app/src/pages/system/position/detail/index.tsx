@@ -13,8 +13,8 @@ import {
   DetailRow,
   DetailSection,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { SYSTEM_PAGES } from '@/constants/routes'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
@@ -146,7 +146,7 @@ function PositionDetailPage() {
   ]
   return (
     <ManagementPage withActions={actions.length > 0}>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="岗位详情" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="岗位详情" /> : null}
       <DetailContent>
         <StateView
           kind={error ? 'error' : loading && !position ? 'loading' : !position ? 'empty' : 'ready'}

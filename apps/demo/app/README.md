@@ -61,7 +61,7 @@ pnpm --filter @yishan/demo-app build:weapp
 
 - 首页「常用应用」：用户在「编辑常用应用」页固定的入口在前（最多 8 个），其余位置按使用习惯（打开次数，14 天半衰期，90 天窗口）自动推荐；数据存后端 `sys_user_workbench_pin` / `sys_user_workbench_usage`，跨设备一致。工作台菜单只决定有哪些应用。
 
-共用 `PageContainer` 管理会话恢复、加载、错误重试和权限拒绝，复用已有 `PageHeader`、`EmptyState`、`Loading`、`StateView` 与原生确认弹窗 `confirmAction`，补充 `ErrorState`、`PermissionDenied`、`ListSkeleton`。颜色、字号、间距和安全区沿用 `src/styles/tokens.scss`。
+共用 `PageContainer` 管理会话恢复、加载、错误重试和权限拒绝，复用已有 `ManagementPageHeader`、`EmptyState`、`Loading`、`StateView` 与原生确认弹窗 `confirmAction`，补充 `ErrorState`、`PermissionDenied`、`ListSkeleton`。颜色、字号、间距和安全区沿用 `src/styles/tokens.scss`。
 
 ## 认证与服务端兼容
 

@@ -1,8 +1,7 @@
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect } from 'react'
 import { StateView } from '@/components/feedback'
-import { ManagementPage } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
+import { ManagementPage, ManagementPageHeader } from '@/components/management'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
 import { withAccountScope } from '../../_shared/AdminUI'
@@ -24,7 +23,7 @@ function DepartmentFormPage() {
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title={title} /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title={title} /> : null}
       {invalid ? (
         <StateView kind="error" text="部门参数无效" />
       ) : (

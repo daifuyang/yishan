@@ -9,9 +9,9 @@ import {
   FormSection,
   FormSubmitBar,
   ManagementPage,
+  ManagementPageHeader,
   TextAreaField,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
@@ -78,7 +78,7 @@ function AttachmentImportPage() {
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="链接导入" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="链接导入" /> : null}
       <FormContent>
         <FormSection title="导入链接">
           <FormField label="图片链接" stacked>

@@ -13,11 +13,11 @@ import {
   FormSection,
   FormSubmitBar,
   ManagementPage,
+  ManagementPageHeader,
   SwitchField,
   TextAreaField,
   TextField,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
@@ -111,7 +111,7 @@ function TodoFormPage() {
   return (
     <ManagementPage>
       {process.env.TARO_ENV === 'h5' ? (
-        <PageHeader title={rawId ? '编辑 Todo' : '新建 Todo'} />
+        <ManagementPageHeader title={rawId ? '编辑 Todo' : '新建 Todo'} />
       ) : null}
       <StateView
         kind={error ? 'error' : loading ? 'loading' : 'ready'}

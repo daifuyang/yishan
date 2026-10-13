@@ -5,8 +5,8 @@ import {
   DetailSection,
   ManagementCell,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { navigateTo } from '@/utils/router'
 import { withAccountScope } from '../_shared/AdminUI'
 import { displayDomain, previewImage, SITE_SECTIONS } from './model'
@@ -20,7 +20,7 @@ function SiteOverviewPage() {
   const domain = displayDomain(config.siteDomain)
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="站点配置" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="站点配置" /> : null}
       <DetailContent>
         <StateView
           kind={error && !loaded ? 'error' : loading && !loaded ? 'loading' : 'ready'}

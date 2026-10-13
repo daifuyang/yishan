@@ -29,8 +29,7 @@ test('department detail pull-down refresh reloads detail and members without dup
     '@tarojs/taro': { useRouter: () => ({ params: { id: '5' } }), useDidShow() {}, useDidHide() {}, usePullDownRefresh: (fn) => refreshHandlers.push(fn) },
     '@/components/atoms': { Tag: 'Tag' },
     '@/components/feedback': { StateView: 'StateView' },
-    '@/components/molecules': { PageHeader: 'PageHeader' },
-    '@/components/management': Object.fromEntries(['ActionSheet', 'BottomActionBar', 'DetailContent', 'DetailHero', 'DetailRow', 'DetailSection', 'ManagementCell', 'ManagementList', 'ManagementListFooter', 'ManagementPage'].map((name) => [name, name])),
+    '@/components/management': Object.fromEntries(['ActionSheet', 'BottomActionBar', 'DetailContent', 'DetailHero', 'DetailRow', 'DetailSection', 'ManagementCell', 'ManagementList', 'ManagementListFooter', 'ManagementPage', 'ManagementPageHeader'].map((name) => [name, name])),
     '@/constants/routes': { SYSTEM_PAGES: {} },
     '@/hooks': {
       confirmAction() {}, useCanWrite: () => true,

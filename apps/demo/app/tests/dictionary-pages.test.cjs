@@ -72,6 +72,7 @@ function mount(path, api, params = {}) {
   }
   const names = [
     'ManagementPage',
+    'ManagementPageHeader',
     'FormContent',
     'FormField',
     'FormSection',
@@ -102,7 +103,6 @@ function mount(path, api, params = {}) {
     '@/components/atoms': { Tag: 'Tag' },
     '@/components/feedback': { StateView: 'StateView' },
     '@/components/management': Object.fromEntries(names.map((name) => [name, name])),
-    '@/components/molecules': { PageHeader: 'PageHeader' },
     '@/hooks': { useCanWrite: () => true, confirmAction: async () => true },
     '@/utils/auth-guard': {
       useCurrentModuleAccess: () => () => current,

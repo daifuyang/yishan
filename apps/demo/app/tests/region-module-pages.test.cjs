@@ -64,7 +64,6 @@ function mount(entry, api, options = {}) {
     '@/components/management': Object.fromEntries(names.map((n) => [n, n])),
     '@/components/atoms': { Tag: 'Tag' },
     '@/components/feedback': { StateView: 'StateView' },
-    '@/components/molecules': { PageHeader: 'PageHeader' },
     '@/utils/auth-guard': {
       useRequireAuth: () => ({ ready: true, allowed: true }),
       canWriteModuleNow: () => options.write !== false,

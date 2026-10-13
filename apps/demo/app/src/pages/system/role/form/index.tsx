@@ -13,10 +13,10 @@ import {
   FormSubmitBar,
   LinkRow,
   ManagementPage,
+  ManagementPageHeader,
   TextAreaField,
   TextField,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import styles from './index.module.scss'
 import { PERMS, SYSTEM_PAGES } from '@/constants/routes'
 import { useCanWrite } from '@/hooks'
@@ -149,7 +149,7 @@ function RoleFormPage() {
   return (
     <ManagementPage>
       {process.env.TARO_ENV === 'h5' ? (
-        <PageHeader title={isEdit ? '编辑角色' : '新建角色'} />
+        <ManagementPageHeader title={isEdit ? '编辑角色' : '新建角色'} />
       ) : null}
       <StateView
         kind={kind}

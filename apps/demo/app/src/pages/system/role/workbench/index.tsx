@@ -5,8 +5,7 @@ import * as adminRoleApi from '@/api/admin/role'
 import * as adminAppMenuApi from '@/api/admin/appMenu'
 import type { AdminAppMenu } from '@/api/admin/appMenu'
 import { getSessionVersion } from '@/api/client'
-import { Checkbox, FormSubmitBar, ManagementPage, ManagementStates } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
+import { Checkbox, FormSubmitBar, ManagementPage, ManagementPageHeader, ManagementStates } from '@/components/management'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
@@ -111,7 +110,7 @@ function RoleWorkbenchPage() {
 
   return (
     <ManagementPage className="page-container">
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="App 工作台" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="App 工作台" /> : null}
 
       <View className={styles.content}>
         <ManagementStates

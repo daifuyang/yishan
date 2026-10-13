@@ -114,11 +114,12 @@ function mount({
       showModal: async () => ({ confirm: true, content: password }),
     },
     "@/components/atoms": { AppText: "AppText", Avatar: "Avatar", Tag: "Tag", Button: "Button" },
-    "@/components/molecules": { PageHeader: "PageHeader", Card: "Card", ListItem: "ListItem" },
+    "@/components/molecules": { Card: "Card", ListItem: "ListItem" },
     "@/components/feedback": { StateView: "StateView" },
     "@/components/layout": { PageContainer: "PageContainer" },
     "@/components/management": {
       ManagementPage: "ManagementPage",
+      ManagementPageHeader: "ManagementPageHeader",
       DetailContent: (props) => props.children,
       DetailHero: (props) => {
         heroProps.push(props);

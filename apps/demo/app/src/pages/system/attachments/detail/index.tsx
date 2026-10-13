@@ -19,8 +19,8 @@ import {
   DetailSection,
   LineIcon,
   ManagementPage,
+  ManagementPageHeader,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { SYSTEM_PAGES } from '@/constants/routes'
 import { confirmAction, useCanWrite } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
@@ -172,7 +172,7 @@ function AttachmentDetailPage() {
 
   return (
     <ManagementPage withActions={actions.length > 0}>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="素材详情" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="素材详情" /> : null}
       <DetailContent>
         <StateView kind={error ? 'error' : loading && !item ? 'loading' : !item ? 'empty' : 'ready'} text={error || undefined} onRetry={load} minHeight={300}>
           {item ? (

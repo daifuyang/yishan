@@ -2,8 +2,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { getSessionVersion } from '@/api/client'
 import { StateView } from '@/components/feedback'
-import { FormContent, FormError, FormSubmitBar, ManagementPage } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
+import { FormContent, FormError, FormSubmitBar, ManagementPage, ManagementPageHeader } from '@/components/management'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
@@ -174,7 +173,7 @@ export function MenuFormScaffold({ form, children }: MenuFormScaffoldProps) {
   if (!form.ready) return <ManagementPage>{null}</ManagementPage>
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title={form.title} /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title={form.title} /> : null}
       <StateView
         kind={form.error ? 'error' : form.loading ? 'loading' : 'ready'}
         text={form.error || undefined}

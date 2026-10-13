@@ -12,9 +12,9 @@ import {
   FormSection,
   FormSubmitBar,
   ManagementPage,
+  ManagementPageHeader,
   TextField,
 } from '@/components/management'
-import { PageHeader } from '@/components/molecules'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
@@ -120,7 +120,7 @@ function AttachmentFormPage() {
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
   return (
     <ManagementPage>
-      {process.env.TARO_ENV === 'h5' ? <PageHeader title="编辑素材" /> : null}
+      {process.env.TARO_ENV === 'h5' ? <ManagementPageHeader title="编辑素材" /> : null}
       <StateView
         kind={error ? 'error' : loading ? 'loading' : 'ready'}
         text={error || undefined}
