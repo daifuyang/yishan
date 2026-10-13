@@ -1,3 +1,4 @@
+import { Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
 import { ApplicationIcon } from '@/components/ApplicationIcon'
@@ -21,6 +22,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
+import styles from './index.module.scss'
 import { movePin, togglePin } from './model'
 
 function HomeAppsEditPage() {
@@ -145,11 +147,7 @@ function HomeAppsEditPage() {
                 />
               ))
             ) : (
-              <ManagementCell
-                title="未固定的位置会按你的使用习惯自动推荐"
-                bordered={false}
-                showArrow={false}
-              />
+              <Text className={styles.note}>未固定的位置会按你的使用习惯自动推荐</Text>
             )}
           </DetailSection>
           {searchGroups.map((group) => (

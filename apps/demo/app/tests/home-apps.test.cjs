@@ -103,6 +103,8 @@ function mountEditPage({ pinned, max = 8 }) {
   })
   const page = mountPage('src/pages/apps/pinned/index.tsx', {
     '@tarojs/taro': { showToast: () => {} },
+    '@tarojs/components': { Text: 'Text', View: 'View' },
+    './index.module.scss': scss,
     '@/components/ApplicationIcon': { ApplicationIcon: 'ApplicationIcon' },
     '@/components/management': Object.fromEntries(
       [
@@ -159,4 +161,11 @@ test('编辑页的上限按可见项计算，不可见的草稿 id 不会让可�
   row.props.onClick()
   assert.equal(edit.pickerCell(13).props.tag.props.checked, true)
   assert.deepEqual(await edit.save(), [11, 13])
+})
+
+test('编辑页未固定任何应用时只显示一行弱化说明，而不是一个列表行', () => {
+  const edit = mountEditPage({ pinned: [] })
+  assert.equal(edit.pinnedCells().length, 0)
+  const note = edit.page.all('Text').find((n) => n.props.className === 'note')
+  assert.equal(note?.props.children, '未固定的位置会按你的使用习惯自动推荐')
 })

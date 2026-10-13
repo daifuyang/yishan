@@ -1,0 +1,8 @@
+/* 未固定时的提示：一行弱化说明，不做成可点击的列表行 */
+.note {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-13);
+  line-height: 20px;
+  color: var(--color-text-tertiary);
+}
