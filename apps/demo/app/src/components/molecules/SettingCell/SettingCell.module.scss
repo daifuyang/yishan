@@ -11,7 +11,7 @@
   background-color: var(--color-bg-base);
 }
 
-// 分割线与标题左对齐，末行不显示
+// 分割线与行标题文字左对齐（16px 行内边距 + 20px 图标 + 12px 图标右间距 = 48px），末行不显示
 .cell::after {
   content: '';
   position: absolute;
@@ -19,7 +19,7 @@
   right: 0;
   bottom: 0;
   height: 1px;
-  background-color: var(--color-border-light);
+  background-color: var(--color-divider);
   transform: scaleY(0.5);
   transform-origin: bottom;
 }

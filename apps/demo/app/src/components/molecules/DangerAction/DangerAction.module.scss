@@ -1,9 +1,9 @@
+/* 全出血白底行，与 SettingGroup 的白底块同宽、同为无圆角 */
 .action {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 48px;
-  border-radius: 10px;
+  height: var(--list-item-height-sm);
   background-color: var(--color-bg-surface);
   color: var(--color-danger);
 }

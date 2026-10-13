@@ -1,18 +1,25 @@
+/* 与 management 的 DetailSection / FormSection 同一套「灰标题 + 无圆角贴边白底」：
+     模块间距（白底块之间）= --space-4 (16px)，由分组自身的 margin-bottom 提供
+     标题到内容           = --space-2 (8px)
+   标题坐在模块间距的灰带里，padding-top 为 0；横向内边距与行内容对齐。*/
 .group {
-  display: flex;
-  flex-direction: column;
+  margin-bottom: var(--space-4);
+}
+
+.group:last-child {
+  margin-bottom: 0;
 }
 
 .group__title {
-  padding: 0 var(--space-1) var(--space-2);
-  font-size: var(--font-size-14);
-  font-weight: var(--font-weight-medium);
-  line-height: var(--line-height-normal);
+  display: block;
+  padding: 0 var(--space-4) var(--space-2);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-regular);
+  line-height: 20px;
   color: var(--color-text-tertiary);
 }
 
+/* 全出血白底：不加圆角、不加横向 padding，横向内边距由每一行自带 */
 .group__body {
-  overflow: hidden;
-  border-radius: var(--radius-xl);
   background-color: var(--color-bg-surface);
 }

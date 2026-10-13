@@ -11,7 +11,7 @@ export default function SecurityPage() {
   return (
     <PageContainer>
       <View className={styles.page}>
-        <SettingGroup>
+        <SettingGroup title="登录与安全">
           <SettingCell
             icon="lock"
             title="修改密码"

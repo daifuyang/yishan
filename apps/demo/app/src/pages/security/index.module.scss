@@ -1,3 +1,4 @@
+/* 页面顶部 16px 模块间距；分组标题坐在这条灰带里，自身 padding-top 为 0 */
 .page {
-  padding: var(--space-4);
+  padding-top: var(--space-4);
 }

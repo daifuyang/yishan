@@ -1,13 +1,15 @@
+// 头部是全出血白底块（规范 6.1）：上下 margin 即 16px 模块间距，无左右外边距、无圆角
 .header {
   display: flex;
   align-items: center;
-  padding: var(--space-5) var(--space-4);
-  border-radius: var(--radius-xl);
+  margin: var(--space-4) 0;
+  padding: var(--space-4);
   background-color: var(--color-bg-surface);
 }
 
+// H5 只放宽上下留白；横向保持 --space-4，头像与下方分组标题、行图标左对齐
 .header_roomy {
-  padding: var(--space-6) var(--space-5);
+  padding: var(--space-6) var(--space-4);
 }
 
 // 叠加父类提高优先级，覆盖 Avatar 默认灰底
