@@ -33,11 +33,23 @@ const { deletedAt, ...loginLogPublicColumns } = getTableColumns(sysLoginLog);
 // Internal Helpers
 // ============================================================================
 
-async function fetchLoginLogDetail(id: number, db: AppQueryDb = drizzleDb): Promise<LoginLogDetailRow | null> {
+/**
+ * Single detail-query helper shared by the unconstrained admin lookup and the
+ * user-scoped "my login log" lookup. `userId` is optional: when omitted the
+ * `and(...)` gains no extra condition, so the existing admin paths are
+ * unaffected.
+ */
+async function fetchLoginLogDetail(
+  id: number,
+  db: AppQueryDb = drizzleDb,
+  userId?: number,
+): Promise<LoginLogDetailRow | null> {
+  const conds: SQL[] = [eq(sysLoginLog.id, id), isNull(sysLoginLog.deletedAt)];
+  if (userId !== undefined) conds.push(eq(sysLoginLog.userId, userId));
   const [row] = await db
     .select(loginLogPublicColumns)
     .from(sysLoginLog)
-    .where(and(eq(sysLoginLog.id, id), isNull(sysLoginLog.deletedAt)))
+    .where(and(...conds))
     .limit(1);
   return row ?? null;
 }
@@ -141,6 +153,15 @@ export class LoginLogRepository {
 
   static async findById(id: number): Promise<LoginLogDetailRow | null> {
     return fetchLoginLogDetail(id);
+  }
+
+  /**
+   * Detail lookup constrained to a single user. Returns `null` when the row
+   * exists but belongs to someone else, so callers cannot distinguish
+   * "not found" from "not yours".
+   */
+  static async findByIdForUser(id: number, userId: number): Promise<LoginLogDetailRow | null> {
+    return fetchLoginLogDetail(id, drizzleDb, userId);
   }
 
   /**

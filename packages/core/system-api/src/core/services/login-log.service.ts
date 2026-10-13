@@ -49,6 +49,19 @@ export class LoginLogService {
   }
 
   /**
+   * Single "my login log" detail. The lookup is scoped to `userId`, so a row
+   * owned by another user yields the same LOGIN_LOG_NOT_FOUND error as a
+   * missing row (no existence leak).
+   */
+  static async getMyLoginLogById(userId: number, id: number): Promise<SysLoginLogResp> {
+    const row = await LoginLogRepository.findByIdForUser(id, userId);
+    if (!row) {
+      throw new BusinessError(SystemManageErrorCode.LOGIN_LOG_NOT_FOUND, "登录日志不存在");
+    }
+    return LoginLogMapper.toResp(row);
+  }
+
+  /**
    * Paginated "my login logs" for a single user. Keyword/status filters
    * are intentionally not exposed here — admin-only list uses getLoginLogList.
    */

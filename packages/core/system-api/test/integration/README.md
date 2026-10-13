@@ -1,6 +1,6 @@
 # 集成测试（MySQL）
 
-本目录保留用户生命周期、PAT 生命周期和 RBAC 查询共 20 个真实 MySQL 测试。每个测试文件创建随机 schema，迁移完成后在自己的 SystemRuntime 中执行，结束时只删除该 schema。
+本目录保留用户生命周期、PAT 生命周期、登录日志用户隔离和 RBAC 查询共 22 个真实 MySQL 测试。每个测试文件创建随机 schema，迁移完成后在自己的 SystemRuntime 中执行，结束时只删除该 schema。
 
 ## 启用方式
 
@@ -24,6 +24,7 @@ pnpm test:integration
 | --- | --- |
 | `user.lifecycle.test.ts` | 用户字段、关联去重和替换、软删除及令牌撤销 |
 | `pat-lifecycle.test.ts` | 创建、读取、JSON scope、过期、撤销、使用记录、列表 |
+| `login-log.lifecycle.test.ts` | 登录日志按 userId 隔离；他人日志返回 null；管理员 `findById` 保持不受限 |
 | `rbac.test.ts` | 未知角色空权限；权限缓存失效后重新读取 |
 
 Demo 产品的迁移、重复种子、Fastify Inject 认证和权限、用户扩展事件、模块开关及 OpenAPI 对比位于 `apps/demo/api/test/integration/product.test.ts`。
