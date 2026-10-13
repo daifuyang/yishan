@@ -56,7 +56,7 @@ jobs:
           s deploy -y -t templates/function.yaml
 `
 
-test('守卫对仓库自带的三条发布工作流零告警', () => {
+test('守卫对仓库自带的发布工作流零告警', () => {
   assert.equal(
     execFileSync(process.execPath, [SCRIPT], { stdio: 'pipe' }).toString().trim(),
     'deploy workflows verified',
