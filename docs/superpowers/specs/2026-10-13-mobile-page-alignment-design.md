@@ -1,212 +1,277 @@
-# App 全站页面对齐管理规范（子项目 A）
+# App 全站页面对齐设计（重写版）
 
-日期：2026-10-13 · 状态：待审阅 · 子项目 B（首页常用应用）已完成并上线
+日期：2026-10-13
+状态：待审阅
+范围：`apps/demo/app` 移动端页面、`packages/core/system-api` 登录日志只读接口及其 OpenAPI/客户端同步
 
-## 背景与目标
+## 1. 目标与边界
 
-`apps/demo/app` 的「系统管理」系列页面（`pages/system/**`）已按 `management` 组件家族与
-`docs/design/mobile-form-spec.md` 改造并验收，是事实上的基准。其余页面没有跟进，结果是同一个 App
-里并存两套语言：两套页头、两套行高（48px vs 52px）、两套分组标题（13px tertiary vs 44px primary）、
-两套图标渲染、同一个「选择行取值」样式抄了四份。
+`apps/demo/app` 已有一套以 `ManagementPage`、`ManagementPageHeader`、
+`ManagementList`、`ManagementCell` 和 `ManagementStates` 为核心的管理页面语言；
+首页、工作台、登录、个人中心和通讯录仍混用旧的 `molecules` 组件、页面私有样式和重复状态处理。
 
-目标：
+本次工作的目标是：
 
-1. 非 `system` 页面与基准确立同一套语言，并**用现成组件**实现，而不是逐页手写。
-2. 让重复真正消失——共享层收敛，后续页面没有第二套可选。
-3. 修掉审计发现的结构性缺陷（这些不是样式问题）。
+1. 让页面按内容品类共享同一套基础语言。列表/详情/表单使用 management 家族；首页、工作台、登录保留卡片型布局，但所有颜色、圆角、间距和阴影使用既有 token。
+2. 让共享能力只有一个公开入口，删除重复实现和错误示例，同时保留必要的品牌图标和业务专属组合。
+3. 修复两个会导致真实数据错误的结构问题：通讯录部门树丢失层级、个人登录详情依赖内存交接。
+4. 保持现有权限、账号切换、路由路径和后端业务语义不变。新增登录日志详情接口必须向后兼容，不需要数据库迁移。
 
-## 现状（2026-10-13 只读审计结论）
+本设计是一份总设计，拆成三条可独立验收的实施线：
 
-> 下列行号来自本次审计，实施时需重新核对（文件可能已位移）。
+- **基础线**：共享组件、页头兼容、鉴权壳边界、账号作用域、token 和测试基线。
+- **页面线**：移动端页面迁移和通讯录交互修复。
+- **接口线**：登录日志按当前用户查询详情的 API、OpenAPI、生成客户端和详情页数据流。
 
-### 第一层 · 硬规则违反（对照 `docs/design/mobile-form-spec.md`）
+基础线先交付。页面线可在基础线完成后分模块交付；接口线可与页面线并行，但登录详情页切换到真实请求必须等接口线的生成客户端完成。
 
-| 位置 | 问题 |
-|---|---|
-| `pages/login/index.module.scss:168-183` | 自绘勾选框，选中态实心蓝底（§7.2 点名禁止） |
-| `pages/apps/index.tsx:66-79` | 手写搜索框，重复 `ManagementSearchBar` |
-| `pages/index/components/TodoPreview.tsx:43`、`DashboardMetrics.tsx:29`、`HomeSection.tsx:34` | 跳转箭头用裸 `›` 文本，非 `LineIcon`（§8） |
-| `pages/profile/edit/index.tsx:125-132,167-170`、`pages/profile/password/index.tsx:103` | 校验/保存失败走 `Taro.showToast`，未用内联 `FormError`（§9） |
-| `pages/profile/password/index.tsx:36-62` | 手写 `PasswordRow`，与共享 `SecretField` 功能完全重复 |
-| `pages/profile/login-log/index.tsx:104` | footer 用 `·` 拼接（§7.1） |
-| `components/management/ManagementList.tsx:33-34` | 共享组件的 JSDoc 仍以「`@账号 · 手机`」示范副标题，与 §7.1 冲突 |
-| `pages/login`、`pages/apps`、`pages/index` 多处 | 写死 `#1677FF`/`#F5F7FA`/`#c9cdd4` 等（§10） |
-| `pages/login/index.module.scss:103-105` | 禁用态用灰底块（§3）；错误文案 13px 左对齐（§9 要求 12px 右对齐） |
+## 2. 调研结论
 
-### 第二层 · 两套组件家族并存
+### 2.1 现有共享组件事实
 
-`pages/mine`、`pages/security`、`pages/contacts/index`、`pages/contacts/dept` 整套使用遗留
-`molecules`：`SettingCell`（写死 52px 行高）、`SettingGroup`、`DangerAction`、`ListItem`、
-`SectionHeader`（44px primary 标题）、`AppText`、`PageContainer`。基准一律
-`ManagementPage`/`ManagementHeader`/`ManagementList`/`ManagementCell`/`ManagementStates`。
+- `ManagementPageHeader` 实际定义在 `apps/demo/app/src/components/management/ManagementPage.tsx`，不是独立文件。它已有 `title`、`subtitle`、`action`、`onBack`、`showBack`，但没有旧 `PageHeader` 的 `bordered`、`className`、安全区/sticky 行为和 `ReactNode` 标题兼容能力。
+- 旧 `PageHeader` 位于 `apps/demo/app/src/components/molecules/PageHeader/`，当前 API 为 `title`、`showBack`、`onBack`、`right`、`subtitle`、`bordered`、`className`。生产代码仍在 system shared scaffold、demo 页和多个 system 页使用。
+- `PageContainer` 当前同时承担会话 bootstrap、鉴权加载、权限拒绝、错误重试和视觉容器职责；`ManagementPage` 只承担页面背景、内边距、滚动和底部操作栏预留。两者不能直接互换。
+- `ManagementCell` 当前的 `tag` 是状态列，组件注释仍示范 `·` 拼接；行内没有动作槽。`ManagementTreeCell` 已提供层级、展开箭头和独立 toggle，但通讯录首页没有使用它。
+- management 家族已经有 `Checkbox`、`FormError`、`SecretField`、`LineIcon`、`ManagementSearchBar`、`ManagementFilterBar`、`ManagementStates`、`DepartmentTreeNavigator`、`flattenDepts` 和 `hasChildren`，优先复用这些能力。
 
-`molecules/PageHeader` **不在此列**：它是全站 H5 既定页头（`pages/` 下 36 个文件使用，基准页
-`pages/system/position/detail/index.tsx:149`、`form/index.tsx:113` 亦在用它）。
+### 2.2 当前页面和数据事实
 
-### 第三层 · 结构性缺陷
+- `apps/demo/app/src/pages/contacts/index/index.tsx` 把部门树深度展平为 `ListItem`，计算出的 `depth`/层级信息没有渲染；该页同时在 `useEffect` 和 `useDidShow` 首次加载，存在重复请求。
+- `contacts/index` 和 `contacts/dept` 使用无 `moduleId` 的 `useRequireAuth()`，没有账号作用域请求保护。
+- `pages/profile/login-log/detail/index.tsx` 通过同级 `pages/profile/login-log/handoff.ts` 从列表页内存交接记录；刷新、深链或小程序冷启动无法恢复。
+- `packages/core/system-api/src/core/routes/api/v1/app/users/index.ts` 目前只有分页的 `GET /me/login-logs`；`LoginLogRepository` 已有 `findById` 和按用户分页查询，但没有按 `id + user_id` 的详情查询。
+- 现有 App 测试目录有 67 个 `.cjs` 文件；仓库已有浏览器套件，页面迁移必须更新真实契约断言，不能通过删除断言来“过绿”。
 
-| 位置 | 问题 |
-|---|---|
-| `pages/profile/login-log/detail/index.tsx` + `handoff.ts` | 无按 ID 查询接口，靠内存交接；H5 刷新/深链/小程序冷启恒定「记录已失效」。后端 `packages/core/system-api/src/core/routes/api/v1/app/users/index.ts:110` 仅有分页列表 |
-| `pages/contacts/index/index.tsx:23-36,93-107` | `flatten` 算出 `depth`/`hasChildren` 却完全不渲染，部门树被拍平、层级丢失；共享 `DepartmentTreeNavigator`/`flattenDepts`/`hasChildren` 未被使用 |
-| `pages/contacts/index/index.tsx`、`pages/contacts/dept/index.tsx` | 完全没有账号切换保护（既无 `withAccountScope` 也无 `getSessionVersion()` 校验） |
-| `pages/contacts/index/index.tsx:59-63` | `useEffect` 与 `useDidShow` 首次进入都会加载，`getDeptTree` 打两次 |
-| `pages/contacts/dept/index.module.scss:20-22` | `.dept__initial{display:none}` 死代码 |
+## 3. 设计原则
 
-### 第四层 · 示例模块与重复
+### 3.1 页面品类边界
 
-| 位置 | 问题 |
-|---|---|
-| demo 全部 6 页 | `from '../../system/_shared/AdminUI'`（深度有 `../../` 与 `../../../` 两种）反向依赖 system 模块私有目录 |
-| `src/pages/system/_shared/AdminUI.tsx` | 被 30+ 个 system 页面 import；同一文件还含遗留 `AdminPage`/`AdminSelect`/`AdminNotice` |
-| `pages/index`、`pages/apps`、`pages/login` | 自定义导航栏胶囊避让逻辑三份几乎逐行相同的副本 |
-| `pages/demo/region`、`pages/demo/todos/form`、`FormLayout.module.scss` | 「选择行取值/占位」样式四份副本 |
-| `pages/demo/quickstart`、`pages/demo/region`、`pages/security` | 「无 hero 页补 16px 顶距」的 scss 三份副本，且 quickstart 的注释与事实不符（它其实有白色页头） |
-| `pages/apps/pinned/index.tsx:144-149` | 把「上移/下移」按钮塞进 `ManagementCell` 的 `tag` 槽，与 `ManagementList.tsx:51`「行内不放按钮」的契约冲突 |
-| `pages/system/dict/items/index.tsx:15`、`role/RoleEditor.tsx:223`、`dept/DepartmentForm.tsx:215` | 基准域自身的遗留尾巴，仍在用 `AdminPage`/`AdminSelect`/`AdminNotice` |
-| `pages/system/coming-soon/index.tsx` | 不可达死代码：未注册进 `constants/page-config.ts`、全仓零引用、无 `index.config.ts` |
+管理列表、详情和表单统一使用 management 家族：
 
-审计另有一处**基准缺陷**：`pages/system/position/form/index.tsx:123,142,150` 给 `FormField` 传了
-`disabled` 却未向下透传给控件，导致禁用行的 label 没有按 §3 变灰；`pages/demo/todos/form/index.tsx`
-反而正确。故本 spec 不把「基准」无条件当标准，而是**双向修正**。
+```text
+ManagementPage
+  ManagementPageHeader
+  ManagementFilterBar / ManagementSearchBar
+  ManagementList / ManagementCell / ManagementTreeCell
+  ManagementStates
+```
 
-## 已确认决策
+首页、工作台、登录等卡片型页面保留卡片布局。卡片统一使用 token；卡片内的选择行、搜索框、跳转箭头、错误提示和图标仍必须使用共享原子。
 
-| 决策 | 结论 |
-|---|---|
-| 深度 | 三层全做，含后端接口 |
-| 非列表品类 | 首页/工作台/登录保留卡片语言，但收敛到 token 并抽共享原子；spec 补一节说明两类页面的适用边界 |
-| 共享层 | 彻底收敛：页头合一、工具提公共层、废止 `PageContainer` 当鉴权壳、补缺失原子 |
-| 示例模块 | 重定样板（todos 列表/详情/表单 + position 同级对齐到最合规写法）；`health`/`quickstart`/`region` 定位为「组件演示」，不对外当页面样板 |
-| 落地方式 | 按层分批：地基 → 页面对齐 → 结构性缺陷 + 后端 |
+`PageContainer` 保留为通用会话/权限门禁能力。规范页由页面显式调用 `useRequireAuth({ moduleId })`，并使用 `ManagementPage` 作为视觉外壳；同一页面不得再把 `PageContainer` 作为第二个鉴权入口。非规范页在迁移前继续使用 `PageContainer`，直到自身门禁逻辑完成等价迁移。
 
-## 设计
+### 3.2 共享层只收敛真实重复
 
-### 一、共享层的最终形态
+抽取前必须有至少两处真实调用或一个明确的契约一致性要求。新组件必须有具体业务名称和最小接口，不建立空的 types/constants/hooks/provider 文件。
 
-| 收敛项 | 现状 | 目标 |
-|---|---|---|
-| 页头 | `molecules/PageHeader`（36 文件）+ `ManagementPageHeader`（列表页），功能重合 | 只留 `ManagementPageHeader`；`right` → `action`（全仓仅 `pages/demo/health/index.tsx:80` 用 `right`）；删除 molecules 版 |
-| 账号域工具 | `withAccountScope`/`errorMessage` 在 `pages/system/_shared` | 提到 `@/utils/account-scope`；`tests/account-scope.test.cjs` 的加载路径同步 |
-| 导航避让 | 首页/工作台/登录三份副本 | 一个共享 hook，三处复用 |
-| 选择行 | `PickerRow`/日期行样式四份副本 | 抽 `PickerRow` 与 `DateField` 原子（`DateField` 用于演示页手写 `Picker` 的替换） |
-| 卡片造型 | 首页 3 模块 + 工作台各写半径 10/12/14/16px、阴影、20/24px 间距 | 抽 `SurfaceCard`（通用白块卡片）与 `MetricCard`（仪表盘指标卡），半径/间距/阴影走 token |
-| 图标 | `management/LineIcon`（25 处）、`components/icons`（4 处，其中 2 处属待退休遗留组件）、页面私有 `HomeIcon`/`LoginIcon` | 统一到 `LineIcon`；品牌自绘图标若保留须在本 spec 例外清单里写明 |
-| 组件文档 | `ManagementList.tsx:33-34` 教 `·` 拼接 | 改成与规范一致的示例 |
+颜色、间距、圆角、阴影只能引用 `apps/demo/app/src/styles/tokens.scss` 已有 token；本次不建立新主题系统，不升级依赖。
 
-`ManagementCell` 需增补一个**可选**的尾部动作槽与选择槽（`apps/pinned` 现借 `tag` 槽放按钮）。
-约束：新增 prop 必须是可选的、不改变现有调用方语义；`tag` 保持「状态独立成列」的含义。
+## 4. 实施线 A：基础线
 
-`PageContainer` 保留其通用门禁与布局能力，但**不再作为规范页的鉴权壳**：规范页一律用
-`ManagementPage` 作布局壳 + 页面自身的 `useRequireAuth({ moduleId })`，消除双重门禁调用。
+### A1. 页头兼容与迁移
 
-在 `docs/design/mobile-form-spec.md` 增补两节：
+增强 `ManagementPageHeader`，使其能覆盖旧 `PageHeader` 的生产能力：
 
-- **卡片型页面**（仪表盘 / 网格工作台 / 鉴权页）：保留成组卡片，但圆角、间距、阴影一律走 token；
-  卡片内行高与其他页一致；不得自绘勾选框、搜索框、箭头。
-- **H5 页头**：二级页在 H5 下统一渲染 `ManagementPageHeader`（`showBack` 视平台），小程序走原生导航。
+- `title` 支持 `ReactNode`；
+- `subtitle` 支持 `ReactNode`；
+- `action` 替代 `right`；
+- 增加 `bordered` 和 `className`；
+- 保留 H5 的安全区、sticky、返回按钮和左右占位布局；
+- 小程序由原生导航栏承载时使用 `showBack={false}`，H5 二级页按页面需要使用 `showBack`。
 
-### 二、批次 1 · 地基（不改页面行为）
+先迁移 system shared scaffold 和所有生产页面调用，再删除 `molecules/PageHeader` 目录。测试 mock、README 和页面快照同步改为新导出。迁移完成的验收条件是生产源码中不再 import `@/components/molecules` 的 `PageHeader`，且所有旧 props 都有明确映射。
 
-1. 页头合一：迁移 36 处 `PageHeader` 调用到 `ManagementPageHeader`，删除 `molecules/PageHeader`。
-2. `withAccountScope` / `errorMessage` 迁至 `@/utils/account-scope`，更新 30+ 处 system 页 import
-   与 `tests/account-scope.test.cjs`。
-3. 抽自定义导航避让 hook，首页/工作台/登录三处复用。
-4. 抽 `PickerRow`、`DateField`、`SurfaceCard`、`MetricCard`（含「无 hero 页顶距」容器，消灭三份 scss 副本）。
-5. `ManagementCell` 增补可选尾部动作槽/选择槽。
-6. 修 `ManagementList` 的 JSDoc。
-7. 图标统一到 `LineIcon`；`components/icons` 随之退休。
+### A2. 鉴权壳和账号作用域
 
-### 三、批次 2 · 页面对齐
+- `PageContainer` 不删除、不改为新的全局 provider；只移除规范页对它的鉴权壳依赖。
+- 将 `withAccountScope`、`errorMessage` 迁到 `apps/demo/app/src/utils/account-scope.ts`，保持函数签名和会话版本语义不变；更新 system 页面调用和 `tests/account-scope.test.cjs` 的加载路径。
+- 页面请求必须在当前账号作用域内启动；账号切换或 session version 变化时丢弃旧请求结果、草稿和错误状态。
+- 页面不得为了迁移引入全局 store；单页状态仍由组件状态和已有 auth/module store 管理。
 
-- **认证/首页域**：`login`（勾选框 → `Checkbox`、错误内联右对齐、禁用不再变灰底块、写死色 → token）、
-  `index`（卡片 token 化、裸 `›` → `LineIcon`、写死色 → token）、`apps`（手写搜索框 →
-  `ManagementSearchBar` + `ManagementFilterBar`、`ManagementStates` 统一 loading/error/empty）、
-  `apps/pinned`（改用新的尾部动作槽）、`messages`/`about`（H5 补统一页头）、删除 `system/coming-soon`。
-- **个人中心域**：`mine`、`security`（`SettingCell`/`SettingGroup`/`DangerAction` →
-  `ManagementList`/`ManagementCell` + `ActionSheet`）、`profile/edit` 与 `profile/password`
-  （toast → `FormError`；`PasswordRow` → `SecretField`）。
-  注：`profile/login-log` 列表**整块留到批次 3**（去 `·`、补筛选区、改用 `useListPagination` 一起做），
-  避免同一文件被两个批次各改一遍——与通讯录的处理同理。
-- **示例模块**：`demo/*` 六页去掉反向依赖、统一页头、接入新原子；`health` 拆掉重复行
-  （「内存使用」与「可用内存」信息重复）与一行多属性；`region` 修正 `FormSection`/`DetailRow` 混用；
-  `quickstart`/`region` 去掉 `.content` 副本并修正错误注释；`quickstart`/`region` 文件头声明
-  「组件演示，非页面样板」。
-- **基准域尾巴**：`dict/items`、`role/RoleEditor`、`dept/DepartmentForm` 的
-  `AdminPage`/`AdminSelect`/`AdminNotice` 下岗；补 `position/form` 漏传的 `disabled`。
+### A3. 小型原子和契约
 
-登录页的 label 上下堆叠**保留**为显式例外：`index.module.scss:111` 必须 16px 字号防 iOS 缩放，
-76px 标签列在窄屏会被压死。该例外须在 PR 描述与 spec 例外清单中写明。
+只新增以下确有重复的本地原子：
 
-### 四、批次 3 · 结构性缺陷 + 后端
+- `PickerRow`：统一选择行的文案、占位、禁用和行尾箭头；箭头由行级元素渲染。
+- `DateField`：封装现有 Taro `Picker` 的日期取值和占位，内部复用 `PickerRow` 视觉契约。
+- `SurfaceCard`：首页/工作台白色内容块的 token 化容器。
+- `MetricCard`：仪表盘指标卡，复用 `SurfaceCard`，只保留指标所需的标题、数值和辅助文案。
 
-**个人登录记录按 ID 查询**（`packages/core/system-api`，无新迁移）
+“无 hero 页顶距”不得再以三份页面 SCSS 复制；由 `SurfaceCard` 或页面外壳的一个 token 化 modifier 提供。
 
-- `LoginLogRepository` 新增按 `id + user_id` 查询（复用 `findById` 的 SQL 结构，加 `user_id` 条件）；
-- `LoginLogService.getMyLoginLogById(userId, id)`，未命中抛既有错误码
-  （`SystemManageErrorCode.LOGIN_LOG_NOT_FOUND`）——对「不属于我」与「不存在」返回同一结果，不泄露存在性；
-- 路由 `GET /api/v1/app/users/me/login-logs/:id`（`operationId: appGetMyLoginLog`），
-  复用权限点 `PERMS.LIST_MY_LOGINS`，响应 `sysLoginLogDetailResp#`；
-- `pnpm --filter @yishan/demo-api openapi:dump` 后按仓库惯例格式化并提交 `apps/demo/api/openapi.json`；
-- 追加新路径到 `docs/architecture/api-v1-runtime-openapi.json`（`apps/demo/api/test/integration/product.test.ts:188`
-  以「不在 baseline 中的路径」做精确断言，沿用既有先例——`/api/v1/app/menus/home` 等三条正是这样加进去的）；
-- 生成客户端按仓库命令同步并一并提交。
+`ManagementCell` 增加两个可选 prop：
 
-App 侧：`pages/profile/login-log/detail` 改为真实拉取，带 loading/error/retry 与账号切换保护；
-删除 `handoff.ts` 及列表页的 `rememberLoginLog` 调用。
+```ts
+trailingAction?: ReactNode
+selection?: ReactNode
+```
 
-**通讯录整块**（不拆到批次 2，避免同一文件改两遍）：两页迁到 `management` 家族；用
-`DepartmentTreeNavigator` + `flattenDepts`/`hasChildren` 恢复部门层级；补 `withAccountScope`；
-去掉首次进入的重复请求；`profile/login-log` 列表补筛选区（对齐 `system/login-log` 的状态/排序/时间范围）。
+渲染顺序固定为：内容 → `tag` 状态列 → `selection` → `trailingAction` → 箭头。动作槽点击必须阻止行点击；`tag` 继续只表达状态，不再承载按钮。`apps/pinned` 的上移/下移迁移到 `trailingAction`。
 
-## 测试
+### A4. 文档和图标
 
-每批必须维护既有 67 个 App `.cjs` 测试与 8 个浏览器套件；其中 `home.test.cjs`、`login.test.cjs`、
-`contacts-dept.test.cjs`、`demo-pages.test.cjs`、`profile-forms.test.cjs`、`profile-sections.test.cjs`
-直接覆盖被改页面，断言需随实现同步更新（不是改测试凑绿，而是断言新契约）。
+- 修正 `ManagementList.tsx` JSDoc，禁止用 `·` 拼接示例。
+- 页面通用操作图标统一使用 `LineIcon`；首页/登录品牌图标可以保留，但必须列入例外并使用 token 颜色。
+- 在 `docs/design/mobile-form-spec.md` 增加“卡片型页面”和“H5 页头”两节，内容与本设计的品类边界一致。
 
-新增测试：
+## 5. 实施线 B：页面线
 
-- 共享层：页头合一后的统一行为；导航避让 hook 的取值；`PickerRow`/`DateField` 的取值与占位。
-- 登录页：勾选框走共享 `Checkbox`（无自绘、无实心块）；失败态用内联 `FormError`。
-- `profile/login-log` 详情：按 ID 拉取的成功/失败/重试；不属于当前用户的记录不展示。
-- 通讯录：部门树层级与展开；账号切换不串数据；首次进入只发一次请求。
-- 后端（Vitest）：`getMyLoginLogById` 命中/未命中/越权（他人记录）三种情形。
+### B1. 认证、首页和工作台
 
-## 质量门
+- 登录页：使用共享 `Checkbox`；失败信息使用 `FormError`，错误文字 12px、右对齐；禁用态不绘制灰底块；颜色全部改为 token。label 上下堆叠作为唯一登录页例外，原因是 16px 防 iOS 缩放和窄屏标签列宽度。
+- 首页：使用 `SurfaceCard`/`MetricCard`；裸 `›` 替换为 `LineIcon`；保留品牌自绘图标但登记例外；复用导航避让 hook。
+- 应用页：手写搜索框替换为 `ManagementSearchBar`，筛选入口使用 `ManagementFilterBar`，loading/error/empty 使用 `ManagementStates`。
+- `apps/pinned`：动作按钮使用 `trailingAction`，不把按钮放入 `tag`。
+- `messages`、`about` 和符合 H5 二级页语义的页面使用增强后的 `ManagementPageHeader`；小程序保留原生导航栏。
+- 删除未注册、无引用、无 `index.config.ts` 的 `system/coming-soon` 死代码，并更新路由/测试引用（如存在）。
 
-每批：`pnpm typecheck:mobile`、`pnpm --filter @yishan/demo-app test`、`pnpm build:app`、
-`pnpm check:taro`、`pnpm check:boundaries`；H5 浏览器套件与 320/390 窄屏检查。
+### B2. 个人中心
 
-批次 3 额外：`pnpm test:api`、`pnpm check:openapi`、生成客户端 `git diff` 干净、
-隔离 MySQL 集成测试（`pnpm test:integration`）。
+- `mine`、`security`：把 `SettingCell`、`SettingGroup`、`DangerAction` 迁到 `ManagementList`/`ManagementCell` 与 `ActionSheet`；保留现有业务动作和权限。
+- `profile/edit`、`profile/password`：失败信息改为 `FormError`，成功后关闭/返回并刷新；密码字段复用 `SecretField`，删除 `PasswordRow`。
+- `profile/login-log` 列表和详情属于实施线 C 的依赖页面：页面线只迁移共享外壳和筛选视觉，不删除 handoff，直到真实接口客户端可用。
 
-不做真机验收（沿用既有边界：浏览器以隔离接口数据验收，不操作线上数据）。
+### B3. 通讯录
 
-## 例外清单（须在 PR 描述中说明的偏离）
+两页统一迁移到 management 家族：
 
-规范允许「有理由的偏离」，但必须显式登记，避免例外悄悄变成新标准：
+- 首页使用 `DepartmentTreeNavigator`，通过 `flattenDepts`/`hasChildren` 提供深度、完整路径和展开状态；点击展开箭头只切换展开，点击部门行进入成员页。
+- 初始状态仅展开根层；账号切换后清空展开、选中和错误状态。
+- 部门成员页使用 `ManagementPageHeader`、`ManagementList`、`ManagementCell` 和 `ManagementStates`。
+- 请求只由一个生命周期入口触发：首次展示依赖 auth ready/access，返回页面只在 session 或显式刷新需要时重新加载，不让 `useEffect` 和 `useDidShow` 同时首发同一请求。
+- 两页都接入 `withAccountScope`/session version 校验；旧账号请求完成后不得写入新账号页面。
+- 删除 `dept__initial` 等死样式。
+
+### B4. 示例页和 system 基准尾巴
+
+- demo 六页移除对 `pages/system/_shared/AdminUI` 的反向依赖，改用公开 management/feedback/form 组件；health、quickstart、region 文件头明确“组件演示，非页面样板”。
+- health 删除重复的内存指标和一行多属性；region 统一 `FormSection`/`DetailRow` 语义；quickstart/region 删除重复 `.content` 和错误注释。
+- `dict/items`、`role/RoleEditor`、`dept/DepartmentForm` 移除遗留 `AdminPage`/`AdminSelect`/`AdminNotice`。
+- 修复 `system/position/form` 中 `FormField.disabled` 未向控件透传的问题；补充回归断言。
+
+## 6. 实施线 C：登录日志接口和详情页
+
+### C1. API 契约
+
+在 `packages/core/system-api` 增加只读接口：
+
+```text
+GET /api/v1/app/users/me/login-logs/:id
+operationId: appGetMyLoginLog
+permission: PERMS.LIST_MY_LOGINS
+response: sysLoginLogDetailResp#
+```
+
+路由 schema 必须显式声明：
+
+- `params.id` 为正整数 TypeBox 参数；
+- 401/403/业务错误沿用当前 route registrar 的统一错误响应；
+- 200 响应复用现有 `sysLoginLogDetailResp#`。
+
+Repository 增加 `findByIdForUser(id: number, userId: number)`，SQL 同时限制 `id`、`user_id` 和 `deleted_at IS NULL`。Service 增加：
+
+```ts
+getMyLoginLogById(userId: number, id: number): Promise<SysLoginLogResp>
+```
+
+不存在、被软删除或属于其他用户时统一抛 `SystemManageErrorCode.LOGIN_LOG_NOT_FOUND`，不泄露记录是否存在。
+
+### C2. OpenAPI 和客户端
+
+接口实现后按仓库流程：
+
+1. 运行 `pnpm --filter @yishan/demo-api openapi:dump`；
+2. 同步 `apps/demo/api/openapi.json` 和 `docs/architecture/api-v1-runtime-openapi.json`；
+3. 运行仓库规定的生成客户端命令，提交生成代码和类型；
+4. 运行 `pnpm check:openapi`，确认生成客户端 diff 干净。
+
+不得手工在生成客户端里补接口，也不得新增数据库迁移。
+
+### C3. App 数据流
+
+`pages/profile/login-log/detail/index.tsx` 改为按路由 `id` 调客户端请求，提供 loading、error、retry 和账号切换保护。成功后继续使用现有 `DetailHero`/`DetailSection`/`DetailRow` 展示；失败时显示统一错误态和返回入口。
+
+删除 `pages/profile/login-log/handoff.ts` 及列表页 `rememberLoginLog` 调用。列表页筛选区、状态/排序/时间范围行为与 system 登录日志列表保持一致，并使用已有的 `useListPagination`。
+
+## 7. 测试与验收
+
+### 7.1 基础线
+
+- 页面头兼容测试：`action`、`subtitle`、`bordered`、`className`、H5 返回和小程序隐藏返回。
+- `account-scope` 测试保持现有 session version 语义。
+- `PickerRow`/`DateField` 测试占位、取值、禁用和箭头。
+- `ManagementCell` 测试 `tag`、`selection`、`trailingAction` 的顺序及点击冒泡。
+
+### 7.2 页面线
+
+更新并保留现有 67 个 App `.cjs` 测试和浏览器套件，重点覆盖：
+
+- `home.test.cjs`、`login.test.cjs`、`home-apps.test.cjs`；
+- `contacts-dept.test.cjs`、`dept-tree.test.cjs`、新增账号切换和单次请求断言；
+- `demo-pages.test.cjs`、`profile-forms.test.cjs`、`profile-sections.test.cjs`；
+- 页面头迁移后不再 mock 旧 `PageHeader` 生产导入。
+
+浏览器检查至少覆盖 H5 320px/390px：登录失败、应用搜索/筛选、通讯录展开、个人中心表单错误、登录日志列表和详情。
+
+### 7.3 接口线
+
+Vitest 覆盖 `getMyLoginLogById` 的：
+
+1. 当前用户命中；
+2. 不存在/软删除；
+3. 他人记录统一 NOT_FOUND。
+
+路由测试覆盖参数校验、权限点和响应 schema；OpenAPI 检查确认路径、operationId、客户端方法和类型同步。
+
+### 7.4 质量门
+
+基础线和页面线每个交付单元运行：
+
+```bash
+pnpm typecheck:mobile
+pnpm --filter @yishan/demo-app test
+pnpm build:app
+pnpm check:taro
+pnpm check:boundaries
+```
+
+接口线额外运行：
+
+```bash
+pnpm test:api
+pnpm check:openapi
+pnpm test:integration
+```
+
+不做真机验收，不操作线上数据；H5 浏览器检查使用隔离测试接口。
+
+## 8. 明确不做和例外
+
+不做：
+
+- 不重设计首页/工作台布局；
+- 不修改 system 页面业务权限和交互语义；
+- 不引入新依赖、主题系统、数据库表或迁移；
+- 不把 `PageContainer` 删除或改造成全局 provider；
+- 不把组件演示页当作新的业务页面模板；
+- 不用测试删除或放宽来掩盖实现回归。
+
+必须在 PR 描述登记的例外：
 
 | 例外 | 理由 |
 |---|---|
-| 登录页 label 上下堆叠 | `pages/login/index.module.scss:111` 必须 16px 字号防 iOS 缩放，76px 标签列在窄屏会被压死 |
-| 品牌自绘图标（首页/登录若保留） | 品牌识别需要；须收敛到 token 颜色，且不得再用第二套通用图标系统 |
-| 卡片型页面的圆角与阴影 | 品类差异（仪表盘/网格），见 `docs/design/mobile-form-spec.md` 新增的卡片型页面一节 |
-| `apps/pinned` 行内不带 `›` | 行点击唤起 ActionSheet，右侧已被动作槽占满 |
+| 登录页 label 上下堆叠 | 16px 防 iOS 缩放，窄屏下固定标签列不足以横向布局 |
+| 首页/登录品牌自绘图标 | 品牌识别需要；颜色必须走 token，不形成第二套通用图标系统 |
+| 首页/工作台卡片圆角和阴影 | 卡片型品类需要，但值必须来自 token |
+| `apps/pinned` 不显示箭头 | 行点击打开 ActionSheet，右侧动作槽已占满 |
 
-## 不做（YAGNI）
+## 9. 完成判定
 
-- 不为仪表盘/网格页重新设计布局（只收敛 token 与抽原子）。
-- 不改动 `system` 页面的交互能力，只做机械迁移与基准缺陷修补。
-- 不引入新依赖，不改后端既有字段与业务语义。
-- 不做「通用主题系统」或 token 体系重构，只把写死值换回既有 token。
+三条实施线分别满足以下条件后才视为完成：
 
-## 风险
+- 基础线：生产源码没有旧 `PageHeader` import；`PageContainer`/`ManagementPage` 职责边界在代码和文档中一致；共享组件契约测试通过。
+- 页面线：目标页面不再使用被替换的旧组件或重复样式；通讯录层级、账号切换和请求次数符合测试；H5 窄屏检查通过。
+- 接口线：新路径在运行时 OpenAPI、Demo OpenAPI 和生成客户端三处一致；详情页刷新、深链、冷启动都能从服务端恢复；越权记录不可见且不泄露存在性。
 
-| 风险 | 处置 |
-|---|---|
-| 批次 1 触碰 30+ 个 system 页 import，面广 | 纯机械替换，单独一轮 CI 全绿才算过 |
-| `ManagementCell` 加槽是共享契约变更 | 新 prop 可选、增量添加，不改现有调用方语义 |
-| 通讯录从平铺变树是**交互变更** | 浏览器逐步验收，测试覆盖层级与展开 |
-| 新后端路径会进 OpenAPI baseline 与生成客户端 | 同一次提交里一并更新，CI 会卡同步 |
-| 36 文件页头迁移可能漏改 `right` 等属性 | 全仓仅一处使用 `right`，迁移后 grep 校验零残留 |
+完成三条线后，再决定是否将这份总 spec 拆成实施计划；在此之前不开始代码实现。
