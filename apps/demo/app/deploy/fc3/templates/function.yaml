@@ -1,0 +1,37 @@
+edition: 3.0.0
+name: yishan-h5-function
+access: default
+vars:
+  region: ${env(FUNCTION_REGION, 'cn-shanghai')}
+  functionName: ${env(H5_FUNCTION_NAME, 'yishan-h5')}
+resources:
+  yishan_h5:
+    component: fc3
+    props:
+      region: ${vars.region}
+      functionName: ${vars.functionName}
+      description: Yishan demo mobile H5 static site
+      runtime: custom.debian12
+      timeout: 30
+      cpu: 0.35
+      memorySize: 512
+      diskSize: 512
+      instanceConcurrency: 100
+      environmentVariables:
+        NODE_ENV: production
+        PORT: '9000'
+        PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+      customRuntimeConfig:
+        command:
+          - node
+          - ./server.mjs
+        port: 9000
+      code: ../.build/function-code
+      triggers:
+        - triggerName: httpTrigger
+          triggerType: http
+          triggerConfig:
+            methods:
+              - GET
+              - HEAD
+            authType: anonymous

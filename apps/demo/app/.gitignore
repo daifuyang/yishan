@@ -5,3 +5,7 @@ dist/
 *.log
 .idea/
 .vscode/
+
+# FC 部署产物与证书（证书只在本机/CI 临时存在，绝不提交）
+deploy/fc3/.build
+deploy/fc3/certs

@@ -1,0 +1,29 @@
+edition: 3.0.0
+name: yishan-h5-domain
+access: default
+vars:
+  region: ${env(FUNCTION_REGION, 'cn-shanghai')}
+  h5FunctionName: ${env(H5_FUNCTION_NAME, 'yishan-h5')}
+  # H5 走同源 /api：由域名路由直接转给现有 API 函数，API 无需开放 CORS
+  apiFunctionName: ${env(API_FUNCTION_NAME, 'yishan-demo-layered')}
+  domainName: ${env(H5_DOMAIN, 'h5.zerocmf.com')}
+resources:
+  yishan_h5_domain:
+    component: fc3-domain
+    props:
+      region: ${vars.region}
+      domainName: ${vars.domainName}
+      protocol: HTTP,HTTPS
+      certConfig:
+        certName: ${env(H5_CERT_NAME, 'yishan-h5-zerocmf-com')}
+        certificate: ${file(../certs/fullchain.cer)}
+        privateKey: ${file(../certs/private.key)}
+      routeConfig:
+        routes:
+          - path: /api/*
+            functionName: ${vars.apiFunctionName}
+          - path: /*
+            functionName: ${vars.h5FunctionName}
+            methods:
+              - GET
+              - HEAD
