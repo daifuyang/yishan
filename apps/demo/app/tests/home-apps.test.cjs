@@ -119,6 +119,7 @@ function mountEditPage({ pinned, max = 8 }) {
         'ManagementPageHeader',
         'ManagementSearchBar',
         'ManagementStates',
+        'LineIcon',
       ].map((name) => [name, name]),
     ),
     '@/modules/registry': { MAX_HOME_APPS: max, getWorkbenchGroups: (menus) => menus },
@@ -132,23 +133,25 @@ function mountEditPage({ pinned, max = 8 }) {
     state.menus = state.menus.map((group) => ({ ...group, apps: group.apps.filter((a) => a.menuId !== menuId) }))
     page.rerender()
   }
-  const pinnedCells = () => page.all('ManagementCell').filter((n) => !n.props.tag)
+  // 已固定行的 tag 是排序按钮组，分组行的 tag 是 Checkbox
+  const pinnedCells = () => page.all('ManagementCell').filter((n) => n.props.tag?.type !== 'Checkbox')
   const pickerCell = (menuId) =>
-    page.all('ManagementCell').find((n) => n.props.tag && n.props.title === `app-${menuId}`)
+    page.all('ManagementCell').find((n) => n.props.tag?.type === 'Checkbox' && n.props.title === `app-${menuId}`)
+  const orderButton = (row, label) =>
+    [row.props.tag.props.children].flat().find((n) => n?.props?.['aria-label'] === label)
   const save = async () => {
     await page.one('FormSubmitBar').props.onSubmit()
     await new Promise(setImmediate)
     return saved.at(-1)
   }
-  return { page, hide, pinnedCells, pickerCell, save }
+  return { page, hide, pinnedCells, pickerCell, orderButton, save }
 }
 
 test('编辑页的上移作用于可见的已固定项，忽略已不可见的草稿 id', async () => {
   const edit = mountEditPage({ pinned: [11, 12, 13] })
   edit.hide(12)
   assert.deepEqual(edit.pinnedCells().map((n) => n.props.title), ['app-11', 'app-13'])
-  edit.pinnedCells()[1].props.onClick()
-  edit.page.one('ActionSheet').props.items.find((item) => item.key === 'up').onClick()
+  edit.orderButton(edit.pinnedCells()[1], '上移').props.onClick({ stopPropagation() {} })
   assert.deepEqual(edit.pinnedCells().map((n) => n.props.title), ['app-13', 'app-11'])
   assert.deepEqual(await edit.save(), [13, 11])
 })
@@ -168,4 +171,39 @@ test('编辑页未固定任何应用时只显示一行弱化说明，而不是�
   assert.equal(edit.pinnedCells().length, 0)
   const note = edit.page.all('Text').find((n) => n.props.className === 'note')
   assert.equal(note?.props.children, '未固定的位置会按你的使用习惯自动推荐')
+})
+
+test('已固定行右侧的上移/下移按钮直接交换相邻项，且不触发整行点击', async () => {
+  const edit = mountEditPage({ pinned: [11, 12, 13] })
+  let stopped = 0
+  const event = { stopPropagation: () => { stopped += 1 } }
+  edit.orderButton(edit.pinnedCells()[0], '下移').props.onClick(event)
+  assert.deepEqual(edit.pinnedCells().map((n) => n.props.title), ['app-12', 'app-11', 'app-13'])
+  edit.orderButton(edit.pinnedCells()[2], '上移').props.onClick(event)
+  assert.deepEqual(edit.pinnedCells().map((n) => n.props.title), ['app-12', 'app-13', 'app-11'])
+  assert.equal(stopped, 2, '按钮拦截冒泡，不会弹出整行的操作面板')
+  assert.equal(edit.page.one('ActionSheet').props.open, false)
+  assert.deepEqual(await edit.save(), [12, 13, 11])
+})
+
+test('首行不能上移、末行不能下移：按钮置灰且点击无效', () => {
+  const edit = mountEditPage({ pinned: [11, 12] })
+  const [first, last] = edit.pinnedCells()
+  const up = edit.orderButton(first, '上移')
+  const down = edit.orderButton(last, '下移')
+  assert.equal(up.props['aria-disabled'], true)
+  assert.equal(down.props['aria-disabled'], true)
+  assert.equal(edit.orderButton(first, '下移').props['aria-disabled'], false)
+  up.props.onClick({ stopPropagation() {} })
+  down.props.onClick({ stopPropagation() {} })
+  assert.deepEqual(edit.pinnedCells().map((n) => n.props.title), ['app-11', 'app-12'])
+})
+
+test('点击已固定行只提供取消固定，排序已移到行内按钮', () => {
+  const edit = mountEditPage({ pinned: [11, 12, 13] })
+  edit.pinnedCells()[1].props.onClick()
+  const items = edit.page.one('ActionSheet').props.items
+  assert.deepEqual(items.map((item) => item.key), ['remove'])
+  items[0].onClick()
+  assert.deepEqual(edit.pinnedCells().map((n) => n.props.title), ['app-11', 'app-13'])
 })

@@ -1,4 +1,4 @@
-import { Text } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
 import { ApplicationIcon } from '@/components/ApplicationIcon'
@@ -9,6 +9,7 @@ import {
   DetailContent,
   DetailSection,
   FormSubmitBar,
+  LineIcon,
   ManagementCell,
   ManagementFilterBar,
   ManagementPage,
@@ -86,45 +87,44 @@ function HomeAppsEditPage() {
   }
 
   const activeApp = active === null ? undefined : pinned[active]
-  // ActionSheet 的选项点击不会自动关闭面板，每项执行完后手动收起
-  const sheetItems: ActionSheetItem[] =
-    active === null || !draft
-      ? []
-      : [
-          ...(active > 0
-            ? [
-                {
-                  key: 'up',
-                  label: '上移',
-                  onClick: () => {
-                    setDraft(movePin(ids, active, -1))
-                    setActive(null)
-                  },
-                },
-              ]
-            : []),
-          ...(active < pinned.length - 1
-            ? [
-                {
-                  key: 'down',
-                  label: '下移',
-                  onClick: () => {
-                    setDraft(movePin(ids, active, 1))
-                    setActive(null)
-                  },
-                },
-              ]
-            : []),
-          {
-            key: 'remove',
-            label: '取消固定',
-            danger: true,
-            onClick: () => {
-              if (activeApp) setDraft(togglePin(ids, activeApp.menuId))
-              setActive(null)
-            },
+  // 排序在行内按钮完成，面板只承载取消固定；选项点击不会自动关闭面板，执行完后手动收起
+  const sheetItems: ActionSheetItem[] = activeApp
+    ? [
+        {
+          key: 'remove',
+          label: '取消固定',
+          danger: true,
+          onClick: () => {
+            setDraft(togglePin(ids, activeApp.menuId))
+            setActive(null)
           },
-        ]
+        },
+      ]
+    : []
+
+  // 排序是已固定区块的主要操作，所以按钮直接放在行上；拦截冒泡，避免同时弹出整行的操作面板
+  const orderButton = (index: number, delta: -1 | 1) => {
+    const disabled = index + delta < 0 || index + delta >= ids.length
+    const label = delta < 0 ? '上移' : '下移'
+    return (
+      <View
+        className={`${styles.order__button} ${disabled ? styles['order__button--disabled'] : ''}`}
+        hoverClass={disabled ? undefined : styles['order__button--pressed']}
+        aria-label={label}
+        aria-disabled={disabled}
+        onClick={(event) => {
+          event.stopPropagation()
+          if (!disabled) setDraft(movePin(ids, index, delta))
+        }}
+      >
+        <LineIcon
+          name={delta < 0 ? 'chevronUp' : 'chevronDown'}
+          size={18}
+          color={disabled ? '#C9CDD4' : '#4E5969'}
+        />
+      </View>
+    )
+  }
 
   return (
     <ManagementPage withActions>
@@ -141,6 +141,12 @@ function HomeAppsEditPage() {
                   key={app.menuId}
                   leading={<ApplicationIcon id={app.id} icon={app.icon} />}
                   title={app.name}
+                  tag={
+                    <View className={styles.order}>
+                      {orderButton(index, -1)}
+                      {orderButton(index, 1)}
+                    </View>
+                  }
                   bordered={index < pinned.length - 1}
                   showArrow={false}
                   onClick={() => setActive(index)}

@@ -40,6 +40,7 @@ const ICONS = {
     '<path d="M12.034 12.681a.498.498 0 0 1 .647-.647l9 3.5a.5.5 0 0 1-.033.943l-3.444 1.068a1 1 0 0 0-.66.66l-1.067 3.443a.5.5 0 0 1-.943.033z"/><path d="M21 11V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>',
   square: '<rect width="16" height="16" x="4" y="4" rx="2"/>',
   chevronDown: '<path d="m6 9 6 6 6-6"/>',
+  chevronUp: '<path d="m18 15-6-6-6 6"/>',
   // 路径取自 lucide 的 building-2 与 image（ISC），非手绘近似。
   building:
     '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>',

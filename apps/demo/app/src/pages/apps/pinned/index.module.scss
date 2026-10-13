@@ -6,3 +6,23 @@
   line-height: 20px;
   color: var(--color-text-tertiary);
 }
+
+/* 已固定行右侧的上移/下移：两个 36px 热区并排，与分组行 Checkbox 同列 */
+.order {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.order__button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+}
+
+.order__button--pressed {
+  background: var(--color-bg-base);
+}
