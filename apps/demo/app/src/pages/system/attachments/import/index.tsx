@@ -15,7 +15,7 @@ import {
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { parseImportLinks } from '../model'
 
 const MODULE = 'system-attachments'

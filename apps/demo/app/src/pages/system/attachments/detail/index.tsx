@@ -26,7 +26,7 @@ import { confirmAction, useCanWrite } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
 import { navigateBack, navigateTo } from '@/utils/router'
-import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { formatSize, KIND_GLYPH, KIND_LABELS } from '../model'
 import styles from './index.module.scss'
 

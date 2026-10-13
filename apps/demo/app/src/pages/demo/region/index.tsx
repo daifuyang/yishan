@@ -17,7 +17,7 @@ import {
 } from '@/components/management'
 import { useCanWrite } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
-import { errorMessage, withAccountScope } from '../../system/_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import styles from './index.module.scss'
 
 const EMPTY = '—'

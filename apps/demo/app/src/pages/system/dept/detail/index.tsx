@@ -25,7 +25,7 @@ import * as api from '@/api/admin/dept'
 import { getDeptUsers } from '@/api/contacts'
 import type { AdminDept } from '@/api/admin/types'
 import type { DeptUser } from '@/api/types'
-import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 
 function DeptDetailPage() {
   const guard = useRequireAuth({ moduleId: 'system-dept' })

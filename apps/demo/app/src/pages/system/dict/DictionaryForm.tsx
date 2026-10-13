@@ -17,7 +17,7 @@ import {
 import { useCanWrite } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { errorMessage } from '../_shared/AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 import {
   dictionaryDraft,
   dictionaryDataPayload,

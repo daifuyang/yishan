@@ -16,7 +16,7 @@ import {
   ManagementStates,
 } from '@/components/management'
 import { useRequireAuth } from '@/utils/auth-guard'
-import { errorMessage, withAccountScope } from '../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 
 function RegionPage() {
   const guard = useRequireAuth({ moduleId: 'system-region' })

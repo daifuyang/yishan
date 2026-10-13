@@ -21,7 +21,7 @@ import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
 import { navigateBack, navigateTo } from '@/utils/router'
-import { errorMessage, withAccountScope } from '../../../system/_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { removeTodo, todoStatusLabel, todoStatusVariant } from '../model'
 
 function TodoDetailPage() {

@@ -123,7 +123,7 @@ function mountEditPage({ pinned, max = 8 }) {
       ].map((name) => [name, name]),
     ),
     '@/modules/registry': { MAX_HOME_APPS: max, getWorkbenchGroups: (menus) => menus },
-    '@/pages/system/_shared/AdminUI': { withAccountScope: (Page) => Page },
+    '@/utils/account-scope': { withAccountScope: (Page) => Page },
     '@/stores/auth': { useAuthStore: (select) => select({ user: { permissions: [] }, enabledModuleIds: [] }) },
     '@/stores/modules': { useModuleStore },
     '@/utils/auth-guard': { useRequireAuth: () => ({ ready: true, allowed: true }) },

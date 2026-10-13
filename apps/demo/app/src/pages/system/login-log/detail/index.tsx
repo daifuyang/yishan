@@ -7,7 +7,7 @@ import { StateView } from '@/components/feedback'
 import { DetailContent, DetailHero, DetailRow, DetailSection, ManagementPage, ManagementPageHeader } from '@/components/management'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
-import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 
 function LoginLogDetail() {
   const guard = useRequireAuth({ moduleId: 'system-login-log' })

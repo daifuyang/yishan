@@ -11,7 +11,7 @@ import { getSessionVersion } from '@/api/client'
 import { confirmAction, useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { errorMessage } from '../_shared/AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 import { providerLabel, type StorageSection, sectionPayload, validateStorage } from './model'
 
 const MODULE_ID = 'system-storage'

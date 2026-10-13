@@ -27,7 +27,7 @@ function mount({ permissions = [LIST, 'system:attachment:update'], update, folde
       canWriteModuleNow: (_, r) => r.every((x) => permissions.includes(x)),
     },
     '@/utils/router': { navigateBack: () => calls.back++ },
-    '../../_shared/AdminUI': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
+    '@/utils/account-scope': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
     '../FolderTreeSheet': { FolderTreeSheet: 'FolderTreeSheet' },
     './index.module.scss': scss,
   }, { router: { id: '9' } })

@@ -23,7 +23,7 @@ import { SYSTEM_PAGES } from '@/constants/routes'
 import * as api from '@/api/admin/dict'
 import type { AdminDictType, AdminDictData } from '@/api/admin/types'
 import { StateView } from '@/components/feedback'
-import { errorMessage } from '../_shared/AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 import {
   buildDictQuery,
   DEFAULT_DICT_FILTERS,

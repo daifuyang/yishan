@@ -34,7 +34,7 @@ function mount({ item = IMAGE, permissions = ALL, confirm = true, session = { ve
     },
     '@/utils/format': { formatDateTime: (v) => `T(${v})` },
     '@/utils/router': { navigateBack: () => calls.back++, navigateTo: (u) => calls.navigate.push(u) },
-    '../../_shared/AdminUI': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
+    '@/utils/account-scope': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
     './index.module.scss': scss,
   }, { router: { id: '9' } })
   return { page, calls }

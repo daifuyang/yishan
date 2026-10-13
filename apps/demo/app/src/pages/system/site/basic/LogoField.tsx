@@ -5,7 +5,7 @@ import { attachmentUrl, uploadAttachment } from '@/api/admin/attachments'
 import { ActionSheet, FormField, LineIcon } from '@/components/management'
 import { useCanWrite } from '@/hooks'
 import { isPickerCancel } from '@/utils/picker'
-import { errorMessage } from '../../_shared/AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 import { previewImage } from '../model'
 import styles from './LogoField.module.scss'
 

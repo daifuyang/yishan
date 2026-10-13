@@ -76,8 +76,7 @@ function mount(entry, api, options = {}) {
       SYSTEM_PAGES: { moduleDetail: 'pages/system/module-management/detail/index' },
     },
     '@/utils/router': { navigateTo: options.navigate || (() => {}) },
-    '../_shared/AdminUI': { withAccountScope: (x) => x, errorMessage: (e) => e.message },
-    '../../_shared/AdminUI': { withAccountScope: (x) => x, errorMessage: (e) => e.message },
+    '@/utils/account-scope': { withAccountScope: (x) => x, errorMessage: (e) => e.message },
     './index.module.scss': {},
   }).default
   function nodes(t) {

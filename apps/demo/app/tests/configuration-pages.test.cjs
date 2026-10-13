@@ -110,7 +110,7 @@ function pageHarness(
       useCurrentModuleAccess: () => () => current && allowed,
       canWriteModuleNow: () => current && allowed && write,
     },
-    '../../_shared/AdminUI': {
+    '@/utils/account-scope': {
       withAccountScope: (component) => component,
       errorMessage: (error) => error.message,
     },
@@ -118,13 +118,6 @@ function pageHarness(
     '../form.module.scss': {},
     './LogoField.module.scss': {},
     './ConnectionTest.module.scss': {},
-    '../_shared/AdminUI': {
-      withAccountScope: (component) => component,
-      AdminPage: 'AdminPage',
-      AdminNotice: 'AdminNotice',
-      AdminSelect: 'AdminSelect',
-      errorMessage: (error) => error.message,
-    },
     '@/api/admin/site': { ...site, ...api },
     '@/api/admin/storage': api,
     '@/api/admin/region': api,

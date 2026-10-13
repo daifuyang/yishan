@@ -21,7 +21,7 @@ import { SYSTEM_PAGES } from '@/constants/routes'
 import { useCanWrite, useListPagination } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
-import { withAccountScope } from '../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import {
   buildDeptQuery,
   DEFAULT_DEPT_FILTERS,

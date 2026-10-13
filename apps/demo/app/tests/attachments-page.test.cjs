@@ -137,7 +137,7 @@ function mount({
           required.every((c) => permissions.includes(c)),
     },
     '@/utils/router': { navigateTo: (url) => calls.navigate.push(url) },
-    '../_shared/AdminUI': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
+    '@/utils/account-scope': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
     './chooseFiles': {
       chooseFiles: async () => [{ path: 'f', name: 'c.pdf', size: 1, mimeType: 'application/pdf' }],
     },

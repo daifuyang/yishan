@@ -10,7 +10,7 @@ import {
   TextAreaField,
   TextField,
 } from '@/components/management'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { sectionOf } from '../model'
 import { useSiteConfig } from '../useSiteConfig'
 

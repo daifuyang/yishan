@@ -1,7 +1,7 @@
 import { getAdminMenuTree } from '@/api/admin/menu'
 import { menuResourceType } from '@/components/management'
 import { SYSTEM_PAGES } from '@/constants/routes'
-import { withAccountScope } from '../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { MenuTreeListPage } from '../_shared/MenuTreeListPage'
 import { menuMatches, MENU_TYPE_OPTIONS } from './filters'
 

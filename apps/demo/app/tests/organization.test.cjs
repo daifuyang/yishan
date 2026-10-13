@@ -192,6 +192,8 @@ function mountDepartmentForm(
     "../_shared/AdminUI": {
       AdminSelect: "AdminSelect",
       AdminNotice: "AdminNotice",
+    },
+    "@/utils/account-scope": {
       errorMessage: (cause) => cause.message,
     },
   }).default;

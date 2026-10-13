@@ -22,7 +22,7 @@ import { useCanWrite, useListPagination } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
 import { navigateTo } from '@/utils/router'
-import { withAccountScope } from '../../system/_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import {
   buildTodoQuery,
   DEFAULT_TODO_FILTERS,

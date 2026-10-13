@@ -5,7 +5,7 @@ import { getSessionVersion } from '@/api/client'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { errorMessage } from '../_shared/AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 import { pickFields, type SiteField } from './model'
 
 const MODULE_ID = 'system-site'

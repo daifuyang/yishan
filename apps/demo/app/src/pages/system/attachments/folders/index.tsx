@@ -14,7 +14,7 @@ import { SYSTEM_PAGES } from '@/constants/routes'
 import { useCanWrite } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
-import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { KIND_LABELS } from '../model'
 
 const MODULE = 'system-attachments'

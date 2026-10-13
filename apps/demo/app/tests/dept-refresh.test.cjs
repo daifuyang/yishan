@@ -40,7 +40,7 @@ test('department detail pull-down refresh reloads detail and members without dup
     '@/utils/router': {},
     '@/api/admin/dept': { getAdminDept: async () => { calls.detail++; return {id: 5, name: '部门', status: '1'} } },
     '@/api/contacts': { getDeptUsers: async () => { calls.members++; return [] } },
-    '../../_shared/AdminUI': { errorMessage: (error) => error.message, withAccountScope: (value) => value },
+    '@/utils/account-scope': { errorMessage: (error) => error.message, withAccountScope: (value) => value },
   }).default
   function render() {
     cursor = 0

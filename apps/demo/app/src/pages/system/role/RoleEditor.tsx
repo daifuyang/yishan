@@ -21,7 +21,8 @@ import { useCanWrite } from '@/hooks'
 import { hasRequiredPermissions } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
 import { canWriteModuleNow } from '@/utils/auth-guard'
-import { AdminNotice, AdminSelect, errorMessage } from '../_shared/AdminUI'
+import { errorMessage } from '@/utils/account-scope'
+import { AdminNotice, AdminSelect } from '../_shared/AdminUI'
 import { buildRoleAuthorization, flattenMenus } from './authorization'
 
 const scopes = [

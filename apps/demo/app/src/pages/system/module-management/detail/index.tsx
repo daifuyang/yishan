@@ -16,7 +16,7 @@ import {
 } from '@/components/management'
 import { confirmAction, useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
-import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 
 function ModuleDetailPage() {
   const guard = useRequireAuth({ moduleId: 'system-module-management' })

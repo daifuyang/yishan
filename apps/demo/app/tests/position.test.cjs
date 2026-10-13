@@ -115,7 +115,7 @@ function mountForm({ id, permissions, api }) {
         backs++
       },
     },
-    '../../_shared/AdminUI': {
+    '@/utils/account-scope': {
       withAccountScope: (component) => component,
       errorMessage: (error) => error.message,
     },

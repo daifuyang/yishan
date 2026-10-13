@@ -10,7 +10,7 @@ import {
   SwitchField,
   TextField,
 } from '@/components/management'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { activeCloud, QINIU_DEFAULTS, sectionOf } from '../model'
 import { useStorageConfig } from '../useStorageConfig'
 

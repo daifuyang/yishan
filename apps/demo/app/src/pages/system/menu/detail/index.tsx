@@ -1,7 +1,7 @@
 import { getAdminMenu, updateAdminMenu } from '@/api/admin/menu'
 import { DetailRow, DetailSection, menuResourceType } from '@/components/management'
 import { SYSTEM_PAGES } from '@/constants/routes'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { MenuDetailScaffold } from '../../_shared/MenuDetailScaffold'
 import { MENU_TYPE_LABELS, menuCanHaveChildren } from '../filters'
 import { removeMenu } from '../model'

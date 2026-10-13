@@ -4,7 +4,7 @@ const { loadTs } = require('./helpers/load-ts.cjs')
 
 test('management page identity changes for account switch but not access-token refresh', () => {
   let state = { user: { id: 1 }, token: 'old' }
-  const { withAccountScope } = loadTs('src/pages/system/_shared/AdminUI.tsx', {
+  const { withAccountScope } = loadTs('src/utils/account-scope.ts', {
     '@tarojs/components': {}, '@/components/molecules': {}, '@/components/layout': {}, '@/utils/router': {}, './admin.scss': {},
     '@/stores/auth': { useAuthStore: (selector) => selector(state) },
   })

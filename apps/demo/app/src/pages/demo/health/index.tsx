@@ -16,7 +16,7 @@ import {
 } from '@/components/management'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
-import { errorMessage, withAccountScope } from '../../system/_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { envLabel, formatBytes, formatUptime, memoryUsage, memoryUsed } from './model'
 
 function HealthPage() {

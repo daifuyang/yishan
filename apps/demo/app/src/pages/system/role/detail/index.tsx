@@ -23,7 +23,7 @@ import { useCanWrite } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
 import { navigateBack, navigateTo } from '@/utils/router'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import {
   DATA_SCOPE_LABELS,
   removeRole,

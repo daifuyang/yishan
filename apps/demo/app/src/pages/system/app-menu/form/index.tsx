@@ -5,7 +5,7 @@ import {
   updateAdminAppMenu,
 } from '@/api/admin/appMenu'
 import { EnumField, FormField, FormSection, TextField } from '@/components/management'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { MenuFormScaffold, useMenuForm } from '../../_shared/MenuFormScaffold'
 import {
   APP_MENU_TYPE_LABELS,

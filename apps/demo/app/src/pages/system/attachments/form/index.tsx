@@ -18,7 +18,7 @@ import {
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { FolderTreeSheet } from '../FolderTreeSheet'
 import { attachmentEditPayload, folderLabel, STATUS_ENUM } from '../model'
 import styles from './index.module.scss'

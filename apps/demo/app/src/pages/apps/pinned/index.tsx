@@ -18,7 +18,7 @@ import {
   ManagementStates,
 } from '@/components/management'
 import { getWorkbenchGroups, MAX_HOME_APPS } from '@/modules/registry'
-import { withAccountScope } from '@/pages/system/_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
 import { useRequireAuth } from '@/utils/auth-guard'

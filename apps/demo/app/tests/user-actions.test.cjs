@@ -21,8 +21,7 @@ function renderPage(page, permissions) {
   let stateIndex = 0;
   let actions;
   const mocks = {
-    '../_shared/AdminUI': { withAccountScope: (component) => component },
-    '../../_shared/AdminUI': { withAccountScope: (component) => component },
+    '@/utils/account-scope': { withAccountScope: (component) => component },
     react: {
       useMemo: (compute) => compute(),
       useEffect() {},

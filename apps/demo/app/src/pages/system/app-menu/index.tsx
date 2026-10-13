@@ -1,6 +1,6 @@
 import { getAdminAppMenuTree, type AdminAppMenu } from '@/api/admin/appMenu'
 import { SYSTEM_PAGES } from '@/constants/routes'
-import { withAccountScope } from '../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { MenuTreeListPage } from '../_shared/MenuTreeListPage'
 import { APP_MENU_TYPE_OPTIONS, appMenuResourceType } from './model'
 

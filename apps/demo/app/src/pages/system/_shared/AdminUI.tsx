@@ -1,18 +1,9 @@
-import type { ComponentType, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Button, Picker, Text, View } from '@tarojs/components'
 import { FormField } from '@/components/molecules'
 import { PageContainer } from '@/components/layout'
 import { navigateBack } from '@/utils/router'
-import { useAuthStore } from '@/stores/auth'
 import './admin.scss'
-
-/** Account changes discard page drafts; ordinary token renewal keeps them. */
-export function withAccountScope(Page: ComponentType) {
-  return function AccountScopedPage() {
-    const identity = useAuthStore((state) => state.user?.id)
-    return <Page key={identity ?? 'signed-out'} />
-  }
-}
 
 export function AdminPage({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return <PageContainer><View className="admin-page">
@@ -33,8 +24,4 @@ export function AdminSelect({ label, value, options, onChange, disabled = false 
 
 export function AdminNotice({ children }: { children: ReactNode }) {
   return <View className="admin-notice"><Text>{children}</Text></View>
-}
-
-export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : '操作失败，请重试'
 }

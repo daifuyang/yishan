@@ -26,7 +26,7 @@ function harness(entry, mocks = {}) {
     useEffect(fn, next) { const i = ei++; if (!deps[i] || next.some((v, j) => deps[i][j] !== v)) { deps[i] = next; effects.push(() => { cleanups[i]?.(); cleanups[i] = fn() }) } },
   }
   const components = new Proxy({}, { get: (_, key) => key })
-  const Page = loadTs(entry, { react, 'react/jsx-runtime': jsx, '@tarojs/components': components, '@/components/management': components, '@/components/feedback': components, '@/components/molecules': components, '../../_shared/AdminUI': { withAccountScope: page => page, errorMessage: e => e.message }, '../_shared/AdminUI': { errorMessage: e => e.message }, './index.module.scss': {}, ...mocks }).default
+  const Page = loadTs(entry, { react, 'react/jsx-runtime': jsx, '@tarojs/components': components, '@/components/management': components, '@/components/feedback': components, '@/components/molecules': components, '@/utils/account-scope': { withAccountScope: page => page, errorMessage: e => e.message }, './index.module.scss': {}, ...mocks }).default
   return { render() { si = ri = ei = 0; tree = Page(); while (effects.length) {
       effects.shift()()
     }

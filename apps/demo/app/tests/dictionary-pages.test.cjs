@@ -116,7 +116,7 @@ function mount(path, api, params = {}) {
     },
     '@/utils/format': { formatDateTime: (value) => value },
     '@/constants/routes': { SYSTEM_PAGES: {} },
-    '../_shared/AdminUI': { errorMessage: (cause) => cause.message },
+    '@/utils/account-scope': { errorMessage: (cause) => cause.message },
     './form': loadTs('src/pages/system/dict/form.ts'),
   }).default
   function render() {

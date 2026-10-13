@@ -23,7 +23,7 @@ import {
 import { useCanWrite } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
-import { errorMessage } from './AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 import {
   DEFAULT_TREE_FILTERS,
   type FilterableNode,

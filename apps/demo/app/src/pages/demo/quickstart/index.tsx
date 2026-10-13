@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
-import { withAccountScope } from '../../system/_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import styles from './index.module.scss'
 
 const STEPS = [

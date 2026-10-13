@@ -4,7 +4,7 @@ import { StateView } from '@/components/feedback'
 import { ManagementPage, ManagementPageHeader } from '@/components/management'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import DepartmentForm from '../DepartmentForm'
 
 function DepartmentFormPage() {

@@ -10,7 +10,7 @@ import {
   ManagementPageHeader,
 } from '@/components/management'
 import { navigateTo } from '@/utils/router'
-import { withAccountScope } from '../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { activeCloud, providerLabel, regionLabel, STORAGE_SECTIONS } from './model'
 import { useStorageConfig } from './useStorageConfig'
 

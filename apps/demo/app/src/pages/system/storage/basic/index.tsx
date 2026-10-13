@@ -12,7 +12,7 @@ import {
   SecretField,
   TextField,
 } from '@/components/management'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { PROVIDER_OPTIONS, QINIU_DEFAULTS, QINIU_REGIONS, sectionOf } from '../model'
 import { useStorageConfig } from '../useStorageConfig'
 import { ConnectionTest } from './ConnectionTest'

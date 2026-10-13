@@ -52,6 +52,8 @@ function mountEditor(entry, name, props, apiMocks, permissions = []) {
     "../_shared/AdminUI": {
       AdminSelect: "AdminSelect",
       AdminNotice: "AdminNotice",
+    },
+    "@/utils/account-scope": {
       errorMessage: (error) => error.message,
     },
     ...apiMocks,
@@ -268,11 +270,8 @@ function pageNodes(page, permissions, records, extraMocks = {}) {
         finished: true,
       }),
     },
-    "../_shared/AdminUI": {
-      AdminPage: "AdminPage",
+    "@/utils/account-scope": {
       withAccountScope: (component) => component,
-      AdminSelect: "AdminSelect",
-      AdminNotice: "AdminNotice",
       errorMessage: String,
     },
     "./RoleEditor": { RoleEditor: "RoleEditor" },

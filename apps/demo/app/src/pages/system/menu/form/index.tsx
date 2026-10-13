@@ -14,7 +14,7 @@ import {
 } from '@/components/management'
 import { SYSTEM_PAGES } from '@/constants/routes'
 import { navigateTo } from '@/utils/router'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { MenuFormScaffold, useMenuForm } from '../../_shared/MenuFormScaffold'
 import { MENU_TYPE_LABELS } from '../filters'
 import { menuDraft, menuPayload, type MenuFormValues } from '../model'

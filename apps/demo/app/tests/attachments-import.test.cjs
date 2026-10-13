@@ -14,7 +14,7 @@ function mount({ router = { folderId: '7' }, importImages } = {}) {
     '@/hooks': { useCanWrite: () => true },
     '@/utils/auth-guard': { useRequireAuth: () => ({ ready: true, allowed: true }), canWriteModuleNow: () => true },
     '@/utils/router': { navigateBack: () => calls.back++ },
-    '../../_shared/AdminUI': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
+    '@/utils/account-scope': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
   }, { router })
   return { page, calls, bump: () => version++ }
 }

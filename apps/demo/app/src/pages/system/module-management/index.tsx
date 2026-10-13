@@ -15,7 +15,7 @@ import {
 import { SYSTEM_PAGES } from '@/constants/routes'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
-import { errorMessage, withAccountScope } from '../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 
 function ModuleManagementPage() {
   const guard = useRequireAuth({ moduleId: 'system-module-management' })

@@ -34,7 +34,7 @@ const common = (permissions) => ({
       (r = []) =>
         r.every((x) => permissions.includes(x)),
   },
-  '../../_shared/AdminUI': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
+  '@/utils/account-scope': { withAccountScope: (c) => c, errorMessage: (e) => e.message },
 })
 
 function mountList(permissions = ['system:attachment:create']) {

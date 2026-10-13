@@ -17,7 +17,7 @@ import {
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { buildActionPermissionCodes, buildRoleAuthorization, flattenMenus } from '../permissions'
 
 import styles from './permissions.module.scss'

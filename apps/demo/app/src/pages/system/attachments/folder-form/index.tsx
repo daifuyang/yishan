@@ -28,7 +28,7 @@ import {
 import { confirmAction, useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { errorMessage, withAccountScope } from '../../_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { FolderTreeSheet } from '../FolderTreeSheet'
 import {
   FOLDER_KIND_OPTIONS,

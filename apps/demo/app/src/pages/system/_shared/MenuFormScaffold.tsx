@@ -6,7 +6,7 @@ import { FormContent, FormError, FormSubmitBar, ManagementPage, ManagementPageHe
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { errorMessage } from './AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 
 /**
  * 菜单表单与工作台菜单表单共用的加载/保存流程和页面外壳。

@@ -20,7 +20,7 @@ import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
 import { navigateBack, navigateTo } from '@/utils/router'
-import { errorMessage } from './AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 
 /**
  * 菜单详情与工作台菜单详情共用的页面骨架：加载、启停用、删除、底部操作栏、

@@ -70,7 +70,7 @@ function mount({
     didShow,
     didHide;
   const Page = loadTs("src/pages/system/user/detail/index.tsx", {
-    '../../_shared/AdminUI': { withAccountScope: (component) => component },
+    '@/utils/account-scope': { withAccountScope: (component) => component },
     react: {
       useState(initial) {
         const index = stateIndex++;

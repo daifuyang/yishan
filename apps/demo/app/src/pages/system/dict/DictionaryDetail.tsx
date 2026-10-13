@@ -20,7 +20,7 @@ import { confirmAction, useCanWrite } from '@/hooks'
 import { useCurrentModuleAccess, useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
 import { navigateBack, navigateTo } from '@/utils/router'
-import { errorMessage } from '../_shared/AdminUI'
+import { errorMessage } from '@/utils/account-scope'
 
 export default function DictionaryDetail({ item = false }: { item?: boolean }) {
   const guard = useRequireAuth({ moduleId: 'system-dict' })

@@ -1,5 +1,5 @@
 import DictionaryForm from '../../DictionaryForm'
-import { withAccountScope } from '../../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 function Page() {
   return <DictionaryForm item />
 }

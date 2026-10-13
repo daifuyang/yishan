@@ -9,7 +9,7 @@ import { Checkbox, FormSubmitBar, ManagementPage, ManagementPageHeader, Manageme
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { withAccountScope } from '../../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { buildRoleAuthorization } from '../permissions'
 
 // 与「功能授权」页同一套视觉

@@ -19,7 +19,7 @@ import { adminUserApi } from '@/api'
 import type { AdminUser } from '@/api/admin/types'
 import { PERMS, SYSTEM_PAGES, TAB_PAGES } from '@/constants/routes'
 
-import { withAccountScope } from '../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import {
   buildUserQuery,
   DEFAULT_USER_FILTERS,

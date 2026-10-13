@@ -118,7 +118,7 @@ function mount({ backend, canWrite = true } = {}) {
       canWriteModuleNow: () => canWrite,
     },
     '@/utils/router': { navigateBack: () => back.push(true) },
-    '../../_shared/AdminUI': { withAccountScope: (Page) => Page },
+    '@/utils/account-scope': { withAccountScope: (Page) => Page },
     '../permissions/permissions.module.scss': scssMock(),
   }).default
 

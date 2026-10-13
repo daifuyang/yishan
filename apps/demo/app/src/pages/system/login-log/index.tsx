@@ -8,7 +8,7 @@ import { useListPagination } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { formatDateTime } from '@/utils/format'
 import { navigateTo } from '@/utils/router'
-import { withAccountScope } from '../_shared/AdminUI'
+import { withAccountScope } from '@/utils/account-scope'
 import { buildLoginLogQuery } from './query'
 
 const STATUS = [{ key: '', label: '全部状态' }, { key: '1', label: '登录成功' }, { key: '0', label: '登录失败' }]

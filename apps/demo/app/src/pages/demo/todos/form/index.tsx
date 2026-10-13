@@ -21,7 +21,7 @@ import {
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
-import { errorMessage, withAccountScope } from '../../../system/_shared/AdminUI'
+import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { TODO_STATUS_LABELS, todayDate, todoFormValues, todoPayload, type TodoFormValues } from '../model'
 import styles from './index.module.scss'
 
