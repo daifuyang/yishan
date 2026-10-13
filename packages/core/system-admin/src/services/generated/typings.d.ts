@@ -93,6 +93,11 @@ declare namespace SystemAPI {
     type: string;
   };
 
+  type appGetMyLoginLogParams = {
+    /** 日志ID */
+    id: number;
+  };
+
   type appGetMyLoginLogsParams = {
     page?: number;
     pageSize?: number;

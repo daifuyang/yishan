@@ -47,6 +47,23 @@ export async function appGetMyLoginLogs(
   );
 }
 
+/** 我的登录日志详情 根据日志ID获取当前用户的单条登录日志详情（越权与不存在均返回 LOGIN_LOG_NOT_FOUND） GET /api/v1/app/users/me/login-logs/${param0} */
+export async function appGetMyLoginLog(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: SystemAPI.appGetMyLoginLogParams,
+  options?: { [key: string]: any }
+) {
+  const { id: param0, ...queryParams } = params;
+  return request<SystemAPI.sysLoginLogDetailResp>(
+    `/api/v1/app/users/me/login-logs/${param0}`,
+    {
+      method: "GET",
+      params: { ...queryParams },
+      ...(options || {}),
+    }
+  );
+}
+
 /** 修改当前用户密码 需要传入旧密码与新密码，旧密码校验通过后写入新密码并撤销所有 token PUT /api/v1/app/users/me/password */
 export async function appChangeMyPassword(
   body: {
