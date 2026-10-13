@@ -94,6 +94,8 @@ export interface TextFieldProps {
   placeholder?: string
   maxlength?: number
   disabled?: boolean
+  /** 键盘类型，如手机号用 number；默认 text */
+  type?: 'text' | 'number' | 'idcard' | 'digit'
 }
 
 export function TextField({
@@ -102,10 +104,12 @@ export function TextField({
   placeholder,
   maxlength = 50,
   disabled,
+  type,
 }: TextFieldProps) {
   return (
     <Input
       className={cx(styles.field__input, disabled && styles['field__input--disabled'])}
+      type={type}
       value={value}
       placeholder={placeholder}
       maxlength={maxlength}
@@ -324,19 +328,23 @@ export function FormError({ children }: FormErrorProps) {
 
 export interface FormSubmitBarProps {
   text: string
+  /** 提交中：按钮不可点，文案换成「保存中…」 */
   submitting?: boolean
+  /** 暂不可提交（如必填未填完）：按钮不可点，文案保持原样 */
+  disabled?: boolean
   onSubmit: () => void
 }
 
 /** 底部固定保存按钮。 */
-export function FormSubmitBar({ text, submitting = false, onSubmit }: FormSubmitBarProps) {
+export function FormSubmitBar({ text, submitting = false, disabled = false, onSubmit }: FormSubmitBarProps) {
+  const blocked = submitting || disabled
   return (
     <View className={styles.submit}>
       <View
-        className={cx(styles.submit__button, submitting && styles.submit__disabled)}
-        onClick={submitting ? undefined : onSubmit}
+        className={cx(styles.submit__button, blocked && styles.submit__disabled)}
+        onClick={blocked ? undefined : onSubmit}
         aria-label={text}
-        aria-disabled={submitting}
+        aria-disabled={blocked}
       >
         <Text>{submitting ? '保存中…' : text}</Text>
       </View>

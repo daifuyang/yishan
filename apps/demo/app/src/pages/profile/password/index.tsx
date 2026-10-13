@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { View, Text, Input } from '@tarojs/components'
+import { View, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import { useAuthStore } from '@/stores/auth'
@@ -96,11 +96,8 @@ export default function ProfilePassword() {
   const ready = Boolean(oldPwd && newPwd && confirmPwd)
 
   const handleSubmit = async () => {
-    if (!auth.ready || !auth.allowed || !isCurrent() || submitLocked.current) return
-    if (!ready) {
-      Taro.showToast({ title: '请填写完整密码信息', icon: 'none' })
-      return
-    }
+    // 三项未填完时按钮已置灰不可点，这里只做兜底，不再另行提示
+    if (!auth.ready || !auth.allowed || !isCurrent() || submitLocked.current || !ready) return
     const invalid = validate(oldPwd, newPwd, confirmPwd)
     if (invalid) {
       Taro.showToast({ title: invalid, icon: 'none' })
@@ -137,11 +134,11 @@ export default function ProfilePassword() {
   const disabled = submitting || !auth.ready || !auth.allowed
   return (
     <ManagementPage>
-      {Taro.getEnv() === Taro.ENV_TYPE.WEB && <ManagementPageHeader title="修改密码" />}
+      <ManagementPageHeader title="修改密码" showBack={process.env.TARO_ENV === 'h5'} />
       <FormContent>
         <FormSection
           title="密码信息"
-          hint="长度 6-50 位，须同时包含字母和数字，可使用特殊字符 @$!%*?&"
+          hint="6-50 位，须同时包含字母和数字，可含特殊字符 @$!%*?&；修改后需重新登录"
         >
           <PasswordRow
             label="当前密码"
@@ -165,11 +162,8 @@ export default function ProfilePassword() {
             disabled={disabled}
           />
         </FormSection>
-        <Text className={styles.pwd__tip}>
-          修改成功后，所有登录会话将失效，请使用新密码重新登录。
-        </Text>
       </FormContent>
-      <FormSubmitBar text="确认修改" submitting={disabled || !ready} onSubmit={handleSubmit} />
+      <FormSubmitBar text="确认修改" submitting={submitting} disabled={disabled || !ready} onSubmit={handleSubmit} />
     </ManagementPage>
   )
 }

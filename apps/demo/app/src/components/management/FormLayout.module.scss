@@ -225,7 +225,8 @@
   color: var(--color-text-primary);
 }
 
-.enumPickerPlaceholder {
+.enumPickerPlaceholder,
+.field--disabled .enumPickerValue {
   color: var(--color-text-tertiary);
 }
 

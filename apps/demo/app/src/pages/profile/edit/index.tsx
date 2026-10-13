@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, Input, Picker } from '@tarojs/components'
+import { View, Text, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import {
@@ -8,11 +8,11 @@ import {
   FormContent,
   FormSection,
   FormField,
+  EnumField,
   TextField,
   FormSubmitBar,
 } from '@/components/management'
 import { getSessionVersion } from '@/api/client'
-import { LineIcon } from '@/components/icons'
 import { useAuthStore } from '@/stores/auth'
 import { userApi } from '@/api'
 import { useRequireAuth } from '@/utils/auth-guard'
@@ -174,19 +174,14 @@ export default function ProfileEdit() {
     }
   }
 
-  const genderRange = genderOptions.map((g) => g.label)
-  const genderValue = (() => {
-    const idx = genderOptions.findIndex((g) => g.value === gender)
-    return idx >= 0 ? idx : 0
-  })()
-
+  const genderEnum = genderOptions.map((option) => ({ value: option.value, label: option.label }))
   const disabled = submitting || !auth.ready || !auth.allowed || !user
   return (
     <ManagementPage>
-      {Taro.getEnv() === Taro.ENV_TYPE.WEB && <ManagementPageHeader title="个人资料" />}
+      <ManagementPageHeader title="个人资料" showBack={process.env.TARO_ENV === 'h5'} />
       <FormContent>
         <FormSection title="基本信息">
-          <FormField label="昵称">
+          <FormField label="昵称" disabled={disabled}>
             <TextField
               value={nickname}
               onChange={setNickname}
@@ -194,7 +189,7 @@ export default function ProfileEdit() {
               disabled={disabled}
             />
           </FormField>
-          <FormField label="真实姓名">
+          <FormField label="真实姓名" disabled={disabled}>
             <TextField
               value={realName}
               onChange={setRealName}
@@ -202,26 +197,8 @@ export default function ProfileEdit() {
               disabled={disabled}
             />
           </FormField>
-          <FormField label="性别" disabled={disabled}>
-            <Picker
-              className={styles.picker}
-              mode="selector"
-              disabled={disabled}
-              range={genderRange}
-              value={genderValue}
-              onChange={(event) =>
-                setGender(genderOptions[Number(event.detail.value)]?.value || '0')
-              }
-            >
-              <View className={styles.pickerValue}>
-                <Text>
-                  {genderOptions.find((option) => option.value === gender)?.label || '保密'}
-                </Text>
-                <LineIcon name="chevronRight" size={16} />
-              </View>
-            </Picker>
-          </FormField>
-          <FormField label="出生日期" disabled={disabled}>
+          <EnumField label="性别" value={gender} options={genderEnum} onChange={setGender} disabled={disabled} />
+          <FormField label="出生日期" disabled={disabled} arrow>
             <Picker
               className={styles.picker}
               mode="date"
@@ -230,15 +207,14 @@ export default function ProfileEdit() {
               end={today()}
               onChange={(event) => setBirthDate(String(event.detail.value))}
             >
-              <View className={`${styles.pickerValue} ${birthDate ? '' : styles.empty}`}>
+              <View className={`${styles.pickerValue} ${birthDate && !disabled ? '' : styles.empty}`}>
                 <Text>{birthDate || '请选择出生日期'}</Text>
-                <LineIcon name="chevronRight" size={16} />
               </View>
             </Picker>
           </FormField>
         </FormSection>
         <FormSection title="联系方式">
-          <FormField label="邮箱">
+          <FormField label="邮箱" disabled={disabled}>
             <TextField
               value={email}
               onChange={setEmail}
@@ -247,12 +223,11 @@ export default function ProfileEdit() {
               disabled={disabled}
             />
           </FormField>
-          <FormField label="手机号">
-            <Input
-              className={styles.input}
+          <FormField label="手机号" disabled={disabled}>
+            <TextField
               type="number"
               value={phone}
-              onInput={(event) => setPhone(event.detail.value)}
+              onChange={setPhone}
               placeholder="请输入手机号"
               maxlength={11}
               disabled={disabled}
@@ -260,7 +235,7 @@ export default function ProfileEdit() {
           </FormField>
         </FormSection>
       </FormContent>
-      <FormSubmitBar text="保存" submitting={disabled} onSubmit={handleSave} />
+      <FormSubmitBar text="保存" submitting={submitting} disabled={disabled} onSubmit={handleSave} />
     </ManagementPage>
   )
 }

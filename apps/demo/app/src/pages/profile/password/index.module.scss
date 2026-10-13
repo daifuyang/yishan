@@ -3,4 +3,3 @@
 .pwd__placeholder, .pwd__input::placeholder { color: var(--color-text-tertiary); }
 .pwd__eye { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 44px; margin-right: -8px; color: var(--color-text-tertiary); }
 .pwd__eye--pressed { color: var(--color-text-primary); }
-.pwd__tip { display: block; padding: 0 var(--space-4); color: var(--color-text-tertiary); font-size: var(--font-size-12); line-height: 20px; }

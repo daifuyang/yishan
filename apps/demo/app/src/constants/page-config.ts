@@ -15,6 +15,7 @@ export const PAGE_CONFIG: {
     'pages/profile/edit/index',
     'pages/profile/password/index',
     'pages/profile/login-log/index',
+    'pages/profile/login-log/detail/index',
     'pages/contacts/index/index',
     'pages/contacts/dept/index',
     'pages/system/login-log/index',

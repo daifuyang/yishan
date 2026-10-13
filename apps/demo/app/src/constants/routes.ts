@@ -13,6 +13,7 @@ export const SECONDARY_PAGES = {
   profileEdit: 'pages/profile/edit/index',
   profilePassword: 'pages/profile/password/index',
   profileLoginLog: 'pages/profile/login-log/index',
+  profileLoginLogDetail: 'pages/profile/login-log/detail/index',
   messages: 'pages/messages/index',
   security: 'pages/security/index',
   about: 'pages/about/index',

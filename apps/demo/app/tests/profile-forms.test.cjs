@@ -52,6 +52,7 @@ function harness(page, inputs = []) {
         'FormContent',
         'FormSection',
         'FormField',
+        'EnumField',
         'TextField',
         'FormSubmitBar',
         'LineIcon',
