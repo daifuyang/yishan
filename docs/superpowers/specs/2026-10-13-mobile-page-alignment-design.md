@@ -2,7 +2,7 @@
 
 日期：2026-10-13
 状态：待审阅
-范围：`apps/demo/app` 移动端页面、`packages/core/system-api` 登录日志只读接口及其 OpenAPI/客户端同步
+范围：`apps/demo/app` 移动端页面、`packages/core/system-api` 登录日志只读接口及其 OpenAPI/手写客户端同步
 
 ## 1. 目标与边界
 
@@ -21,9 +21,9 @@
 
 - **基础线**：共享组件、页头兼容、鉴权壳边界、账号作用域、token 和测试基线。
 - **页面线**：移动端页面迁移和通讯录交互修复。
-- **接口线**：登录日志按当前用户查询详情的 API、OpenAPI、生成客户端和详情页数据流。
+- **接口线**：登录日志按当前用户查询详情的 API、OpenAPI、App 手写 API client 和详情页数据流。
 
-基础线先交付。页面线可在基础线完成后分模块交付；接口线可与页面线并行，但登录详情页切换到真实请求必须等接口线的生成客户端完成。
+基础线先交付。页面线可在基础线完成后分模块交付；接口线可与页面线并行，但登录详情页切换到真实请求必须等接口线的手写 App client 完成。
 
 ## 2. 调研结论
 
@@ -183,10 +183,10 @@ getMyLoginLogById(userId: number, id: number): Promise<SysLoginLogResp>
 
 1. 运行 `pnpm --filter @yishan/demo-api openapi:dump`；
 2. 同步 `apps/demo/api/openapi.json` 和 `docs/architecture/api-v1-runtime-openapi.json`；
-3. 运行仓库规定的生成客户端命令，提交生成代码和类型；
-4. 运行 `pnpm check:openapi`，确认生成客户端 diff 干净。
+3. 在 `apps/demo/app/src/api/user.ts` 增加手写 API 方法，并在 `apps/demo/app/src/api/types.ts` 复用或补充响应类型；
+4. 运行 `pnpm check:openapi`，确认 OpenAPI 路径与手写 client 的 method/path/query 一致。
 
-不得手工在生成客户端里补接口，也不得新增数据库迁移。
+本 App 当前使用手写 API client，不生成新的 App 客户端；不得把 admin 端生成 client 的实现复制到 App，也不得新增数据库迁移。
 
 ### C3. App 数据流
 
@@ -272,6 +272,6 @@ pnpm test:integration
 
 - 基础线：生产源码没有旧 `PageHeader` import；`PageContainer`/`ManagementPage` 职责边界在代码和文档中一致；共享组件契约测试通过。
 - 页面线：目标页面不再使用被替换的旧组件或重复样式；通讯录层级、账号切换和请求次数符合测试；H5 窄屏检查通过。
-- 接口线：新路径在运行时 OpenAPI、Demo OpenAPI 和生成客户端三处一致；详情页刷新、深链、冷启动都能从服务端恢复；越权记录不可见且不泄露存在性。
+- 接口线：新路径在运行时 OpenAPI、Demo OpenAPI 和 App 手写 client 三处一致；详情页刷新、深链、冷启动都能从服务端恢复；越权记录不可见且不泄露存在性。
 
-完成三条线后，再决定是否将这份总 spec 拆成实施计划；在此之前不开始代码实现。
+三条线分别按对应实施计划交付；在计划执行前不开始代码实现。
