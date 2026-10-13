@@ -1532,6 +1532,13 @@
               "type": "number"
             }
           },
+          "appMenuIds": {
+            "description": "App 工作台菜单ID列表",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
           "permissionCodes": {
             "description": "后端功能/API 权限码列表",
             "type": "array",
@@ -1676,6 +1683,13 @@
               "type": "number"
             }
           },
+          "appMenuIds": {
+            "description": "App 工作台菜单ID列表",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
           "permissionCodes": {
             "description": "后端功能/API 权限码列表",
             "type": "array",
@@ -1725,6 +1739,13 @@
           },
           "menuIds": {
             "description": "菜单ID列表",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "appMenuIds": {
+            "description": "App 工作台菜单ID列表",
             "type": "array",
             "items": {
               "type": "number"
@@ -5490,36 +5511,8 @@
             "type": "string"
           },
           "system": {
-            "anyOf": [
-              {
-                "description": "系统管理",
-                "type": "string",
-                "enum": [
-                  "system"
-                ]
-              },
-              {
-                "description": "商城管理",
-                "type": "string",
-                "enum": [
-                  "shop"
-                ]
-              },
-              {
-                "description": "门户管理",
-                "type": "string",
-                "enum": [
-                  "portal"
-                ]
-              },
-              {
-                "description": "特殊权限",
-                "type": "string",
-                "enum": [
-                  "special"
-                ]
-              }
-            ]
+            "description": "分组 id：权限声明的 group（如 system、auth 或模块自己的分组）；PAT 专用分组为 special",
+            "type": "string"
           },
           "options": {
             "type": "array",
@@ -5594,17 +5587,12 @@
           "group": {
             "description": "权限分组",
             "type": "string"
-          },
-          "source": {
-            "description": "来源：core 或插件 ID",
-            "type": "string"
           }
         },
         "required": [
           "code",
           "label",
-          "group",
-          "source"
+          "group"
         ]
       },
       "permissionCatalogResp": {
@@ -5627,6 +5615,566 @@
             "items": {
               "$ref": "#/components/schemas/permissionCatalogItem"
             }
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "storageConnectionTestReq": {
+        "type": "object",
+        "description": "待测试的云存储配置草稿；密钥留空时使用已保存的密钥",
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/storageProvider"
+          },
+          "qiniu": {
+            "$ref": "#/components/schemas/qiniuConfigSchema"
+          },
+          "aliyunOss": {
+            "$ref": "#/components/schemas/aliyunOssConfigSchema"
+          }
+        },
+        "required": [
+          "provider"
+        ],
+        "additionalProperties": false
+      },
+      "storageConnectionTestResp": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "ok": {
+                "type": "boolean",
+                "description": "是否连接成功"
+              },
+              "provider": {
+                "type": "string",
+                "enum": [
+                  "qiniu",
+                  "aliyunOss"
+                ]
+              },
+              "bucket": {
+                "type": "string"
+              },
+              "latencyMs": {
+                "type": "integer",
+                "description": "探测耗时（毫秒）"
+              },
+              "message": {
+                "type": "string",
+                "description": "失败原因"
+              }
+            },
+            "required": [
+              "ok",
+              "provider",
+              "bucket",
+              "latencyMs"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "appMenuNode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "工作台菜单ID",
+            "example": 1,
+            "type": "number"
+          },
+          "parentId": {
+            "description": "分组ID，分组本身为空",
+            "type": "number"
+          },
+          "type": {
+            "enum": [
+              0,
+              1
+            ],
+            "description": "类型（0:分组,1:应用入口）",
+            "example": 1,
+            "type": "integer"
+          },
+          "name": {
+            "description": "名称",
+            "example": "通讯录",
+            "type": "string"
+          },
+          "icon": {
+            "description": "图标名",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "page": {
+            "description": "App 页面入口，如 pages/contacts/index/index",
+            "type": "string"
+          },
+          "moduleId": {
+            "description": "所属模块ID，系统为 core",
+            "example": "core",
+            "type": "string"
+          },
+          "sortOrder": {
+            "description": "同级排序，越小越靠前",
+            "example": 10,
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "0",
+              "1"
+            ],
+            "description": "状态（0-禁用，1-启用）",
+            "example": "1",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "description": "创建时间",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "description": "更新时间",
+            "type": "string"
+          },
+          "children": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/appMenuNode"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "name",
+          "moduleId",
+          "sortOrder",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "saveAppMenuReq": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "名称",
+            "minLength": 1,
+            "maxLength": 100,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              0,
+              1
+            ],
+            "description": "类型（0:分组,1:应用入口）",
+            "type": "integer"
+          },
+          "parentId": {
+            "description": "分组ID，应用入口必填",
+            "type": "number"
+          },
+          "icon": {
+            "description": "图标名",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "page": {
+            "description": "App 页面入口",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "moduleId": {
+            "description": "所属模块ID",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "sortOrder": {
+            "description": "同级排序",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "0",
+              "1"
+            ],
+            "description": "状态",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "updateAppMenuReq": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "名称",
+            "minLength": 1,
+            "maxLength": 100,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              0,
+              1
+            ],
+            "description": "类型（0:分组,1:应用入口）",
+            "type": "integer"
+          },
+          "parentId": {
+            "description": "分组ID，应用入口必填",
+            "type": "number"
+          },
+          "icon": {
+            "description": "图标名",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "page": {
+            "description": "App 页面入口",
+            "maxLength": 255,
+            "type": "string"
+          },
+          "moduleId": {
+            "description": "所属模块ID",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "sortOrder": {
+            "description": "同级排序",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "0",
+              "1"
+            ],
+            "description": "状态",
+            "type": "string"
+          }
+        },
+        "minProperties": 1
+      },
+      "reorderAppMenuReq": {
+        "type": "object",
+        "properties": {
+          "parentId": {
+            "description": "同级所属分组ID；为空表示顶层分组之间排序",
+            "type": "number"
+          },
+          "orderedIds": {
+            "minItems": 1,
+            "description": "该层级全部菜单ID，按期望顺序排列",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": [
+          "orderedIds"
+        ]
+      },
+      "appMenuDetailResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "操作成功",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/appMenuNode"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "appMenuTreeList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/appMenuNode"
+        }
+      },
+      "appMenuTreeResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "获取工作台菜单成功",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/appMenuTreeList"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "appMenuDeleteResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "删除成功",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "description": "工作台菜单ID",
+                "type": "number"
+              }
+            },
+            "required": [
+              "id"
+            ]
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "appMenuReorderResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "排序成功",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "description": "已重排数量",
+                "type": "number"
+              }
+            },
+            "required": [
+              "count"
+            ]
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "appHomeApps": {
+        "type": "object",
+        "properties": {
+          "pinned": {
+            "description": "用户固定的入口，按用户排序",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "description": "工作台入口ID",
+              "type": "integer"
+            }
+          },
+          "ranked": {
+            "description": "其余已授权入口，按使用习惯排序；无记录时按工作台顺序",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "description": "工作台入口ID",
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "pinned",
+          "ranked"
+        ]
+      },
+      "appHomeAppsResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "获取常用应用成功",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "$ref": "#/components/schemas/appHomeApps"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "saveAppHomePinsReq": {
+        "type": "object",
+        "properties": {
+          "menuIds": {
+            "maxItems": 8,
+            "description": "固定的入口，按显示顺序；空数组表示全部取消",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "description": "工作台入口ID",
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "menuIds"
+        ]
+      },
+      "reportAppUsageReq": {
+        "type": "object",
+        "properties": {
+          "menuId": {
+            "minimum": 1,
+            "description": "工作台入口ID",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "menuId"
+        ]
+      },
+      "reportAppUsageResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "已记录",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "recorded": {
+                "description": "是否计入（入口不可用时为 false）",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "recorded"
+            ]
           },
           "timestamp": {
             "format": "date-time",
@@ -5744,6 +6292,48 @@
         "summary": "Todo 列表",
         "tags": [
           "demo"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false
+          },
+          {
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "keyword",
+            "required": false
+          },
+          {
+            "schema": {
+              "minimum": 0,
+              "maximum": 2,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
         ],
         "security": [
           {
@@ -18979,7 +19569,7 @@
         "tags": [
           "app-menus"
         ],
-        "description": "根据当前用户角色并集返回授权菜单树，移动端用于渲染应用 Tab",
+        "description": "返回当前用户可见的工作台分组与应用入口（独立于 Web 菜单），已按角色授权、模块启用状态过滤",
         "security": [
           {
             "bearerAuth": []
@@ -18994,7 +19584,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/menuTreeResp"
+                  "$ref": "#/components/schemas/appMenuTreeResp"
                 }
               }
             }
@@ -19009,7 +19599,7 @@
         "tags": [
           "app-menus"
         ],
-        "description": "根据当前用户角色并集返回授权菜单扁平列表，包含完整字段（icon, path, perm 等）",
+        "description": "当前用户可见的工作台节点扁平列表（分组在前，入口随后，保持树的先序顺序）",
         "security": [
           {
             "bearerAuth": []
@@ -19038,7 +19628,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/menuTreeNode"
+                        "$ref": "#/components/schemas/appMenuNode"
                       }
                     },
                     "timestamp": {
@@ -19545,7 +20135,7 @@
         "tags": [
           "me-api-tokens"
         ],
-        "description": "返回当前用户可授予的权限列表，按 system/shop/portal/special 分组。仅返回用户当前持有的且在系统中已登记的权限码。",
+        "description": "返回当前用户可授予的权限列表，按权限声明的 group 分组（system 在前，PAT 专用 special 在后）。仅返回用户当前持有的且在系统中已登记的权限码。",
         "security": [
           {
             "bearerAuth": []
@@ -19821,6 +20411,389 @@
                     "data",
                     "timestamp"
                   ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/app-menus/tree": {
+      "get": {
+        "operationId": "getAppMenuTree",
+        "summary": "获取工作台菜单树",
+        "tags": [
+          "sysAppMenus"
+        ],
+        "description": "获取全部工作台分组与应用入口，同级按 sortOrder 排序",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:app-menu:list",
+        "x-permission-label": "工作台管理-列表",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appMenuTreeResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/app-menus/{id}": {
+      "get": {
+        "operationId": "getAppMenuDetail",
+        "summary": "获取工作台菜单详情",
+        "tags": [
+          "sysAppMenus"
+        ],
+        "description": "根据ID获取工作台菜单详情",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "工作台菜单ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:app-menu:list",
+        "x-permission-label": "工作台管理-列表",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appMenuDetailResp"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateAppMenu",
+        "summary": "更新工作台菜单",
+        "tags": [
+          "sysAppMenus"
+        ],
+        "description": "根据ID更新工作台菜单",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/updateAppMenuReq"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "工作台菜单ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:app-menu:update",
+        "x-permission-label": "工作台管理-更新",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appMenuDetailResp"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAppMenu",
+        "summary": "删除工作台菜单",
+        "tags": [
+          "sysAppMenus"
+        ],
+        "description": "软删除；分组下存在应用入口时禁止，删除时同步清理角色授权",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "description": "工作台菜单ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:app-menu:delete",
+        "x-permission-label": "工作台管理-删除",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appMenuDeleteResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/app-menus/": {
+      "post": {
+        "operationId": "createAppMenu",
+        "summary": "创建工作台菜单",
+        "tags": [
+          "sysAppMenus"
+        ],
+        "description": "创建工作台分组或应用入口",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/saveAppMenuReq"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:app-menu:create",
+        "x-permission-label": "工作台管理-创建",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appMenuDetailResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/app-menus/reorder": {
+      "post": {
+        "operationId": "reorderAppMenus",
+        "summary": "工作台菜单同级排序",
+        "tags": [
+          "sysAppMenus"
+        ],
+        "description": "按 orderedIds 的顺序重写该层级全部节点的 sortOrder（10、20、30…）",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/reorderAppMenuReq"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:app-menu:update",
+        "x-permission-label": "工作台管理-更新",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appMenuReorderResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/system/storage/test": {
+      "post": {
+        "operationId": "testStorageConnection",
+        "summary": "测试云存储连接",
+        "tags": [
+          "storage"
+        ],
+        "description": "用表单草稿（无需先保存）请求服务商的空间信息，返回是否连通、空间与耗时；密钥留空时使用已保存的密钥",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/storageConnectionTestReq"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:storage:update",
+        "x-permission-label": "存储管理-更新",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/storageConnectionTestResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/app/menus/home": {
+      "get": {
+        "operationId": "appGetHomeApps",
+        "summary": "获取首页常用应用",
+        "tags": [
+          "app-menus"
+        ],
+        "description": "pinned 为用户固定的入口（用户顺序），ranked 为其余已授权入口按使用习惯排序；均为工作台入口 ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "app:menu:authorized-tree",
+        "x-permission-label": "移动端-已授权菜单树",
+        "x-permission-group": "app",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appHomeAppsResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/app/menus/pins": {
+      "put": {
+        "operationId": "appSaveHomePins",
+        "summary": "保存首页固定应用",
+        "tags": [
+          "app-menus"
+        ],
+        "description": "按数组顺序整体覆盖当前用户固定的入口；不可用的入口被丢弃，最多 8 个",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/saveAppHomePinsReq"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "app:menu:authorized-tree",
+        "x-permission-label": "移动端-已授权菜单树",
+        "x-permission-group": "app",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/appHomeAppsResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/app/menus/usage": {
+      "post": {
+        "operationId": "appReportAppUsage",
+        "summary": "记录应用打开",
+        "tags": [
+          "app-menus"
+        ],
+        "description": "累加当前用户对某个工作台入口的打开次数；入口不可用时不记录",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/reportAppUsageReq"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "app:menu:authorized-tree",
+        "x-permission-label": "移动端-已授权菜单树",
+        "x-permission-group": "app",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/reportAppUsageResp"
                 }
               }
             }
