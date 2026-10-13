@@ -154,7 +154,7 @@ jobs:
 
       # 日常只更新函数；域名（DNS + 证书 + 路由）已建好，不需要重复执行。
       - name: Build H5 and deploy function
-        run: bash apps/demo/app/deploy/fc3/scripts/deploy.sh
+        run: bash apps/demo/app/deploy/fc3/scripts/pre-deploy.sh && bash apps/demo/app/deploy/fc3/scripts/deploy.sh
 
       - name: Verify H5 is reachable
         run: |
@@ -174,8 +174,9 @@ jobs:
           echo "H5 可达：${BASE}/ -> 200"
 
   # 域名（DNS + 证书 + 路由）已建好，日常不需要重复执行。
-  # 换证书或改路由时手动触发一次。
+  # 换证书或改路由时手动触发一次；push 触发时整条跳过。
   deploy-domain:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: YISHAN_API

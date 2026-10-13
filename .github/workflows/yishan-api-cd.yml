@@ -145,7 +145,8 @@ jobs:
           pnpm db:migrate --dry-run
           pnpm db:migrate --apply
           # 迁移后再确认一次：仍有 pending 说明没迁干净，不允许继续部署代码。
-          if pnpm db:migrate --dry-run 2>&1 | grep -q 'pending'; then
+          # dry-run 恒打印 "N pending"，只有非零才算没迁干净。
+          if pnpm db:migrate --dry-run 2>&1 | grep -qE '[1-9][0-9]* pending'; then
             echo "::error::迁移后仍有待执行项，判定部署失败。"; exit 1
           fi
           echo "Migrations up to date."
