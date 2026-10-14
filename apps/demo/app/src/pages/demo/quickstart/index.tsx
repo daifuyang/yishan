@@ -1,5 +1,7 @@
-import { PageContainer } from '@/components/layout'
+// 组件演示，非页面样板：本页是模块接入流程的速览，两个分组分别
+// 演示 LinkRow 列表与多行 DetailRow，结构上不承担真实页面职责。
 import { View } from '@tarojs/components'
+import { PageContainer } from '@/components/layout'
 import {
   DetailContent,
   DetailRow,
@@ -14,7 +16,6 @@ import { useModuleStore } from '@/stores/modules'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
 import { withAccountScope } from '@/utils/account-scope'
-import styles from './index.module.scss'
 
 const STEPS = [
   ['定义模块', '模块使用独立 ID，module.ts 声明公开模块契约；业务表以模块 ID 为前缀。'],
@@ -36,7 +37,8 @@ function QuickstartPage() {
   return (
     <ManagementPage>
       <ManagementPageHeader title="快速入门" />
-      <View className={styles.content}>
+      {/* 页面没有 DetailHero，第一块白色分组需要自己补 16px 页顶距 */}
+      <View style={{ paddingTop: 'var(--space-4)' }}>
         <DetailContent>
           {examples.length ? (
             <DetailSection title="示例页面">

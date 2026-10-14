@@ -1,24 +1,26 @@
+// 组件演示，非页面样板：本页是省市区选择器的展示舞台，两组并列演示
+// 按需加载和整树加载两种模式，不承担真实地址管理职责。
+import { View } from '@tarojs/components'
 import { PageContainer } from '@/components/layout'
 import Taro from '@tarojs/taro'
-import { Text, View } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import { type DemoRegion, getRegionPath, getRegionTree, listRegions } from '@/api/demo'
 import { getSessionVersion } from '@/api/client'
 import {
   DetailContent,
   DetailRow,
-  FormField,
+  DetailSection,
   FormSection,
   formatRegionPath,
   ManagementPage,
   ManagementPageHeader,
+  PickerRow,
   RegionPicker,
   type RegionPickerMode,
 } from '@/components/management'
 import { useCanWrite } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { errorMessage, withAccountScope } from '@/utils/account-scope'
-import styles from './index.module.scss'
 
 const EMPTY = '—'
 const loadChildren = (parent: DemoRegion | null) => listRegions(parent ? parent.code : 0)
@@ -60,16 +62,23 @@ function RegionExample({ title, mode }: { title: string; mode: RegionPickerMode 
   const summary = formatRegionPath(selection)
   return (
     <>
+      {/* 选区是表单里的可点击入口，结果展示读出去走详情分组 ——
+         表单分组只放交互控件，详情分组只放只读行，分工不能混。 */}
       <FormSection title={title}>
-      <FormField label="所在地区" arrow onArrowClick={() => setOpen(true)}>
-        <View className={styles.value} onClick={() => setOpen(true)} aria-label="选择所在地区">
-          <Text className={summary ? undefined : styles.placeholder}>{summary || '请选择'}</Text>
-        </View>
-      </FormField>
-      <DetailRow label="末级代码" value={last ? last.code : EMPTY} />
-      <DetailRow label="末级名称" value={last ? last.name : EMPTY} />
-      <DetailRow label="回填路径" value={formatRegionPath(path) || EMPTY} />
+        <PickerRow
+          label="所在地区"
+          value={summary}
+          placeholder="请选择"
+          arrow
+          disabled={!canPath}
+          onClick={() => setOpen(true)}
+        />
       </FormSection>
+      <DetailSection title="已选地区">
+        <DetailRow label="末级代码" value={last ? last.code : EMPTY} />
+        <DetailRow label="末级名称" value={last ? last.name : EMPTY} />
+        <DetailRow label="回填路径" value={formatRegionPath(path) || EMPTY} />
+      </DetailSection>
       {/* 面板是 fixed 浮层，放在分组外，避免影响分组内末行的分割线 */}
       <RegionPicker<DemoRegion>
         open={open}
@@ -92,7 +101,8 @@ function RegionExamplePage() {
   return (
     <ManagementPage>
       <ManagementPageHeader title="省市级联" />
-      <View className={styles.content}>
+      {/* 页面没有 DetailHero，第一块白色分组需要自己补 16px 页顶距 */}
+      <View style={{ paddingTop: 'var(--space-4)' }}>
         <DetailContent>
           {canList ? <RegionExample title="按需加载" mode="lazy" /> : null}
           {canTree ? <RegionExample title="整树加载" mode="tree" /> : null}

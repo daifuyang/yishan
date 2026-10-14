@@ -1,3 +1,5 @@
+// 组件演示，非页面样板：本页是后端健康接口的展示舞台，运行状态与
+// 运行时信息由运行环境的 Tag、运行时长等数据点拼出。
 import { PageContainer } from '@/components/layout'
 import Taro, { usePullDownRefresh } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
@@ -97,8 +99,6 @@ function HealthPage() {
                 subtitle={`已运行 ${formatUptime(info.uptimeSeconds)}`}
               />
               <DetailSection title="运行状态">
-                <DetailRow label="运行环境" value={env.label} />
-                <DetailRow label="运行时长" value={formatUptime(info.uptimeSeconds)} />
                 <DetailRow
                   label="内存使用"
                   value={`${formatBytes(memoryUsed(info.memory))} / ${formatBytes(info.memory.total)}（${memoryUsage(info.memory)}%）`}

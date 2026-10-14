@@ -1,5 +1,0 @@
-/* 页面没有头部白块，第一个分组需要自己坐在 16px 模块间距里。
-   放在外层包裹上：直接给 DetailContent 传 className 会被它自带的 padding 覆盖 */
-.content {
-  padding-top: var(--space-4);
-}

@@ -6,6 +6,7 @@ import { createTodo, getTodo, updateTodo } from '@/api/demo'
 import { getSessionVersion } from '@/api/client'
 import { StateView } from '@/components/feedback'
 import {
+  DateField,
   EnumField,
   FormContent,
   FormError,
@@ -156,19 +157,11 @@ function TodoFormPage() {
             {values.hasDue ? (
               <>
                 <FormField label="日期" arrow disabled={disabled}>
-                  <Picker
-                    className={styles.picker}
-                    mode="date"
+                  <DateField
                     value={values.date}
+                    onChange={(date) => set({ date })}
                     disabled={disabled}
-                    onChange={(event) => set({ date: String(event.detail.value) })}
-                  >
-                    <View className={styles.pickerValue}>
-                      <Text className={values.date ? undefined : styles.pickerPlaceholder}>
-                        {values.date || '请选择'}
-                      </Text>
-                    </View>
-                  </Picker>
+                  />
                 </FormField>
                 <FormField label="时间" arrow disabled={disabled}>
                   <Picker

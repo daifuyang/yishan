@@ -10,7 +10,15 @@ const pages = {
   health: read('pages/demo/health/index.tsx'),
   quickstart: read('pages/demo/quickstart/index.tsx'),
   region: read('pages/demo/region/index.tsx'),
+  todos: read('pages/demo/todos/index.tsx'),
+  todoDetail: read('pages/demo/todos/detail/index.tsx'),
+  todoForm: read('pages/demo/todos/form/index.tsx'),
 }
+// 「组件演示，非页面样板」只挂在三个真正的展示页上：health / quickstart / region。
+// todos 系列是普通业务页，写文件头注释会误导读者把它当成示例去照搬。
+const SHOWCASE_HEADER = '组件演示，非页面样板'
+const showcasePages = ['health', 'quickstart', 'region']
+const featurePages = ['todos', 'todoDetail', 'todoForm']
 
 // ---------- 健康检查纯函数 ----------
 
@@ -62,6 +70,25 @@ for (const [name, source] of Object.entries(pages)) {
     assert.match(source, /export default withAccountScope\(/)
     assert.doesNotMatch(source, /key=\{identity/)
   })
+  test(`${name} 页通过 @/components/management 入口消费共享原子，而不是深路径`, () => {
+    assert.match(source, /from '@\/components\/management'/)
+    assert.doesNotMatch(source, /from '@\/components\/management\/[A-Za-z]+'/, '深路径会绕开 barrel')
+  })
+}
+
+for (const name of showcasePages) {
+  test(`${name} 是组件展示页：文件头声明「${SHOWCASE_HEADER}」`, () => {
+    // 文件头注释用 // 写在 import 之前；允许中间夹其他单行注释，但首条必须提到这一行
+    const header = pages[name].slice(0, pages[name].indexOf('import'))
+    assert.match(header, new RegExp(SHOWCASE_HEADER))
+  })
+}
+
+for (const name of featurePages) {
+  test(`${name} 是普通业务页：不要挂「${SHOWCASE_HEADER}」文件头注释`, () => {
+    const header = pages[name].slice(0, pages[name].indexOf('import'))
+    assert.doesNotMatch(header, new RegExp(SHOWCASE_HEADER))
+  })
 }
 
 test('健康检查是只读详情页：Hero + 分组 + 折叠的记录分组，时间走 formatDateTime', () => {
@@ -74,6 +101,9 @@ test('健康检查是只读详情页：Hero + 分组 + 折叠的记录分组，�
   assert.match(source, /formatDateTime\(info\.timestamp\)/)
   assert.match(source, /usePullDownRefresh/)
   assert.match(source, /current === generation\.current/, '保留代次守卫，丢弃过期响应')
+  // Hero 已经承担「运行环境」与「运行时长」的首屏位置，分组里再列就重了
+  assert.doesNotMatch(source, /<DetailRow label="运行环境"/)
+  assert.doesNotMatch(source, /<DetailRow label="运行时长"/)
 })
 
 test('快速入门：示例入口是带箭头的 LinkRow，接入步骤是只读多行行', () => {
@@ -86,16 +116,35 @@ test('快速入门：示例入口是带箭头的 LinkRow，接入步骤是只读
     assert.match(source, new RegExp(`'${step}'`))
 })
 
-test('省市级联：两种加载模式各一个分组，按权限整组隐藏，没有说明文字', () => {
+test('省市级联：两种加载模式各一个分组，按权限整组隐藏，选区走 PickerRow', () => {
   const source = pages.region
   assert.match(source, /useRequireAuth\(\{ moduleId: 'demo-region' \}\)/)
   assert.match(source, /canList \? <RegionExample title="按需加载" mode="lazy" \/> : null/)
   assert.match(source, /canTree \? <RegionExample title="整树加载" mode="tree" \/> : null/)
-  assert.match(source, /<FormField label="所在地区" arrow/)
+  // 选区改用 PickerRow，表单分组只放可点击入口；读出去走 DetailSection + DetailRow
+  assert.match(source, /<PickerRow/)
+  assert.match(source, /label="所在地区"/)
+  assert.match(source, /<FormSection title=\{title\}>/)
+  assert.match(source, /<DetailSection title="已选地区"/)
   assert.match(source, /<RegionPicker/)
   assert.match(source, /useCanWrite\('region:path'\)/)
   assert.match(source, /current === generation\.current/, '回填路径保留过期响应守卫')
   assert.doesNotMatch(source, /需要地区树查看权限/)
+})
+
+test('Todo 表单：日期行走 DateField，标题 / 状态 / 描述 / 截止时间分组保持原结构', () => {
+  const source = pages.todoForm
+  // 日期行从裸 Picker 升级到共享原子 DateField，避免再写一份 picker/pickerValue/pickerPlaceholder
+  assert.match(source, /<DateField\b/)
+  assert.match(source, /<FormField label="日期" arrow[^>]*>\s*<DateField/)
+  assert.doesNotMatch(source, /styles\.pickerPlaceholder/)
+  // 业务结构保持：基础信息 / 截止时间 / 提交栏 + FormError
+  assert.match(source, /<FormSection title="基础信息">/)
+  assert.match(source, /<FormSection title="截止时间">/)
+  assert.match(source, /<FormSubmitBar/)
+  assert.match(source, /<FormError>\{submitError\}<\/FormError>/)
+  // CRUD 行为不变：关闭开关清空 dueAt、打开且没选日期要报错，model.ts 已有断言守在这里
+  assert.match(source, /hasDue \? \{ hasDue, date: values\.date \|\| todayDate\(\) \}/)
 })
 
 // ---------- RegionPicker 纯逻辑 ----------
