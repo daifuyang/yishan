@@ -1,4 +1,4 @@
-;async (page) => {
+async (page) => {
   const origin = 'http://127.0.0.1:21003'
   const queries = []
   const user = {

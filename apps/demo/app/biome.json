@@ -10,7 +10,8 @@
       "!**/fonts-subset",
       "!biome.json",
       "!src/index.html",
-      "!**/WeuiPicker.h5.css"
+      "!**/WeuiPicker.h5.css",
+      "!**/tests/browser/**"
     ]
   },
   "linter": {

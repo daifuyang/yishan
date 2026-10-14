@@ -1,4 +1,4 @@
-;async (page) => {
+async (page) => {
   const origin = 'http://127.0.0.1:21813'
   const stamp = { createdAt: '2026-10-11T08:00:00Z', updatedAt: '2026-10-11T08:00:00Z' }
   const user = {
