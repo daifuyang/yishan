@@ -99,6 +99,34 @@
 - **下一步**：在**基础层**给 `FormError` 加一个可选 `className` 或尺寸/缩进变体，并在 §7.1 的其它基础契约旁补一个契约测试。
   不在页面迁移里就地修。
 
+## `SecretField` 的眼睛切换不理会 `disabled`
+
+- **涉及**：`apps/demo/app/src/components/management/FormLayout.tsx`（`SecretField`）与其 `FormLayout.module.scss`。
+- **问题**：`SecretField` 的明/密切换 `View` 只有 `onClick={() => setVisible(!visible)}`，**从不读 `disabled`**
+  （`FormLayout.tsx:288-318`）。后果发生在本次刚迁移的密码页上：本应禁用的那行仍可点眼睛图标、把已输入的值**显示出来**
+  —— 禁用就是禁用。对照一下其它封装都把 `disabled` 透传到控件本身（`TextField`→`Input` 在 `:116`，`TextAreaField`→`Textarea`
+  在 `:139`，`SwitchField`→`Switch` 在 `:204`，`EnumField`→`Picker` 在 `:244`），所以字段的灰色禁用态是对的、只有眼睛
+  还活着。这是一个**很窄**但确实存在的缺陷，与 Task 5 修的 `system/position/form` 中 `FormField.disabled` 不向控件透传是
+  同一族 —— **两者都在基础线，不归任何页面线**。
+- **下一步**：在**基础线**让明/密切换读 `disabled`（与其它 management-form 的 disabled 契约改动放在一起），并补一个
+  契约测试归到 §7.1 的其它基础契约旁。不在页面迁移里就地修。
+
+## 两套 `LineIcon` 词汇未统一
+
+- **涉及**：`apps/demo/app/src/components/management/LineIcon.tsx`（`ICONS` 表 41 个名字，`LineIconName = keyof typeof ICONS`
+  在 `:66`）与 `apps/demo/app/src/components/icons/LineIcon/LineIcon.tsx`（`:5` 直接列出 11 个名字：`user` | `shield` |
+  `bell` | `settings` | `info` | `logOut` | `chevronRight` | `lock` | `history` | `eye` | `eyeOff`），以及它们的消费方。
+- **问题**：两套图标词汇并存，谁也没去并掉另一套。management 这套缺 `user` / `bell` / `settings` / `info` / `logOut` /
+  `history` 共六个语义，**legacy 那套六个都已经在那里实现了**；缺它们的页面只能取最近的名字糊上，于是 mine 退出登录
+  行被画成「上传」箭头，messages/about/个人资料同样借了不对应的形状 —— 用户看到的是个「妥协」，不是设计。复验消费方：
+  全仓 `from '@/components/icons'` 导入 `LineIcon` 的只有 `components/molecules/SettingCell.tsx:3` 与
+  `components/molecules/DangerAction.tsx:3` 两个文件（`components/organisms/StatCard/index.tsx:2` 走的是同一 barrel
+  但导入的是 `IconFont`，不是 `LineIcon`）。**这两个组件本身也是本次 1ad3b793 提交里被 orphan 掉的（见上一条 TODO）**，
+  将来若按那条把它们删掉，legacy 这套 `LineIcon` 很可能**完全没人用了**，到时候「删一套、把七个名字并进另一套」就是
+  顺理成章的下一步。
+- **下一步**：在**基础线**里挑一套作为规范，把缺的六个名字并过去、把另一套退役 —— 起手就是上面那个事实：legacy 的最后
+  两个 `LineIcon` 消费者本身也是待删分子。**这里不加图标，也不改两个组件。**
+
 ## apps 工作台样式表的清理
 
 - **涉及**：`apps/demo/app/src/pages/apps/index.module.scss`、`apps/demo/app/src/pages/apps/pinned/index.module.scss`。
