@@ -9,7 +9,8 @@
       "!**/.taro",
       "!**/fonts-subset",
       "!biome.json",
-      "!src/index.html"
+      "!src/index.html",
+      "!**/WeuiPicker.h5.css"
     ]
   },
   "linter": {

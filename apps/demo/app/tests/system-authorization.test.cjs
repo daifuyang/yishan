@@ -344,12 +344,6 @@ function pageNodes(page, permissions, records, extraMocks = {}) {
   return nodes(tree);
 }
 
-function pageActions(page, permissions, records) {
-  return pageNodes(page, permissions, records)
-    .filter((node) => node.type === "Button")
-    .map((node) => node.props.children);
-}
-
 test("role list keeps row actions out and gates create behind grant permission", () => {
   const record = { id: 1, name: "系统管理员", status: "1", dataScope: "1", isSystemDefault: true };
 

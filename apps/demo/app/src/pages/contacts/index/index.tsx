@@ -1,21 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
 import { useDidShow } from '@tarojs/taro'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { contactsApi } from '@/api'
 import { getSessionVersion } from '@/api/client'
 import type { SysMenuNode } from '@/api/types'
 import {
+  flattenTree,
   ManagementList,
   ManagementPage,
   ManagementPageHeader,
   ManagementStates,
   ManagementTreeCell,
-  flattenTree,
   toggleExpanded,
 } from '@/components/management'
 import { SECONDARY_PAGES } from '@/constants/routes'
-import { useRequireAuth } from '@/utils/auth-guard'
 import { withAccountScope } from '@/utils/account-scope'
+import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateTo } from '@/utils/router'
 
 function ContactsIndex() {
@@ -60,9 +60,9 @@ function ContactsIndex() {
     void load()
   })
 
-  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
-
   const rows = useMemo(() => flattenTree<SysMenuNode>(tree, expanded), [tree, expanded])
+
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
 
   const openDept = (id: number, name: string) =>
     navigateTo(`/${SECONDARY_PAGES.contactsDept}?id=${id}&name=${encodeURIComponent(name)}`)
@@ -72,13 +72,7 @@ function ContactsIndex() {
       <ManagementPageHeader title="部门" />
       <ManagementStates
         kind={
-          error
-            ? 'error'
-            : loading && !tree.length
-              ? 'loading'
-              : !tree.length
-                ? 'empty'
-                : 'ready'
+          error ? 'error' : loading && !tree.length ? 'loading' : !tree.length ? 'empty' : 'ready'
         }
         errorText={error || undefined}
         emptyText="暂无部门"
