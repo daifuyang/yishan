@@ -1,4 +1,4 @@
-async (page) => {
+;async (page) => {
   const origin = 'http://127.0.0.1:21003'
   const queries = []
   const user = {
@@ -72,7 +72,8 @@ async (page) => {
   const statusSheet = page.locator('[class*="sheet"]').filter({ hasText: '用户状态' })
   await statusSheet.waitFor()
   const statusBox = await statusSheet.boundingBox()
-  if (Math.abs(statusBox.y + statusBox.height - 844) > 1) throw new Error('Status sheet is not bottom anchored')
+  if (Math.abs(statusBox.y + statusBox.height - 844) > 1)
+    throw new Error('Status sheet is not bottom anchored')
   await page.getByText('锁定', { exact: true }).click()
   await page.waitForRequest((req) => req.url().includes('status=2'))
   await page.getByLabel('最近创建', { exact: true }).click()
@@ -122,4 +123,3 @@ async (page) => {
   if (queries.at(-1).startTime) throw new Error('Reset dates did not clear the request range')
   return { queries: queries.length, alignment, lastQuery: queries.at(-1) }
 }
-

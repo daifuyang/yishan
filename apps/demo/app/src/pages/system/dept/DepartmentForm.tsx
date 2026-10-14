@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Picker, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import {
+  SelectorPicker as Picker,
   EnumField,
   FormContent,
   FormError,
@@ -147,6 +148,7 @@ export default function DepartmentForm({
           </FormField>
           <FormField label="上级部门" disabled={disabled}>
             <Picker
+              title="选择上级部门"
               className={styles.picker}
               disabled={disabled}
               range={parentOptions.map((option) => option.label)}

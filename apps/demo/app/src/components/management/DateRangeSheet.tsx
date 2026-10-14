@@ -1,4 +1,5 @@
-import { Button, Picker, ScrollView, Text, View } from '@tarojs/components'
+import { Button, ScrollView, Text, View } from '@tarojs/components'
+import { DateField } from './DateField'
 import { useState } from 'react'
 
 import { LineIcon } from './LineIcon'
@@ -91,27 +92,25 @@ export function DateRangeSheet({
           ) : null}
           {showDates ? (
             <View className={styles.dates}>
-              <Picker
-                mode="date"
+              <DateField
                 value={draft.startDate || today.startDate}
-                onChange={(event) => {
-                  setDraft({ ...draft, startDate: event.detail.value })
+                onChange={(next) => {
+                  setDraft({ ...draft, startDate: next })
                   setError('')
                 }}
               >
                 <View className={styles.date}>{draft.startDate || startPlaceholder}</View>
-              </Picker>
+              </DateField>
               <Text>至</Text>
-              <Picker
-                mode="date"
+              <DateField
                 value={draft.endDate || today.endDate}
-                onChange={(event) => {
-                  setDraft({ ...draft, endDate: event.detail.value })
+                onChange={(next) => {
+                  setDraft({ ...draft, endDate: next })
                   setError('')
                 }}
               >
                 <View className={styles.date}>{draft.endDate || endPlaceholder}</View>
-              </Picker>
+              </DateField>
             </View>
           ) : null}
           {error ? <Text className={styles.error}>{error}</Text> : null}

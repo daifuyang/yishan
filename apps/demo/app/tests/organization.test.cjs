@@ -201,7 +201,7 @@ function mountDepartmentForm(
     "@tarojs/taro": { showToast: async () => {} },
     "@/components/atoms": { Button: "Button" },
     "@/components/molecules": { FormField: "FormField" },
-    "@/components/management": Object.fromEntries(["FormContent", "FormSection", "FormField", "FormError", "TextField", "TextAreaField", "EnumField", "FormSubmitBar", "LineIcon"].map((name) => [name, name])),
+"@/components/management": { ...Object.fromEntries(["FormContent", "FormSection", "FormField", "FormError", "TextField", "TextAreaField", "EnumField", "FormSubmitBar", "LineIcon"].map((name) => [name, name])), SelectorPicker: "Picker" },
     "./DepartmentForm.module.scss": {},
     "@/hooks": {
       useCanWrite: (...required) =>

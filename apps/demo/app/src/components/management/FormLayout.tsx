@@ -1,4 +1,5 @@
-import { Input, Picker, Switch, Text, Textarea, View } from '@tarojs/components'
+import { Input, Switch, Text, Textarea, View } from '@tarojs/components'
+import { SelectorPicker as Picker } from './SelectorPicker'
 import { type ReactNode, useState } from 'react'
 import styles from './FormLayout.module.scss'
 import { LineIcon } from './LineIcon'
@@ -241,7 +242,7 @@ export function EnumField<T extends string>({
   return (
     <FormField label={label} disabled={disabled} arrow>
       {/* H5 下 Picker 渲染成独立 div，自身没有 flex: 1 就不会撑满行，值到不了行尾 */}
-      <Picker className={styles.enumPicker} disabled={disabled} mode="selector" range={options.map((option) => option.label)} value={Math.max(index, 0)} onChange={(event) => {
+      <Picker title={`选择${label}`} className={styles.enumPicker} disabled={disabled} mode="selector" range={options.map((option) => option.label)} value={Math.max(index, 0)} onChange={(event) => {
         const option = options[Number(event.detail.value)]
         if (option) onChange(option.value)
       }}>

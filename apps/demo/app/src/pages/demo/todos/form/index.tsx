@@ -1,5 +1,4 @@
 import { PageContainer } from '@/components/layout'
-import { Picker, Text, View } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
 import { createTodo, getTodo, updateTodo } from '@/api/demo'
@@ -18,13 +17,13 @@ import {
   SwitchField,
   TextAreaField,
   TextField,
+  TimeField,
 } from '@/components/management'
 import { useCanWrite } from '@/hooks'
 import { canWriteModuleNow, useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
 import { errorMessage, withAccountScope } from '@/utils/account-scope'
 import { TODO_STATUS_LABELS, todayDate, todoFormValues, todoPayload, type TodoFormValues } from '../model'
-import styles from './index.module.scss'
 
 const STATUS_OPTIONS = TODO_STATUS_LABELS.map((label, code) => ({ value: String(code), label }))
 
@@ -164,17 +163,11 @@ function TodoFormPage() {
                   />
                 </FormField>
                 <FormField label="时间" arrow disabled={disabled}>
-                  <Picker
-                    className={styles.picker}
-                    mode="time"
+                  <TimeField
                     value={values.time}
                     disabled={disabled}
-                    onChange={(event) => set({ time: String(event.detail.value) })}
-                  >
-                    <View className={styles.pickerValue}>
-                      <Text>{values.time}</Text>
-                    </View>
-                  </Picker>
+                    onChange={(time) => set({ time })}
+                  />
                 </FormField>
               </>
             ) : null}

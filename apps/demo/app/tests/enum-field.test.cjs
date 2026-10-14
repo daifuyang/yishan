@@ -16,6 +16,7 @@ function load() {
       Switch: 'Switch',
     },
     './LineIcon': { LineIcon: 'LineIcon' },
+    './SelectorPicker': { SelectorPicker: 'Picker' },
     './FormLayout.module.scss': scssMock(),
   })
 }

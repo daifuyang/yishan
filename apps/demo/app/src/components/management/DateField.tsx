@@ -1,4 +1,5 @@
 import { Picker } from '@tarojs/components'
+import type { ReactNode } from 'react'
 
 import { PickerValue } from './PickerRow'
 
@@ -9,6 +10,10 @@ export interface DateFieldProps {
   value: string
   placeholder?: string
   disabled?: boolean
+  start?: string
+  end?: string
+  className?: string
+  children?: ReactNode
   onChange: (value: string) => void
 }
 
@@ -18,13 +23,15 @@ export interface DateFieldProps {
  * 用作 FormField 的控件（标签由 FormField 提供），取值单元复用 PickerRow
  * 的同一套视觉契约，不会出现「同一张表单两种取值对齐」。
  */
-export function DateField({ value, placeholder = '请选择', disabled = false, onChange }: DateFieldProps) {
+export function DateField({ value, placeholder = '请选择', disabled = false, onChange, start, end, className, children }: DateFieldProps) {
   return (
     <Picker
-      className={styles.dateField}
+      className={className || styles.dateField}
       mode="date"
       value={value}
       disabled={disabled}
+      start={start}
+      end={end}
       onChange={(event) => {
         // 事件里没有 value 时直接 `String(...)` 会把字符串 "undefined" 回传给调用方，
         // 所以先判空再回传（和 FormLayout 的枚举 picker 同一套防法：拿不到就不回调）。
@@ -33,7 +40,7 @@ export function DateField({ value, placeholder = '请选择', disabled = false, 
         onChange(String(next))
       }}
     >
-      <PickerValue value={value} placeholder={placeholder} />
+      {children ?? <PickerValue value={value} placeholder={placeholder} />}
     </Picker>
   )
 }

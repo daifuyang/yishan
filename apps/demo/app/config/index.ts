@@ -120,7 +120,8 @@ export default defineConfig(async (merge, _env) => {
             minRootSize: 20,
             unitPrecision: 5,
             propList: ['*'],
-            selectorBlackList: ['body'],
+            // Official WeUI dimensions stay in CSS pixels, including its integer wheel rows.
+            selectorBlackList: ['body', '.yishan-time-picker'],
             replace: true,
             mediaQuery: false,
             minPixelValue: 0,

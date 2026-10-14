@@ -1,5 +1,5 @@
 import Taro, { useRouter } from '@tarojs/taro'
-import { Picker, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import * as adminRoleApi from '@/api/admin/role'
 import * as adminAppMenuApi from '@/api/admin/appMenu'
@@ -7,6 +7,7 @@ import type { AdminRoleDetail } from '@/api/admin/role'
 import { getSessionVersion } from '@/api/client'
 import { StateView } from '@/components/feedback'
 import {
+  SelectorPicker as Picker,
   FormContent,
   FormField,
   FormSection,
@@ -182,6 +183,7 @@ function RoleFormPage() {
             </FormField>
             <FormField label="状态" arrow>
               <Picker
+                title="选择状态"
                 className={styles.picker}
                 mode="selector"
                 range={STATUS_OPTIONS.map((option) => option.label)}
@@ -197,6 +199,7 @@ function RoleFormPage() {
             </FormField>
             <FormField label="数据权限" arrow>
               <Picker
+                title="选择数据权限"
                 className={styles.picker}
                 mode="selector"
                 range={SCOPE_OPTIONS.map((option) => option.label)}

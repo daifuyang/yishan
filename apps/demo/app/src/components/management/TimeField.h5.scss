@@ -1,0 +1,17 @@
+// H5 compatibility only. Appearance comes from the pinned official WeUI subset.
+.yishan-time-trigger { cursor: pointer; }
+.yishan-time-trigger:disabled { cursor: default; }
+.yishan-time-picker {
+  // Keep official WeUI geometry and states; only the brand color follows the app.
+  --weui-BRAND: var(--color-primary, #1677ff);
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  .weui-picker__bd, .weui-picker__group { overflow: hidden; overflow: clip; }
+  .weui-picker__group { min-width: 0; touch-action: none; outline: none; }
+  .weui-picker__mask, .weui-picker__indicator { pointer-events: none; }
+  .weui-picker__item { user-select: none; outline: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yishan-time-picker .weui-picker, .yishan-time-picker .weui-mask { animation-duration: .01s; }
+}

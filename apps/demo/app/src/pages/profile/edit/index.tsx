@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, Picker } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 
 import {
+  DateField,
   ManagementPage,
   ManagementPageHeader,
   FormContent,
@@ -219,21 +220,20 @@ export default function ProfileEdit() {
             disabled={disabled}
           />
           <FormField label="出生日期" disabled={disabled} arrow>
-            <Picker
+            <DateField
               className={styles.picker}
-              mode="date"
               disabled={disabled}
               value={birthDate}
               end={today()}
-              onChange={(event) => {
-                setBirthDate(String(event.detail.value))
+              onChange={(next) => {
+                setBirthDate(next)
                 clearError()
               }}
             >
               <View className={`${styles.pickerValue} ${birthDate && !disabled ? '' : styles.empty}`}>
                 <Text>{birthDate || '请选择出生日期'}</Text>
               </View>
-            </Picker>
+            </DateField>
           </FormField>
         </FormSection>
         <FormSection title="联系方式">

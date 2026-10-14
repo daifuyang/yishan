@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
-import { Picker, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import { useRouter } from '@tarojs/taro'
 
 import { StateView } from '@/components/feedback'
 import { PageContainer } from '@/components/layout'
 import {
+  DateField,
+  SelectorPicker as Picker,
   FormContent,
   FormField,
   FormSection,
@@ -135,6 +137,7 @@ function UserEditContent({ id }: { id?: string }) {
                         error={(errors as Record<string, string | undefined>)[field.key]}
                       >
                         <Picker
+                          title={`选择${field.label}`}
                           className={styles.picker}
                           mode="selector"
                           range={field.options as string[]}
@@ -160,16 +163,15 @@ function UserEditContent({ id }: { id?: string }) {
                         arrow
                         error={(errors as Record<string, string | undefined>)[field.key]}
                       >
-                        <Picker
+                        <DateField
                           className={styles.picker}
-                          mode="date"
                           value={current}
-                          onChange={(event) => setterFor(field.key)?.(String(event.detail.value))}
+                          onChange={(next) => setterFor(field.key)?.(next)}
                         >
                           <View className={styles.pickerValue}>
                             <Text>{current || UNSET}</Text>
                           </View>
-                        </Picker>
+                        </DateField>
                       </FormField>
                     )
                   }
