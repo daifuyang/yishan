@@ -7,10 +7,16 @@
   box-sizing: border-box;
 }
 
-/* H5 没有原生导航栏，自绘页头用全局安全区变量避让刘海；
-   小程序由 WorkbenchHeader 的 inline 状态栏高度覆盖（inline 优先，不会叠加）。 */
+/* 与内页共享页头（ManagementPageHeader）对齐：白底 + 吸顶 + 安全区算进自身盒子。
+   H5 没有原生导航栏，安全区变量在这里避让刘海；小程序由 WorkbenchHeader 的
+   inline 状态栏高度覆盖（inline 优先，不会叠加）。
+   刻意不加下边框：白页头与下方白筛选条合成一整块白（T6 的 row 2 亦断言二者紧贴）。 */
 .apps__top {
-  padding-top: var(--safe-area-top);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  padding: var(--safe-area-top) var(--space-3) 0;
+  background: var(--color-bg-surface);
 }
 
 .apps__header, .apps__sectionHeader {
@@ -28,7 +34,7 @@
 
 .apps__pageTitle {
   color: var(--color-text-primary);
-  font-size: 20px;
+  font-size: var(--font-size-18);
   font-weight: 600;
   white-space: nowrap;
 }

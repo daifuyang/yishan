@@ -380,3 +380,33 @@
   z-index: var(--z-mask);
   background-color: var(--color-bg-mask);
 }
+
+/* ---------- Taro H5 tabbar 的 iOS 安全区修复 ---------- */
+/* 上游 @tarojs/components 的三条规则互相矛盾，只在 iOS 可见（安卓 safe-area 为 0）：
+     1. .taro-tabbar__tabbar 高度固定为 --taro-tabbar-height(50px)
+     2. .weui-tabbar__item 却带 padding-bottom: env(safe-area-inset-bottom)
+        -> item 需要 50+34px，溢出 50px 的 bar
+     3. .taro-tabbar__tabbar-bottom 用 margin-bottom: env(...) 抬起整条 bar
+        -> 屏幕最下方那条安全区没有任何背景（占用者是透明的 container）
+   表现即「iOS 上底部 tabbar 没有铺到屏幕底边、内容被顶高」。
+   修法：让容器自己承担安全区（content-box + padding，盒子落到屏幕底边），
+   bar 贴容器顶部，安全区那条由容器背景铺满；item 不再自己加，避免重复计算。
+   注意：这里刻意不引用 var(--taro-tabbar-height) —— 它会被 postcss-pxtransform
+   改写成未定义的 var(--50PX)，导致 calc() 失效。这些规则来自运行时注入的 CSS，
+   晚于 app.css，因此需要 !important。 */
+.taro-tabbar__tabbar-bottom {
+  margin-bottom: 0 !important;
+  padding-bottom: env(safe-area-inset-bottom) !important;
+  box-sizing: content-box !important;
+  background-color: var(--color-bg-surface) !important;
+}
+
+.taro-tabbar__tabbar-bottom .weui-tabbar {
+  top: 0 !important;
+  bottom: auto !important;
+  background-color: transparent !important;
+}
+
+.taro-tabbar__tabbar-bottom .weui-tabbar__item {
+  padding-bottom: 0 !important;
+}
