@@ -1,54 +1,37 @@
-import { useEffect, useState } from 'react'
-import { View, Text } from '@tarojs/components'
-import { useDidShow } from '@tarojs/taro'
+import { useEffect, useMemo, useState } from 'react'
 
-import { AppText } from '@/components/atoms'
-import { ListItem, SectionHeader } from '@/components/molecules'
 import { contactsApi } from '@/api'
-import { useRequireAuth } from '@/utils/auth-guard'
-import { navigateTo } from '@/utils/router'
-import { SECONDARY_PAGES } from '@/constants/routes'
 import type { SysMenuNode } from '@/api/types'
+import {
+  ManagementList,
+  ManagementPage,
+  ManagementPageHeader,
+  ManagementStates,
+  ManagementTreeCell,
+} from '@/components/management'
+import { SECONDARY_PAGES } from '@/constants/routes'
+import { useRequireAuth } from '@/utils/auth-guard'
+import { withAccountScope } from '@/utils/account-scope'
+import { navigateTo } from '@/utils/router'
 
-import styles from './index.module.scss'
-import { PageContainer } from '@/components/layout'
-
-interface DeptFlatNode {
-  id: number
-  name: string
-  parentId?: number | null
-  hasChildren: boolean
+function hasChildren(node: SysMenuNode): boolean {
+  return Array.isArray(node.children) && node.children.length > 0
 }
 
-function flatten(tree: SysMenuNode[], depth = 0, out: DeptFlatNode[] = []): DeptFlatNode[] {
-  for (const n of tree) {
-    out.push({
-      id: n.id,
-      name: n.name,
-      parentId: n.parentId ?? null,
-      hasChildren: !!n.children && n.children.length > 0,
-    })
-    if (n.children && n.children.length > 0) {
-      flatten(n.children, depth + 1, out)
-    }
-  }
-  return out
-}
-
-export default function ContactsIndex() {
-  const [depts, setDepts] = useState<DeptFlatNode[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
+function ContactsIndex() {
   const guard = useRequireAuth()
+  const [tree, setTree] = useState<SysMenuNode[]>([])
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const load = async () => {
     if (!guard.ready || !guard.allowed) return
     setLoading(true)
     setError(null)
     try {
-      const tree = await contactsApi.getDeptTree()
-      setDepts(flatten(tree || []))
+      const data = await contactsApi.getDeptTree()
+      setTree(data || [])
     } catch (e) {
       setError((e as Error).message || '加载失败')
     } finally {
@@ -56,56 +39,73 @@ export default function ContactsIndex() {
     }
   }
 
+  // 首次挂载走 useEffect。账号切换由 withAccountScope 的 key 触发整页重挂载，
+  // 此处不需要单独监听 user.id；下拉刷新由调用方显式触发。
   useEffect(() => {
-    load()
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guard.ready, guard.allowed])
 
-  useDidShow(() => load())
+  if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
 
-  const openDept = (id: number, name: string) => {
+  const rows = useMemo(() => {
+    const out: { node: SysMenuNode; depth: number }[] = []
+    const walk = (nodes: SysMenuNode[], depth: number) => {
+      for (const node of nodes) {
+        out.push({ node, depth })
+        if (expanded.has(node.id)) walk(node.children ?? [], depth + 1)
+      }
+    }
+    walk(tree, 0)
+    return out
+  }, [tree, expanded])
+
+  const toggle = (id: number) =>
+    setExpanded((previous) => {
+      const next = new Set(previous)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const openDept = (id: number, name: string) =>
     navigateTo(`/${SECONDARY_PAGES.contactsDept}?id=${id}&name=${encodeURIComponent(name)}`)
-  }
 
   return (
-    <PageContainer>
-      <SectionHeader title="部门" showMore={false} />
-
-      {loading && depts.length === 0 ? (
-        <View className={styles.contacts__state}>
-          <AppText size={13} variant="tertiary">
-            加载中…
-          </AppText>
-        </View>
-      ) : error ? (
-        <View className={styles.contacts__state}>
-          <AppText size={13} variant="tertiary">
-            {error}
-          </AppText>
-        </View>
-      ) : depts.length === 0 ? (
-        <View className={styles.contacts__state}>
-          <AppText size={13} variant="tertiary">
-            暂无部门
-          </AppText>
-        </View>
-      ) : (
-        <View className={styles.contacts__list}>
-          {depts.map((d, idx) => (
-            <View key={d.id}>
-              <ListItem
-                title={
-                  <View className={styles.contacts__title}>
-                    <Text className={styles.contacts__name}>{d.name}</Text>
-                  </View>
-                }
-                showArrow
-                bordered={idx < depts.length - 1}
-                onClick={() => openDept(d.id, d.name)}
-              />
-            </View>
+    <ManagementPage>
+      <ManagementPageHeader title="部门" />
+      <ManagementStates
+        kind={
+          error
+            ? 'error'
+            : loading && !tree.length
+              ? 'loading'
+              : !tree.length
+                ? 'empty'
+                : 'ready'
+        }
+        errorText={error || undefined}
+        emptyText="暂无部门"
+        onRetry={() => void load()}
+      >
+        <ManagementList>
+          {rows.map(({ node, depth }, index) => (
+            // 点行进部门、点箭头折叠：ManagementTreeCell 的箭头 stopPropagation，两者互不触发
+            <ManagementTreeCell
+              key={node.id}
+              title={node.name}
+              depth={depth}
+              hasChildren={hasChildren(node)}
+              expanded={expanded.has(node.id)}
+              onToggle={() => toggle(node.id)}
+              bordered={index < rows.length - 1}
+              onClick={() => openDept(node.id, node.name)}
+            />
           ))}
-        </View>
-      )}
-    </PageContainer>
+        </ManagementList>
+      </ManagementStates>
+    </ManagementPage>
   )
 }
+
+export default withAccountScope(ContactsIndex)
