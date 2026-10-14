@@ -84,25 +84,33 @@ const scss = new Proxy({}, { get: (_, key) => (key === '__esModule' ? false : ke
 
 function mountIndex() {
   const calls = { tree: 0, nav: [] }
+  // 共享结构性展平/折叠工具：real 实现，不替换
+  const treeLogic = loadTs('src/components/management/menuTreeLogic.ts')
   const page = mountPage('src/pages/contacts/index/index.tsx', {
     '@tarojs/components': { View: 'View', Text: 'Text' },
-    '@tarojs/taro': { useDidShow: () => {}, useRouter: () => ({ params: {} }) },
+    // 不覆盖 useDidShow：让 mountPage 的默认 mock 把回调 push 到 didShow，
+    // 以便 page.show() 真正触发回调，否则「首屏只发一次」无法区分是否注册了 useDidShow。
+    '@/api/client': { getSessionVersion: () => 1 },
     '@/components/atoms': { AppText: 'AppText', Tag: 'Tag' },
     '@/components/feedback': { StateView: 'StateView' },
     '@/components/layout': { PageContainer: 'page-container' },
     '@/components/molecules': Object.fromEntries(
       ['ListItem', 'SectionHeader'].map((k) => [k, k]),
     ),
-    '@/components/management': Object.fromEntries(
-      [
-        'ManagementCell',
-        'ManagementList',
-        'ManagementPage',
-        'ManagementPageHeader',
-        'ManagementStates',
-        'ManagementTreeCell',
-      ].map((k) => [k, k]),
-    ),
+    '@/components/management': {
+      ...Object.fromEntries(
+        [
+          'ManagementCell',
+          'ManagementList',
+          'ManagementPage',
+          'ManagementPageHeader',
+          'ManagementStates',
+          'ManagementTreeCell',
+        ].map((k) => [k, k]),
+      ),
+      flattenTree: treeLogic.flattenTree,
+      toggleExpanded: treeLogic.toggleExpanded,
+    },
     '@/api': {
       contactsApi: {
         getDeptTree: async () => {
@@ -128,6 +136,20 @@ test('通讯录部门树：初始仅展示根层；首屏只请求一次', async
     ['上海总公司', '北京分公司'],
   )
   assert.equal(calls.tree, 1)
+})
+
+test('通讯录部门树：每次回到页面都重新拉取；useDidShow 触发后请求计数 +1', async () => {
+  const { page, calls } = mountIndex()
+  await page.settle()
+  assert.equal(calls.tree, 1, '首屏只走 useEffect')
+  // 第一次 show：useDidShow 注册的回调被触发，再发一次请求
+  page.show()
+  await page.settle()
+  assert.equal(calls.tree, 2, '第一次 show 之后计数 +1')
+  // 第二次 show：无任何变更，再发一次请求
+  page.show()
+  await page.settle()
+  assert.equal(calls.tree, 3, '第二次 show 之后计数再 +1')
 })
 
 test('通讯录部门树：展开父级才出现子级；点击叶子跳转到成员页', async () => {
