@@ -53,7 +53,7 @@ async (page) => {
   await page.locator('[aria-label="login-log"]').waitFor()
   const pages = [
     ['system/login-log/index', '登录日志'], ['system/login-log/detail/index?id=501', '登录详情'],
-    ['profile/login-log/index', '登录记录'], ['system/region/index', '地区管理'],
+    ['profile/login-log/index', '登录日志'], ['system/region/index', '地区管理'],
     ['system/module-management/index', '模块管理'], ['system/module-management/detail/index?id=demo', '示例模块'],
     ['profile/edit/index', '真实姓名'], ['profile/password/index', '当前密码'],
   ]

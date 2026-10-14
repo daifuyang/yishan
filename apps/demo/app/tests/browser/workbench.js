@@ -160,6 +160,12 @@ async (page) => {
   // 改为断言共享搜索框仍是它自己的 48px 高度（与列表行同高），布局塌陷依旧会被抓到。
   const sharedSearch = page.locator('[class*="ManagementSearch-module__search___"]').first()
   await sharedSearch.waitFor()
+  // Taro 把 .search 的 height 从 48px 编译成 2.4rem —— 等根字号脚本把
+  // documentElement.fontSize 改写到 375 视口下的目标值（20px）后再读，
+  // 否则会在前一个 1280x720 的根字号（clamp 到 40px）下读到 96。
+  await page.waitForFunction(
+    () => Math.abs(parseFloat(getComputedStyle(document.documentElement).fontSize) - 20) < 0.5,
+  )
   const searchBoxHeight = await sharedSearch.evaluate(el => el.getBoundingClientRect().height)
   check(Math.abs(searchBoxHeight - 48) < 1, 'Shared search bar must keep its 48px height')
   const visual = await page.evaluate(() => {
@@ -170,7 +176,7 @@ async (page) => {
     )
     const grid = section.querySelector('[class*=apps__grid]')
     const items = [...grid.children].map(el => el.getBoundingClientRect())
-    const icons = [...grid.querySelectorAll('[class*=apps__iconWrap]')]
+    const icons = [...grid.querySelectorAll('[class*=index-module__tile___]')]
     const category = getComputedStyle(section.querySelector('[class*=apps__category]'))
     return {
       centered: Math.abs(title.left + title.width / 2 - innerWidth / 2) < 1,
@@ -219,107 +225,131 @@ async (page) => {
     'Workbench title must stay on one line',
   )
 
-  // 320px 几何：从 .page-container 出发逐段测间距，验证最近一轮的 16px 节奏。
-  // 数字来自 fix-1-report.md §F3.5；如果实际 bundle 与之一致就报绿，不一致就报。
-  // 仅在 ready 态断言（apps__section 已可见）；空 / 错误态由 StateView 渲染，
-  // 其没有背景色，bar 与页面灰底相接的 0px 是正确行为 —— 不可在此断言失败。
-  const layout = await page.evaluate(() => {
-    const container = document.querySelector('.page-container')
-    const headerTop = document.querySelector('[class*=apps__top]')
-    const headerBox = document.querySelector('[class*=apps__header]')
-    const filterBar = document.querySelector('[class*="ManagementSearch-module__filters___"]')
-    const search = document.querySelector('[class*="ManagementSearch-module__search___"]')
-    const cards = [...document.querySelectorAll('[class*=apps__section]')]
-    const firstCard = cards[0]
-    const lastCard = cards[cards.length - 1]
-    const firstCategory = firstCard ? firstCard.querySelector('[class*=apps__category]') : null
-    const secondCard = cards[1] || null
-    const rect = (el) => (el ? el.getBoundingClientRect() : null)
-    return {
-      container: rect(container),
-      headerTop: rect(headerTop),
-      headerBox: rect(headerBox),
-      filterBar: rect(filterBar),
-      search: rect(search),
-      firstCard: rect(firstCard),
-      firstCategory: rect(firstCategory),
-      secondCard: rect(secondCard),
-      lastCard: rect(lastCard),
-      cardCount: cards.length,
-      containerPaddingBottom: container ? parseFloat(getComputedStyle(container).paddingBottom) : null,
-    }
-  })
-  // row 1: page top → header box = 0px（H5 --safe-area-top = 0）
-  check(
-    layout.headerTop && layout.headerTop.top === 0,
-    `Header should sit at page top (H5 safe-area-top is 0); got ${layout.headerTop ? layout.headerTop.top : 'no header'}`,
-  )
-  // row 2: header box bottom → filter-bar white top = 0px（紧贴）
-  check(
-    layout.filterBar &&
-      layout.headerBox &&
-      Math.abs(layout.filterBar.top - layout.headerBox.bottom) < 1,
-    `Header should meet filter bar flush; got ${layout.filterBar && layout.headerBox ? (layout.filterBar.top - layout.headerBox.bottom).toFixed(2) : '?'}px gap`,
-  )
-  // row 3: bar white top → search box top = 12px（--space-3）
-  check(
-    layout.filterBar &&
-      layout.search &&
-      Math.abs(layout.search.top - layout.filterBar.top - 12) < 1,
-    `Bar padding-top should be --space-3 (12px); got ${layout.filterBar && layout.search ? (layout.search.top - layout.filterBar.top).toFixed(2) : '?'}px`,
-  )
-  // row 4: 搜索框 48px 高，左右各 16px 边距
-  check(
-    layout.search && Math.abs(layout.search.height - 48) < 1,
-    `Search box height should be 48px; got ${layout.search ? layout.search.height.toFixed(2) : '?'}px`,
-  )
-  check(
-    layout.search &&
-      layout.filterBar &&
-      Math.abs(layout.search.left - layout.filterBar.left - 16) < 1,
-    `Search box should sit 16px from left edge; got ${layout.search && layout.filterBar ? layout.search.left.toFixed(2) : '?'}px`,
-  )
-  check(
-    layout.search &&
-      layout.filterBar &&
-      Math.abs(layout.filterBar.right - layout.search.right - 16) < 1,
-    `Search box should sit 16px from right edge; got ${layout.search && layout.filterBar ? (layout.filterBar.right - layout.search.right).toFixed(2) : '?'}px`,
-  )
-  // 仅当 ready 态（cards 已可见）断言 row 5/6/7/8/9。
-  // 空 / 错误态由 StateView 渲染，没有 margin、没有 background —— bar 与灰底相接 0px 是对的。
-  if (layout.firstCard && layout.lastCard) {
-    // row 5: bar white bottom → first card top = 16px（卡片 margin-top 与筛选条 padding-bottom=0 折叠）
-    check(
-      layout.filterBar &&
-        Math.abs(layout.firstCard.top - layout.filterBar.bottom - 16) < 1,
-      `Bar → first card should be 16px; got ${layout.filterBar ? (layout.firstCard.top - layout.filterBar.bottom).toFixed(2) : '?'}px`,
+  // 几何：从 .page-container 出发逐段测间距，验证最近一轮的 16px 节奏。
+  // Taro 的 postcss-pxtransform 把 CSS 变量里写的 `12px` / `16px` 编译成 `0.6rem` /
+  // `0.8rem`，于是 `--space-3` / `--space-4` 也跟着 documentElement.fontSize
+  // 走。Taro 把根字号钳在 [20, 40] 内：320 视口 → 20，390 → 20.8。所以本块
+  // 用 `rem × rootFontSize` 表达设计意图，而不是写死 px。rows 1 / 2 是元素定位
+  // 而不是 CSS 变量，确为 0px。仅在 ready 态断言（apps__section 已可见）；
+  // 空 / 错误态由 StateView 渲染，没有 background，bar 与灰底相接 0px 是对的。
+  const measure = async (width) => {
+    await page.setViewportSize({ width, height: 844 })
+    // 等 Taro 动态根字号脚本把 documentElement.fontSize 重写到当前视口的目标值。
+    await page.waitForFunction(
+      (w) => {
+        const r = document.documentElement
+        const expected = Math.max(20, Math.min(40, (20 * w) / 375))
+        return Math.abs(parseFloat(getComputedStyle(r).fontSize) - expected) < 0.5
+      },
+      width,
     )
-    // row 6: first card top → its category title = 16px（card padding-top）
+    const data = await page.evaluate(() => {
+      const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize)
+      const container = document.querySelector('.page-container')
+      const headerTop = document.querySelector('[class*=apps__top]')
+      const headerBox = document.querySelector('[class*=apps__header]')
+      const filterBar = document.querySelector('[class*="ManagementSearch-module__filters___"]')
+      const search = document.querySelector('[class*="ManagementSearch-module__search___"]')
+      const cards = [...document.querySelectorAll('[class*=apps__section]')]
+      const firstCard = cards[0]
+      const lastCard = cards[cards.length - 1]
+      const firstCategory = firstCard ? firstCard.querySelector('[class*=apps__category]') : null
+      const secondCard = cards[1] || null
+      const rect = (el) => (el ? el.getBoundingClientRect() : null)
+      return {
+        rootFontSize,
+        container: rect(container),
+        headerTop: rect(headerTop),
+        headerBox: rect(headerBox),
+        filterBar: rect(filterBar),
+        search: rect(search),
+        firstCard: rect(firstCard),
+        firstCategory: rect(firstCategory),
+        secondCard: rect(secondCard),
+        lastCard: rect(lastCard),
+        cardCount: cards.length,
+        containerPaddingBottom: container ? parseFloat(getComputedStyle(container).paddingBottom) : null,
+      }
+    })
+    // row 1: page top → header box = 0px（H5 --safe-area-top = 0，元素定位不是 CSS 变量）
     check(
-      layout.firstCategory &&
-        Math.abs(layout.firstCategory.top - layout.firstCard.top - 16) < 1,
-      `Card top → category should be 16px (card padding-top); got ${layout.firstCategory ? (layout.firstCategory.top - layout.firstCard.top).toFixed(2) : '?'}px`,
+      data.headerTop && data.headerTop.top === 0,
+      `[w=${width}] Header should sit at page top; got ${data.headerTop ? data.headerTop.top : 'no header'}`,
     )
-    // row 7: card bottom → next card top = 16px（仅在两张及以上卡片时）
-    if (layout.secondCard) {
+    // row 2: header box bottom → filter-bar white top = 0px（紧贴）
+    check(
+      data.filterBar &&
+        data.headerBox &&
+        Math.abs(data.filterBar.top - data.headerBox.bottom) < 1,
+      `[w=${width}] Header should meet filter bar flush; got ${data.filterBar && data.headerBox ? (data.filterBar.top - data.headerBox.bottom).toFixed(2) : '?'}px gap`,
+    )
+    // row 3: bar white top → search box top = 0.6rem × 根字号（filter padding-top = --space-3）
+    const space3 = 0.6 * data.rootFontSize
+    check(
+      data.filterBar &&
+        data.search &&
+        Math.abs(data.search.top - data.filterBar.top - space3) < 0.5,
+      `[w=${width}] Bar padding-top should be 0.6rem (${space3.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${data.filterBar && data.search ? (data.search.top - data.filterBar.top).toFixed(2) : '?'}px`,
+    )
+    // row 4: 搜索框高度 = 2.4rem × 根字号；左右各 0.8rem 边距（filter padding-left/right = --space-4）
+    const space4 = 0.8 * data.rootFontSize
+    const expectedSearchHeight = 2.4 * data.rootFontSize
+    check(
+      data.search && Math.abs(data.search.height - expectedSearchHeight) < 0.5,
+      `[w=${width}] Search height should be 2.4rem (${expectedSearchHeight.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${data.search ? data.search.height.toFixed(2) : '?'}px`,
+    )
+    check(
+      data.search &&
+        data.filterBar &&
+        Math.abs(data.search.left - data.filterBar.left - space4) < 0.5,
+      `[w=${width}] Search box should sit 0.8rem (${space4.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}) from left edge; got ${data.search && data.filterBar ? data.search.left.toFixed(2) : '?'}px`,
+    )
+    check(
+      data.search &&
+        data.filterBar &&
+        Math.abs(data.filterBar.right - data.search.right - space4) < 0.5,
+      `[w=${width}] Search box should sit 0.8rem (${space4.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}) from right edge; got ${data.search && data.filterBar ? (data.filterBar.right - data.search.right).toFixed(2) : '?'}px`,
+    )
+    // 仅当 ready 态（cards 已可见）断言 row 5/6/7/8/9。
+    if (data.firstCard && data.lastCard) {
+      // row 5: bar white bottom → first card top = 0.8rem × 根字号（var(--space-4)）
       check(
-        Math.abs(layout.secondCard.top - layout.firstCard.bottom - 16) < 1,
-        `Card → next card should be 16px; got ${(layout.secondCard.top - layout.firstCard.bottom).toFixed(2)}px`,
+        data.filterBar &&
+          Math.abs(data.firstCard.top - data.filterBar.bottom - space4) < 0.5,
+        `[w=${width}] Bar → first card should be 0.8rem (${space4.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${data.filterBar ? (data.firstCard.top - data.filterBar.bottom).toFixed(2) : '?'}px`,
+      )
+      // row 6: first card top → its category title = .8rem × 根字号（card padding-top）
+      const expectedCategoryOffset = 0.8 * data.rootFontSize
+      check(
+        data.firstCategory &&
+          Math.abs(data.firstCategory.top - data.firstCard.top - expectedCategoryOffset) < 0.5,
+        `[w=${width}] Card top → category should be .8rem (${expectedCategoryOffset.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${data.firstCategory ? (data.firstCategory.top - data.firstCard.top).toFixed(2) : '?'}px`,
+      )
+      // row 7: card bottom → next card top = 0.8rem × 根字号（仅在两张及以上卡片时）
+      if (data.secondCard) {
+        check(
+          Math.abs(data.secondCard.top - data.firstCard.bottom - space4) < 0.5,
+          `[w=${width}] Card → next card should be 0.8rem (${space4.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${(data.secondCard.top - data.firstCard.bottom).toFixed(2)}px`,
+        )
+      }
+      // row 8: last card bottom → end of page box = 1.6rem × 根字号（卡片 0.8rem margin-bottom + 容器 0.8rem padding-bottom）
+      const expectedPageEnd = 1.6 * data.rootFontSize
+      check(
+        data.container &&
+          Math.abs(data.container.bottom - data.lastCard.bottom - expectedPageEnd) < 0.5,
+        `[w=${width}] Last card bottom → page bottom should be 1.6rem (${expectedPageEnd.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${data.container ? (data.container.bottom - data.lastCard.bottom).toFixed(2) : '?'}px`,
+      )
+      // row 9: effective page padding-bottom = 0.8rem × 根字号（apps 覆盖 PageContainer 的 tab-bar allowance）
+      check(
+        data.containerPaddingBottom !== null &&
+          Math.abs(data.containerPaddingBottom - space4) < 0.5,
+        `[w=${width}] Apps page padding-bottom should be 0.8rem (${space4.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${data.containerPaddingBottom}`,
       )
     }
-    // row 8: last card bottom → end of page box = 32px（卡片 16px margin-bottom + 容器 16px padding-bottom）
-    check(
-      layout.container &&
-        Math.abs(layout.container.bottom - layout.lastCard.bottom - 32) < 1,
-      `Last card bottom → page bottom should be 32px; got ${layout.container ? (layout.container.bottom - layout.lastCard.bottom).toFixed(2) : '?'}px`,
-    )
-    // row 9: effective page padding-bottom = 16px（apps 覆盖 PageContainer 的 tab-bar allowance）
-    check(
-      layout.containerPaddingBottom !== null &&
-        Math.abs(layout.containerPaddingBottom - 16) < 1,
-      `Apps page padding-bottom should be 16px (overrides tab-bar allowance); got ${layout.containerPaddingBottom}`,
-    )
+    return data
   }
+  await measure(320)
+  await measure(390)
 
   const beforeSearch = requests.length
   await page.getByPlaceholder('搜索应用').fill('用 户')

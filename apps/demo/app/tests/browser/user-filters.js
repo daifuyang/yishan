@@ -82,7 +82,7 @@ async (page) => {
   await page.getByLabel('筛选', { exact: true }).click()
   await page.getByText('近7天', { exact: true }).click()
   const before = queries.length
-  await page.getByLabel('关闭筛选', { exact: true }).click()
+  await page.getByLabel('关闭筛选用户', { exact: true }).click()
   await page.waitForTimeout(400)
   if (queries.length !== before) throw new Error('Cancelled date draft triggered a request')
   await page.getByLabel('筛选', { exact: true }).click()
