@@ -219,6 +219,108 @@ async (page) => {
     'Workbench title must stay on one line',
   )
 
+  // 320px 几何：从 .page-container 出发逐段测间距，验证最近一轮的 16px 节奏。
+  // 数字来自 fix-1-report.md §F3.5；如果实际 bundle 与之一致就报绿，不一致就报。
+  // 仅在 ready 态断言（apps__section 已可见）；空 / 错误态由 StateView 渲染，
+  // 其没有背景色，bar 与页面灰底相接的 0px 是正确行为 —— 不可在此断言失败。
+  const layout = await page.evaluate(() => {
+    const container = document.querySelector('.page-container')
+    const headerTop = document.querySelector('[class*=apps__top]')
+    const headerBox = document.querySelector('[class*=apps__header]')
+    const filterBar = document.querySelector('[class*="ManagementSearch-module__filters___"]')
+    const search = document.querySelector('[class*="ManagementSearch-module__search___"]')
+    const cards = [...document.querySelectorAll('[class*=apps__section]')]
+    const firstCard = cards[0]
+    const lastCard = cards[cards.length - 1]
+    const firstCategory = firstCard ? firstCard.querySelector('[class*=apps__category]') : null
+    const secondCard = cards[1] || null
+    const rect = (el) => (el ? el.getBoundingClientRect() : null)
+    return {
+      container: rect(container),
+      headerTop: rect(headerTop),
+      headerBox: rect(headerBox),
+      filterBar: rect(filterBar),
+      search: rect(search),
+      firstCard: rect(firstCard),
+      firstCategory: rect(firstCategory),
+      secondCard: rect(secondCard),
+      lastCard: rect(lastCard),
+      cardCount: cards.length,
+      containerPaddingBottom: container ? parseFloat(getComputedStyle(container).paddingBottom) : null,
+    }
+  })
+  // row 1: page top → header box = 0px（H5 --safe-area-top = 0）
+  check(
+    layout.headerTop && layout.headerTop.top === 0,
+    `Header should sit at page top (H5 safe-area-top is 0); got ${layout.headerTop ? layout.headerTop.top : 'no header'}`,
+  )
+  // row 2: header box bottom → filter-bar white top = 0px（紧贴）
+  check(
+    layout.filterBar &&
+      layout.headerBox &&
+      Math.abs(layout.filterBar.top - layout.headerBox.bottom) < 1,
+    `Header should meet filter bar flush; got ${layout.filterBar && layout.headerBox ? (layout.filterBar.top - layout.headerBox.bottom).toFixed(2) : '?'}px gap`,
+  )
+  // row 3: bar white top → search box top = 12px（--space-3）
+  check(
+    layout.filterBar &&
+      layout.search &&
+      Math.abs(layout.search.top - layout.filterBar.top - 12) < 1,
+    `Bar padding-top should be --space-3 (12px); got ${layout.filterBar && layout.search ? (layout.search.top - layout.filterBar.top).toFixed(2) : '?'}px`,
+  )
+  // row 4: 搜索框 48px 高，左右各 16px 边距
+  check(
+    layout.search && Math.abs(layout.search.height - 48) < 1,
+    `Search box height should be 48px; got ${layout.search ? layout.search.height.toFixed(2) : '?'}px`,
+  )
+  check(
+    layout.search &&
+      layout.filterBar &&
+      Math.abs(layout.search.left - layout.filterBar.left - 16) < 1,
+    `Search box should sit 16px from left edge; got ${layout.search && layout.filterBar ? layout.search.left.toFixed(2) : '?'}px`,
+  )
+  check(
+    layout.search &&
+      layout.filterBar &&
+      Math.abs(layout.filterBar.right - layout.search.right - 16) < 1,
+    `Search box should sit 16px from right edge; got ${layout.search && layout.filterBar ? (layout.filterBar.right - layout.search.right).toFixed(2) : '?'}px`,
+  )
+  // 仅当 ready 态（cards 已可见）断言 row 5/6/7/8/9。
+  // 空 / 错误态由 StateView 渲染，没有 margin、没有 background —— bar 与灰底相接 0px 是对的。
+  if (layout.firstCard && layout.lastCard) {
+    // row 5: bar white bottom → first card top = 16px（卡片 margin-top 与筛选条 padding-bottom=0 折叠）
+    check(
+      layout.filterBar &&
+        Math.abs(layout.firstCard.top - layout.filterBar.bottom - 16) < 1,
+      `Bar → first card should be 16px; got ${layout.filterBar ? (layout.firstCard.top - layout.filterBar.bottom).toFixed(2) : '?'}px`,
+    )
+    // row 6: first card top → its category title = 16px（card padding-top）
+    check(
+      layout.firstCategory &&
+        Math.abs(layout.firstCategory.top - layout.firstCard.top - 16) < 1,
+      `Card top → category should be 16px (card padding-top); got ${layout.firstCategory ? (layout.firstCategory.top - layout.firstCard.top).toFixed(2) : '?'}px`,
+    )
+    // row 7: card bottom → next card top = 16px（仅在两张及以上卡片时）
+    if (layout.secondCard) {
+      check(
+        Math.abs(layout.secondCard.top - layout.firstCard.bottom - 16) < 1,
+        `Card → next card should be 16px; got ${(layout.secondCard.top - layout.firstCard.bottom).toFixed(2)}px`,
+      )
+    }
+    // row 8: last card bottom → end of page box = 32px（卡片 16px margin-bottom + 容器 16px padding-bottom）
+    check(
+      layout.container &&
+        Math.abs(layout.container.bottom - layout.lastCard.bottom - 32) < 1,
+      `Last card bottom → page bottom should be 32px; got ${layout.container ? (layout.container.bottom - layout.lastCard.bottom).toFixed(2) : '?'}px`,
+    )
+    // row 9: effective page padding-bottom = 16px（apps 覆盖 PageContainer 的 tab-bar allowance）
+    check(
+      layout.containerPaddingBottom !== null &&
+        Math.abs(layout.containerPaddingBottom - 16) < 1,
+      `Apps page padding-bottom should be 16px (overrides tab-bar allowance); got ${layout.containerPaddingBottom}`,
+    )
+  }
+
   const beforeSearch = requests.length
   await page.getByPlaceholder('搜索应用').fill('用 户')
   check((await page.locator('[aria-label="用户管理"]').count()) === 1, 'Search must deduplicate')
