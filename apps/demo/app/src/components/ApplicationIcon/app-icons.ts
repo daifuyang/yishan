@@ -106,14 +106,14 @@ const ALIASES: Record<string, keyof typeof ICONS> = {
 }
 
 const PALETTES = {
-  blue: { color: '#FFFFFF', background: '#3478F6' },
-  green: { color: '#FFFFFF', background: '#22A777' },
-  purple: { color: '#FFFFFF', background: '#8455D9' },
-  orange: { color: '#FFFFFF', background: '#F18A35' },
-  yellow: { color: '#FFFFFF', background: '#D9AB24' },
-  cyan: { color: '#FFFFFF', background: '#20A7BE' },
-  red: { color: '#FFFFFF', background: '#EC6070' },
-  indigo: { color: '#FFFFFF', background: '#6268DF' },
+  blue: { color: 'var(--color-text-inverse)', background: 'var(--color-app-icon-blue)' },
+  green: { color: 'var(--color-text-inverse)', background: 'var(--color-app-icon-green)' },
+  purple: { color: 'var(--color-text-inverse)', background: 'var(--color-app-icon-purple)' },
+  orange: { color: 'var(--color-text-inverse)', background: 'var(--color-app-icon-orange)' },
+  yellow: { color: 'var(--color-text-inverse)', background: 'var(--color-app-icon-yellow)' },
+  cyan: { color: 'var(--color-text-inverse)', background: 'var(--color-app-icon-cyan)' },
+  red: { color: 'var(--color-text-inverse)', background: 'var(--color-app-icon-red)' },
+  indigo: { color: 'var(--color-text-inverse)', background: 'var(--color-app-icon-indigo)' },
 } as const
 
 const APP_COLORS: Record<string, keyof typeof PALETTES> = {
@@ -141,9 +141,9 @@ export function appIconPalette(id: string) {
   return PALETTES[APP_COLORS[id] ?? 'blue']
 }
 
-export function appIconBackground(icon: string, color: string = '#FFFFFF'): string {
+export function appIconBackground(icon: string): string {
   const key = icon.replace(/(Outlined|Filled|TwoTone)$/, '').toLowerCase()
   const name = ALIASES[key] ?? 'grid'
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256" fill="${color}">${ICONS[name]}</svg>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 256 256">${ICONS[name]}</svg>`
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
 }

@@ -63,7 +63,7 @@ export function ManagementCell({
   thumb,
   avatar,
   glyph,
-  glyphColor = '#1677FF',
+  glyphColor = 'var(--color-primary)',
   leading,
   disabled = false,
   footnote,
@@ -130,7 +130,7 @@ export function ManagementCell({
       ) : null}
       {showArrow ? (
         <View className={styles.row__arrow}>
-          <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+          <LineIcon name="chevronRight" size={16} color="var(--color-text-quaternary)" />
         </View>
       ) : null}
     </View>
@@ -172,7 +172,7 @@ export function ManagementTreeCell({
   description,
   tag,
   glyph,
-  glyphColor = '#86909C',
+  glyphColor = 'var(--color-text-tertiary)',
   depth = 0,
   hasChildren = false,
   expanded = false,
@@ -199,7 +199,7 @@ export function ManagementTreeCell({
           aria-label={expanded ? '收起' : '展开'}
           aria-expanded={expanded}
         >
-          <LineIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={14} color="#86909C" />
+          <LineIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={14} color="var(--color-text-tertiary)" />
         </View>
       ) : null}
       {glyph ? (

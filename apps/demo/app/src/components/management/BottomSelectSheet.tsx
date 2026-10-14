@@ -48,7 +48,7 @@ export function BottomSelectSheet({
               }}
             >
               <Text>{option.label}</Text>
-              {value === option.key ? <LineIcon name="check" size={18} color="#1677FF" /> : null}
+              {value === option.key ? <LineIcon name="check" size={18} color="var(--color-primary)" /> : null}
             </View>
           ))}
         </ScrollView>

@@ -133,7 +133,7 @@
   box-sizing: border-box;
   padding: 0;
   border: 0;
-  background: transparent;
+  background: var(--color-transparent);
   color: var(--color-text-primary);
   font-family: var(--font-family-base);
   font-size: var(--font-size-14);
@@ -254,6 +254,9 @@
 }
 
 .submit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   position: fixed;
   left: 0;
   right: 0;
@@ -265,12 +268,13 @@
 }
 
 .submit__button {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 44px;
   border-radius: var(--radius-md);
-  background: var(--color-primary);
+  background: var(--color-primary-solid);
   color: var(--color-text-inverse);
   font-size: var(--font-size-15);
   font-weight: var(--font-weight-medium);

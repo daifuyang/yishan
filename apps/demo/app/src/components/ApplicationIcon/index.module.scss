@@ -1,7 +1,7 @@
 .tile {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11,6 +11,8 @@
 .glyph {
   width: 28px;
   height: 28px;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
+  mask-repeat: no-repeat;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
 }

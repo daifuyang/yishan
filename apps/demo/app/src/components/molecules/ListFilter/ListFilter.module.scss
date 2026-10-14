@@ -17,7 +17,7 @@
 }
 
 .mListFilter__searchIcon {
-  font-size: 16px;
+  font-size: var(--font-size-16);
   color: var(--color-text-tertiary);
   line-height: 1;
 }
@@ -27,7 +27,7 @@
   min-width: 0;
   height: 100%;
   border: none;
-  background: transparent;
+  background: var(--color-transparent);
   font-size: var(--font-size-14);
   color: var(--color-text-primary);
   outline: none;

@@ -1,8 +1,7 @@
 import { View } from '@tarojs/components'
 
 /**
- * 线性图标：Lucide 路径（ISC 许可），以 data-URI 背景图渲染。
- * 小程序不支持内联 <svg>，故统一走背景图；颜色通过 stroke 参数注入。
+ * Lucide 路径（ISC 许可）作为 mask；颜色由 CSS 变量实时控制。
  */
 const ICONS = {
   pencil: '<path d="m16 3 5 5M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15Z"/>',
@@ -72,8 +71,9 @@ export interface LineIconProps {
   className?: string
 }
 
-export function LineIcon({ name, size = 20, color = '#4E5969', className = '' }: LineIconProps) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`
+export function LineIcon({ name, size = 20, color = 'var(--color-text-secondary)', className = '' }: LineIconProps) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`
+  const mask = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
   return (
     <View
       className={className}
@@ -81,10 +81,13 @@ export function LineIcon({ name, size = 20, color = '#4E5969', className = '' }:
         flexShrink: 0,
         width: `${size}px`,
         height: `${size}px`,
-        backgroundSize: '100% 100%',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundImage: `url("data:image/svg+xml,${encodeURIComponent(svg)}")`,
+        backgroundColor: color,
+        maskImage: mask,
+        WebkitMaskImage: mask,
+        maskSize: '100% 100%',
+        WebkitMaskSize: '100% 100%',
+        maskRepeat: 'no-repeat',
+        WebkitMaskRepeat: 'no-repeat',
       }}
     />
   )

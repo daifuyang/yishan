@@ -110,9 +110,9 @@ export default function UserDepartmentsPage() {
 
   return (
     <View className={styles.page}>
-      <View className={styles.header}>
+      {process.env.TARO_ENV !== 'h5' ? <View className={styles.header}>
         <Text className={styles.title}>选择部门</Text>
-      </View>
+      </View> : null}
 
       <View className={styles.search}>
         <Input

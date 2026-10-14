@@ -11,6 +11,8 @@ export interface ManagementPageProps {
   children: ReactNode
   /** 底部有固定操作栏时预留 50px + 安全区 */
   withActions?: boolean
+  /** 页面底部固定操作，与正文预留空间一起渲染。 */
+  bottomActions?: ReactNode
   className?: string
 }
 
@@ -18,11 +20,17 @@ export interface ManagementPageProps {
 export function ManagementPage({
   children,
   withActions = false,
+  bottomActions,
   className = '',
 }: ManagementPageProps) {
   return (
-    <View className={cx(styles.page, withActions && styles.pageWithActions, className)}>
+    <View className={cx(styles.page, (withActions || Boolean(bottomActions)) && styles.pageWithActions, className)}>
       {children}
+      {bottomActions ? (
+        <View className={styles.bottomActions}>
+          <View className={styles.bottomActions__content}>{bottomActions}</View>
+        </View>
+      ) : null}
     </View>
   )
 }
@@ -30,13 +38,13 @@ export function ManagementPage({
 export interface ManagementPageHeaderProps {
   title: ReactNode
   subtitle?: ReactNode
-  /** 右上角操作，通常是「新建」 */
+  /** 小程序顶栏操作；H5 操作放入 ManagementPage.bottomActions。 */
   action?: ReactNode
   /** 底部分隔线，默认 true；嵌在白色内容块里时置 false */
   bordered?: boolean
   className?: string
   onBack?: () => void
-  /** H5 需要自绘导航栏时置 false，其余端由原生导航栏承载 */
+  /** 是否显示自绘返回按钮。H5 使用宿主导航，不渲染此顶栏。 */
   showBack?: boolean
 }
 
@@ -50,6 +58,7 @@ export function ManagementPageHeader({
   onBack,
   showBack = true,
 }: ManagementPageHeaderProps) {
+  if (process.env.TARO_ENV === 'h5') return null
   return (
     <View className={cx(styles.header, bordered && styles.headerBordered, className)}>
       <View className={cx(styles.header__side, styles.header__sideLeft)}>

@@ -180,18 +180,20 @@ function UserIndexPage() {
         ? 'empty'
         : 'ready'
 
+  const pageAction = canCreate ? (
+    <ManagementHeaderAction
+      label="新建"
+      onClick={() => navigateTo(`/${SYSTEM_PAGES.userEdit}`)}
+    />
+  ) : undefined
+
   return (
-    <ManagementPage className="page-container">
+    <ManagementPage className="page-container"
+      bottomActions={process.env.TARO_ENV === 'h5' ? pageAction : undefined}
+    >
       <ManagementPageHeader
         title="用户管理"
-        action={
-          canCreate ? (
-            <ManagementHeaderAction
-              label="新建"
-              onClick={() => navigateTo(`/${SYSTEM_PAGES.userEdit}`)}
-            />
-          ) : undefined
-        }
+        action={pageAction}
       />
 
       <UserFilterBar keyword={keyword} onKeywordChange={setKeyword} filters={userFilters} onChange={changeFilters} />

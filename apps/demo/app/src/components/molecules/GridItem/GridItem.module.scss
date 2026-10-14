@@ -6,7 +6,7 @@
   gap: var(--space-2);
   padding: var(--space-3) var(--space-2);
   text-align: center;
-  background-color: transparent;
+  background-color: var(--color-transparent);
   transition: opacity var(--transition-fast);
   position: relative;
 }
@@ -31,7 +31,7 @@
 .mGridItem__iconWrap--danger  { background-color: var(--color-danger-bg); }
 
 .mGridItem__icon {
-  font-size: 20px;
+  font-size: var(--font-size-20);
   line-height: 1;
   color: var(--color-primary);
 }
@@ -48,9 +48,9 @@
   right: -4px;
   min-width: 16px;
   height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background-color: var(--color-danger);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-danger-solid);
   color: var(--color-text-inverse);
   font-size: var(--font-size-10);
   line-height: 16px;

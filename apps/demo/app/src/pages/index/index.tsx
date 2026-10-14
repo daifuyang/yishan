@@ -117,9 +117,8 @@ export default function IndexPage() {
 
   return (
     <PageContainer className={styles.home}>
-      {/* 小程序用运行时量出的状态栏高度（inline 覆盖页顶距），H5 没有原生导航栏，
-          交给 .home__topBar 的 var(--safe-area-top) 避让刘海 */}
-      <View
+      {/* 小程序自绘品牌行避让状态栏与胶囊；H5 由宿主导航承载。 */}
+      {process.env.TARO_ENV !== 'h5' ? <View
         className={styles.home__topBar}
         style={topBar.statusBar ? { paddingTop: `${topBar.statusBar}px` } : undefined}
       >
@@ -139,12 +138,12 @@ export default function IndexPage() {
             <HomeIcon name="bell" size={22} />
           </View>
         </View>
-      </View>
+      </View> : null}
 
       <HomeSection
-        title="数据概览"
+        title={process.env.TARO_ENV === 'h5' ? undefined : '数据概览'}
         extra={
-          metrics.defs.length > 0 ? (
+          process.env.TARO_ENV !== 'h5' && metrics.defs.length > 0 ? (
             <View
               className={styles.home__refresh}
               hoverClass={styles['home__refresh--pressed']}
@@ -203,6 +202,11 @@ export default function IndexPage() {
             onRetry={() => void todos.load()}
             onOpen={(item) => navigateTo(`/${item.entry}`)}
           />
+        </HomeSection>
+      ) : null}
+      {process.env.TARO_ENV === 'h5' ? (
+        <HomeSection>
+          <SectionLink text="消息中心" onClick={() => navigateTo(`/${SECONDARY_PAGES.messages}`)} />
         </HomeSection>
       ) : null}
     </PageContainer>

@@ -60,7 +60,7 @@ export function SelectionFooter({
                     aria-label={`移除-${item.label}`}
                     onClick={() => onRemoveItem(item.id)}
                   >
-                    <LineIcon name="close" size={14} color="#86909C" />
+                    <LineIcon name="close" size={14} color="var(--color-text-tertiary)" />
                   </View>
                 ) : null}
               </View>
@@ -79,7 +79,7 @@ export function SelectionFooter({
             onClick={() => setOpen(!open)}
           >
             <Text className={styles.summary}>{summary}</Text>
-            <LineIcon name={open ? 'chevronDown' : 'chevronRight'} size={14} color="#86909C" />
+            <LineIcon name={open ? 'chevronDown' : 'chevronRight'} size={14} color="var(--color-text-tertiary)" />
           </View>
         )}
 

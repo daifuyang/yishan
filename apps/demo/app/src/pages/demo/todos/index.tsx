@@ -80,18 +80,20 @@ function TodosPage() {
     ? (TODO_STATUS_OPTIONS.find((option) => option.key === todoFilters.status)?.label ??
       '全部状态')
     : '全部状态'
+  const pageAction = canCreate ? (
+    <ManagementHeaderAction
+      label="新建"
+      onClick={() => navigateTo(`/${DEMO_PAGES.todoForm}`)}
+    />
+  ) : undefined
+
   return (
-    <ManagementPage>
+    <ManagementPage
+      bottomActions={process.env.TARO_ENV === 'h5' ? pageAction : undefined}
+    >
       <ManagementPageHeader
         title="Todo 示例"
-        action={
-          canCreate ? (
-            <ManagementHeaderAction
-              label="新建"
-              onClick={() => navigateTo(`/${DEMO_PAGES.todoForm}`)}
-            />
-          ) : undefined
-        }
+        action={pageAction}
       />
       <ManagementFilterBar>
         <ManagementSearchBar

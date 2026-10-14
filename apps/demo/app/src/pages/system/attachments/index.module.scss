@@ -1,5 +1,7 @@
 .headerActions {
   display: flex;
+  flex: 1;
+  justify-content: space-evenly;
   gap: var(--space-4);
 }
 

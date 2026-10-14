@@ -47,7 +47,7 @@
 }
 
 .actionWarning {
-  color: #a86624;
+  color: var(--color-warning);
 }
 
 .actionDisabled {
@@ -74,16 +74,19 @@
 }
 
 .sheet {
+  max-height: calc(100vh - var(--safe-area-top));
+  overflow-y: auto;
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  background: var(--color-bg-surface);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
   padding-bottom: var(--safe-area-bottom);
   padding-left: var(--safe-area-left);
   padding-right: var(--safe-area-right);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .sheet__header {
@@ -134,6 +137,8 @@
 /* ---------- 居中输入弹窗 ---------- */
 
 .dialog {
+  max-height: calc(100vh - var(--safe-area-device-top) - var(--safe-area-device-bottom) - var(--space-8));
+  overflow-y: auto;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -142,8 +147,9 @@
   max-width: 340px;
   box-sizing: border-box;
   padding: var(--space-5) var(--space-4) 0;
-  border-radius: var(--radius-xl);
-  background: var(--color-bg-surface);
+  border-radius: var(--radius-modal);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
 }
 
 .dialog__hint {

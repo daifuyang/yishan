@@ -41,7 +41,7 @@
   width: 44px;
   height: 44px;
   color: var(--color-text-secondary);
-  background: #eef2f6;
+  background: var(--color-bg-subtle);
   font-size: var(--font-size-16);
 }
 
@@ -117,7 +117,7 @@
 .row__description {
   display: block;
   max-width: 100%;
-  margin-top: 4px;
+  margin-top: var(--space-1);
   overflow: hidden;
   color: var(--color-text-tertiary);
   font-size: var(--font-size-13);

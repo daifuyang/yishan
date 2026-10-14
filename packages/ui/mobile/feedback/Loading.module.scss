@@ -2,14 +2,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 0;
-  gap: 4px;
+  padding: var(--space-8) 0;
+  gap: var(--space-1);
 }
 
 .loading__dot {
-  font-size: 24px;
+  font-size: var(--font-size-24);
   line-height: 1;
-  color: var(--color-text-tertiary, #86909c);
+  color: var(--color-text-tertiary);
   animation: pulse 1.2s infinite ease-in-out;
 }
 
@@ -22,7 +22,7 @@
 }
 
 .loading__text {
-  margin-left: 8px;
+  margin-left: var(--space-2);
 }
 
 @keyframes pulse {

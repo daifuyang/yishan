@@ -2,23 +2,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48px 0 32px;
+  padding: var(--space-12) 0 var(--space-8);
 
   &__icon {
     font-size: 56px;
     line-height: 1;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-4);
   }
 
   &__title {
     font-size: 26px;
-    font-weight: 600;
-    color: var(--color-text-primary, #1D2129);
-    margin-bottom: 8px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-2);
   }
 
   &__slogan {
-    font-size: 14px;
-    color: var(--color-text-tertiary, #86909C);
+    font-size: var(--font-size-14);
+    color: var(--color-text-tertiary);
   }
 }

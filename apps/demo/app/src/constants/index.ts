@@ -1,10 +1,12 @@
+import { themeTokens } from '@yishan/ui/mobile/theme/palette'
+
 export const APP_NAME = '移山'
 export const APP_VERSION = '0.1.0'
 
 export const TAB_BAR = {
-  color: '#86909C',
-  selectedColor: '#1677FF',
-  backgroundColor: '#FFFFFF',
+  color: themeTokens.light['color-text-tertiary'],
+  selectedColor: themeTokens.light['color-primary'],
+  backgroundColor: themeTokens.light['color-bg-surface'],
   borderStyle: 'white',
   list: [
     {
@@ -29,10 +31,10 @@ export const TAB_BAR = {
 } as const
 
 export const THEME = {
-  primary: '#1677FF',
-  primaryHover: '#4096FF',
-  primaryPressed: '#0958D9',
-  success: '#00B42A',
-  warning: '#FF7D00',
-  danger: '#F53F3F',
+  primary: themeTokens.light['color-primary'],
+  primaryHover: themeTokens.light['color-primary-hover'],
+  primaryPressed: themeTokens.light['color-primary-pressed'],
+  success: themeTokens.light['color-success'],
+  warning: themeTokens.light['color-warning'],
+  danger: themeTokens.light['color-danger'],
 } as const

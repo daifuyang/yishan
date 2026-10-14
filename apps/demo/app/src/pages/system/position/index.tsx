@@ -72,18 +72,20 @@ function PositionPage() {
   const sortLabel =
     POSITION_SORT_OPTIONS.find((option) => option.key === positionFilters.sort)?.label ??
     POSITION_SORT_OPTIONS[0].label
+  const pageAction = canCreate ? (
+    <ManagementHeaderAction
+      label="新建"
+      onClick={() => navigateTo(`/${SYSTEM_PAGES.positionForm}`)}
+    />
+  ) : undefined
+
   return (
-    <ManagementPage>
+    <ManagementPage
+      bottomActions={process.env.TARO_ENV === 'h5' ? pageAction : undefined}
+    >
       <ManagementPageHeader
         title="岗位管理"
-        action={
-          canCreate ? (
-            <ManagementHeaderAction
-              label="新建"
-              onClick={() => navigateTo(`/${SYSTEM_PAGES.positionForm}`)}
-            />
-          ) : undefined
-        }
+        action={pageAction}
       />
       <ManagementFilterBar>
         <ManagementSearchBar

@@ -128,7 +128,7 @@ export function WeuiDateTimeField({ value, disabled, onChange, mode, range = [],
 
   return (
     <button type="button" className={`${className || styles.dateField} yishan-time-trigger`} ref={trigger}
-      style={{ border: 0, background: 'transparent', margin: 0, padding: 0, font: 'inherit', color: 'inherit', width: '100%' }}
+      style={{ border: 0, background: 'var(--color-transparent)', margin: 0, padding: 0, font: 'inherit', color: 'inherit', width: '100%' }}
       aria-label={`${title}，当前 ${displayValue || '未选择'}`} disabled={disabled || (mode === 'selector' && !range.length)} onClick={() => void open()}>
       {children ?? <PickerValue value={displayValue} placeholder={placeholder || title} />}
     </button>

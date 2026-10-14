@@ -77,7 +77,7 @@ export function FormField({
       {/* 箭头是行级元素，与整行垂直居中；放进控件内部会跟着控件的盒子走偏 */}
       {arrow ? (
         <View className={styles.field__arrow} onClick={onArrowClick}>
-          <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+          <LineIcon name="chevronRight" size={16} color="var(--color-text-quaternary)" />
         </View>
       ) : null}
       {error ? (
@@ -271,7 +271,7 @@ export function LinkRow({ label, value, onClick, showArrow = true }: LinkRowProp
       <Text className={styles.link__label}>{label}</Text>
       <View className={styles.link__value}>
         {value ? <Text>{value}</Text> : null}
-        {showArrow ? <LineIcon name="chevronRight" size={16} color="#C9CDD4" /> : null}
+        {showArrow ? <LineIcon name="chevronRight" size={16} color="var(--color-text-quaternary)" /> : null}
       </View>
     </View>
   )
@@ -312,7 +312,7 @@ export function SecretField({
         aria-label={visible ? `隐藏${label}` : `显示${label}`}
         onClick={() => setVisible(!visible)}
       >
-        <LineIcon name={visible ? 'eyeOff' : 'eye'} size={18} color="#86909C" />
+        <LineIcon name={visible ? 'eyeOff' : 'eye'} size={18} color="var(--color-text-tertiary)" />
       </View>
     </FormField>
   )
@@ -329,6 +329,7 @@ export function FormError({ children }: FormErrorProps) {
 
 export interface FormSubmitBarProps {
   text: string
+  secondaryAction?: ReactNode
   /** 提交中：按钮不可点，文案换成「保存中…」 */
   submitting?: boolean
   /** 暂不可提交（如必填未填完）：按钮不可点，文案保持原样 */
@@ -337,10 +338,11 @@ export interface FormSubmitBarProps {
 }
 
 /** 底部固定保存按钮。 */
-export function FormSubmitBar({ text, submitting = false, disabled = false, onSubmit }: FormSubmitBarProps) {
+export function FormSubmitBar({ text, secondaryAction, submitting = false, disabled = false, onSubmit }: FormSubmitBarProps) {
   const blocked = submitting || disabled
   return (
     <View className={styles.submit}>
+      {secondaryAction}
       <View
         className={cx(styles.submit__button, blocked && styles.submit__disabled)}
         onClick={blocked ? undefined : onSubmit}

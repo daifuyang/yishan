@@ -5,7 +5,7 @@ import { LineIcon } from '@/components/management'
 import styles from './HomeSection.module.scss'
 
 export interface HomeSectionProps {
-  title: string
+  title?: string
   extra?: React.ReactNode
   children: React.ReactNode
 }
@@ -14,10 +14,10 @@ export interface HomeSectionProps {
 export function HomeSection({ title, extra, children }: HomeSectionProps) {
   return (
     <View className={styles.section}>
-      <View className={styles.section__header}>
+      {title || extra ? <View className={styles.section__header}>
         <Text className={styles.section__title}>{title}</Text>
         {extra}
-      </View>
+      </View> : null}
       {children}
     </View>
   )

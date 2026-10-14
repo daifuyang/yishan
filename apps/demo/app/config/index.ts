@@ -6,6 +6,7 @@ import { PAGE_CONFIG } from '../src/constants/page-config'
 
 import devConfig from './dev'
 import prodConfig from './prod'
+import { WechatThemePlugin } from './theme-assets'
 
 // Source workspace packages participate in both Taro compiler targets through public exports.
 const sharedSources = [
@@ -84,6 +85,7 @@ export default defineConfig(async (merge, _env) => {
     mini: {
       compile: { include: sharedSources },
       webpackChain(chain) {
+        if (process.env.TARO_ENV === 'weapp') chain.plugin('yishan-theme').use(WechatThemePlugin)
         // Platform plugins and the React runtime belong to the consuming Taro application.
         chain.resolve.modules.add('node_modules').prepend(path.resolve(__dirname, '../node_modules'))
       },

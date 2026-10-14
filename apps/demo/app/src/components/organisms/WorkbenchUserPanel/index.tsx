@@ -197,7 +197,7 @@ export function WorkbenchUserPanel({ expanded, onToggle }: WorkbenchUserPanelPro
       title: next === '1' ? '启用用户' : '禁用用户',
       content: `确认要${next === '1' ? '启用' : '禁用'}「${user.realName || user.username || user.phone}」吗？`,
       confirmText: next === '1' ? '启用' : '禁用',
-      confirmColor: next === '1' ? '#1677FF' : '#F53F3F',
+      confirmColor: next === '1' ? 'var(--color-primary)' : 'var(--color-danger)',
     })
     if (!ok) return
     try {
@@ -216,7 +216,7 @@ export function WorkbenchUserPanel({ expanded, onToggle }: WorkbenchUserPanelPro
       editable: true,
       placeholderText: '新密码',
       confirmText: '确定',
-      confirmColor: '#1677FF',
+      confirmColor: 'var(--color-primary)',
     } as Parameters<typeof Taro.showModal>[0])
     if (!res.confirm) return
     const newPassword = ((res as { content?: string }).content || '').trim()
@@ -241,7 +241,7 @@ export function WorkbenchUserPanel({ expanded, onToggle }: WorkbenchUserPanelPro
       title: '删除用户',
       content: `确认删除「${user.realName || user.username || user.phone}」？该操作不可恢复。`,
       confirmText: '删除',
-      confirmColor: '#F53F3F',
+      confirmColor: 'var(--color-danger)',
     })
     if (!ok) return
     try {

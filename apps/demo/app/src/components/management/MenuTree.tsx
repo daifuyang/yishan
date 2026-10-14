@@ -96,15 +96,15 @@ export function MenuModuleHeader({
         aria-label={expanded ? '收起' : '展开'}
         aria-expanded={expanded}
       >
-        <LineIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={16} color="#4E5969" />
+        <LineIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={16} color="var(--color-text-secondary)" />
       </View>
       <View className={styles.moduleHeader__icon}>
-        <LineIcon name="folder" size={18} color="#1677FF" />
+        <LineIcon name="folder" size={18} color="var(--color-primary)" />
       </View>
       <Text className={styles.moduleHeader__title}>{title}</Text>
       <Text className={styles.moduleHeader__count}>{count}</Text>
       <View className={styles.arrow}>
-        <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+        <LineIcon name="chevronRight" size={16} color="var(--color-text-quaternary)" />
       </View>
     </View>
   )
@@ -161,7 +161,7 @@ export function MenuTreeRow({
           aria-label={expanded ? '收起' : '展开'}
           aria-expanded={expanded}
         >
-          <LineIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={12} color="#86909C" />
+          <LineIcon name={expanded ? 'chevronDown' : 'chevronRight'} size={12} color="var(--color-text-tertiary)" />
         </View>
       ) : (
         <View className={styles.row__toggle} />
@@ -176,7 +176,7 @@ export function MenuTreeRow({
         <MenuTypeBadge type={type} />
       </View>
       <View className={styles.arrow}>
-        <LineIcon name="chevronRight" size={14} color="#C9CDD4" />
+        <LineIcon name="chevronRight" size={14} color="var(--color-text-quaternary)" />
       </View>
     </View>
   )

@@ -1,48 +1,8 @@
-/* =============================================================
- * Design Tokens — 钉钉/飞书 ToB 移动端
- * 主色：#1677FF（钉钉蓝）
- * 规则：克制 / 线性 / 灰阶为主 / 低圆角
- * ============================================================= */
+@use './theme/colors.scss' as colors;
 
 :root,
 page {
-  /* ---------- 主色 ---------- */
-  --color-primary:        #1677FF;
-  --color-primary-hover:  #4096FF;
-  --color-primary-pressed:#0958D9;
-  --color-primary-bg:     rgba(22, 119, 255, 0.08);
-  --color-primary-border: rgba(22, 119, 255, 0.20);
-
-  /* ---------- 功能色 ---------- */
-  --color-success:        #00B42A;
-  --color-success-bg:     rgba(0, 180, 42, 0.08);
-  --color-warning:        #FF7D00;
-  --color-warning-bg:     rgba(255, 125, 0, 0.08);
-  --color-danger:         #F53F3F;
-  --color-danger-bg:      rgba(245, 63, 63, 0.08);
-  --color-info:           #86909C;
-  --color-info-bg:        rgba(134, 144, 156, 0.08);
-
-  /* ---------- 文字 5 阶 ---------- */
-  --color-text-primary:    #1D2129;
-  --color-text-secondary:  #4E5969;
-  --color-text-tertiary:   #86909C;
-  --color-text-quaternary: #C9CDD4;
-  --color-text-inverse:    #FFFFFF;
-  --color-text-link:       var(--color-primary);
-
-  /* ---------- 背景 ---------- */
-  --color-bg-base:     #F7F8FA;
-  --color-bg-surface:  #FFFFFF;
-  --color-bg-elevated: #FFFFFF;
-  --color-bg-mask:     rgba(0, 0, 0, 0.4);
-  --color-bg-disabled: #F2F3F5;
-
-  /* ---------- 边框 / 分割线 ---------- */
-  --color-border:        #E5E6EB;
-  --color-border-light:  #F2F3F5;
-  --color-divider:       #F2F3F5;
-
+  @include colors.theme-light;
   /* ---------- 字号 ---------- */
   --font-size-10: 10px;
   --font-size-11: 11px;
@@ -80,22 +40,11 @@ page {
 
   /* ---------- 阴影（克制） ---------- */
   --shadow-none: none;
-  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-md:   0 2px 8px rgba(0, 0, 0, 0.06);
-  --shadow-lg:   0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-xl:   0 8px 24px rgba(0, 0, 0, 0.12);
-
-  /* ---------- TabBar 悬浮胶囊 ---------- */
-  --shadow-tabbar: 0 -2px 8px rgba(0, 0, 0, 0.04);
   --tab-bar-floating-height: 56px;
   --tab-bar-floating-bottom: 8px;
 
   /* ---------- 品牌字体（系统默认） ---------- */
   --font-family-base: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Helvetica, sans-serif;
-
-  /* ---------- 品牌渐变 ---------- */
-  --color-primary-gradient-from: #1677FF;
-  --color-primary-gradient-to: #0958D9;
 
   /* ---------- 间距（8 网格） ---------- */
   --space-0:  0;
@@ -122,18 +71,18 @@ page {
   --tab-bar-font-size:   11px;
   --tab-bar-active:      var(--color-primary);
   --tab-bar-inactive:    var(--color-text-tertiary);
-  --tab-bar-bg:          #FFFFFF;
+  --tab-bar-bg:          var(--color-bg-surface);
   --tab-bar-border:      var(--color-border-light);
   --tab-bar-active-bg:   var(--color-primary-bg);
   --tab-bar-active-size: 36px;     /* 激活态 icon 背景圆角方块 */
 
   /* ---------- 导航栏 ---------- */
   --nav-bar-height: 44px;
-  --nav-bar-bg:     #FFFFFF;
+  --nav-bar-bg:     var(--color-bg-surface);
 
   /* ---------- 搜索栏 ---------- */
   --search-bar-height: 36px;
-  --search-bar-bg:     #F2F3F5;
+  --search-bar-bg:     var(--color-bg-disabled);
   --search-bar-radius: 8px;
 
   /* ---------- 列表 ---------- */
@@ -141,9 +90,27 @@ page {
   --list-item-height-sm: 48px;
 
   /* ---------- 按钮 ---------- */
-  --button-height-sm: 28px;
-  --button-height-md: 36px;
-  --button-height-lg: 44px;
+  --button-height-sm: 44px;
+  --button-height-md: 44px;
+  --button-height-lg: 48px;
+
+  /* Semantic dimensions; existing numeric tokens remain compatible. */
+  --font-size-caption: var(--font-size-12);
+  --font-size-body: var(--font-size-15);
+  --font-size-title: var(--font-size-18);
+  --font-size-heading: var(--font-size-24);
+  --radius-button: var(--radius-md);
+  --radius-card: var(--radius-lg);
+  --radius-sheet: var(--radius-2xl);
+  --radius-modal: var(--radius-xl);
+  // Keep the minimum physical CSS-pixel target out of Taro px scaling.
+  --touch-target-min: 44PX;
+  --control-height: 44px;
+  --sheet-header-height: 56px;
+  --action-bar-height: 50px;
+  --page-gutter: var(--space-4);
+  --safe-area-device-top: env(safe-area-inset-top, 0px);
+  --safe-area-device-bottom: env(safe-area-inset-bottom, 0px);
 
   /* ---------- Z-Index ---------- */
   --z-base:     0;
@@ -162,3 +129,11 @@ page {
   --opacity-pressed: 0.6;
   --opacity-disabled: 0.4;
 }
+
+/* First paint follows the OS; explicit mode wins. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']),
+  page { @include colors.theme-dark; }
+}
+:root[data-theme='light'], .theme-light { @include colors.theme-light; }
+:root[data-theme='dark'], .theme-dark { @include colors.theme-dark; }

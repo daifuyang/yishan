@@ -1,4 +1,6 @@
 .aButton {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7,8 +9,8 @@
   font-size: var(--font-size-14);
   font-weight: var(--font-weight-medium);
   line-height: 1;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
+  border-radius: var(--radius-button);
+  border: 1px solid var(--color-transparent);
   background-color: var(--color-bg-surface);
   color: var(--color-text-primary);
   text-align: center;
@@ -19,9 +21,9 @@
 .aButton:active { opacity: var(--opacity-pressed); }
 
 .aButton--primary {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-solid);
   color: var(--color-text-inverse);
-  border-color: var(--color-primary);
+  border-color: var(--color-primary-solid);
 }
 
 .aButton--secondary {
@@ -37,16 +39,16 @@
 }
 
 .aButton--text {
-  background-color: transparent;
+  background-color: var(--color-transparent);
   color: var(--color-primary);
-  border-color: transparent;
+  border-color: var(--color-transparent);
   padding: 0 var(--space-2);
 }
 
 .aButton--danger {
-  background-color: var(--color-danger);
+  background-color: var(--color-danger-solid);
   color: var(--color-text-inverse);
-  border-color: var(--color-danger);
+  border-color: var(--color-danger-solid);
 }
 
 .aButton--sm {
@@ -77,7 +79,7 @@
   width: 14px;
   height: 14px;
   border: 2px solid currentColor;
-  border-top-color: transparent;
+  border-top-color: var(--color-transparent);
   border-radius: 50%;
   animation: aButton-spin 0.8s linear infinite;
   margin-right: var(--space-1);

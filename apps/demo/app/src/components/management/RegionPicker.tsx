@@ -192,7 +192,7 @@ function RegionPickerPanel<T extends RegionNode>({
                   onClick={() => choose(node)}
                 >
                   <Text>{node.name}</Text>
-                  {current ? <LineIcon name="check" size={18} color="#1677FF" /> : null}
+                  {current ? <LineIcon name="check" size={18} color="var(--color-primary)" /> : null}
                 </View>
               )
             })}

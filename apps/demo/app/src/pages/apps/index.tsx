@@ -66,7 +66,7 @@ export default function AppsPage() {
   return (
     <PageContainer className={styles.apps}>
       <WorkbenchHeader />
-      <ManagementFilterBar>
+      <ManagementFilterBar className={styles.apps__filters}>
         <ManagementSearchBar value={query} onChange={setQuery} placeholder="搜索应用" />
       </ManagementFilterBar>
       {/* 已加载但刷新失败：数据还在，只在列表上方提示，不用整屏错误态 */}

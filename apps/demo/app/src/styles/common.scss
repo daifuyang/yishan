@@ -3,6 +3,8 @@
  * ============================================================= */
 
 /* ---------- Reset ---------- */
+html,
+body,
 page {
   font-family: var(--font-family-base, -apple-system, BlinkMacSystemFont, 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif);
@@ -18,9 +20,17 @@ page {
 /* H5：Taro 页面容器默认白底（.taro_router > .taro_page），需与 page 底色一致，否则内容不满一屏时底部露白 */
 html .taro_router > .taro_page {
   background-color: var(--color-bg-base);
+  padding-top: var(--safe-area-top);
   /* Taro 默认 overflow: hidden scroll，桌面浏览器内容不满一屏也常驻滚动条槽；改为按需出现 */
   overflow-y: auto;
 }
+input, textarea {
+  color: var(--color-text-primary);
+  background-color: var(--color-transparent);
+  caret-color: var(--color-primary);
+}
+input::placeholder, textarea::placeholder { color: var(--color-text-tertiary); }
+
 view, text, button, input, textarea, scroll-view, image,
 * {
   box-sizing: border-box;

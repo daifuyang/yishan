@@ -21,7 +21,7 @@
 
 .oUserPanel__title {
   font-size: var(--font-size-15);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
@@ -82,7 +82,7 @@
 
 .oUserPanel__name {
   font-size: var(--font-size-14);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;

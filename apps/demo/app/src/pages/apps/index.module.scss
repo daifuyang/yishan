@@ -1,16 +1,19 @@
-/* 页面容器横向全出血：横向内缩由各自的块自己给（筛选条、白色分组卡），
+/* 页面容器横向全出血：横向内缩由各自的块自己给（筛选条、分组卡），
    容器再加一层会和共享 ManagementFilterBar 的 var(--space-4) 叠成 32px。
    纵向（底部 --space-4）保持不变。 */
 .apps {
-  background: #F5F7FA;
+  background: var(--color-bg-base);
   padding: 0 0 var(--space-4);
   box-sizing: border-box;
 }
 
-/* 与内页共享页头（ManagementPageHeader）对齐：白底 + 吸顶 + 安全区算进自身盒子。
-   H5 没有原生导航栏，安全区变量在这里避让刘海；小程序由 WorkbenchHeader 的
-   inline 状态栏高度覆盖（inline 优先，不会叠加）。
-   刻意不加下边框：白页头与下方白筛选条合成一整块白（T6 的 row 2 亦断言二者紧贴）。 */
+// 工作台只有搜索框；补齐底部内边距，列表的卡片外边距继续负责分组间隔。
+.apps__filters {
+  padding-bottom: var(--space-3);
+}
+
+/* 小程序自绘页头：状态栏高度由 WorkbenchHeader 的 inline 样式覆盖，
+   与下方筛选区使用同一表面色。H5 不渲染此页头。 */
 .apps__top {
   position: sticky;
   top: 0;
@@ -35,29 +38,29 @@
 .apps__pageTitle {
   color: var(--color-text-primary);
   font-size: var(--font-size-18);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   white-space: nowrap;
 }
 
 .apps__title {
   color: var(--color-text-primary);
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
   flex: 1;
   white-space: nowrap;
 }
 
 .apps .apps__action {
   margin: 0;
-  padding: 0 8px;
-  min-width: 44px;
+  padding: 0 var(--space-2);
+  min-width: var(--touch-target-min);
   width: auto;
-  min-height: 44px;
+  min-height: var(--touch-target-min);
   line-height: 44px;
   border: 0;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 13px;
+  border-radius: var(--radius-button);
+  background: var(--color-transparent);
+  font-size: var(--font-size-13);
   color: var(--color-primary);
   flex-shrink: 0;
 }
@@ -68,7 +71,7 @@
 
 .apps .apps__action[disabled] {
   color: var(--color-text-tertiary);
-  background: transparent;
+  background: var(--color-transparent);
   opacity: 0.5;
 }
 
@@ -77,21 +80,21 @@
 }
 
 /* 分组卡自带 var(--space-4) 横向外边距：容器已全出血，这里不补就会贴到屏幕边缘。
-   纵向的 16px 上外边距是筛选条契约的一部分：筛选条底部不留内边距，由它下面的
-   第一块补出那 16px 灰间隔；卡片之间因为块级兄弟的上下外边距会折叠，仍是 16px，
+   纵向的 16px 上外边距负责搜索区下面的页面底色间隔；搜索区内部另保留 12px。
+   卡片之间因为块级兄弟的上下外边距会折叠，仍是 16px，
    不会叠成 32px（.apps 是块容器，不是 flex/grid）。 */
 .apps__section, .apps__editor {
   background: var(--color-bg-surface);
-  border-radius: 16px;
-  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.025);
-  padding: 16px 12px 20px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-none);
+  padding: var(--space-4) var(--space-3) var(--space-5);
   margin: var(--space-4) var(--space-4);
 }
 
 .apps__grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px 4px;
+  gap: var(--space-6) var(--space-1);
 }
 
 .apps__item {
@@ -99,7 +102,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 0;
 }
 
@@ -110,18 +113,18 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 14px;
+  font-size: var(--font-size-14);
   line-height: 20px;
-  color: #374151;
+  color: var(--color-text-secondary);
 }
 
 .apps__category {
   display: block;
-  font-size: 18px;
+  font-size: var(--font-size-16);
   line-height: 24px;
-  font-weight: 600;
-  color: #111827;
-  margin: 0 0 16px;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-4);
 }
 
 .apps__group + .apps__group {

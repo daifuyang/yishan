@@ -11,8 +11,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: var(--nav-bar-height);
-  padding: 0 var(--space-4);
+  min-height: calc(var(--nav-bar-height) + var(--safe-area-top));
+  padding: var(--safe-area-top) var(--space-4) 0;
   background-color: var(--nav-bar-bg);
   border-bottom: 1px solid var(--color-border-light);
 }
@@ -24,7 +24,8 @@
 }
 
 .page-header__action {
-  min-width: 44px;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -50,7 +51,7 @@
 
 .search-bar__icon {
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: var(--font-size-16);
   line-height: 1;
 }
 
@@ -90,6 +91,8 @@
 
 /* ---------- 按钮（非 atom 场景，表单底部固定按钮等）---------- */
 .btn {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -99,7 +102,7 @@
   font-size: var(--font-size-14);
   font-weight: var(--font-weight-medium);
   border-radius: var(--radius-sm);
-  border: 1px solid transparent;
+  border: 1px solid var(--color-transparent);
   background-color: var(--color-bg-surface);
   color: var(--color-text-primary);
   transition: opacity var(--transition-fast);
@@ -109,7 +112,7 @@
 .btn:disabled, .btn--disabled { opacity: var(--opacity-disabled); }
 
 .btn--primary {
-  background-color: var(--color-primary);
+  background-color: var(--color-primary-solid);
   color: var(--color-text-inverse);
   border-color: var(--color-primary);
 }
@@ -121,19 +124,19 @@
 }
 
 .btn--ghost {
-  background-color: transparent;
+  background-color: var(--color-transparent);
   color: var(--color-text-primary);
   border-color: var(--color-border);
 }
 
 .btn--text {
-  background-color: transparent;
+  background-color: var(--color-transparent);
   color: var(--color-primary);
-  border-color: transparent;
+  border-color: var(--color-transparent);
 }
 
 .btn--danger {
-  background-color: var(--color-danger);
+  background-color: var(--color-danger-solid);
   color: var(--color-text-inverse);
   border-color: var(--color-danger);
 }
@@ -180,7 +183,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: var(--font-size-20);
   line-height: 1;
   color: var(--color-text-secondary);
 }
@@ -206,7 +209,7 @@
 
 .list-item__arrow {
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: var(--font-size-16);
   color: var(--color-text-quaternary);
   line-height: 1;
   margin-left: var(--space-1);
@@ -222,7 +225,7 @@
 }
 
 .divider--inset {
-  margin-left: calc(24px + var(--space-3) + var(--space-4));
+  margin-left: calc(var(--space-6) + var(--space-3) + var(--space-4));
 }
 
 /* ---------- 宫格单格 ---------- */
@@ -234,7 +237,7 @@
   gap: var(--space-2);
   padding: var(--space-3) var(--space-2);
   text-align: center;
-  background-color: transparent;
+  background-color: var(--color-transparent);
 }
 
 .grid-item:active { opacity: var(--opacity-pressed); }
@@ -255,7 +258,7 @@
 .grid-item__icon-wrap--danger { background-color: var(--color-danger-bg); }
 
 .grid-item__icon {
-  font-size: 20px;
+  font-size: var(--font-size-20);
   line-height: 1;
   color: var(--color-primary);
 }
@@ -396,7 +399,7 @@
    晚于 app.css，因此需要 !important。 */
 .taro-tabbar__tabbar-bottom {
   margin-bottom: 0 !important;
-  padding-bottom: env(safe-area-inset-bottom) !important;
+  padding-bottom: var(--safe-area-bottom) !important;
   box-sizing: content-box !important;
   background-color: var(--color-bg-surface) !important;
 }
@@ -404,9 +407,46 @@
 .taro-tabbar__tabbar-bottom .weui-tabbar {
   top: 0 !important;
   bottom: auto !important;
-  background-color: transparent !important;
+  background-color: var(--color-transparent) !important;
 }
 
 .taro-tabbar__tabbar-bottom .weui-tabbar__item {
   padding-bottom: 0 !important;
 }
+
+/* Taro H5 inserts inline styles, so these semantic overrides need priority. */
+.taro-modal__mask { background-color: var(--color-bg-mask) !important; }
+.taro-modal__content {
+  background-color: var(--color-bg-elevated) !important;
+  color: var(--color-text-primary) !important;
+  border-radius: var(--radius-modal) !important;
+  max-height: calc(100vh - var(--safe-area-device-top) - var(--safe-area-device-bottom) - var(--space-8));
+  overflow-y: auto;
+}
+.taro-modal__title { color: var(--color-text-primary) !important; }
+.taro-modal__text { color: var(--color-text-secondary) !important; }
+.taro-modal__foot { border-color: var(--color-divider) !important; }
+.taro-model__btn { min-height: var(--touch-target-min); }
+.taro-model__btn + .taro-model__btn { border-color: var(--color-divider) !important; }
+.taro-model__cancel { color: var(--color-text-secondary) !important; }
+.taro-modal__foot::after,
+.taro-model__btn:not(:first-child)::after { border-color: var(--color-divider) !important; }
+.taro-model__btn:active { background-color: var(--color-bg-pressed) !important; }
+#taro-navigation-bar {
+  background-color: var(--nav-bar-bg) !important;
+  color: var(--color-text-primary) !important;
+}
+#taro-navigation-bar path { fill: currentColor; }
+.taro__actionSheet > div:first-child { background-color: var(--color-bg-mask) !important; }
+.taro__actionSheet > div:last-child {
+  background-color: var(--color-bg-base) !important;
+  padding-bottom: var(--safe-area-bottom);
+}
+.taro__actionSheet > div:last-child > div {
+  background-color: var(--color-bg-elevated) !important;
+  color: var(--color-text-primary) !important;
+}
+.taro-actionsheet__cell { border-color: var(--color-divider) !important; min-height: var(--touch-target-min); }
+.taro-tabbar__tabbar .weui-tabbar { background-color: var(--tab-bar-bg) !important; }
+.taro-tabbar__tabbar .weui-tabbar__label { color: var(--tab-bar-inactive) !important; }
+.taro-tabbar__tabbar .weui-bar__item_on .weui-tabbar__label { color: var(--tab-bar-active) !important; }

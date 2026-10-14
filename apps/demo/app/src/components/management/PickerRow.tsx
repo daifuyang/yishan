@@ -12,7 +12,7 @@ const cx = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).j
  * 所以图标颜色只能以字面量传入。此值镜像 tokens.scss 的 --color-text-quaternary，
  * 与 FormLayout / DetailLayout / ManagementList 的 › 同色。
  */
-const CHEVRON_COLOR = '#C9CDD4'
+const CHEVRON_COLOR = 'var(--color-text-quaternary)'
 
 export interface PickerValueProps {
   value: string

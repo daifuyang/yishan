@@ -4,7 +4,7 @@
 
 .tree {
   padding: var(--space-3) 0;
-  background: transparent;
+  background: var(--color-transparent);
 }
 
 /* 模块卡片：默认白底浮在浅灰白页面上，靠留白而非阴影分层 */
@@ -12,7 +12,7 @@
   margin: 0 var(--space-3) var(--space-3);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  background: #fff;
+  background: var(--color-bg-elevated);
 }
 
 /* ---------- 一级模块头 ---------- */
@@ -24,13 +24,13 @@
   box-sizing: border-box;
   min-height: 56px;
   padding: var(--space-3) var(--space-4);
-  background: #fff;
+  background: var(--color-bg-elevated);
 }
 
 /* 展开态才染极淡蓝白：白卡片在灰页面上的层级已经很够，
    再给每个模块常驻一块蓝底会显得发飘。 */
 .moduleHeaderOpen {
-  background: #f7faff;
+  background: var(--color-primary-bg);
 }
 
 .moduleHeader__toggle {
@@ -56,7 +56,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  color: #1f2329;
+  color: var(--color-text-primary);
   font-size: var(--font-size-15);
   font-weight: var(--font-weight-semibold);
   line-height: 22px;
@@ -70,8 +70,8 @@
   min-width: 18px;
   padding: 0 var(--space-1);
   border-radius: 10px;
-  background: #eaf3ff;
-  color: #1677ff;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
   font-size: var(--font-size-12);
   line-height: 18px;
   text-align: center;
@@ -79,13 +79,13 @@
 
 /* 模块体：白底 */
 .moduleBody {
-  background: #fff;
+  background: var(--color-bg-elevated);
 }
 
 /* ---------- 模块内的页面 / 按钮行 ---------- */
 
 .nodeHover {
-  background: #f5f7fa;
+  background: var(--color-bg-base);
 }
 
 .row {
@@ -93,8 +93,8 @@
   align-items: center;
   gap: var(--space-2);
   box-sizing: border-box;
-  background: #fff;
-  border-bottom: 1px solid #eef1f4;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 /* 缩进网格：每深一级右移 16px（模块头的 16px 左内边距是第 0 级）。
@@ -104,14 +104,14 @@
 /* 页面行：48px，常规字号，路由同行显示 */
 .row--page {
   min-height: var(--list-item-height-sm);
-  padding: var(--space-2) var(--space-4) var(--space-2) 32px;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-8);
 }
 
 /* 按钮行：40px + 更小字号。层级到第三层时读者已经不需要数缩进了，
    视觉重量递减比继续缩进更容易扫读。 */
 .row--action {
   min-height: 40px;
-  padding: var(--space-1) var(--space-4) var(--space-1) 48px;
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-12);
   font-size: var(--font-size-13);
 }
 
@@ -141,7 +141,7 @@
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
-  color: #1f2329;
+  color: var(--color-text-primary);
   font-size: var(--font-size-14);
   line-height: 20px;
   white-space: nowrap;
@@ -158,7 +158,7 @@
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
-  color: #86909c;
+  color: var(--color-text-tertiary);
   font-size: var(--font-size-12);
   line-height: 18px;
   white-space: nowrap;
@@ -166,7 +166,7 @@
 }
 
 .row--action .description {
-  color: #a9b1bc;
+  color: var(--color-text-disabled);
 }
 
 .badgeSlot {
@@ -183,7 +183,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c9cdd4;
+  color: var(--color-text-quaternary);
 }
 
 /* ---------- 类型标签 ----------
@@ -199,16 +199,16 @@
 }
 
 .badge--directory {
-  background: #eaf3ff;
-  color: #1677ff;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
 }
 
 .badge--page {
-  background: #eef9f1;
-  color: #2ba471;
+  background: var(--color-success-bg);
+  color: var(--color-success);
 }
 
 .badge--action {
-  background: #f2f3f5;
-  color: #86909c;
+  background: var(--color-bg-disabled);
+  color: var(--color-text-tertiary);
 }

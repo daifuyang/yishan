@@ -93,18 +93,20 @@ function RolePage() {
     ROLE_SORT_OPTIONS.find((option) => option.key === roleFilters.sort)?.label ??
     ROLE_SORT_OPTIONS[0].label
 
+  const pageAction = canCreate ? (
+    <ManagementHeaderAction
+      label="新建"
+      onClick={() => navigateTo(`/${SYSTEM_PAGES.roleForm}`)}
+    />
+  ) : undefined
+
   return (
-    <ManagementPage className="page-container">
+    <ManagementPage className="page-container"
+      bottomActions={process.env.TARO_ENV === 'h5' ? pageAction : undefined}
+    >
       <ManagementPageHeader
         title="角色管理"
-        action={
-          canCreate ? (
-            <ManagementHeaderAction
-              label="新建"
-              onClick={() => navigateTo(`/${SYSTEM_PAGES.roleForm}`)}
-            />
-          ) : undefined
-        }
+        action={pageAction}
       />
 
       <ManagementFilterBar>

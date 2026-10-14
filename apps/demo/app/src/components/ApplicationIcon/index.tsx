@@ -8,7 +8,7 @@ export function ApplicationIcon({ id, icon }: { id: string; icon: string }) {
     <View className={styles.tile} style={{ background: palette.background }}>
       <View
         className={styles.glyph}
-        style={{ backgroundImage: appIconBackground(icon, palette.color) }}
+        style={{ maskImage: appIconBackground(icon), WebkitMaskImage: appIconBackground(icon), backgroundColor: palette.color }}
       />
     </View>
   )

@@ -22,7 +22,7 @@
 
 .mSearchBar__icon {
   flex-shrink: 0;
-  font-size: 16px;
+  font-size: var(--font-size-16);
   line-height: 1;
   color: var(--color-text-tertiary);
 }

@@ -182,7 +182,11 @@ function FolderFormPage() {
 
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
   return (
-    <ManagementPage>
+    <ManagementPage
+      bottomActions={process.env.TARO_ENV === 'h5' && id && canDelete && !canSave ? (
+        <ManagementHeaderAction label="更多" showIcon={false} disabled={busy} onClick={() => setMore(true)} />
+      ) : undefined}
+    >
       <ManagementPageHeader
         title={title}
         action={
@@ -253,7 +257,14 @@ function FolderFormPage() {
           <FormError>{submitError}</FormError>
         </FormContent>
         {canSave ? (
-          <FormSubmitBar text="保存" submitting={busy} onSubmit={() => void save()} />
+          <FormSubmitBar
+            text="保存"
+            submitting={busy}
+            secondaryAction={process.env.TARO_ENV === 'h5' && id && canDelete ? (
+              <ManagementHeaderAction label="更多" showIcon={false} disabled={busy} onClick={() => setMore(true)} />
+            ) : undefined}
+            onSubmit={() => void save()}
+          />
         ) : null}
       </StateView>
       <FolderTreeSheet

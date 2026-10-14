@@ -49,7 +49,7 @@
   color: var(--color-text-primary);
   line-height: var(--line-height-normal);
   padding: 0;
-  background-color: transparent;
+  background-color: var(--color-transparent);
   text-align: right;
 }
 
@@ -86,7 +86,7 @@
 .mFormField__pickerArrow {
   flex-shrink: 0;
   color: var(--color-text-quaternary);
-  font-size: 18px;
+  font-size: var(--font-size-18);
   line-height: 1;
 }
 

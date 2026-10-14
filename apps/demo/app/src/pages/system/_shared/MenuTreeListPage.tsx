@@ -134,15 +134,17 @@ export function MenuTreeListPage<T extends FilterableNode & TreeNode<T>>({
   const statusLabel =
     TREE_STATUS_OPTIONS.find((option) => option.key === filters.status)?.label ??
     TREE_STATUS_OPTIONS[0].label
+  const pageAction = canCreate ? (
+    <ManagementHeaderAction label="新建" onClick={() => navigateTo(createUrl)} />
+  ) : undefined
+
   return (
-    <ManagementPage>
+    <ManagementPage
+      bottomActions={process.env.TARO_ENV === 'h5' ? pageAction : undefined}
+    >
       <ManagementPageHeader
         title={title}
-        action={
-          canCreate ? (
-            <ManagementHeaderAction label="新建" onClick={() => navigateTo(createUrl)} />
-          ) : undefined
-        }
+        action={pageAction}
       />
       <ManagementFilterBar>
         <ManagementSearchBar value={keyword} onChange={setKeyword} placeholder={searchPlaceholder} />

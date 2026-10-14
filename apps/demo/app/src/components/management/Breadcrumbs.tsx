@@ -43,7 +43,7 @@ export function Breadcrumbs({ items, onNavigate, className = '' }: BreadcrumbsPr
             onClick={() => onNavigate(index)}
             aria-label={item.label}
           >
-            <LineIcon name="chevronRight" size={12} color="#C9CDD4" />
+            <LineIcon name="chevronRight" size={12} color="var(--color-text-quaternary)" />
             <Text className={styles.crumbLabel}>{item.label}</Text>
           </View>
         )

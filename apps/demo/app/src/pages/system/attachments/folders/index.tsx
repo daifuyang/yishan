@@ -72,18 +72,20 @@ function FoldersPage() {
       return next
     })
 
+  const pageAction = canCreate ? (
+    <ManagementHeaderAction
+      label="新建"
+      onClick={() => navigateTo(`/${SYSTEM_PAGES.attachmentFolderForm}`)}
+    />
+  ) : undefined
+
   return (
-    <ManagementPage>
+    <ManagementPage
+      bottomActions={process.env.TARO_ENV === 'h5' ? pageAction : undefined}
+    >
       <ManagementPageHeader
         title="分组管理"
-        action={
-          canCreate ? (
-            <ManagementHeaderAction
-              label="新建"
-              onClick={() => navigateTo(`/${SYSTEM_PAGES.attachmentFolderForm}`)}
-            />
-          ) : undefined
-        }
+        action={pageAction}
       />
       <ManagementStates
         kind={

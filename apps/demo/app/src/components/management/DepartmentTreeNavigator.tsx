@@ -79,7 +79,7 @@ export function DepartmentTreeNavigator({
                 <LineIcon
                   name={expanded ? 'chevronDown' : 'chevronRight'}
                   size={14}
-                  color="#86909C"
+                  color="var(--color-text-tertiary)"
                 />
               ) : null}
             </View>

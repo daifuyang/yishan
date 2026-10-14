@@ -1,6 +1,6 @@
 /*! WeUI v2.6.26 picker subset. Copyright 2026 Tencent, Inc. MIT License.
  * Source: https://unpkg.com/weui@2.6.26/dist/style/weui.css
- * Official declarations retained; selectors scoped to the H5 picker modal.
+ * Official geometry retained; colors mapped to Yishan semantic tokens.
  */
 .yishan-time-picker { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; font-size: 16px; line-height: 1.6; }
 .yishan-time-picker, .yishan-time-picker * { box-sizing: border-box; }
@@ -12,16 +12,16 @@
 }
 
 .yishan-time-picker {
-  --weui-BTN-ACTIVE-MASK: rgba(0, 0, 0, 0.2);
+  --weui-BTN-ACTIVE-MASK: var(--color-control-active);
 }
 
 .yishan-time-picker[data-weui-theme='dark'] {
-  --weui-BTN-ACTIVE-MASK: rgba(255, 255, 255, 0.2);
+  --weui-BTN-ACTIVE-MASK: var(--color-control-active);
 }
 
 @media (prefers-color-scheme:dark) {
   .yishan-time-picker:not([data-weui-theme='light']) {
-    --weui-BTN-ACTIVE-MASK: rgba(255, 255, 255, 0.2);
+    --weui-BTN-ACTIVE-MASK: var(--color-control-active);
   }
 }
 
@@ -32,122 +32,122 @@
 }
 
 .yishan-time-picker {
-  --weui-BG-0: #ededed;
-  --weui-BG-2: #fff;
-  --weui-BG-3: #f7f7f7;
-  --weui-BG-5: #fff;
-  --weui-FG-0: rgba(0, 0, 0, 0.9);
-  --weui-FG-1: rgba(0, 0, 0, 0.55);
-  --weui-FG-2: rgba(0, 0, 0, 0.3);
-  --weui-FG-3: rgba(0, 0, 0, 0.1);
-  --weui-FG-4: rgba(0, 0, 0, 0.15);
-  --weui-RED-100: #fa5151;
-  --weui-RED: #fa5151;
-  --weui-BRAND: #07c160;
-  --weui-LINK: #576b95;
-  --weui-FG-5: rgba(0, 0, 0, 0.05);
+  --weui-BG-0: var(--color-bg-base);
+  --weui-BG-2: var(--color-bg-elevated);
+  --weui-BG-3: var(--color-bg-disabled);
+  --weui-BG-5: var(--color-bg-elevated);
+  --weui-FG-0: var(--color-text-primary);
+  --weui-FG-1: var(--color-text-secondary);
+  --weui-FG-2: var(--color-text-tertiary);
+  --weui-FG-3: var(--color-border);
+  --weui-FG-4: var(--color-text-disabled);
+  --weui-RED-100: var(--color-danger);
+  --weui-RED: var(--color-danger);
+  --weui-BRAND: var(--color-primary);
+  --weui-LINK: var(--color-text-link);
+  --weui-FG-5: var(--color-bg-disabled);
 }
 
 @media (prefers-color-scheme:dark) {
   .yishan-time-picker:not([data-weui-theme='light']) {
-    --weui-BG-0: #111;
-    --weui-BG-2: #191919;
-    --weui-BG-3: #202020;
-    --weui-BG-5: #2c2c2c;
-    --weui-FG-0: rgba(255, 255, 255, 0.8);
-    --weui-FG-1: rgba(255, 255, 255, 0.5);
-    --weui-FG-2: rgba(255, 255, 255, 0.3);
-    --weui-FG-3: rgba(255, 255, 255, 0.1);
-    --weui-FG-4: rgba(255, 255, 255, 0.15);
-    --weui-RED-100: #fa5151;
-    --weui-RED: #fa5151;
-    --weui-BRAND: #07c160;
-    --weui-LINK: #7d90a9;
-    --weui-FG-5: rgba(255, 255, 255, 0.1);
+    --weui-BG-0: var(--color-bg-base);
+    --weui-BG-2: var(--color-bg-elevated);
+    --weui-BG-3: var(--color-bg-disabled);
+    --weui-BG-5: var(--color-bg-elevated);
+    --weui-FG-0: var(--color-text-primary);
+    --weui-FG-1: var(--color-text-secondary);
+    --weui-FG-2: var(--color-text-tertiary);
+    --weui-FG-3: var(--color-border);
+    --weui-FG-4: var(--color-text-disabled);
+    --weui-RED-100: var(--color-danger);
+    --weui-RED: var(--color-danger);
+    --weui-BRAND: var(--color-primary);
+    --weui-LINK: var(--color-text-link);
+    --weui-FG-5: var(--color-border);
   }
 }
 
 .yishan-time-picker[data-weui-theme='dark'] {
-  --weui-BG-0: #111;
-  --weui-BG-2: #191919;
-  --weui-BG-3: #202020;
-  --weui-BG-5: #2c2c2c;
-  --weui-FG-0: rgba(255, 255, 255, 0.8);
-  --weui-FG-1: rgba(255, 255, 255, 0.5);
-  --weui-FG-2: rgba(255, 255, 255, 0.3);
-  --weui-FG-3: rgba(255, 255, 255, 0.1);
-  --weui-FG-4: rgba(255, 255, 255, 0.15);
-  --weui-RED-100: #fa5151;
-  --weui-RED: #fa5151;
-  --weui-BRAND: #07c160;
-  --weui-LINK: #7d90a9;
-  --weui-FG-5: rgba(255, 255, 255, 0.1);
+  --weui-BG-0: var(--color-bg-base);
+  --weui-BG-2: var(--color-bg-elevated);
+  --weui-BG-3: var(--color-bg-disabled);
+  --weui-BG-5: var(--color-bg-elevated);
+  --weui-FG-0: var(--color-text-primary);
+  --weui-FG-1: var(--color-text-secondary);
+  --weui-FG-2: var(--color-text-tertiary);
+  --weui-FG-3: var(--color-border);
+  --weui-FG-4: var(--color-text-disabled);
+  --weui-RED-100: var(--color-danger);
+  --weui-RED: var(--color-danger);
+  --weui-BRAND: var(--color-primary);
+  --weui-LINK: var(--color-text-link);
+  --weui-FG-5: var(--color-border);
 }
 
 .yishan-time-picker[data-weui-mode='care'] {
-  --weui-BG-0: #ededed;
-  --weui-BG-2: #fff;
-  --weui-BG-3: #f7f7f7;
-  --weui-BG-5: #fff;
-  --weui-FG-0: #000;
-  --weui-FG-1: rgba(0, 0, 0, 0.6);
-  --weui-FG-2: rgba(0, 0, 0, 0.42);
-  --weui-FG-3: rgba(0, 0, 0, 0.1);
-  --weui-FG-4: rgba(0, 0, 0, 0.15);
-  --weui-RED-100: #dc3636;
-  --weui-RED: #dc3636;
-  --weui-BRAND: #018942;
-  --weui-LINK: #576b95;
-  --weui-FG-5: rgba(0, 0, 0, 0.05);
+  --weui-BG-0: var(--color-bg-base);
+  --weui-BG-2: var(--color-bg-elevated);
+  --weui-BG-3: var(--color-bg-disabled);
+  --weui-BG-5: var(--color-bg-elevated);
+  --weui-FG-0: var(--color-text-primary);
+  --weui-FG-1: var(--color-text-secondary);
+  --weui-FG-2: var(--color-text-tertiary);
+  --weui-FG-3: var(--color-border);
+  --weui-FG-4: var(--color-text-disabled);
+  --weui-RED-100: var(--color-danger);
+  --weui-RED: var(--color-danger);
+  --weui-BRAND: var(--color-primary);
+  --weui-LINK: var(--color-text-link);
+  --weui-FG-5: var(--color-bg-disabled);
 }
 
 @media (prefers-color-scheme:dark) {
   .yishan-time-picker[data-weui-mode='care']:not([data-weui-theme='light']) {
-    --weui-BG-0: #111;
-    --weui-BG-2: #191919;
-    --weui-BG-3: #202020;
-    --weui-BG-5: #2c2c2c;
-    --weui-FG-0: rgba(255, 255, 255, 0.85);
-    --weui-FG-1: rgba(255, 255, 255, 0.55);
-    --weui-FG-2: rgba(255, 255, 255, 0.35);
-    --weui-FG-3: rgba(255, 255, 255, 0.1);
-    --weui-FG-4: rgba(255, 255, 255, 0.15);
-    --weui-RED-100: #fa5151;
-    --weui-RED: #fa5151;
-    --weui-BRAND: #07c160;
-    --weui-LINK: #7d90a9;
-    --weui-FG-5: rgba(255, 255, 255, 0.1);
+    --weui-BG-0: var(--color-bg-base);
+    --weui-BG-2: var(--color-bg-elevated);
+    --weui-BG-3: var(--color-bg-disabled);
+    --weui-BG-5: var(--color-bg-elevated);
+    --weui-FG-0: var(--color-text-primary);
+    --weui-FG-1: var(--color-text-secondary);
+    --weui-FG-2: var(--color-text-tertiary);
+    --weui-FG-3: var(--color-border);
+    --weui-FG-4: var(--color-text-disabled);
+    --weui-RED-100: var(--color-danger);
+    --weui-RED: var(--color-danger);
+    --weui-BRAND: var(--color-primary);
+    --weui-LINK: var(--color-text-link);
+    --weui-FG-5: var(--color-border);
   }
 }
 
 .yishan-time-picker[data-weui-mode='care'][data-weui-theme='dark'] {
-  --weui-BG-0: #111;
-  --weui-BG-2: #191919;
-  --weui-BG-3: #202020;
-  --weui-BG-5: #2c2c2c;
-  --weui-FG-0: rgba(255, 255, 255, 0.85);
-  --weui-FG-1: rgba(255, 255, 255, 0.55);
-  --weui-FG-2: rgba(255, 255, 255, 0.35);
-  --weui-FG-3: rgba(255, 255, 255, 0.1);
-  --weui-FG-4: rgba(255, 255, 255, 0.15);
-  --weui-RED-100: #fa5151;
-  --weui-RED: #fa5151;
-  --weui-BRAND: #07c160;
-  --weui-LINK: #7d90a9;
-  --weui-FG-5: rgba(255, 255, 255, 0.1);
+  --weui-BG-0: var(--color-bg-base);
+  --weui-BG-2: var(--color-bg-elevated);
+  --weui-BG-3: var(--color-bg-disabled);
+  --weui-BG-5: var(--color-bg-elevated);
+  --weui-FG-0: var(--color-text-primary);
+  --weui-FG-1: var(--color-text-secondary);
+  --weui-FG-2: var(--color-text-tertiary);
+  --weui-FG-3: var(--color-border);
+  --weui-FG-4: var(--color-text-disabled);
+  --weui-RED-100: var(--color-danger);
+  --weui-RED: var(--color-danger);
+  --weui-BRAND: var(--color-primary);
+  --weui-LINK: var(--color-text-link);
+  --weui-FG-5: var(--color-border);
 }
 
 .yishan-time-picker {
-  --weui-BG-COLOR-ACTIVE: #ececec;
+  --weui-BG-COLOR-ACTIVE: var(--color-bg-pressed);
 }
 
 .yishan-time-picker[data-weui-theme='dark'] {
-  --weui-BG-COLOR-ACTIVE: #373737;
+  --weui-BG-COLOR-ACTIVE: var(--color-bg-pressed);
 }
 
 @media (prefers-color-scheme:dark) {
   .yishan-time-picker:not([data-weui-theme='light']) {
-    --weui-BG-COLOR-ACTIVE: #373737;
+    --weui-BG-COLOR-ACTIVE: var(--color-bg-pressed);
   }
 }
 
@@ -229,10 +229,10 @@
   font-size: 17px;
   text-align: center;
   text-decoration: none;
-  color: #fff;
+  color: var(--color-text-inverse);
   line-height: 1.41176471;
   border-radius: 8px;
-  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  -webkit-tap-highlight-color: var(--color-transparent);
   cursor: default;
   -webkit-user-select: none;
   user-select: none;
@@ -245,7 +245,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0,0,0,0.2);
+  background-color: var(--color-control-active);
   background-color: var(--weui-BTN-ACTIVE-MASK);
   border-radius: 8px;
 }
@@ -274,72 +274,72 @@
 }
 
 .yishan-time-picker .weui-btn_default {
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
   color: var(--weui-FG-0);
-  background-color: rgba(0,0,0,0.05);
+  background-color: var(--color-bg-disabled);
   background-color: var(--weui-FG-5);
 }
 
 .yishan-time-picker .weui-btn_default:not(.weui-btn_disabled):visited {
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
   color: var(--weui-FG-0);
 }
 
 .yishan-time-picker .weui-btn_primary {
-  background-color: #07c160;
-  background-color: var(--weui-BRAND);
+  background-color: var(--color-primary-solid);
+  background-color: var(--color-primary-solid);
 }
 
 .yishan-time-picker .weui-btn_primary:not(.weui-btn_disabled):visited {
-  color: #fff;
+  color: var(--color-text-inverse);
 }
 
 .yishan-time-picker .weui-btn_warn {
-  background-color: #fa5151;
+  background-color: var(--color-danger);
   background-color: var(--weui-RED-100);
 }
 
 .yishan-time-picker .weui-btn_warn:not(.weui-btn_disabled):visited {
-  color: #fff;
+  color: var(--color-text-inverse);
 }
 
 .yishan-time-picker .weui-btn_overlay.weui-btn_primary {
-  color: rgba(0,0,0,0.9);
-  background-color: #fff;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-elevated);
 }
 
 .yishan-time-picker .weui-btn_overlay.weui-btn_primary:not(.weui-btn_disabled):visited {
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
 }
 
 .yishan-time-picker .weui-btn_overlay.weui-btn_default {
-  color: #fff;
-  background-color: rgba(247,247,247,0.3);
+  color: var(--color-text-inverse);
+  background-color: var(--color-bg-disabled);
 }
 
 .yishan-time-picker .weui-btn_overlay.weui-btn_default:not(.weui-btn_disabled):visited {
-  color: #fff;
+  color: var(--color-text-inverse);
 }
 
 .yishan-time-picker .weui-btn_overlay.weui-btn_warn {
-  color: #fff;
-  background-color: #fa5151;
+  color: var(--color-text-inverse);
+  background-color: var(--color-danger);
   background-color: var(--weui-RED-100);
 }
 
 .yishan-time-picker .weui-btn_overlay.weui-btn_warn:not(.weui-btn_disabled):visited {
-  color: #fff;
+  color: var(--color-text-inverse);
 }
 
 .yishan-time-picker .weui-btn_overlay.weui-btn_disabled,.yishan-time-picker .weui-btn_overlay[disabled] {
-  color: rgba(247,247,247,0.3);
-  background-color: rgba(255,255,255,0.3);
+  color: var(--color-bg-disabled);
+  background-color: var(--color-text-tertiary);
 }
 
 .yishan-time-picker .weui-btn_disabled,.yishan-time-picker .weui-btn[disabled] {
-  color: rgba(0,0,0,0.15);
+  color: var(--color-text-disabled);
   color: var(--weui-FG-4);
-  background-color: rgba(0,0,0,0.05);
+  background-color: var(--color-bg-disabled);
   background-color: var(--weui-FG-5);
 }
 
@@ -354,7 +354,7 @@
 }
 
 .yishan-time-picker .weui-btn_loading.weui-btn_default .weui-mask-loading {
-  color: #606060;
+  color: var(--color-text-secondary);
 }
 
 .yishan-time-picker .weui-btn_cell {
@@ -366,12 +366,12 @@
   font-size: 17px;
   text-align: center;
   text-decoration: none;
-  color: #fff;
+  color: var(--color-text-inverse);
   line-height: 1.41176471;
   padding: 16px;
-  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  -webkit-tap-highlight-color: var(--color-transparent);
   overflow: hidden;
-  background-color: #fff;
+  background-color: var(--color-bg-elevated);
   background-color: var(--weui-BG-5);
 }
 
@@ -380,7 +380,7 @@
 }
 
 .yishan-time-picker .weui-btn_cell:active {
-  background-color: #ececec;
+  background-color: var(--color-bg-pressed);
   background-color: var(--weui-BG-COLOR-ACTIVE);
 }
 
@@ -393,17 +393,17 @@
 }
 
 .yishan-time-picker .weui-btn_cell-default {
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
   color: var(--weui-FG-0);
 }
 
 .yishan-time-picker .weui-btn_cell-primary {
-  color: #576b95;
+  color: var(--color-text-link);
   color: var(--weui-LINK);
 }
 
 .yishan-time-picker .weui-btn_cell-warn {
-  color: #fa5151;
+  color: var(--color-danger);
   color: var(--weui-RED);
 }
 
@@ -529,7 +529,7 @@
 }
 
 .yishan-time-picker .weui-btn_icon:active [class*="weui-icon-"] {
-  color: rgba(0,0,0,0.55);
+  color: var(--color-text-secondary);
   color: var(--weui-FG-1);
 }
 
@@ -556,9 +556,9 @@
   max-height: 75%;
   z-index: 5000;
   line-height: 1.4;
-  background-color: #fff;
+  background-color: var(--color-bg-elevated);
   background-color: var(--weui-BG-2);
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
   color: var(--weui-FG-0);
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
@@ -668,7 +668,7 @@
 
 .yishan-time-picker .weui-half-screen-dialog__title {
   display: block;
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
   color: var(--weui-FG-0);
   font-weight: 500;
   font-size: 15px;
@@ -676,7 +676,7 @@
 
 .yishan-time-picker .weui-half-screen-dialog__subtitle {
   display: block;
-  color: rgba(0,0,0,0.55);
+  color: var(--color-text-secondary);
   color: var(--weui-FG-1);
   font-size: 10px;
 }
@@ -692,14 +692,14 @@
   hyphens: auto;
   padding-bottom: 56px;
   font-size: 14px;
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
   color: var(--weui-FG-0);
 }
 
 .yishan-time-picker .weui-half-screen-dialog__desc {
   font-size: 17px;
   font-weight: 500;
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
   color: var(--weui-FG-0);
   line-height: 1.4;
 }
@@ -707,7 +707,7 @@
 .yishan-time-picker .weui-half-screen-dialog__tips {
   padding-top: 16px;
   font-size: 14px;
-  color: rgba(0,0,0,0.3);
+  color: var(--color-text-tertiary);
   color: var(--weui-FG-2);
   line-height: 1.4;
 }
@@ -743,7 +743,7 @@
   width: 40px;
   height: 4px;
   border-radius: 2px;
-  background: #ededed;
+  background: var(--color-bg-base);
   background: var(--weui-BG-0);
   -webkit-box-pack: center;
   -webkit-justify-content: center;
@@ -754,13 +754,13 @@
 }
 
 .yishan-time-picker .wx-root[data-weui-theme='dark'] .weui-half-screen-dialog__slide-icon,.yishan-time-picker body[data-weui-theme='dark'] .weui-half-screen-dialog__slide-icon {
-  background: rgba(0,0,0,0.1);
+  background: var(--color-border);
   background: var(--weui-FG-3);
 }
 
 @media (prefers-color-scheme:dark) {
   .yishan-time-picker .wx-root:not([data-weui-theme='light']) .weui-half-screen-dialog__slide-icon,.yishan-time-picker body:not([data-weui-theme='light']) .weui-half-screen-dialog__slide-icon {
-    background: rgba(0,0,0,0.1);
+    background: var(--color-border);
     background: var(--weui-FG-3);
   }
 }
@@ -861,7 +861,7 @@
   right: 0;
   left: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: var(--color-bg-mask);
 }
 
 .yishan-time-picker .weui-mask_transparent {
@@ -922,7 +922,7 @@
   left: 0;
   bottom: 0;
   z-index: 5000;
-  background-color: #fff;
+  background-color: var(--color-bg-elevated);
   background-color: var(--weui-BG-2);
   padding-left: 0;
   padding-left: constant(safe-area-inset-left);
@@ -970,9 +970,9 @@
   bottom: 0;
   right: 0;
   height: 1px;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
+  border-bottom: 1px solid var(--color-border);
   border-bottom: 1px solid var(--weui-FG-3);
-  color: rgba(0,0,0,0.1);
+  color: var(--color-border);
   color: var(--weui-FG-3);
   -webkit-transform-origin: 0 100%;
   transform-origin: 0 100%;
@@ -985,7 +985,7 @@
   display: -webkit-flex;
   display: flex;
   position: relative;
-  background-color: #fff;
+  background-color: var(--color-bg-elevated);
   background-color: var(--weui-BG-2);
   height: 240px;
   overflow: hidden;
@@ -1020,8 +1020,8 @@
   height: 100%;
   margin: 0 auto;
   z-index: 3;
-  background-image: -webkit-linear-gradient(top,rgba(255,255,255,0.95),rgba(255,255,255,0.6)),-webkit-linear-gradient(bottom,rgba(255,255,255,0.95),rgba(255,255,255,0.6));
-  background-image: linear-gradient(180deg,rgba(255,255,255,0.95),rgba(255,255,255,0.6)),linear-gradient(0deg,rgba(255,255,255,0.95),rgba(255,255,255,0.6));
+  background-image: -webkit-linear-gradient(top,var(--color-picker-mask-start),var(--color-picker-mask-end)),-webkit-linear-gradient(bottom,var(--color-picker-mask-start),var(--color-picker-mask-end));
+  background-image: linear-gradient(180deg,var(--color-picker-mask-start),var(--color-picker-mask-end)),linear-gradient(0deg,var(--color-picker-mask-start),var(--color-picker-mask-end));
   background-position: top,bottom;
   background-size: 100% 112px;
   background-repeat: no-repeat;
@@ -1030,14 +1030,14 @@
 }
 
 .yishan-time-picker .wx-root[data-weui-theme='dark'] .weui-picker__mask,.yishan-time-picker body[data-weui-theme='dark'] .weui-picker__mask {
-  background-image: -webkit-linear-gradient(top,rgba(25,25,25,0.95),rgba(25,25,25,0.6)),-webkit-linear-gradient(bottom,rgba(25,25,25,0.95),rgba(25,25,25,0.6));
-  background-image: linear-gradient(180deg,rgba(25,25,25,0.95),rgba(25,25,25,0.6)),linear-gradient(0deg,rgba(25,25,25,0.95),rgba(25,25,25,0.6));
+  background-image: -webkit-linear-gradient(top,var(--color-picker-mask-start),var(--color-picker-mask-end)),-webkit-linear-gradient(bottom,var(--color-picker-mask-start),var(--color-picker-mask-end));
+  background-image: linear-gradient(180deg,var(--color-picker-mask-start),var(--color-picker-mask-end)),linear-gradient(0deg,var(--color-picker-mask-start),var(--color-picker-mask-end));
 }
 
 @media (prefers-color-scheme:dark) {
   .yishan-time-picker .wx-root:not([data-weui-theme='light']) .weui-picker__mask,.yishan-time-picker body:not([data-weui-theme='light']) .weui-picker__mask {
-    background-image: -webkit-linear-gradient(top,rgba(25,25,25,0.95),rgba(25,25,25,0.6)),-webkit-linear-gradient(bottom,rgba(25,25,25,0.95),rgba(25,25,25,0.6));
-    background-image: linear-gradient(180deg,rgba(25,25,25,0.95),rgba(25,25,25,0.6)),linear-gradient(0deg,rgba(25,25,25,0.95),rgba(25,25,25,0.6));
+    background-image: -webkit-linear-gradient(top,var(--color-picker-mask-start),var(--color-picker-mask-end)),-webkit-linear-gradient(bottom,var(--color-picker-mask-start),var(--color-picker-mask-end));
+    background-image: linear-gradient(180deg,var(--color-picker-mask-start),var(--color-picker-mask-end)),linear-gradient(0deg,var(--color-picker-mask-start),var(--color-picker-mask-end));
   }
 }
 
@@ -1048,7 +1048,7 @@
   left: 0;
   right: 0;
   z-index: 1;
-  background: #f7f7f7;
+  background: var(--color-bg-disabled);
   background: var(--weui-BG-3);
 }
 
@@ -1064,7 +1064,7 @@
   height: 56px;
   line-height: 56px;
   text-align: center;
-  color: rgba(0,0,0,0.9);
+  color: var(--color-text-primary);
   color: var(--weui-FG-0);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1072,7 +1072,7 @@
 }
 
 .yishan-time-picker .weui-picker__item_disabled {
-  color: rgba(0,0,0,0.55);
+  color: var(--color-text-secondary);
   color: var(--weui-FG-1);
 }
 
@@ -1195,6 +1195,6 @@
   -webkit-mask-size: cover;
   mask-size: cover;
   background-color: currentColor;
-  color: #606060;
+  color: var(--color-text-secondary);
 }
 

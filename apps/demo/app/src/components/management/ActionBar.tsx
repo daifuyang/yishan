@@ -19,9 +19,9 @@ export interface BottomActionBarProps {
 }
 
 const TONE_COLOR: Record<NonNullable<BottomAction['tone']>, string> = {
-  primary: '#1677FF',
-  warning: '#A86624',
-  muted: '#4E5969',
+  primary: 'var(--color-primary)',
+  warning: 'var(--color-warning)',
+  muted: 'var(--color-text-secondary)',
 }
 
 /** 详情页底部固定操作栏，按钮等宽并排，行为与用户详情一致。 */
@@ -92,7 +92,7 @@ export function ActionSheet({ open, title = '更多操作', items, onClose }: Ac
             aria-label={item.label}
           >
             {item.icon ? (
-              <LineIcon name={item.icon} size={20} color={item.danger ? '#F53F3F' : '#4E5969'} />
+              <LineIcon name={item.icon} size={20} color={item.danger ? 'var(--color-danger)' : 'var(--color-text-secondary)'} />
             ) : null}
             <Text>{item.label}</Text>
           </View>

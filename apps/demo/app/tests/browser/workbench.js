@@ -132,6 +132,7 @@ async (page) => {
     sessionStorage.setItem('workbench-fixture', 'seeded')
   })
   await page.goto(url)
+  await page.evaluate(() => localStorage.removeItem('yishan:app:theme'))
   await page.reload()
   await page.waitForLoadState('networkidle')
   await page.goto(url)
@@ -169,7 +170,6 @@ async (page) => {
   const searchBoxHeight = await sharedSearch.evaluate(el => el.getBoundingClientRect().height)
   check(Math.abs(searchBoxHeight - 48) < 1, 'Shared search bar must keep its 48px height')
   const visual = await page.evaluate(() => {
-    const title = document.querySelector('[class*=apps__pageTitle]').getBoundingClientRect()
     // Sample the 系统管理 section: it is the only group with enough apps to wrap and vary colors.
     const section = [...document.querySelectorAll('[class*=apps__section]')].find(
       el => el.querySelector('[class*=apps__category]')?.textContent.trim() === '系统管理',
@@ -179,13 +179,15 @@ async (page) => {
     const icons = [...grid.querySelectorAll('[class*=index-module__tile___]')]
     const category = getComputedStyle(section.querySelector('[class*=apps__category]'))
     return {
-      centered: Math.abs(title.left + title.width / 2 - innerWidth / 2) < 1,
+      headerRemoved: !document.querySelector('[class*=apps__pageTitle]'),
       fourColumns: items.slice(0, 4).every(item => Math.abs(item.top - items[0].top) < 1) && items[4].top > items[0].top,
       iconSizes: icons.map(el => el.getBoundingClientRect().width),
       iconRadii: icons.map(el => parseFloat(getComputedStyle(el).borderRadius)),
       filledWhite: icons.every(el => {
-        const svg = decodeURIComponent(el.firstElementChild.style.backgroundImage)
-        return svg.includes('fill="#FFFFFF"') && !svg.includes('stroke=')
+        const glyph = el.firstElementChild
+        const style = getComputedStyle(glyph)
+        const svg = decodeURIComponent(style.maskImage)
+        return style.backgroundColor === 'rgb(255, 255, 255)' && svg.startsWith('url(') && !svg.includes('stroke=')
       }),
       labelSize: parseFloat(getComputedStyle(grid.querySelector('[class*=apps__label]')).fontSize),
       cardRadius: parseFloat(getComputedStyle(grid.parentElement).borderRadius),
@@ -194,36 +196,61 @@ async (page) => {
       titleWeight: category.fontWeight,
     }
   })
-  check(visual.centered, 'Heading must be centered')
+  check(visual.headerRemoved, 'H5 workbench must not duplicate the host navigation heading')
   check(visual.fourColumns, 'Grid must wrap after four apps')
   check(visual.iconSizes.every(size => Math.abs(size - 48) < 1), 'Icon bases must be 48px')
   check(visual.colors >= 5, 'Apps must have independent palette colors')
   check(visual.filledWhite, 'App glyphs must be white filled shapes')
-  check(visual.iconRadii.every(radius => radius === 14), 'Icon bases use 14px radii')
-  check(visual.labelSize === 14 && visual.cardRadius === 16, 'Labels and card corners follow mobile sizing')
+  check(visual.iconRadii.every(radius => radius === 12), 'Icon bases use 12px radii')
+  check(visual.labelSize === 14 && visual.cardRadius === 12, 'Labels and card corners follow mobile sizing')
   check(visual.titleSize >= 16 && visual.titleSize <= 18 && visual.titleWeight === '600', 'Categories use plain semibold headings')
   check(await page.locator('#taro-navigation-bar').isHidden(), 'Native title must not duplicate custom heading')
   check((await page.locator('.weui-tabbar__label').allTextContents()).join(',') === '首页,工作台,我的', 'Three native navigation tabs must remain')
   check((await page.locator('.weui-bar__item_on').innerText()) === '工作台', 'Workbench tab must be selected')
   await page.screenshot({ path: '.playwright-cli/workbench-375.png', fullPage: true })
 
+  function luminance(color) {
+    const [r, g, b] = color.match(/[\d.]+/g).slice(0, 3).map(Number)
+      .map(value => value / 255)
+      .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+    return r * 0.2126 + g * 0.7152 + b * 0.0722
+  }
+  function contrast(a, b) {
+    const values = [luminance(a), luminance(b)].sort((x, y) => x - y)
+    return (values[1] + 0.05) / (values[0] + 0.05)
+  }
+  for (const mode of ['dark', 'light']) {
+    await page.emulateMedia({ colorScheme: mode })
+    await page.waitForFunction(value => document.documentElement.dataset.theme === value, mode)
+    const colors = await page.evaluate(() => {
+      const surface = document.querySelector('[class*=apps__section]')
+      return {
+        page: getComputedStyle(document.querySelector('.page-container')).backgroundColor,
+        body: getComputedStyle(document.body).backgroundColor,
+        surface: getComputedStyle(surface).backgroundColor,
+        title: getComputedStyle(surface.querySelector('[class*=apps__category]')).color,
+        label: getComputedStyle(surface.querySelector('[class*=apps__label]')).color,
+        shadow: getComputedStyle(surface).boxShadow,
+      }
+    })
+    check(colors.page === colors.body, `${mode}: workbench uses the themed page background`)
+    check(contrast(colors.title, colors.surface) >= 4.5, `${mode}: group headings remain readable`)
+    check(contrast(colors.label, colors.surface) >= 4.5, `${mode}: application names remain readable`)
+    check(colors.shadow === 'none', `${mode}: cards separate by surface color`)
+    await page.screenshot({ path: `.playwright-cli/workbench-${mode}-375.png`, fullPage: true })
+  }
+
   await page.setViewportSize({ width: 320, height: 800 })
   await page.waitForFunction(
     () => parseFloat(getComputedStyle(document.documentElement).fontSize) <= 20,
   )
   const geometry = await page.evaluate(() => {
-    const title = document.querySelector('[class*=apps__pageTitle]')
     return {
       width: document.documentElement.scrollWidth,
       viewport: innerWidth,
-      titleHeight: title.getBoundingClientRect().height,
     }
   })
   check(geometry.width <= geometry.viewport, 'Small screen must not overflow horizontally')
-  check(
-    geometry.titleHeight < 40,
-    'Workbench title must stay on one line',
-  )
 
   // 几何：从 .page-container 出发逐段测间距，验证最近一轮的 16px 节奏。
   // Taro 的 postcss-pxtransform 把 CSS 变量里写的 `12px` / `16px` 编译成 `0.6rem` /
@@ -263,6 +290,7 @@ async (page) => {
         headerBox: rect(headerBox),
         filterBar: rect(filterBar),
         search: rect(search),
+        filterPaddingBottom: filterBar ? parseFloat(getComputedStyle(filterBar).paddingBottom) : null,
         firstCard: rect(firstCard),
         firstCategory: rect(firstCategory),
         secondCard: rect(secondCard),
@@ -271,20 +299,17 @@ async (page) => {
         containerPaddingBottom: container ? parseFloat(getComputedStyle(container).paddingBottom) : null,
       }
     })
-    // row 1: page top → header box = 0px（H5 --safe-area-top = 0，元素定位不是 CSS 变量）
+    check(!data.headerTop && !data.headerBox, `[w=${width}] H5 workbench navigation must be absent`)
     check(
-      data.headerTop && data.headerTop.top === 0,
-      `[w=${width}] Header should sit at page top; got ${data.headerTop ? data.headerTop.top : 'no header'}`,
-    )
-    // row 2: header box bottom → filter-bar white top = 0px（紧贴）
-    check(
-      data.filterBar &&
-        data.headerBox &&
-        Math.abs(data.filterBar.top - data.headerBox.bottom) < 1,
-      `[w=${width}] Header should meet filter bar flush; got ${data.filterBar && data.headerBox ? (data.filterBar.top - data.headerBox.bottom).toFixed(2) : '?'}px gap`,
+      data.filterBar && Math.abs(data.filterBar.top) < 1,
+      `[w=${width}] Search section should begin at the page top`,
     )
     // row 3: bar white top → search box top = 0.6rem × 根字号（filter padding-top = --space-3）
     const space3 = 0.6 * data.rootFontSize
+    check(
+      data.filterPaddingBottom !== null && Math.abs(data.filterPaddingBottom - space3) < 0.5,
+      `[w=${width}] Workbench search must keep its bottom padding`,
+    )
     check(
       data.filterBar &&
         data.search &&
@@ -351,6 +376,14 @@ async (page) => {
   await measure(320)
   await measure(390)
 
+  await page.evaluate(() => document.documentElement.style.setProperty('--safe-area-top', '47px'))
+  const safeTop = await page.evaluate(() => {
+    const search = document.querySelector('[class*="ManagementSearch-module__search___"]')
+    return search.getBoundingClientRect().top - 0.6 * parseFloat(getComputedStyle(document.documentElement).fontSize)
+  })
+  check(Math.abs(safeTop - 47) < 1, 'H5 search must consume the top safe area exactly once')
+  await page.evaluate(() => document.documentElement.style.removeProperty('--safe-area-top'))
+
   const beforeSearch = requests.length
   await page.getByPlaceholder('搜索应用').fill('用 户')
   check((await page.locator('[aria-label="用户管理"]').count()) === 1, 'Search must deduplicate')
@@ -374,9 +407,9 @@ async (page) => {
   await page.getByPlaceholder('搜索应用').fill('user')
   await page.locator('[aria-label="用户管理"]').click()
   await page.waitForURL('**/#/pages/system/user/index')
-  // Let Taro finish its page transition before exercising the page's back control.
+  // 宿主浏览器承载返回；等待 Taro 完成页面转场后使用浏览器历史返回。
   await page.waitForTimeout(600)
-  await page.getByText('‹', { exact: true }).click()
+  await page.goBack()
   await page.waitForTimeout(600)
   await page.getByPlaceholder('搜索应用').waitFor()
   check(

@@ -5,10 +5,15 @@
   "type": "module",
   "exports": {
     "./mobile": "./mobile/index.ts",
+    "./mobile/theme": "./mobile/theme/index.ts",
+    "./mobile/theme/palette": "./mobile/theme/palette.ts",
+    "./mobile/theme/react": "./mobile/theme/ThemeProvider.tsx",
     "./mobile/tokens.scss": "./mobile/tokens.scss"
   },
   "sideEffects": ["**/*.scss"],
   "scripts": {
+    "theme:generate": "node scripts/theme-css.cjs",
+    "theme:check": "node scripts/theme-css.cjs --check",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {

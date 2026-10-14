@@ -333,7 +333,14 @@ function AttachmentsPage() {
     )
 
   return (
-    <ManagementPage>
+    <ManagementPage
+      bottomActions={process.env.TARO_ENV === 'h5' && !selecting && (canDelete || canCreate) ? (
+        <View className={styles.headerActions}>
+          {canDelete ? <ManagementHeaderAction label="管理" showIcon={false} onClick={() => setSelecting(true)} /> : null}
+          {canCreate ? <ManagementHeaderAction label="上传" onClick={() => setUploadSheet('local')} /> : null}
+        </View>
+      ) : undefined}
+    >
       <ManagementPageHeader
         title="媒体库"
         action={

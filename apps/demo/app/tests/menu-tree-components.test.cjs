@@ -191,7 +191,8 @@ test('按钮行比页面行视觉更弱：更小字号、灰色图标', () => {
 test('页面行缩进大于模块头，按钮行缩进大于页面行', () => {
   const indentOf = (selector) => {
     const rule = css.match(new RegExp(`${selector.replace('.', '\\.')} \\{([^}]*)\\}`))[1]
-    return Number(rule.match(/padding:[^;]*?\s(\d+)px\s*;/)[1])
+    const token = rule.match(/padding:[^;]*?var\(--space-(\d+)\)\s*;/)?.[1]
+    return Number(token) * 4
   }
   const module = Number(css.match(/\.moduleHeader \{[^}]*padding:\s*var\(--space-4\)/) ? 16 : 16)
   const page = indentOf('.row--page')
@@ -226,9 +227,9 @@ test('后端 0/1/2 映射到目录 / 页面 / 操作', () => {
 
 test('操作类型图标弱化为灰色，目录与页面为主色', () => {
   const colorOf = (type) => walk(mod.MenuTypeIcon({ type }), (n) => n.props?.color)[0]?.props?.color
-  assert.equal(colorOf('directory'), '#1677FF')
-  assert.equal(colorOf('page'), '#1677FF')
-  assert.equal(colorOf('action'), '#86909C')
+  assert.equal(colorOf('directory'), 'var(--color-primary)')
+  assert.equal(colorOf('page'), 'var(--color-primary)')
+  assert.equal(colorOf('action'), 'var(--color-text-tertiary)')
 })
 
 test('不再使用齿轮 / 闪电 / 盾牌表达操作权限', () => {
@@ -251,12 +252,12 @@ test('类型标签三色：目录浅蓝、页面浅绿、操作浅灰', () => {
   assert.match(cls('directory'), /badge--directory/)
   assert.match(cls('page'), /badge--page/)
   assert.match(cls('action'), /badge--action/)
-  assert.match(css, /\.badge--directory \{[^}]*background:\s*#eaf3ff/i)
-  assert.match(css, /\.badge--directory \{[^}]*color:\s*#1677ff/i)
-  assert.match(css, /\.badge--page \{[^}]*background:\s*#eef9f1/i)
-  assert.match(css, /\.badge--page \{[^}]*color:\s*#2ba471/i)
-  assert.match(css, /\.badge--action \{[^}]*background:\s*#f2f3f5/i)
-  assert.match(css, /\.badge--action \{[^}]*color:\s*#86909c/i)
+  assert.match(css, /\.badge--directory \{[^}]*background:\s*var\(--color-primary-bg\)/i)
+  assert.match(css, /\.badge--directory \{[^}]*color:\s*var\(--color-primary\)/i)
+  assert.match(css, /\.badge--page \{[^}]*background:\s*var\(--color-success-bg\)/i)
+  assert.match(css, /\.badge--page \{[^}]*color:\s*var\(--color-success\)/i)
+  assert.match(css, /\.badge--action \{[^}]*background:\s*var\(--color-bg-disabled\)/i)
+  assert.match(css, /\.badge--action \{[^}]*color:\s*var\(--color-text-tertiary\)/i)
 })
 
 test('badge 轻量化：小字号 + 较大圆角', () => {
@@ -300,9 +301,9 @@ test('模块卡片默认白底，展开态才用极淡蓝', () => {
 })
 
 test('页面底色使用浅灰白而非蓝灰', () => {
-  assert.match(css, /\.tree \{[^}]*background:\s*transparent/, '树本身透明，由页面底色承担')
+  assert.match(css, /\.tree \{[^}]*background:\s*var\(--color-transparent\)/, '树本身透明，由页面底色承担')
   const header = css.match(/\.moduleHeader \{([^}]*)\}/)[1]
-  assert.match(header, /background:\s*#fff/i, '模块头默认白底')
+  assert.match(header, /background:\s*var\(--color-bg-elevated\)/i, '模块头默认白底')
 })
 
 test('分割线用极浅灰，不使用深色描边', () => {
@@ -314,7 +315,7 @@ test('不使用阴影，层级只靠留白和背景区分', () => {
 })
 
 test('主色统一为一套品牌蓝，旧的绿色系已清除', () => {
-  const blues = css.match(/#1677ff|#246bfd/gi) || []
+  const blues = css.match(/var\(--color-primary\)/g) || []
   assert.ok(blues.length >= 2, '主色应统一使用同一套蓝')
   // 页面 badge 的 #2BA471 是规范指定的轻量区分色，不算「旧绿色系」；
   // 要清掉的是上一版遗留的 #00B42A。

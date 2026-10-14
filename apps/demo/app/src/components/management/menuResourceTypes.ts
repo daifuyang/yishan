@@ -34,9 +34,9 @@ export const MENU_RESOURCE_LABELS: Record<MenuResourceType, string> = {
 
 /** 目录与页面用主色系强调，操作是叶子动作，用灰色弱化 —— 视觉层级与业务层级一致。 */
 export const MENU_RESOURCE_COLORS: Record<MenuResourceType, string> = {
-  directory: '#1677FF',
-  page: '#1677FF',
-  action: '#86909C',
+  directory: 'var(--color-primary)',
+  page: 'var(--color-primary)',
+  action: 'var(--color-text-tertiary)',
 }
 
 export function menuTypeLabel(type: MenuResourceType): string {

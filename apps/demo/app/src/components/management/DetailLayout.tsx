@@ -48,7 +48,7 @@ export function DetailHero({
   avatar,
   avatarClassName,
   glyph,
-  glyphColor = '#1677FF',
+  glyphColor = 'var(--color-primary)',
   icon,
 }: DetailHeroProps) {
   return (
@@ -119,7 +119,7 @@ export function DetailSection({
           <LineIcon
             name={open ? 'chevronDown' : 'chevronRight'}
             size={14}
-            color="#86909C"
+            color="var(--color-text-tertiary)"
           />
         ) : null}
       </Text>
@@ -178,7 +178,7 @@ export function DetailRow({
         >
           {empty ? '未设置' : value}
         </Text>
-        {arrow ? <LineIcon name="chevronRight" size={16} color="#C9CDD4" /> : null}
+        {arrow ? <LineIcon name="chevronRight" size={16} color="var(--color-text-quaternary)" /> : null}
       </View>
     </View>
   )

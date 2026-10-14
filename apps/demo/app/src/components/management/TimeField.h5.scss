@@ -3,7 +3,7 @@
 .yishan-time-trigger:disabled { cursor: default; }
 .yishan-time-picker {
   // Keep official WeUI geometry and states; only the brand color follows the app.
-  --weui-BRAND: var(--color-primary, #1677ff);
+  --weui-BRAND: var(--color-primary);
   position: fixed;
   inset: 0;
   z-index: 5000;

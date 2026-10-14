@@ -2,6 +2,7 @@
  * 通用确认弹窗 hook（包装 Taro.showModal 为 Promise）
  */
 import Taro from '@tarojs/taro'
+import { nativeModalColor } from '@/theme/theme'
 
 export interface ConfirmOptions {
   title?: string
@@ -18,8 +19,8 @@ export async function confirmAction(opts: ConfirmOptions): Promise<boolean> {
     content: opts.content,
     confirmText: opts.confirmText ?? '确定',
     cancelText: opts.cancelText ?? '取消',
-    confirmColor: opts.confirmColor ?? '#1677FF',
-    cancelColor: opts.cancelColor ?? '#1D2129',
+    confirmColor: nativeModalColor(opts.confirmColor, 'color-primary'),
+    cancelColor: nativeModalColor(opts.cancelColor, 'color-text-primary'),
   })
   return res.confirm
 }

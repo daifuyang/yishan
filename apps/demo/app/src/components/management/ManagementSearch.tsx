@@ -33,7 +33,7 @@ export function ManagementSearchBar({
 }: ManagementSearchBarProps) {
   return (
     <View className={styles.search}>
-      <LineIcon name="search" size={18} color="#86909C" className={styles.search__icon} />
+      <LineIcon name="search" size={18} color="var(--color-text-tertiary)" className={styles.search__icon} />
       <Input
         className={styles.search__input}
         value={value}
@@ -125,7 +125,7 @@ export function ManagementFilterTriggers({
             onClick={() => onPanelChange(trigger.key)}
           >
             <Text className={styles.triggerLabel}>{trigger.label}</Text>
-            <LineIcon name="chevronDown" size={14} color={on ? '#1677FF' : '#4E5969'} />
+            <LineIcon name="chevronDown" size={14} color={on ? 'var(--color-primary)' : 'var(--color-text-secondary)'} />
           </View>
         )
       })}
@@ -148,7 +148,7 @@ export function ManagementFilterSummary({
   return (
     <View className={styles.summary} onClick={onClear} aria-label={clearLabel}>
       <Text className={styles.summaryText}>{children}</Text>
-      <LineIcon name="close" size={14} color="#1677FF" />
+      <LineIcon name="close" size={14} color="var(--color-primary)" />
     </View>
   )
 }

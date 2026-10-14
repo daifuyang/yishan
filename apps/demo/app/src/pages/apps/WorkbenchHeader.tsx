@@ -4,7 +4,7 @@ import { useState } from 'react'
 import styles from './index.module.scss'
 
 // 与首页一致：自绘导航需要让出状态栏和微信胶囊。刷新走下拉与回到页面时的自动加载。
-// statusBar 为 0（H5）时不写 inline 内边距，改由 .apps__top 的 var(--safe-area-top) 避让。
+// H5 使用宿主导航，页面安全区由共享 H5 页面容器处理。
 function getHeaderMetrics() {
   if (process.env.TARO_ENV !== 'weapp') return { statusBar: 0, height: 56 }
   try {
@@ -21,6 +21,7 @@ function getHeaderMetrics() {
 
 export function WorkbenchHeader() {
   const [metrics] = useState(getHeaderMetrics)
+  if (process.env.TARO_ENV === 'h5') return null
   return (
     <View
       className={styles.apps__top}

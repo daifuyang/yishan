@@ -1,6 +1,7 @@
 .mCard {
   background-color: var(--color-bg-surface);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-card);
+  color: var(--color-text-primary);
   padding: var(--space-4);
   transition: opacity var(--transition-fast);
 }

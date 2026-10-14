@@ -8,8 +8,33 @@
 
 /* 底部内边距由调用方决定：列表页复用全局 page-container（tabbar 安全区），
    详情页用 pageWithActions 给固定操作栏留位。 */
-.pageWithActions {
+.page.pageWithActions {
   padding-bottom: calc(50px + var(--safe-area-bottom));
+}
+
+.bottomActions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-fixed);
+  background: var(--color-bg-surface);
+  border-top: 1px solid var(--color-border-light);
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.bottomActions__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  min-height: 50px;
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+.bottomActions__content .header__action {
+  flex: 1;
+  border-radius: 0;
 }
 
 /* ---------- 顶部导航 ---------- */
@@ -20,7 +45,7 @@
   z-index: var(--z-sticky);
   display: flex;
   align-items: center;
-  min-height: var(--nav-bar-height);
+  min-height: calc(var(--nav-bar-height) + var(--safe-area-top));
   padding: var(--safe-area-top) var(--space-3) 0;
   background: var(--color-bg-surface);
 }
@@ -31,12 +56,14 @@
 
 .header__side {
   flex: 0 0 68px;
-  height: 36px;
+  min-height: var(--touch-target-min);
   display: flex;
   align-items: center;
 }
 
 .header__sideLeft {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
   justify-content: flex-start;
   padding-left: var(--space-1);
   border-radius: var(--radius-md);
@@ -94,7 +121,7 @@
   justify-content: center;
   gap: 2px;
   min-width: 58px;
-  height: 30px;
+  min-height: var(--touch-target-min);
   padding: 0 var(--space-2);
   border-radius: var(--radius-md);
   color: var(--color-primary);

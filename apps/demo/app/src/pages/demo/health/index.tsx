@@ -73,15 +73,17 @@ function HealthPage() {
   })
   if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
   const env = info ? envLabel(info.env) : null
+  const pageAction = <ManagementHeaderAction label="刷新" showIcon={false} disabled={loading} onClick={() => void load()} />
+
   return (
-    <ManagementPage>
-      {/* 小程序端由原生导航栏承载标题，刷新走下拉；H5 自绘顶栏，右上角补一个刷新入口 */}
+    <ManagementPage
+      bottomActions={process.env.TARO_ENV === 'h5' ? pageAction : undefined}
+    >
+      {/* 小程序刷新走下拉；H5 的刷新入口由页面底栏承载。 */}
       {process.env.TARO_ENV === 'h5' ? (
         <ManagementPageHeader
           title="健康检查"
-          action={
-            <ManagementHeaderAction label="刷新" showIcon={false} disabled={loading} onClick={() => void load()} />
-          }
+          action={pageAction}
         />
       ) : null}
       <DetailContent>

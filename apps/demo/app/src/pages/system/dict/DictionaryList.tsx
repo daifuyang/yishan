@@ -97,22 +97,24 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
   const sortLabel =
     DICT_SORT_OPTIONS.find((option) => option.key === dictFilters.sort)?.label ??
     DICT_SORT_OPTIONS[0].label
+  const pageAction = canCreate && (!typeId || context) ? (
+    <ManagementHeaderAction
+      label="新建"
+      onClick={() =>
+        navigateTo(
+          `/${typeId ? SYSTEM_PAGES.dictItemForm : SYSTEM_PAGES.dictForm}${typeId ? `?typeId=${typeId}` : ''}`,
+        )
+      }
+    />
+  ) : undefined
+
   return (
-    <ManagementPage>
+    <ManagementPage
+      bottomActions={process.env.TARO_ENV === 'h5' ? pageAction : undefined}
+    >
       <ManagementPageHeader
         title={typeId ? context?.name || '字典项' : '字典管理'}
-        action={
-          canCreate && (!typeId || context) ? (
-            <ManagementHeaderAction
-              label="新建"
-              onClick={() =>
-                navigateTo(
-                  `/${typeId ? SYSTEM_PAGES.dictItemForm : SYSTEM_PAGES.dictForm}${typeId ? `?typeId=${typeId}` : ''}`,
-                )
-              }
-            />
-          ) : undefined
-        }
+        action={pageAction}
       />
       {contextError ? (
         <StateView

@@ -38,7 +38,7 @@ export function OrganizationPicker({
         <Text className={cx(styles.orgValue, empty && styles['orgValue--muted'])}>
           {summary}
         </Text>
-        <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+        <LineIcon name="chevronRight" size={16} color="var(--color-text-quaternary)" />
       </View>
     </View>
   )
