@@ -1,0 +1,39 @@
+// RoleEditor 的局部样式：从原来 `_shared/admin.scss` 取出该页面真正用到的三条规则。
+// 仅本组件消费，不复用，搬走后 `_shared/admin.scss` 已无引用，可以一并删除。
+
+.adminCard {
+  padding: 16px;
+  margin-bottom: 12px;
+  background: var(--color-bg-surface);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+
+.adminSectionTitle {
+  display: block;
+  margin: 16px 0 12px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.adminActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+
+  button {
+    margin: 0;
+    min-height: 48px;
+  }
+
+  // 同时兜住小程序的 <text> 元素和 H5 端的 .taro-text 类，避免目标差异导致行高偏差。
+  > text,
+  > .taro-text {
+    min-height: 48px;
+    min-width: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

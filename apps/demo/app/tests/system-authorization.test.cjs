@@ -43,11 +43,10 @@ function mountEditor(entry, name, props, apiMocks, permissions = []) {
     "@/components/atoms": { Button: "Button" },
     "@/components/molecules": { FormField: "FormField" },
     "@/components/management": Object.fromEntries(
-      ["FormField", "EnumField", "FormError", "FormSection", "TextField", "TextAreaField", "SwitchField", "SelectorPicker"].map(
+      ["FormField", "EnumField", "FormError", "FormSection", "TextField", "TextAreaField", "SwitchField"].map(
         (name) => [name, name],
       ),
     ),
-    "../../_shared/admin.scss": {},
     "@/hooks": { useCanWrite: (...codes) => codes.every((code) => permissions.includes(code)) },
     "@/utils/auth-guard": { canWriteModuleNow: () => true },
     "@/api/client": { getSessionVersion: () => 0 },
@@ -58,6 +57,7 @@ function mountEditor(entry, name, props, apiMocks, permissions = []) {
     "@/utils/account-scope": {
       errorMessage: (error) => error.message,
     },
+    "./RoleEditor.module.scss": {},
     ...apiMocks,
   })[name];
   const nodes = (value) =>
@@ -172,6 +172,61 @@ test("role basic edits omit inaccessible grants and preserve existing data scope
   assert.deepEqual(requests, [
     { id: 7, data: { name: "高级审核员", description: "审核订单", status: "1", dataScope: "5" } },
   ]);
+});
+
+test("unchecking a single role permission leaves the other selected permissions intact", async () => {
+  const editor = mountEditor(
+    "src/pages/system/role/RoleEditor.tsx",
+    "RoleEditor",
+    { id: 7, editable: true, onClose() {}, onSaved() {} },
+    {
+      "@/api/admin/role": {
+        getAdminRole: async () => ({
+          id: 7,
+          name: "审核员",
+          description: "审核订单",
+          status: "1",
+          dataScope: "1",
+          menuIds: [],
+          appMenuIds: [],
+          permissionCodes: ["orders:approve", "orders:export"],
+        }),
+        updateAdminRole: async () => {},
+      },
+      "@/api/admin/menu": {
+        getAdminPermissionCatalog: async () => [
+          { code: "orders:approve", label: "审批订单", description: "审批订单" },
+          { code: "orders:export", label: "导出订单", description: "导出订单" },
+        ],
+      },
+      "@/api/admin/appMenu": {},
+    },
+    ["system:role:update", "system:role:grant", "system:permission:catalog"],
+  );
+  await editor.settle();
+
+  const approve = editor.field("审批订单");
+  const exportPerm = editor.field("导出订单");
+  assert.ok(approve, "应渲染 orders:approve 的开关");
+  assert.ok(exportPerm, "应渲染 orders:export 的开关");
+  assert.equal(approve.props.checked, true, "初始 orders:approve 应处于勾选状态");
+  assert.equal(exportPerm.props.checked, true, "初始 orders:export 应处于勾选状态");
+
+  // 走真实的 catalog 路径（RoleEditor.tsx 第 294 行所在的分支）。
+  approve.props.onChange(false);
+
+  // 目标项必须取消勾选，幸存项必须保留——这正是上一轮回归漏掉的两个半边。
+  // 只断言其中一项会让 `x !== x` 那种把整个数组清空的错误溜过去。
+  assert.equal(
+    editor.field("审批订单").props.checked,
+    false,
+    "被取消的 orders:approve 必须从勾选集合中移除",
+  );
+  assert.equal(
+    editor.field("导出订单").props.checked,
+    true,
+    "orders:export 仍应保留在勾选集合中，filter 错误会把幸存项一起清空",
+  );
 });
 
 // 工作台表单已拆成独立页面，载荷组装集中在 model.ts，这里直接断言它的契约。

@@ -1,7 +1,7 @@
 import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
-import '../../_shared/admin.scss'
+import styles from './RoleEditor.module.scss'
 import { type AdminAppMenu, getAdminAppMenuTree } from '@/api/admin/appMenu'
 import {
   type AdminMenu,
@@ -196,8 +196,8 @@ export function RoleEditor({
     }
   }
   return (
-    <View className="admin-card">
-      <Text className="admin-section-title">
+    <View className={styles.adminCard}>
+      <Text className={styles.adminSectionTitle}>
         {id ? (editable ? '编辑角色' : '角色详情') : '新建角色'}
       </Text>
       {loading ? (
@@ -241,7 +241,7 @@ export function RoleEditor({
                 setValues({ ...values, dataScope: scope as SaveAdminRole['dataScope'] })
               }
             />
-            <Text className="admin-section-title">菜单访问</Text>
+            <Text className={styles.adminSectionTitle}>菜单访问</Text>
             {menus === null ? (
               <FormError>菜单选项不可用，现有菜单授权保持不变。</FormError>
             ) : (
@@ -264,7 +264,7 @@ export function RoleEditor({
                 />
               ))
             )}
-            <Text className="admin-section-title">功能权限</Text>
+            <Text className={styles.adminSectionTitle}>功能权限</Text>
             {catalog === null ? (
               <FormError>功能选项不可用，现有功能授权保持不变。</FormError>
             ) : (
@@ -291,7 +291,7 @@ export function RoleEditor({
                           ...values,
                           permissionCodes: checked
                             ? [...selectedCodes, item.code]
-                            : selectedCodes.filter((code) => code !== code),
+                            : selectedCodes.filter((existing) => existing !== item.code),
                         })
                         setChanged({ ...changed, permissions: true })
                       }}
@@ -309,7 +309,7 @@ export function RoleEditor({
                       onChange={() => {
                         setValues({
                           ...values,
-                          permissionCodes: selectedCodes.filter((item) => item !== code),
+                          permissionCodes: selectedCodes.filter((existing) => existing !== code),
                         })
                         setChanged({ ...changed, permissions: true })
                       }}
@@ -317,13 +317,13 @@ export function RoleEditor({
                   ))}
               </>
             )}
-            <Text className="admin-section-title">工作台入口</Text>
+            <Text className={styles.adminSectionTitle}>工作台入口</Text>
             {apps === null ? (
               <FormError>入口选项不可用，现有工作台授权保持不变。</FormError>
             ) : (
               apps.map((group) => (
                 <View key={group.id}>
-                  <Text className="admin-section-title">{group.name}</Text>
+                  <Text className={styles.adminSectionTitle}>{group.name}</Text>
                   {(group.children || []).map((entry) => (
                     <FormField
                       key={entry.id}
@@ -359,7 +359,7 @@ export function RoleEditor({
           )}
         </>
       )}
-      <View className="admin-actions">
+      <View className={styles.adminActions}>
         <Button variant="secondary" disabled={busy} onClick={onClose}>
           关闭
         </Button>
