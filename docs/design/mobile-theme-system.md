@@ -92,6 +92,8 @@ pnpm --filter @yishan/demo-app build:h5
 
 当前环境的完整 `pnpm typecheck:mobile` 被 Core App 的既有 `@types/minimatch` 隐式类型定义缺失阻断；Core App 使用 `tsc --noEmit --types node` 验证，UI/App 的严格类型检查分别正常。完整 App `lint` 会扫描生成的 dist 而失败，本轮使用上述源码 lint，未修改无关工程配置。
 
+2026-10-15 发布：应用提交 8ed6bb57 已推送 dev，通过既有 FC3 配置部署至 <https://h5.zerocmf.com>。148 个线上 HTML/JS/CSS 资源的 SHA-256 与发布包一致，未登录 API 返回 401；线上隔离 API fixture 验证的主题 13 项、工作台与 27 页面回归通过。构建产物及部署临时配置未提交。
+
 ## 修改文件清单
 
 下方清单包含主题基础层及后续授权的页面调整，不含构建产物。
@@ -195,3 +197,4 @@ pnpm --filter @yishan/demo-app build:h5
 - `packages/ui/mobile/tokens.scss`
 - `packages/ui/package.json`
 - `packages/ui/scripts/theme-css.cjs`
+
