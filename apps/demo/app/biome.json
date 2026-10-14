@@ -10,10 +10,17 @@
       "!**/fonts-subset",
       "!biome.json",
       "!src/index.html",
-      "!**/WeuiPicker.h5.css",
-      "!**/tests/browser/**"
+      "!**/WeuiPicker.h5.css"
     ]
   },
+  "overrides": [
+    {
+      "includes": ["**/tests/browser/**"],
+      "formatter": {
+        "enabled": false
+      }
+    }
+  ],
   "linter": {
     "rules": {
       "complexity": {

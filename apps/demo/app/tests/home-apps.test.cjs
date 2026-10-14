@@ -133,10 +133,10 @@ function mountEditPage({ pinned, max = 8 }) {
     state.menus = state.menus.map((group) => ({ ...group, apps: group.apps.filter((a) => a.menuId !== menuId) }))
     page.rerender()
   }
-  // 已固定行的动作走 trailingAction（不再占用 tag 槽），分组行的 tag 是 Checkbox
-  const pinnedCells = () => page.all('ManagementCell').filter((n) => n.props.tag?.type !== 'Checkbox')
+  // 已固定行的动作走 trailingAction（不占 tag 槽，也不占 selection 槽），可勾选行的 Checkbox 在 selection 槽
+  const pinnedCells = () => page.all('ManagementCell').filter((n) => n.props.selection?.type !== 'Checkbox')
   const pickerCell = (menuId) =>
-    page.all('ManagementCell').find((n) => n.props.tag?.type === 'Checkbox' && n.props.title === `app-${menuId}`)
+    page.all('ManagementCell').find((n) => n.props.selection?.type === 'Checkbox' && n.props.title === `app-${menuId}`)
   const orderButton = (row, label) =>
     [row.props.trailingAction.props.children].flat().find((n) => n?.props?.['aria-label'] === label)
   const save = async () => {
@@ -162,7 +162,7 @@ test('编辑页的上限按可见项计算，不可见的草稿 id 不会让可�
   const row = edit.pickerCell(13)
   assert.equal(row.props.disabled, false)
   row.props.onClick()
-  assert.equal(edit.pickerCell(13).props.tag.props.checked, true)
+  assert.equal(edit.pickerCell(13).props.selection.props.checked, true)
   assert.deepEqual(await edit.save(), [11, 13])
 })
 
@@ -224,6 +224,7 @@ test('已固定行的排序按钮走 trailingAction，不占用状态 tag 槽', 
   const edit = mountEditPage({ pinned: [11, 12] })
   for (const row of edit.pinnedCells()) {
     assert.equal(row.props.tag, undefined, '已固定行不再用 tag 承载动作')
+    assert.equal(row.props.selection, undefined, '已固定行也不占用选择槽')
     assert.ok(row.props.trailingAction, '动作走 trailingAction')
   }
 })

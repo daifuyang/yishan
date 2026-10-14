@@ -167,7 +167,7 @@ function HomeAppsEditPage() {
                     key={app.menuId}
                     leading={<ApplicationIcon id={app.id} icon={app.icon} />}
                     title={app.name}
-                    tag={<Checkbox checked={checked} disabled={disabled} />}
+                    selection={<Checkbox checked={checked} disabled={disabled} />}
                     disabled={disabled}
                     bordered={index < group.apps.length - 1}
                     showArrow={false}
