@@ -2,7 +2,7 @@ import { useRouter } from '@tarojs/taro'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { useAuthStore } from '@/stores/auth'
 import { PageContainer } from '@/components/layout'
-import { AdminPage, AdminNotice } from '../../_shared/AdminUI'
+import { FormError, ManagementPage, ManagementPageHeader } from '@/components/management'
 import DictionaryList from '../DictionaryList'
 
 export default function DictItemsPage() {
@@ -12,9 +12,10 @@ export default function DictItemsPage() {
   if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
   if (!Number.isInteger(typeId) || typeId < 1)
     return (
-      <AdminPage title="字典项">
-        <AdminNotice>字典类型参数无效</AdminNotice>
-      </AdminPage>
+      <ManagementPage>
+        <ManagementPageHeader title="字典项" />
+        <FormError>字典类型参数无效</FormError>
+      </ManagementPage>
     )
   return (
     <DictionaryList

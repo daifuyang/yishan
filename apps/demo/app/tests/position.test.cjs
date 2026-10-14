@@ -243,7 +243,15 @@ test('failed position load cannot save default values', async () => {
     },
   })
   await form.settle()
-  assert.equal(form.field().props.disabled, true)
+  const tree = form.nodes()
+  // 页面 `disabled` 推导必须抵达它驱动的每个具体控件：两个 TextField、一个 EnumField、一个 TextAreaField。
+  for (const type of ['TextField', 'EnumField', 'TextAreaField']) {
+    const nodes = tree.filter((node) => node.type === type)
+    assert.ok(nodes.length > 0, `${type} 应当出现在表单中`)
+    for (const node of nodes) {
+      assert.equal(node.props.disabled, true, `${type}（label=${node.props.label}）应当继承页面的 disabled`)
+    }
+  }
   assert.equal(form.submit(), undefined)
   assert.equal(writes, 0)
 })

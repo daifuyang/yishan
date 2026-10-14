@@ -201,7 +201,7 @@ function mountDepartmentForm(
     "@tarojs/taro": { showToast: async () => {} },
     "@/components/atoms": { Button: "Button" },
     "@/components/molecules": { FormField: "FormField" },
-    "@/components/management": Object.fromEntries(["FormContent", "FormSection", "FormField", "TextField", "TextAreaField", "EnumField", "FormSubmitBar", "LineIcon"].map((name) => [name, name])),
+    "@/components/management": Object.fromEntries(["FormContent", "FormSection", "FormField", "FormError", "TextField", "TextAreaField", "EnumField", "FormSubmitBar", "LineIcon"].map((name) => [name, name])),
     "./DepartmentForm.module.scss": {},
     "@/hooks": {
       useCanWrite: (...required) =>
@@ -209,10 +209,6 @@ function mountDepartmentForm(
     },
     "@/api/admin/dept": api,
       "@/utils/auth-guard": { useCurrentModuleAccess: () => () => true },
-    "../_shared/AdminUI": {
-      AdminSelect: "AdminSelect",
-      AdminNotice: "AdminNotice",
-    },
     "@/utils/account-scope": {
       errorMessage: (cause) => cause.message,
     },
@@ -267,7 +263,7 @@ test("department saves lock duplicate submissions and retain input after failure
   await Promise.all([one, two]);
   tree = form.render();
   assert.equal(tree.find((node) => node.type === "TextField").props.value, "研发部");
-  assert.equal(tree.find((node) => node.type === "AdminNotice").props.children, "保存失败");
+  assert.equal(tree.find((node) => node.type === "FormError").props.children, "保存失败");
   assert.equal(form.completed(), 0);
   form.unmount();
 });

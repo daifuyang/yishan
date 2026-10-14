@@ -42,16 +42,18 @@ function mountEditor(entry, name, props, apiMocks, permissions = []) {
     "@tarojs/taro": { showToast() {} },
     "@/components/atoms": { Button: "Button" },
     "@/components/molecules": { FormField: "FormField" },
+    "@/components/management": Object.fromEntries(
+      ["FormField", "EnumField", "FormError", "FormSection", "TextField", "TextAreaField", "SwitchField", "SelectorPicker"].map(
+        (name) => [name, name],
+      ),
+    ),
+    "../../_shared/admin.scss": {},
     "@/hooks": { useCanWrite: (...codes) => codes.every((code) => permissions.includes(code)) },
     "@/utils/auth-guard": { canWriteModuleNow: () => true },
     "@/api/client": { getSessionVersion: () => 0 },
     "@/stores/auth": { useAuthStore: (select) => select({ user: { permissions } }) },
     "@/modules/registry": {
       hasRequiredPermissions: (codes, actual) => codes.every((code) => actual.includes(code)),
-    },
-    "../_shared/AdminUI": {
-      AdminSelect: "AdminSelect",
-      AdminNotice: "AdminNotice",
     },
     "@/utils/account-scope": {
       errorMessage: (error) => error.message,
@@ -204,7 +206,6 @@ test("workbench group edits preserve its module even though the field is hidden"
 
 function pageNodes(page, permissions, records, extraMocks = {}) {
   const mocks = {
-    "../coming-soon/index": { __esModule: true, default: () => null },
     "../client": { request() {}, requestPaginated() {} },
     "@/api/client": { getSessionVersion: () => 0 },
     "@/stores/auth": { useAuthStore: (select) => select({ user: { permissions } }) },

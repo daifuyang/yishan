@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro'
 import {
   EnumField,
   FormContent,
+  FormError,
   FormSection,
   FormField,
   TextField,
@@ -16,7 +17,6 @@ import { useCanWrite } from '@/hooks'
 import type { AdminDept } from '@/api/admin/types'
 import * as api from '@/api/admin/dept'
 import { errorMessage } from '@/utils/account-scope'
-import { AdminNotice } from '../_shared/AdminUI'
 import { departmentParentOptions, departmentPayload, type DepartmentFormValues } from './form'
 import { useCurrentModuleAccess } from '@/utils/auth-guard'
 
@@ -213,8 +213,8 @@ export default function DepartmentForm({
             />
           </FormField>
         </FormSection>
-        {loading && <AdminNotice>加载部门信息…</AdminNotice>}
-        {error && <AdminNotice>{error}</AdminNotice>}
+        {loading && <FormError>加载部门信息…</FormError>}
+        {error && <FormError>{error}</FormError>}
         {loadError && (
           <View className={styles.error} onClick={() => setReload((count) => count + 1)}>
             <Text>{loadError}，点击重新加载</Text>

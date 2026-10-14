@@ -1,6 +1,17 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
+const fs = require('node:fs')
+const path = require('node:path')
 const { loadTs } = require('./helpers/load-ts.cjs')
+
+const srcRoot = path.resolve(__dirname, '../src')
+const read = (file) => fs.readFileSync(path.join(srcRoot, file), 'utf8')
+
+test('dict/items 页不再使用旧 AdminPage / AdminSelect / AdminNotice 与白卡', () => {
+  const source = read('pages/system/dict/items/index.tsx')
+  assert.doesNotMatch(source, /\bAdmin(Page|Select|Notice)\b/)
+  assert.doesNotMatch(source, /admin-card|admin-row|admin-notice/)
+})
 test('dictionary draft preserves zero status and derives item context from server record', () => {
   const { dictionaryDraft } = loadTs('src/pages/system/dict/form.ts')
   const draft = dictionaryDraft({

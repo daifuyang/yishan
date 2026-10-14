@@ -1,6 +1,7 @@
 import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
+import '../../_shared/admin.scss'
 import { type AdminAppMenu, getAdminAppMenuTree } from '@/api/admin/appMenu'
 import {
   type AdminMenu,
@@ -17,12 +18,12 @@ import {
 import { getSessionVersion } from '@/api/client'
 import { Button } from '@/components/atoms'
 import { FormField } from '@/components/molecules'
+import { EnumField, FormError } from '@/components/management'
 import { useCanWrite } from '@/hooks'
 import { hasRequiredPermissions } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
 import { canWriteModuleNow } from '@/utils/auth-guard'
 import { errorMessage } from '@/utils/account-scope'
-import { AdminNotice, AdminSelect } from '../_shared/AdminUI'
 import { buildRoleAuthorization, flattenMenus } from './authorization'
 
 const scopes = [
@@ -200,7 +201,7 @@ export function RoleEditor({
         {id ? (editable ? '编辑角色' : '角色详情') : '新建角色'}
       </Text>
       {loading ? (
-        <AdminNotice>加载中…</AdminNotice>
+        <FormError>加载中…</FormError>
       ) : (
         loaded && (
           <>
@@ -221,7 +222,7 @@ export function RoleEditor({
               disabled={disabled}
               onInput={(description) => setValues({ ...values, description })}
             />
-            <AdminSelect
+            <EnumField
               label="状态"
               value={values.status || '1'}
               disabled={disabled}
@@ -231,7 +232,7 @@ export function RoleEditor({
               ]}
               onChange={(status) => setValues({ ...values, status: status === '1' ? '1' : '0' })}
             />
-            <AdminSelect
+            <EnumField
               label="数据范围"
               value={values.dataScope || '1'}
               disabled={disabled}
@@ -242,7 +243,7 @@ export function RoleEditor({
             />
             <Text className="admin-section-title">菜单访问</Text>
             {menus === null ? (
-              <AdminNotice>菜单选项不可用，现有菜单授权保持不变。</AdminNotice>
+              <FormError>菜单选项不可用，现有菜单授权保持不变。</FormError>
             ) : (
               menuNodes.map((node) => (
                 <FormField
@@ -265,7 +266,7 @@ export function RoleEditor({
             )}
             <Text className="admin-section-title">功能权限</Text>
             {catalog === null ? (
-              <AdminNotice>功能选项不可用，现有功能授权保持不变。</AdminNotice>
+              <FormError>功能选项不可用，现有功能授权保持不变。</FormError>
             ) : (
               <>
                 <FormField type="input" label="搜索功能" value={search} onChange={setSearch} />
@@ -290,7 +291,7 @@ export function RoleEditor({
                           ...values,
                           permissionCodes: checked
                             ? [...selectedCodes, item.code]
-                            : selectedCodes.filter((code) => code !== item.code),
+                            : selectedCodes.filter((code) => code !== code),
                         })
                         setChanged({ ...changed, permissions: true })
                       }}
@@ -318,7 +319,7 @@ export function RoleEditor({
             )}
             <Text className="admin-section-title">工作台入口</Text>
             {apps === null ? (
-              <AdminNotice>入口选项不可用，现有工作台授权保持不变。</AdminNotice>
+              <FormError>入口选项不可用，现有工作台授权保持不变。</FormError>
             ) : (
               apps.map((group) => (
                 <View key={group.id}>
@@ -347,16 +348,16 @@ export function RoleEditor({
           </>
         )
       )}
-      {optionError && <AdminNotice>{optionError}</AdminNotice>}
+      {optionError && <FormError>{optionError}</FormError>}
       {error && (
-        <AdminNotice>
-          {error}
+        <>
+          <FormError>{error}</FormError>
           {!loaded && (
             <Button variant="text" onClick={() => setRetry(retry + 1)}>
               重新加载
             </Button>
           )}
-        </AdminNotice>
+        </>
       )}
       <View className="admin-actions">
         <Button variant="secondary" disabled={busy} onClick={onClose}>
