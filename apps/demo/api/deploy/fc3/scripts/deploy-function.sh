@@ -7,4 +7,5 @@ if [ ! -f "$FC_DIR/.build/function-code/.yishan-api-artifact.json" ]; then
   echo "Missing verified API artifact; run pre-deploy.sh first." >&2
   exit 1
 fi
+s preview -t "$FC_DIR/templates/function.yaml" >/dev/null
 s deploy -y -t "$FC_DIR/templates/function.yaml"

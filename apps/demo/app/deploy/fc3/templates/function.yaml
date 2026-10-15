@@ -2,8 +2,8 @@ edition: 3.0.0
 name: yishan-h5-function
 access: default
 vars:
-  region: ${env(FUNCTION_REGION, 'cn-shanghai')}
-  functionName: ${env(H5_FUNCTION_NAME, 'yishan-h5')}
+  region: ${env('FUNCTION_REGION', 'cn-shanghai')}
+  functionName: ${env('H5_FUNCTION_NAME', 'yishan-h5')}
 resources:
   yishan_h5:
     component: fc3
