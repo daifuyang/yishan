@@ -1,14 +1,9 @@
 import { View } from '@tarojs/components'
 import { useDidShow } from '@tarojs/taro'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 
 import { PageContainer } from '@/components/layout'
-import {
-  ActionSheet,
-  type ActionSheetItem,
-  ManagementCell,
-  ManagementList,
-} from '@/components/management'
+import { ManagementCell, ManagementList } from '@/components/management'
 import { UserHeader } from '@/components/organisms'
 import { APP_NAME } from '@/constants'
 import { SECONDARY_PAGES } from '@/constants/routes'
@@ -21,7 +16,6 @@ import styles from './index.module.scss'
 export default function MinePage() {
   const user = useAuthStore((state) => state.user)
   const loggingOut = useRef(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
 
   useDidShow(() => {
     const auth = useAuthStore.getState()
@@ -32,7 +26,6 @@ export default function MinePage() {
 
   const handleLogout = async () => {
     if (loggingOut.current) return
-    setSheetOpen(false)
     loggingOut.current = true
     try {
       if (
@@ -50,11 +43,6 @@ export default function MinePage() {
     }
   }
 
-  const sheetItems: ActionSheetItem[] = [
-    // 图标沿用 shared LineIcon：它没有 logOut，用「离开盒子」的 upload 表达退出
-    { key: 'logout', label: '退出登录', icon: 'upload', danger: true, onClick: () => void handleLogout() },
-  ]
-
   return (
     <PageContainer>
       <View className={styles.page}>
@@ -67,33 +55,28 @@ export default function MinePage() {
 
         <ManagementList>
           <ManagementCell
+            size="compact"
             glyph="pencil"
             title="个人资料"
             onClick={open(SECONDARY_PAGES.profileEdit)}
           />
-          <ManagementCell glyph="shield" title="账户安全" onClick={open(SECONDARY_PAGES.security)} />
-          <ManagementCell glyph="fileText" title="消息中心" onClick={open(SECONDARY_PAGES.messages)} />
+          <ManagementCell size="compact" glyph="shield" title="账户安全" onClick={open(SECONDARY_PAGES.security)} />
+          <ManagementCell size="compact" glyph="fileText" title="消息中心" onClick={open(SECONDARY_PAGES.messages)} />
           <ManagementCell
+            size="compact"
             glyph="building"
             title={`关于${APP_NAME}`}
             onClick={open(SECONDARY_PAGES.about)}
           />
-          {/* 打开操作面板的行不画箭头：箭头表示「进入下一级」，这里只是弹出面板 */}
           <ManagementCell
+            size="compact"
             glyph="upload"
             title="退出登录"
             showArrow={false}
             bordered={false}
-            onClick={() => setSheetOpen(true)}
+            onClick={handleLogout}
           />
         </ManagementList>
-
-        <ActionSheet
-          open={sheetOpen}
-          title="退出登录"
-          items={sheetItems}
-          onClose={() => setSheetOpen(false)}
-        />
       </View>
     </PageContainer>
   )

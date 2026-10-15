@@ -7,7 +7,7 @@ import { getWorkbenchGroups } from '@/modules/registry'
 import { useAuthStore } from '@/stores/auth'
 import { useModuleStore } from '@/stores/modules'
 import { useRequireAuth } from '@/utils/auth-guard'
-import { ApplicationGrid } from './ApplicationGrid'
+import { ApplicationGrid, ApplicationGridSkeleton } from './ApplicationGrid'
 import styles from './index.module.scss'
 import { openWorkbenchApp } from './navigation'
 import { WorkbenchHeader } from './WorkbenchHeader'
@@ -59,7 +59,7 @@ export default function AppsPage() {
     })
   }
 
-  // 加载/错误/空与列表统一交给共享 ManagementStates：没有任何应用时才叫「暂无可用应用」
+  // 搜索无结果与账号没有可用应用分别提示。
   const emptyText = query.trim() && apps.length > 0 ? '未找到相关应用' : '暂无可用应用'
   const kind = !loaded ? (error ? 'error' : 'loading') : searchGroups.length ? 'ready' : 'empty'
 
@@ -78,19 +78,23 @@ export default function AppsPage() {
           </Button>
         </View>
       ) : null}
-      <ManagementStates
-        kind={kind}
-        errorText={error ?? undefined}
-        emptyText={emptyText}
-        onRetry={retry}
-      >
-        {searchGroups.map((group) => (
-          <View key={group.id} className={styles.apps__section}>
-            <Text className={styles.apps__category}>{group.name}</Text>
-            <ApplicationGrid apps={group.apps} onOpen={open} />
-          </View>
-        ))}
-      </ManagementStates>
+      {kind === 'loading' ? (
+        <ApplicationGridSkeleton />
+      ) : (
+        <ManagementStates
+          kind={kind}
+          errorText={error ?? undefined}
+          emptyText={emptyText}
+          onRetry={retry}
+        >
+          {searchGroups.map((group, index) => (
+            <View key={group.id} className={`${styles.apps__section} ${index === 0 ? styles.apps__sectionFirst : ''}`}>
+              <Text className={styles.apps__category}>{group.name}</Text>
+              <ApplicationGrid apps={group.apps} onOpen={open} />
+            </View>
+          ))}
+        </ManagementStates>
+      )}
     </PageContainer>
   )
 }

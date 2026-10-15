@@ -18,6 +18,24 @@
   border-bottom: 1px solid var(--color-divider);
 }
 
+.rowCompact {
+  min-height: 56px;
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.rowCompact .row__glyph,
+.rowCompact .row__avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.rowCompact .row__title {
+  font-size: var(--font-size-15);
+  font-weight: var(--font-weight-regular);
+  line-height: 22px;
+}
+
 .rowHover {
   background: var(--color-bg-base);
 }

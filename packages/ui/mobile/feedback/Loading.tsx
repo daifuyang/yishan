@@ -1,4 +1,4 @@
-import { View, Text } from '@tarojs/components'
+import { View } from '@tarojs/components'
 
 import { AppText } from '../atoms/Text'
 
@@ -10,11 +10,11 @@ export interface LoadingProps {
 
 export function Loading({ text = '加载中…' }: LoadingProps) {
   return (
-    <View className={styles.loading}>
-      <Text className={styles.loading__dot}>·</Text>
-      <Text className={styles.loading__dot}>·</Text>
-      <Text className={styles.loading__dot}>·</Text>
-      <AppText size={13} variant="tertiary" className={styles.loading__text}>
+    <View className={styles.loading} role="status" aria-live="polite">
+      <View className={styles.loading__spinner} aria-hidden="true">
+        <View className={styles.loading__cap} />
+      </View>
+      <AppText size={13} variant="tertiary">
         {text}
       </AppText>
     </View>

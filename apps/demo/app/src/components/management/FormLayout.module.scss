@@ -2,10 +2,9 @@
   padding: var(--space-4) 0 calc(66px + var(--safe-area-bottom));
 }
 
-/* 分组：与详情页 DetailSection 同一套「灰标题 + 无圆角贴边白底」结构，
-   纵向节奏也一致：模块间距 16px、标题到内容 8px。*/
+/* 分组间距 24px，标题到正文 12px；首个标题沿用正文的 16px 顶距。 */
 .sectionBlock {
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-6);
   background: var(--color-bg-base);
 }
 
@@ -21,7 +20,7 @@
 
 .section__title {
   display: block;
-  padding: 0 var(--space-4) var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
   background: var(--color-bg-base);
   font-size: var(--font-size-13);
   font-weight: var(--font-weight-regular);
@@ -139,6 +138,28 @@
   font-size: var(--font-size-14);
   line-height: 22px;
   text-align: right;
+}
+
+/* Taro H5 使用宿主元素包住原生 textarea，控件内外层都要消费主题。 */
+.field__textarea :global(.taro-textarea) {
+  display: block;
+  width: 100%;
+  min-height: 72px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: var(--color-transparent);
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  caret-color: var(--color-primary);
+}
+
+.field__textarea :global(.taro-textarea)::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 1;
 }
 
 .field__input {

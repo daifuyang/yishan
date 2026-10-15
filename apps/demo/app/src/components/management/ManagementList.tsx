@@ -22,6 +22,8 @@ export function ManagementList({ children, className = '' }: ManagementListProps
 }
 
 export interface ManagementCellProps {
+  /** 单行设置项使用紧凑行；双行管理列表保留默认尺寸。 */
+  size?: 'default' | 'compact'
   title: ReactNode
   /** 副标题：只放一行非结构化说明（如「拥有基础管理权限」）；结构化属性放详情页，状态走 tag 列，不用 · 拼接 */
   description?: ReactNode
@@ -55,6 +57,7 @@ export interface ManagementCellProps {
  * 只有详情入口才显示箭头；行内动作走 trailingAction（点击阻止冒泡），状态仍由 tag 承载。
  */
 export function ManagementCell({
+  size = 'default',
   title,
   description,
   tag,
@@ -77,7 +80,7 @@ export function ManagementCell({
   const [brokenSrc, setBrokenSrc] = useState<string | undefined>()
   return (
     <View
-      className={cx(styles.row, bordered && styles.rowBordered, disabled && styles.rowDisabled)}
+      className={cx(styles.row, size === 'compact' && styles.rowCompact, bordered && styles.rowBordered, disabled && styles.rowDisabled)}
       onClick={disabled ? undefined : onClick}
       hoverClass={onClick && !disabled ? styles.rowHover : undefined}
       {...longPressProps}

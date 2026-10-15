@@ -71,18 +71,18 @@ export interface ActionSheetProps {
 }
 
 /** 底部更多操作面板，承载低频与破坏性动作。 */
-export function ActionSheet({ open, title = '更多操作', items, onClose }: ActionSheetProps) {
+export function ActionSheet({ open, title, items, onClose }: ActionSheetProps) {
   if (!open) return null
   return (
     <View className={styles.sheetLayer} catchMove>
       <View className={styles.sheetMask} onClick={onClose} aria-label="关闭更多操作" />
-      <View className={styles.sheet}>
-        <View className={styles.sheet__header}>
-          <Text className={styles.sheet__title}>{title}</Text>
-          <View className={styles.sheet__close} onClick={onClose} aria-label="关闭操作面板">
-            <LineIcon name="close" size={20} />
+      <View className={styles.sheet} aria-label={title ?? '更多操作'}>
+        {title ? (
+          <View className={styles.sheet__header}>
+            <Text className={styles.sheet__description}>{title}</Text>
           </View>
-        </View>
+        ) : null}
+        <View className={styles.sheet__menu}>
         {items.map((item) => (
           <View
             key={item.key}
@@ -91,12 +91,10 @@ export function ActionSheet({ open, title = '更多操作', items, onClose }: Ac
             hoverClass={styles.actionPressed}
             aria-label={item.label}
           >
-            {item.icon ? (
-              <LineIcon name={item.icon} size={20} color={item.danger ? 'var(--color-danger)' : 'var(--color-text-secondary)'} />
-            ) : null}
             <Text>{item.label}</Text>
           </View>
         ))}
+        </View>
         <View
           className={styles.sheet__cancel}
           onClick={onClose}

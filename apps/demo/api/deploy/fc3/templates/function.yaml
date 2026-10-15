@@ -24,6 +24,7 @@ resources:
       environmentVariables:
         NODE_ENV: production
         PORT: '3000'
+        TRUST_PROXY_IPS: ${env(TRUST_PROXY_IPS, '')}
         LOG_LEVEL: ${env(LOG_LEVEL)}
         PATH: /var/fc/lang/nodejs22/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin:/code:/code/bin
         NODE_PATH: /code/node_modules

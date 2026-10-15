@@ -13,6 +13,12 @@
   height: 32px;
 }
 
+.logo__remove {
+  flex-shrink: 0;
+  margin-left: var(--space-2);
+  color: var(--color-text-secondary);
+}
+
 .logo__empty {
   display: flex;
   align-items: center;

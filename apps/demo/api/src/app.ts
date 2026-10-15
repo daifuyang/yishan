@@ -39,7 +39,7 @@ export async function buildApp(config: DemoConfig, modules: readonly ApiModule<S
       },
       moduleState: runtime.moduleState,
       resources: [database],
-      serverOptions: { logger: { level: config.system.APP_CONFIG.logLevel } },
+      serverOptions: { logger: { level: config.system.APP_CONFIG.logLevel }, trustProxy: config.trustProxy },
     })
   } catch (error) {
     await database.close()

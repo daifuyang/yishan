@@ -2,7 +2,8 @@ import { Image, Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useRef, useState } from 'react'
 import { attachmentUrl, uploadAttachment } from '@/api/admin/attachments'
-import { ActionSheet, FormField, LineIcon } from '@/components/management'
+import { Button } from '@/components/atoms'
+import { FormField, LineIcon } from '@/components/management'
 import { useCanWrite } from '@/hooks'
 import { isPickerCancel } from '@/utils/picker'
 import { errorMessage } from '@/utils/account-scope'
@@ -17,23 +18,21 @@ export interface LogoFieldProps {
 }
 
 /**
- * Logo 行：右侧缩略图，点击弹出「上传 / 移除」。上传复用附件模块的接口，
+ * Logo 行：点击值区直接选图，移除单独操作。上传复用附件模块的接口，
  * 保存的是附件的可访问地址，与 PC 端填写的 Logo 地址同一字段。
  */
 export function LogoField({ value, onChange, onError, disabled = false }: LogoFieldProps) {
   const canUpload = useCanWrite('system:attachment:create')
-  const [open, setOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const locked = useRef(false)
   const preview = previewImage(value)
   const inactive = disabled || uploading
 
   async function upload() {
-    setOpen(false)
-    if (inactive || locked.current) return
+    if (!canUpload || inactive || locked.current) return
     locked.current = true
     try {
-      const picked = await Taro.chooseImage({ count: 1, sizeType: ['compressed'] })
+      const picked = await Taro.chooseImage({ count: 1, sizeType: ['compressed'], sourceType: ['album'] })
       const file = picked.tempFiles[0]
       if (!file) return
       setUploading(true)
@@ -58,31 +57,39 @@ export function LogoField({ value, onChange, onError, disabled = false }: LogoFi
     }
   }
 
-  const items = [
-    ...(canUpload ? [{ key: 'upload', label: value ? '更换 Logo' : '上传 Logo', icon: 'image' as const, onClick: () => void upload() }] : []),
-    ...(value ? [{ key: 'remove', label: '移除 Logo', icon: 'trash' as const, danger: true, onClick: () => { setOpen(false); onChange('') } }] : []),
-  ]
-  const tappable = !inactive && items.length > 0
+  const tappable = canUpload && !inactive
+  const pickImage = tappable ? () => void upload() : undefined
 
   return (
-    <>
-      <FormField label="Logo" disabled={disabled} arrow={tappable} onArrowClick={() => setOpen(true)}>
-        <View className={styles.logo} onClick={tappable ? () => setOpen(true) : undefined}>
-          {uploading ? (
-            <Text className={styles.logo__placeholder}>上传中…</Text>
-          ) : preview ? (
-            <Image className={styles.logo__image} src={preview} mode="aspectFit" />
-          ) : value ? (
-            <Text className={styles.logo__path}>{value}</Text>
-          ) : (
-            <View className={styles.logo__empty}>
-              <LineIcon name="image" size={18} color="#C9CDD4" />
-              <Text className={styles.logo__placeholder}>{canUpload ? '点击上传' : '未设置'}</Text>
-            </View>
-          )}
-        </View>
-      </FormField>
-      <ActionSheet open={open} title="Logo" items={items} onClose={() => setOpen(false)} />
-    </>
+    <FormField label="Logo" disabled={disabled} arrow={tappable} onArrowClick={pickImage}>
+      <View className={styles.logo} onClick={pickImage}>
+        {uploading ? (
+          <Text className={styles.logo__placeholder}>上传中…</Text>
+        ) : preview ? (
+          <Image className={styles.logo__image} src={preview} mode="aspectFit" />
+        ) : value ? (
+          <Text className={styles.logo__path}>{value}</Text>
+        ) : (
+          <View className={styles.logo__empty}>
+            <LineIcon name="image" size={18} color="var(--color-text-quaternary)" />
+            <Text className={styles.logo__placeholder}>{canUpload ? '点击上传' : '未设置'}</Text>
+          </View>
+        )}
+      </View>
+      {value ? (
+        <Button
+          variant="text"
+          size="sm"
+          className={styles.logo__remove}
+          disabled={inactive}
+          onClick={() => {
+            if (inactive || locked.current) return
+            onChange('')
+          }}
+        >
+          移除 Logo
+        </Button>
+      ) : null}
+    </FormField>
   )
 }

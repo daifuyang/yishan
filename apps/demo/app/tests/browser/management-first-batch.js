@@ -146,7 +146,7 @@ async (page) => {
   await page.evaluate(() => document.documentElement.style.removeProperty('--safe-area-bottom'))
   await more.click()
   await page.getByLabel('删除分组', { exact: true }).waitFor()
-  await page.getByLabel('关闭操作面板', { exact: true }).click()
+  await page.getByLabel('取消', { exact: true }).click()
 
   for (const route of ['pages/index/index', 'pages/mine/index', 'pages/messages/index', 'pages/security/index', 'pages/about/index', 'pages/profile/edit/index', 'pages/profile/password/index', 'pages/profile/login-log/index', 'pages/profile/login-log/detail/index?id=1']) {
     await page.goto(`${origin}/#/${route}`)
@@ -163,7 +163,3 @@ async (page) => {
   if (errors.length) throw new Error(errors.join('\n'))
   return { visited: pages.length + 13, writes: writes.length, errors }
 }
-
-
-
-

@@ -24,6 +24,8 @@
   align-items: center;
   gap: var(--space-2);
   height: 48px;
+  min-height: 48px;
+  flex-shrink: 0;
   padding: 0 var(--space-3);
   background: var(--color-bg-disabled);
   border: 1px solid var(--color-border-light);
@@ -48,7 +50,8 @@
 .search__input {
   flex: 1;
   min-width: 0;
-  height: 100%;
+  /* 明确扣除外框上下边线，避免 WebView 恢复页面时重新解析百分比高度。 */
+  height: 46px;
   padding: 0;
   border: 0;
   outline: 0;

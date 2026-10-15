@@ -80,22 +80,33 @@
   left: 0;
   right: 0;
   bottom: 0;
-  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-  background: var(--color-bg-elevated);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--color-bg-base);
   color: var(--color-text-primary);
-  padding-bottom: var(--safe-area-bottom);
   padding-left: var(--safe-area-left);
   padding-right: var(--safe-area-right);
   overflow-x: hidden;
 }
 
 .sheet__header {
-  height: 52px;
+  min-height: 56px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-4);
-  border-bottom: 1px solid var(--color-border-light);
+  justify-content: center;
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-divider);
+  text-align: center;
+}
+
+.sheet__description {
+  font-size: var(--font-size-12);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-tertiary);
+}
+
+.sheet__menu {
+  background: var(--color-bg-elevated);
 }
 
 .sheet__title {
@@ -104,25 +115,22 @@
   color: var(--color-text-primary);
 }
 
-.sheet__close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin-right: -12px;
-}
-
 .sheet__item,
 .sheet__cancel {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  height: 52px;
-  padding: 0 var(--space-4);
-  border-bottom: 1px solid var(--color-border-light);
-  font-size: var(--font-size-14);
+  justify-content: center;
+  min-height: 56px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-divider);
+  font-size: var(--font-size-17);
+  line-height: 24px;
+  text-align: center;
   color: var(--color-text-primary);
+}
+
+.sheet__item:last-child {
+  border-bottom: 0;
 }
 
 .sheet__danger {
@@ -130,7 +138,9 @@
 }
 
 .sheet__cancel {
-  justify-content: center;
+  margin-top: var(--space-2);
+  padding-bottom: calc(var(--space-3) + var(--safe-area-bottom));
+  background: var(--color-bg-elevated);
   border-bottom: 0;
 }
 

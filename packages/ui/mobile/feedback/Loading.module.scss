@@ -1,37 +1,68 @@
 .loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: var(--space-8) 0;
-  gap: var(--space-1);
+  gap: var(--space-3);
 }
 
-.loading__dot {
-  font-size: var(--font-size-24);
-  line-height: 1;
+/* Spinner adapted from Tencent WeUI (MIT); see WEUI-LICENSE.txt. */
+.loading__spinner {
+  display: inline-flex;
+  position: relative;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  font-size: var(--font-size-28);
   color: var(--color-text-tertiary);
-  animation: pulse 1.2s infinite ease-in-out;
+  animation: loading-spin 1s steps(60, end) infinite;
 }
 
-.loading__dot:nth-child(2) {
-  animation-delay: 0.15s;
+.loading__spinner::before,
+.loading__spinner::after {
+  content: '';
+  display: block;
+  width: 0.5em;
+  height: 1em;
+  box-sizing: border-box;
+  border: 0.0875em solid currentColor;
 }
 
-.loading__dot:nth-child(3) {
-  animation-delay: 0.3s;
+.loading__spinner::before {
+  border-right-width: 0;
+  border-radius: 1em 0 0 1em;
+  mask-image: linear-gradient(to bottom, currentColor, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, currentColor, transparent);
 }
 
-.loading__text {
-  margin-left: var(--space-2);
+.loading__spinner::after {
+  border-left-width: 0;
+  border-radius: 0 1em 1em 0;
+  opacity: 0.3;
+  mask-image: linear-gradient(to bottom, transparent, currentColor);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, currentColor);
 }
 
-@keyframes pulse {
-  0%, 80%, 100% {
-    transform: scale(0.6);
-    opacity: 0.4;
+.loading__cap {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  margin-left: -0.04375em;
+  width: 0.0875em;
+  height: 0.0875em;
+  border-radius: 0 100% 100% 0;
+  background: currentColor;
+}
+
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
   }
-  40% {
-    transform: scale(1);
-    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading__spinner {
+    animation: none;
   }
 }

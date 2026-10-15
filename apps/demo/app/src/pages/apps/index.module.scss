@@ -7,9 +7,10 @@
   box-sizing: border-box;
 }
 
-// 工作台只有搜索框；补齐底部内边距，列表的卡片外边距继续负责分组间隔。
-.apps__filters {
-  padding-bottom: var(--space-3);
+// 工作台只有搜索框；由搜索区承担到首张卡片的 16px 间距。
+.apps .apps__filters {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--color-bg-base);
 }
 
 /* 小程序自绘页头：状态栏高度由 WorkbenchHeader 的 inline 样式覆盖，
@@ -91,10 +92,39 @@
   margin: var(--space-4) var(--space-4);
 }
 
+.apps__section.apps__sectionFirst {
+  margin-top: 0;
+}
+
 .apps__grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-6) var(--space-1);
+}
+
+.apps__skeletonCategory,
+.apps__skeletonIcon,
+.apps__skeletonLabel {
+  background: var(--color-bg-disabled);
+}
+
+.apps__skeletonCategory {
+  width: 80px;
+  height: 24px;
+  border-radius: var(--radius-xs);
+  margin-bottom: var(--space-4);
+}
+
+.apps__skeletonIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-xl);
+}
+
+.apps__skeletonLabel {
+  width: 48px;
+  height: 20px;
+  border-radius: var(--radius-xs);
 }
 
 .apps__item {

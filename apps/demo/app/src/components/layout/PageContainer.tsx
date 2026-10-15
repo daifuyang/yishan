@@ -15,30 +15,35 @@ export function PageContainer({ children, className = '' }: PageContainerProps) 
   const auth = useRequireAuth()
   const bootstrapError = useAuthStore((state) => state.bootstrapError)
   const loading = useAuthStore((state) => state.loading)
-  const content =
-    bootstrapError && !auth.loggedIn && !loading ? (
+  let pending = false
+  let content = children
+  if (bootstrapError && !auth.loggedIn && !loading) {
+    content = (
       <ErrorState
         text={bootstrapError}
         onRetry={() => void useAuthStore.getState().bootstrap(true)}
       />
-    ) : !auth.ready ? (
-      <LoadingState />
-    ) : auth.accessLoading ? (
-      <LoadingState />
-    ) : auth.accessError ? (
+    )
+  } else if (!auth.ready || auth.accessLoading) {
+    pending = true
+  } else if (auth.accessError) {
+    content = (
       <ErrorState
         text={auth.accessError}
         onRetry={() => void useModuleStore.getState().load({ force: true })}
       />
-    ) : auth.denied ? (
-      <PermissionDenied />
-    ) : auth.allowed ? (
-      children
-    ) : (
-      <LoadingState />
     )
+  } else if (auth.denied) {
+    content = <PermissionDenied />
+  } else if (!auth.allowed) {
+    pending = true
+  }
 
-  return <View className={`page-container ${styles.container} ${className}`}>{content}</View>
+  return (
+    <View className={`page-container ${styles.container} ${pending ? styles.pending : ''} ${className}`}>
+      {pending ? <View className={styles.loading}><LoadingState /></View> : content}
+    </View>
+  )
 }
 
 export default PageContainer

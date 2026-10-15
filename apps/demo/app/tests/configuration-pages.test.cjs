@@ -390,3 +390,145 @@ test('storage upload settings validate the token lifetime before saving', async 
 function emptySite() {
   return loadTs('src/api/admin/site.ts', { '../client': {} }).emptySiteConfig()
 }
+
+function logoHarness({ value = '', disabled = false, canUpload = true, chooseImage, uploadAttachment } = {}) {
+  const changes = []
+  const errors = []
+  const picks = []
+  const uploads = []
+  const states = []
+  const refs = []
+  let stateIndex = 0
+  let refIndex = 0
+  const component = loadTs('src/pages/system/site/basic/LogoField.tsx', {
+    react: {
+      useState(initial) {
+        const index = stateIndex++
+        if (!(index in states)) states[index] = initial
+        return [states[index], (next) => { states[index] = next }]
+      },
+      useRef(initial) {
+        const index = refIndex++
+        refs[index] ||= { current: initial }
+        return refs[index]
+      },
+    },
+    '@tarojs/components': { View: 'View', Text: 'Text', Image: 'Image' },
+    '@tarojs/taro': { chooseImage: (options) => {
+      picks.push(options)
+      return chooseImage ? chooseImage(options) : Promise.resolve({ tempFiles: [{ path: '/tmp/logo.png', size: 10, type: 'image/png' }] })
+    } },
+    '@/api/admin/attachments': {
+      uploadAttachment: async (file, options) => {
+        uploads.push({ file, options })
+        return uploadAttachment ? uploadAttachment(file, options) : [{ url: 'https://example.com/logo.png' }]
+      },
+      attachmentUrl: () => 'https://example.com/local-logo.png',
+    },
+    '@/components/management': { FormField: 'FormField', LineIcon: 'LineIcon', ActionSheet: 'ActionSheet' },
+    '@/components/atoms': { Button: 'Button' },
+    '@/hooks': { useCanWrite: () => canUpload },
+    '@/utils/account-scope': { errorMessage: (reason) => reason.message },
+    './LogoField.module.scss': { logo: 'logo' },
+  }).LogoField
+  const render = () => {
+    stateIndex = 0
+    refIndex = 0
+    return nodes(component({ value, disabled, onChange: (next) => { value = next; changes.push(next) }, onError: (message) => errors.push(message) }))
+  }
+  return {
+    render, changes, errors, picks, uploads,
+    field: () => render().find((node) => node.type === 'FormField'),
+    valueArea: () => render().find((node) => node.props?.className === 'logo'),
+    remove: () => render().find((node) => node.type === 'Button' && node.props.children === '移除 Logo'),
+    settle: () => new Promise((resolve) => setImmediate(resolve)),
+  }
+}
+
+test('Logo 值区和箭头直接从相册选图并写入上传地址', async () => {
+  for (const entry of ['value', 'arrow']) {
+    const h = logoHarness()
+    const click = entry === 'value' ? h.valueArea().props.onClick : h.field().props.onArrowClick
+    click()
+    assert.deepEqual(h.picks, [{ count: 1, sizeType: ['compressed'], sourceType: ['album'] }])
+    await h.settle()
+    assert.deepEqual(h.uploads, [{ file: { path: '/tmp/logo.png', name: 'logo.png', size: 10, mimeType: 'image/png' }, options: { kind: 'image' } }])
+    assert.deepEqual(h.changes, ['https://example.com/logo.png'])
+    assert.deepEqual(h.errors, [])
+  }
+})
+
+test('Logo 选图与上传期间拦截重复点击及移除，完成后恢复操作', async () => {
+  const picked = deferred()
+  const uploaded = deferred()
+  const h = logoHarness({ value: 'https://example.com/old.png', chooseImage: () => picked.promise, uploadAttachment: () => uploaded.promise })
+  const click = h.valueArea().props.onClick
+  const remove = h.remove().props.onClick
+  click()
+  click()
+  remove()
+  assert.equal(h.picks.length, 1)
+  assert.deepEqual(h.changes, [])
+  picked.resolve({ tempFiles: [{ path: '/tmp/new.png', size: 20, type: 'image/png' }] })
+  await h.settle()
+  assert.equal(h.remove().props.disabled, true)
+  click()
+  remove()
+  assert.equal(h.picks.length, 1)
+  assert.equal(h.uploads.length, 1)
+  assert.deepEqual(h.changes, [])
+  uploaded.resolve([{ url: 'https://example.com/new.png' }])
+  await h.settle()
+  assert.equal(h.remove().props.disabled, false)
+  h.remove().props.onClick()
+  assert.deepEqual(h.changes, ['https://example.com/new.png', ''])
+  assert.equal(h.picks.length, 1, '移除不会选图')
+})
+
+test('Logo 选图取消不上传、不报错，并允许再次选图', async () => {
+  const h = logoHarness({ value: '/old.png', chooseImage: async () => { throw { errMsg: 'chooseImage:fail cancel' } } })
+  h.valueArea().props.onClick()
+  await h.settle()
+  h.valueArea().props.onClick()
+  await h.settle()
+  assert.equal(h.picks.length, 2)
+  assert.deepEqual(h.uploads, [])
+  assert.deepEqual(h.changes, [])
+  assert.deepEqual(h.errors, [])
+})
+
+test('Logo 上传失败保留旧值并显示错误，允许重试', async () => {
+  const h = logoHarness({ value: 'https://example.com/old.png', uploadAttachment: async () => { throw new Error('图片上传失败') } })
+  h.valueArea().props.onClick()
+  await h.settle()
+  assert.deepEqual(h.changes, [])
+  assert.deepEqual(h.errors, ['图片上传失败'])
+  assert.equal(h.render().find((node) => node.type === 'Image').props.src, 'https://example.com/old.png')
+  h.valueArea().props.onClick()
+  await h.settle()
+  assert.equal(h.uploads.length, 2)
+})
+
+test('Logo 无上传权限时值区与箭头不上传，已有 Logo 仍可单独移除', () => {
+  const h = logoHarness({ value: '/old.png', canUpload: false })
+  h.valueArea().props.onClick?.()
+  h.field().props.onArrowClick?.()
+  assert.equal(h.field().props.arrow, false)
+  assert.deepEqual(h.picks, [])
+  assert.ok(h.remove())
+  assert.equal(nodes(h.valueArea()).some((node) => node.type === 'Button'), false, '移除按钮位于上传区外')
+  h.remove().props.onClick()
+  assert.deepEqual(h.changes, [''])
+  assert.equal(h.remove(), undefined)
+  assert.deepEqual(h.picks, [])
+})
+
+test('Logo 禁用时上传与移除均不可操作', () => {
+  const h = logoHarness({ value: '/old.png', disabled: true })
+  h.valueArea().props.onClick?.()
+  h.field().props.onArrowClick?.()
+  assert.equal(h.remove().props.disabled, true)
+  h.remove().props.onClick?.()
+  assert.deepEqual(h.picks, [])
+  assert.deepEqual(h.changes, [])
+})

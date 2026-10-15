@@ -169,6 +169,29 @@ async (page) => {
   )
   const searchBoxHeight = await sharedSearch.evaluate(el => el.getBoundingClientRect().height)
   check(Math.abs(searchBoxHeight - 48) < 1, 'Shared search bar must keep its 48px height')
+
+  const assertSearchSize = async () => {
+    const box = await sharedSearch.boundingBox()
+    const input = await page.getByPlaceholder('搜索应用').boundingBox()
+    check(box && Math.abs(box.height - 48) < 1, 'Returning from Mine must preserve the search height')
+    check(input && Math.abs(input.height - 46) < 1, 'Search input must retain its full touch area')
+  }
+  await page.getByPlaceholder('搜索应用').fill('用户')
+  for (let i = 0; i < 3; i++) {
+    await refreshWorkbench()
+    await assertSearchSize()
+    check(await page.getByPlaceholder('搜索应用').inputValue() === '用户', 'Tab switches preserve the search query')
+  }
+  // 模拟恢复页面时父级暂时分配不足的空间，搜索框仍须保留完整点击区域。
+  const searchFilters = sharedSearch.locator('..')
+  try {
+    await searchFilters.evaluate(el => { el.style.height = '48px' })
+    await assertSearchSize()
+  } finally {
+    await searchFilters.evaluate(el => { el.style.removeProperty('height') })
+  }
+  await page.locator('[aria-label="清除搜索"]').click()
+  check((await page.locator('[aria-label="通讯录"]').count()) === 1, 'Clearing after tab switches restores the catalog')
   const visual = await page.evaluate(() => {
     // Sample the 系统管理 section: it is the only group with enough apps to wrap and vary colors.
     const section = [...document.querySelectorAll('[class*=apps__section]')].find(
@@ -307,7 +330,7 @@ async (page) => {
     // row 3: bar white top → search box top = 0.6rem × 根字号（filter padding-top = --space-3）
     const space3 = 0.6 * data.rootFontSize
     check(
-      data.filterPaddingBottom !== null && Math.abs(data.filterPaddingBottom - space3) < 0.5,
+      data.filterPaddingBottom !== null && Math.abs(data.filterPaddingBottom - 0.8 * data.rootFontSize) < 0.5,
       `[w=${width}] Workbench search must keep its bottom padding`,
     )
     check(
@@ -340,8 +363,8 @@ async (page) => {
       // row 5: bar white bottom → first card top = 0.8rem × 根字号（var(--space-4)）
       check(
         data.filterBar &&
-          Math.abs(data.firstCard.top - data.filterBar.bottom - space4) < 0.5,
-        `[w=${width}] Bar → first card should be 0.8rem (${space4.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${data.filterBar ? (data.firstCard.top - data.filterBar.bottom).toFixed(2) : '?'}px`,
+          Math.abs(data.firstCard.top - data.filterBar.bottom) < 0.5,
+        `[w=${width}] Bar → first card should be 0rem (${space4.toFixed(2)}px at root ${data.rootFontSize.toFixed(2)}); got ${data.filterBar ? (data.firstCard.top - data.filterBar.bottom).toFixed(2) : '?'}px`,
       )
       // row 6: first card top → its category title = .8rem × 根字号（card padding-top）
       const expectedCategoryOffset = 0.8 * data.rootFontSize
@@ -460,6 +483,7 @@ async (page) => {
       'unregistered entries hidden',
       '375px visual geometry and 320px layout',
       'local search',
+      'search geometry and query after repeated Mine tab switches',
       'application center without favorites',
       'account isolation',
       'navigation and return',

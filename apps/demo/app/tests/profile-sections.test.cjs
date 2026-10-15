@@ -2,7 +2,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const test = require('node:test')
-const { loadTs, appRoot } = require('./helpers/load-ts.cjs')
+const { loadTs, appRoot, deferred } = require('./helpers/load-ts.cjs')
 
 const {
   buildProfileSections,
@@ -134,9 +134,9 @@ test('账户安全列表保留现有跳转目标', () => {
   assert.match(page, /SECONDARY_PAGES\.profileLoginLog/, '登录日志入口不变')
 })
 
-// 个人中心在迷你渲染器里跑：state 持久化，才能断言行点击打开 ActionSheet 的真实行为。
-function mineHarness(confirm) {
+function mineHarness(confirm, { logout = async () => {} } = {}) {
   const actions = []
+  const confirmations = []
   const states = []
   const refs = []
   let stateIndex = 0
@@ -156,6 +156,7 @@ function mineHarness(confirm) {
     refreshMe: async () => actions.push('refresh'),
     logout: async () => {
       actions.push('logout')
+      await logout()
     },
   })
   const component = loadTs('src/pages/mine/index.tsx', {
@@ -186,11 +187,17 @@ function mineHarness(confirm) {
     ),
     // 迁移后个人中心不应再从旧 molecules 取设置行；这里留空对象，误引用会渲染成 undefined 节点而不是加载失败
     '@/components/molecules': {},
-    '@/hooks': { confirmAction: async () => confirm },
+    '@/hooks': { confirmAction: async (options) => {
+      confirmations.push(options)
+      return typeof confirm === 'function' ? confirm() : confirm
+    } },
     '@/stores/auth': { useAuthStore: store },
     '@/utils/router': {
       navigateTo: (url) => actions.push(`to:${url}`),
-      redirectToLogin: () => actions.push('login'),
+      redirectToLogin: (relaunch) => {
+        assert.equal(relaunch, false)
+        actions.push('login')
+      },
     },
     './index.module.scss': {},
   }).default
@@ -209,6 +216,7 @@ function mineHarness(confirm) {
   render()
   return {
     actions,
+    confirmations,
     render,
     tree: () => elements,
     row: (title) =>
@@ -217,32 +225,59 @@ function mineHarness(confirm) {
   }
 }
 
-test('个人中心退出登录经 ActionSheet 确认后清理会话并回到登录页', async () => {
+test('个人中心点击退出登录直接确认，确认后清理会话并回到登录页', async () => {
   const h = mineHarness(true)
   const row = h.row('退出登录')
   assert.ok(row, '退出登录是管理列表中的一行')
-  assert.equal(row.props.showArrow, false, '打开 ActionSheet 的行不显示箭头')
+  assert.equal(row.props.showArrow, false, '确认操作不显示导航箭头')
   await row.props.onClick()
-  const opened = h.render().find((node) => node.type === 'ActionSheet')
-  assert.equal(opened.props.open, true, '点击行打开操作面板')
-  const item = opened.props.items.find((entry) => entry.key === 'logout')
-  assert.equal(item.danger, true, '退出登录是危险项')
-  await item.onClick()
-  // 行内动作是 void handleLogout()，拿不到 promise：等一轮宏任务把确认与登出链路跑完
   await new Promise((resolve) => setImmediate(resolve))
-  h.render()
+  assert.equal(h.confirmations.length, 1, '点击行立即弹出确认')
+  assert.deepEqual(h.confirmations[0], {
+    title: '退出登录', content: '确定要退出当前账号吗？', confirmText: '退出',
+  })
   assert.deepEqual(h.actions, ['logout', 'login'])
-  assert.equal(h.sheet().props.open, false, '确认后关闭操作面板')
+  assert.equal(h.sheet(), undefined)
 })
 
 test('个人中心取消退出登录时不动会话与路由', async () => {
   const h = mineHarness(false)
   await h.row('退出登录').props.onClick()
-  const item = h.sheet().props.items.find((entry) => entry.key === 'logout')
-  await item.onClick()
   await new Promise((resolve) => setImmediate(resolve))
   h.render()
   assert.deepEqual(h.actions, [])
+  assert.equal(h.confirmations.length, 1)
+})
+
+test('退出确认与登出期间重复点击只执行一次，取消后可再次点击', async () => {
+  const confirmation = deferred()
+  const logout = deferred()
+  const h = mineHarness(() => confirmation.promise, { logout: () => logout.promise })
+  const click = h.row('退出登录').props.onClick
+  const pending = click()
+  await click()
+  assert.equal(h.confirmations.length, 1)
+  confirmation.resolve(true)
+  await new Promise((resolve) => setImmediate(resolve))
+  await click()
+  assert.deepEqual(h.actions, ['logout'])
+  logout.resolve()
+  await pending
+  assert.deepEqual(h.actions, ['logout', 'login'])
+
+  const cancelled = mineHarness(false)
+  await cancelled.row('退出登录').props.onClick()
+  await cancelled.row('退出登录').props.onClick()
+  assert.equal(cancelled.confirmations.length, 2)
+  assert.deepEqual(cancelled.actions, [])
+})
+
+test('退出失败不跳转且释放重复点击锁', async () => {
+  const h = mineHarness(true, { logout: async () => { throw new Error('退出失败') } })
+  await assert.rejects(h.row('退出登录').props.onClick(), /退出失败/)
+  await assert.rejects(h.row('退出登录').props.onClick(), /退出失败/)
+  assert.equal(h.confirmations.length, 2)
+  assert.deepEqual(h.actions, ['logout', 'logout'])
 })
 
 test('个人中心保留四个现有入口的跳转目标', () => {

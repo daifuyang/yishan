@@ -1,3 +1,19 @@
 .container {
   padding-bottom: calc(var(--space-4) + var(--safe-area-bottom));
 }
+
+.container.pending {
+  padding-bottom: 0;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--safe-area-top) - var(--safe-area-bottom));
+}
+
+/* H5 的原生 TabBar 在视口内占 50px；小程序的视口已排除原生 TabBar。 */
+:global(.taro_tabbar_page) .loading {
+  min-height: calc(100vh - 50PX - var(--safe-area-top) - var(--safe-area-bottom));
+}
