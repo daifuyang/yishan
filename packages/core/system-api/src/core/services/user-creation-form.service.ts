@@ -276,6 +276,14 @@ export class UserCreationFormService {
     // 候选部门必须真实存在且启用（与提交时同一条规则）。
     const enabledDeptIds = await DeptRepository.findEnabledIdsByIds(deptIds, db)
     const scopedDeptIds = deptIds.filter((id) => enabledDeptIds.includes(id))
+    /**
+     * **有效**的点名集合。调用方点了名、但每个 id 都不存在或已停用（模型编的 id，
+     * 或一份存着已停用部门的旧草稿）时，它在事实上就是「没有点名」：既不能拿
+     * 空数组去探测角色（受限操作者会退回空角色列表），也不能因为集合为空就
+     * 退化成「未点名」从而放出整棵授权部门树——那样会得到「部门有、角色无」的
+     * 自相矛盾结果。两个消费者因此共用同一份「有效点名集合」。
+     */
+    const effectiveNamedDeptIds = deptIds.length && scopedDeptIds.length ? scopedDeptIds : []
 
     // 允许关联的部门集合由 Task 2 的策略解析，不是「调用方说了什么」。
     // 用调用方传入的 deptIds 当过滤条件，等于让客户端自己声明哪些部门合法。
@@ -302,11 +310,11 @@ export class UserCreationFormService {
           authorizedProbeDeptIds.includes(id),
         )
       : []
-    const probeDeptIds = deptIds.length ? scopedDeptIds : liveAuthorizedDeptIds
+    const probeDeptIds = effectiveNamedDeptIds.length ? effectiveNamedDeptIds : liveAuthorizedDeptIds
     const allowedDeptIds = creatable
       ? scope.kind === 'all'
         ? allDeptIds
-        : new Set(scope.deptIds.filter((id) => !scopedDeptIds.length || scopedDeptIds.includes(id)))
+        : new Set(scope.deptIds.filter((id) => !effectiveNamedDeptIds.length || effectiveNamedDeptIds.includes(id)))
       : new Set<number>()
     const departments = pruneDeptTree(tree, allowedDeptIds)
 

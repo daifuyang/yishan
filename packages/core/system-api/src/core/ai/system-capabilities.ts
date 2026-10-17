@@ -17,7 +17,7 @@ import { DeptService } from '../services/dept.service.js'
 import { UserCreationFormService } from '../services/user-creation-form.service.js'
 import type { DeptCandidateNode } from '../services/user-creation-form.service.js'
 import type { UserCreationSubject } from '../services/user-creation-policy.js'
-import { untrustedRow, untrustedRows } from './untrusted-text.js'
+import { asEchoValue, untrustedRow, untrustedRows } from './untrusted-text.js'
 import { UserListQuerySchema, type UserListQuery } from '../schemas/user.js'
 import { RoleListQuerySchema, type RoleListQuery } from '../schemas/role.js'
 import { DeptListQuerySchema, type DeptListQuery } from '../schemas/department.js'
@@ -69,6 +69,31 @@ function untrustedDeptNodes(nodes: readonly DeptCandidateNode[]): Record<string,
   }))
 }
 
+/**
+ * 给**界面**用的同一份投影：字段白名单一样，但字符串保持原样。
+ *
+ * `data` 与 `render.payload` 是两个消费者，中性化只属于前者。卡片渲染的是
+ * `render.payload`，而人读的是「研发部」不是 `'研发部'`——引号还会让
+ * `GENDER_LABELS` 这类前端查表彻底失效，只能回退成显示带引号的原文。
+ */
+function displayRow<T extends Record<string, unknown>>(row: T, fields: readonly string[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const field of fields) {
+    const value = row[field]
+    if (value === undefined || value === null) continue
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') out[field] = value
+    else if (Array.isArray(value) && value.every(item => typeof item === 'number')) out[field] = value
+  }
+  return out
+}
+
+function displayDeptNodes(nodes: readonly DeptCandidateNode[]): Record<string, unknown>[] {
+  return nodes.map(node => ({
+    ...displayRow(node as unknown as Record<string, unknown>, ['id', 'name', 'parentId']),
+    ...(node.children ? { children: displayDeptNodes(node.children) } : {}),
+  }))
+}
+
 
 function page<T extends { page?: number; pageSize?: number }>(query: T): { page: number; pageSize: number } {
   return { page: Math.max(1, query.page ?? 1), pageSize: Math.min(MAX_ROWS, Math.max(1, query.pageSize ?? MAX_ROWS)) }
@@ -85,14 +110,22 @@ function listResult<T extends { list: Record<string, unknown>[]; total: number }
 ) {
   // 投影 + 中性化在**这里**做：工具结果是模型上下文里最持久的一条通道
   // （逐轮原样落库），白名单之外的字段与未中性化的字符串都不该走进去。
-  const shown = result.list.slice(0, MAX_ROWS).map(row => untrustedRow(row, fields))
+  const slice = result.list.slice(0, MAX_ROWS)
+  const shown = slice.map(row => untrustedRow(row, fields))
   const data = { items: shown, total: result.total, returned: shown.length, truncated: result.total > shown.length }
-  return { data, render: { kind: render, payload: data }, mutated: false } satisfies AiCapabilityResult
+  // 卡片读的是 `render.payload`：同一批行、同一个白名单，但字符串保持人读的原样。
+  const display = { items: slice.map(row => displayRow(row, fields)), total: result.total, returned: shown.length, truncated: data.truncated }
+  return { data, render: { kind: render, payload: display }, mutated: false } satisfies AiCapabilityResult
 }
 
 /** 预填能力的统一形状：不落库，只把字段交给前端一次性暂存。 */
 function prefill(fields: Record<string, unknown>, missing: string[], target: 'user.create' | 'user.update' | 'department.create') {
-  const payload = { target, fields, missing, route: PREFILL_ROUTES[target] }
+  // 预填值是模型**逐字回抄**、人点确定后写进数据库的东西。若模型把候选里的
+  // `'研发部'`（带引号的中性化形式）原样抄进来，库里就会多出一个名字带引号的部门。
+  // 因此脱掉外层引号再出去：中性化仍然是展示/检查通道的结构约束，回抄通道不能带引号。
+  const clean: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(fields)) clean[key] = asEchoValue(value)
+  const payload = { target, fields: clean, missing, route: PREFILL_ROUTES[target] }
   return {
     data: payload,
     render: { kind: 'form.prefill', payload },
@@ -178,7 +211,8 @@ const userCreationReadCapabilities: readonly AiCapability[] = [
       }
       return {
         data,
-        render: { kind: 'form.options', payload: data },
+        // 界面读原样字符串（原生表单的候选下拉要显示真名）；模型读 `data`。
+        render: { kind: 'form.options', payload: { ...raw, departments: displayDeptNodes(raw.departments) } },
         summary: data.creatable
           ? `可选部门 ${data.departments.length} 个、可授予角色 ${data.total} 个。`
           : '当前权限范围不足以创建用户，请联系管理员调整数据范围。',
@@ -222,162 +256,169 @@ function assertNoSecrets(input: unknown): void {
   }
 }
 
+/** 全部系统域能力定义（注册表与测试取同一份，避免注册的那份与断言的那份分叉）。 */
+export const systemAiCapabilities: readonly AiCapability[] = [
+  {
+    name: 'list_users',
+    description: '按关键词/状态分页查询系统用户。返回受当前用户数据范围限制的可见用户。不返回密码、令牌等敏感信息，也不能创建或修改用户。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminUsersList',
+    permissionCode: 'system:user:list',
+    inputSchema: UserListQuerySchema,
+    riskLevel: 'read',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      const query = input as UserListQuery
+      assertNoSecrets(query)
+      return listResult(await UserService.getUserList({ ...query, ...page(query) }), 'user.table', USER_TEXT_FIELDS)
+    },
+  },
+  {
+    name: 'get_user',
+    description: '按 ID 读取单个用户详情。若该用户不在当前用户的数据范围内，返回「不存在」而不是报错。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminUsersDetail',
+    permissionCode: 'system:user:list',
+    inputSchema: IdInput,
+    riskLevel: 'read',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      const { id } = input as Static<typeof IdInput>
+      const user = await UserService.getUserById(id)
+      if (!user) throw new Error(`用户 ${id} 不存在或不在你的数据范围内`)
+      const data = { user: untrustedRow(user as unknown as Record<string, unknown>, USER_TEXT_FIELDS) }
+      // 详情卡片读 `render.payload`（原样字符串），模型读 `data`（中性化）。
+      return { data, render: { kind: 'user.detail', payload: { user: displayRow(user as unknown as Record<string, unknown>, USER_TEXT_FIELDS) } }, mutated: false } satisfies AiCapabilityResult
+    },
+  },
+  ...userCreationReadCapabilities,
+  {
+    name: 'prepare_update_user',
+    description: '抽取要修改的用户字段并预填到「编辑用户」表单。**不会保存修改**。必须先调用 get_user 或 list_users 确认目标用户，再把用户提到的字段合并进来。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminUsersUpdate',
+    permissionCode: 'system:user:update',
+    inputSchema: Type.Object({
+      id: Type.Optional(Type.Integer({ minimum: 1, description: '目标用户 ID；不确定时先查询' })),
+      realName: Type.Optional(Type.String()),
+      nickname: Type.Optional(Type.String()),
+      email: Type.Optional(Type.String()),
+      phone: Type.Optional(Type.String()),
+      status: Type.Optional(Type.Union([Type.Literal('0'), Type.Literal('1'), Type.Literal('2')])),
+      deptId: Type.Optional(Type.Integer()),
+      roleIds: Type.Optional(Type.Array(Type.Integer())),
+    }, { additionalProperties: false }),
+    riskLevel: 'prepare',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      assertNoSecrets(input)
+      const raw = (input ?? {}) as Record<string, unknown>
+      const id = typeof raw.id === 'number' ? raw.id : undefined
+      if (id === undefined) throw new Error('缺少目标用户 ID，请先查询确认用户后再预填')
+      // 读一次目标用户，确认它落在当前用户的数据范围内；同时把未提及的现有值带进预填。
+      const existing = await UserService.getUserById(id)
+      if (!existing) throw new Error(`用户 ${id} 不存在或不在你的数据范围内`)
+      const fields = {
+        id,
+        realName: existing.realName,
+        phone: existing.phone,
+        ...pick(raw, USER_PREFILL_FIELDS),
+      }
+      return prefill(fields, missingFields(fields, USER_REQUIRED), 'user.update')
+    },
+  },
+  {
+    name: 'list_roles',
+    description: '按关键词/状态分页查询系统角色。需要角色列表权限，角色配置不按用户数据范围过滤。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminRolesList',
+    permissionCode: 'system:role:list',
+    inputSchema: RoleListQuerySchema,
+    riskLevel: 'read',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      const query = input as RoleListQuery
+      const result = await RoleService.getRoleList({ ...query, ...page(query) })
+      // 列表态的 mapper 本就不返回 permissionCodes，这里再明确剔除，防止后续 mapper 变更把授权面带进模型上下文。
+      const trimmed = { ...result, list: result.list.map(({ menuIds: _m, appMenuIds: _a, permissionCodes: _p, deptIds: _d, ...rest }) => rest) }
+      return listResult(trimmed, 'role.table', ROLE_TEXT_FIELDS)
+    },
+  },
+  {
+    name: 'get_role',
+    description: '按 ID 读取单个角色详情，包含其数据范围档位与授权的权限码。需要角色列表权限。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminRolesDetail',
+    permissionCode: 'system:role:list',
+    inputSchema: IdInput,
+    riskLevel: 'read',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      const { id } = input as Static<typeof IdInput>
+      const role = await RoleService.getRoleById(id)
+      if (!role) throw new Error(`角色 ${id} 不存在或不在你的数据范围内`)
+      const data = { role: untrustedRow(role as unknown as Record<string, unknown>, ROLE_TEXT_FIELDS) }
+      // 详情卡片读 `render.payload`（原样字符串），模型读 `data`（中性化）。
+      return { data, render: { kind: 'role.detail', payload: { role: displayRow(role as unknown as Record<string, unknown>, ROLE_TEXT_FIELDS) } }, mutated: false } satisfies AiCapabilityResult
+    },
+  },
+  {
+    name: 'list_departments',
+    description: '按关键词/上级部门分页查询部门。需要部门列表权限，当前部门配置不按用户数据范围过滤。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminDepartmentsList',
+    permissionCode: 'system:department:list',
+    inputSchema: DeptListQuerySchema,
+    riskLevel: 'read',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      const query = input as DeptListQuery
+      return listResult(await DeptService.getDeptList({ ...query, ...page(query) }), 'department.table', DEPT_TEXT_FIELDS)
+    },
+  },
+  {
+    name: 'get_department',
+    description: '按 ID 读取单个部门详情（含上级部门名称）。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminDepartmentsDetail',
+    permissionCode: 'system:department:list',
+    inputSchema: IdInput,
+    riskLevel: 'read',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      const { id } = input as Static<typeof IdInput>
+      const department = await DeptService.getDeptById(id)
+      if (!department) throw new Error(`部门 ${id} 不存在`)
+      const data = { department: untrustedRow(department as unknown as Record<string, unknown>, DEPT_TEXT_FIELDS) }
+      // 详情卡片读 `render.payload`（原样字符串），模型读 `data`（中性化）。
+      return { data, render: { kind: 'department.detail', payload: { department: displayRow(department as unknown as Record<string, unknown>, DEPT_TEXT_FIELDS) } }, mutated: false } satisfies AiCapabilityResult
+    },
+  },
+  {
+    name: 'prepare_create_department',
+    description: '抽取部门字段并预填到「新增部门」表单。**不会创建部门**。缺少部门名时应追问用户。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminDepartmentsCreate',
+    permissionCode: 'system:department:create',
+    inputSchema: Type.Object({
+      name: Type.Optional(Type.String({ description: '部门名称' })),
+      parentId: Type.Optional(Type.Integer({ description: '上级部门 ID' })),
+      status: Type.Optional(Type.Union([Type.Literal('0'), Type.Literal('1')], { description: '0-停用 1-正常' })),
+      sortOrder: Type.Optional(Type.Integer()),
+      description: Type.Optional(Type.String()),
+      leaderId: Type.Optional(Type.Integer({ description: '负责人用户 ID' })),
+    }, { additionalProperties: false }),
+    riskLevel: 'prepare',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      assertNoSecrets(input)
+      const fields = pick((input ?? {}) as Record<string, unknown>, DEPT_PREFILL_FIELDS)
+      return prefill(fields, missingFields(fields, DEPT_REQUIRED), 'department.create')
+    },
+  },
+]
+
+/** 注册进当前应用作用域的能力目录。装配层（setup.ts）与测试共用同一份数组。 */
 export function registerSystemAiCapabilities(): void {
-  registerAiCapabilities(
-    {
-      name: 'list_users',
-      description: '按关键词/状态分页查询系统用户。返回受当前用户数据范围限制的可见用户。不返回密码、令牌等敏感信息，也不能创建或修改用户。',
-      moduleId: SYSTEM_MODULE,
-      operationId: 'adminUsersList',
-      permissionCode: 'system:user:list',
-      inputSchema: UserListQuerySchema,
-      riskLevel: 'read',
-      enabled: true,
-      async execute(_context: AiCapabilityContext, input: unknown) {
-        const query = input as UserListQuery
-        assertNoSecrets(query)
-        return listResult(await UserService.getUserList({ ...query, ...page(query) }), 'user.table', USER_TEXT_FIELDS)
-      },
-    },
-    {
-      name: 'get_user',
-      description: '按 ID 读取单个用户详情。若该用户不在当前用户的数据范围内，返回「不存在」而不是报错。',
-      moduleId: SYSTEM_MODULE,
-      operationId: 'adminUsersDetail',
-      permissionCode: 'system:user:list',
-      inputSchema: IdInput,
-      riskLevel: 'read',
-      enabled: true,
-      async execute(_context: AiCapabilityContext, input: unknown) {
-        const { id } = input as Static<typeof IdInput>
-        const user = await UserService.getUserById(id)
-        if (!user) throw new Error(`用户 ${id} 不存在或不在你的数据范围内`)
-        const data = { user: untrustedRow(user as unknown as Record<string, unknown>, USER_TEXT_FIELDS) }
-        return { data, render: { kind: 'user.detail', payload: data }, mutated: false } satisfies AiCapabilityResult
-      },
-    },
-    ...userCreationReadCapabilities,
-    {
-      name: 'prepare_update_user',
-      description: '抽取要修改的用户字段并预填到「编辑用户」表单。**不会保存修改**。必须先调用 get_user 或 list_users 确认目标用户，再把用户提到的字段合并进来。',
-      moduleId: SYSTEM_MODULE,
-      operationId: 'adminUsersUpdate',
-      permissionCode: 'system:user:update',
-      inputSchema: Type.Object({
-        id: Type.Optional(Type.Integer({ minimum: 1, description: '目标用户 ID；不确定时先查询' })),
-        realName: Type.Optional(Type.String()),
-        nickname: Type.Optional(Type.String()),
-        email: Type.Optional(Type.String()),
-        phone: Type.Optional(Type.String()),
-        status: Type.Optional(Type.Union([Type.Literal('0'), Type.Literal('1'), Type.Literal('2')])),
-        deptId: Type.Optional(Type.Integer()),
-        roleIds: Type.Optional(Type.Array(Type.Integer())),
-      }, { additionalProperties: false }),
-      riskLevel: 'prepare',
-      enabled: true,
-      async execute(_context: AiCapabilityContext, input: unknown) {
-        assertNoSecrets(input)
-        const raw = (input ?? {}) as Record<string, unknown>
-        const id = typeof raw.id === 'number' ? raw.id : undefined
-        if (id === undefined) throw new Error('缺少目标用户 ID，请先查询确认用户后再预填')
-        // 读一次目标用户，确认它落在当前用户的数据范围内；同时把未提及的现有值带进预填。
-        const existing = await UserService.getUserById(id)
-        if (!existing) throw new Error(`用户 ${id} 不存在或不在你的数据范围内`)
-        const fields = {
-          id,
-          realName: existing.realName,
-          phone: existing.phone,
-          ...pick(raw, USER_PREFILL_FIELDS),
-        }
-        return prefill(fields, missingFields(fields, USER_REQUIRED), 'user.update')
-      },
-    },
-    {
-      name: 'list_roles',
-      description: '按关键词/状态分页查询系统角色。需要角色列表权限，角色配置不按用户数据范围过滤。',
-      moduleId: SYSTEM_MODULE,
-      operationId: 'adminRolesList',
-      permissionCode: 'system:role:list',
-      inputSchema: RoleListQuerySchema,
-      riskLevel: 'read',
-      enabled: true,
-      async execute(_context: AiCapabilityContext, input: unknown) {
-        const query = input as RoleListQuery
-        const result = await RoleService.getRoleList({ ...query, ...page(query) })
-        // 列表态的 mapper 本就不返回 permissionCodes，这里再明确剔除，防止后续 mapper 变更把授权面带进模型上下文。
-        const trimmed = { ...result, list: result.list.map(({ menuIds: _m, appMenuIds: _a, permissionCodes: _p, deptIds: _d, ...rest }) => rest) }
-        return listResult(trimmed, 'role.table', ROLE_TEXT_FIELDS)
-      },
-    },
-    {
-      name: 'get_role',
-      description: '按 ID 读取单个角色详情，包含其数据范围档位与授权的权限码。需要角色列表权限。',
-      moduleId: SYSTEM_MODULE,
-      operationId: 'adminRolesDetail',
-      permissionCode: 'system:role:list',
-      inputSchema: IdInput,
-      riskLevel: 'read',
-      enabled: true,
-      async execute(_context: AiCapabilityContext, input: unknown) {
-        const { id } = input as Static<typeof IdInput>
-        const role = await RoleService.getRoleById(id)
-        if (!role) throw new Error(`角色 ${id} 不存在或不在你的数据范围内`)
-        const data = { role: untrustedRow(role as unknown as Record<string, unknown>, ROLE_TEXT_FIELDS) }
-        return { data, render: { kind: 'role.detail', payload: data }, mutated: false } satisfies AiCapabilityResult
-      },
-    },
-    {
-      name: 'list_departments',
-      description: '按关键词/上级部门分页查询部门。需要部门列表权限，当前部门配置不按用户数据范围过滤。',
-      moduleId: SYSTEM_MODULE,
-      operationId: 'adminDepartmentsList',
-      permissionCode: 'system:department:list',
-      inputSchema: DeptListQuerySchema,
-      riskLevel: 'read',
-      enabled: true,
-      async execute(_context: AiCapabilityContext, input: unknown) {
-        const query = input as DeptListQuery
-        return listResult(await DeptService.getDeptList({ ...query, ...page(query) }), 'department.table', DEPT_TEXT_FIELDS)
-      },
-    },
-    {
-      name: 'get_department',
-      description: '按 ID 读取单个部门详情（含上级部门名称）。',
-      moduleId: SYSTEM_MODULE,
-      operationId: 'adminDepartmentsDetail',
-      permissionCode: 'system:department:list',
-      inputSchema: IdInput,
-      riskLevel: 'read',
-      enabled: true,
-      async execute(_context: AiCapabilityContext, input: unknown) {
-        const { id } = input as Static<typeof IdInput>
-        const department = await DeptService.getDeptById(id)
-        if (!department) throw new Error(`部门 ${id} 不存在`)
-        const data = { department: untrustedRow(department as unknown as Record<string, unknown>, DEPT_TEXT_FIELDS) }
-        return { data, render: { kind: 'department.detail', payload: data }, mutated: false } satisfies AiCapabilityResult
-      },
-    },
-    {
-      name: 'prepare_create_department',
-      description: '抽取部门字段并预填到「新增部门」表单。**不会创建部门**。缺少部门名时应追问用户。',
-      moduleId: SYSTEM_MODULE,
-      operationId: 'adminDepartmentsCreate',
-      permissionCode: 'system:department:create',
-      inputSchema: Type.Object({
-        name: Type.Optional(Type.String({ description: '部门名称' })),
-        parentId: Type.Optional(Type.Integer({ description: '上级部门 ID' })),
-        status: Type.Optional(Type.Union([Type.Literal('0'), Type.Literal('1')], { description: '0-停用 1-正常' })),
-        sortOrder: Type.Optional(Type.Integer()),
-        description: Type.Optional(Type.String()),
-        leaderId: Type.Optional(Type.Integer({ description: '负责人用户 ID' })),
-      }, { additionalProperties: false }),
-      riskLevel: 'prepare',
-      enabled: true,
-      async execute(_context: AiCapabilityContext, input: unknown) {
-        assertNoSecrets(input)
-        const fields = pick((input ?? {}) as Record<string, unknown>, DEPT_PREFILL_FIELDS)
-        return prefill(fields, missingFields(fields, DEPT_REQUIRED), 'department.create')
-      },
-    },
-  )
+  registerAiCapabilities(...systemAiCapabilities)
 }

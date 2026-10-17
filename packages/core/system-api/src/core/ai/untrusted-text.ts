@@ -70,6 +70,25 @@ export function untrustedRow<T extends Record<string, unknown>>(
   return out
 }
 
+/**
+ * 把一个已经中性化过的值还原成「可以照抄进表单」的干净字符串。
+ *
+ * 存在的理由是通道方向不同：`list_departments` 之类能力给**模型**的是
+ * `'研发部'`，但 `prepare_create_department` 的预填值是模型**逐字回抄**、人再点
+ * 确定写进数据库的。引号若跟着回抄，库里就会多出一个名字带单引号的部门。
+ * 因此预填投影必须脱掉外层引号——它只脱引号，不负责其它检查（写权限、长度、
+ * 重名都由表单与 Service 拒绝）。
+ *
+ * 不匹配引号形状的值原样返回：这里的输入既可能来自模型回抄，也可能本来就是人
+ * 在对话里键入的原文。
+ */
+export function asEchoValue(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  // 分隔符是全角括号，所以分组必须用半角括号 —— `（…）` 只是普通字符。
+  const match = /^'([\s\S]*)'(?:（已截断）)?$/.exec(value)
+  return match ? match[1] : value
+}
+
 /** 同 {@link untrustedRow}，作用于整批行。 */
 export function untrustedRows<T extends Record<string, unknown>>(
   rows: readonly T[],

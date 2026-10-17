@@ -514,6 +514,43 @@ describe('create-options — 候选按 Task 2 策略过滤', () => {
     await app.close()
   })
 
+  it('点名了部门但全部无效/停用时，部门与角色用的是同一份授权集合', async () => {
+    // 缺陷现场：调用方点了名（模型编的 999，或一份存着已停用部门的旧草稿），
+    // 但没有任何一个 id 真实存在/启用。探测集合因此退化成 []，受限操作者拿不到
+    // 任何角色；与此同时 allowedDeptIds 又因为「没点名剩下的」而回退到整棵授权树。
+    // 结果是「部门有、角色空」——同一个响应自相矛盾，且能力描述会把它读成无权建号。
+    // 语义上「有效点名集合为空」就是「没点名」，两侧必须共用同一份授权集合。
+    mockActor({ roleIds: [1], perms: [...CREATE_PERMS, 'system:role:list'], deptIds: [10] }, {
+      roles: [
+        { id: 1, dataScope: DATA_SCOPE_DEPT, perms: [...CREATE_PERMS, 'system:role:list'] },
+        { id: 3, dataScope: DATA_SCOPE_DEPT, perms: ['system:role:list'] },
+      ],
+      depts: [{ id: 10, parentId: null }, { id: 20, parentId: null }],
+    })
+    // 999 既不存在也不启用 → 有效点名集合为空。
+    mockDepts([10, 20])
+    mockDeptTree()
+    mockRoleRows([{ id: 3, name: '专员' }])
+
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'GET',
+      url: `${BASE}/create-options?deptIds=999`,
+      headers: AUTH,
+    })
+    expect(res.statusCode).toBe(200)
+    const data = res.json().data
+    // 部门仍是授权范围内的 10（不放宽到范围外的 20）。
+    expect(data.departments.map((d: any) => d.id)).toEqual([10])
+    // 角色与「完全没传 deptIds」时一致，而不是自相矛盾地空掉。
+    expect(data.roles.map((r: any) => r.id)).toEqual([3])
+    const withoutDeptIds = await app.inject({ method: 'GET', url: `${BASE}/create-options`, headers: AUTH })
+    expect(res.json().data.roles.map((r: any) => r.id)).toEqual(
+      withoutDeptIds.json().data.roles.map((r: any) => r.id),
+    )
+    await app.close()
+  })
+
   it('全范围操作者拿到整棵树', async () => {
     mockActor({ roleIds: [1], perms: CREATE_PERMS }, {
       roles: [{ id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS }],

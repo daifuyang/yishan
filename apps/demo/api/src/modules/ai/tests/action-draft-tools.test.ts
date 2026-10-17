@@ -14,7 +14,7 @@ import { AiCapabilityCatalog, PermissionCatalog } from '@yishan/core-api'
 import { runWithPermissions } from '@yishan/core-api/permissions/catalog'
 import { runWithAiCapabilities } from '@yishan/core-api/ai-capabilities/catalog'
 import type { AiCapability } from '@yishan/core-api/ai-capabilities/catalog'
-import { systemCapabilitiesForUserCreation, UserCreationFormService } from '@yishan/core-system-api'
+import { systemCapabilitiesForUserCreation, UserCreationFormService, systemAiCapabilities } from '@yishan/core-system-api'
 import { ActionDraftService } from '../services/action-draft.service.js'
 import type { ActionDraftRecord, ActionDraftStore, ActionDraftTx } from '../repositories/action-draft.repository.js'
 import { createActionDraftCapabilities } from '../capabilities/action-drafts.js'
@@ -442,6 +442,13 @@ describe('system-side read capabilities for the native form', () => {
     // 名字是被引号圈住的数据：模型只能把它当名称看，不能当句子读。
     expect((result.data as any).roles).toEqual([{ id: 3, name: "'专员'" }, { id: 9, name: "'专员'" }])
     expect((result.data as any).departments).toEqual([{ id: 1, name: "'研发部'" }])
+    // 但界面读的是 render.payload：人看到的是「研发部」「专员」，带引号的名字
+    // 既丑又会让前端的 GENDER_LABELS 查表失效。同一次执行，两个消费者，两份数据。
+    expect((result.render!.payload as any).departments).toEqual([{ id: 1, name: '研发部' }])
+    expect((result.render!.payload as any).roles).toEqual([
+      { id: 3, name: '专员' },
+      { id: 9, name: '专员' },
+    ])
     expect(listCandidates).toHaveBeenCalledWith({ actorId: 7, tokenScope: undefined }, { deptIds: [1] })
     listCandidates.mockRestore()
   })
@@ -484,6 +491,20 @@ describe('system-side read capabilities for the native form', () => {
   it('reads the real schema types: an integer department id is not a string one', () => {
     const [, options] = systemCapabilitiesForUserCreation()
     expect(Value.Check(options.inputSchema as never, { deptIds: [1, 2] })).toBe(true)
+  })
+
+  it('预填投影脱掉中性化的引号：模型回抄的值不能再带着引号建部门', async () => {
+    // 缺陷现场：候选里部门名是 `'研发部'`（带引号的中性化形式），模型把它逐字抄进
+    // prepare_create_department，人点确定就会建出一个名字带单引号的部门。
+    // 中性化仍然留在展示/检查通道上，回抄通道必须脱引号。
+    const create = systemAiCapabilities.find(c => c.name === 'prepare_create_department')!
+    const echoed = await create.execute(CONTEXT as never, { name: "'研发部'", parentId: 10 })
+    expect((echoed.data as any).fields.name).toBe('研发部')
+    expect((echoed.render!.payload as any).fields.name).toBe('研发部')
+    expect(JSON.stringify(echoed)).not.toContain("'研发部'")
+    // 没有引号形状的值原样通过：人自己键入的原文不被改写。
+    const typed = await create.execute(CONTEXT as never, { name: "研发'部" })
+    expect((typed.data as any).fields.name).toBe("研发'部")
   })
 })
 
