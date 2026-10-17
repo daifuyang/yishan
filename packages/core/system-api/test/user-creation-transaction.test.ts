@@ -408,7 +408,9 @@ describe('replay：只回读已验证回执，不变成按 id 查用户', () => 
 
     await expect(UserService.createUser(request() as never, ACTOR_ID)).resolves.toMatchObject({ id: 21 })
     expect(UserRepository.create).not.toHaveBeenCalled()
-    expect(findById).toHaveBeenCalledWith(21, FAKE_TX, false)
+    // 第四个参数 forUpdate=true：重放读取必须是事务内的当前读（FOR UPDATE），
+    // 否则并发重放会停在 A 提交之前的一致性快照上，读不到刚建的用户。
+    expect(findById).toHaveBeenCalledWith(21, FAKE_TX, false, true)
   })
 
   it('重放仍然重算当前创建权限：权限被回收后不能借回执读取结果', async () => {

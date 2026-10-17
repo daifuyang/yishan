@@ -87,3 +87,32 @@ export async function deleteUser(
     ...(options || {}),
   });
 }
+
+/** 获取新增用户表单定义 返回真实创建 Schema 派生的字段名/标签/必填/约束/敏感标记与选择器标识，不含可执行渲染代码 GET /api/v1/admin/users/create-form */
+export async function getUserCreateForm(options?: { [key: string]: any }) {
+  return request<SystemAPI.userCreateFormResp>(
+    "/api/v1/admin/users/create-form",
+    {
+      method: "GET",
+      ...(options || {}),
+    }
+  );
+}
+
+/** 获取新增用户候选选项 返回按当前授权范围过滤后的部门树，以及按候选 deptIds 重算后的可授予角色 GET /api/v1/admin/users/create-options */
+export async function getUserCreateOptions(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: SystemAPI.getUserCreateOptionsParams,
+  options?: { [key: string]: any }
+) {
+  return request<SystemAPI.userCreateOptionsResp>(
+    "/api/v1/admin/users/create-options",
+    {
+      method: "GET",
+      params: {
+        ...params,
+      },
+      ...(options || {}),
+    }
+  );
+}

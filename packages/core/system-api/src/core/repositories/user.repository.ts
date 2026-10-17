@@ -99,13 +99,32 @@ function buildUserWhere(opts: { keyword?: string; status?: string | number; star
   return and(...conds);
 }
 
-async function fetchUserDetail(id: number, db: AppQueryDb = drizzleDb, dataScope?: SQL): Promise<UserDetailRow | null> {
+/**
+ * 读一个用户的完整详情。
+ *
+ * `forUpdate` 把三次读全部变成**当前读**（`FOR UPDATE`），而不只是给主表加锁。
+ * 这不是可选优化：草稿重放路径在 REPEATABLE READ 下必须读到**并发提交之后**的
+ * 那个用户 —— 事务开始时的快照里根本没有它，于是「重复提交」会被误判成
+ * 「对应用户已被删除」。部门/角色关联行同样是刚由另一个事务写入的，
+ * 只锁主表的话回执里的 roleIds / deptIds 会是空的。
+ */
+/**
+ * 执行查询，可选地加上行锁。
+ *
+ * drizzle 0.44 的 MySQL `select` 没有公开 `for()` 的类型（`select.types.d.ts` 里没有这个成员），
+ * 但运行时确实会把它渲染成 SQL 末尾的 `FOR UPDATE`，因此这里收窄一次类型。
+ */
+function execute<T>(query: Promise<T> | { for: (strength: string) => Promise<T> }, forUpdate: boolean): Promise<T> {
+  return forUpdate ? (query as { for: (strength: string) => Promise<T> }).for('update') : (query as Promise<T>);
+}
+
+async function fetchUserDetail(id: number, db: AppQueryDb = drizzleDb, dataScope?: SQL, forUpdate = false): Promise<UserDetailRow | null> {
   const creatorUser = aliasedTable(sysUser, "creator_user");
   const updaterUser = aliasedTable(sysUser, "updater_user");
 
   // dataScope 与主键条件并列 AND：越权读取返回 null（表现为「不存在」），
   // 而不是泄露「存在但无权限」——后者本身就是信息泄露。
-  const [row]: UserDetailBaseRow[] = await db
+  const base = db
     .select({
       ...userPublicColumns,
       creatorName: creatorUser.username,
@@ -116,18 +135,25 @@ async function fetchUserDetail(id: number, db: AppQueryDb = drizzleDb, dataScope
     .leftJoin(updaterUser, eq(updaterUser.id, sysUser.updaterId))
     .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt), dataScope))
     .limit(1);
-    
+  const [row]: UserDetailBaseRow[] = await execute(base, forUpdate);
+
   if (!row) return null;
 
-  const deptLinks = await db
-    .select({ deptId: sysUserDept.deptId })
-    .from(sysUserDept)
-    .where(and(eq(sysUserDept.userId, id), isNull(sysUserDept.deletedAt)));
-    
-  const roleLinks = await db
-    .select({ roleId: sysUserRole.roleId })
-    .from(sysUserRole)
-    .where(and(eq(sysUserRole.userId, id), isNull(sysUserRole.deletedAt)));
+  const deptLinks = await execute(
+    db
+      .select({ deptId: sysUserDept.deptId })
+      .from(sysUserDept)
+      .where(and(eq(sysUserDept.userId, id), isNull(sysUserDept.deletedAt))),
+    forUpdate,
+  );
+
+  const roleLinks = await execute(
+    db
+      .select({ roleId: sysUserRole.roleId })
+      .from(sysUserRole)
+      .where(and(eq(sysUserRole.userId, id), isNull(sysUserRole.deletedAt))),
+    forUpdate,
+  );
 
   return {
     ...row,
@@ -197,13 +223,14 @@ export class UserRepository {
    * 按 id 直读是最容易绕过滤的入口，缺省必须关上门。
    * 只有登录解析自己、刷新令牌这类内部路径才显式传 false。
    */
-  static async findById(id: number, db: AppQueryDb = drizzleDb, enforceScope = true): Promise<UserDetailRow | null> {
-    return fetchUserDetail(id, db, await UserRepository.dataScopeCondition(enforceScope));
+  /** `forUpdate` 见 {@link fetchUserDetail}：草稿重放路径必须读到并发提交之后的行。 */
+  static async findById(id: number, db: AppQueryDb = drizzleDb, enforceScope = true, forUpdate = false): Promise<UserDetailRow | null> {
+    return fetchUserDetail(id, db, await UserRepository.dataScopeCondition(enforceScope), forUpdate);
   }
 
   /** 用调用方已解析好的 dataScope 条件读取，避免同一个请求里重复解析档位。 */
-  static async findByIdWithScope(id: number, dataScope?: SQL, db: AppQueryDb = drizzleDb): Promise<UserDetailRow | null> {
-    return fetchUserDetail(id, db, dataScope);
+  static async findByIdWithScope(id: number, dataScope?: SQL, db: AppQueryDb = drizzleDb, forUpdate = false): Promise<UserDetailRow | null> {
+    return fetchUserDetail(id, db, dataScope, forUpdate);
   }
 
   /**

@@ -376,6 +376,28 @@
             "items": {
               "type": "number"
             }
+          },
+          "draftSubmission": {
+            "additionalProperties": false,
+            "description": "AI 草稿提交关联；仅由原生表单的提交动作携带",
+            "type": "object",
+            "properties": {
+              "draftId": {
+                "description": "草稿 ID",
+                "minLength": 1,
+                "maxLength": 64,
+                "type": "string"
+              },
+              "draftVersion": {
+                "description": "草稿版本（乐观并发）",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "draftId",
+              "draftVersion"
+            ]
           }
         },
         "required": [
@@ -535,6 +557,267 @@
             "required": [
               "id",
               "deleted"
+            ]
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "userCreateOptionsQuery": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {
+          "keyword": {
+            "description": "角色名称关键词",
+            "type": "string"
+          },
+          "deptIds": {
+            "description": "候选归属部门（角色按此重算）",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "page": {
+            "minimum": 1,
+            "description": "页码，从 1 开始",
+            "type": "integer"
+          },
+          "pageSize": {
+            "minimum": 1,
+            "maximum": 100,
+            "description": "每页条数",
+            "type": "integer"
+          }
+        }
+      },
+      "userCreateFormResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "操作成功",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "additionalProperties": false,
+            "type": "object",
+            "properties": {
+              "schemaVersion": {
+                "description": "表单契约版本，版本不符时必须重新读取",
+                "type": "integer"
+              },
+              "fields": {
+                "description": "真实表单字段定义",
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "字段名",
+                      "example": "phone",
+                      "type": "string"
+                    },
+                    "label": {
+                      "description": "字段标签",
+                      "example": "手机号",
+                      "type": "string"
+                    },
+                    "required": {
+                      "description": "是否必填（来自真实 create schema）",
+                      "type": "boolean"
+                    },
+                    "sensitive": {
+                      "description": "是否敏感字段（只能由用户在表单里输入）",
+                      "type": "boolean"
+                    },
+                    "selector": {
+                      "description": "选择器标识：enum/date/email/password/text/deptTree/roleOptions",
+                      "example": "text",
+                      "type": "string"
+                    },
+                    "constraints": {
+                      "additionalProperties": true,
+                      "description": "来自真实 schema 的约束（minLength/maxLength/pattern/format/enum/...）",
+                      "type": "object",
+                      "properties": {}
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "label",
+                    "required",
+                    "sensitive",
+                    "selector",
+                    "constraints"
+                  ]
+                }
+              },
+              "defaults": {
+                "additionalProperties": true,
+                "description": "真实 schema 声明的默认值",
+                "type": "object",
+                "properties": {}
+              },
+              "editableFields": {
+                "description": "对话可写入的字段白名单",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "missingFields": {
+                "description": "需要在表单中完成的字段",
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "description": "字段名",
+                      "example": "password",
+                      "type": "string"
+                    },
+                    "label": {
+                      "description": "字段标签",
+                      "example": "初始密码",
+                      "type": "string"
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "sensitive": {
+                      "type": "boolean"
+                    },
+                    "mustCompleteInForm": {
+                      "description": "必须由用户在表单中完成",
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "label",
+                    "required",
+                    "sensitive",
+                    "mustCompleteInForm"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "schemaVersion",
+              "fields",
+              "defaults",
+              "editableFields",
+              "missingFields"
+            ]
+          },
+          "timestamp": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "success",
+          "data",
+          "timestamp"
+        ]
+      },
+      "userCreateOptionsResp": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "example": 10000,
+            "type": "number"
+          },
+          "message": {
+            "example": "获取成功",
+            "type": "string"
+          },
+          "success": {
+            "example": true,
+            "type": "boolean"
+          },
+          "data": {
+            "additionalProperties": false,
+            "type": "object",
+            "properties": {
+              "departments": {
+                "description": "按授权范围过滤后的部门树（沿用原有部门树结构）",
+                "type": "array",
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "properties": {}
+                }
+              },
+              "roles": {
+                "description": "本次可授予的角色候选",
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "description": "角色 ID（名字可重名，身份一律以 ID 为准",
+                      "type": "integer"
+                    },
+                    "name": {
+                      "description": "角色名称",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ]
+                }
+              },
+              "total": {
+                "description": "过滤后的候选总数",
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "integer"
+              },
+              "creatable": {
+                "description": "当前操作者在 system:user:create 上能否建号",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "departments",
+              "roles",
+              "total",
+              "page",
+              "pageSize",
+              "creatable"
             ]
           },
           "timestamp": {
@@ -1615,6 +1898,14 @@
             "items": {
               "type": "string"
             }
+          },
+          "deptIds": {
+            "description": "自定义数据范围的部门ID列表（dataScope=\"5\" 时生效）",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "type": "integer"
+            }
           }
         },
         "required": [
@@ -1768,6 +2059,14 @@
               "maxLength": 128,
               "type": "string"
             }
+          },
+          "deptIds": {
+            "description": "自定义数据范围的部门ID列表（dataScope=5 时生效）",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "type": "integer"
+            }
           }
         },
         "required": [
@@ -1828,6 +2127,14 @@
               "minLength": 1,
               "maxLength": 128,
               "type": "string"
+            }
+          },
+          "deptIds": {
+            "description": "自定义数据范围的部门ID列表（dataScope=5 时生效）",
+            "type": "array",
+            "items": {
+              "minimum": 1,
+              "type": "integer"
             }
           }
         },
@@ -11130,6 +11437,111 @@
         }
       }
     },
+    "/api/v1/admin/users/create-form": {
+      "get": {
+        "operationId": "getUserCreateForm",
+        "summary": "获取新增用户表单定义",
+        "tags": [
+          "sysUsers"
+        ],
+        "description": "返回真实创建 Schema 派生的字段名/标签/必填/约束/敏感标记与选择器标识，不含可执行渲染代码",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:user:create",
+        "x-permission-label": "用户管理-创建",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/userCreateFormResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users/create-options": {
+      "get": {
+        "operationId": "getUserCreateOptions",
+        "summary": "获取新增用户候选选项",
+        "tags": [
+          "sysUsers"
+        ],
+        "description": "返回按当前授权范围过滤后的部门树，以及按候选 deptIds 重算后的可授予角色",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "keyword",
+            "required": false,
+            "description": "角色名称关键词"
+          },
+          {
+            "schema": {
+              "type": "array",
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "in": "query",
+            "name": "deptIds",
+            "required": false,
+            "description": "候选归属部门（角色按此重算）"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "页码，从 1 开始"
+          },
+          {
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "integer"
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "每页条数"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "system:user:create",
+        "x-permission-label": "用户管理-创建",
+        "x-permission-group": "system",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/userCreateOptionsResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/users/{id}": {
       "get": {
         "operationId": "getUserDetail",
@@ -12747,6 +13159,2002 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/tokenStatsResp"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/conversations": {
+      "get": {
+        "operationId": "aiConversationsList",
+        "summary": "AI 会话列表",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "minLength": 1,
+                                "maxLength": 64,
+                                "pattern": "^[a-zA-Z0-9_-]+$",
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "updatedAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "createdAt",
+                              "updatedAt"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "aiConversationsCreate",
+        "summary": "创建 AI 会话",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "allOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[a-zA-Z0-9_-]+$",
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "createdAt": {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "format": "date-time",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "title",
+                            "createdAt",
+                            "updatedAt"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "messages": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "minLength": 1,
+                                    "maxLength": 64,
+                                    "pattern": "^[a-zA-Z0-9_-]+$",
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "user"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "assistant"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "parts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": {}
+                                    }
+                                  },
+                                  "metadata": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "complete"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "aborted"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "error"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "role",
+                                  "parts"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "messages"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/conversations/{id}": {
+      "get": {
+        "operationId": "aiConversationsDetail",
+        "summary": "AI 会话详情",
+        "tags": [
+          "ai"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "allOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[a-zA-Z0-9_-]+$",
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "createdAt": {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "format": "date-time",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "title",
+                            "createdAt",
+                            "updatedAt"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "messages": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "minLength": 1,
+                                    "maxLength": 64,
+                                    "pattern": "^[a-zA-Z0-9_-]+$",
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "user"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "assistant"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "parts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": {}
+                                    }
+                                  },
+                                  "metadata": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "complete"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "aborted"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "error"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "role",
+                                  "parts"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "messages"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "aiConversationsRename",
+        "summary": "重命名 AI 会话",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "allOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "minLength": 1,
+                              "maxLength": 64,
+                              "pattern": "^[a-zA-Z0-9_-]+$",
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "createdAt": {
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "format": "date-time",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "title",
+                            "createdAt",
+                            "updatedAt"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "messages": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "minLength": 1,
+                                    "maxLength": 64,
+                                    "pattern": "^[a-zA-Z0-9_-]+$",
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "user"
+                                        ]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "assistant"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "parts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": {}
+                                    }
+                                  },
+                                  "metadata": {
+                                    "type": "object",
+                                    "properties": {
+                                      "status": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "complete"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "aborted"
+                                            ]
+                                          },
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "error"
+                                            ]
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "role",
+                                  "parts"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "messages"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "aiConversationsDelete",
+        "summary": "删除 AI 会话",
+        "tags": [
+          "ai"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "null"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/chat": {
+      "post": {
+        "operationId": "aiChat",
+        "summary": "AI 消息流",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-zA-Z0-9_-]+$",
+                    "type": "string"
+                  },
+                  "messages": {
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {}
+                  },
+                  "trigger": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "submit-message"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "regenerate-message"
+                        ]
+                      }
+                    ]
+                  },
+                  "messageId": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[a-zA-Z0-9_-]+$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "messages",
+                  "trigger"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/api/ai/v1/conversations/{id}/drafts": {
+      "post": {
+        "operationId": "aiActionDraftCreate",
+        "summary": "创建表单草稿",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "module": {
+                    "enum": [
+                      "system"
+                    ],
+                    "type": "string"
+                  },
+                  "action": {
+                    "enum": [
+                      "user.create"
+                    ],
+                    "type": "string"
+                  },
+                  "formData": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "schemaVersion": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "module",
+                  "action",
+                  "formData"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "draftId": {
+                          "type": "string"
+                        },
+                        "ownerId": {
+                          "type": "integer"
+                        },
+                        "conversationId": {
+                          "type": "string"
+                        },
+                        "module": {
+                          "enum": [
+                            "system"
+                          ],
+                          "type": "string"
+                        },
+                        "action": {
+                          "enum": [
+                            "user.create"
+                          ],
+                          "type": "string"
+                        },
+                        "schemaVersion": {
+                          "type": "integer"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "missingFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "mustCompleteInForm": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label",
+                              "required",
+                              "sensitive",
+                              "mustCompleteInForm"
+                            ]
+                          }
+                        },
+                        "validationErrors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "field",
+                              "label",
+                              "code",
+                              "message"
+                            ]
+                          }
+                        },
+                        "draftVersion": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "collecting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ready"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "previewing"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "submitting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "failed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cancelled"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "expired"
+                              ]
+                            }
+                          ]
+                        },
+                        "resultRef": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "targetType": {
+                                  "type": "string"
+                                },
+                                "targetId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "targetType",
+                                "targetId"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "failureReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "draftId",
+                        "ownerId",
+                        "conversationId",
+                        "module",
+                        "action",
+                        "schemaVersion",
+                        "formData",
+                        "missingFields",
+                        "validationErrors",
+                        "draftVersion",
+                        "status",
+                        "resultRef",
+                        "failureReason",
+                        "createdAt",
+                        "updatedAt",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "aiActionDraftList",
+        "summary": "会话草稿列表",
+        "tags": [
+          "ai"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "properties": {
+                              "draftId": {
+                                "type": "string"
+                              },
+                              "ownerId": {
+                                "type": "integer"
+                              },
+                              "conversationId": {
+                                "type": "string"
+                              },
+                              "module": {
+                                "enum": [
+                                  "system"
+                                ],
+                                "type": "string"
+                              },
+                              "action": {
+                                "enum": [
+                                  "user.create"
+                                ],
+                                "type": "string"
+                              },
+                              "schemaVersion": {
+                                "type": "integer"
+                              },
+                              "formData": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "missingFields": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "sensitive": {
+                                      "type": "boolean"
+                                    },
+                                    "mustCompleteInForm": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "label",
+                                    "required",
+                                    "sensitive",
+                                    "mustCompleteInForm"
+                                  ]
+                                }
+                              },
+                              "validationErrors": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "field": {
+                                      "type": "string"
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "code": {
+                                      "type": "string"
+                                    },
+                                    "message": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "field",
+                                    "label",
+                                    "code",
+                                    "message"
+                                  ]
+                                }
+                              },
+                              "draftVersion": {
+                                "type": "integer"
+                              },
+                              "status": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "collecting"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "ready"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "previewing"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "submitting"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "completed"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "failed"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "cancelled"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "expired"
+                                    ]
+                                  }
+                                ]
+                              },
+                              "resultRef": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "targetType": {
+                                        "type": "string"
+                                      },
+                                      "targetId": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "targetType",
+                                      "targetId"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "failureReason": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "createdAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "updatedAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "expiresAt": {
+                                "format": "date-time",
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "draftId",
+                              "ownerId",
+                              "conversationId",
+                              "module",
+                              "action",
+                              "schemaVersion",
+                              "formData",
+                              "missingFields",
+                              "validationErrors",
+                              "draftVersion",
+                              "status",
+                              "resultRef",
+                              "failureReason",
+                              "createdAt",
+                              "updatedAt",
+                              "expiresAt"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/drafts/{draftId}": {
+      "get": {
+        "operationId": "aiActionDraftDetail",
+        "summary": "草稿详情",
+        "tags": [
+          "ai"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "description": "草稿 ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "draftId": {
+                          "type": "string"
+                        },
+                        "ownerId": {
+                          "type": "integer"
+                        },
+                        "conversationId": {
+                          "type": "string"
+                        },
+                        "module": {
+                          "enum": [
+                            "system"
+                          ],
+                          "type": "string"
+                        },
+                        "action": {
+                          "enum": [
+                            "user.create"
+                          ],
+                          "type": "string"
+                        },
+                        "schemaVersion": {
+                          "type": "integer"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "missingFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "mustCompleteInForm": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label",
+                              "required",
+                              "sensitive",
+                              "mustCompleteInForm"
+                            ]
+                          }
+                        },
+                        "validationErrors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "field",
+                              "label",
+                              "code",
+                              "message"
+                            ]
+                          }
+                        },
+                        "draftVersion": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "collecting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ready"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "previewing"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "submitting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "failed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cancelled"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "expired"
+                              ]
+                            }
+                          ]
+                        },
+                        "resultRef": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "targetType": {
+                                  "type": "string"
+                                },
+                                "targetId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "targetType",
+                                "targetId"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "failureReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "draftId",
+                        "ownerId",
+                        "conversationId",
+                        "module",
+                        "action",
+                        "schemaVersion",
+                        "formData",
+                        "missingFields",
+                        "validationErrors",
+                        "draftVersion",
+                        "status",
+                        "resultRef",
+                        "failureReason",
+                        "createdAt",
+                        "updatedAt",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "aiActionDraftPatch",
+        "summary": "按字段补丁更新草稿",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "draftVersion": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "formData": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "draftVersion",
+                  "formData"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "description": "草稿 ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "draftId": {
+                          "type": "string"
+                        },
+                        "ownerId": {
+                          "type": "integer"
+                        },
+                        "conversationId": {
+                          "type": "string"
+                        },
+                        "module": {
+                          "enum": [
+                            "system"
+                          ],
+                          "type": "string"
+                        },
+                        "action": {
+                          "enum": [
+                            "user.create"
+                          ],
+                          "type": "string"
+                        },
+                        "schemaVersion": {
+                          "type": "integer"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "missingFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "mustCompleteInForm": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label",
+                              "required",
+                              "sensitive",
+                              "mustCompleteInForm"
+                            ]
+                          }
+                        },
+                        "validationErrors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "field",
+                              "label",
+                              "code",
+                              "message"
+                            ]
+                          }
+                        },
+                        "draftVersion": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "collecting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ready"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "previewing"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "submitting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "failed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cancelled"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "expired"
+                              ]
+                            }
+                          ]
+                        },
+                        "resultRef": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "targetType": {
+                                  "type": "string"
+                                },
+                                "targetId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "targetType",
+                                "targetId"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "failureReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "draftId",
+                        "ownerId",
+                        "conversationId",
+                        "module",
+                        "action",
+                        "schemaVersion",
+                        "formData",
+                        "missingFields",
+                        "validationErrors",
+                        "draftVersion",
+                        "status",
+                        "resultRef",
+                        "failureReason",
+                        "createdAt",
+                        "updatedAt",
+                        "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/drafts/{draftId}/cancel": {
+      "post": {
+        "operationId": "aiActionDraftCancel",
+        "summary": "取消草稿",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "draftVersion": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "draftVersion"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "description": "草稿 ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
                 }
               }
             }

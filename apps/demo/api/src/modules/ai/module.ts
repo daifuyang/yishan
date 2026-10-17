@@ -5,6 +5,7 @@ import type { SystemRuntime } from '@yishan/core-system-api'
 import { drizzleDb } from '@yishan/core-system-api/database'
 import { registerAiNavigationCapability } from './capabilities/navigation.js'
 import { registerAiActionDraftCapabilities } from './capabilities/action-drafts.js'
+import draftRoutes from './routes/v1/drafts.js'
 import { ActionDraftService } from './services/action-draft.service.js'
 
 /**
@@ -22,7 +23,17 @@ const aiModule: ApiModule<SystemRuntime> = {
   dependencies: [{ id: 'system', version: '^2.0.0' }],
   migrations: { id: 'ai', folder: join(__dirname, 'drizzle'), historyTable: '__drizzle_migrations_ai' },
   async register(router) {
-    await router.register(AutoLoad, { dir: join(__dirname, 'routes'), autoHooks: true, cascadeHooks: true })
+    await router.register(AutoLoad, {
+      dir: join(__dirname, 'routes'),
+      autoHooks: true,
+      cascadeHooks: true,
+      // 草稿端点与聊天端点是 `/api/ai/v1` 下的**平级**路由，而 autoload 默认把
+      // 文件名也算进路由前缀：`routes/v1/drafts.ts` 会被挂到 `/api/ai/v1/drafts/...`，
+      // 前端与文档里的 `/api/ai/v1/drafts/:draftId`、`/api/ai/v1/conversations/:id/drafts`
+      // 全部 404。这里跳过该文件并按精确前缀显式注册，路径只有一处定义（drafts.ts）。
+      ignoreFilter: name => name === 'drafts.ts',
+    })
+    await router.register(draftRoutes, { prefix: '/v1' })
   },
   async initialize(runtime) {
     // 能力注册在 initialize 而不是模块顶层：注册中心由 SystemRuntime 显式创建，

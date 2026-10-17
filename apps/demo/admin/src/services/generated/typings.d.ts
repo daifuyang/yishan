@@ -1,4 +1,39 @@
 declare namespace API {
+  type aiActionDraftCancelParams = {
+    /** 草稿 ID */
+    draftId: string;
+  };
+
+  type aiActionDraftCreateParams = {
+    id: string;
+  };
+
+  type aiActionDraftDetailParams = {
+    /** 草稿 ID */
+    draftId: string;
+  };
+
+  type aiActionDraftListParams = {
+    id: string;
+  };
+
+  type aiActionDraftPatchParams = {
+    /** 草稿 ID */
+    draftId: string;
+  };
+
+  type aiConversationsDeleteParams = {
+    id: string;
+  };
+
+  type aiConversationsDetailParams = {
+    id: string;
+  };
+
+  type aiConversationsRenameParams = {
+    id: string;
+  };
+
   type deletePortalV1ArticlesIdParams = {
     id: number;
   };

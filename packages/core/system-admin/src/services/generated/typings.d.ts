@@ -397,6 +397,8 @@ declare namespace SystemAPI {
     deptIds?: number[];
     /** 角色ID列表 */
     roleIds?: number[];
+    /** AI 草稿提交关联；仅由原生表单的提交动作携带 */
+    draftSubmission?: { draftId: string; draftVersion: number };
   };
 
   type currentUser = {
@@ -859,6 +861,17 @@ declare namespace SystemAPI {
     level?: number;
   };
 
+  type getUserCreateOptionsParams = {
+    /** 角色名称关键词 */
+    keyword?: string;
+    /** 候选归属部门（角色按此重算） */
+    deptIds?: number[];
+    /** 页码，从 1 开始 */
+    page?: number;
+    /** 每页条数 */
+    pageSize?: number;
+  };
+
   type getUserDetailParams = {
     /** 用户ID */
     id: number;
@@ -1255,6 +1268,8 @@ declare namespace SystemAPI {
     appMenuIds?: number[];
     /** 后端功能/API 权限码列表 */
     permissionCodes?: string[];
+    /** 自定义数据范围的部门ID列表（dataScope=5 时生效） */
+    deptIds?: number[];
   };
 
   type setSystemOptionParams = {
@@ -1648,6 +1663,8 @@ declare namespace SystemAPI {
     appMenuIds?: number[];
     /** 后端功能/API 权限码列表 */
     permissionCodes?: string[];
+    /** 自定义数据范围的部门ID列表（dataScope="5" 时生效） */
+    deptIds?: number[];
   };
 
   type systemOptionItem = {
@@ -1912,6 +1929,8 @@ declare namespace SystemAPI {
     appMenuIds?: number[];
     /** 后端功能/API 权限码列表 */
     permissionCodes?: string[];
+    /** 自定义数据范围的部门ID列表（dataScope=5 时生效） */
+    deptIds?: number[];
   };
 
   type updateUserParams = {
@@ -1983,6 +2002,48 @@ declare namespace SystemAPI {
     message?: string;
     timestamp?: string;
     data?: storageConfigSchema;
+  };
+
+  type userCreateFormResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: {
+      schemaVersion: number;
+      fields: {
+        name: string;
+        label: string;
+        required: boolean;
+        sensitive: boolean;
+        selector: string;
+        constraints: Record<string, any>;
+      }[];
+      defaults: Record<string, any>;
+      editableFields: string[];
+      missingFields: {
+        name: string;
+        label: string;
+        required: boolean;
+        sensitive: boolean;
+        mustCompleteInForm: true;
+      }[];
+    };
+    timestamp: string;
+  };
+
+  type userCreateOptionsResp = {
+    code: number;
+    message: string;
+    success: boolean;
+    data: {
+      departments: Record<string, any>[];
+      roles: { id: number; name: string }[];
+      total: number;
+      page: number;
+      pageSize: number;
+      creatable: boolean;
+    };
+    timestamp: string;
   };
 
   type userDeleteResp = {

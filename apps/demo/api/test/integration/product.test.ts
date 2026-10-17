@@ -15,6 +15,7 @@ const { demoModules } = requireCompiled('./manifest.js') as typeof import('../..
 const { createDatabase, migrateDatabase, inspectMigrationHistory } = requireCompiled('@yishan/core-database') as typeof import('@yishan/core-database')
 const { systemModule, seedSystem, finalizeSystemSeed } = requireCompiled('@yishan/core-system-api') as typeof import('@yishan/core-system-api')
 const { schema } = requireCompiled('@yishan/core-system-api/schema') as typeof import('@yishan/core-system-api/schema')
+const { AiExecutionEnvFactory } = requireCompiled('./modules/ai/services/ai-chat.service.js') as typeof import('../../src/modules/ai/services/ai-chat.service')
 
 function assertDisposable(name: string) {
   if (!/^yishan_demo_test_[a-f0-9]{20}$/.test(name)) throw new Error('Refusing to mutate a non-test database')
@@ -24,7 +25,8 @@ interface CountRow extends RowDataPacket { count: number }
 interface ProfileRow extends RowDataPacket { user_id: number; last_event: string }
 interface PasswordRow extends RowDataPacket { password_hash: string }
 interface OpenApiOperation { operationId?: string; description?: string; security?: readonly Record<string, readonly string[]>[] }
-interface OpenApiDocument { paths: Record<string, Record<string, OpenApiOperation>>; components?: { schemas?: Record<string, unknown> } }
+interface OpenApiSchema { properties?: Record<string, unknown> }
+interface OpenApiDocument { paths: Record<string, Record<string, OpenApiOperation>>; components?: { schemas?: Record<string, OpenApiSchema> } }
 
 describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo product with disposable local MySQL', () => {
   it('migrates and seeds twice, authenticates, enforces permissions and closes its own resources', async () => {
@@ -112,6 +114,50 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
       expect(login.headers['x-request-id']).toBeDefined()
       expect((await app.inject({ url: '/api/v1/auth/me', headers })).statusCode).toBe(200)
       expect((await app.inject({ url: '/api/demo/v1/info', headers })).statusCode).toBe(200)
+      const chatUrl = '/api/ai/v1/conversations'
+      expect((await app.inject(chatUrl)).statusCode).toBe(401)
+      const chatCreated = await app.inject({ method: 'POST', url: chatUrl, headers })
+      expect(chatCreated.statusCode, chatCreated.body).toBe(200)
+      const chatId = chatCreated.json<{ data: { id: string } }>().data.id
+      expect(chatId).toEqual(expect.any(String))
+      await app.system.run(async () => {
+        // Core system is always mounted and is deliberately absent from the optional-module table.
+        expect(await activeApp.system.moduleState.enabledIds()).not.toContain('system')
+        const user = await activeApp.system.users.findById(1)
+        if (!user) throw new Error('Seed administrator is missing')
+        const execution = await new AiExecutionEnvFactory({ db: activeApp.system.database.db }).env(
+          { userId: user.id, roleIds: [...user.roleIds], deptIds: [...user.deptIds] },
+          { requestId: 'integration-system-tools', conversationId: chatId },
+        )
+        for (const [name, input] of [
+          ['list_users', { status: '1' }], ['get_user', { id: 1 }],
+          ['list_roles', {}], ['get_role', { id: user.roleIds[0] }],
+          ['list_departments', {}], ['get_department', { id: 1 }],
+          ['prepare_create_user', { username: 'draft-user' }],
+          ['prepare_update_user', { id: 1, realName: '草稿姓名' }],
+          ['prepare_create_department', { name: '草稿部门' }],
+        ] as const) {
+          const outcome = await execution.execute(name, input)
+          expect(outcome.ok, `${name}: ${JSON.stringify(outcome)}`).toBe(true)
+        }
+        const [audits] = await database.pool.query<RowDataPacket[]>('SELECT capability_name, execution_status FROM ai_audit WHERE request_id = ?', ['integration-system-tools'])
+        expect(audits).toHaveLength(9)
+        expect(audits.every(row => row.execution_status === 'success')).toBe(true)
+      })
+      const chatRenamed = await app.inject({ method: 'PATCH', url: `${chatUrl}/${chatId}`, headers, payload: { title: '持久化验收' } })
+      expect(chatRenamed.json().data.title).toBe('持久化验收')
+      expect((await app.inject({ url: chatUrl, headers })).json().data.items).toEqual(expect.arrayContaining([expect.objectContaining({ id: chatId, title: '持久化验收' })]))
+      const [chatRows] = await database.pool.query<RowDataPacket[]>('SELECT owner_id, title FROM ai_conversations WHERE id = ?', [chatId])
+      expect(chatRows[0].title).toBe('持久化验收')
+      // A foreign owner's record is indistinguishable from an unknown conversation.
+      await database.pool.query('UPDATE ai_conversations SET owner_id = ? WHERE id = ?', [Number(chatRows[0].owner_id) + 100000, chatId])
+      expect((await app.inject({ url: `${chatUrl}/${chatId}`, headers })).statusCode).toBe(404)
+      expect((await app.inject({ method: 'PATCH', url: `${chatUrl}/${chatId}`, headers, payload: { title: '越权修改' } })).statusCode).toBe(404)
+      expect((await app.inject({ method: 'DELETE', url: `${chatUrl}/${chatId}`, headers })).statusCode).toBe(404)
+      expect((await app.inject({ method: 'POST', url: '/api/ai/v1/chat', headers, payload: { id: chatId, messages: [{ id: 'user-1', role: 'user', parts: [{ type: 'text', text: '你好' }] }], trigger: 'submit-message' } })).statusCode).toBe(404)
+      await database.pool.query('UPDATE ai_conversations SET owner_id = ? WHERE id = ?', [chatRows[0].owner_id, chatId])
+      expect((await app.inject({ method: 'DELETE', url: `${chatUrl}/${chatId}`, headers })).statusCode).toBe(200)
+      expect((await app.inject({ url: `${chatUrl}/${chatId}`, headers })).statusCode).toBe(404)
       for (const module of ['portal', 'shop']) {
         const url = `/api/${module}/v1/categories/`
         const createdCategory = await app.inject({ method: 'POST', url, headers,
@@ -157,6 +203,38 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
       expect(personLogin.statusCode, personLogin.body).toBe(200)
       const personHeaders = { authorization: `Bearer ${personLogin.json<{ data: { token: string } }>().data.token}` }
       expect((await app.inject({ url: '/api/v1/admin/users', headers: personHeaders })).statusCode).toBe(403)
+      const createScopeRole = async (name: string, dataScope: string, permissionCodes: string[]) => {
+        const response = await app!.inject({ method: 'POST', url: '/api/v1/admin/roles', headers,
+          payload: { name, dataScope, permissionCodes } })
+        expect(response.statusCode, response.body).toBe(200)
+        return response.json<{ data: { id: number } }>().data.id
+      }
+      const selfRoleId = await createScopeRole('本人用户管理', '4', ['system:user:list', 'system:user:update', 'system:user:delete'])
+      const unrelatedRoleId = await createScopeRole('无关全量角色', '1', ['system:role:list'])
+      const assigned = await app.inject({ method: 'PUT', url: `/api/v1/admin/users/${userId}`, headers,
+        payload: { roleIds: [selfRoleId, unrelatedRoleId] } })
+      expect(assigned.statusCode, assigned.body).toBe(200)
+      const restrictedList = await app.inject({ url: '/api/v1/admin/users', headers: personHeaders })
+      expect(restrictedList.statusCode, restrictedList.body).toBe(200)
+      expect(restrictedList.json().data.map((user: { id: number }) => user.id)).toEqual([userId])
+      const deniedDetail = await app.inject({ url: '/api/v1/admin/users/1', headers: personHeaders })
+      const missingDetail = await app.inject({ url: '/api/v1/admin/users/9999999', headers: personHeaders })
+      expect(deniedDetail.json()).toMatchObject({ success: false, code: missingDetail.json().code })
+      expect(deniedDetail.json().data).toEqual(missingDetail.json().data)
+      expect(deniedDetail.json().data).not.toHaveProperty('id')
+      const deniedUpdate = await app.inject({ method: 'PUT', url: '/api/v1/admin/users/1', headers: personHeaders, payload: { nickname: '越权修改' } })
+      expect(deniedUpdate.json()).toMatchObject({ success: false, code: missingDetail.json().code })
+      const customRoleId = await createScopeRole('自定义部门验收', '5', ['system:user:list'])
+      const customUpdated = await app.inject({ method: 'PUT', url: `/api/v1/admin/roles/${customRoleId}`, headers,
+        payload: { deptIds: [1, 1] } })
+      expect(customUpdated.json().success, customUpdated.body).toBe(true)
+      const customDetail = await app.inject({ url: `/api/v1/admin/roles/${customRoleId}`, headers })
+      expect(customDetail.json().data.deptIds).toEqual([1])
+      const switched = await app.inject({ method: 'PUT', url: `/api/v1/admin/roles/${customRoleId}`, headers,
+        payload: { dataScope: '4' } })
+      expect(switched.json().success, switched.body).toBe(true)
+      const clearedDetail = await app.inject({ url: `/api/v1/admin/roles/${customRoleId}`, headers })
+      expect(clearedDetail.json().data.deptIds).toEqual([])
       const pat = await app.inject({ method: 'POST', url: '/api/v1/me/api-tokens', headers, payload: { name: 'integration', duration: '7d', scopes: ['demo:health:read'] } })
       expect(pat.statusCode, pat.body).toBe(200)
       const patData = pat.json<{ data: { id: number; token: string } }>().data
@@ -184,9 +262,15 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
       expect(missing.json().code).toBe(25005)
       const current = app.swagger() as OpenApiDocument
       writeFileSync(resolve(tmpdir(), 'yishan-demo-runtime-openapi.json'), JSON.stringify(current, null, 2))
+      expect(current).toEqual(JSON.parse(readFileSync(resolve('openapi.json'), 'utf8')))
       const runtimeBaseline = JSON.parse(readFileSync(resolve('../../../docs/architecture/api-v1-runtime-openapi.json'), 'utf8')) as OpenApiDocument
       expect(Object.keys(runtimeBaseline.paths).filter(path => !current.paths[path])).toEqual([])
-      expect(Object.keys(current.paths).filter(path => !runtimeBaseline.paths[path])).toEqual(['/api/demo/v1/me/profile'])
+      expect(Object.keys(current.paths).filter(path => !runtimeBaseline.paths[path]).sort()).toEqual([
+        '/api/ai/v1/chat', '/api/ai/v1/conversations', '/api/ai/v1/conversations/{id}', '/api/demo/v1/me/profile',
+        // Task 10：AI 原生建号的动作草稿端点，以及同源的用户创建表单定义/候选端点。
+        '/api/ai/v1/conversations/{id}/drafts', '/api/ai/v1/drafts/{draftId}', '/api/ai/v1/drafts/{draftId}/cancel',
+        '/api/v1/admin/users/create-form', '/api/v1/admin/users/create-options',
+      ].sort())
       for (const [path, methods] of Object.entries(runtimeBaseline.paths)) {
         const expected = structuredClone(methods)
         // The old document inherited global bearer auth for these actually public operations.
@@ -194,6 +278,27 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
         if (path === '/api/v1/admin/system/module-management/list/') expected.get.description = '显式安装清单中的业务模块及当前启停、挂载状态。'
         if (path === '/api/v1/admin/system/module-management/toggle/{id}/toggle') delete expected.post.description
         expect(current.paths[path], `OpenAPI operation/schema/security changed: ${path}`).toEqual(expected)
+      }
+      // The role contract intentionally gained custom data-scope departments.
+      for (const name of ['sysRole', 'saveRoleReq', 'updateRoleReq']) {
+        const expected = runtimeBaseline.components?.schemas?.[name]
+        if (!expected?.properties) throw new Error(`Missing role baseline schema: ${name}`)
+        expected.properties.deptIds = {
+          type: 'array', items: { type: 'integer', minimum: 1 },
+          description: name === 'sysRole' ? '自定义数据范围的部门ID列表（dataScope="5" 时生效）' : '自定义数据范围的部门ID列表（dataScope=5 时生效）',
+        }
+      }
+      // Task 10：建号草稿让 create 请求多带一个 draftSubmission 引用（真正的创建仍然
+      // 只由原生表单的 onFinish 发起），并新增同源的表单定义/候选响应契约。
+      const createUserBaseline = runtimeBaseline.components?.schemas?.createUserReq
+      if (!createUserBaseline?.properties) throw new Error('Missing createUserReq baseline schema')
+      const draftSubmission = current.components?.schemas?.createUserReq?.properties?.draftSubmission
+      if (!draftSubmission) throw new Error('createUserReq lost draftSubmission')
+      createUserBaseline.properties.draftSubmission = draftSubmission
+      for (const name of ['userCreateOptionsQuery', 'userCreateFormResp', 'userCreateOptionsResp']) {
+        const schema = current.components?.schemas?.[name]
+        if (!schema) throw new Error(`Missing ${name} schema`)
+        if (runtimeBaseline.components?.schemas) runtimeBaseline.components.schemas[name] = schema
       }
       expect(current.components?.schemas).toEqual(runtimeBaseline.components?.schemas)
       expect(current.paths['/api/v1/auth/login'].post.security).toEqual([])

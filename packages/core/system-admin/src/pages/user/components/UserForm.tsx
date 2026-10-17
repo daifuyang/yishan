@@ -12,12 +12,13 @@ import type { Dayjs } from "dayjs";
 import { Alert, type FormItemProps } from "antd";
 import { useSystemAdmin } from "../../../runtime";
 import { getRoleList } from "../../../services/generated/sysRoles";
-import { getUserDetail, createUser, updateUser } from "../../../services/generated/sysUsers";
 import {
-  getUserCreateForm,
-  getUserCreateOptions,
-  type UserCreateForm,
-} from "../../../services/user-create-form";
+  getUserDetail,
+  createUser,
+  updateUser,
+  getUserCreateForm as requestUserCreateForm,
+  getUserCreateOptions as requestUserCreateOptions,
+} from "../../../services/generated/sysUsers";
 import { ProFormDeptTreeSelect } from "../../../components/DeptTreeSelect";
 import {
   APPLY_CONFLICT,
@@ -41,6 +42,35 @@ import {
   consumeAiPrefill,
   subscribeAiPrefill,
 } from "../../../ai-prefill";
+
+/**
+ * 同源字段定义与候选，**直接来自生成的客户端**。
+ *
+ * 这里只做「拆信封 + 失败退回 null」这一件事，不再维护任何一份字段表：约束、必填、
+ * 白名单的唯一来源是后端从真实 create schema 派生的定义（Task 3）。曾经存在过一份
+ * 手写的 `services/user-create-form.ts`，它与生成客户端是同一组端点的两份真相，
+ * 已在 Task 10 删除。
+ */
+type UserCreateForm = SystemAPI.userCreateFormResp['data'];
+type UserCreateOptions = SystemAPI.userCreateOptionsResp['data'];
+
+async function getUserCreateForm(): Promise<UserCreateForm | null> {
+  try {
+    const response = await requestUserCreateForm();
+    return response?.success && response.data ? response.data : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getUserCreateOptions(query: SystemAPI.getUserCreateOptionsParams): Promise<UserCreateOptions | null> {
+  try {
+    const response = await requestUserCreateOptions(query);
+    return response?.success && response.data ? response.data : null;
+  } catch {
+    return null;
+  }
+}
 
 export interface UserFormProps {
   title: string;

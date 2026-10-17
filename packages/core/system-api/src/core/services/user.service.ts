@@ -252,7 +252,11 @@ export class UserService {
     if (!creatable) {
       throw new BusinessError(UserErrorCode.USER_CREATE_FORBIDDEN, '你没有新增用户的权限');
     }
-    const user = await UserRepository.findById(userId, tx, false);
+    // `forUpdate` 不是保守起见，而是必需：并发重放的请求 B 的事务开始于 A 提交**之前**，
+    // REPEATABLE READ 下它的一致性读仍停在那个快照里，看不到刚由 A 创建的用户，
+    // 于是会把一次本该返回既有用户的重放报成「对应用户已被删除」。当前读（FOR UPDATE）
+    // 读到的才是最新已提交值（见 fetchUserDetail 的注释）。
+    const user = await UserRepository.findById(userId, tx, false, true);
     if (!user) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, '该草稿已完成创建，对应用户已被删除');
     }
