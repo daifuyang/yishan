@@ -1,20 +1,30 @@
-import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { SystemAdminProvider } from '@yishan/core-system-admin';
-import UserList from '@yishan/core-system-admin/pages/user';
 import {
   clearUserCreateFormHandle,
+  peekUserCreateDraftLink,
   peekUserCreateFormHandle,
+  publishUserCreateFormChange,
   registerUserCreateDraftLink,
   registerUserCreateFormHandle,
-  publishUserCreateFormChange,
 } from '@yishan/core-system-admin/form-assistance';
-import { AiChatContext } from '../context/AiChatProvider';
-import { AiFormAssistanceContext } from '../context/formAssistance';
+import UserList from '@yishan/core-system-admin/pages/user';
+import React from 'react';
 import {
   AiNativeFormBridge,
   diffDraftFields,
 } from '../components/AiNativeFormBridge';
+import { AiChatContext } from '../context/AiChatProvider';
+import { AiFormAssistanceContext } from '../context/formAssistance';
+
+/** 与 Bridge 里的合并延迟同值：测试要按真实窗口推进时间。 */
+const SYNC_DEBOUNCE_MS = 600;
 
 /**
  * Task 9 行为测试：从**本轮**对话草稿到原生表单，再到人工提交。
@@ -86,17 +96,94 @@ const CREATE_FORM = {
   editableFields: EDITABLE_FIELDS,
   missingFields: [],
   fields: [
-    { name: 'username', label: '登录名称', required: false, sensitive: false, selector: 'text', constraints: {} },
-    { name: 'phone', label: '手机号码', required: true, sensitive: false, selector: 'text', constraints: { maxLength: 11 } },
-    { name: 'email', label: '邮箱', required: false, sensitive: false, selector: 'email', constraints: {} },
-    { name: 'realName', label: '真实姓名', required: false, sensitive: false, selector: 'text', constraints: {} },
-    { name: 'nickname', label: '用户昵称', required: false, sensitive: false, selector: 'text', constraints: {} },
-    { name: 'password', label: '用户密码', required: true, sensitive: true, selector: 'password', constraints: {} },
-    { name: 'gender', label: '用户性别', required: false, sensitive: false, selector: 'enum', constraints: { enum: ['0', '1', '2'] } },
-    { name: 'status', label: '状态', required: false, sensitive: false, selector: 'enum', constraints: { enum: ['0', '1', '2'] } },
-    { name: 'birthDate', label: '出生日期', required: false, sensitive: false, selector: 'date', constraints: {} },
-    { name: 'deptIds', label: '归属部门', required: false, sensitive: false, selector: 'deptTree', constraints: {} },
-    { name: 'roleIds', label: '角色', required: false, sensitive: false, selector: 'roleOptions', constraints: {} },
+    {
+      name: 'username',
+      label: '登录名称',
+      required: false,
+      sensitive: false,
+      selector: 'text',
+      constraints: {},
+    },
+    {
+      name: 'phone',
+      label: '手机号码',
+      required: true,
+      sensitive: false,
+      selector: 'text',
+      constraints: { maxLength: 11 },
+    },
+    {
+      name: 'email',
+      label: '邮箱',
+      required: false,
+      sensitive: false,
+      selector: 'email',
+      constraints: {},
+    },
+    {
+      name: 'realName',
+      label: '真实姓名',
+      required: false,
+      sensitive: false,
+      selector: 'text',
+      constraints: {},
+    },
+    {
+      name: 'nickname',
+      label: '用户昵称',
+      required: false,
+      sensitive: false,
+      selector: 'text',
+      constraints: {},
+    },
+    {
+      name: 'password',
+      label: '用户密码',
+      required: true,
+      sensitive: true,
+      selector: 'password',
+      constraints: {},
+    },
+    {
+      name: 'gender',
+      label: '用户性别',
+      required: false,
+      sensitive: false,
+      selector: 'enum',
+      constraints: { enum: ['0', '1', '2'] },
+    },
+    {
+      name: 'status',
+      label: '状态',
+      required: false,
+      sensitive: false,
+      selector: 'enum',
+      constraints: { enum: ['0', '1', '2'] },
+    },
+    {
+      name: 'birthDate',
+      label: '出生日期',
+      required: false,
+      sensitive: false,
+      selector: 'date',
+      constraints: {},
+    },
+    {
+      name: 'deptIds',
+      label: '归属部门',
+      required: false,
+      sensitive: false,
+      selector: 'deptTree',
+      constraints: {},
+    },
+    {
+      name: 'roleIds',
+      label: '角色',
+      required: false,
+      sensitive: false,
+      selector: 'roleOptions',
+      constraints: {},
+    },
   ],
 };
 
@@ -124,7 +211,13 @@ function draft(overrides: Record<string, unknown> = {}) {
     schemaVersion: 1,
     formData: { username: 'zhangsan', realName: '张三' },
     missingFields: [
-      { name: 'password', label: '初始密码', required: true, sensitive: true, mustCompleteInForm: true },
+      {
+        name: 'password',
+        label: '初始密码',
+        required: true,
+        sensitive: true,
+        mustCompleteInForm: true,
+      },
     ],
     validationErrors: [],
     draftVersion: 4,
@@ -148,34 +241,43 @@ beforeEach(() => {
   mockPatchDraft.mockImplementation(async (_id: string, version: number) =>
     draft({ draftVersion: version + 1 }),
   );
-  mockRequest.mockImplementation(async (
-    url: string,
-    options?: { params?: Record<string, unknown>; method?: string },
-  ) => {
-    const params = options?.params ?? {};
-    if (String(url).includes('/create-form')) return { success: true, data: CREATE_FORM };
-    if (String(url).includes('/create-options')) {
-      return {
-        success: true,
-        data: {
-          departments: [{ id: 1, name: '总部', parentId: 0 }],
-          roles: [{ id: 2, name: '普通角色' }],
-          total: 1,
-          page: 1,
-          pageSize: 20,
-          creatable: true,
-        },
-      };
-    }
-    if (String(url).includes('/admin/users') && options?.method !== 'POST') {
-      return { success: true, data: [LIST_ROW], pagination: { total: 1 } };
-    }
-    return { success: true, data: { id: 99 } };
-  });
+  mockRequest.mockImplementation(
+    async (
+      url: string,
+      options?: { params?: Record<string, unknown>; method?: string },
+    ) => {
+      const params = options?.params ?? {};
+      if (String(url).includes('/create-form'))
+        return { success: true, data: CREATE_FORM };
+      if (String(url).includes('/create-options')) {
+        return {
+          success: true,
+          data: {
+            departments: [{ id: 1, name: '总部', parentId: 0 }],
+            roles: [{ id: 2, name: '普通角色' }],
+            total: 1,
+            page: 1,
+            pageSize: 20,
+            creatable: true,
+          },
+        };
+      }
+      if (String(url).includes('/admin/users') && options?.method !== 'POST') {
+        return { success: true, data: [LIST_ROW], pagination: { total: 1 } };
+      }
+      return { success: true, data: { id: 99 } };
+    },
+  );
 });
 
-const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'ResizeObserver');
-const messageChannelDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'MessageChannel');
+const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(
+  globalThis,
+  'ResizeObserver',
+);
+const messageChannelDescriptor = Object.getOwnPropertyDescriptor(
+  globalThis,
+  'MessageChannel',
+);
 const nativeGetComputedStyle = window.getComputedStyle;
 
 beforeAll(() => {
@@ -193,7 +295,8 @@ beforeAll(() => {
     value: class {
       port1: { onmessage?: (event: { data: unknown }) => void } = {};
       port2 = {
-        postMessage: (data: unknown) => setTimeout(() => this.port1.onmessage?.({ data }), 0),
+        postMessage: (data: unknown) =>
+          setTimeout(() => this.port1.onmessage?.({ data }), 0),
       };
     },
   });
@@ -205,12 +308,20 @@ beforeAll(() => {
 afterAll(() => {
   jest.restoreAllMocks();
   if (resizeObserverDescriptor) {
-    Object.defineProperty(globalThis, 'ResizeObserver', resizeObserverDescriptor);
+    Object.defineProperty(
+      globalThis,
+      'ResizeObserver',
+      resizeObserverDescriptor,
+    );
   } else {
     Reflect.deleteProperty(globalThis, 'ResizeObserver');
   }
   if (messageChannelDescriptor) {
-    Object.defineProperty(globalThis, 'MessageChannel', messageChannelDescriptor);
+    Object.defineProperty(
+      globalThis,
+      'MessageChannel',
+      messageChannelDescriptor,
+    );
   } else {
     Reflect.deleteProperty(globalThis, 'MessageChannel');
   }
@@ -219,7 +330,10 @@ afterAll(() => {
 /* ------------------------------------------------------------ A. 自动路径 */
 
 /** 一个假协作句柄：结构与真实句柄一致（只有 snapshot/open/apply）。 */
-function fakeHandle(fields: Record<string, unknown> = {}, dirtyFields: string[] = []) {
+function fakeHandle(
+  fields: Record<string, unknown> = {},
+  dirtyFields: string[] = [],
+) {
   const state = {
     instanceId: 'user.create#1',
     revision: 7,
@@ -258,7 +372,11 @@ function renderBridge(options: { identityEpoch?: number } = {}) {
     flush: async () => {},
   };
   const view = render(
-    <AiChatContext.Provider value={{ viewMode: 'floating', minimize, formAssistance: assistance } as never}>
+    <AiChatContext.Provider
+      value={
+        { viewMode: 'floating', minimize, formAssistance: assistance } as never
+      }
+    >
       <AiFormAssistanceContext.Provider value={assistance as never}>
         <AiNativeFormBridge />
       </AiFormAssistanceContext.Provider>
@@ -282,7 +400,9 @@ test('本轮活动请求自动打开原生表单并套用草稿字段', async ()
   const unregister = registerUserCreateFormHandle(handle as never);
   const { bound, setOutcome } = renderBridge();
   await act(async () => {
-    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(liveRequest());
+    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+      liveRequest(),
+    );
   });
   await waitFor(() => expect(handle.apply).toHaveBeenCalled());
   expect(handle.open).toHaveBeenCalledTimes(1);
@@ -318,7 +438,9 @@ test('表单里有用户未保存的修改时，不自动导航也不自动填�
   const unregister = registerUserCreateFormHandle(handle as never);
   const { bound, setOutcome } = renderBridge();
   await act(async () => {
-    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(liveRequest());
+    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+      liveRequest(),
+    );
   });
   await waitFor(() => expect(setOutcome).toHaveBeenCalled());
   expect(handle.open).not.toHaveBeenCalled();
@@ -334,7 +456,9 @@ test('表单里有用户未保存的修改时，不自动导航也不自动填�
 test('没有协作表单时明说暂不支持，且不编造字段', async () => {
   const { bound, setOutcome } = renderBridge();
   await act(async () => {
-    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(liveRequest());
+    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+      liveRequest(),
+    );
   });
   // 等满「等句柄」的窗口之后才判定为不支持。
   await waitFor(() => expect(setOutcome).toHaveBeenCalled(), { timeout: 5000 });
@@ -384,20 +508,25 @@ test('覆盖用户改过的字段：先展示原值与新值，确认后只授�
   });
   await waitFor(() => expect(handle.apply).toHaveBeenCalledTimes(2));
   // 授权名单来自用户确认过的那份差异，而不是补丁的键集合。
-  const retryInput = (handle.apply.mock.calls[1] as unknown as [
-    { authorizedFields?: string[] },
-  ])[0];
+  const retryInput = (
+    handle.apply.mock.calls[1] as unknown as [{ authorizedFields?: string[] }]
+  )[0];
   expect(retryInput.authorizedFields).toEqual(['username']);
   unregister();
 });
 
 test('补丁写进去了但角色失效按提示处理，不重试', async () => {
   const handle = fakeHandle();
-  handle.apply.mockResolvedValue({ applied: true, conflicts: ['roleIds'] } as never);
+  handle.apply.mockResolvedValue({
+    applied: true,
+    conflicts: ['roleIds'],
+  } as never);
   const unregister = registerUserCreateFormHandle(handle as never);
   const { bound, setOutcome } = renderBridge();
   await act(async () => {
-    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(liveRequest());
+    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+      liveRequest(),
+    );
   });
   await waitFor(() => expect(setOutcome).toHaveBeenCalled());
   expect(handle.apply).toHaveBeenCalledTimes(1);
@@ -433,15 +562,17 @@ test('只有用户点「继续填写」才读服务器最新草稿（历史渲�
   expect(mockGetDraft).not.toHaveBeenCalled();
   expect(handle.open).not.toHaveBeenCalled();
 
-  mockGetDraft.mockResolvedValueOnce(draft({ formData: { username: 'server-newest' } }));
+  mockGetDraft.mockResolvedValueOnce(
+    draft({ formData: { username: 'server-newest' } }),
+  );
   await act(async () => {
     (bound.current as { onRestore: (id: string) => void }).onRestore('draft-1');
   });
   await waitFor(() => expect(handle.apply).toHaveBeenCalled());
   expect(mockGetDraft).toHaveBeenCalledWith('draft-1');
-  const appliedInput = (handle.apply.mock.calls[0] as unknown as [
-    { fields: unknown },
-  ])[0];
+  const appliedInput = (
+    handle.apply.mock.calls[0] as unknown as [{ fields: unknown }]
+  )[0];
   expect(appliedInput.fields).toEqual({ username: 'server-newest' });
   unregister();
 });
@@ -464,7 +595,9 @@ test('表单变化合并延迟后同步，且载荷里没有密码', async () =>
     const unregister = registerUserCreateFormHandle(handle as never);
     const { bound } = renderBridge();
     await act(async () => {
-      (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(liveRequest());
+      (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+        liveRequest(),
+      );
     });
     await act(async () => {
       jest.advanceTimersByTime(1000);
@@ -473,6 +606,12 @@ test('表单变化合并延迟后同步，且载荷里没有密码', async () =>
     expect(mockPatchDraft).not.toHaveBeenCalled();
 
     // 用户在表单里改了昵称 —— 合并延迟内不该发请求。
+    // syncLatest 在到期时读的是句柄快照，所以假句柄的状态必须跟着表单走。
+    handle.state.fields = {
+      username: 'zhangsan',
+      realName: '张三',
+      nickname: '小张',
+    };
     await act(async () => {
       publishUserCreateFormChange({
         target: 'user.create',
@@ -486,7 +625,9 @@ test('表单变化合并延迟后同步，且载荷里没有密码', async () =>
     await act(async () => {
       jest.advanceTimersByTime(1000);
     });
-    expect(mockPatchDraft).toHaveBeenCalledWith('draft-1', 4, { nickname: '小张' });
+    expect(mockPatchDraft).toHaveBeenCalledWith('draft-1', 4, {
+      nickname: '小张',
+    });
 
     // flush（发送下一轮消息前 / 人工提交前）把还没到延迟窗口的编辑立刻落地。
     handle.state.fields = {
@@ -500,20 +641,95 @@ test('表单变化合并延迟后同步，且载荷里没有密码', async () =>
         target: 'user.create',
         instanceId: 'user.create#1',
         revision: 9,
-        fields: { username: 'zhangsan', realName: '张三', nickname: '小张', email: 'a@b.c' },
+        fields: {
+          username: 'zhangsan',
+          realName: '张三',
+          nickname: '小张',
+          email: 'a@b.c',
+        },
         dirtyFields: ['nickname', 'email'],
       });
     });
     await act(async () => {
       await (bound.current as { flush: () => Promise<void> }).flush();
     });
-    expect(mockPatchDraft).toHaveBeenLastCalledWith('draft-1', 5, { email: 'a@b.c' });
+    expect(mockPatchDraft).toHaveBeenLastCalledWith('draft-1', 5, {
+      email: 'a@b.c',
+    });
     const payload = JSON.stringify(mockPatchDraft.mock.calls);
     expect(payload).not.toContain('password');
     unregister();
   } finally {
     jest.useRealTimers();
   }
+});
+
+test('自动填表走真实的 open()/apply()：延迟窗口内不得发出会清空草稿的 PATCH', async () => {
+  // 回归用例：open() 会推一次「空表单」变化，apply() 之后再推一次「已填表单」。
+  // 若同步在 600ms 前就把差算好（或空差不撤定时器），到期那次 PATCH 就会把
+  // 刚填进去的字段全部清成 null。这里必须走**真实**的 UserForm，mock 句柄看不到。
+  renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+
+  jest.useFakeTimers();
+  try {
+    const { bound } = renderBridge();
+    await act(async () => {
+      (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+        liveRequest(),
+      );
+      // open() 内部有一个 setTimeout(0)，apply() 前后还有若干 await。
+      jest.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+    for (let round = 0; round < 4; round += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(SYNC_DEBOUNCE_MS);
+        await Promise.resolve();
+      });
+    }
+
+    // 表单确实被填上了（否则这条断言会变成空断言）。
+    const handle = peekUserCreateFormHandle();
+    expect(handle?.snapshot().fields).toMatchObject({
+      username: 'zhangsan',
+      realName: '张三',
+    });
+    // 关键：整个窗口里一次 PATCH 都不该发 —— 更不该发清空字段的那种。
+    expect(mockPatchDraft).not.toHaveBeenCalled();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test('同步失败时 prepare() 拒绝提交，而不是带着旧版本号创建', async () => {
+  const handle = fakeHandle();
+  const unregister = registerUserCreateFormHandle(handle as never);
+  const { bound } = renderBridge();
+  await act(async () => {
+    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+      liveRequest(),
+    );
+  });
+  await waitFor(() => expect(handle.apply).toHaveBeenCalled());
+
+  mockPatchDraft.mockRejectedValueOnce(new Error('服务端不可用'));
+  const link = peekUserCreateDraftLink();
+  expect(link).not.toBeNull();
+  // 用户在表单里改了昵称 → 需要同步 → 同步失败。
+  await act(async () => {
+    publishUserCreateFormChange({
+      target: 'user.create',
+      instanceId: 'user.create#1',
+      revision: 9,
+      fields: { username: 'zhangsan', realName: '张三', nickname: '小张' },
+      dirtyFields: ['nickname'],
+    });
+  });
+  await act(async () => {
+    await expect(link?.prepare()).rejects.toThrow(/同步/);
+  });
+  unregister();
 });
 
 /* ------------------------------------------------------------- C. 人工提交 */
@@ -537,7 +753,8 @@ function renderUserList() {
 const createCalls = () =>
   mockRequest.mock.calls.filter(
     ([url, options]) =>
-      String(url).includes('/admin/users') && (options as { method?: string })?.method === 'POST',
+      String(url).includes('/admin/users') &&
+      (options as { method?: string })?.method === 'POST',
   );
 
 async function fillCreateForm() {
@@ -584,15 +801,22 @@ test('人工「确定」：等同步完成后带精确草稿版本调用一次�
     await Promise.resolve();
   });
   await waitFor(() => expect(createCalls()).toHaveLength(1));
-  const payload = (createCalls()[0][1] as { data: Record<string, unknown> }).data;
-  expect(payload.draftSubmission).toEqual({ draftId: 'draft-1', draftVersion: 9 });
+  const payload = (createCalls()[0][1] as { data: Record<string, unknown> })
+    .data;
+  expect(payload.draftSubmission).toEqual({
+    draftId: 'draft-1',
+    draftVersion: 9,
+  });
   expect(payload.password).toBe('secret123');
   expect(payload.username).toBe('zhangsan');
   unregisterLink();
 });
 
 test('双击「确定」只发一次创建（本地锁 + 服务端幂等）', async () => {
-  const prepare = jest.fn(async () => ({ draftId: 'draft-1', draftVersion: 9 }));
+  const prepare = jest.fn(async () => ({
+    draftId: 'draft-1',
+    draftVersion: 9,
+  }));
   const unregisterLink = registerUserCreateDraftLink({
     prepare,
     reconcile: async () => 'unknown',
@@ -614,24 +838,34 @@ test('双击「确定」只发一次创建（本地锁 + 服务端幂等）', as
 });
 
 test('创建请求网络异常：只读查询草稿，绝不自动重发创建', async () => {
-  mockRequest.mockImplementation(async (
-    url: string,
-    options?: { method?: string },
-  ) => {
-    const href = String(url);
-    if (href.includes('/create-form')) return { success: true, data: CREATE_FORM };
-    if (href.includes('/create-options')) {
-      return { success: true, data: { departments: [], roles: [], total: 0, page: 1, pageSize: 20, creatable: true } };
-    }
-    if (href.includes('/admin/users') && options?.method !== 'POST') {
-      return { success: true, data: [LIST_ROW], pagination: { total: 1 } };
-    }
-    if (href.includes('/admin/users') && options?.method === 'POST') {
-      // 响应丢了：服务端可能已经创建成功。
-      throw new Error('Network Error');
-    }
-    return { success: true, data: {} };
-  });
+  mockRequest.mockImplementation(
+    async (url: string, options?: { method?: string }) => {
+      const href = String(url);
+      if (href.includes('/create-form'))
+        return { success: true, data: CREATE_FORM };
+      if (href.includes('/create-options')) {
+        return {
+          success: true,
+          data: {
+            departments: [],
+            roles: [],
+            total: 0,
+            page: 1,
+            pageSize: 20,
+            creatable: true,
+          },
+        };
+      }
+      if (href.includes('/admin/users') && options?.method !== 'POST') {
+        return { success: true, data: [LIST_ROW], pagination: { total: 1 } };
+      }
+      if (href.includes('/admin/users') && options?.method === 'POST') {
+        // 响应丢了：服务端可能已经创建成功。
+        throw new Error('Network Error');
+      }
+      return { success: true, data: {} };
+    },
+  );
   const reconcile = jest.fn(async () => 'unknown' as const);
   const unregisterLink = registerUserCreateDraftLink({
     prepare: async () => ({ draftId: 'draft-1', draftVersion: 9 }),
@@ -652,23 +886,33 @@ test('创建请求网络异常：只读查询草稿，绝不自动重发创建',
 });
 
 test('业务失败：表单数据与密码控件保留，创建不会被重发', async () => {
-  mockRequest.mockImplementation(async (
-    url: string,
-    options?: { method?: string },
-  ) => {
-    const href = String(url);
-    if (href.includes('/create-form')) return { success: true, data: CREATE_FORM };
-    if (href.includes('/create-options')) {
-      return { success: true, data: { departments: [], roles: [], total: 0, page: 1, pageSize: 20, creatable: true } };
-    }
-    if (href.includes('/admin/users') && options?.method === 'POST') {
-      return { success: false, message: '登录名称已存在' };
-    }
-    if (href.includes('/admin/users')) {
-      return { success: true, data: [LIST_ROW], pagination: { total: 1 } };
-    }
-    return { success: true, data: {} };
-  });
+  mockRequest.mockImplementation(
+    async (url: string, options?: { method?: string }) => {
+      const href = String(url);
+      if (href.includes('/create-form'))
+        return { success: true, data: CREATE_FORM };
+      if (href.includes('/create-options')) {
+        return {
+          success: true,
+          data: {
+            departments: [],
+            roles: [],
+            total: 0,
+            page: 1,
+            pageSize: 20,
+            creatable: true,
+          },
+        };
+      }
+      if (href.includes('/admin/users') && options?.method === 'POST') {
+        return { success: false, message: '登录名称已存在' };
+      }
+      if (href.includes('/admin/users')) {
+        return { success: true, data: [LIST_ROW], pagination: { total: 1 } };
+      }
+      return { success: true, data: {} };
+    },
+  );
   const unregisterLink = registerUserCreateDraftLink({
     prepare: async () => ({ draftId: 'draft-1', draftVersion: 9 }),
     reconcile: async () => 'unknown',
@@ -686,8 +930,8 @@ test('业务失败：表单数据与密码控件保留，创建不会被重发',
     'input[type="password"]',
   ) as HTMLInputElement | null;
   expect(passwordInput?.value).toBe('secret123');
-  expect((screen.getByPlaceholderText('请输入登录名称') as HTMLInputElement).value).toBe(
-    'zhangsan',
-  );
+  expect(
+    (screen.getByPlaceholderText('请输入登录名称') as HTMLInputElement).value,
+  ).toBe('zhangsan');
   unregisterLink();
 });
