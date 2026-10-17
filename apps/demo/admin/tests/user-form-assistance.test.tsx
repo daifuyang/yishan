@@ -570,3 +570,48 @@ test('编辑表单关掉后，创建协作句柄自己回来', async () => {
   expect(result.applied).toBe(true);
   expect(handle.snapshot().fields.username).toBe('after-edit-close');
 });
+
+test('补丁落定时角色重校验已完成：conflict 上报且版本不跳', async () => {
+  renderUserList();
+  await openByAssistant();
+  const handle = currentHandle();
+
+  let applied!: Awaited<ReturnType<typeof handle.apply>>;
+  await act(async () => {
+    applied = await handle.apply({
+      instanceId: handle.snapshot().instanceId,
+      baseRevision: handle.snapshot().revision,
+      fields: { deptIds: [], roleIds: [2] },
+    });
+  });
+  expect(applied.applied).toBe(true);
+  expect(applied.conflicts).not.toContain('roleIds');
+
+  const before = handle.snapshot();
+  let result!: Awaited<ReturnType<typeof handle.apply>>;
+  await act(async () => {
+    result = await handle.apply({
+      instanceId: before.instanceId,
+      baseRevision: before.revision,
+      fields: { deptIds: [1] },
+    });
+  });
+  // 补丁写成功了，但它让已选角色变得不可授予 —— 必须回报，而不是只留一个表单错误。
+  expect(result.applied).toBe(true);
+  expect(result.conflicts).toContain('roleIds');
+
+  // 重校验是在 resolve 之前完成的，因此 resolve 后的快照就是稳定版本：
+  // 立刻用这个版本发下一版补丁不会遇到假的 __revision__（用户什么都没动）。
+  const after = handle.snapshot();
+  let next!: Awaited<ReturnType<typeof handle.apply>>;
+  await act(async () => {
+    next = await handle.apply({
+      instanceId: after.instanceId,
+      baseRevision: after.revision,
+      fields: { username: 'right-after' },
+    });
+  });
+  expect(next.conflicts).not.toContain('__revision__');
+  expect(next.applied).toBe(true);
+  expect(handle.snapshot().fields.username).toBe('right-after');
+});

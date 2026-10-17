@@ -199,16 +199,19 @@ const UserForm: React.FC<UserFormProps> = ({
    * 部门变化后**重新验证**角色：候选被服务端按新的 deptIds 重算过，
    * 因此已选角色可能不再可授予。这里不替用户改选，只把不可授予的标成错误，
    * 由用户自己决定（设计 §7）。服务端提交时仍会再检查一次。
+   *
+   * 返回失效的角色 id 列表：助手路径需要把它当成补丁结果的一部分回报，
+   * 不能只在表单上留一个错误就完事 —— 调用方看不到自己的选择已经不可授予。
    */
   const revalidateRoles = useCallback(
-    async (deptIds: number[]) => {
-      if (!assistEnabled) return;
+    async (deptIds: number[]): Promise<number[]> => {
+      if (!assistEnabled) return [];
       const options = await getUserCreateOptions({ deptIds });
-      if (!options) return;
+      if (!options) return [];
       const allowed = new Set(options.roles.map((role) => role.id));
       const selected = (readValues().roleIds as number[] | undefined) ?? [];
       const invalid = selected.filter((id) => !allowed.has(id));
-      if (invalid.length === 0) return;
+      if (invalid.length === 0) return [];
       formRef.current?.setFields?.([
         {
           name: 'roleIds',
@@ -216,25 +219,18 @@ const UserForm: React.FC<UserFormProps> = ({
         },
       ]);
       revisionRef.current += 1;
+      return invalid;
     },
     [assistEnabled, readValues],
   );
 
-  const writeFields = useCallback(
-    (patch: Record<string, unknown>) => {
-      if (Object.keys(patch).length === 0) return;
-      formRef.current?.setFieldsValue?.(patch);
-      valuesRef.current = { ...valuesRef.current, ...patch };
-      for (const key of Object.keys(patch)) provenanceRef.current[key] = 'assistant';
-      revisionRef.current += 1;
-      // `setFieldsValue` 不触发 `onValuesChange`，助手写入的 deptIds 必须在这里
-      // 自己补一次角色重校验，否则这条路径下的越权角色永远不会报错。
-      // 用户手改走 onValuesChange 那条路径，因此不会重复执行。
-      const nextDeptIds = patch.deptIds as number[] | undefined;
-      if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds);
-    },
-    [revalidateRoles],
-  );
+  const writeFields = useCallback((patch: Record<string, unknown>) => {
+    if (Object.keys(patch).length === 0) return;
+    formRef.current?.setFieldsValue?.(patch);
+    valuesRef.current = { ...valuesRef.current, ...patch };
+    for (const key of Object.keys(patch)) provenanceRef.current[key] = 'assistant';
+    revisionRef.current += 1;
+  }, []);
 
   // ---- 协作契约注册：挂载即注册，卸载即摘除（身份变化时引用自动作废） ----
   useEffect(() => {
@@ -293,7 +289,16 @@ const UserForm: React.FC<UserFormProps> = ({
         }
         if (conflicts.length > 0) return { applied: false, conflicts };
         writeFields(accepted);
-        return { applied: true, conflicts: [] };
+        // `setFieldsValue` 不触发 `onValuesChange`，助手写入的 deptIds 必须在这里
+        // 自己补一次角色重校验。并且要**等到它落定**再 resolve：重校验会 +1 版本，
+        // 不等的话助手紧接着 snapshot() 拿到的就是半途版本，下一版补丁会被
+        // __revision__ 拒掉 —— 用户明明什么都没动。
+        const nextDeptIds = accepted.deptIds as number[] | undefined;
+        if (nextDeptIds === undefined) return { applied: true, conflicts: [] };
+        const invalidRoles = await revalidateRoles(nextDeptIds);
+        // 补丁本身写成功了（deptIds 已落），但它让已选角色变得不可授予：
+        // 把它作为 roleIds 冲突回报，助手据此让用户重新选，而不是静默留一个表单错误。
+        return { applied: true, conflicts: invalidRoles.length > 0 ? ['roleIds'] : [] };
       },
     };
     const unsubscribe = registerUserCreateFormHandle(handle, identity);
@@ -325,10 +330,14 @@ const UserForm: React.FC<UserFormProps> = ({
       setPrefillMissing(next.missing);
       setOpen(true);
       writeFields(fields);
+      // 同理：预填写进来的 deptIds 也要补一次角色重校验（setFieldsValue 不触发
+      // onValuesChange）。预填不是补丁，没有返回值契约，因此不 await。
+      const nextDeptIds = fields.deptIds as number[] | undefined;
+      if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds);
     };
     consume();
     return subscribeAiPrefill(consume);
-  }, [assistEnabled, setOpen, writeFields]);
+  }, [assistEnabled, revalidateRoles, setOpen, writeFields]);
 
   // 同源字段定义：约束、必填、白名单都以服务端 create schema 为准。
   useEffect(() => {

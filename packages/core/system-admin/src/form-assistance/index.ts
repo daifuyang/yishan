@@ -75,8 +75,11 @@ export interface UserCreateFormApplyInput {
    *
    * **必须**来自用户**本轮确认过的那份差异**（diff），不能来自 `Object.keys(fields)`
    * 或整个补丁：名单本身就是「用户同意覆盖」的凭据，把未讨论的字段顺手列进去等于
-   * 绕过确认。另外，带了名单里**本次补丁并不携带**的字段是调用方的 bug ——
-   * 实现层会拒收这些名字，宁可失败也不要静默授权一个没写进补丁的字段。
+   * 绕过确认。
+   *
+   * 多带的字段名（本次补丁并不携带）会被**忽略**：授权只在 `fields` 真正写入的键上
+   * 生效，因此名单无法授权一个没写进补丁的字段 —— 这一点是安全的。多带仍然算调用方
+   * 的 bug（多半是把 `fields` 的键抄错了），但不必让整次补丁失败。
    */
   authorizedFields?: readonly string[];
 }
@@ -85,6 +88,16 @@ export interface UserCreateFormHandle {
   snapshot(): UserFormSnapshot;
   /** 打开原生新建表单。已打开时是幂等的 —— 永远不会开出第二个表单。 */
   open(): Promise<UserFormSnapshot>;
+  /**
+   * 应用补丁。
+   *
+   * 返回时表单已经**落定**：`snapshot()` 拿到的版本就是下一次补丁该用的
+   * `baseRevision`，不会因为实现内部的异步校验而突然 +1。
+   *
+   * `applied: true` 时 `conflicts` 仍可能非空 —— 那是「补丁写进去了，但它让某个字段
+   * 变得不再合法」的提示（当前只有 `roleIds`：改了部门之后已选角色不可再授予），
+   * 调用方应当把它转成对用户的一句话，而不是当成失败。
+   */
   apply(input: UserCreateFormApplyInput): Promise<{ applied: boolean; conflicts: readonly string[] }>;
 }
 
