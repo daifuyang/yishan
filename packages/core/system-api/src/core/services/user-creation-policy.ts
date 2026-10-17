@@ -143,7 +143,8 @@ export async function validateUserCreation(
   const actorRoleIds = await PermissionRepository.loadActiveRoleIdsByUserId(subject.actorId, db)
   const actorDeptIds = await UserRepository.loadActiveDeptIdsByUserId(subject.actorId, db)
   // ttlMs: 0 —— 授权判定必须看到最新权限，30 秒缓存窗口会让刚被回收的权限继续生效。
-  const { perms: actorRolePerms } = await PermissionService.loadForRoleIds(actorRoleIds, { ttlMs: 0 })
+  // db 一并透传：注入事务级句柄时，权限与范围必须读同一份数据，判定才可复现。
+  const { perms: actorRolePerms } = await PermissionService.loadForRoleIds(actorRoleIds, { ttlMs: 0, db })
   const actorPerms = computeEffectivePerms(actorRolePerms, subject.tokenScope, PERMISSION_CODES)
 
   // 超管（按**本次请求**的有效权限判定，PAT 收窄在内）可以分配任何角色与部门。

@@ -13,6 +13,7 @@ import { currentSystemRuntime } from '@/runtime'
  */
 
 import { PermissionRepository } from "../repositories/permission.repository.js";
+import type { AppQueryDb } from "@/db";
 import { ROLE_CODES } from "../../constants/permission-codes.js";
 import { PERMISSION_CODES } from "@yishan/core-api/permissions/catalog";
 import type { MobileCapabilities } from "../schemas/auth.js";
@@ -35,10 +36,15 @@ export class PermissionService {
 
   /**
    * Load effective permission codes + role codes for a set of role IDs.
+   *
+   * @param opts.ttlMs 缓存有效期；传 `0` 明确关闭缓存（安全判定必须看到最新权限）。
+   * @param opts.db   注入的 db 句柄。给了就用它读库，且**完全不碰进程级缓存**：
+   *   注入的通常是事务级句柄，既不该读到共享连接池算出的旧结果，更不该把事务内
+   *   尚未提交的行写进全局缓存供其他请求读取。
    */
   static async loadForRoleIds(
     roleIds: number[] | number | undefined | null,
-    opts: { ttlMs?: number } = {},
+    opts: { ttlMs?: number; db?: AppQueryDb } = {},
   ): Promise<{ perms: Set<string>; roleCodes: Set<string> }> {
     const normalizedRoleIds = Array.isArray(roleIds)
       ? roleIds
@@ -54,15 +60,22 @@ export class PermissionService {
     const sortedIds = [...new Set(validRoleIds)].sort((a, b) => a - b);
     const cacheKey = `${sortedIds.join(",")}|${CACHE_VERSION}`;
     const now = Date.now();
-    const cached = PermissionService.cache.get(cacheKey);
-    if (cached && now - cached.loadedAt < ttlMs) {
+    // 注入 db 时读写都绕过缓存，理由见 opts.db 的说明。
+    const cacheable = opts.db === undefined;
+    const cached = cacheable ? PermissionService.cache.get(cacheKey) : undefined;
+    // `ttlMs > 0` 是显式门禁，不能只靠 `now - loadedAt < ttlMs`：
+    // 系统时钟回拨（校时 / 手动调整）会让差值变负，`ttlMs: 0` 反而命中缓存 ——
+    // 刚被回收的角色权限会继续授权整整一个缓存窗口。
+    if (cached && ttlMs > 0 && now - cached.loadedAt < ttlMs) {
       return { perms: cached.perms, roleCodes: cached.roleCodes };
     }
-    const { perms, roleCodes } = await PermissionRepository.loadPermissionsByRoleIds(sortedIds);
+    const { perms, roleCodes } = await PermissionRepository.loadPermissionsByRoleIds(sortedIds, opts.db);
     if (roleCodes.has(ROLE_CODES.SUPER_ADMIN)) {
       perms.add("__super_admin__");
     }
-    PermissionService.cache.set(cacheKey, { perms, roleCodes, loadedAt: now });
+    if (cacheable) {
+      PermissionService.cache.set(cacheKey, { perms, roleCodes, loadedAt: now });
+    }
     return { perms, roleCodes };
   }
 

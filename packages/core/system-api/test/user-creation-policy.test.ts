@@ -10,7 +10,7 @@
  *
  * 另外覆盖部门关联（8.2）与同源字段契约（草稿字段、password 不可写）。
  */
-import { describe, expect, it, vi } from './runtime-fixture'
+import { afterEach, describe, expect, it, vi } from './runtime-fixture'
 import { setTestPermissionDeclarations } from './runtime-fixture'
 import { MySqlDialect } from 'drizzle-orm/mysql-core'
 import {
@@ -41,6 +41,9 @@ setTestPermissionDeclarations([
 const ACTOR_ID = 7
 
 const dialect = new MySqlDialect({ casing: {} as never })
+
+// spyOn(PermissionRepository…) 是按类打桩的，不还原会串到下一个用例。
+afterEach(() => vi.restoreAllMocks())
 
 interface FakeRole {
   id: number
@@ -149,6 +152,21 @@ describe('validateUserCreation — 角色授权', () => {
 
     await expect(validateUserCreation(baseSubject(), { roleIds: [3], deptIds: [10] }, { db })).resolves
       .toBeUndefined()
+  })
+
+  it('loads the operator permissions with the cache disabled and on the injected db', async () => {
+    // 这条断言守着「授权判定必须看到最新权限」：ttlMs 一旦丢失或变成默认值，
+    // 30 秒窗口内刚被回收的权限仍能通过授权（spec §8.3）。
+    mockActor({ roleIds: [1, 2], perms: CREATE_PERMS })
+    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS }] })
+    mockDepts([])
+
+    await validateUserCreation(baseSubject(), {}, { db })
+
+    expect(PermissionService.loadForRoleIds).toHaveBeenCalledWith(
+      [1, 2],
+      expect.objectContaining({ ttlMs: 0, db }),
+    )
   })
 
   it('rejects a role carrying a permission the operator does not hold', async () => {
