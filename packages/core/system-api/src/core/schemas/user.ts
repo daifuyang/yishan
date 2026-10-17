@@ -66,7 +66,7 @@ export type SysUserResp = Static<typeof SysUserSchema>;
 // 若保留 default，UpdateXxxReq = Type.Partial(CreateXxxReq) 会让 Fastify 在请求体缺字段时
 // 自动注入默认值，从而导致 update 接口把数据库中已存在的字段重置为 schema 默认值。
 // 这里统一去掉 default，由 Service 层（createUser 的 toCreateUserInput）负责设置缺省值。
-const CreateUserReqSchema = Type.Object(
+export const CreateUserReqSchema = Type.Object(
   {
     username: Type.Optional(Type.String({
       description: "用户名",
@@ -127,7 +127,7 @@ const UpdateUserReqSchema = Type.Partial(
 );
 
 // 用户列表查询参数 Schema
-const UserListQuerySchema = Type.Object(
+export const UserListQuerySchema = Type.Object(
   {
     ...PaginationQuerySchema.properties,
     keyword: Type.Optional(
@@ -174,6 +174,61 @@ const UserListQuerySchema = Type.Object(
 export type UserListQuery = Static<typeof UserListQuerySchema>;
 export type CreateUserReq = Static<typeof CreateUserReqSchema>;
 export type UpdateUserReq = Static<typeof UpdateUserReqSchema>;
+
+/**
+ * 助手可写的用户字段白名单 —— 与真实后台表单同源。
+ *
+ * 派生自 `CreateUserReqSchema`（先 Omit 掉 `password` 与后续的 `draftSubmission`），
+ * 再按 `packages/core/system-admin` 的 `UserForm` 实际字段取交集：
+ *
+ *   username / deptIds / phone / email / realName / nickname / gender / status /
+ *   roleIds / birthDate
+ *
+ * 两条刻意的取舍：
+ *   - **不暴露 `password`**：密码只留在受保护的表单控件与本次提交请求里，
+ *     不进入草稿、工具参数、模型上下文或审计正文。
+ *   - **不暴露 `avatar`**：`avatar` 今天确实可写，但 UserForm 里没有它。
+ *     「可写」不等于「表单里有」，把不在表单里的字段开放给助手只会凭空
+ *     多出一条用户无法在界面上确认或撤销的写入路径。
+ *
+ * 手机号沿用真实 schema 的 1-20 位契约，不在 AI 路径单独加国家/地区假设。
+ */
+export const USER_CREATE_DRAFT_FIELD_KEYS = [
+  "username",
+  "email",
+  "phone",
+  "realName",
+  "nickname",
+  "gender",
+  "birthDate",
+  "status",
+  "deptIds",
+  "roleIds",
+] as const;
+
+const UserCreateDraftBaseSchema = Type.Omit(CreateUserReqSchema, [
+  "password",
+  "draftSubmission",
+]);
+
+export const UserCreateDraftFieldsSchema = Type.Object(
+  Object.fromEntries(
+    USER_CREATE_DRAFT_FIELD_KEYS.map((key) => [key, UserCreateDraftBaseSchema.properties[key]]),
+  ) as Pick<
+    typeof UserCreateDraftBaseSchema.properties,
+    (typeof USER_CREATE_DRAFT_FIELD_KEYS)[number]
+  >,
+  { $id: "userCreateDraftFields", additionalProperties: false },
+);
+
+/** 草稿逐轮补齐，因此全部字段可选；提交前仍由真实 create schema 校验必填项。 */
+export const UserCreateDraftPartialSchema = Type.Partial(UserCreateDraftFieldsSchema, {
+  $id: "userCreateDraftPartial",
+  additionalProperties: false,
+});
+
+export type UserCreateDraftFields = Static<typeof UserCreateDraftFieldsSchema>;
+export type UserCreateDraftPartial = Static<typeof UserCreateDraftPartialSchema>;
 
 // 获取用户列表
 const UserListRespSchema = successResponse({

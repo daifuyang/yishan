@@ -1,6 +1,7 @@
 import { aliasedTable, and, asc, desc, eq, getTableColumns, inArray, isNull, like, or, sql, type SQL } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysUser, sysUserDept, sysUserRole } from "@/db/schema";
+import { currentDataScope, resolveDataScope, scopedQueryCondition } from "@/core/auth/data-scope";
 import { dateUtils } from "../../utils/date.js";
 import { UserTokenRepository } from "./user-token.repository.js";
 import { clampOffset } from "./_pagination.js";
@@ -67,8 +68,13 @@ function resolveUserOrderColumn(sortBy: string | undefined) {
   return USER_ORDER_COLUMNS[DEFAULT_USER_ORDER_BY];
 }
 
-function buildUserWhere(opts: { keyword?: string; status?: string | number; startTime?: Date; endTime?: Date }): SQL | undefined {
+function buildUserWhere(opts: { keyword?: string; status?: string | number; startTime?: Date; endTime?: Date; dataScope?: SQL }): SQL | undefined {
   const conds: SQL[] = [isNull(sysUser.deletedAt)];
+  // 行级数据权限（sys_role.data_scope）。list 与 count 共用本函数，
+  // 因此「列表」与「统计」天然同范围——这是验收项，不是巧合。
+  if (opts.dataScope) {
+    conds.push(opts.dataScope);
+  }
   if (opts.keyword) {
     const like_ = `%${opts.keyword}%`;
     conds.push(
@@ -93,10 +99,12 @@ function buildUserWhere(opts: { keyword?: string; status?: string | number; star
   return and(...conds);
 }
 
-async function fetchUserDetail(id: number, db: AppQueryDb = drizzleDb): Promise<UserDetailRow | null> {
+async function fetchUserDetail(id: number, db: AppQueryDb = drizzleDb, dataScope?: SQL): Promise<UserDetailRow | null> {
   const creatorUser = aliasedTable(sysUser, "creator_user");
   const updaterUser = aliasedTable(sysUser, "updater_user");
-  
+
+  // dataScope 与主键条件并列 AND：越权读取返回 null（表现为「不存在」），
+  // 而不是泄露「存在但无权限」——后者本身就是信息泄露。
   const [row]: UserDetailBaseRow[] = await db
     .select({
       ...userPublicColumns,
@@ -106,7 +114,7 @@ async function fetchUserDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
     .from(sysUser)
     .leftJoin(creatorUser, eq(creatorUser.id, sysUser.creatorId))
     .leftJoin(updaterUser, eq(updaterUser.id, sysUser.updaterId))
-    .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt)))
+    .where(and(eq(sysUser.id, id), isNull(sysUser.deletedAt), dataScope))
     .limit(1);
     
   if (!row) return null;
@@ -138,10 +146,25 @@ export type UserListRowWithRelations = PublicUserRow & {
 };
 
 export class UserRepository {
+  /**
+   * 当前请求的行级数据范围条件。
+   *
+   * `enforceScope=false` 是**显式**的免过滤开关：`jwt-auth` 用 findById 解析当前
+   * 登录用户自己、刷新令牌校验等路径必须不过滤，否则登录会被自己的范围卡住。
+   *
+   * 除此之外缺上下文（未认证、非请求任务、上下文建立失败）一律返回恒假条件，
+   * 而不是返回 undefined 静默放开。
+   */
+  static async dataScopeCondition(enforceScope: boolean): Promise<SQL | undefined> {
+    const subject = currentDataScope()
+    if (!enforceScope) return undefined
+    return scopedQueryCondition(subject, subject ? await resolveDataScope(subject) : null, enforceScope)
+  }
+
   // 新的标准方法
-  static async list(query: { page?: number; pageSize?: number; keyword?: string; status?: string | number; sortBy?: string; sortOrder?: string; startTime?: Date; endTime?: Date } = {}): Promise<UserListRowWithRelations[]> {
+  static async list(query: { page?: number; pageSize?: number; keyword?: string; status?: string | number; sortBy?: string; sortOrder?: string; startTime?: Date; endTime?: Date } = {}, enforceScope = true): Promise<UserListRowWithRelations[]> {
     const { page = 1, pageSize = 10, sortBy, sortOrder = "desc" } = query;
-    const where = buildUserWhere(query);
+    const where = buildUserWhere({ ...query, dataScope: await UserRepository.dataScopeCondition(enforceScope) });
     const dir = sortOrder === "asc" ? asc : desc;
     const orderCol = resolveUserOrderColumn(sortBy);
 
@@ -163,14 +186,39 @@ export class UserRepository {
     return items;
   }
 
-  static async count(query: { keyword?: string; status?: string | number; startTime?: Date; endTime?: Date } = {}): Promise<number> {
-    const where = buildUserWhere(query);
+  static async count(query: { keyword?: string; status?: string | number; startTime?: Date; endTime?: Date } = {}, enforceScope = true): Promise<number> {
+    const where = buildUserWhere({ ...query, dataScope: await UserRepository.dataScopeCondition(enforceScope) });
     const [row] = await drizzleDb.select({ c: sqlCount() }).from(sysUser).where(where);
     return Number(row?.c ?? 0);
   }
 
-  static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<UserDetailRow | null> {
-    return fetchUserDetail(id, db);
+  /**
+   * 按 id 读详情。默认**施加**行级范围（`enforceScope=true`）：
+   * 按 id 直读是最容易绕过滤的入口，缺省必须关上门。
+   * 只有登录解析自己、刷新令牌这类内部路径才显式传 false。
+   */
+  static async findById(id: number, db: AppQueryDb = drizzleDb, enforceScope = true): Promise<UserDetailRow | null> {
+    return fetchUserDetail(id, db, await UserRepository.dataScopeCondition(enforceScope));
+  }
+
+  /** 用调用方已解析好的 dataScope 条件读取，避免同一个请求里重复解析档位。 */
+  static async findByIdWithScope(id: number, dataScope?: SQL, db: AppQueryDb = drizzleDb): Promise<UserDetailRow | null> {
+    return fetchUserDetail(id, db, dataScope);
+  }
+
+  /**
+   * 当前用户的启用部门 ID（sys_user_dept 上的有效关联）。
+   *
+   * 行级范围解析需要「操作者自己的部门」，而这份数据必须来自服务端重载：
+   * 客户端或模型传入的 deptIds 一律不可信。免行级过滤（授权判定本来就要看到
+   * 操作者的全部部门），因此不走 dataScopeCondition。
+   */
+  static async loadActiveDeptIdsByUserId(userId: number, db: AppQueryDb = drizzleDb): Promise<number[]> {
+    const rows = await db
+      .select({ deptId: sysUserDept.deptId })
+      .from(sysUserDept)
+      .where(and(eq(sysUserDept.userId, userId), isNull(sysUserDept.deletedAt)));
+    return [...new Set(rows.map((row) => row.deptId))];
   }
 
   static async findIdByUsername(username: string): Promise<number | null> {
@@ -263,6 +311,7 @@ export class UserRepository {
         and(
           isNull(sysUser.deletedAt),
           eq(sysUser.status, 1),
+          await UserRepository.dataScopeCondition(true),
           sql`EXISTS (
             SELECT 1 FROM ${sysUserDept}
             WHERE ${sysUserDept.userId} = ${sysUser.id}

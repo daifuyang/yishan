@@ -25,6 +25,14 @@ export const UserErrorCode = {
   USER_STATUS_ERROR: 30009,
   /** 用户信息不完整 */
   USER_INFO_INCOMPLETE: 30010,
+  /**
+   * 无权按当前方式创建用户。
+   *
+   * 单一码覆盖所有越权拒绝：角色权限超出本人有效权限、角色组合授予的数据范围超出
+   * 本人范围、部门落在范围外、部门不存在或被禁用、「仅本人」范围下尝试建号。
+   * message 里带可读原因，前端直接展示，不做二次翻译。
+   */
+  USER_CREATE_FORBIDDEN: 30011,
 } as const;
 
 // ============= 错误消息映射 =============
@@ -39,6 +47,7 @@ export const UserErrorMessages = {
   [UserErrorCode.PASSWORD_WEAK]: '密码强度不足',
   [UserErrorCode.USER_STATUS_ERROR]: '用户状态异常',
   [UserErrorCode.USER_INFO_INCOMPLETE]: '用户信息不完整',
+  [UserErrorCode.USER_CREATE_FORBIDDEN]: '无权按当前方式创建该用户',
 } as const;
 
 // ============= 类型定义 =============

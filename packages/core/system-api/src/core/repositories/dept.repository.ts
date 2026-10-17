@@ -9,6 +9,7 @@ import {
   desc,
   eq,
   getTableColumns,
+  inArray,
   isNull,
   like,
   or,
@@ -164,6 +165,24 @@ export class DeptRepository {
   /** 根据ID获取部门 */
   static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<DeptFlatRow | null> {
     return fetchDeptDetail(id, db);
+  }
+
+  /**
+   * 批量筛出**真实存在且启用**的部门 ID。
+   *
+   * 用户创建授权要求「候选部门必须存在且处于可用状态」：只校验「在不在我的数据
+   * 范围里」不够——范围算的是 ID 集合，一个已停用或已软删的部门 ID 仍可能落在
+   * 集合里，于是会把用户挂到一个不可用部门上。返回的是**实际命中**的 ID，
+   * 调用方用数量/集合比对即可 fail closed。
+   */
+  static async findEnabledIdsByIds(ids: readonly number[], db: AppQueryDb = drizzleDb): Promise<number[]> {
+    const valid = [...new Set(ids.map((id) => Number(id)).filter((id) => !isNaN(id) && id > 0))];
+    if (valid.length === 0) return [];
+    const rows = await db
+      .select({ id: sysDept.id })
+      .from(sysDept)
+      .where(and(inArray(sysDept.id, valid), isNull(sysDept.deletedAt), eq(sysDept.status, 1)));
+    return rows.map((row) => row.id);
   }
 
   /** 根据名称获取部门（用于唯一性校验） */

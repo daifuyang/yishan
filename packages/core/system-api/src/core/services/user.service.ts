@@ -8,6 +8,8 @@ import { BusinessError } from "@yishan/core-api/errors";
 import { CACHE_CONFIG } from "../../config/index.js";
 import { comparePassword, hashPassword } from "../../utils/password.js";
 import { PermissionService } from "./permission.service.js";
+import { validateUserCreation } from "./user-creation-policy.js";
+import { currentDataScope } from "@/core/auth/data-scope";
 
 export class UserService {
   static findActiveUsersByDeptId(deptId: number) {
@@ -46,8 +48,19 @@ export class UserService {
     };
   }
 
-  static async getUserById(id: number, fastify?: FastifyInstance): Promise<SysUserResp | null> {
-    if (fastify?.redis) {
+  /**
+   * @param enforceScope 行级数据范围（sys_role.data_scope）。默认 true。
+   *   `jwt-auth` 解析当前登录用户自己时必须传 false —— 否则一个「仅本人」
+   *   档位的用户会把自己过滤掉，全站无法登录。
+   */
+  static async getUserById(id: number, fastify?: FastifyInstance, enforceScope = true): Promise<SysUserResp | null> {
+    // 缓存里存的是全量详情，本身不带数据范围。若本次请求有行级限制，
+    // 直接走 repository（它带 where），而不是先命中缓存再放行——
+    // 否则「拿缓存里的任意 id」就绕过了 dataScope。
+    const dataScope = await UserRepository.dataScopeCondition(enforceScope);
+    const cacheable = dataScope === undefined;
+
+    if (fastify?.redis && cacheable) {
       try {
         const cacheKey = this.getUserDetailCacheKey(id);
         const cached = await fastify.redis.get(cacheKey);
@@ -69,12 +82,12 @@ export class UserService {
       }
     }
 
-    const user = await UserRepository.findById(id);
+    const user = await UserRepository.findByIdWithScope(id, dataScope);
     if (!user) return null;
 
     const resp = UserMapper.toDetailResp(user);
 
-    if (fastify?.redis) {
+    if (fastify?.redis && cacheable) {
       try {
         const cacheKey = this.getUserDetailCacheKey(id);
         await fastify.redis.setex(cacheKey, CACHE_CONFIG.defaultTTLSeconds, JSON.stringify(resp));
@@ -89,6 +102,13 @@ export class UserService {
   static async createUser(userReq: CreateUserReq, currentUserId: number, fastify?: FastifyInstance): Promise<SysUserResp> {
     this.validatePassword(userReq.password);
     await this.ensureUniqueFields(userReq.username, userReq.email, userReq.phone);
+
+    // 统一的创建授权规则：角色组合的权限码与数据范围、部门关联都必须落在
+    // 当前请求身份内。与 AI 草稿提交共用同一份实现，不存在「宽松版本」。
+    await validateUserCreation(
+      { actorId: currentUserId, tokenScope: currentDataScope()?.tokenScope },
+      userReq,
+    );
 
     await currentSystemRuntime().validateUser({ operation: 'create', actorId: currentUserId, fields: { ...userReq } });
     const input = await this.toCreateUserInput(userReq, currentUserId);
@@ -132,6 +152,8 @@ export class UserService {
     currentUserId: number,
     fastify?: FastifyInstance
   ): Promise<SysUserResp | null> {
+    // 目标用户必须落在本次操作的数据范围内：范围外的用户在这里就表现为「不存在」，
+    // 修改/删除因此无法绕过列表过滤。
     const existingUser = await UserRepository.findById(id);
     if (!existingUser) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
@@ -200,7 +222,28 @@ export class UserService {
     await this.clearUserDetailCache(userId, fastify);
   }
 
-  static async deleteUser(id: number, fastify?: FastifyInstance): Promise<{ id: number; deleted: boolean }> {
+  /**
+   * @param id       待删除的用户
+   * @param actorId  操作者。用于「不能删除当前登录用户」的保护；不传则跳过该条
+   *                 （仅限内部维护调用，任何带身份的服务端调用都必须传）
+   *
+   * 「系统管理员不可删除」与「不能删除当前登录用户」两条保护住在这里而不是
+   * route 层：任何绕过 HTTP 的调用方（AI 能力、脚本、未来的内部任务）都会
+   * 绕过闭包里的判断，从而能删掉 id=1 或自己删自己。Route 层只负责传 actorId。
+   */
+  static async deleteUser(
+    id: number,
+    actorId?: number,
+    fastify?: FastifyInstance
+  ): Promise<{ id: number; deleted: boolean }> {
+    if (id === 1) {
+      throw new BusinessError(UserErrorCode.USER_STATUS_ERROR, "系统管理员不可删除");
+    }
+    if (actorId !== undefined && actorId === id) {
+      throw new BusinessError(UserErrorCode.USER_STATUS_ERROR, "不能删除当前登录用户");
+    }
+
+    // 同 updateUser：删除目标也必须在本次操作的数据范围内。
     const existingUser = await UserRepository.findById(id);
     if (!existingUser) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
