@@ -15,7 +15,9 @@
     "./components": "./src/components/index.ts",
     "./components/AttachmentLibraryModal/types": "./src/components/AttachmentLibraryModal/types.ts",
     "./components/*": "./src/components/*/index.tsx",
-    "./attachment-upload": "./src/utils/attachmentUpload.ts"
+    "./attachment-upload": "./src/utils/attachmentUpload.ts",
+    "./ai-prefill": "./src/ai-prefill/index.ts",
+    "./form-assistance": "./src/form-assistance/index.ts"
   },
   "files": [
     "src",

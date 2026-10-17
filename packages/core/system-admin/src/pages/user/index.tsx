@@ -15,6 +15,7 @@ import {
   updateUser,
 } from '../../services/generated/sysUsers';
 import UserForm from './components/UserForm';
+import { AiPrefillGate } from '../../components/AiPrefillGate';
 
 /**
  * 用户管理列表页面
@@ -22,6 +23,8 @@ import UserForm from './components/UserForm';
 const UserList: React.FC = () => {
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  /** 唯一的「新建用户」表单开关：手动按钮与助手协作 open() 共用它。 */
+  const [createOpen, setCreateOpen] = useState(false);
 
   // 获取全局字典数据
   const { initialState } = useSystemAdmin();
@@ -201,6 +204,46 @@ const UserList: React.FC = () => {
 
   return (
     <PageContainer>
+      {/*
+        用户创建**只有一个**表单实例，就是下面这个受控的 UserForm：
+        工具栏「新建」按钮、AI 一次性预填（UserForm 内部消费）和助手的协作 open()
+        三条路径都进入它，保存仍由用户在原有「确定」上完成。
+        这里刻意**不再**为 user.create 挂 AiPrefillGate —— 那会让助手打开第二个
+        弹窗，与「当前表单协作」的设计相悖。
+
+        顺序也有讲究：预填是一次性消费，先挂载的一方先拿到。创建表单必须排在
+        user.update 的 Gate 前面，否则 user.update 的 Gate 会把 user.create 的
+        预填先取走再丢掉。
+      */}
+      <UserForm
+        title="新建用户"
+        assistance="user.create"
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onFinish={handleFormSuccess}
+      />
+      <AiPrefillGate
+        target="user.update"
+        mapFields={(fields) => {
+          const { deptId, ...rest } = fields;
+          return {
+            ...rest,
+            deptIds: deptId === undefined ? undefined : [deptId as number],
+          };
+        }}
+      >
+        {({ open, initialValues, close }) => (
+          <UserForm
+            title="编辑用户"
+            open={open}
+            onOpenChange={(next) => {
+              if (!next) close();
+            }}
+            initialValues={initialValues as Partial<SystemAPI.sysUser>}
+            onFinish={handleFormSuccess}
+          />
+        )}
+      </AiPrefillGate>
       <ProTable<SystemAPI.sysUser>
         headerTitle="用户列表"
         actionRef={actionRef}
@@ -209,16 +252,9 @@ const UserList: React.FC = () => {
           labelWidth: 120,
         }}
         toolBarRender={() => [
-          <UserForm
-            key="create"
-            title="新建用户"
-            trigger={
-              <Button type="primary">
-                <PlusOutlined /> 新建
-              </Button>
-            }
-            onFinish={handleFormSuccess}
-          />,
+          <Button key="create" type="primary" onClick={() => setCreateOpen(true)}>
+            <PlusOutlined /> 新建
+          </Button>,
         ]}
         request={async (params) => {
           const { current, pageSize, ...restParams } = params;
