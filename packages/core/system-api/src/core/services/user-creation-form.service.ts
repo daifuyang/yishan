@@ -23,6 +23,7 @@ import { RoleRepository } from '@/core/repositories/role.repository'
 import { DeptService } from '@/core/services/dept.service'
 import {
   validateUserCreation,
+  resolveCreatableDeptScope,
   type UserCreationSubject,
 } from '@/core/services/user-creation-policy'
 import { UserErrorCode } from '@yishan/core-api/business-codes/user'
@@ -30,6 +31,7 @@ import { BusinessError } from '@yishan/core-api/errors'
 import {
   CreateUserReqSchema,
   USER_CREATE_DRAFT_FIELD_KEYS,
+  type UserCreateOptionsQuery as UserCreateOptionsQueryContract,
 } from '@/core/schemas/user'
 import type { SysDeptResp } from '@/core/schemas/department'
 
@@ -83,6 +85,16 @@ const SELECTORS: Readonly<Record<string, string>> = {
   password: 'password',
 }
 
+/**
+ * **不是表单字段**的 schema 属性，必须从模型可见的字段集里剔除。
+ *
+ * `draftSubmission` 是助手提交草稿时用的内部控制标记（Task 5/6 消费），
+ * 它出现在 `CreateUserReqSchema.properties` 里只是因为提交请求复用了同一 schema。
+ * 让它出现在 `fields` 里，模型就会去向用户索要一个叫 "draftSubmission" 的东西 ——
+ * 和 password 一样，它属于协议而不是表单。
+ */
+const NON_FORM_FIELDS = new Set(['draftSubmission'])
+
 /** 只从 schema 里挑出「值得表达的约束」，不整体倒出 schema 对象。 */
 function deriveConstraints(schema: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
@@ -127,12 +139,13 @@ export interface UserCreateForm {
   missingFields: UserCreateFormMissingField[]
 }
 
-export interface UserCreateOptionsQuery {
-  keyword?: string
-  deptIds?: number[]
-  page?: number
-  pageSize?: number
-}
+/**
+ * 候选查询参数。
+ *
+ * 直接从 TypeBox schema 派生，而不是另写一份 interface —— 手写副本一旦和 schema
+ * 漂移，路由声明的 query 与服务实际读取的 query 就会静默不一致。
+ */
+export type UserCreateOptionsQuery = UserCreateOptionsQueryContract
 
 /** 部门候选树节点（结构 = 既有部门树节点；`getDeptTree()` 的静态返回类型没带 children）。 */
 export type DeptCandidateNode = SysDeptResp & { children?: DeptCandidateNode[] | null }
@@ -169,23 +182,26 @@ function buildForm(): UserCreateForm {
   )
   const draftKeys = new Set<string>(USER_CREATE_DRAFT_FIELD_KEYS)
 
-  const fields: UserCreateFormField[] = Object.keys(properties).map((name) => {
-    const schema = properties[name]
-    const enumValues = Array.isArray(schema.enum) ? (schema.enum as unknown[]) : []
-    return {
-      name,
-      label: FIELD_LABELS[name] ?? name,
-      required: required.has(name),
-      sensitive: name === 'password',
-      selector: SELECTORS[name] ?? (enumValues.length > 0 ? 'enum' : 'text'),
-      constraints: deriveConstraints(schema),
-    }
-  })
+  const fields: UserCreateFormField[] = Object.keys(properties)
+    .filter((name) => !NON_FORM_FIELDS.has(name))
+    .map((name) => {
+      const schema = properties[name]
+      const enumValues = Array.isArray(schema.enum) ? (schema.enum as unknown[]) : []
+      return {
+        name,
+        label: FIELD_LABELS[name] ?? name,
+        required: required.has(name),
+        sensitive: name === 'password',
+        selector: SELECTORS[name] ?? (enumValues.length > 0 ? 'enum' : 'text'),
+        constraints: deriveConstraints(schema),
+      }
+    })
 
   // 默认值取自 schema 上真实声明的 default（CreateUserReqSchema 已刻意不带 default，
   // 这里读到的会是空对象 —— 保留读取逻辑是为了将来 schema 加了 default 时自动跟随）。
   const defaults: Record<string, unknown> = {}
   for (const [name, schema] of Object.entries(properties)) {
+    if (NON_FORM_FIELDS.has(name)) continue
     if (schema.default !== undefined) defaults[name] = schema.default
   }
 
@@ -254,30 +270,27 @@ export class UserCreationFormService {
     )
     const deptIds = [...new Set((query.deptIds ?? []).filter((id) => Number.isFinite(id) && id > 0))]
 
-    // ---- 部门：过滤后的既有部门树 ------------------------------------------
+    // ---- 部门：按操作者范围过滤后的既有部门树 ------------------------------
     const tree = await DeptService.getDeptTree()
     const allDeptIds = collectDeptIds(tree, new Set<number>())
     // 候选部门必须真实存在且启用（与提交时同一条规则）。
     const enabledDeptIds = await DeptRepository.findEnabledIdsByIds(deptIds, db)
     const scopedDeptIds = deptIds.filter((id) => enabledDeptIds.includes(id))
 
-    // 「能不能建号」直接问 Task 2 的策略，不另写一份范围推导。
-    // 通过 ⇒ 候选部门都在授权范围内（策略已经逐个查过），否则（例如「仅本人」范围）
-    // 整个候选集作废：返回一个部门都比返回越权的部门好。
-    let creatable = true
-    try {
-      await validateUserCreation(subject, { deptIds: scopedDeptIds }, { db })
-    } catch (error) {
-      if (!isCreateForbidden(error)) throw error
-      creatable = false
-    }
+    // 允许关联的部门集合由 Task 2 的策略解析，不是「调用方说了什么」。
+    // 用调用方传入的 deptIds 当过滤条件，等于让客户端自己声明哪些部门合法。
+    const { scope, creatable } = await resolveCreatableDeptScope(subject, { db })
 
-    // 未指定候选部门时按全树展示（策略已确认操作者要么是全范围，要么本次根本建不了号）；
-    // 指定了候选部门时只保留候选子树，祖先保留以维持原有树的形状。
+    // 范围之外、没有调用方点名、或已停用/不存在的部门，一律不进候选：
+    // 一个越权的部门出现在列表里就是信息泄漏，即使提交时会被拒绝。
+    // 注意 all 范围时这里确实是整棵树 —— 这是有意的：操作者在 system:user:create 上
+    // 的范围就是「全部部门」，候选集与授权集因此相等，而不是授权被放宽。
+    // 刻意**不**再叠加 `system:department:list`：规格 §7 要求不为候选查询额外要求
+    // 无关的完整配置管理权限；能建号但看不到部门表单才是产品级的功能损坏。
     const allowedDeptIds = creatable
-      ? scopedDeptIds.length > 0
-        ? new Set(scopedDeptIds)
-        : allDeptIds
+      ? scope.kind === 'all'
+        ? allDeptIds
+        : new Set(scope.deptIds.filter((id) => !scopedDeptIds.length || scopedDeptIds.includes(id)))
       : new Set<number>()
     const departments = pruneDeptTree(tree, allowedDeptIds)
 

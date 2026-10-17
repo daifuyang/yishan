@@ -125,6 +125,67 @@ function targetScope(
 }
 
 /**
+ * 操作者侧的重载结果。
+ *
+ * 单独抽出来是因为「候选查询」也需要同一份身份：`validateUserCreation` 与
+ * `resolveCreatableDeptScope` 必须看到完全相同的角色/部门/权限，否则候选列表会和
+ * 最终校验对不上。两处各算一次就等于出现了两份授权推导。
+ */
+interface ActorReloaded {
+  actorRoleIds: number[]
+  actorDeptIds: number[]
+  actorPerms: Set<string>
+}
+
+async function reloadActor(subject: UserCreationSubject, db: AppQueryDb): Promise<ActorReloaded> {
+  const actorRoleIds = await PermissionRepository.loadActiveRoleIdsByUserId(subject.actorId, db)
+  const actorDeptIds = await UserRepository.loadActiveDeptIdsByUserId(subject.actorId, db)
+  // ttlMs: 0 —— 授权判定必须看到最新权限，30 秒缓存窗口会让刚被回收的权限继续生效。
+  // db 一并透传：注入事务级句柄时，权限与范围必须读同一份数据，判定才可复现。
+  const { perms: actorRolePerms } = await PermissionService.loadForRoleIds(actorRoleIds, { ttlMs: 0, db })
+  const actorPerms = computeEffectivePerms(actorRolePerms, subject.tokenScope, PERMISSION_CODES)
+  return { actorRoleIds, actorDeptIds, actorPerms }
+}
+
+/**
+ * 操作者在「新增用户」这一项上的数据范围，以及他到底能不能建号。
+ *
+ * 这是候选部门列表的**唯一**来源：`listCandidates` 用它裁剪部门树，而不是用调用方
+ * 已经声明的 `deptIds`（那等于让客户端自己告诉我哪些部门合法）。
+ *
+ * `creatable` 只在「确实建不了」时为 false —— 受限范围但有授权部门（`deptIds` 非空）
+ * 是**能**建号的，只是必须先选部门；`all` 范围当然也能。fail closed 的判据是
+ * `restricted` 且授权部门为空集：那时新用户无处安放，「仅本人」范围正是如此。
+ */
+export interface CreatableDeptScope {
+  scope: DataScopeFilter
+  creatable: boolean
+}
+
+export async function resolveCreatableDeptScope(
+  subject: UserCreationSubject,
+  options: ValidateUserCreationOptions = {},
+): Promise<CreatableDeptScope> {
+  const db = options.db ?? drizzleDb
+  const actor = await reloadActor(subject, db)
+
+  if (actor.actorPerms.has(SUPER_ADMIN_BYPASS)) return { scope: { kind: 'all' }, creatable: true }
+  if (!actor.actorPerms.has(USER_CREATE_PERMISSION)) {
+    forbidden('你没有新增用户的权限')
+  }
+
+  const scope = await operatorScope(
+    subject,
+    actor.actorRoleIds,
+    actor.actorDeptIds,
+    USER_CREATE_PERMISSION,
+    db,
+  )
+  const creatable = scope.kind === 'all' || scope.deptIds.length > 0
+  return { scope, creatable }
+}
+
+/**
  * 校验一次用户创建。抛 `BusinessError(USER_CREATE_FORBIDDEN)` 表示拒绝。
  *
  * 传入的 `fields` 只是「想怎么建」，操作者身份完全由 `subject.actorId` + 服务端
@@ -132,8 +193,10 @@ function targetScope(
  */
 export async function validateUserCreation(
   subject: UserCreationSubject,
-  // 授权判定只看 roleIds / deptIds；其余字段（手机号、密码…）在这里毫无作用。
-  // 因此接受 Partial：候选查询在还不知道手机号时就要用同一套规则判定。
+  // **只有 roleIds / deptIds 参与授权判定**，其余键（手机号、密码、昵称…）在这里
+  // 完全不被读取、也不被校验 —— 别把它当成一次业务校验来读：手机号格式、密码强度等
+  // 由 `CreateUserReqSchema` 与 createUser 负责。之所以接受 Partial，是因为候选查询
+  // 在还不知道手机号时就要用同一套规则判定。
   fields: Partial<UserCreateDraftFields>,
   options: ValidateUserCreationOptions = {},
 ): Promise<void> {
@@ -142,12 +205,7 @@ export async function validateUserCreation(
   const requestedDeptIds = uniq(fields.deptIds)
 
   // ---- 操作者身份：全部服务端重载 ------------------------------------------
-  const actorRoleIds = await PermissionRepository.loadActiveRoleIdsByUserId(subject.actorId, db)
-  const actorDeptIds = await UserRepository.loadActiveDeptIdsByUserId(subject.actorId, db)
-  // ttlMs: 0 —— 授权判定必须看到最新权限，30 秒缓存窗口会让刚被回收的权限继续生效。
-  // db 一并透传：注入事务级句柄时，权限与范围必须读同一份数据，判定才可复现。
-  const { perms: actorRolePerms } = await PermissionService.loadForRoleIds(actorRoleIds, { ttlMs: 0, db })
-  const actorPerms = computeEffectivePerms(actorRolePerms, subject.tokenScope, PERMISSION_CODES)
+  const { actorRoleIds, actorDeptIds, actorPerms } = await reloadActor(subject, db)
 
   // 超管（按**本次请求**的有效权限判定，PAT 收窄在内）可以分配任何角色与部门。
   if (actorPerms.has(SUPER_ADMIN_BYPASS)) return

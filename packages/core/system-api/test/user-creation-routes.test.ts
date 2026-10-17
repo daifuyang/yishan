@@ -35,6 +35,7 @@ import { DeptRepository } from '../src/core/repositories/dept.repository'
 import { RoleRepository } from '../src/core/repositories/role.repository'
 import { DeptService } from '../src/core/services/dept.service'
 import { UserCreationFormService } from '../src/core/services/user-creation-form.service'
+import { USER_CREATE_DRAFT_FIELD_KEYS } from '../src/core/schemas/user'
 import { sysDept, sysRole, sysRoleDept, sysRolePermission } from '../src/db/schema'
 import { dbManager, drizzleDb } from '../src/db/index.js'
 
@@ -364,6 +365,23 @@ describe('create-form — 字段元数据来自真实 schema', () => {
     await app.close()
   })
 
+  it('字段集是「表单可写 + password/avatar」，协议标记一律不出现', async () => {
+    // 用**白名单相等**而不是逐个 not.toContain：`draftSubmission` 目前还没被加进
+    // CreateUserReqSchema（Task 5 才加），逐个断言会在今天空过一遍；等它真的被加进来
+    // 而过滤失效时，这条相等断言会立刻失败。
+    // `avatar` 留在 fields 里（真实表单可写）但不在 editableFields（助手不代填）。
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: `${BASE}/create-form`, headers: AUTH })
+    const data = res.json().data
+    expect([...data.fields.map((f: any) => f.name)].sort()).toEqual(
+      [...USER_CREATE_DRAFT_FIELD_KEYS, 'password', 'avatar'].sort(),
+    )
+    expect(data.fields.map((f: any) => f.name)).not.toContain('draftSubmission')
+    expect(data.missingFields.map((f: any) => f.name).sort()).toEqual(['avatar', 'password'])
+    expect(JSON.stringify(data)).not.toContain('draftSubmission')
+    await app.close()
+  })
+
   it('选择器标识指向既有候选端点，而不是自造模型', async () => {
     const app = await buildApp()
     const res = await app.inject({ method: 'GET', url: `${BASE}/create-form`, headers: AUTH })
@@ -414,6 +432,51 @@ describe('create-options — 候选按 Task 2 策略过滤', () => {
     // 祖先（10）保留是为了维持原有树的嵌套形状 —— 与部门管理页看到的一致。
     expect(data.departments[0].id).toBe(10)
     expect(data.departments[0].children.map((c: any) => c.id)).toEqual([11])
+    await app.close()
+  })
+
+  it('受限范围且未传 deptIds 时，仍能发现自己的合法部门（发现路径）', async () => {
+    // 这条守的是「候选列表不是让客户端自己声明合法性」：操作者只持有 system:user:create
+    // 与本部门范围，一个 deptIds 都没传。若实现是拿调用方的 deptIds 当过滤条件，
+    // 这里会得到 creatable:false + 空树 —— 用户永远无从知道该选哪个部门，
+    // 尽管带上 10 提交是完全合法的。
+    mockActor({ roleIds: [1], perms: CREATE_PERMS, deptIds: [10] }, {
+      roles: [{ id: 1, dataScope: DATA_SCOPE_DEPT, perms: CREATE_PERMS }],
+      depts: [{ id: 10, parentId: null }, { id: 20, parentId: null }],
+    })
+    mockDepts([])
+    mockDeptTree()
+    mockRoleRows([])
+
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: `${BASE}/create-options`, headers: AUTH })
+    expect(res.statusCode).toBe(200)
+    const data = res.json().data
+    expect(data.creatable).toBe(true)
+    // 自己范围内的 10 可见；范围外的 20 不可见 —— 不是因为「没传所以不给」，而是范围本身。
+    expect(data.departments.map((d: any) => d.id)).toEqual([10])
+    await app.close()
+  })
+
+  it('受限范围传入越权 deptIds 时不会因此放宽部门树', async () => {
+    // 传了 deptIds 也不能扩大可见范围：20 不在操作者范围内，就不能出现在候选里。
+    mockActor({ roleIds: [1], perms: CREATE_PERMS, deptIds: [10] }, {
+      roles: [{ id: 1, dataScope: DATA_SCOPE_DEPT, perms: CREATE_PERMS }],
+      depts: [{ id: 10, parentId: null }, { id: 20, parentId: null }],
+    })
+    mockDepts([10, 20])
+    mockDeptTree()
+    mockRoleRows([])
+
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'GET',
+      url: `${BASE}/create-options?deptIds=20`,
+      headers: AUTH,
+    })
+    expect(res.statusCode).toBe(200)
+    const data = res.json().data
+    expect(data.departments.map((d: any) => d.id)).toEqual([])
     await app.close()
   })
 

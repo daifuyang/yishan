@@ -25,7 +25,7 @@ import { PermissionRepository } from '../src/core/repositories/permission.reposi
 import { PermissionService } from '../src/core/services/permission.service'
 import { UserRepository } from '../src/core/repositories/user.repository'
 import { DeptRepository } from '../src/core/repositories/dept.repository'
-import { validateUserCreation, type UserCreationSubject } from '../src/core/services/user-creation-policy'
+import { validateUserCreation, resolveCreatableDeptScope, type UserCreationSubject } from '../src/core/services/user-creation-policy'
 import {
   UserCreateDraftFieldsSchema,
   USER_CREATE_DRAFT_FIELD_KEYS,
@@ -381,6 +381,61 @@ describe('validateUserCreation — 目标范围不能因为组合而扩大', () 
 
     await expect(
       validateUserCreation(baseSubject(), { roleIds: [3], deptIds: [10] }, { db }),
+    ).rejects.toMatchObject({ code: UserErrorCode.USER_CREATE_FORBIDDEN })
+  })
+})
+
+describe('resolveCreatableDeptScope — 候选部门列表的唯一来源', () => {
+  it('返回操作者在 system:user:create 上的授权部门集合', async () => {
+    mockActor({ roleIds: [1], perms: CREATE_PERMS, deptIds: [10] })
+    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_CUSTOM, perms: CREATE_PERMS }], customDepts: { 1: [10, 11] } })
+
+    await expect(resolveCreatableDeptScope(baseSubject(), { db })).resolves.toEqual({
+      scope: { kind: 'restricted', deptIds: [10, 11], selfUserId: null },
+      creatable: true,
+    })
+  })
+
+  it('受限范围但有授权部门 → creatable 为 true（只是必须先选部门）', async () => {
+    // 这条是发现路径的前提：候选列表不能因为「必须选部门」就把操作者判成不能建号。
+    mockActor({ roleIds: [1], perms: CREATE_PERMS, deptIds: [10] })
+    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_DEPT, perms: CREATE_PERMS }] })
+
+    await expect(resolveCreatableDeptScope(baseSubject(), { db })).resolves.toMatchObject({
+      creatable: true,
+    })
+  })
+
+  it('仅本人范围没有任何授权部门 → creatable 为 false', async () => {
+    mockActor({ roleIds: [1], perms: CREATE_PERMS, deptIds: [10] })
+    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_SELF, perms: CREATE_PERMS }] })
+
+    await expect(resolveCreatableDeptScope(baseSubject(), { db })).resolves.toMatchObject({
+      creatable: false,
+    })
+  })
+
+  it('全范围与超管 → all 且 creatable', async () => {
+    mockActor({ roleIds: [1], perms: CREATE_PERMS })
+    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS }] })
+    await expect(resolveCreatableDeptScope(baseSubject(), { db })).resolves.toEqual({
+      scope: { kind: 'all' },
+      creatable: true,
+    })
+
+    mockActor({ roleIds: [1], perms: ['__super_admin__'] })
+    await expect(resolveCreatableDeptScope(baseSubject(), { db })).resolves.toEqual({
+      scope: { kind: 'all' },
+      creatable: true,
+    })
+  })
+
+  it('PAT 收窄掉 create 权限时直接拒绝，而不是返回空候选', async () => {
+    mockActor({ roleIds: [1], perms: [...CREATE_PERMS, 'system:user:list'] })
+    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS }] })
+
+    await expect(
+      resolveCreatableDeptScope(baseSubject({ tokenScope: ['system:user:list'] }), { db }),
     ).rejects.toMatchObject({ code: UserErrorCode.USER_CREATE_FORBIDDEN })
   })
 })
