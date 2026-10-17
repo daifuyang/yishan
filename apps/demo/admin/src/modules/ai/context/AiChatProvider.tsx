@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { messageText } from '../adapters/messages';
+import { messageText, toolResults } from '../adapters/messages';
 import {
   type AiConversation,
   chatError,
@@ -17,6 +17,13 @@ import {
   listConversations,
   renameConversation,
 } from '../services/aiChatService';
+import {
+  AiFormAssistanceContext,
+  type AiFormAssistanceHandlers,
+  type AiFormAssistanceValue,
+  type DraftOutcome,
+  type FormUiRequest,
+} from './formAssistance';
 
 /**
  * 全局展示状态。悬浮与全屏只是同一份聊天状态的两种外层布局，
@@ -51,6 +58,11 @@ export interface AiChatContextValue {
   regenerate: (messageId?: string) => Promise<void>;
   retry: () => Promise<void>;
   stop: () => Promise<void>;
+  /**
+   * 表单协作的**引用**。刻意不含表单状态：可见值只有原生表单一处（设计 §6）。
+   * Bridge 挂载后把自己接进来，Provider 只负责「本轮结果」「身份 epoch」「结果回执」。
+   */
+  formAssistance: AiFormAssistanceValue;
 }
 export const AiChatContext = createContext<AiChatContextValue | null>(null);
 const NEW_DRAFT = '$new';
@@ -77,6 +89,104 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState<AiViewMode>('closed');
+  // ---- 表单协作引用：只有「本轮结果 / 身份 epoch / 结果回执」，没有任何表单状态 ----
+  const formHandlers = useRef<AiFormAssistanceHandlers | null>(null);
+  /** 非空 = 本轮 stream 正在跑；历史消息重放/刷新时它是 null，因此不会自动开表单。 */
+  const turn = useRef<{ seen: Set<string> } | null>(null);
+  const queued = useRef<FormUiRequest[]>([]);
+  const [outcomes, setOutcomes] = useState<Record<string, DraftOutcome>>({});
+
+  /**
+   * 从消息里挑出**没见过**的草稿结果。
+   *
+   * `seen` 在开轮时用当时已有的消息预热过，因此历史里那些 `action.draft` 永远进不来 ——
+   * `get_action_draft` 这类**纯读**工具也会发 `action.draft`，让它自动弹表单就等于把
+   * 「刷新页面 = 弹表单」。去重键是服务端给的 `uiRequestId`，一个 uiRequestId 只消费一次。
+   */
+  const collectDraftRequests = (
+    messages: UIMessage[],
+    seen: Set<string>,
+  ): FormUiRequest[] => {
+    const found: FormUiRequest[] = [];
+    for (const message of messages) {
+      if (message.role !== 'assistant') continue;
+      for (const result of toolResults(message)) {
+        const output = result.output as {
+          ok?: unknown;
+          render?: { kind?: string; payload?: Record<string, unknown> };
+        };
+        if (output.ok !== true) continue;
+        if (output.render?.kind !== 'action.draft') continue;
+        const payload = output.render.payload ?? {};
+        const uiRequestId = String(payload.uiRequestId ?? '');
+        const draftId = String(payload.draftId ?? '');
+        if (!uiRequestId || !draftId || seen.has(uiRequestId)) continue;
+        seen.add(uiRequestId);
+        found.push({
+          uiRequestId,
+          draftId,
+          draftVersion: Number(payload.draftVersion ?? 1),
+          identityEpoch: epoch.current,
+        });
+      }
+    }
+    return found;
+  };
+
+  const beginTurn = () => {
+    // 先把历史里已有的 uiRequestId 记成见过，再开始收集本轮的。
+    turn.current = { seen: new Set() };
+    collectDraftRequests(chatRef.current.messages, turn.current.seen);
+    queued.current = [];
+  };
+
+  const endTurn = () => {
+    const batch = queued.current;
+    const active = turn.current;
+    turn.current = null;
+    queued.current = [];
+    if (!active) return;
+    const handlers = formHandlers.current;
+    for (const request of batch) {
+      // epoch 已经变了（换账号）就整批丢弃：旧身份的草稿不再驱动任何界面动作。
+      if (request.identityEpoch !== epoch.current) continue;
+      handlers?.onUiRequest(request);
+    }
+  };
+
+  const setOutcome = useCallback(
+    (draftId: string, outcome: DraftOutcome) => {
+      setOutcomes((values) => ({ ...values, [draftId]: outcome }));
+    },
+    [],
+  );
+
+  const bindFormHandlers = useCallback(
+    (handlers: AiFormAssistanceHandlers) => {
+      formHandlers.current = handlers;
+      return () => {
+        if (formHandlers.current === handlers) formHandlers.current = null;
+      };
+    },
+    [],
+  );
+
+  const requestRestore = useCallback((draftId: string) => {
+    formHandlers.current?.onRestore(draftId);
+  }, []);
+
+  const flushDraftSync = useCallback(async () => {
+    await formHandlers.current?.flush();
+  }, []);
+
+  const formAssistance: AiFormAssistanceValue = {
+    identityEpoch: epoch.current,
+    outcomes,
+    setOutcome,
+    bindHandlers: bindFormHandlers,
+    requestRestore,
+    flush: flushDraftSync,
+  };
   // One transport and one useChat live above routes. The persisted conversation id is supplied per request.
   const [transport] = useState(
     () =>
@@ -109,6 +219,14 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
   });
   const chatRef = useRef(chat);
   chatRef.current = chat;
+  // 本轮 stream 的草稿结果：**只有**在本轮进行中才收集（`turn.current` 为空时不收），
+  // 因此历史消息重放、刷新、切换会话都不会触发自动开表单。
+  useEffect(() => {
+    if (!turn.current) return;
+    queued.current.push(
+      ...collectDraftRequests(chat.messages, turn.current.seen),
+    );
+  }, [chat.messages]);
   const generating = chat.status === 'submitted' || chat.status === 'streaming';
   const busy = pending || generating;
 
@@ -130,6 +248,10 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     setViewMode('closed');
     setPending(false);
     setLoading(false);
+    // 身份变了：旧草稿的协作引用与回执一并清掉（设计 §7）。
+    turn.current = null;
+    queued.current = [];
+    setOutcomes({});
     const reset = () => {
       chatRef.current.setMessages([]);
       chatRef.current.clearError();
@@ -237,6 +359,9 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     };
     operation.current = currentOperation;
     try {
+      // 发送下一轮之前先保证待同步的非敏感字段已经落地：模型下一轮读到的草稿必须
+      // 是用户在表单里刚改完的那一版（设计 §6）。
+      await formAssistance.flush();
       if (!activeRef.current) {
         const conversation = await createConversation();
         if (version !== epoch.current) return;
@@ -256,6 +381,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
           ? { ...values, [id]: '' }
           : values,
       );
+      beginTurn();
       await chat.sendMessage({ text: content });
       if (version === epoch.current) {
         await refresh(version);
@@ -265,6 +391,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
         recordFailure(cause);
       }
     } finally {
+      endTurn();
       if (version === epoch.current) {
         operation.current = null;
         locked.current = false;
@@ -292,11 +419,14 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
       revision: inputRevision.current,
     };
     try {
+      beginTurn();
+      await formAssistance.flush();
       await chat.regenerate({ messageId });
       await refresh(version);
     } catch (cause) {
       if (version === epoch.current) setError(chatError(cause));
     } finally {
+      endTurn();
       if (version === epoch.current) {
         operation.current = null;
         locked.current = false;
@@ -325,6 +455,8 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     };
     operation.current = currentOperation;
     try {
+      beginTurn();
+      await formAssistance.flush();
       const detail = await getConversation(activeRef.current);
       if (version !== epoch.current || currentOperation.cancelled) return;
       setDrafts((values) =>
@@ -348,6 +480,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     } catch (cause) {
       if (version === epoch.current) recordFailure(cause);
     } finally {
+      endTurn();
       if (version === epoch.current) {
         operation.current = null;
         locked.current = false;
@@ -444,8 +577,11 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
       if (operation.current) operation.current.cancelled = true;
       return chat.stop();
     },
+    formAssistance,
   };
   return (
-    <AiChatContext.Provider value={value}>{children}</AiChatContext.Provider>
+    <AiFormAssistanceContext.Provider value={formAssistance}>
+      <AiChatContext.Provider value={value}>{children}</AiChatContext.Provider>
+    </AiFormAssistanceContext.Provider>
   );
 }

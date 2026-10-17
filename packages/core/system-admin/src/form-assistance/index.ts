@@ -197,6 +197,89 @@ export function subscribeUserCreateFormHandle(listener: () => void): () => void 
   };
 }
 
+/* ============================================================================
+ * 草稿联动（Task 9，设计 §6/§9/§10）
+ *
+ * 上面那个句柄刻意只有 `snapshot / open / apply`：**能读、能开、能填，不能提交**。
+ * 但「用户边填边把非敏感字段同步回草稿」和「提交前锁定精确草稿版本」这两件事必然要
+ * 有接缝，于是有**第二个**、同样没有业务能力的窄接口：
+ *
+ * - 变化订阅：表单每次可见值变化后**推**一份快照出去。产品侧据此合并延迟后 PATCH。
+ *   推送的是快照，因此密码永远不在里面（`snapshot.fields` 已剔除）。
+ * - 草稿链接：由**产品侧**注册，表单在人工「确定」里调用。它只有两个方法，
+ *   `prepare()`（同步 + 返回精确版本）与 `reconcile()`（网络异常后**只读**查询草稿）。
+ *   两者都不含「创建」这个动作：表单仍然用**自己的** `createUser`。
+ * ==========================================================================*/
+
+/** 表单可见值变化时推给产品侧的非敏感快照。**永远不含 password。** */
+export type UserCreateFormChangeListener = (snapshot: UserFormSnapshot) => void;
+
+const changeListeners = new Set<UserCreateFormChangeListener>();
+
+/** 订阅表单变化。用于「手动修改按字段合并同步到草稿」（设计 §6）。 */
+export function subscribeUserCreateFormChanges(
+  listener: UserCreateFormChangeListener,
+): () => void {
+  changeListeners.add(listener);
+  return () => {
+    changeListeners.delete(listener);
+  };
+}
+
+/** 由 `UserForm` 调用：把一次变化后的快照推给订阅者。 */
+export function publishUserCreateFormChange(snapshot: UserFormSnapshot): void {
+  for (const listener of [...changeListeners]) listener(snapshot);
+}
+
+/** 提交时要携带的草稿关联。**不含任何字段值。** */
+export interface UserCreateDraftSubmission {
+  draftId: string;
+  draftVersion: number;
+}
+
+/**
+ * 创建请求抛异常后的**只读**判断结果。
+ *
+ * `unknown` 覆盖「草稿仍在 submitting」与「查询本身也失败」两种情况：两种都**不允许**
+ * 自动重发创建（设计 §11），用户看到的是「正在核对，请稍后刷新」。
+ */
+export type UserCreateDraftReconcileResult = 'completed' | 'failed' | 'unknown';
+
+export interface UserCreateDraftLink {
+  /**
+   * 人工点击「确定」后、表单校验通过后调用：把待同步的非敏感字段落地，并返回**锁定**
+   * 的精确 `{draftId, draftVersion}`。没有草稿时返回 `null`（普通创建，行为不变）。
+   *
+   * **不允许**在这里发起创建：这个方法只与草稿有关。
+   */
+  prepare(): Promise<UserCreateDraftSubmission | null>;
+  /**
+   * 创建请求抛异常后调用，**只读**查询草稿当前状态。
+   *
+   * 客户端的 `confirmed` 不是授权证明，同理「重试一次」也不是幂等策略：真正的幂等由
+   * 服务端事务保证（设计 §11），这里只是把结果如实显示给用户。
+   */
+  reconcile(): Promise<UserCreateDraftReconcileResult>;
+}
+
+let draftLink: UserCreateDraftLink | null = null;
+
+/**
+ * 注册草稿链接。**没有草稿时不必注册** —— `peekUserCreateDraftLink()` 返回 `null` 时
+ * 表单走的是与从前完全一致的普通创建路径。
+ */
+export function registerUserCreateDraftLink(link: UserCreateDraftLink): () => void {
+  draftLink = link;
+  return () => {
+    if (draftLink === link) draftLink = null;
+  };
+}
+
+/** 供 `UserForm` 在人工提交里读取。`null` 表示这次是与草稿无关的普通创建。 */
+export function peekUserCreateDraftLink(): UserCreateDraftLink | null {
+  return draftLink;
+}
+
 /**
  * 浮层/焦点协作（设计 §4）。与上面的补丁契约同属公开接缝，但**不含任何业务数据**：
  * 只有业务浮层是否开着、助手面板的 DOM 在哪、焦点该还给谁。

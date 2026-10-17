@@ -24,6 +24,8 @@ import {
   invalidateUserCreateFormHandle,
   isCurrentUserCreateFormHandle,
   notifyUserFormOverlay,
+  peekUserCreateDraftLink,
+  publishUserCreateFormChange,
   registerUserCreateFormHandle,
   registerUserFormOverlay,
   restoreUserCreateFormHandle,
@@ -31,6 +33,7 @@ import {
   useCoordinatedFormFocus,
   USER_FORM_ASSISTANCE_TARGET,
   type UserCreateDraftFields,
+  type UserCreateDraftSubmission,
   type UserFormOverlayInfo,
   type UserFormSnapshot,
 } from "../../../form-assistance";
@@ -167,6 +170,17 @@ const UserForm: React.FC<UserFormProps> = ({
     };
   }, [draftFields]);
 
+  /**
+   * 把一次可见值变化推给产品侧（设计 §6：手动修改按字段合并同步到草稿）。
+   *
+   * 推的是快照，密码不在里面；产品侧只能 PATCH 这些非敏感字段。表单关着时不推 ——
+   * 一次「关闭」不是字段变化，让同步逻辑自己去判断表单是否还开着。
+   */
+  const notifyChange = useCallback(() => {
+    if (!assistEnabled || !openRef.current) return;
+    publishUserCreateFormChange(buildSnapshot());
+  }, [assistEnabled, buildSnapshot]);
+
   const setOpen = useCallback(
     (next: boolean) => {
       const wasOpen = openRef.current;
@@ -189,6 +203,7 @@ const UserForm: React.FC<UserFormProps> = ({
         delete (valuesRef.current as Record<string, unknown>).password;
         const editId = initialValuesRef.current?.id;
         if (editId) void fetchUserDetail(Number(editId));
+        notifyChange();
       }
       onOpenChangeRef.current?.(next);
       if (isEdit) {
@@ -203,7 +218,7 @@ const UserForm: React.FC<UserFormProps> = ({
         }
       }
     },
-    [isControlled, isEdit],
+    [isControlled, isEdit, notifyChange],
   );
 
   /**
@@ -241,7 +256,9 @@ const UserForm: React.FC<UserFormProps> = ({
     valuesRef.current = { ...valuesRef.current, ...patch };
     for (const key of Object.keys(patch)) provenanceRef.current[key] = 'assistant';
     revisionRef.current += 1;
-  }, []);
+    // 助手写入的字段同样以表单为准（设计 §6），因此也要让同步逻辑看到它们。
+    notifyChange();
+  }, [notifyChange]);
 
   // ---- 协作契约注册：挂载即注册，卸载即摘除（身份变化时引用自动作废） ----
   useEffect(() => {
@@ -361,6 +378,7 @@ const UserForm: React.FC<UserFormProps> = ({
       setPrefillMissing(next.missing);
       setOpen(true);
       writeFields(fields);
+      notifyChange();
       // 同理：预填写进来的 deptIds 也要补一次角色重校验（setFieldsValue 不触发
       // onValuesChange）。预填不是补丁，没有返回值契约，因此不 await。
       const nextDeptIds = fields.deptIds as number[] | undefined;
@@ -368,7 +386,7 @@ const UserForm: React.FC<UserFormProps> = ({
     };
     consume();
     return subscribeAiPrefill(consume);
-  }, [assistEnabled, revalidateRoles, setOpen, writeFields]);
+  }, [assistEnabled, notifyChange, revalidateRoles, setOpen, writeFields]);
 
   // 同源字段定义：约束、必填、白名单都以服务端 create schema 为准。
   useEffect(() => {
@@ -444,6 +462,14 @@ const UserForm: React.FC<UserFormProps> = ({
 
   type UserFormValues = Partial<SystemAPI.createUserReq> & Partial<SystemAPI.updateUserReq>;
 
+  /**
+   * 提交期本地锁。
+   *
+   * 幂等的**真正**保证在服务端事务里（同一草稿最多完成一次创建）；这里只是挡住双击。
+   * 锁不释放是刻意的：失败时用户必须重新看一眼表单再点「确定」。
+   */
+  const submittingRef = useRef(false);
+
   const handleFinish = async (values: UserFormValues) => {
     const basePayload: SystemAPI.updateUserReq = {
       username: values.username,
@@ -459,17 +485,55 @@ const UserForm: React.FC<UserFormProps> = ({
     };
 
     if (!initialValues?.id) {
-      const payload: SystemAPI.createUserReq = {
+      if (submittingRef.current) return false;
+      submittingRef.current = true;
+      // 草稿联动：先把待同步的非敏感字段落地，再取**精确**版本号带上。
+      // 没有草稿时 `prepare()` 返回 null，普通创建路径与从前完全一致。
+      const link = peekUserCreateDraftLink();
+      let submission: UserCreateDraftSubmission | null = null;
+      try {
+        submission = link ? await link.prepare() : null;
+      } catch {
+        // 同步失败**不**降级成一次没有草稿关联的创建：那会绕开「同一草稿只完成一次
+        // 创建」的约束，也等于把用户的确认当成无关的一次普通创建。
+        submittingRef.current = false;
+        return false;
+      }
+      // `draftSubmission` 已在后端 schema 上（Task 5），生成的客户端要到 Task 10 才带上，
+      // 因此这里显式声明一次并断言传入 —— Task 10 之后类型自动跟随，无需改动。
+      type CreateUserPayload = SystemAPI.createUserReq & {
+        draftSubmission?: UserCreateDraftSubmission;
+      };
+      const payload: CreateUserPayload = {
         ...basePayload,
         phone: values.phone ?? '',
+        // 密码只存在于这个受保护的控件与这一次请求里：不进草稿、不进日志、不进审计。
         password: values.password ?? '',
+        ...(submission ? { draftSubmission: submission } : {}),
       };
-      const res = await createUser(payload);
-      if (res.success) {
-        if (onFinish) await onFinish();
-        return true;
+      try {
+        const res = await createUser(payload as SystemAPI.createUserReq);
+        if (res.success) {
+          if (onFinish) await onFinish();
+          return true;
+        }
+        // 明确的业务失败：保留表单数据与密码控件（返回 false，不清空、不关闭），
+        // 由用户改完再点一次。
+        submittingRef.current = false;
+        return false;
+      } catch {
+        // 响应可能已经丢了。**绝不自动重发创建**（设计 §11）：只把草稿当前状态读回来，
+        // 成功就展示成功，仍在提交中就继续核对，明确失败才允许用户再次点击。
+        if (link) {
+          const outcome = await link.reconcile();
+          if (outcome === 'completed') {
+            if (onFinish) await onFinish();
+            return true;
+          }
+        }
+        submittingRef.current = false;
+        return false;
       }
-      return false;
     }
 
     const payload: SystemAPI.updateUserReq = { ...basePayload };
@@ -517,6 +581,8 @@ const UserForm: React.FC<UserFormProps> = ({
           }
           valuesRef.current = { ...valuesRef.current, ...(changed as Record<string, unknown>) };
           revisionRef.current += 1;
+          // 用户手改推给产品侧合并同步；快照已剔除密码，因此同步负载里不会有它。
+          notifyChange();
           const nextDeptIds = (changed as Record<string, unknown>).deptIds as number[] | undefined;
           if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds);
         }}
