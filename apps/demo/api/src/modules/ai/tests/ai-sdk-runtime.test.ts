@@ -105,10 +105,10 @@ describe('native ESM AI SDK 7 runtime', () => {
     const body = JSON.parse(posted)
     expect(JSON.stringify(body.system)).toContain('原生表单协助')
     // 草稿摘要进系统提示（Anthropic 端点不接受 role:system 的消息），但不进历史。
-    expect(JSON.stringify(body.system)).toContain('username=zhangsan')
+    expect(JSON.stringify(body.system)).toContain("username='zhangsan'")
     expect(JSON.stringify(body.system)).toContain('仍需向用户询问：手机号')
-    expect(JSON.stringify(body.messages)).not.toContain('username=zhangsan')
-    expect(JSON.stringify(saved)).not.toContain('username=zhangsan')
+    expect(JSON.stringify(body.messages)).not.toContain("username='zhangsan'")
+    expect(JSON.stringify(saved)).not.toContain("username='zhangsan'")
   })
   it('sends no draft context at all when the conversation has no draft', () => {
     expect(buildDraftContext([])).toBe('')

@@ -110,6 +110,40 @@ function summarize(draft: ActionDraft): string {
 }
 
 /**
+ * 把本轮增量合进**已有**草稿时的并发契约。
+ *
+ * 这里不能只拿「当前版本」去 patch：用户可能刚在原生表单里改过字段，或另一个标签页已经
+ * 保存过。模型持有的是**读到时的旧上下文**，让它用当前版本直接合并，等于用一份过期的
+ * 上下文静默覆盖用户在表单里的最新输入——CAS 拦得住显式版本路径，拦不住这条。
+ *
+ * 因此两条规则，都以「模型读到的东西」为准：
+ *
+ * 1. 带了 `draftVersion` 就必须与当前一致；不一致说明上下文过期，要求重读（409）。
+ * 2. 不带版本时，只接受**补充空字段**：已有同名键且值不同，一律拒绝并指向
+ *    `update_action_draft`（那里必须带版本，是「用户明确要求修改」的路径）。
+ *
+ * 值相同不算覆盖（幂等重发是正常的），因此按规范化后的值比较。
+ */
+async function merge(
+  drafts: ActionDraftService,
+  context: AiCapabilityContext,
+  existing: ActionDraft,
+  patch: Record<string, unknown>,
+  claimedVersion: number | undefined,
+  options: { schemaVersion?: number },
+): Promise<ActionDraft> {
+  if (claimedVersion !== undefined && claimedVersion !== existing.draftVersion) {
+    throw aiError(409, '草稿版本已更新，请重新读取草稿后再保存')
+  }
+  for (const [key, value] of Object.entries(patch)) {
+    if (!(key in existing.formData)) continue
+    if (JSON.stringify(existing.formData[key]) === JSON.stringify(value)) continue
+    throw aiError(409, `字段 ${key} 已有值 ${JSON.stringify(existing.formData[key])}，如需修改请用 update_action_draft 并带上当前版本`)
+  }
+  return drafts.patch(context.actorId, existing.draftId, existing.draftVersion, patch, { ...options, subject: subjectOf(context) })
+}
+
+/**
  * 找出本会话当前**可继续**的草稿。
  *
  * 只有 `EDITABLE_ACTION_DRAFT_STATUSES` 里的状态可以被续写：已取消、已完成、过期的
@@ -129,12 +163,13 @@ export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): 
 
   const prepareCreateUser: AiCapability = {
     name: 'prepare_create_user',
-    description: '把本轮从用户话里提取到的**非敏感**用户字段存入「新增用户」表单草稿，并返回还缺什么。**不会创建用户**——用户必须在原生表单里核对、填写密码并点击保存。本会话已有草稿时会合并进去，因此每轮只传本轮新增或要改的字段，不要重传已确认的值。',
+    description: '把本轮从用户话里提取到的**非敏感**用户字段存入「新增用户」表单草稿，并返回还缺什么。**不会创建用户**——用户必须在原生表单里核对、填写密码并点击保存。本会话已有草稿时会合并进去，因此每轮只传本轮**新补充**的字段：已存在的字段再传不同值会被拒绝（用户在表单里可能已经改过），这时请改用 update_action_draft 并带上你读到的 draftVersion。',
     moduleId: 'ai',
     operationId: 'adminUsersCreate',
     permissionCode: 'system:user:create',
     inputSchema: Type.Object({
       ...ActionDraftFormDataSchema.properties,
+      draftVersion: Type.Optional(Type.Integer({ minimum: 1, description: '你读到的草稿版本；给了就必须与当前一致' })),
       schemaVersion: Type.Optional(Type.Integer({ minimum: 1, description: '上次读到的表单定义版本；对不上必须重新读表单' })),
     }, { additionalProperties: false }),
     riskLevel: 'prepare',
@@ -142,11 +177,11 @@ export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): 
     async execute(context: AiCapabilityContext, input: unknown) {
       const conversationId = requireConversation(context)
       // 字段平铺在入参顶层：模型只需要说「这一轮我知道了这些」，不必再包一层 formData。
-      const { schemaVersion, ...patch } = (input ?? {}) as { schemaVersion?: number } & Record<string, unknown>
+      const { draftVersion, schemaVersion, ...patch } = (input ?? {}) as { draftVersion?: number; schemaVersion?: number } & Record<string, unknown>
       const existing = await activeDraft(drafts, context)
       // 合并而不是新建：跨轮收集的前提就是同一份草稿一直活着。
       const draft = existing
-        ? await drafts.patch(context.actorId, existing.draftId, existing.draftVersion, patch, { schemaVersion, subject: subjectOf(context) })
+        ? await merge(drafts, context, existing, patch, draftVersion, { schemaVersion })
         : await drafts.create(context.actorId, conversationId, { module: DRAFT_MODULE, action: DRAFT_ACTION, formData: patch, schemaVersion, subject: subjectOf(context) })
       return draftSummary(draft, context.requestId)
     },
