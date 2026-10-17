@@ -1,0 +1,22 @@
+CREATE TABLE `ai_action_drafts` (
+  `draft_id` varchar(64) NOT NULL,
+  `owner_id` int NOT NULL,
+  `conversation_id` varchar(64) NOT NULL,
+  `module` varchar(32) NOT NULL,
+  `action` varchar(64) NOT NULL,
+  `schema_version` int NOT NULL,
+  `form_data` json NOT NULL,
+  `missing_fields` json NOT NULL,
+  `validation_errors` json NOT NULL,
+  `draft_version` int DEFAULT 1 NOT NULL,
+  `status` varchar(16) NOT NULL,
+  `result_ref` json,
+  `failure_reason` varchar(255),
+  `expires_at` datetime(3) NOT NULL,
+  `created_at` datetime(3) NOT NULL,
+  `updated_at` datetime(3) NOT NULL,
+  CONSTRAINT `ai_action_drafts_draft_id` PRIMARY KEY (`draft_id`),
+  INDEX `ai_action_drafts_owner_conversation` (`owner_id`, `conversation_id`, `created_at`),
+  INDEX `ai_action_drafts_expires_at` (`expires_at`),
+  CONSTRAINT `ai_action_drafts_conversation_fk` FOREIGN KEY (`conversation_id`) REFERENCES `ai_conversations` (`id`) ON DELETE CASCADE
+);
