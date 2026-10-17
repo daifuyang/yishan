@@ -24,6 +24,8 @@ import {
   invalidateUserCreateFormHandle,
   isCurrentUserCreateFormHandle,
   registerUserCreateFormHandle,
+  restoreUserCreateFormHandle,
+  subscribeUserCreateFormTarget,
   USER_FORM_ASSISTANCE_TARGET,
   type UserCreateDraftFields,
   type UserFormSnapshot,
@@ -179,21 +181,60 @@ const UserForm: React.FC<UserFormProps> = ({
       }
       onOpenChangeRef.current?.(next);
       if (isEdit) {
-        // 编辑表单打开了（无论开关）：创建协作句柄立即作废，
-        // 助手不能把「创建」意图写进一个编辑表单（设计 §3.2）。
-        invalidateUserCreateFormHandle('edit-form-open');
+        // 只在编辑表单**打开的那一刻**作废创建协作句柄：助手不能把「创建」意图
+        // 写进一个编辑表单（设计 §3.2）。
+        if (next && !wasOpen) {
+          invalidateUserCreateFormHandle('edit-form-open');
+        } else if (!next && wasOpen) {
+          // 关掉顶替者时，创建表单可能仍旧开在底层 —— 归还前台，让它重新注册。
+          // 不这么做的话它的注册 effect 依赖稳定，永远等不到恢复时机。
+          restoreUserCreateFormHandle('edit-form-closed');
+        }
       }
     },
     [isControlled, isEdit],
   );
 
-  const writeFields = useCallback((patch: Record<string, unknown>) => {
-    if (Object.keys(patch).length === 0) return;
-    formRef.current?.setFieldsValue?.(patch as never);
-    valuesRef.current = { ...valuesRef.current, ...patch };
-    for (const key of Object.keys(patch)) provenanceRef.current[key] = 'assistant';
-    revisionRef.current += 1;
-  }, []);
+  /**
+   * 部门变化后**重新验证**角色：候选被服务端按新的 deptIds 重算过，
+   * 因此已选角色可能不再可授予。这里不替用户改选，只把不可授予的标成错误，
+   * 由用户自己决定（设计 §7）。服务端提交时仍会再检查一次。
+   */
+  const revalidateRoles = useCallback(
+    async (deptIds: number[]) => {
+      if (!assistEnabled) return;
+      const options = await getUserCreateOptions({ deptIds });
+      if (!options) return;
+      const allowed = new Set(options.roles.map((role) => role.id));
+      const selected = (readValues().roleIds as number[] | undefined) ?? [];
+      const invalid = selected.filter((id) => !allowed.has(id));
+      if (invalid.length === 0) return;
+      formRef.current?.setFields?.([
+        {
+          name: 'roleIds',
+          errors: ['所选角色在当前部门下不再可授予，请重新选择'],
+        },
+      ]);
+      revisionRef.current += 1;
+    },
+    [assistEnabled, readValues],
+  );
+
+  const writeFields = useCallback(
+    (patch: Record<string, unknown>) => {
+      if (Object.keys(patch).length === 0) return;
+      formRef.current?.setFieldsValue?.(patch);
+      valuesRef.current = { ...valuesRef.current, ...patch };
+      for (const key of Object.keys(patch)) provenanceRef.current[key] = 'assistant';
+      revisionRef.current += 1;
+      // `setFieldsValue` 不触发 `onValuesChange`，助手写入的 deptIds 必须在这里
+      // 自己补一次角色重校验，否则这条路径下的越权角色永远不会报错。
+      // 用户手改走 onValuesChange 那条路径，因此不会重复执行。
+      const nextDeptIds = patch.deptIds as number[] | undefined;
+      if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds);
+    },
+    [revalidateRoles],
+  );
 
   // ---- 协作契约注册：挂载即注册，卸载即摘除（身份变化时引用自动作废） ----
   useEffect(() => {
@@ -255,7 +296,18 @@ const UserForm: React.FC<UserFormProps> = ({
         return { applied: true, conflicts: [] };
       },
     };
-    return registerUserCreateFormHandle(handle, identity);
+    const unsubscribe = registerUserCreateFormHandle(handle, identity);
+    // 编辑表单关掉后创建表单要能**自己回来**：注册 effect 的依赖稳定，
+    // 没有这次通知它永远等不到恢复时机。
+    const unsubscribeTarget = subscribeUserCreateFormTarget((event) => {
+      if (event !== 'restored') return;
+      if (!assistEnabled || !openRef.current) return;
+      registerUserCreateFormHandle(handle, identity);
+    });
+    return () => {
+      unsubscribeTarget();
+      unsubscribe();
+    };
   }, [assistEnabled, buildSnapshot, draftFields, fallbackEditableFields, identity, setOpen, writeFields]);
 
   // ---- 既有一次性预填：现在灌进**同一个**表单，而不是另挂一个表单 ----
@@ -330,29 +382,25 @@ const UserForm: React.FC<UserFormProps> = ({
   }, [readValues]);
 
   /**
-   * 部门变化后**重新验证**角色：候选被服务端按新的 deptIds 重算过，
-   * 因此已选角色可能不再可授予。这里不替用户改选，只把不可授予的标成错误，
-   * 由用户自己决定（设计 §7）。服务端提交时仍会再检查一次。
+   * 同源枚举候选：可选值来自 create-form 的 `enum` 约束，字典只负责提供**标签**。
+   * 约束缺失时退回字典 —— 视觉结果不变（标签一律取自字典，没有标签才退回编码）。
    */
-  const revalidateRoles = useCallback(
-    async (deptIds: number[]) => {
-      if (!assistEnabled) return;
-      const options = await getUserCreateOptions({ deptIds });
-      if (!options) return;
-      const allowed = new Set(options.roles.map((role) => role.id));
-      const selected = (readValues().roleIds as number[] | undefined) ?? [];
-      const invalid = selected.filter((id) => !allowed.has(id));
-      if (invalid.length === 0) return;
-      formRef.current?.setFields?.([
-        {
-          name: 'roleIds',
-          errors: ['所选角色在当前部门下不再可授予，请重新选择'],
-        },
-      ]);
-      revisionRef.current += 1;
+  const enumOptions = useCallback(
+    (name: string, fallback: { label: string; value: string }[]) => {
+      const field = createForm?.fields.find((item) => item.name === name);
+      const values = field?.constraints?.enum;
+      if (!Array.isArray(values) || values.length === 0) return fallback;
+      return values.map((raw) => {
+        const value = String(raw);
+        const label = fallback.find((item) => item.value === value)?.label ?? value;
+        return { label, value };
+      });
     },
-    [assistEnabled, readValues],
+    [createForm],
   );
+
+  const genderOptions = enumOptions('gender', genderDict);
+  const userStatusOptions = enumOptions('status', userStatusDict);
 
   type UserFormValues = Partial<SystemAPI.createUserReq> & Partial<SystemAPI.updateUserReq>;
 
@@ -500,14 +548,14 @@ const UserForm: React.FC<UserFormProps> = ({
       <ProFormRadio.Group
         name="gender"
         label="用户性别"
-        options={genderDict}
+        options={genderOptions}
         colProps={{ span: 12 }}
       />
 
       <ProFormRadio.Group
         name="status"
         label="状态"
-        options={userStatusDict}
+        options={userStatusOptions}
         colProps={{ span: 12 }}
       />
 

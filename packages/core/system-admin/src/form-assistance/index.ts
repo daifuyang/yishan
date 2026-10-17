@@ -72,6 +72,11 @@ export interface UserCreateFormApplyInput {
    * 由调用方展示原值与拟修改值的差异让用户确认，确认后带上本名单重试。
    *
    * 这是 brief 签名上的**可选增量**：不传时行为等价于「没有任何字段被明确授权」。
+   *
+   * **必须**来自用户**本轮确认过的那份差异**（diff），不能来自 `Object.keys(fields)`
+   * 或整个补丁：名单本身就是「用户同意覆盖」的凭据，把未讨论的字段顺手列进去等于
+   * 绕过确认。另外，带了名单里**本次补丁并不携带**的字段是调用方的 bug ——
+   * 实现层会拒收这些名字，宁可失败也不要静默授权一个没写进补丁的字段。
    */
   authorizedFields?: readonly string[];
 }
@@ -90,6 +95,8 @@ interface Registration {
 
 let active: Registration | null = null;
 const listeners = new Set<() => void>();
+/** 前台目标变化（被编辑表单顶替 / 顶替者关掉）的订阅者。 */
+const targetListeners = new Set<(event: 'invalidated' | 'restored') => void>();
 
 function emit(): void {
   for (const listener of [...listeners]) listener();
@@ -128,12 +135,36 @@ export function peekUserCreateFormHandle(): UserCreateFormHandle | null {
   return active?.handle ?? null;
 }
 
-/** 当「不是创建表单」的东西占据前台时，由表单内部调用以作废当前协作句柄。 */
+/**
+ * 当「不是创建表单」的东西占据前台时，由表单内部调用以作废当前协作句柄。
+ *
+ * **只在打开那一刻调用**：创建表单可能仍旧开在底层，关掉顶替者之后它还是用户
+ * 此刻唯一在看的目标，届时由 {@link restoreUserCreateFormHandle} 让它自己重新注册。
+ */
 export function invalidateUserCreateFormHandle(reason: string): void {
-  if (!active) return;
   // 目前只有一种原因（被编辑用户表单顶替），保留参数便于审计与后续扩展。
   void reason;
   clearUserCreateFormHandle();
+  for (const listener of [...targetListeners]) listener('invalidated');
+}
+
+/**
+ * 顶替创建表单的东西（编辑用户表单）关掉了。此时仍开着的创建表单会自己重新注册 ——
+ * 注册 effect 的依赖是稳定的，没有这次通知它永远等不到「可以回来了」。
+ */
+export function restoreUserCreateFormHandle(reason: string): void {
+  void reason;
+  for (const listener of [...targetListeners]) listener('restored');
+}
+
+/** 订阅前台目标变化。创建表单用它在自己被顶替/被归还之间切换注册状态。 */
+export function subscribeUserCreateFormTarget(
+  listener: (event: 'invalidated' | 'restored') => void,
+): () => void {
+  targetListeners.add(listener);
+  return () => {
+    targetListeners.delete(listener);
+  };
 }
 
 /**

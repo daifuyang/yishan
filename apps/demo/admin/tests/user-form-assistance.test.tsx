@@ -29,31 +29,21 @@ jest.mock('@umijs/max', () => ({
   request: (...args: unknown[]) => mockRequest(...args),
 }));
 
-// 注：本项目的 Jest 变换链（esbuild + babel）在类型被擦除后仍把
-// `import type { X }` 视作值绑定并报错，因此这里**镜像**公开契约的结构，
-// 而不是从导入符号反推类型 —— 契约漂移会直接让这些断言失败。
-interface Snapshot {
-  target: 'user.create';
-  instanceId: string;
-  revision: number;
-  fields: Record<string, unknown>;
-  dirtyFields: readonly string[];
-}
-interface ApplyResult {
-  applied: boolean;
-  conflicts: readonly string[];
-}
-interface ApplyInput {
-  instanceId: string;
-  baseRevision: number;
-  fields: Record<string, unknown>;
-  authorizedFields?: readonly string[];
-}
-interface Handle {
-  snapshot(): Snapshot;
-  open(): Promise<Snapshot>;
-  apply(input: ApplyInput): Promise<ApplyResult>;
-}
+/*
+ * 契约类型怎么被钉住（修复轮 1 的结论）：
+ *
+ * 本文件**不能**写 `import type { UserCreateFormHandle } from '.../form-assistance'`。
+ * @umijs/test 的 esbuild transformer 对含 `jest.mock(` 的文件会先跑一遍
+ * 只带 `@babel/plugin-transform-modules-commonjs` 的 babel（没有 preset-typescript），
+ * 于是「被导入的绑定出现在类型位置」会在 rewrite-live-references 阶段直接抛错 ——
+ * `import type {...}` 和 `import { type X }` 两种写法都会失败。
+ *
+ * 但这不等于必须**镜像**契约：`peekUserCreateFormHandle()` 返回的就是真实的
+ * `UserCreateFormHandle`。因此这里让 `currentHandle()` / `openByAssistant()` **推断**
+ * 真实类型（下面不写任何类型标注），调用点的 `apply({...})` 由 `tsc --noEmit` 按
+ * 真实签名检查 —— 改字段名、放宽 apply、必填化 authorizedFields 都会红。
+ * 再加一条运行期形状断言，守住「句柄只有 apply/open/snapshot」。
+ */
 
 const EDITABLE_FIELDS = [
   'username',
@@ -111,7 +101,10 @@ beforeEach(() => {
     const params = options?.params ?? {};
     if (String(url).includes('/create-form')) return { success: true, data: CREATE_FORM };
     if (String(url).includes('/create-options')) {
-      const deptIds = (params.deptIds as string | undefined)?.split(',') ?? [];
+      const rawDeptIds = params.deptIds;
+      const deptIds: number[] = Array.isArray(rawDeptIds)
+        ? (rawDeptIds as unknown[]).map(Number)
+        : String(rawDeptIds ?? '').split(',').filter(Boolean).map(Number);
       return {
         success: true,
         data: {
@@ -190,7 +183,8 @@ function renderUserList() {
   );
 }
 
-function currentHandle(): Handle {
+/** 真实契约类型靠推断拿，因此这里刻意不写类型标注（原因见文件头注释）。 */
+function currentHandle() {
   const handle = peekUserCreateFormHandle();
   if (!handle) throw new Error('no user.create form handle registered');
   return handle;
@@ -200,9 +194,9 @@ function modalCount(): number {
   return document.querySelectorAll('.ant-modal').length;
 }
 
-async function openByAssistant(): Promise<Snapshot> {
+async function openByAssistant() {
   const handle = currentHandle();
-  let snapshot!: Snapshot;
+  let snapshot!: Awaited<ReturnType<typeof handle.open>>;
   await act(async () => {
     snapshot = await handle.open();
   });
@@ -211,11 +205,28 @@ async function openByAssistant(): Promise<Snapshot> {
 }
 
 test('注册返回注销函数；注销后引用被清空', async () => {
-  const noop = { snapshot: () => 'unused', open: async () => 'unused', apply: async () => 'unused' };
-  const unsubscribe =  registerUserCreateFormHandle(noop as never, 42);
+  const snapshot = {
+    target: 'user.create' as const,
+    instanceId: 'noop',
+    revision: 0,
+    fields: {},
+    dirtyFields: [] as string[],
+  };
+  const noop = {
+    snapshot: () => snapshot,
+    open: async () => snapshot,
+    apply: async () => ({ applied: true, conflicts: [] as string[] }),
+  };
+  const unsubscribe = registerUserCreateFormHandle(noop, 42);
   expect(peekUserCreateFormHandle()).toBe(noop);
   unsubscribe();
   expect(peekUserCreateFormHandle()).toBeNull();
+});
+
+test('句柄本身只有 open/apply/snapshot：没有 submit / loading / setOpen', async () => {
+  renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+  expect(Object.keys(currentHandle()).sort()).toEqual(['apply', 'open', 'snapshot']);
 });
 
 test('没有表单打开时，open() 恰好创建一次', async () => {
@@ -225,7 +236,7 @@ test('没有表单打开时，open() 恰好创建一次', async () => {
 
   const first = await openByAssistant();
   const handle = currentHandle();
-  let second!: Snapshot;
+  let second!: Awaited<ReturnType<typeof handle.open>>;
   await act(async () => {
     second = await handle.open();
   });
@@ -260,12 +271,13 @@ test('snapshot() 永远不包含 password，密码补丁在入口被拒绝', asy
   expect(JSON.stringify(snapshot)).not.toContain('password');
 
   const handle = currentHandle();
-  let result!: ApplyResult;
+  let result!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     result = await handle.apply({
       instanceId: snapshot.instanceId,
       baseRevision: snapshot.revision,
-      fields: { password: 'secret123' } as never,
+      // 契约里根本没有 password；这一条只能靠运行期拒绝，因此显式越过类型。
+      fields: { password: 'secret123' } as unknown as Parameters<typeof handle.apply>[0]['fields'],
     });
   });
   expect(result.applied).toBe(false);
@@ -309,7 +321,7 @@ test('revision 不符时拒绝应用，且不改动任何字段', async () => {
   });
   const current = handle.snapshot();
 
-  let result!: ApplyResult;
+  let result!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     result = await handle.apply({
       instanceId: current.instanceId,
@@ -327,7 +339,7 @@ test('instanceId 不符时拒绝', async () => {
   await openByAssistant();
   const handle = currentHandle();
 
-  let result!: ApplyResult;
+  let result!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     result = await handle.apply({
       instanceId: 'some-other-instance',
@@ -352,7 +364,7 @@ test('覆盖用户手动改过的字段需要确认；明确授权后才写入',
   expect(manual.fields.username).toBe('manual-name');
   expect(manual.dirtyFields).toContain('username');
 
-  let blocked!: ApplyResult;
+  let blocked!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     blocked = await handle.apply({
       instanceId: manual.instanceId,
@@ -364,7 +376,7 @@ test('覆盖用户手动改过的字段需要确认；明确授权后才写入',
   expect(blocked.conflicts).toContain('username');
   expect(handle.snapshot().fields.username).toBe('manual-name');
 
-  let allowed!: ApplyResult;
+  let allowed!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     allowed = await handle.apply({
       instanceId: manual.instanceId,
@@ -389,7 +401,7 @@ test('确认期间被手改后，迟到的补丁因 revision 不符被拒绝', a
   });
   const atDecisionTime = handle.snapshot();
 
-  let blocked!: ApplyResult;
+  let blocked!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     blocked = await handle.apply({
       instanceId: atDecisionTime.instanceId,
@@ -407,7 +419,7 @@ test('确认期间被手改后，迟到的补丁因 revision 不符被拒绝', a
   });
 
   // 用户确认后，助手带着**当时**的版本重试 —— 版本已变，必须被拒。
-  let late!: ApplyResult;
+  let late!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     late = await handle.apply({
       instanceId: atDecisionTime.instanceId,
@@ -432,7 +444,7 @@ test('表单关闭后拒绝应用', async () => {
   });
   await waitFor(() => expect(modalCount()).toBe(0));
 
-  let result!: ApplyResult;
+  let result!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     result = await handle.apply({
       instanceId: snapshot.instanceId,
@@ -461,7 +473,7 @@ test('打开的是「编辑用户」表单时不提供创建协作', async () =>
 
   expect(peekUserCreateFormHandle()).toBeNull();
 
-  let result!: ApplyResult;
+  let result!: Awaited<ReturnType<typeof handle.apply>>;
   await act(async () => {
     result = await handle.apply({
       instanceId: snapshot.instanceId,
@@ -492,4 +504,69 @@ test('既有的一次性预填也进入同一个表单，不再另挂第二个',
   // 模型给 deptId，表单字段是 deptIds。
   expect(snapshot.fields.deptIds).toEqual([1]);
   expect(await screen.findByText(/还需要你补充：password/)).toBeTruthy();
+});
+
+test('助手写入的 deptIds 也会重新验证角色', async () => {
+  renderUserList();
+  await openByAssistant();
+  const handle = currentHandle();
+
+  // 先在无部门候选下选中「普通角色」(id 2)。
+  let applied!: Awaited<ReturnType<typeof handle.apply>>;
+  await act(async () => {
+    applied = await handle.apply({
+      instanceId: handle.snapshot().instanceId,
+      baseRevision: handle.snapshot().revision,
+      fields: { deptIds: [], roleIds: [2] },
+    });
+  });
+  expect(applied.applied).toBe(true);
+
+  // 再让助手把部门改成 1：候选重算后角色 2 不再可授予。
+  // setFieldsValue 不触发 onValuesChange，所以这条路径必须自己补校验。
+  await act(async () => {
+    await handle.apply({
+      instanceId: handle.snapshot().instanceId,
+      baseRevision: handle.snapshot().revision,
+      fields: { deptIds: [1] },
+    });
+  });
+
+  expect(
+    await screen.findByText('所选角色在当前部门下不再可授予，请重新选择'),
+  ).toBeTruthy();
+});
+
+test('编辑表单关掉后，创建协作句柄自己回来', async () => {
+  renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+  await openByAssistant();
+
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /新建/ }));
+  });
+  await act(async () => {
+    fireEvent.click(await screen.findByText('编辑'));
+  });
+  await waitFor(() => expect(screen.getByText('编辑用户')).toBeTruthy());
+  expect(peekUserCreateFormHandle()).toBeNull();
+
+  const editModal = screen.getByText('编辑用户').closest('.ant-modal') as HTMLElement;
+  await act(async () => {
+    fireEvent.click(editModal.querySelector('.ant-modal-close') as HTMLElement);
+  });
+
+  // 创建表单仍旧开在底层，句柄必须恢复，助手才能继续用它。
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+  const handle = currentHandle();
+  let result!: Awaited<ReturnType<typeof handle.apply>>;
+  await act(async () => {
+    result = await handle.apply({
+      instanceId: handle.snapshot().instanceId,
+      baseRevision: handle.snapshot().revision,
+      fields: { username: 'after-edit-close' },
+    });
+  });
+  expect(result.applied).toBe(true);
+  expect(handle.snapshot().fields.username).toBe('after-edit-close');
 });
