@@ -935,3 +935,82 @@ test('业务失败：表单数据与密码控件保留，创建不会被重发',
   ).toBe('zhangsan');
   unregisterLink();
 });
+
+test('草稿表单被关掉后，另一次手动新建既不 PATCH 也不关联那份草稿', async () => {
+  // 回归用例（错的记录）：助手填完 draft-1 → 用户关掉表单 → 用户手动新建另一个用户。
+  // 新实例是空的，旧代码会拿它去和 draft-1 的「已同步」求差（结果是清空整份草稿），
+  // 随后的 prepare 还会把这次**无关**的手动创建记成 draft-1 的完成。
+  const view = renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+
+  const { bound } = renderBridge();
+  jest.useFakeTimers();
+  try {
+    await act(async () => {
+      (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+        liveRequest(),
+      );
+      jest.advanceTimersByTime(1);
+      await Promise.resolve();
+    });
+    // apply 前后还有若干 await 与一个 setTimeout(0)，把窗口走完再断言。
+    for (let round = 0; round < 4; round += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(SYNC_DEBOUNCE_MS);
+        await Promise.resolve();
+      });
+    }
+    // 助手确实填进去了（否则本用例会变成空断言）。
+    const assisted = peekUserCreateFormHandle();
+    expect(assisted?.snapshot().fields).toMatchObject({
+      username: 'zhangsan',
+      realName: '张三',
+    });
+    const assistedInstance = assisted?.snapshot().instanceId;
+
+    jest.useRealTimers();
+    // 用户关掉这个表单。
+    const closeButtons = Array.from(
+      document.querySelectorAll('.ant-modal-close'),
+    ) as HTMLElement[];
+    expect(closeButtons.length).toBeGreaterThan(0);
+    await act(async () => {
+      fireEvent.click(closeButtons[closeButtons.length - 1] as Element);
+    });
+    // 注意：关掉表单本身**不会**清空句柄的 instanceId（那是另一个设计的语义），
+    // 真正改变局面的是下一次打开铸出的新实例 —— 下面这条才是判定依据。
+
+    // 用户手动再开一个新建表单，填自己的东西。
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /新建/ }));
+    });
+    await act(async () => {
+      fireEvent.change(await screen.findByPlaceholderText('请输入登录名称'), {
+        target: { value: 'manual-user' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('请输入手机号'), {
+        target: { value: '13900000000' },
+      });
+    });
+    const manualInstance = peekUserCreateFormHandle()?.snapshot().instanceId;
+    expect(manualInstance).toBeTruthy();
+    expect(manualInstance).not.toBe(assistedInstance);
+
+    // 越过整个合并窗口。
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, SYNC_DEBOUNCE_MS * 2);
+      });
+    });
+    // 一次 PATCH 都不能有：被放弃的草稿不能被这次编辑改写。
+    expect(mockPatchDraft).not.toHaveBeenCalled();
+
+    // 提交前也不能把它关联到 draft-1。
+    const link = peekUserCreateDraftLink();
+    await expect(link?.prepare()).rejects.toThrow(/草稿/);
+    expect(mockPatchDraft).not.toHaveBeenCalled();
+  } finally {
+    jest.useRealTimers();
+    view.unmount();
+  }
+});

@@ -469,6 +469,14 @@ const UserForm: React.FC<UserFormProps> = ({
    * 锁不释放是刻意的：失败时用户必须重新看一眼表单再点「确定」。
    */
   const submittingRef = useRef(false);
+  /**
+   * 「确定」被拒绝的原因。
+   *
+   * 草稿联动可能**硬失败**（草稿表单已关闭、同步没落定），此时既不能降级成一次
+   * 没有草稿关联的创建，也必须让用户看到为什么没创建 —— 静默返回 false 等于让
+   * 人对着没反应的按钮反复点。
+   */
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleFinish = async (values: UserFormValues) => {
     const basePayload: SystemAPI.updateUserReq = {
@@ -487,15 +495,20 @@ const UserForm: React.FC<UserFormProps> = ({
     if (!initialValues?.id) {
       if (submittingRef.current) return false;
       submittingRef.current = true;
+      setSubmitError(null);
       // 草稿联动：先把待同步的非敏感字段落地，再取**精确**版本号带上。
       // 没有草稿时 `prepare()` 返回 null，普通创建路径与从前完全一致。
       const link = peekUserCreateDraftLink();
       let submission: UserCreateDraftSubmission | null = null;
       try {
         submission = link ? await link.prepare() : null;
-      } catch {
+      } catch (cause) {
         // 同步失败**不**降级成一次没有草稿关联的创建：那会绕开「同一草稿只完成一次
         // 创建」的约束，也等于把用户的确认当成无关的一次普通创建。
+        // 但必须把原因摆出来 —— 静默返回 false 会让人对着没反应的按钮一直点。
+        const reason = cause instanceof Error ? cause.message : '草稿联动未成功';
+        // 只取这句人话：错误对象里可能夹带请求细节，这里不整段外显。
+        setSubmitError(reason);
         submittingRef.current = false;
         return false;
       }
@@ -576,6 +589,7 @@ const UserForm: React.FC<UserFormProps> = ({
         initialValues={initialValues}
         onFinish={handleFinish}
         onValuesChange={(changed) => {
+          setSubmitError(null);
           for (const key of Object.keys(changed ?? {})) {
             provenanceRef.current[key] = 'user';
           }
@@ -588,6 +602,9 @@ const UserForm: React.FC<UserFormProps> = ({
         }}
         onOpenChange={setOpen}
       >
+      {submitError ? (
+        <Alert type="error" showIcon message={submitError} style={{ marginBottom: 16 }} />
+      ) : null}
       <ProFormText
         name="username"
         label="登录名称"

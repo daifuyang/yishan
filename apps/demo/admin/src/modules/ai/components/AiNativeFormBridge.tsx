@@ -155,13 +155,22 @@ export function AiNativeFormBridge() {
   /** 上一次同步失败：提交前必须重新落地，绝不能带着旧版本号去创建。 */
   const syncFailedRef = useRef(false);
   /**
+   * 本次协助真正填进**哪个**表单实例。
+   *
+   * 没有它，「用户关掉表单 → 过一会儿手动新建另一个用户」会被当成同一场协作：新实例
+   * 是空的，差算出来是「把草稿清空」，随后的 `prepare()` 还会把这次无关的手动创建
+   * 记到那份已被放弃的草稿上（错的记录 + 错关掉一份草稿）。表单实例 id 每次打开
+   * 都不同，因此它是唯一可靠的「还是那一个表单吗」凭证。
+   */
+  const assistedInstanceRef = useRef<string | null>(null);
+  /**
    * 助手**正在自己填表**。
    *
    * `open()` 与 `apply()` 之间表单处于中间态：刚打开时是空的，填完才是草稿的内容。
    * 这段时间里算差得到的是「把整个草稿清成 null」，等 600ms 后发出去就把刚填进去的
    * 字段全部抹掉。这段时间内一律不同步 —— 助手写入的值不是用户编辑。
    */
-  const fillingRef = useRef(false);
+  const fillingDepthRef = useRef(0);
   const epochRef = useRef(identityEpoch);
   epochRef.current = identityEpoch;
   const [conflict, setConflict] = useState<PendingConflict | null>(null);
@@ -181,6 +190,21 @@ export function AiNativeFormBridge() {
     syncedRef.current = {};
     latestRef.current = null;
     syncFailedRef.current = false;
+    assistedInstanceRef.current = null;
+  }, []);
+
+  /**
+   * 协助目标是否仍落在**同一个**打开的表单上。
+   *
+   * 助手填过某个实例之后，用户一旦关掉它（`instanceId` 变空）或另开一个表单
+   * （`instanceId` 变了），那份草稿就算被放弃：既不能再往它同步，也不能把它
+   * 关联到下一次提交上。
+   */
+  const stillAssistingThisInstance = useCallback((): boolean => {
+    const expected = assistedInstanceRef.current;
+    if (!expected) return false;
+    const live = peekUserCreateFormHandle()?.snapshot().instanceId ?? '';
+    return live === expected;
   }, []);
 
   const patchNow = useCallback(
@@ -201,6 +225,9 @@ export function AiNativeFormBridge() {
           // 身份或草稿换了就别把这次结果写进来。
           if (seq !== seqRef.current || epoch !== epochRef.current) return;
           target.draftVersion = draft.draftVersion;
+          // 这一次真的落地了：清掉失败标记，否则一次瞬时失败会让用户**下一次**点
+          // 「确定」也被一句不相关的「同步未成功」挡住。
+          syncFailedRef.current = false;
           for (const [key, value] of Object.entries(patch)) {
             if (value === null) delete syncedRef.current[key];
             else syncedRef.current[key] = value;
@@ -234,13 +261,19 @@ export function AiNativeFormBridge() {
       timerRef.current = null;
     }
     // 助手正在填表：表单值是中间态，此刻算差等于「清空整个草稿」。
-    if (fillingRef.current) {
+    if (fillingDepthRef.current > 0) {
       await chainRef.current;
       return;
     }
     const handle = peekUserCreateFormHandle();
     const current = handle?.snapshot().fields ?? latestRef.current?.fields;
     if (!current || !activeRef.current) {
+      await chainRef.current;
+      return;
+    }
+    // 表单已经被关掉 / 换成另一个实例：这份草稿已被放弃，读到的是别人的空表单。
+    // 继续算差等于「把这份草稿清空」，必须停手。
+    if (!stillAssistingThisInstance()) {
       await chainRef.current;
       return;
     }
@@ -251,13 +284,13 @@ export function AiNativeFormBridge() {
     }
     await patchNow(patch);
     await chainRef.current;
-  }, [patchNow]);
+  }, [patchNow, stillAssistingThisInstance]);
 
   /** 用户手改 → 合并延迟后同步（设计 §6）。 */
   const onFormChange = useCallback(
     (snapshot: UserFormSnapshot) => {
       latestRef.current = snapshot;
-      if (!activeRef.current || fillingRef.current) return;
+      if (!activeRef.current || fillingDepthRef.current > 0) return;
       // **先撤掉上一枚定时器**：空差也必须撤。留着它就会在 600ms 后用上一枚
       // 定时器算出来的旧差发一次 PATCH。
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -346,8 +379,8 @@ export function AiNativeFormBridge() {
    */
   const applyDraft = useCallback(
     async (draft: ActionDraft, handle: UserCreateFormHandle) => {
-      // 填表期间表单值是中间态，一律不参与同步（见 fillingRef）。
-      fillingRef.current = true;
+      // 填表期间表单值是中间态，一律不参与同步（见 fillingDepthRef）。
+      fillingDepthRef.current += 1;
       try {
         const opened = await handle.open();
         const snapshot = opened?.instanceId ? opened : handle.snapshot();
@@ -358,6 +391,8 @@ export function AiNativeFormBridge() {
           fields,
         });
         if (result.applied) {
+          // 记住这次协作落在哪个实例上：只有它还开着，才谈得上「继续同步」。
+          assistedInstanceRef.current = snapshot.instanceId;
           // 填完之后重新建立「已同步」基线：助手写入的内容与表单自身的默认值
           // 都不是用户的编辑，既不该被当成差去 PATCH，也不会被当成「要清空」。
           const current = handle.snapshot().fields;
@@ -368,7 +403,7 @@ export function AiNativeFormBridge() {
         }
         reportApplyResult(draft, fields, handle, result);
       } finally {
-        fillingRef.current = false;
+        fillingDepthRef.current = Math.max(0, fillingDepthRef.current - 1);
       }
     },
     [reportApplyResult],
@@ -496,6 +531,17 @@ export function AiNativeFormBridge() {
     if (!handle || !handle.snapshot().instanceId) {
       throw new Error('草稿协作表单已不可用，本次未创建');
     }
+    // 用户已经把这份草稿的表单关掉（或另开了一个）：这次提交与它无关。
+    // 同样**不**降级成普通创建 —— 那会让一次手动新建悄悄「完成」一份早被放弃的
+    // 草稿，服务端只会把错的那条记成这次创建的结果。
+    if (!stillAssistingThisInstance()) {
+      setOutcome(target.draftId, {
+        status: 'notice',
+        message:
+          '之前那份草稿的表单已经关掉了，这次保存不会算作它的创建。需要代填请重新点「继续填写」。',
+      });
+      throw new Error('草稿表单已被关闭，本次不会关联该草稿');
+    }
     await syncLatest();
     // 同步没落定就不能锁定版本号：带着 patch 之前的版本去创建，draftSubmission
     // 指的就不是用户刚核对的那一版草稿。
@@ -504,7 +550,7 @@ export function AiNativeFormBridge() {
       throw new Error('草稿同步未成功，本次未创建');
     }
     return { draftId: target.draftId, draftVersion: target.draftVersion };
-  }, [syncLatest]);
+  }, [setOutcome, stillAssistingThisInstance, syncLatest]);
 
   const reconcile = useCallback(async (): Promise<
     'completed' | 'failed' | 'unknown'
