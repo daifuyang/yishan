@@ -35,6 +35,15 @@ jest.mock('../components/AiChatView', () => ({
           <button type="button" data-testid="header-button">
             展开为页面
           </button>
+          {/* 真实的关闭按钮在标题栏内且有 onClick：拖到它上面松手时
+              浏览器仍会派发 click，面板不能因此自己关掉。 */}
+          <button
+            type="button"
+            data-testid="header-close-button"
+            onClick={() => props.onClose?.()}
+          >
+            关闭
+          </button>
         </div>
       </div>
       <div data-testid="chat-body">消息区</div>
@@ -349,6 +358,33 @@ describe('拖动（设计 §4）', () => {
     button.focus();
     fireEvent.click(button);
     expect(document.activeElement).toBe(button);
+  });
+
+  it('拖到关闭按钮上松手不会触发它的 click', async () => {
+    render(<Harness />);
+    await stubPanelRect();
+    const close = screen.getByTestId('header-close-button');
+    fireEvent.mouseDown(screen.getByTestId('chat-header-title'), {
+      button: 0,
+      clientX: 610,
+      clientY: 110,
+    });
+    fireEvent.mouseMove(document, { clientX: 570, clientY: 70 });
+    fireEvent.mouseUp(close);
+    // 手势真的动过 → 紧随其后的这次 click 必须被吞掉。
+    fireEvent.click(close);
+    expect(screen.queryByRole('dialog', { name: 'AI 助手' })).toBeTruthy();
+  });
+
+  it('在关闭按钮上普通点击仍然生效（不能被误吞）', async () => {
+    render(<Harness />);
+    await stubPanelRect();
+    const close = screen.getByTestId('header-close-button');
+    fireEvent.mouseDown(close, { button: 0, clientX: 610, clientY: 110 });
+    fireEvent.mouseUp(close);
+    // 指针没动过阈值 → 不抑制 click，按钮照常响应。
+    fireEvent.click(close);
+    expect(screen.queryByRole('dialog', { name: 'AI 助手' })).toBeFalsy();
   });
 
   it('按住标题文字拖动会落定位置（可抓区域不能只剩 padding）', async () => {

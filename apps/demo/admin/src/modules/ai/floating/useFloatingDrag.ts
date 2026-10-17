@@ -81,6 +81,29 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
     drag.current = null;
   }, []);
 
+  /** 待吞掉的一次 click。存在 ref 里，便于在所有退出路径上摘掉。 */
+  const pendingClickSuppress = useRef<((event: MouseEvent) => void) | null>(
+    null,
+  );
+
+  const dropClickSuppress = useCallback(() => {
+    if (!pendingClickSuppress.current) return;
+    document.removeEventListener('click', pendingClickSuppress.current, true);
+    pendingClickSuppress.current = null;
+  }, []);
+
+  /** 吞掉紧随拖动之后的**那一次** click，然后自己注销。 */
+  const suppressNextClick = useCallback(() => {
+    dropClickSuppress();
+    const suppress = (event: MouseEvent) => {
+      event.stopPropagation();
+      event.preventDefault();
+      dropClickSuppress();
+    };
+    pendingClickSuppress.current = suppress;
+    document.addEventListener('click', suppress, true);
+  }, [dropClickSuppress]);
+
   const endDrag = useCallback(() => {
     if (!drag.current) return;
     clearDrag();
@@ -118,24 +141,30 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
     );
   }, []);
 
-  const startDrag = useCallback((clientX: number, clientY: number) => {
-    const panel = panelRef.current;
-    if (!panel) return;
-    const rect = panel.getBoundingClientRect();
-    drag.current = {
-      pointerX: clientX,
-      pointerY: clientY,
-      rectLeft: rect.left,
-      rectTop: rect.top,
-      width: rect.width,
-      height: rect.height,
-      moved: false,
-    };
-    // 这里**不**写 document.body.style.userSelect：手势中途在文档外松手时没有 mouseup，
-    // 整页会一直不能选中文本。手柄自身已有 CSS `user-select: none`，够用了。
-    // 注意：这里**不**立刻 move —— 落定位置要等越过阈值，
-    // 否则「点一下标题栏」就会把窗口钉死在绝对坐标上。
-  }, []);
+  const startDrag = useCallback(
+    (clientX: number, clientY: number) => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      // 上一次手势若留下了没等到 click 的抑制器（松手后没有 click 跟随），先摘掉，
+      // 否则它会一直挂在 document 上吞掉页面上后续所有的点击。
+      dropClickSuppress();
+      const rect = panel.getBoundingClientRect();
+      drag.current = {
+        pointerX: clientX,
+        pointerY: clientY,
+        rectLeft: rect.left,
+        rectTop: rect.top,
+        width: rect.width,
+        height: rect.height,
+        moved: false,
+      };
+      // 这里**不**写 document.body.style.userSelect：手势中途在文档外松手时没有 mouseup，
+      // 整页会一直不能选中文本。手柄自身已有 CSS `user-select: none`，够用了。
+      // 注意：这里**不**立刻 move —— 落定位置要等越过阈值，
+      // 否则「点一下标题栏」就会把窗口钉死在绝对坐标上。
+    },
+    [dropClickSuppress],
+  );
 
   useEffect(() => {
     const onMove = (event: MouseEvent) => {
@@ -147,7 +176,16 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
       const touch = event.touches[0];
       if (touch) move(touch.clientX, touch.clientY);
     };
-    const onUp = () => endDrag();
+    const onUp = () => {
+      // 手势真的动过 → 吞掉紧随其后的那一次 click。
+      // 按住标题文字拖 100px 再松手在「关闭」按钮上时，浏览器仍会派发 click，
+      // 面板会莫名其妙自己关掉（round 2 把可抓区域从十几像素扩到整条标题栏，
+      // 命中概率显著上升）。只吞这一次，且只有真的动过才吞 —— 普通点击必须照常生效。
+      if (drag.current?.moved) {
+        suppressNextClick();
+      }
+      endDrag();
+    };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
     document.addEventListener('touchmove', onTouchMove);
@@ -159,8 +197,10 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onUp);
       document.removeEventListener('touchcancel', onUp);
+      // 卸载时若还有没等到 click 的抑制器，必须摘掉：它是挂在 document 上的全局监听。
+      dropClickSuppress();
     };
-  }, [endDrag, move]);
+  }, [dropClickSuppress, endDrag, move, suppressNextClick]);
 
   // 窗口尺寸变化后把窗口夹回可视区域：缩窄浏览器不该让面板停在屏幕外。
   useEffect(() => {
@@ -241,6 +281,18 @@ function createHandleProps(
  *
  * 反过来判「必须精确命中手柄」是不行的：标题文字被一层 `flex:1` 的 Flex 铺满，
  * 那样的判据会把手柄缩成左右十几像素的 padding，触摸端基本抓不住。
+ *
+ * ## 规则（新增标题栏控件时必须遵守）
+ *
+ * 标题栏里**任何**可点击元素都必须是原生 `<button>`（或带 `role="button"` /
+ * `contenteditable` 的元素）—— 因为本函数用的是白名单：不在名单里的元素会被
+ * 当成标题文字，拖动窗口而不会响应点击。自绘 `<div onClick={…}>`、没有语义
+ * 触发器的 antd `Dropdown` / `Trigger` 都会静默失灵，且没有任何测试会报错。
+ * 自定义组件必须把真实 `<button>`（或 `role="button"`）包在自己内部再挂 onClick。
+ *
+ * 本轮不做结构性兜底：React 不会把 onClick 渲染成 DOM 属性，`[onclick]`
+ * 选择器天然无效；改用「标题栏控件容器整体拒绝手势」需要改动 AiChatView 的
+ * 结构契约，代价大于收益。规则本身已写在这里，由后继读者承担。
  */
 function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
