@@ -31,18 +31,23 @@ const OPEN_STATUSES = new Set(['collecting', 'ready', 'previewing', 'failed'])
 /**
  * 把用户写的自由文本变成**不可混淆的数据**。
  *
- * - 单引号包裹：值里出现的换行、引号本身都被转义，因此值不可能「逃出」自己的字段。
- * - 换行与成对引号被剔除后再截断：一个值跨多行、或自己带上引号伪装成新字段，都会先被压平。
- * - 超长截断并标注：避免一条消息把上下文顶掉，同时让模型知道这里被截过。
+ * 剔除的不只是换行和引号，而是**这一段自己的结构符号**：`；` 是「已收集」一行的字段分隔符，
+ * `：` 是「仍需向用户询问：」这类小标题的分界符。只剔除换行是不够的——一个带 `；` 的值会
+ * 在**同一行**里伪装出「几个看起来由系统定义的字段」，正好落在【数据边界】声明「字段名可以
+ * 信任」的范围里。因此 `；`、`：`、换行、引号、反引号一律替换为空格，值永远只塌成一段。
+ *
+ * 截断标记写在引号**之外**：引号内的用户文本已被剔除引号，构造不出闭合引号去伪造一个
+ * 「值已截断」的断言。
  */
 function asData(value: unknown): string {
   const flat = Array.isArray(value)
     ? value.map(item => String(item)).join(',')
     : String(value)
   // eslint-disable-next-line no-control-regex -- 目的就是剔除控制字符
-  const neutral = flat.replace(/[\r\n"'`]+/g, ' ').replace(/\s+/g, ' ').trim()
-  const bounded = neutral.length > MAX_VALUE_LENGTH ? `${neutral.slice(0, MAX_VALUE_LENGTH)}…(已截断)` : neutral
-  return `'${bounded}'`
+  const neutral = flat.replace(/[\r\n"'`；：…]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const truncated = neutral.length > MAX_VALUE_LENGTH
+  const body = truncated ? `${neutral.slice(0, MAX_VALUE_LENGTH)}…` : neutral
+  return `'${body}'${truncated ? '（已截断）' : ''}`
 }
 
 function renderDraft(draft: ActionDraftRecord): string {

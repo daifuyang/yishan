@@ -123,6 +123,15 @@ function summarize(draft: ActionDraft): string {
  *    `update_action_draft`（那里必须带版本，是「用户明确要求修改」的路径）。
  *
  * 值相同不算覆盖（幂等重发是正常的），因此按规范化后的值比较。
+ *
+ * 注意比较用的是 `JSON.stringify`，它对数组/对象的**键序敏感**：`['a','b']` 与 `['b','a']`
+ * 会被判成不同值而拒绝。这个方向是**安全的**（误拒，不会误放行覆盖），不要「修」成
+ * 顺序无关的比较——那会把上面的拒绝变成放行。
+ *
+ * 错误信息里**只给字段名、不给值**：执行链失败时会把 `error.message` 原样写进 `ai_audit`
+ * 的 `errorSummary`，那是管理员可读、且通常会被导出到日志存储的持久化落点。本文件其余的
+ * `aiError` 都只带字段名/错误码/静态文案，不带值，这里也必须一致。当前值模型自己可以用
+ * `get_action_draft` 读，可操作性不受影响。
  */
 async function merge(
   drafts: ActionDraftService,
@@ -138,7 +147,7 @@ async function merge(
   for (const [key, value] of Object.entries(patch)) {
     if (!(key in existing.formData)) continue
     if (JSON.stringify(existing.formData[key]) === JSON.stringify(value)) continue
-    throw aiError(409, `字段 ${key} 已有值 ${JSON.stringify(existing.formData[key])}，如需修改请用 update_action_draft 并带上当前版本`)
+    throw aiError(409, `字段 ${key} 已有值，如需修改请先 get_action_draft 读回当前值，再用 update_action_draft 并带上当前版本`)
   }
   return drafts.patch(context.actorId, existing.draftId, existing.draftVersion, patch, { ...options, subject: subjectOf(context) })
 }
