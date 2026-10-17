@@ -21,7 +21,14 @@ export interface FloatingDragApi {
   reset: () => void;
 }
 
-/** 把 `value` 夹在 `[margin, max - size - margin]`；空间不足时退化为 margin。 */
+/**
+ * 把 `value` 夹在 `[margin, max - size - margin]`；空间不足时退化为 margin。
+ *
+ * 窄屏（≤768px）上浮窗宽度被写死成 `calc(100vw - 16px)`（见 AiFloatingPanel 的媒体查询），
+ * 于是 `upper = max - size - margin` 恒等于 8：**水平方向夹住不动，只有纵向还能拖**。
+ * 这是有意为之 —— 满幅浮层本来就该横向贴边，不是 clamp 失效。后继读者若在这里看到
+ * 「横向拖不动」，那是设计决定而不是 bug。
+ */
 export function clampToViewport(
   value: number,
   max: number,
@@ -45,9 +52,13 @@ export const DRAG_MOVE_THRESHOLD = 4;
  *
  * 有三个刻意的约束：
  *
- * - **只有标题栏能拖，且必须由手柄本身发起**：`handleProps` 挂在标题栏而不是浮窗根节点，
- *   否则用户在消息区选中文本时会连窗一起拖走；而标题栏里的按钮按下时
- *   `event.target !== event.currentTarget`，手势被忽略，按钮照常拿焦点。
+ * - **只有标题栏能拖，且手势不能来自可交互元素**：`handleProps` 挂在标题栏而不是浮窗根节点，
+ *   否则用户在消息区选中文本时会连窗一起拖走；标题栏里的按钮按下时命中的是按钮自己，
+ *   手势被忽略，按钮照常拿焦点。
+ *
+ *   注意这里判的是「落点是否可交互」，而不是「落点是否恰好是手柄本身」：标题文字被
+ *   `<Flex style={{flex:1}}>` 铺满，若要求 target === currentTarget，只有左右十几像素的
+ *   padding 还算手柄，触摸端等于没有拖动区域。
  * - **越过阈值才落定位置**：见 {@link DRAG_MOVE_THRESHOLD}。
  * - **身份变化即复位**：切换账号后旧位置与旧手势引用都作废，
  *   否则新用户会继承上一个用户的窗口位置与半截未松手的拖动。
@@ -73,7 +84,6 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
   const endDrag = useCallback(() => {
     if (!drag.current) return;
     clearDrag();
-    document.body.style.userSelect = '';
   }, [clearDrag]);
 
   const move = useCallback((clientX: number, clientY: number) => {
@@ -121,7 +131,8 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
       height: rect.height,
       moved: false,
     };
-    document.body.style.userSelect = 'none';
+    // 这里**不**写 document.body.style.userSelect：手势中途在文档外松手时没有 mouseup，
+    // 整页会一直不能选中文本。手柄自身已有 CSS `user-select: none`，够用了。
     // 注意：这里**不**立刻 move —— 落定位置要等越过阈值，
     // 否则「点一下标题栏」就会把窗口钉死在绝对坐标上。
   }, []);
@@ -148,7 +159,6 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onUp);
       document.removeEventListener('touchcancel', onUp);
-      document.body.style.userSelect = '';
     };
   }, [endDrag, move]);
 
@@ -182,7 +192,6 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
   // 身份变化：丢掉拖动位置与手势引用（切账号不留旧窗口位置）。
   useEffect(() => {
     drag.current = null;
-    document.body.style.userSelect = '';
     setPosition(null);
   }, [identity]);
 
@@ -214,18 +223,30 @@ function createHandleProps(
     onMouseDown: (event: React.MouseEvent) => {
       // 只认鼠标左键 / 单指；右键与多指手势不当作拖动起点。
       if (event.button !== 0) return;
-      // 标题栏里有展开 / 关闭按钮：手势必须由**手柄本身**发起。
-      // 否则按在按钮上的 mousedown 会冒泡上来、被 preventDefault 掉焦点，
-      // 用户「按了关闭却把窗口拖走」。
-      if (event.target !== event.currentTarget) return;
+      if (isInteractiveTarget(event.target)) return;
       event.preventDefault();
       startDrag(event.clientX, event.clientY);
     },
     onTouchStart: (event: React.TouchEvent) => {
       if (event.touches.length !== 1) return;
-      if (event.target !== event.currentTarget) return;
+      if (isInteractiveTarget(event.target)) return;
       const touch = event.touches[0];
       startDrag(touch.clientX, touch.clientY);
     },
   };
+}
+
+/**
+ * 手势落点是否落在可交互元素上（标题栏里的展开 / 关闭按钮）。
+ *
+ * 反过来判「必须精确命中手柄」是不行的：标题文字被一层 `flex:1` 的 Flex 铺满，
+ * 那样的判据会把手柄缩成左右十几像素的 padding，触摸端基本抓不住。
+ */
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return (
+    target.closest(
+      'button,a,input,textarea,select,[role="button"],[contenteditable="true"]',
+    ) !== null
+  );
 }

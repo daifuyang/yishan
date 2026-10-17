@@ -26,12 +26,16 @@ jest.mock('../components/AiChatView', () => ({
   }) => (
     <div data-testid="chat-view">
       <div data-testid="chat-header" {...props.headerProps}>
-        标题栏
-        {/* 真实标题栏里有展开 / 关闭按钮：mousedown 从按钮冒泡上来，
-            手势必须被忽略，否则「按了关闭却把窗口拖走」。 */}
-        <button type="button" data-testid="header-button">
-          展开为页面
-        </button>
+        {/* 真实标题栏里标题文字被一层 flex:1 的 Flex 铺满 —— 手势必须仍然成立，
+            否则可抓区域只剩左右十几像素 padding。 */}
+        <div style={{ display: 'flex', gap: 8, minWidth: 0, flex: 1 }}>
+          <span data-testid="chat-header-title">标题栏</span>
+          {/* 真实标题栏里有展开 / 关闭按钮：mousedown 从按钮冒泡上来，
+              手势必须被忽略，否则「按了关闭却把窗口拖走」。 */}
+          <button type="button" data-testid="header-button">
+            展开为页面
+          </button>
+        </div>
       </div>
       <div data-testid="chat-body">消息区</div>
       <button type="button" onClick={() => props.onClose?.()}>
@@ -104,8 +108,8 @@ Object.defineProperty(globalThis, 'ResizeObserver', {
     disconnect() {}
   },
 });
-/** Ant Design 弹层基准层级：Modal / Drawer 的遮罩与内容都在 1000。 */
-const ANT_DESIGN_OVERLAY_BASE = 1000;
+/** Ant Design 弹层基准层级由 `theme.getDesignToken().zIndexPopupBase` 现场取，
+ *  这里不再硬编码一份常量 —— 抄一份只会让后继读者以为基准被钉死了。 */
 let current: import('../context/AiChatProvider').AiChatContextValue;
 function Identity({ identity }: { identity: string }) {
   const { setIdentity } = useAiChat();
@@ -265,7 +269,10 @@ afterEach(() => {
 });
 describe('层级与挂载（设计 §4）', () => {
   it('入口与面板都高于 Ant Design 弹层基准，且子弹层基准再高一档', () => {
-    expect(AI_OVERLAY_Z_INDEX).toBeGreaterThan(ANT_DESIGN_OVERLAY_BASE);
+    // 基准取自 antd 自己的设计令牌，而不是在这里再抄一份 1000。
+    expect(AI_OVERLAY_Z_INDEX).toBeGreaterThan(
+      theme.getDesignToken().zIndexPopupBase,
+    );
     expect(AI_POPUP_Z_INDEX_BASE).toBeGreaterThan(AI_OVERLAY_Z_INDEX);
   });
   it('入口与面板的实际 z-index 高于 antd 自己的弹层基准', async () => {
@@ -342,6 +349,35 @@ describe('拖动（设计 §4）', () => {
     button.focus();
     fireEvent.click(button);
     expect(document.activeElement).toBe(button);
+  });
+
+  it('按住标题文字拖动会落定位置（可抓区域不能只剩 padding）', async () => {
+    render(<Harness />);
+    const panel = await stubPanelRect();
+    // 落点是标题文字本身，不是手柄根节点 —— 判定必须看「是否落进可交互元素」，
+    // 而不是「是否精确命中手柄」，否则满幅标题区里只有 padding 能抓。
+    fireEvent.mouseDown(screen.getByTestId('chat-header-title'), {
+      button: 0,
+      clientX: 610,
+      clientY: 110,
+    });
+    fireEvent.mouseMove(document, { clientX: 570, clientY: 70 });
+    fireEvent.mouseUp(document);
+    expect(panel.style.left).toBe('560px');
+    expect(panel.style.top).toBe('60px');
+  });
+
+  it('拖动不会把 body 的 userSelect 改成不可恢复的值', async () => {
+    render(<Harness />);
+    await stubPanelRect();
+    // 模拟「按下后在文档外松手」：没有 mouseup 事件到达。
+    fireEvent.mouseDown(screen.getByTestId('chat-header'), {
+      button: 0,
+      clientX: 610,
+      clientY: 110,
+    });
+    fireEvent.mouseMove(document, { clientX: 570, clientY: 70 });
+    expect(document.body.style.userSelect).not.toBe('none');
   });
 
   it('在标题栏上点一下不会把面板钉死在绝对坐标', async () => {
