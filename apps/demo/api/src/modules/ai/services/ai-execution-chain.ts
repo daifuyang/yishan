@@ -135,7 +135,15 @@ export async function executeCapability(request: AiExecutionRequest, name: strin
   // 5. 执行。actorId 由这里注入，能力实现拿不到「换一个用户执行」的口子。
   //    行级数据范围按**本能力自己的** permissionCode 建立——不能用聊天接口的
   //    `ai:chat:use` 代替，否则一个只有聊天权限的角色会按错档位解析范围。
-  const context: AiCapabilityContext = { actorId: actor.userId, permissions, requestId: request.requestId }
+  const context: AiCapabilityContext = {
+    actorId: actor.userId,
+    permissions,
+    requestId: request.requestId,
+    // 会话与 PAT scope 同样来自服务端。草稿类能力靠 conversationId 判定归属，
+    // 业务授权靠 tokenScope 保留收窄语义 —— 两者都不能由模型入参决定。
+    conversationId: request.conversationId,
+    tokenScope: actor.tokenScope,
+  }
   try {
     const result = await establishDataScopeFor(
       {

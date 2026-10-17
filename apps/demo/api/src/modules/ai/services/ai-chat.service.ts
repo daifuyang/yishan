@@ -7,6 +7,7 @@ import { ActionDraftRepository } from '../repositories/action-draft.repository.j
 import type { AppQueryDb } from '@yishan/core-system-api/database'
 import { currentSystemRuntime } from '@yishan/core-system-api'
 import { executeCapability, toolsForActor, type AiActor, type AiExecutionOutcome } from './ai-execution-chain.js'
+import { buildDraftContext } from './draft-context.js'
 import { aiError } from '../ai-chat-error.js'
 export { aiError } from '../ai-chat-error.js'
 
@@ -23,7 +24,13 @@ export interface AiExecutionEnv {
 export interface AiRuntime {
   checkConfiguration?(): void
   validate(messages: unknown[]): Promise<ChatMessage[]>
-  start(options: { messages: ChatMessage[]; signal: AbortSignal; execution: AiExecutionEnv; onEnd(message: ChatMessage): Promise<void> }): Promise<Response>
+  /**
+   * `context` 是**本轮现算**的会话外上下文（例如当前草稿摘要）。
+   *
+   * 它刻意不进 `messages`：进消息就意味着落库，而草稿状态每轮都在变，
+   * 存进历史只会变成第四份会过期的真相。
+   */
+  start(options: { messages: ChatMessage[]; signal: AbortSignal; execution: AiExecutionEnv; context?: string; onEnd(message: ChatMessage): Promise<void> }): Promise<Response>
 }
 const loadRuntime = async (): Promise<AiRuntime> => import('../runtime/ai-sdk.mjs')
 
@@ -36,6 +43,12 @@ const loadRuntime = async (): Promise<AiRuntime> => import('../runtime/ai-sdk.mj
  */
 export interface AiConversationDraftGuard {
   removeConversationDrafts(ownerId: number, conversationId: string): Promise<unknown>
+  /**
+   * 本会话当前的草稿。用于每轮重新计算模型上下文里的草稿摘要。
+   *
+   * 可选：没有草稿能力的旧调用方仍然可用，只是模型看不到草稿状态。
+   */
+  list?(ownerId: number, conversationId: string): Promise<readonly unknown[]>
 }
 
 export class AiChatService {
@@ -74,6 +87,21 @@ export class AiChatService {
     return null
   }
   private async ensureIdle(ownerId: number) { if (await this.store.isActive(ownerId)) throw aiError(409, '请先停止当前回复') }
+  /**
+   * 本会话当前的草稿摘要，每轮重算。
+   *
+   * 读不到草稿不是错误：没有草稿能力的旧调用方照样能用，只是模型少了这一段上下文。
+   * 摘要绝不含敏感字段（草稿里本来就没有）。
+   */
+  private async draftContext(ownerId: number, conversationId: string): Promise<string> {
+    if (!this.drafts?.list) return ''
+    try {
+      return buildDraftContext(await this.drafts.list(ownerId, conversationId) as Parameters<typeof buildDraftContext>[0])
+    } catch {
+      // 草稿读取失败不该让整轮对话失败：模型退回「没有草稿上下文」，仍可正常问答。
+      return ''
+    }
+  }
   async chat(ownerId: number, input: AiChatInput, signal: AbortSignal, actor?: AiActor & { tokenScope?: string[] }): Promise<Response> {
     await this.detail(ownerId, input.id)
     const token = randomUUID()
@@ -108,7 +136,7 @@ export class AiChatService {
       const execution = actor && this.execution
         ? await this.execution().env(resolvedActor, { requestId: token, conversationId: input.id })
         : { capabilities: [], execute: async () => ({ ok: false, error: '不可用' } as AiExecutionOutcome) }
-      const response = await runtime.start({ messages, signal, execution, onEnd: async message => {
+      const response = await runtime.start({ messages, signal, execution, context: await this.draftContext(ownerId, input.id), onEnd: async message => {
         try { await this.store.finish(ownerId, input.id, token, [...messages, message]) }
         finally { await this.store.release(ownerId, input.id, token) }
       } })

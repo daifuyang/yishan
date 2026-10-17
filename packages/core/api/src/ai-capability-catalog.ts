@@ -36,6 +36,20 @@ export interface AiCapabilityContext {
   readonly permissions: ReadonlySet<string>
   /** 请求级行级数据范围已就绪；能力实现复用现有 Service，因此自动继承 */
   readonly requestId: string
+  /**
+   * 本轮对话所属会话，由执行入口注入。
+   *
+   * 会话是草稿归属判定的一半（另一半是 `actorId`），因此它必须来自服务端：
+   * 模型指定一个 `conversationId` 就能把草稿写进别人的会话，或让工具以为自己
+   * 正处于一个它其实不在的会话里。没有会话上下文的上下文（单轮调用）一律按
+   * 「无法判定归属」处理，能力应当拒绝而不是猜。
+   */
+  readonly conversationId?: string
+  /**
+   * 本次请求的 PAT scope 交集。能力要用身份做业务授权时必须原样透传，
+   * 漏传等于把一个受限 token 提升成完整会话身份。
+   */
+  readonly tokenScope?: readonly string[]
 }
 
 /** 能力执行结果。结构化，不是聊天文本。 */
