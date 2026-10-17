@@ -23,11 +23,15 @@ import {
   APPLY_CONFLICT,
   invalidateUserCreateFormHandle,
   isCurrentUserCreateFormHandle,
+  notifyUserFormOverlay,
   registerUserCreateFormHandle,
+  registerUserFormOverlay,
   restoreUserCreateFormHandle,
   subscribeUserCreateFormTarget,
+  useCoordinatedFormFocus,
   USER_FORM_ASSISTANCE_TARGET,
   type UserCreateDraftFields,
+  type UserFormOverlayInfo,
   type UserFormSnapshot,
 } from "../../../form-assistance";
 import {
@@ -87,6 +91,8 @@ const UserForm: React.FC<UserFormProps> = ({
   const openRef = useRef(false);
   const revisionRef = useRef(0);
   const valuesRef = useRef<Record<string, unknown>>({});
+  /** 打开表单瞬间持有焦点的元素：关闭助手后把焦点还回去（设计 §4）。 */
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   /** 字段来源：'user' = 用户手改，'assistant' = 助手写入。 */
   const provenanceRef = useRef<Record<string, 'user' | 'assistant'>>({});
   /** 同源字段定义（Task 3）；拿不到时退回既有静态规则。 */
@@ -169,6 +175,11 @@ const UserForm: React.FC<UserFormProps> = ({
       // 只在「关 → 开」这一次跃迁上铸新实例：ModalForm 自己也会回吐一次
       // onOpenChange(true)，那不是一次新的打开。
       if (next && !wasOpen) {
+        // 打开瞬间记录焦点持有者（通常是「新建」按钮）：关闭助手后焦点回到这里，
+        // 而不是靠 CSS 选择器去找某个类名（设计 §5）。
+        const active = typeof document === 'undefined' ? null : document.activeElement;
+        returnFocusRef.current = active instanceof HTMLElement ? active : null;
+        notifyUserFormOverlay();
         // 每次打开都是新实例：迟到的补丁因此不会落在一个已经被关闭过的表单上。
         openCountRef.current += 1;
         instanceIdRef.current = `${USER_FORM_ASSISTANCE_TARGET}#${openCountRef.current}`;
@@ -314,6 +325,34 @@ const UserForm: React.FC<UserFormProps> = ({
       unsubscribe();
     };
   }, [assistEnabled, buildSnapshot, draftFields, fallbackEditableFields, identity, setOpen, writeFields]);
+
+  // ---- 浮层 / 焦点协作（设计 §4）：只声明状态，不给助手任何业务能力 ----
+  // 读取器读取最新开关与焦点目标，因此表单每次开合不必反推通知助手；
+  // 只有「注册/注销」这一次跃迁会 emit。
+  useEffect(() => {
+    if (!assistEnabled) return;
+    const read = (): UserFormOverlayInfo => {
+      const openNow = openRef.current;
+      // 容器用 Ant Design 自己的类名定位：这是**表单内部**的层级记账，
+      // 不是交给模型的操作通道（设计 §5 禁止的是助手侧的 CSS 选择器/模拟点击）。
+      const container = openNow
+        ? typeof document === 'undefined'
+          ? null
+          : (document.querySelector('.ant-modal-wrap .ant-modal-content') as HTMLElement | null)
+        : null;
+      return {
+        target: USER_FORM_ASSISTANCE_TARGET,
+        open: openNow,
+        container,
+        returnFocusTarget: openNow ? returnFocusRef.current : null,
+      };
+    };
+    return registerUserFormOverlay(read);
+  }, [assistEnabled]);
+
+  // Esc 协调：只有当焦点在助手面板里时才拦下这次按键，
+  // 因此「关助手」不会连带关掉未保存的业务表单（设计 §4）。
+  useCoordinatedFormFocus(assistEnabled && isOpen);
 
   // ---- 既有一次性预填：现在灌进**同一个**表单，而不是另挂一个表单 ----
   useEffect(() => {

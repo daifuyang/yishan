@@ -196,3 +196,21 @@ export function subscribeUserCreateFormHandle(listener: () => void): () => void 
     listeners.delete(listener);
   };
 }
+
+/**
+ * 浮层/焦点协作（设计 §4）。与上面的补丁契约同属公开接缝，但**不含任何业务数据**：
+ * 只有业务浮层是否开着、助手面板的 DOM 在哪、焦点该还给谁。
+ */
+export {
+  isEventInsideAssistant,
+  notifyUserFormOverlay,
+  peekAssistantRegion,
+  peekUserFormOverlay,
+  registerAssistantEscape,
+  registerAssistantRegion,
+  registerUserFormOverlay,
+  runAssistantEscape,
+  subscribeUserFormOverlay,
+  useCoordinatedFormFocus,
+  type UserFormOverlayInfo,
+} from './overlay';
