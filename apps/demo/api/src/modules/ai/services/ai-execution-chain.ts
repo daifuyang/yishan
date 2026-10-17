@@ -92,9 +92,11 @@ export async function executeCapability(request: AiExecutionRequest, name: strin
     riskLevel: capability.riskLevel as string, durationMs: Date.now() - startedAt,
   }
 
-  // 3. 风险等级闸门。与 Catalog.register / listFor 同一条件，执行侧再判一次，
-  //    因为注册期校验可以被绕过（构造期反射、旧代码、误改）。模型工具面**不包含**
-  //    任何写操作：写业务数据必须走人工提交路径，不经过本文件。
+  // 3. 风险等级闸门。与 Catalog.register / listFor / 门面的 listAiCapabilities
+  //    共用同一个 isModelInvocableRiskLevel——所有把能力交给模型的出口都收敛到
+  //    这一个判定上。执行侧仍要再判一次，因为注册期校验可以被绕过
+  //    （构造期反射、旧代码、误改）。模型工具面**不包含**任何写操作：
+  //    写业务数据必须走人工提交路径，不经过本文件。
   //    不提供任何用户可覆盖的「确认」参数——那等价于把写操作交给模型决定。
   if (!isModelInvocableRiskLevel(capability.riskLevel)) {
     await audit.write({

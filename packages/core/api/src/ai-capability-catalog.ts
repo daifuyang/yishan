@@ -76,14 +76,15 @@ export interface AiCapability {
 }
 
 /**
- * 模型可调用的风险等级白名单。注册、清单与执行三处使用**同一条件**——
+ * 模型可调用的判定。注册、清单与执行三处使用**同一个函数**——
  * 三份判断一旦分叉，就等于留了一条只有某一条路径没堵上的写操作口子。
+ *
+ * 条件写成字面量而不是查一张数组：查数组的写法会让后人以为
+ * 「改这张表就能改闸门」，从而在第四个地方复制出第二种判定。
  *
  * `AiRiskLevel` 仍保留 write/sensitive：它们描述**业务操作**本身的风险，
  * 由人工提交路径与审计使用；只是不允许出现在模型可调用的目录里。
  */
-export const MODEL_INVOCABLE_RISK_LEVELS: readonly AiRiskLevel[] = Object.freeze(['read', 'prepare'])
-
 export function isModelInvocableRiskLevel(riskLevel: AiRiskLevel): boolean {
   return riskLevel === 'read' || riskLevel === 'prepare'
 }

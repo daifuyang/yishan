@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AiCapabilityCatalog, PermissionCatalog } from '@yishan/core-api'
 import { runWithPermissions } from '@yishan/core-api/permissions/catalog'
 import { Type } from '@sinclair/typebox'
-import { runWithAiCapabilities } from '@yishan/core-api/ai-capabilities/catalog'
+import { runWithAiCapabilities, listAiCapabilities, listAiCapabilitiesFor } from '@yishan/core-api/ai-capabilities/catalog'
 import type { AiCapability } from '@yishan/core-api/ai-capabilities/catalog'
 
 /** 活动权限目录。执行链用它过滤 PAT 交集，因此必须是真实存在的码。 */
@@ -192,6 +192,16 @@ describe('model-facing capability boundary', () => {
     const result = await h.run(() => executeCapability({ ...h.base, confirm: true } as never, 'create_user', { confirm: true }))
     expect(result.ok).toBe(false)
     expect(execute).not.toHaveBeenCalled()
+  })
+
+  it('filters write/sensitive out of every public list surface, not just listFor', async () => {
+    const h = harness([capability({ name: 'list_users', permissionCode: 'system:user:list' })])
+    forceRegister(h.catalog, capability({ name: 'create_user', permissionCode: 'system:user:create', riskLevel: 'write' }))
+    forceRegister(h.catalog, capability({ name: 'reset_password', permissionCode: 'system:user:update', riskLevel: 'sensitive' }))
+    // 没有权限参数的门面导出也必须挡住——否则将来的调用方能拿它绕过 listFor。
+    expect(await h.run(async () => listAiCapabilities().map(c => c.name))).toEqual(['list_users'])
+    expect(await h.run(async () => listAiCapabilitiesFor(new Set(['__super_admin__'])).map(c => c.name))).toEqual(['list_users'])
+    expect(await h.run(async () => toolsForActor({ userId: 7, roleIds: [1] })).then(r => r.capabilities.map(c => c.name))).toEqual(['list_users'])
   })
 
   it('still executes a prepare capability', async () => {

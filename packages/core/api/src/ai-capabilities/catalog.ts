@@ -6,10 +6,10 @@
  * 和权限目录一个道理，避免模块在装配期偷跑到未初始化的状态。
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { AiCapabilityCatalog, type AiCapability } from '../ai-capability-catalog'
+import { AiCapabilityCatalog, isModelInvocableRiskLevel, type AiCapability } from '../ai-capability-catalog'
 
 export type { AiCapability, AiCapabilityContext, AiCapabilityResult, AiRiskLevel } from '../ai-capability-catalog'
-export { MODEL_INVOCABLE_RISK_LEVELS, isModelInvocableRiskLevel } from '../ai-capability-catalog'
+export { isModelInvocableRiskLevel } from '../ai-capability-catalog'
 
 const scope = new AsyncLocalStorage<AiCapabilityCatalog>()
 
@@ -27,7 +27,14 @@ export const registerAiCapabilities = (...definitions: readonly AiCapability[]):
   currentAiCapabilityCatalog().register(...definitions)
 }
 
-export const listAiCapabilities = (): readonly AiCapability[] => currentAiCapabilityCatalog().listCapabilities()
+/**
+ * 目录内**模型可调用**的能力。与 `listAiCapabilitiesFor` 同一道闸门：
+ * 这个门面没有权限参数，但它仍是「交给模型」的那一侧，因此不返回
+ * write/sensitive——否则将来某个调用方拿它拼工具定义就能绕过 listFor。
+ * 需要权限裁剪请用 `listAiCapabilitiesFor`。
+ */
+export const listAiCapabilities = (): readonly AiCapability[] =>
+  currentAiCapabilityCatalog().listCapabilities().filter(capability => isModelInvocableRiskLevel(capability.riskLevel))
 
 export const getAiCapability = (name: string): AiCapability | undefined =>
   currentAiCapabilityCatalog().get(name)
