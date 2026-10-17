@@ -207,6 +207,18 @@ export function AiNativeFormBridge() {
     return live === expected;
   }, []);
 
+  /**
+   * 是否**曾经**由助手填过某个表单实例。
+   *
+   * 这是硬失败与放行的分界线：`null` 表示助手从头到尾没有填过任何实例（草稿请求
+   * 被未保存的编辑挡住、页面不支持、读取失败、草稿已结束、`apply` 被字段或版本冲突
+   * 拒绝），此时用户手填的表单与那份草稿仍然是一对正常关系，绝不能因此不让保存。
+   * 只有「填过 A，现在开着的是 B」才是被放弃的草稿去劫持别人的提交。
+   */
+  const everAssistantFilled = useCallback((): boolean => {
+    return assistedInstanceRef.current !== null;
+  }, []);
+
   const patchNow = useCallback(
     async (patch: Record<string, string | number[] | null>) => {
       const target = activeRef.current;
@@ -531,10 +543,13 @@ export function AiNativeFormBridge() {
     if (!handle || !handle.snapshot().instanceId) {
       throw new Error('草稿协作表单已不可用，本次未创建');
     }
-    // 用户已经把这份草稿的表单关掉（或另开了一个）：这次提交与它无关。
+    // 助手填过实例 A，而现在开着的是另一个实例：这次提交与那份草稿无关。
     // 同样**不**降级成普通创建 —— 那会让一次手动新建悄悄「完成」一份早被放弃的
     // 草稿，服务端只会把错的那条记成这次创建的结果。
-    if (!stillAssistingThisInstance()) {
+    // 反过来，助手**从未**填过任何实例（被未保存的编辑挡住 / 页面不支持 / 读取失败 /
+    // 草稿已结束 / 字段或版本冲突被拒）时，这里是正常路径：用户手填的表单仍然
+    // 属于这份草稿，必须能保存。
+    if (everAssistantFilled() && !stillAssistingThisInstance()) {
       setOutcome(target.draftId, {
         status: 'notice',
         message:
@@ -550,7 +565,7 @@ export function AiNativeFormBridge() {
       throw new Error('草稿同步未成功，本次未创建');
     }
     return { draftId: target.draftId, draftVersion: target.draftVersion };
-  }, [setOutcome, stillAssistingThisInstance, syncLatest]);
+  }, [everAssistantFilled, setOutcome, stillAssistingThisInstance, syncLatest]);
 
   const reconcile = useCallback(async (): Promise<
     'completed' | 'failed' | 'unknown'

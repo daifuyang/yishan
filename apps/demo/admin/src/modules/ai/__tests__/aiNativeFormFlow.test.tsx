@@ -1014,3 +1014,43 @@ test('草稿表单被关掉后，另一次手动新建既不 PATCH 也不关联�
     view.unmount();
   }
 });
+
+test('助手从未填过表单（自动填入被未保存的编辑挡住）时，手填保存仍关联该草稿', async () => {
+  // 回归用例（不能让人再也建不了用户）：草稿请求到达时用户已有未保存的输入，
+  // 自动填入被挡下 → 助手**从未**记下任何实例。用户随后自己填完并点「确定」，
+  // 这时表单和那份草稿仍是一对正常关系，必须能带 draftSubmission 建出来。
+  renderUserList();
+  await fillCreateForm();
+
+  const { bound, setOutcome } = renderBridge();
+  await act(async () => {
+    (bound.current as { onUiRequest: (r: unknown) => void }).onUiRequest(
+      liveRequest(),
+    );
+  });
+  await waitFor(() =>
+    expect(setOutcome).toHaveBeenCalledWith(
+      'draft-1',
+      expect.objectContaining({ status: 'blocked' }),
+    ),
+  );
+  // 没有助手填过的实例：这一刻起才轮不到 hijack 守卫管。
+  const assistedBefore = peekUserCreateFormHandle()?.snapshot().instanceId;
+  expect(assistedBefore).toBeTruthy();
+
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /确 定|确定/ }));
+  });
+
+  await waitFor(() => expect(createCalls()).toHaveLength(1));
+  const payload = (createCalls()[0][1] as { data: Record<string, unknown> })
+    .data;
+  // 关联的仍是那份草稿，版本号就是它当前的服务端版本。
+  expect(payload.draftSubmission).toEqual({
+    draftId: 'draft-1',
+    draftVersion: 4,
+  });
+  expect(payload.username).toBe('zhangsan');
+  // 被挡住时不该有任何人替用户同步过一次。
+  expect(mockPatchDraft).not.toHaveBeenCalled();
+});
