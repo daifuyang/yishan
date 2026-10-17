@@ -333,17 +333,9 @@ const UserForm: React.FC<UserFormProps> = ({
     if (!assistEnabled) return;
     const read = (): UserFormOverlayInfo => {
       const openNow = openRef.current;
-      // 容器用 Ant Design 自己的类名定位：这是**表单内部**的层级记账，
-      // 不是交给模型的操作通道（设计 §5 禁止的是助手侧的 CSS 选择器/模拟点击）。
-      const container = openNow
-        ? typeof document === 'undefined'
-          ? null
-          : (document.querySelector('.ant-modal-wrap .ant-modal-content') as HTMLElement | null)
-        : null;
       return {
         target: USER_FORM_ASSISTANCE_TARGET,
         open: openNow,
-        container,
         returnFocusTarget: openNow ? returnFocusRef.current : null,
       };
     };

@@ -49,8 +49,14 @@ const useStyles = createStyles(({ token, css }) => ({
   header: css`
     padding: 12px 16px; min-height: 56px; border-bottom: 1px solid ${token.colorBorderSecondary};
     display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    /* 浮窗标题栏是唯一的拖动区域：光标与选中行为必须和手势一致。 */
-    &[data-drag-handle='title'] { cursor: grab; user-select: none; }
+    /* 浮窗标题栏是唯一的拖动区域：光标、选中与触摸行为必须和手势一致。
+       touch-action: none 是必须的 —— 否则手指竖向滑动会被浏览器判成页面滚动，
+       随后的 touchcancel 直接掐断手势，触摸拖动等于没做。 */
+    &[data-drag-handle='title'] {
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
     @media (max-width: 480px) { padding: 8px; gap: 4px; }
   `,
   history: css`overflow: auto; flex: 1; min-height: 0; padding: 12px;`,

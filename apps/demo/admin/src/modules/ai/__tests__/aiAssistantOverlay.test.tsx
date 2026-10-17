@@ -5,6 +5,7 @@ import {
   registerUserFormOverlay,
   useCoordinatedFormFocus,
 } from '@yishan/core-system-admin/form-assistance';
+import { Select, theme } from 'antd';
 import React from 'react';
 
 /**
@@ -26,6 +27,11 @@ jest.mock('../components/AiChatView', () => ({
     <div data-testid="chat-view">
       <div data-testid="chat-header" {...props.headerProps}>
         标题栏
+        {/* 真实标题栏里有展开 / 关闭按钮：mousedown 从按钮冒泡上来，
+            手势必须被忽略，否则「按了关闭却把窗口拖走」。 */}
+        <button type="button" data-testid="header-button">
+          展开为页面
+        </button>
       </div>
       <div data-testid="chat-body">消息区</div>
       <button type="button" onClick={() => props.onClose?.()}>
@@ -82,6 +88,7 @@ import { messageText } from '../adapters/messages';
 import { AiChatProvider } from '../context/AiChatProvider';
 import { AiFloatingLauncher } from '../floating/AiFloatingLauncher';
 import { AiFloatingPanel } from '../floating/AiFloatingPanel';
+import { AiOverlayProvider } from '../floating/AiOverlayProvider';
 import {
   AI_OVERLAY_Z_INDEX,
   AI_POPUP_Z_INDEX_BASE,
@@ -120,18 +127,26 @@ function Probe() {
  * Esc 由真实的 {@link useCoordinatedFormFocus} 处理，等价于 UserForm 里的用法。
  */
 const formEscape = jest.fn();
-function FakeForm({ open }: { open: boolean }) {
+function FakeForm({
+  open,
+  detachedFocus = false,
+}: {
+  open: boolean;
+  /** 焦点目标已脱离文档：用来验证 restoreFocus 的 isConnected 兜底。 */
+  detachedFocus?: boolean;
+}) {
   const returnFocus = React.useRef<HTMLButtonElement | null>(null);
-  const [container] = React.useState(() => document.createElement('div'));
+  const [detached] = React.useState<HTMLButtonElement | null>(() =>
+    detachedFocus ? document.createElement('button') : null,
+  );
   React.useEffect(
     () =>
       registerUserFormOverlay(() => ({
         target: 'user.create' as never,
         open,
-        container: open ? container : null,
-        returnFocusTarget: open ? returnFocus.current : null,
+        returnFocusTarget: open ? (detached ?? returnFocus.current) : null,
       })),
-    [open, container],
+    [open, detached],
   );
   useCoordinatedFormFocus(open);
   // 模拟 rc-dialog 的 Esc 处理：它在 document 上收按键，用来验证「不连带关闭」。
@@ -142,12 +157,42 @@ function FakeForm({ open }: { open: boolean }) {
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
+  if (detachedFocus) return null;
   return (
     <button ref={returnFocus} type="button">
       新建用户
     </button>
   );
 }
+/**
+ * 渲染一个 `open` 的 Select，读回它**真实**的下拉 z-index。
+ *
+ * 用 antd 自己的 Select/rc-trigger 而不是抄常量：这里断言的是「层级外壳确实
+ * 把子弹层抬起来了」，写错了 ConfigProvider 的 token 同样会红。
+ */
+async function selectDropdownZIndex(
+  Wrapper?: (
+    props: import('react').PropsWithChildren,
+  ) => import('react').ReactNode,
+): Promise<number> {
+  const select = <Select open options={[{ value: 'a', label: '选项 A' }]} />;
+  const { container } = render(Wrapper ? <Wrapper>{select}</Wrapper> : select);
+  let root = container.querySelector('.ant-select');
+  for (let i = 0; i < 50 && !root; i += 1) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    root = container.querySelector('.ant-select');
+  }
+  if (!root) throw new Error('Select 下拉没有渲染');
+  // antd 6 用 CSS 变量下发弹层层级：`z-index: var(--ant-select-z-index-popup)`，
+  // 因此读 Select 根节点上的变量才是它**实际**用到的层级。
+  const raw = getComputedStyle(root).getPropertyValue(
+    '--ant-select-z-index-popup',
+  );
+  return Number(raw.trim());
+}
+
 /** 打开浮窗：与用户点入口等价（同一个 Provider 状态源）。 */
 function OpenFloating() {
   const { setViewMode } = useAiChat();
@@ -170,17 +215,19 @@ function Harness({
   identity = '7',
   formOpen = false,
   open = true,
+  detachedFocus = false,
 }: {
   identity?: string;
   formOpen?: boolean;
   open?: boolean;
+  detachedFocus?: boolean;
 }) {
   return (
     <AiChatProvider>
       <Identity identity={identity} />
       {open ? <OpenFloating /> : null}
       <Probe />
-      <FakeForm open={formOpen} />
+      <FakeForm open={formOpen} detachedFocus={detachedFocus} />
       <AssistantLayer />
       <AiFloatingLauncher />
     </AiChatProvider>
@@ -221,27 +268,51 @@ describe('层级与挂载（设计 §4）', () => {
     expect(AI_OVERLAY_Z_INDEX).toBeGreaterThan(ANT_DESIGN_OVERLAY_BASE);
     expect(AI_POPUP_Z_INDEX_BASE).toBeGreaterThan(AI_OVERLAY_Z_INDEX);
   });
-  it('业务 Modal 遮罩在场时，授权用户的入口依然存在且可点击', () => {
+  it('入口与面板的实际 z-index 高于 antd 自己的弹层基准', async () => {
+    // 直接向 antd 要它自己的 zIndexPopupBase，而不是抄一份 1000 进来：
+    // 这样「谁更高」永远是对当前 antd 版本的断言，不是自我循环。
+    const antdBase = theme.getDesignToken().zIndexPopupBase;
+    expect(antdBase).toBeGreaterThan(0);
+    expect(AI_OVERLAY_Z_INDEX).toBeGreaterThan(antdBase);
+    expect(AI_POPUP_Z_INDEX_BASE).toBeGreaterThan(antdBase);
+
+    render(<Harness />);
+    // antd-style 把样式真正注入到 head，因此这里读到的是**渲染后的计算值**，
+    // 而不是我们期望的常量（写错了样式表同样会红）。
+    const panel = await stubPanelRect();
+    expect(Number(getComputedStyle(panel).zIndex)).toBe(AI_OVERLAY_Z_INDEX);
+    const launcher = screen.getByRole('button', {
+      name: '打开 AI 助手',
+    }).parentElement;
+    expect(Number(getComputedStyle(launcher as Element).zIndex)).toBe(
+      AI_OVERLAY_Z_INDEX,
+    );
+    expect(
+      Number(getComputedStyle(launcher as Element).zIndex),
+    ).toBeGreaterThan(antdBase);
+  });
+
+  it('子弹层被抬到 antd 弹层之上（不只是抬入口）', async () => {
+    const antdBase = theme.getDesignToken().zIndexPopupBase;
+    // 反证：同一个 Select 下拉，**没有**助手层级外壳时落在 antd 默认基准上。
+    const plain = await selectDropdownZIndex(undefined);
+    const raised = await selectDropdownZIndex(AiOverlayProvider);
+    expect(plain).toBeGreaterThan(0);
+    expect(plain).toBeLessThan(AI_POPUP_Z_INDEX_BASE);
+    expect(raised).toBeGreaterThanOrEqual(AI_POPUP_Z_INDEX_BASE);
+    expect(raised).toBeGreaterThan(antdBase);
+  });
+
+  it('真实宿主挂载路径生效：lazy 之外的一切都照常渲染', () => {
+    // 走的是 AiChatHost 本体（含 AiOverlayProvider + Suspense + 懒加载分支），
+    // 不是测试里的 AssistantLayer 替身。
     render(
       <AiChatProvider>
         <Identity identity="7" />
-        <div className="ant-modal-wrap" data-testid="business-modal">
-          <div className="ant-modal-content">业务表单</div>
-        </div>
-        <AiFloatingLauncher />
+        <AiChatHost />
       </AiChatProvider>,
     );
-    const launcher = screen.getByRole('button', { name: '打开 AI 助手' });
-    expect(launcher.getAttribute('aria-expanded')).toBe('false');
-    // 入口层级来自统一常量（1200），高于 Ant Design 弹层基准（1000）。
-    expect(AI_OVERLAY_Z_INDEX).toBeGreaterThan(ANT_DESIGN_OVERLAY_BASE);
-    fireEvent.click(launcher);
-    expect(launcher.getAttribute('aria-expanded')).toBe('true');
-  });
-  it('子弹层基准常量高于面板层级（供 ConfigProvider 抬升 Select/Tooltip）', () => {
-    // JSDOM 里 rc-trigger 的弹层不会真正打开，子弹层的实际 z-index 只能在
-    // 真实浏览器验证；这里锁住「基准常量本身高于业务弹层」这条不变量。
-    expect(AI_POPUP_Z_INDEX_BASE).toBeGreaterThan(ANT_DESIGN_OVERLAY_BASE);
+    expect(screen.getByRole('button', { name: '打开 AI 助手' })).toBeTruthy();
   });
 });
 describe('拖动（设计 §4）', () => {
@@ -257,6 +328,46 @@ describe('拖动（设计 §4）', () => {
     expect(panel.style.left).toBe('');
     expect(panel.style.top).toBe('');
   });
+  it('标题栏里的按钮不会发起拖动', async () => {
+    render(<Harness />);
+    const panel = await stubPanelRect();
+    // 按在「展开为页面」按钮上：手势必须被忽略，按钮照常拿焦点，位置不动。
+    const button = screen.getByTestId('header-button');
+    fireEvent.mouseDown(button, { button: 0, clientX: 610, clientY: 110 });
+    fireEvent.mouseMove(document, { clientX: 400, clientY: 300 });
+    expect(panel.style.left).toBe('');
+    expect(panel.style.top).toBe('');
+    fireEvent.mouseUp(document);
+    // 按钮本身仍然是可点的，没有被 preventDefault 吃掉焦点。
+    button.focus();
+    fireEvent.click(button);
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('在标题栏上点一下不会把面板钉死在绝对坐标', async () => {
+    render(<Harness />);
+    const panel = await stubPanelRect();
+    // 未越过阈值：即使指针坐标和按下时一样，也不得落定位置。
+    fireEvent.mouseDown(screen.getByTestId('chat-header'), {
+      button: 0,
+      clientX: 610,
+      clientY: 110,
+    });
+    fireEvent.mouseMove(document, { clientX: 612, clientY: 111 });
+    fireEvent.mouseUp(document);
+    expect(panel.style.left).toBe('');
+    expect(panel.style.top).toBe('');
+    // 越过阈值后才真正落定。
+    fireEvent.mouseDown(screen.getByTestId('chat-header'), {
+      button: 0,
+      clientX: 610,
+      clientY: 110,
+    });
+    fireEvent.mouseMove(document, { clientX: 570, clientY: 70 });
+    fireEvent.mouseUp(document);
+    expect(panel.style.left).toBe('560px');
+  });
+
   it('按住标题栏拖动会落定位置', async () => {
     render(<Harness />);
     const panel = await stubPanelRect();
@@ -344,6 +455,20 @@ describe('焦点与 Esc（设计 §4）', () => {
     // 入口仍在，随时能再唤起同一个会话。
     expect(screen.getByRole('button', { name: '打开 AI 助手' })).toBeTruthy();
   });
+  it('焦点目标已脱离文档时退到可见的兜底元素', async () => {
+    // 表单声明的按钮已经不在文档里：直接 focus() 是静默无效的，
+    // 键盘用户会回到 Tab 序列开头且看不到焦点环。
+    render(<Harness formOpen detachedFocus />);
+    await screen.findByTestId('chat-view');
+    await stubPanelRect();
+    expect(peekUserFormOverlay()?.returnFocusTarget?.isConnected).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: '关闭 AI 助手' }));
+    // 兜底到助手入口：仍然可见、可聚焦。
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: '打开 AI 助手' }),
+    );
+  });
+
   it('Esc 只处理持有焦点的那一层：面板关、表单不关', async () => {
     render(<Harness formOpen />);
     await screen.findByTestId('chat-view');

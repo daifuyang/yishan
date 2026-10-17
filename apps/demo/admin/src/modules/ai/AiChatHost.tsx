@@ -1,7 +1,6 @@
-import { ConfigProvider } from 'antd';
 import React, { lazy, Suspense } from 'react';
 import { AiFloatingLauncher } from './floating/AiFloatingLauncher';
-import { AI_POPUP_Z_INDEX_BASE } from './floating/aiOverlayLayers';
+import { AiOverlayProvider } from './floating/AiOverlayProvider';
 import { useAiChat } from './hooks/useAiChat';
 
 /**
@@ -26,17 +25,13 @@ export function AiChatHost() {
   const chat = useAiChat();
   if (!chat.authorized) return null;
   return (
-    // 统一处理子弹层：助手内部的 Select / Tooltip / Popover 默认会落到
-    // zIndexPopupBase（1050~1070），在业务 Modal 后面。这里抬高一档，
-    // 只抬入口的 z-index 是不够的（设计 §4）。
-    <ConfigProvider
-      theme={{ token: { zIndexPopupBase: AI_POPUP_Z_INDEX_BASE } }}
-    >
+    // 层级外壳（AiOverlayProvider）：统一处理子弹层，不能只抬入口 z-index。
+    <AiOverlayProvider>
       <Suspense fallback={null}>
         {chat.viewMode === 'floating' && <AiFloatingPanel />}
         {chat.viewMode === 'fullscreen' && <AiFullscreenWorkspace />}
       </Suspense>
       <AiFloatingLauncher />
-    </ConfigProvider>
+    </AiOverlayProvider>
   );
 }

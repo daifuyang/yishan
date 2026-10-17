@@ -27,11 +27,6 @@ export interface UserFormOverlayInfo {
   /** 业务浮层当前是否打开。只有打开时才需要与助手做焦点协调。 */
   open: boolean;
   /**
-   * 业务浮层的容器元素（Modal 内容节点），供助手做层级/避让判断。
-   * 为 `null` 表示尚未挂载 —— 助手必须容忍这种情况，不得据此判定表单关闭。
-   */
-  container: HTMLElement | null;
-  /**
    * 关闭助手后焦点应该回到哪个**元素**（通常是打开表单的那个按钮）。
    * 传元素而不是 CSS 选择器：选择器是设计 §5 禁止的通用 DOM 通道。
    */
@@ -170,10 +165,11 @@ export function useCoordinatedFormFocus(enabled: boolean): void {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       if (!isEventInsideAssistant(event.target)) return;
-      // 仲裁权在这里：交给助手处理（通常是收起助手），并且**吞掉**这次按键，
-      // 业务 Modal / rc-dialog 的 Esc 处理因此收不到它 —— 不会连带关闭未保存表单。
-      runAssistantEscape();
-      event.stopPropagation();
+      // 仲裁权在这里：交给助手处理（通常是收起助手）。只有**真的有人处理了**
+      // 才吞掉按键 —— 否则 Esc 会变成一个死键，表单自己的 Esc 也一并失效。
+      if (runAssistantEscape()) {
+        event.stopPropagation();
+      }
     };
     document.addEventListener('keydown', onKeyDown, true);
     return () => document.removeEventListener('keydown', onKeyDown, true);

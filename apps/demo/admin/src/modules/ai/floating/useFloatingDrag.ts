@@ -33,12 +33,22 @@ export function clampToViewport(
 }
 
 /**
+ * 判定为「拖动」所需的最小位移（px）。
+ *
+ * 没有这个阈值，**在标题栏上点一下**就会把面板从 CSS 角落锚点改成绝对 left/top，
+ * 而且再也回不去锚点 —— 移动端 `100dvh` 收缩（地址栏收起）之后它就停在过期坐标上。
+ */
+export const DRAG_MOVE_THRESHOLD = 4;
+
+/**
  * 浮窗拖动（设计 §4）：只在标题栏生效、限制在可视区域内、窗口 resize 后不跑出屏幕。
  *
- * 有两个刻意的约束：
+ * 有三个刻意的约束：
  *
- * - **只有标题栏能拖**：`handleProps` 必须挂在标题栏而不是浮窗根节点，
- *   否则用户在消息区选中文本时会连窗一起拖走。
+ * - **只有标题栏能拖，且必须由手柄本身发起**：`handleProps` 挂在标题栏而不是浮窗根节点，
+ *   否则用户在消息区选中文本时会连窗一起拖走；而标题栏里的按钮按下时
+ *   `event.target !== event.currentTarget`，手势被忽略，按钮照常拿焦点。
+ * - **越过阈值才落定位置**：见 {@link DRAG_MOVE_THRESHOLD}。
  * - **身份变化即复位**：切换账号后旧位置与旧手势引用都作废，
  *   否则新用户会继承上一个用户的窗口位置与半截未松手的拖动。
  */
@@ -53,6 +63,7 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
     rectTop: number;
     width: number;
     height: number;
+    moved: boolean;
   } | null>(null);
 
   const clearDrag = useCallback(() => {
@@ -69,6 +80,15 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
     const current = drag.current;
     const panel = panelRef.current;
     if (!current || !panel) return;
+    // 未越过阈值前一律不落定位置：一次普通点击不应该把面板永久钉死。
+    if (
+      !current.moved &&
+      Math.abs(clientX - current.pointerX) < DRAG_MOVE_THRESHOLD &&
+      Math.abs(clientY - current.pointerY) < DRAG_MOVE_THRESHOLD
+    ) {
+      return;
+    }
+    current.moved = true;
     const next = {
       left: clampToViewport(
         current.rectLeft + (clientX - current.pointerX),
@@ -88,24 +108,23 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
     );
   }, []);
 
-  const startDrag = useCallback(
-    (clientX: number, clientY: number) => {
-      const panel = panelRef.current;
-      if (!panel) return;
-      const rect = panel.getBoundingClientRect();
-      drag.current = {
-        pointerX: clientX,
-        pointerY: clientY,
-        rectLeft: rect.left,
-        rectTop: rect.top,
-        width: rect.width,
-        height: rect.height,
-      };
-      document.body.style.userSelect = 'none';
-      move(clientX, clientY);
-    },
-    [move],
-  );
+  const startDrag = useCallback((clientX: number, clientY: number) => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    drag.current = {
+      pointerX: clientX,
+      pointerY: clientY,
+      rectLeft: rect.left,
+      rectTop: rect.top,
+      width: rect.width,
+      height: rect.height,
+      moved: false,
+    };
+    document.body.style.userSelect = 'none';
+    // 注意：这里**不**立刻 move —— 落定位置要等越过阈值，
+    // 否则「点一下标题栏」就会把窗口钉死在绝对坐标上。
+  }, []);
 
   useEffect(() => {
     const onMove = (event: MouseEvent) => {
@@ -195,11 +214,16 @@ function createHandleProps(
     onMouseDown: (event: React.MouseEvent) => {
       // 只认鼠标左键 / 单指；右键与多指手势不当作拖动起点。
       if (event.button !== 0) return;
+      // 标题栏里有展开 / 关闭按钮：手势必须由**手柄本身**发起。
+      // 否则按在按钮上的 mousedown 会冒泡上来、被 preventDefault 掉焦点，
+      // 用户「按了关闭却把窗口拖走」。
+      if (event.target !== event.currentTarget) return;
       event.preventDefault();
       startDrag(event.clientX, event.clientY);
     },
     onTouchStart: (event: React.TouchEvent) => {
       if (event.touches.length !== 1) return;
+      if (event.target !== event.currentTarget) return;
       const touch = event.touches[0];
       startDrag(touch.clientX, touch.clientY);
     },

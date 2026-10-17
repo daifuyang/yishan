@@ -31,11 +31,37 @@ const useStyles = createStyles(({ token, css }) => ({
     border-radius: ${token.borderRadiusLG}px;
     box-shadow: ${token.boxShadowSecondary};
     @media (max-width: 768px) {
-      right: 8px; left: 8px; bottom: 8px; width: auto;
+      /* 窄屏铺满，但**必须写死 width**：拖动后内联样式会写入 left 并把 right 置 auto，
+         若这里留 width: auto，宽度就退化成 shrink-to-fit，面板会一直塌着。 */
+      right: 8px; left: 8px; bottom: 8px; width: calc(100vw - 16px);
       height: calc(100dvh - env(safe-area-inset-bottom, 0px) - 16px);
     }
   `,
 }));
+
+/** 入口按钮的选择器：仅用于「焦点归还目标已经脱离文档」时的可见兜底。 */
+const LAUNCHER_SELECTOR = 'button[aria-label="打开 AI 助手"]';
+
+/**
+ * 关闭面板后的焦点归还。
+ *
+ * 表单声明的焦点目标**必须在文档里**才是有效目标：对已脱离文档的节点调用
+ * `focus()` 是静默无效的，键盘用户会直接回到 Tab 序列开头，界面上还看不到焦点环。
+ * 因此先判 `isConnected`，落空时退到一个仍然可见的兜底元素（助手入口本身）。
+ */
+export function restoreFocus(): boolean {
+  const target = peekUserFormOverlay()?.returnFocusTarget ?? null;
+  if (target?.isConnected) {
+    target.focus();
+    return true;
+  }
+  const fallback = document.querySelector(LAUNCHER_SELECTOR);
+  if (fallback instanceof HTMLElement) {
+    fallback.focus();
+    return true;
+  }
+  return false;
+}
 
 export function AiFloatingPanel() {
   const chat = useAiChat();
@@ -51,9 +77,7 @@ export function AiFloatingPanel() {
 
   const close = useCallback(() => {
     chat.setViewMode('closed');
-    // 焦点回到业务表单的声明目标；表单没开时不抢焦点。
-    const target = peekUserFormOverlay()?.returnFocusTarget ?? null;
-    target?.focus?.();
+    restoreFocus();
   }, [chat]);
 
   // Esc 仲裁：参与协作的表单在场时由表单那一侧（document 捕获阶段）调用本处理函数；
