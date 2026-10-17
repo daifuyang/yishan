@@ -8,13 +8,22 @@ export { PermissionService } from './core/services/permission.service'
 // 行级数据范围：AI 能力执行与 REST 共用同一套建立入口。
 export { establishDataScopeFor, currentDataScope, isDataScopeBypassed, type DataScopeIdentity, type DataScopeSubject, type DataScopeFilter } from './core/auth'
 export { userDirectory, users } from './users'
-export type { SysUserResp, CreateUserReq, UpdateUserReq, UserCreateDraftFields, UserCreateDraftPartial } from './core/schemas/user'
+export type { SysUserResp, CreateUserReq, UpdateUserReq, UserCreateDraftFields, UserCreateDraftPartial, CreateUserFieldsReq, DraftSubmissionReq } from './core/schemas/user'
 export {
   CreateUserReqSchema,
   UserCreateDraftFieldsSchema,
   UserCreateDraftPartialSchema,
   USER_CREATE_DRAFT_FIELD_KEYS,
 } from './core/schemas/user'
+// 草稿关联创建的事务参与契约。只由产品组合根注入；不放进 contracts（无后端依赖），
+// 也不作为模型能力暴露。见 core/services/user-creation.ts 的边界说明。
+export { mergeDraftFields } from './core/services/user-creation'
+export type {
+  UserCreationParticipant,
+  DraftSubmission,
+  DraftSubmissionFailure,
+  DraftResultRef,
+} from './core/services/user-creation'
 // 用户创建的统一授权规则：普通后台新增与 AI 草稿提交共用，不允许各自一份。
 export { validateUserCreation, resolveCreatableDeptScope, USER_CREATE_PERMISSION } from './core/services/user-creation-policy'
 export type { UserCreationSubject, ValidateUserCreationOptions, CreatableDeptScope } from './core/services/user-creation-policy'

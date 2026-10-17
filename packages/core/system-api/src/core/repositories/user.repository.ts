@@ -1,5 +1,5 @@
 import { aliasedTable, and, asc, desc, eq, getTableColumns, inArray, isNull, like, or, sql, type SQL } from "drizzle-orm";
-import { drizzleDb, type AppQueryDb } from "@/db";
+import { drizzleDb, type AppQueryDb, type AppTx } from "@/db";
 import { sysUser, sysUserDept, sysUserRole } from "@/db/schema";
 import { currentDataScope, resolveDataScope, scopedQueryCondition } from "@/core/auth/data-scope";
 import { dateUtils } from "../../utils/date.js";
@@ -221,8 +221,8 @@ export class UserRepository {
     return [...new Set(rows.map((row) => row.deptId))];
   }
 
-  static async findIdByUsername(username: string): Promise<number | null> {
-    const [row] = await drizzleDb
+  static async findIdByUsername(username: string, db: AppQueryDb = drizzleDb): Promise<number | null> {
+    const [row] = await db
       .select({ id: sysUser.id })
       .from(sysUser)
       .where(and(eq(sysUser.username, username), isNull(sysUser.deletedAt)))
@@ -230,8 +230,8 @@ export class UserRepository {
     return row?.id ?? null;
   }
 
-  static async findIdByEmail(email: string): Promise<number | null> {
-    const [row] = await drizzleDb
+  static async findIdByEmail(email: string, db: AppQueryDb = drizzleDb): Promise<number | null> {
+    const [row] = await db
       .select({ id: sysUser.id })
       .from(sysUser)
       .where(and(eq(sysUser.email, email), isNull(sysUser.deletedAt)))
@@ -239,8 +239,8 @@ export class UserRepository {
     return row?.id ?? null;
   }
 
-  static async findIdByPhone(phone: string): Promise<number | null> {
-    const [row] = await drizzleDb
+  static async findIdByPhone(phone: string, db: AppQueryDb = drizzleDb): Promise<number | null> {
+    const [row] = await db
       .select({ id: sysUser.id })
       .from(sysUser)
       .where(and(eq(sysUser.phone, phone), isNull(sysUser.deletedAt)))
@@ -526,12 +526,25 @@ export class UserRepository {
   // --------------------------------------------------------------------------
 
   /**
+   * **唯一**的事务开启点。
+   *
+   * Service 层拿不到 `drizzleDb`，但一次原子创建需要在同一个事务里跨越多个
+   * repository（用户 + 唯一性查询 + 草稿回执）。这里把「开事务」收敛在
+   * Repository 层并把 `tx` 交给回调，Service 与参与者都只见到事务句柄，
+   * 不接触连接对象。
+   */
+  static async transaction<T>(fn: (tx: AppTx) => Promise<T>): Promise<T> {
+    return drizzleDb.transaction(async (tx) => fn(tx as AppTx));
+  }
+
+  /**
    * 在事务内创建用户，等价于 `drizzleDb.transaction(tx => UserRepository.create(input, tx))`。
+   *
+   * 保留给不需要与其他步骤共享事务的普通调用方；需要跨步骤原子性的创建路径
+   * 走 `transaction()` 并在回调里自己调 `create(input, tx)`。
    */
   static async createInTransaction(input: CreateUserInput): Promise<UserDetailRow> {
-    return drizzleDb.transaction(async (tx) => {
-      return UserRepository.create(input, tx);
-    });
+    return UserRepository.transaction((tx) => UserRepository.create(input, tx));
   }
 
   /**

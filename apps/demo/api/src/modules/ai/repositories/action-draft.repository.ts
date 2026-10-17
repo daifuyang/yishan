@@ -74,6 +74,18 @@ function lockConversation(tx: AppQueryDb, ownerId: number, conversationId: strin
     .for('update')
 }
 
+/**
+ * 把一个**已经由 System 开启**的事务句柄包装成草稿句柄。
+ *
+ * Task 5 的用户创建需要「业务创建 + 草稿回执」同事务，而事务由 System 的
+ * `UserRepository.transaction()` 开启；`ActionDraftStore.transaction()` 会自己开一个
+ * 新事务，在里面做就等于把回执移出创建的事务。因此这里公开同一套事务内操作，
+ * 复用**完全相同**的 SQL —— 不存在第二份草稿读写实现可以与上面那份产生分歧。
+ */
+export function createActionDraftTx(db: AppQueryDb): ActionDraftTx {
+  return txHandle(db)
+}
+
 function txHandle(db: AppQueryDb): ActionDraftTx {
   return {
     // 事务内一律加行锁：读一遍不锁等于把提交与删除的互斥交给运气。

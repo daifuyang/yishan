@@ -1,8 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { FastifyInstance } from 'fastify'
 import type { UserDirectory, UserExtension, UserMutation, UserLifecycleEvent, PermissionRef } from '@yishan/core-contracts'
-import { PermissionCatalog } from '@yishan/core-api'
+import { PermissionCatalog, AiCapabilityCatalog } from '@yishan/core-api'
 import { runWithPermissions } from '@yishan/core-api/permissions/catalog'
+import { runWithAiCapabilities } from '@yishan/core-api/ai-capabilities/catalog'
 import type { SystemDatabase } from './db'
 import type { SystemConfig } from './config/create'
 import type { PermissionCacheEntry } from './core/services/permission.service'
@@ -10,6 +11,7 @@ import type { EnumCacheEntry } from './core/services/enum.service'
 import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-validator'
 import { createUserDirectory, toUserIdentity } from './users'
 import type { SysUserResp } from './core/schemas/user'
+import type { UserCreationParticipant } from './core/services/user-creation'
 import { setupSystem } from './setup'
 import { createModuleStateStore } from './module-state'
 import { createModuleAdministration } from './module-administration'
@@ -29,12 +31,22 @@ export interface SystemRuntimeOptions {
   redis?: false | Record<string, unknown>
   staticAssets?: boolean
   onExtensionError?: (error: unknown, extensionId: string, event: UserLifecycleEvent) => void
+  /**
+   * 草稿关联创建的**事务参与方**。
+   *
+   * 只由产品组合根（`apps/demo/api/src/app.ts`）在 AI 模块安装时注入；模块缺席时
+   * 这里是 `undefined`，系统照常支持普通创建。带 `draftSubmission` 的请求在缺席时
+   * 被拒绝而不是降级 —— 见 `core/services/user-creation.ts`。
+   */
+  userCreationParticipant?: UserCreationParticipant
 }
 
 export class SystemRuntime {
   readonly database: SystemDatabase
   readonly config: SystemConfig
   readonly permissions = new PermissionCatalog()
+  /** AI 能力注册中心。系统模块只往里**注册**能力，消费方是 ai 模块。 */
+  readonly aiCapabilities = new AiCapabilityCatalog()
   readonly caches = {
     permissions: new Map<string, PermissionCacheEntry>(),
     enums: new Map<string, EnumCacheEntry>(),
@@ -64,7 +76,7 @@ export class SystemRuntime {
   }
 
   run<T>(fn: () => T): T {
-    return scope.run(this, () => runWithPermissions(this.permissions, fn))
+    return scope.run(this, () => runWithPermissions(this.permissions, () => runWithAiCapabilities(this.aiCapabilities, fn)))
   }
 
   setup(fastify: FastifyInstance): Promise<void> {

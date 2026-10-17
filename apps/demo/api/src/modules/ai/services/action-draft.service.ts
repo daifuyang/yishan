@@ -246,6 +246,31 @@ export class ActionDraftService {
   }
 
   /**
+   * **事务回滚之后**记录失败 —— 与 `markFailed` 刻意分开。
+   *
+   * Task 5 把草稿认领与用户创建放进同一个事务后，`submitting` 在失败时会被数据库
+   * 一并回滚：草稿回到**原版本、原状态**。这时按 `['submitting']` 做 CAS 必然零行。
+   * 因此这里用「调用方提交时读到的版本 + 进入提交前允许的状态」做条件。
+   *
+   * 副作用是刻意的：状态白名单里**没有** `completed`，所以这条路径在结构上不可能
+   * 覆盖另一个请求刚提交的成功结果 —— 一个先失败的请求永远抹不掉后成功的回执。
+   *
+   * 零行在这里不是错误：状态已经被别人改过（多半是提交成功了），
+   * 记录失败原因失败时也不该把原始业务错误顶掉。
+   */
+  async markFailedAfterRollback(ownerId: number, draftId: string, draftVersion: number, reason: string): Promise<void> {
+    const row = await this.store.find(ownerId, draftId)
+    if (!row) return
+    await this.store.compareAndSwap({
+      ownerId,
+      draftId,
+      expectedVersion: draftVersion,
+      allowedStatuses: ['ready', 'previewing', 'failed'],
+      patch: { status: 'failed', failureReason: reason.slice(0, 255) },
+    })
+  }
+
+  /**
    * 事务内锁顺序：先会话行，再草稿行。
    *
    * 业务创建与草稿回执由 Task 9 在同一个事务里提交；会话删除走 `removeByConversation`，

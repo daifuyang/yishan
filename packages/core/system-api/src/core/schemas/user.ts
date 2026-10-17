@@ -113,13 +113,26 @@ export const CreateUserReqSchema = Type.Object(
     ),
     deptIds: Type.Optional(Type.Array(Type.Number(), { description: "部门ID列表" })),
     roleIds: Type.Optional(Type.Array(Type.Number(), { description: "角色ID列表" })),
+    // **内部控制字段**（Task 5）：把这次创建关联到某一份 AI 草稿。它不是表单字段，
+    // 不会进入用户数据，也不会出现在 create-form 的字段集里（user-creation-form.service
+    // 用 NON_FORM_FIELDS 显式剔除）。带上它而系统里没有注册参与者时，创建会被拒绝，
+    // 绝不静默降级成一次普通的创建。
+    draftSubmission: Type.Optional(Type.Object(
+      {
+        draftId: Type.String({ description: "草稿 ID", minLength: 1, maxLength: 64 }),
+        draftVersion: Type.Integer({ description: "草稿版本（乐观并发）", minimum: 1 }),
+      },
+      { additionalProperties: false, description: "AI 草稿提交关联；仅由原生表单的提交动作携带" }
+    )),
   },
   { $id: "createUserReq" }
 );
 
-// 更新用户请求 Schema（全部字段可选，至少提供一个字段）
+/** 更新用户请求 Schema（全部字段可选，至少提供一个字段）。 */
 const UpdateUserReqSchema = Type.Partial(
-  CreateUserReqSchema,
+  // `draftSubmission` 只属于创建：修改用户没有「消费一份草稿」这回事，
+  // 让它跟着 Type.Partial 进更新接口只会多一条可以把修改伪装成草稿提交的入口。
+  Type.Omit(CreateUserReqSchema, ["draftSubmission"]),
   {
     $id: "updateUserReq",
     minProperties: 1,
@@ -174,6 +187,12 @@ export const UserListQuerySchema = Type.Object(
 export type UserListQuery = Static<typeof UserListQuerySchema>;
 export type CreateUserReq = Static<typeof CreateUserReqSchema>;
 export type UpdateUserReq = Static<typeof UpdateUserReqSchema>;
+
+/** 草稿提交关联。定义与 `CreateUserReqSchema.draftSubmission` 一一对应。 */
+export type DraftSubmissionReq = NonNullable<CreateUserReq["draftSubmission"]>;
+
+/** 创建请求里**真正参与落库**的部分 —— 已经剥掉 `draftSubmission`。 */
+export type CreateUserFieldsReq = Omit<CreateUserReq, "draftSubmission">;
 
 /**
  * 助手可写的用户字段白名单 —— 与真实后台表单同源。
