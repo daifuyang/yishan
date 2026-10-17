@@ -35,6 +35,7 @@ import {
   ACTION_DRAFT_STATUSES,
   EDITABLE_ACTION_DRAFT_STATUSES,
   USER_CREATE_DRAFT_FIELD_KEYS,
+  matchesDraftFieldType,
   type ActionDraftAction,
   type ActionDraftModule,
   type ActionDraftResultRef,
@@ -75,6 +76,16 @@ const EDITABLE_FIELDS = new Set<string>(USER_CREATE_DRAFT_FIELD_KEYS)
 /** 允许 `null` 的补丁值：`null` 清空，省略不动。 */
 function isPatch(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * 「这个字段有值吗」的**唯一**判定。
+ *
+ * `undefined` / `null` / 空串都算没有。它必须与 `normalize()` 的 null 语义一致：
+ * 一个字段不可能同时「被清空」和「已收集」，否则草稿会对提交接口撒谎。
+ */
+function hasValue(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== ''
 }
 
 export class ActionDraftService {
@@ -123,7 +134,7 @@ export class ActionDraftService {
   async create(ownerId: number, conversationId: string, input: CreateActionDraftInput): Promise<ActionDraft> {
     this.assertTarget(input.module, input.action)
     this.assertSchemaVersion(input.schemaVersion)
-    const formData = this.normalize(input.formData)
+    const formData = this.normalize(input.formData, false)
     await this.authorize(input.subject, formData)
     const now = this.now()
     const evaluation = this.evaluate(formData)
@@ -155,7 +166,7 @@ export class ActionDraftService {
 
   async patch(ownerId: number, draftId: string, draftVersion: number, formData: Record<string, unknown>, context: PatchActionDraftInput = {}): Promise<ActionDraft> {
     this.assertSchemaVersion(context.schemaVersion)
-    const patch = this.normalize(formData)
+    const patch = this.normalize(formData, true)
     const row = await this.get(ownerId, draftId)
     if (row.draftVersion !== draftVersion) throw conflict(this.explain(row, draftVersion))
     // 补丁合并：省略的键不动，`null` 的键移除。未提及的字段必须原样保留（设计 §6）。
@@ -185,15 +196,35 @@ export class ActionDraftService {
   // ------------------------------------------------------------ 提交流程
 
   /**
-   * 进入提交。
+   * 进入提交 —— **只能在 `withSubmissionLock` 拿到的事务里调用**。
    *
-   * 归属里的会话条件在这里被再次确认：一份草稿不能被拿着另一个会话 id 提交。
+   * 刻意不提供事务外的等价物：`submitting` 是一条租约，只有持有会话行锁的事务
+   * 才有资格写入它，否则「提交中」这一状态可以在没有任何互斥的情况下被写进去，
+   * 会话删除的 409 守卫也就形同虚设。方法名带 `InTx` 就是这个契约的载体。
+   *
+   * Task 9 的用法：
+   * ```ts
+   * await service.withSubmissionLock(ownerId, conversationId, draftId, async (tx, draft) => {
+   *   const submitting = await service.markSubmittingInTx(tx, draft)
+   *   return createUser(submitting.formData)
+   * })
+   * ```
    */
-  async markSubmitting(ownerId: number, draftId: string, draftVersion: number, conversationId: string): Promise<ActionDraft> {
-    const row = await this.get(ownerId, draftId)
-    if (row.conversationId !== conversationId) throw aiError(404, '草稿不存在')
-    if (row.draftVersion !== draftVersion) throw conflict(this.explain(row, draftVersion))
-    return this.swap(ownerId, row, draftVersion, ['ready', 'previewing', 'failed'], { status: 'submitting', failureReason: null })
+  async markSubmittingInTx(tx: ActionDraftTx, row: ActionDraft): Promise<ActionDraft> {
+    // 先取版本号：CAS 之后不能再从 row 上算，某些 store 会就地修改该对象。
+    const expectedVersion = row.draftVersion
+    const updated = await tx.compareAndSwap({
+      ownerId: row.ownerId,
+      draftId: row.draftId,
+      expectedVersion,
+      allowedStatuses: ['ready', 'previewing', 'failed'],
+      patch: { status: 'submitting', failureReason: null },
+    })
+    if (updated) return { ...row, status: 'submitting', failureReason: null, draftVersion: expectedVersion + 1 }
+    // 零行不是「行不存在」：在归属范围内重读一次再翻译成 409。
+    const current = await tx.find(row.ownerId, row.draftId)
+    if (!current) throw aiError(404, '草稿不存在')
+    throw conflict(this.explain(current, expectedVersion))
   }
 
   /** 提交成功：只保存结果引用，不保存任何密码材料（设计 §11）。 */
@@ -229,7 +260,16 @@ export class ActionDraftService {
     }, { ownerId, conversationId })
   }
 
-  /** 会话删除时清理草稿；有草稿正在提交时拒绝删除。 */
+  /**
+   * 会话删除时清理草稿；有草稿正在提交时拒绝删除。
+   *
+   * 由 `AiChatService.remove` 在删会话**之前**调用 —— 这个守卫必须活在删除路径上：
+   * 表上的 `ON DELETE CASCADE` 不看 `submitting`，一次进行中的用户创建会被它静默删除。
+   * 删除事务先锁会话行，与 `withSubmissionLock` 互斥；清理完成后并发的提交会发现
+   * 草稿已不存在（404），不会复活。`ON DELETE CASCADE` 予以保留：它是**兜底**，
+   * 保证任何未经本方法的会话删除也不会留下孤儿草稿；允许级联的状态由删除路径
+   * 的守卫决定，而不是由外键决定。
+   */
   async removeConversationDrafts(ownerId: number, conversationId: string): Promise<boolean> {
     await this.store.removeByConversation(ownerId, conversationId)
     return true
@@ -273,15 +313,26 @@ export class ActionDraftService {
    *
    * 与 HTTP schema 同一条规则，但在这里**再执行一次**：模型工具调用不经过 HTTP 层。
    * 未知字段与 `password` 当场拒绝，值本身不合业务格式不在这里判断。
+   *
+   * `allowNull` 只有补丁为 `true`：保存时 `null` 唯一的含义是「清空这个可选字段」，
+   * 入库前会被规范化成**移除**该键。创建路径上的 `null` 没有语义 —— 模型传
+   * `{phone:null}` 表示「还没问到手机号」，而不是「手机号为空」—— 一律 400，
+   * 否则必填字段会同时是「已清空」和「已收集」，草稿宣称 ready 而提交被拒。
    */
-  private normalize(formData: Record<string, unknown>): Record<string, unknown> {
+  private normalize(formData: Record<string, unknown>, allowNull: boolean): Record<string, unknown> {
     if (!isPatch(formData)) throw aiError(400, '表单数据格式无效')
     const rejected: string[] = []
     const out: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(formData)) {
       if (value === undefined) continue
       if (!EDITABLE_FIELDS.has(key as string)) { rejected.push(key); continue }
-      if (value !== null && !matchesFieldType(key as string, value)) { rejected.push(key); continue }
+      if (value === null) {
+        // 创建不接受 null；补丁里 null 是「清空」，由调用方在合并时移除该键。
+        if (allowNull) out[key] = null
+        else rejected.push(key)
+        continue
+      }
+      if (!matchesDraftFieldType(key as string, value)) { rejected.push(key); continue }
       out[key] = value
     }
     if (rejected.length) throw aiError(400, `不支持的字段：${[...new Set(rejected)].join('、')}`)
@@ -294,7 +345,7 @@ export class ActionDraftService {
     const byName = new Map(form.fields.map(field => [field.name, field]))
     const validationErrors: ActionDraft['validationErrors'] = []
     for (const [name, value] of Object.entries(formData)) {
-      if (value === null || value === undefined || typeof value !== 'string') continue
+      if (typeof value !== 'string') continue
       for (const error of checkString(byName.get(name)?.constraints ?? {}, value)) {
         validationErrors.push({ field: name, label: byName.get(name)?.label ?? name, ...error })
       }
@@ -305,20 +356,26 @@ export class ActionDraftService {
       ...form.missingFields,
       // 真实必填且可编辑的字段，用户还没提供的。
       ...form.fields
-        .filter(field => field.required && editable.has(field.name) && !(formData[field.name] !== undefined && formData[field.name] !== ''))
+        .filter(field => field.required && editable.has(field.name) && !hasValue(formData[field.name]))
         .map(field => ({ name: field.name, label: field.label, required: true, sensitive: false, mustCompleteInForm: false as const })),
     ]
-    return { validationErrors, missingFields, status: this.statusOf(missingFields) }
+    return { validationErrors, missingFields, status: this.statusOf(missingFields, validationErrors) }
   }
 
   /**
-   * `ready` 只表示「对话该收的都收了」。
+   * `ready` = 对话该收的都收了，**且当前写下的值没有已知格式错误**。
    *
    * `mustCompleteInForm`（首期就是密码）不参与判定：它永远由最终表单完成，
    * 否则任何草稿都不可能 ready（设计 §9）。它仍然出现在 `missingFields` 里，
    * 因为界面需要据此提示用户。
+   *
+   * 但 `validationErrors` 参与判定。`ready` 的语义是「模型可以照此提交」，而不是
+   * 「字段都出现过」：`{phone:'13', email:'not-an-email'}` 带着两个未解决的格式错误
+   * 宣称 ready，等于草稿替提交接口撒了谎，而真正被拒的是用户。值仍然原样保留在
+   * `formData` 里，由用户或下一轮工具结果修正后再转 ready。
    */
-  private statusOf(missingFields: ActionDraft['missingFields']): ActionDraftStatus {
+  private statusOf(missingFields: ActionDraft['missingFields'], validationErrors: ActionDraft['validationErrors']): ActionDraftStatus {
+    if (validationErrors.length) return 'collecting'
     return missingFields.some(field => !field.mustCompleteInForm) ? 'collecting' : 'ready'
   }
 
@@ -373,14 +430,6 @@ export class ActionDraftService {
 
 function conflict(message: string) {
   return aiError(409, message)
-}
-
-/** 基本类型判定：与传输 schema 同源，但模型工具调用不经过 HTTP 层。 */
-function matchesFieldType(key: string, value: unknown): boolean {
-  const arrayFields = new Set<string>(['deptIds', 'roleIds'])
-  return arrayFields.has(key)
-    ? Array.isArray(value) && value.every(item => typeof item === 'number' && Number.isFinite(item))
-    : typeof value === 'string'
 }
 
 /** 只读校验，返回错误而不修改值 —— 半截手机号因此可以留在草稿里。 */

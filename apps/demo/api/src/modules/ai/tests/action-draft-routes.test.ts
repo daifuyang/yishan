@@ -3,7 +3,7 @@ import { errorHandlerPlugin } from '@yishan/core-api/plugins'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import aiRoutes from '../routes/v1/index.js'
 import draftRoutes from '../routes/v1/drafts.js'
-import { ActionDraftSchema, ActionDraftFormDataSchema } from '../schemas/action-draft.schema.js'
+import { ActionDraftSchema, ActionDraftFormDataSchema, DRAFT_ARRAY_FIELD_KEYS } from '../schemas/action-draft.schema.js'
 import { aiError } from '../ai-chat-error.js'
 import { ActionDraftService, type ActionDraft } from '../services/action-draft.service.js'
 import { FormatRegistry } from '@sinclair/typebox'
@@ -107,13 +107,21 @@ describe('Action draft routes', () => {
     { method: 'PATCH', url: '/drafts/d1', payload: { draftVersion: 1, formData: { password: 'abc12345' } } },
     { method: 'PATCH', url: '/drafts/d1', payload: { formData: {} } },
     { method: 'POST', url: '/drafts/d1/cancel', payload: {} },
+    // `preValidation` 跑在 body 校验之前，ajv 看不到这些值：`Object.entries(null)`
+    // 抛出的 TypeError 没有 statusCode，会一路变成 500 并刷错误日志。
+    { method: 'POST', url: '/conversations/c1/drafts', payload: { ...draftBody, formData: null } },
+    { method: 'PATCH', url: '/drafts/d1', payload: { draftVersion: 1, formData: null } },
+    { method: 'POST', url: '/conversations/c1/drafts', payload: { ...draftBody, formData: ['phone'] } },
+    { method: 'POST', url: '/conversations/c1/drafts', payload: { ...draftBody, formData: 'phone=13' } },
   ] as const)('rejects $method $url with a sensitive or malformed body', async options => {
     const app = await appFor()
     const patch = vi.spyOn(ActionDraftService.prototype, 'patch')
+    const create = vi.spyOn(ActionDraftService.prototype, 'create')
     try {
       const response = await app.inject(options)
       expect(response.statusCode, response.body).toBe(400)
       expect(patch).not.toHaveBeenCalled()
+      expect(create).not.toHaveBeenCalled()
     } finally { await app.close() }
   })
 
@@ -136,6 +144,20 @@ describe('Action draft routes', () => {
       expect(list.json()).toMatchObject({ success: true, code: 10000, data: { items: [] } })
       const detail = await app.inject({ method: 'GET', url: '/drafts/d1' })
       expect(detail.json()).toMatchObject({ success: true, data: { draftId: 'd1' } })
+    } finally { await app.close() }
+  })
+
+  it('accepts every schema-derived array field without a second list to update', async () => {
+    const app = await appFor()
+    const create = vi.spyOn(ActionDraftService.prototype, 'create').mockResolvedValue(draftFor())
+    try {
+      for (const key of DRAFT_ARRAY_FIELD_KEYS) {
+        const response = await app.inject({ method: 'POST', url: '/conversations/c1/drafts', payload: { ...draftBody, formData: { [key]: [1, 2] } } })
+        expect(response.statusCode, `${key}: ${response.body}`).toBe(200)
+      }
+      const wrong = await app.inject({ method: 'POST', url: '/conversations/c1/drafts', payload: { ...draftBody, formData: { deptIds: ['1'] } } })
+      expect(wrong.statusCode, wrong.body).toBe(400)
+      expect(create).toHaveBeenCalledTimes(DRAFT_ARRAY_FIELD_KEYS.size)
     } finally { await app.close() }
   })
 

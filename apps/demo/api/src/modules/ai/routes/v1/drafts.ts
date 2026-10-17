@@ -24,8 +24,9 @@ import {
   ActionDraftResponseSchema,
   ActionDraftIdParamsSchema,
   USER_CREATE_DRAFT_FIELD_KEYS,
-  type ActionDraftBody,
-  type ActionDraftPatchBody,
+  matchesDraftFieldType,
+  type ActionDraftCreateTransportBody,
+  type ActionDraftPatchTransportBody,
 } from '../../schemas/action-draft.schema.js'
 
 type DraftIdParams = { Params: { draftId: string } }
@@ -58,8 +59,14 @@ function serialize(draft: ActionDraft) {
 const allowedFormFields = new Set<string>(USER_CREATE_DRAFT_FIELD_KEYS)
 
 function assertFormDataShape(body: unknown, allowNull: boolean) {
-  const formData = (body as { formData?: Record<string, unknown> } | undefined)?.formData
+  const formData = (body as { formData?: unknown } | undefined)?.formData
   if (formData === undefined) return
+  // `formData: null` / 数组 / 字符串都要在这里判掉。`preValidation` 跑在 body 校验之前，
+  // ajv 永远看不到它们，`Object.entries(null)` 抛出的 TypeError 没有 statusCode，
+  // 会一路落到全局处理器变成 500 并刷错误日志。
+  if (typeof formData !== 'object' || formData === null || Array.isArray(formData)) {
+    throw aiError(400, '表单数据格式无效')
+  }
   const rejected: string[] = []
   for (const [key, value] of Object.entries(formData)) {
     if (!allowedFormFields.has(key)) { rejected.push(key); continue }
@@ -69,11 +76,9 @@ function assertFormDataShape(body: unknown, allowNull: boolean) {
       continue
     }
     if (value === undefined) continue
-    const isArrayField = key === 'deptIds' || key === 'roleIds'
-    const ok = isArrayField
-      ? Array.isArray(value) && value.every(item => typeof item === 'number' && Number.isFinite(item))
-      : typeof value === 'string'
-    if (!ok) rejected.push(key)
+    // 类型判定来自 schema 派生的唯一清单（`matchesDraftFieldType`），与 Service 的
+    // `normalize()` 同一个实现：新增数组字段不需要在这里补一份。
+    if (!matchesDraftFieldType(key, value)) rejected.push(key)
   }
   if (rejected.length) throw aiError(400, `不支持的字段：${[...new Set(rejected)].join('、')}`)
 }
@@ -87,7 +92,7 @@ export default (async app => {
   const service = ActionDraftService.forDatabase(drizzleDb)
   const access = { permission: AI_PERMISSION }
 
-  route.post<{ Params: { id: string }; Body: ActionDraftBody }>(
+  route.post<{ Params: { id: string }; Body: ActionDraftCreateTransportBody }>(
     '/conversations/:id/drafts',
     { access, schema: { tags: ['ai'], summary: '创建表单草稿', operationId: 'aiActionDraftCreate', params: AiIdParamsSchema, body: ActionDraftCreateTransportBodySchema, response: { 200: ActionDraftResponseSchema } } },
     async (request, reply) => ResponseUtil.success(reply, serialize(await service.create(request.currentUser.id, request.params.id, request.body))),
@@ -105,7 +110,7 @@ export default (async app => {
     async (request, reply) => ResponseUtil.success(reply, serialize(await service.get(request.currentUser.id, request.params.draftId))),
   )
 
-  route.patch<DraftIdParams & { Body: ActionDraftPatchBody }>(
+  route.patch<DraftIdParams & { Body: ActionDraftPatchTransportBody }>(
     '/drafts/:draftId',
     { access, schema: { tags: ['ai'], summary: '按字段补丁更新草稿', operationId: 'aiActionDraftPatch', params: ActionDraftIdParamsSchema, body: ActionDraftPatchTransportBodySchema, response: { 200: ActionDraftResponseSchema } } },
     async (request, reply) => ResponseUtil.success(reply, serialize(await service.patch(request.currentUser.id, request.params.draftId, request.body.draftVersion, request.body.formData))),

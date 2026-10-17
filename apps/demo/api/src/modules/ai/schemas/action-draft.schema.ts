@@ -12,8 +12,11 @@
  *    一个普通字符串；是否合法由 Service 用真实业务约束算出 `validationErrors`
  *    并**保留原值**（设计 §7、§9）。让 HTTP schema 因为手机号还没输完就整份拒绝，
  *    等于禁止「边说边填」。
- * 2. **`additionalProperties: false` 是硬边界**：`password` 与任何未登记字段在这里
- *    就被拒，模型、工具与前端都拿不到第二份密码副本的入口（设计 §6、§10）。
+ * 2. **`additionalProperties: false` 不是运行时边界**，只是契约的书面声明：线上 ajv
+ *    以 `removeAdditional: true` 运行，会把 `password` 这类未登记字段**悄悄删掉**而不是
+ *    400。真正拦住它的是 `routes/v1/drafts.ts` 的 `preValidation` 守卫与 Service 的
+ *    `normalize()`，两者共用下面的 `matchesDraftFieldType` 与同一份键白名单
+ *    （设计 §6、§10）。
  * 3. **PATCH 是显式字段补丁**：`null` 表示「清空这个可选字段」，**省略**表示
  *    「别动它」。两者混为一谈会让助手一次补丁清空半个表单。
  */
@@ -65,6 +68,36 @@ export const ACTION_DRAFT_TTL_MS = 24 * 60 * 60 * 1000
 export interface ActionDraftResultRef {
   targetType: string
   targetId: string
+}
+
+/**
+ * **数组字段的唯一清单**，直接从同源 schema 派生。
+ *
+ * 曾经存在三份拷贝（传输守卫、Service 的 `normalize()`、这里的 schema），新增一个
+ * 数组字段会让其中两处开始拒绝合法载荷 —— 这类不一致只在生产上出现。现在只有
+ * 派生这一份，`deptIds` / `roleIds` 由 `UserCreateDraftFieldsSchema.properties[key].type`
+ * 决定；将来往 `USER_CREATE_DRAFT_FIELD_KEYS` 里加 `postIds`，守卫与 `normalize()`
+ * 自动跟上，不需要改第二处清单。
+ */
+export const DRAFT_ARRAY_FIELD_KEYS: ReadonlySet<string> = new Set(
+  USER_CREATE_DRAFT_FIELD_KEYS.filter(
+    key => (UserCreateDraftFieldsSchema.properties as Record<string, { type?: string }>)[key]?.type === 'array',
+  ),
+)
+
+export function isDraftArrayField(key: string): boolean {
+  return DRAFT_ARRAY_FIELD_KEYS.has(key)
+}
+
+/**
+ * 基本类型判定：传输守卫与 Service 共用的**唯一**实现。
+ *
+ * 数组字段要纯数字数组，其余字段是字符串 —— 判定的是原始 JSON 的类型，
+ * 因为半截手机号要照存，业务格式错误留给 `validationErrors`。
+ */
+export function matchesDraftFieldType(key: string, value: unknown): boolean {
+  if (!isDraftArrayField(key)) return typeof value === 'string'
+  return Array.isArray(value) && value.every(item => typeof item === 'number' && Number.isFinite(item))
 }
 
 /** 取源字段的「基本类型」，丢掉 enum / pattern / format。 */
@@ -198,6 +231,15 @@ export const ActionDraftIdParamsSchema = Type.Object({
 
 export type ActionDraftBody = Static<typeof ActionDraftCreateBodySchema>
 export type ActionDraftPatchBody = Static<typeof ActionDraftPatchBodySchema>
+/**
+ * 路由**实际挂载**的 body 类型。
+ *
+ * 必须用传输版本而不是上面的契约版本：声明成契约版本会让编译器以为 `formData`
+ * 已经被严格校验过，而运行时真正挂的是宽松容器，形状由 preValidation 守卫与
+ * Service 的 `normalize()` 判定。类型必须说真话。
+ */
+export type ActionDraftCreateTransportBody = Static<typeof ActionDraftCreateTransportBodySchema>
+export type ActionDraftPatchTransportBody = Static<typeof ActionDraftPatchTransportBodySchema>
 export type ActionDraftMissingField = Static<typeof MissingFieldSchema>
 export type ActionDraftValidationError = Static<typeof ValidationErrorSchema>
 
