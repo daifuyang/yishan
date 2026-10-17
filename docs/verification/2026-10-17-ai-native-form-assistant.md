@@ -80,12 +80,12 @@ Task 10b（**真实浏览器验收 A–H 与真实模型联调**）在本环境 
 | `pnpm check:migrations` | PASS |
 | `pnpm lint` | PASS（exit 0；9 条既有 info 在 e2e 脚本里，非本次改动） |
 | `pnpm test` | PASS（exit 0；此前记录的 TS2688 本次未复现） |
-| `pnpm check:openapi` | 见下 |
+| `pnpm check:openapi` | PASS（**提交后**复跑：`openapi.json is in sync`） |
 | `pnpm build` | 根全量构建：未运行（时间预算外）；本次触及的 `build:api`、`build:admin` 均 PASS |
 
 **`pnpm check:openapi` 在提交前必然报红**：该脚本比较的是 `HEAD:` 里的 `openapi.json` 与
-工作区版本，因此它对本任务自己的产物（新增 8 条路径）报「out of sync」。提交后重跑即可消除；
-**这一步必须在提交之后复跑并确认**，否则不能算闭环。
+工作区版本，因此它对本任务自己的产物（新增 8 条路径）在提交前必然报「out of sync」。
+提交 `ca53171` 之后复跑已通过（`openapi.json is in sync`）。
 
 ---
 
@@ -128,10 +128,9 @@ Task 10b（**真实浏览器验收 A–H 与真实模型联调**）在本环境 
 ## 5. 未完成项与已知限制
 
 1. **真实浏览器验收 A–H 与真实模型联调未执行**（第 3 节）——交付前必须由人补做。
-2. `pnpm check:openapi` 需在本次提交**之后**复跑确认。
-3. `pnpm build`（根全量，含 docs / weapp / H5）本次未运行。
-4. 错误码映射观察：草稿路由的业务错误经系统全局处理器映射后，
+2. `pnpm build`（根全量，含 docs / weapp / H5）本次未运行。
+3. 错误码映射观察：草稿路由的业务错误经系统全局处理器映射后，
    `AiChatError(409)` 落到 `21001/400`，404 落到 `20001/500`（`ResourceErrorCode.NOT_FOUND`
    25005 并未注册成合法码）。语义正确但状态码不够干净，值得后续单独立项。
-5. MySQL 会话时区与应用进程相差 8 小时，过期判断必须相对**已存储的**时间做比较，
+4. MySQL 会话时区与应用进程相差 8 小时，过期判断必须相对**已存储的**时间做比较，
    不能用 `NOW(3)` 推导（测试里据此设计）。
