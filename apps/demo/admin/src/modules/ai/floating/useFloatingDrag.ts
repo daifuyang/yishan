@@ -48,6 +48,18 @@ export function clampToViewport(
 export const DRAG_MOVE_THRESHOLD = 4;
 
 /**
+ * 抑制器的最长存活时间（ms）。
+ *
+ * **触摸拖动根本不会产生 click** —— `touchend` 不派发 click 是触摸的固有行为，
+ * 不是边界情况。若只靠「被消费一次就注销」，每一次手指拖动都会把抑制器留到下一次
+ * 手势为止，中间用户点的**任何**按钮（查询、提交、导航）都会被静默吞掉，表现为
+ * 「第一下没反应，再点一次才行」。所以额外挂一个回收定时器兜底。
+ *
+ * 取 350ms：远大于拖动结束后浏览器补发合成 click 的时间，又短到用户察觉不到。
+ */
+export const SUPPRESS_CLICK_REAP_MS = 350;
+
+/**
  * 浮窗拖动（设计 §4）：只在标题栏生效、限制在可视区域内、窗口 resize 后不跑出屏幕。
  *
  * 有三个刻意的约束：
@@ -81,27 +93,33 @@ export function useFloatingDrag(identity: string | null): FloatingDragApi {
     drag.current = null;
   }, []);
 
-  /** 待吞掉的一次 click。存在 ref 里，便于在所有退出路径上摘掉。 */
-  const pendingClickSuppress = useRef<((event: MouseEvent) => void) | null>(
-    null,
-  );
+  /** 待吞掉的一次 click（含它的回收定时器）。存在 ref 里，便于在所有退出路径上摘掉。 */
+  const pendingClickSuppress = useRef<{
+    handler: (event: MouseEvent) => void;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
 
   const dropClickSuppress = useCallback(() => {
-    if (!pendingClickSuppress.current) return;
-    document.removeEventListener('click', pendingClickSuppress.current, true);
+    const entry = pendingClickSuppress.current;
+    if (!entry) return;
     pendingClickSuppress.current = null;
+    clearTimeout(entry.timer);
+    document.removeEventListener('click', entry.handler, true);
   }, []);
 
   /** 吞掉紧随拖动之后的**那一次** click，然后自己注销。 */
   const suppressNextClick = useCallback(() => {
     dropClickSuppress();
-    const suppress = (event: MouseEvent) => {
-      event.stopPropagation();
-      event.preventDefault();
-      dropClickSuppress();
+    const entry = {
+      handler: (event: MouseEvent) => {
+        event.stopPropagation();
+        event.preventDefault();
+        dropClickSuppress();
+      },
+      timer: setTimeout(dropClickSuppress, SUPPRESS_CLICK_REAP_MS),
     };
-    pendingClickSuppress.current = suppress;
-    document.addEventListener('click', suppress, true);
+    pendingClickSuppress.current = entry;
+    document.addEventListener('click', entry.handler, true);
   }, [dropClickSuppress]);
 
   const endDrag = useCallback(() => {

@@ -106,6 +106,7 @@ import {
   AI_OVERLAY_Z_INDEX,
   AI_POPUP_Z_INDEX_BASE,
 } from '../floating/aiOverlayLayers';
+import { SUPPRESS_CLICK_REAP_MS } from '../floating/useFloatingDrag';
 import { AiFullscreenWorkspace } from '../fullscreen/AiFullscreenWorkspace';
 import { useAiChat } from '../hooks/useAiChat';
 
@@ -374,6 +375,69 @@ describe('拖动（设计 §4）', () => {
     // 手势真的动过 → 紧随其后的这次 click 必须被吞掉。
     fireEvent.click(close);
     expect(screen.queryByRole('dialog', { name: 'AI 助手' })).toBeTruthy();
+  });
+
+  it('触摸拖动（touchend 不派发 click）之后仍能点到无关按钮', async () => {
+    render(<Harness />);
+    await stubPanelRect();
+    fireEvent.touchStart(screen.getByTestId('chat-header-title'), {
+      touches: [{ clientX: 610, clientY: 110 }],
+    });
+    fireEvent.touchMove(document, { touches: [{ clientX: 570, clientY: 70 }] });
+    fireEvent.touchEnd(document);
+    // 触摸松手**不会**跟着来一次 click，抑制器不会被消费掉。
+    // 等过回收窗口后，页面上任意处的下一次点击都必须正常生效。
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, SUPPRESS_CLICK_REAP_MS + 60);
+      });
+    });
+    fireEvent.click(screen.getByRole('button', { name: '关闭 AI 助手' }));
+    expect(screen.queryByRole('dialog', { name: 'AI 助手' })).toBeFalsy();
+  });
+
+  it('下一次手势开始时会先清掉上一次遗留的抑制器', async () => {
+    render(<Harness />);
+    await stubPanelRect();
+    // 一次「移动后松手但没有 click 跟随」的拖动，模拟遗留的抑制器。
+    fireEvent.mouseDown(screen.getByTestId('chat-header'), {
+      button: 0,
+      clientX: 610,
+      clientY: 110,
+    });
+    fireEvent.mouseMove(document, { clientX: 570, clientY: 70 });
+    fireEvent.mouseUp(document);
+    // 新手势开始的瞬间必须把旧抑制器摘掉，否则它会吞掉下一次点击。
+    // 这次手势**不移动**：否则它自己又会装上一个新的抑制器，掩盖要测的那条路径。
+    fireEvent.mouseDown(screen.getByTestId('chat-header'), {
+      button: 0,
+      clientX: 560,
+      clientY: 60,
+    });
+    fireEvent.mouseUp(document);
+    fireEvent.click(screen.getByRole('button', { name: '关闭 AI 助手' }));
+    expect(screen.queryByRole('dialog', { name: 'AI 助手' })).toBeFalsy();
+  });
+
+  it('浮窗卸载时会摘掉挂在 document 上的抑制器', async () => {
+    const view = render(<Harness />);
+    await stubPanelRect();
+    fireEvent.mouseDown(screen.getByTestId('chat-header'), {
+      button: 0,
+      clientX: 610,
+      clientY: 110,
+    });
+    fireEvent.mouseMove(document, { clientX: 570, clientY: 70 });
+    fireEvent.mouseUp(document);
+    view.unmount();
+    // 组件没了，但抑制器是挂在 document 上的全局监听：卸载必须把它摘掉。
+    const outside = document.createElement('button');
+    outside.textContent = '页面上的其他按钮';
+    document.body.append(outside);
+    const fired = jest.fn();
+    outside.addEventListener('click', fired);
+    fireEvent.click(outside);
+    expect(fired).toHaveBeenCalledTimes(1);
   });
 
   it('在关闭按钮上普通点击仍然生效（不能被误吞）', async () => {
