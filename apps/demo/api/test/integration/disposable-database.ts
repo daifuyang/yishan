@@ -52,7 +52,8 @@ export interface DisposableStack {
   /** 新建一个**独立连接池**的 app 实例。并发测试需要两个互不相干的实例。 */
   buildInstance(): Promise<FastifyInstance>
   /** 把全部迁移**连跑两次**，返回第二次之后仍然为空的 pending 列表。 */
-  migrateTwice(): Promise<{ id: string; pending: readonly string[] }[]>
+  /** 返回**每个模块**一条检查结果；真实形状是 `{ plan, pending }`，不是 `{ id, pending }`。 */
+  migrateTwice(): Promise<readonly { plan: { id: string; migrations: readonly { tag: string }[] }; pending: readonly unknown[] }[]>
   seed(app: FastifyInstance): Promise<void>
   close(): Promise<void>
 }

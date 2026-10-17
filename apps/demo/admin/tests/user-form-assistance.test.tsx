@@ -100,6 +100,10 @@ beforeEach(() => {
   ) => {
     const params = options?.params ?? {};
     if (String(url).includes('/create-form')) return { success: true, data: CREATE_FORM };
+    // 部门树：手改路径要在真实 TreeSelect 上点一个部门，因此必须真的有节点。
+    if (String(url).includes('/dept') && String(url).includes('tree')) {
+      return { success: true, data: [{ id: 1, name: '总部', parentId: 0 }] };
+    }
     if (String(url).includes('/create-options')) {
       const rawDeptIds = params.deptIds;
       const deptIds: number[] = Array.isArray(rawDeptIds)
@@ -614,4 +618,56 @@ test('补丁落定时角色重校验已完成：conflict 上报且版本不跳',
   expect(next.conflicts).not.toContain('__revision__');
   expect(next.applied).toBe(true);
   expect(handle.snapshot().fields.username).toBe('right-after');
+});
+
+test('手改部门触发角色重校验，但版本不会在网络返回后才跳一次', async () => {
+  // 缺陷现场：onValuesChange 里 `void revalidateRoles(...)` 没被 await，而它内部会
+  // +1 版本。那次 +1 发生在请求返回**之后**，于是「用户刚改完部门 → 助手立刻读快照」
+  // 拿到的是过期版本，下一版补丁被 __revision__ 拒掉 —— 而用户明明刚动过手。
+  // 修复：手改路径不再补这次 +1（onValuesChange 已经同步加过了）。
+  renderUserList();
+  await openByAssistant();
+  const handle = currentHandle();
+
+  // 先由助手选中「普通角色」(id 2)：不选角色，手改部门就不会产生失效角色。
+  await act(async () => {
+    await handle.apply({
+      instanceId: handle.snapshot().instanceId,
+      baseRevision: handle.snapshot().revision,
+      fields: { deptIds: [], roleIds: [2] },
+    });
+  });
+
+  // 用户自己在原生 TreeSelect 上选部门：这是 onValuesChange，也就是手改路径。
+  await waitFor(() => expect(document.querySelector('#deptIds')).not.toBeNull());
+  const selector = document.querySelector('#deptIds') as HTMLElement;
+  let immediate!: number;
+  await act(async () => {
+    fireEvent.mouseDown(selector);
+  });
+  const node = await screen.findByTitle('总部');
+  await act(async () => {
+    fireEvent.click(node);
+    // 同一个 tick 内读版本：此刻请求还没回来，只可能包含同步的那次 +1。
+    immediate = handle.snapshot().revision;
+  });
+
+  // 重校验落定（角色 2 在部门 1 下不再可授予）。
+  await waitFor(() =>
+    expect(screen.getByText('所选角色在当前部门下不再可授予，请重新选择')).toBeTruthy(),
+  );
+  expect(handle.snapshot().fields.deptIds).toEqual([1]);
+  // 落定之后版本没有再跳：助手用 immediate 发的下一版补丁不该被拒。
+  expect(handle.snapshot().revision).toBe(immediate);
+
+  let next!: Awaited<ReturnType<typeof handle.apply>>;
+  await act(async () => {
+    next = await handle.apply({
+      instanceId: handle.snapshot().instanceId,
+      baseRevision: immediate,
+      fields: { username: 'after-manual-dept' },
+    });
+  });
+  expect(next.conflicts).not.toContain('__revision__');
+  expect(next.applied).toBe(true);
 });

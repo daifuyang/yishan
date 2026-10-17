@@ -32,6 +32,9 @@ export { UserCreationFormService, USER_CREATE_FORM_SCHEMA_VERSION } from './core
 // 新增用户表单的只读能力定义：装配层（setup.ts）与 AI 模块的测试都从这里取，
 // 保证「注册的那份」与「断言的那份」不会分叉。
 export { systemCapabilitiesForUserCreation } from './core/ai/system-capabilities'
+// 用户可写文本进入模型上下文前的中性化：投影白名单 + 加引号 + 剔除结构符号。
+// 草稿上下文（产品侧）与系统域候选能力共用同一份实现，避免两份「看起来一样」的规则。
+export { asUntrustedData, untrustedRow, untrustedRows } from './core/ai/untrusted-text'
 export type {
   UserCreateForm,
   UserCreateFormField,

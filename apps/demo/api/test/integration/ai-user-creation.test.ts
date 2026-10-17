@@ -147,8 +147,17 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('AI 助手在真实 
 
   it('applies migrations twice and exposes no model-invocable write capability', async () => {
     const history = await stack.migrateTwice()
-    expect(history.map(entry => entry.id).sort()).toEqual([...history.map(entry => entry.id)].sort())
+    // 「跑两遍没抛异常」不是幂等性的证据：历史上的断言把数组跟它自己比、
+    // 又在空历史上 every(...)，两条都恒真。先断言真的规划出了迁移，
+    // 下面的断言才有内容可比。
+    expect(history.length).toBeGreaterThan(0)
+    expect(history.some(entry => entry.plan.migrations.length > 0)).toBe(true)
+    // 幂等性的真实证据：跑完两遍后没有任何待执行项，且每条迁移只规划了一次。
     expect(history.every(entry => entry.pending.length === 0)).toBe(true)
+    for (const entry of history) {
+      const tags = entry.plan.migrations.map(migration => migration.tag)
+      expect(tags).toEqual([...new Set(tags)])
+    }
 
     const conversationId = await newConversation()
     const capabilities = await appA.system.run(async () => {

@@ -287,6 +287,22 @@ export class UserCreationFormService {
     // 的范围就是「全部部门」，候选集与授权集因此相等，而不是授权被放宽。
     // 刻意**不**再叠加 `system:department:list`：规格 §7 要求不为候选查询额外要求
     // 无关的完整配置管理权限；能建号但看不到部门表单才是产品级的功能损坏。
+    // 角色探测用的部门集合。**调用方没点名部门时不能传空数组**：受限范围下
+    // 「必须选一个归属部门」会让每一次探测都失败，候选因此恒为空，而能力描述里
+    // 「空候选」被读成「你没有建号权限」——一个只差先选部门的操作者被告知无权建号
+    // （data_scope=2 的部门管理员曾稳定复现）。探测问的是「这个角色能不能被授予」，
+    // 而任何合法提交都必然落在操作者自己的授权部门内，因此未点名时用
+    // `resolveCreatableDeptScope` 的同一份集合——授权来自策略，不是来自调用方。
+    const authorizedProbeDeptIds =
+      creatable && scope.kind !== 'all' ? scope.deptIds : []
+    // 授权集合里仍可能含停用/软删部门，而 validateUserCreation 会因它们整体拒绝；
+    // 先按「候选部门必须真实存在且启用」这条同一规则过滤一次。
+    const liveAuthorizedDeptIds = authorizedProbeDeptIds.length
+      ? (await DeptRepository.findEnabledIdsByIds(authorizedProbeDeptIds, db)).filter(id =>
+          authorizedProbeDeptIds.includes(id),
+        )
+      : []
+    const probeDeptIds = deptIds.length ? scopedDeptIds : liveAuthorizedDeptIds
     const allowedDeptIds = creatable
       ? scope.kind === 'all'
         ? allDeptIds
@@ -303,7 +319,7 @@ export class UserCreationFormService {
     const allowed: UserCreateOption[] = []
     for (const row of rows) {
       try {
-        await validateUserCreation(subject, { roleIds: [row.id], deptIds: scopedDeptIds }, { db })
+        await validateUserCreation(subject, { roleIds: [row.id], deptIds: probeDeptIds }, { db })
         allowed.push({ id: row.id, name: row.name })
       } catch (error) {
         if (!isCreateForbidden(error)) throw error

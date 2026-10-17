@@ -258,13 +258,19 @@ const UserForm: React.FC<UserFormProps> = ({
    *
    * 返回失效的角色 id 列表：助手路径需要把它当成补丁结果的一部分回报，
    * 不能只在表单上留一个错误就完事 —— 调用方看不到自己的选择已经不可授予。
+   *
+   * `bumpRevision` 默认 true，但**手改路径必须传 false**：`onValuesChange` 已经在
+   * 同一次事件里同步 +1 过版本（那才是这次用户动作的版本推进）；这里再补一次会在
+   * 网络返回后才发生，于是「用户改部门 → 助手紧接着读快照」拿到的是旧版本，
+   * 下一版补丁被 __revision__ 拒掉——而用户明明刚动过手。助手 `open()` 路径相反：
+   * `setFieldsValue` 不触发 `onValuesChange`，那次 +1 是唯一一次，必须由本函数补。
    */
   const revalidateRoles = useCallback(
-    async (deptIds: number[]): Promise<number[]> => {
+    async (deptIds: number[], settings: { bumpRevision?: boolean } = {}): Promise<number[]> => {
       if (!assistEnabled) return [];
-      const options = await getUserCreateOptions({ deptIds });
-      if (!options) return [];
-      const allowed = new Set(options.roles.map((role) => role.id));
+      const options_ = await getUserCreateOptions({ deptIds });
+      if (!options_) return [];
+      const allowed = new Set(options_.roles.map((role) => role.id));
       const selected = (readValues().roleIds as number[] | undefined) ?? [];
       const invalid = selected.filter((id) => !allowed.has(id));
       if (invalid.length === 0) return [];
@@ -274,7 +280,7 @@ const UserForm: React.FC<UserFormProps> = ({
           errors: ['所选角色在当前部门下不再可授予，请重新选择'],
         },
       ]);
-      revisionRef.current += 1;
+      if (settings.bumpRevision !== false) revisionRef.current += 1;
       return invalid;
     },
     [assistEnabled, readValues],
@@ -411,8 +417,9 @@ const UserForm: React.FC<UserFormProps> = ({
       notifyChange();
       // 同理：预填写进来的 deptIds 也要补一次角色重校验（setFieldsValue 不触发
       // onValuesChange）。预填不是补丁，没有返回值契约，因此不 await。
+      // 也不 bumpRevision：writeFields() 已经在同一次写入里 +1 过版本。
       const nextDeptIds = fields.deptIds as number[] | undefined;
-      if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds);
+      if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds, { bumpRevision: false });
     };
     consume();
     return subscribeAiPrefill(consume);
@@ -628,7 +635,9 @@ const UserForm: React.FC<UserFormProps> = ({
           // 用户手改推给产品侧合并同步；快照已剔除密码，因此同步负载里不会有它。
           notifyChange();
           const nextDeptIds = (changed as Record<string, unknown>).deptIds as number[] | undefined;
-          if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds);
+          // 不 bumpRevision：上面那次同步 +1 已经是这次用户动作的版本推进。
+          // 这里再补一次会晚于网络返回，让助手读到过期快照而拒掉下一版补丁。
+          if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds, { bumpRevision: false });
         }}
         onOpenChange={setOpen}
       >

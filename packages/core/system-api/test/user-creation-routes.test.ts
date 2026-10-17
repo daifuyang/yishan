@@ -458,6 +458,40 @@ describe('create-options — 候选按 Task 2 策略过滤', () => {
     await app.close()
   })
 
+  it('data_scope=2 的部门管理员在全新表单上拿得到可授予角色（先选部门即可）', async () => {
+    // 这条守的是**角色**发现路径，和上面那条部门发现路径成对。
+    // 缺陷现场：候选角色逐个走 validateUserCreation，而调用方（原生表单第一屏、
+    // 模型第一轮）都会传空 deptIds。受限范围下「必须选一个归属部门」于是让每一次
+    // 探测都失败，候选恒为空 —— 而能力描述把「空候选」告诉模型说成「你没有建号权限」。
+    // 一个只差先选部门的操作者因此被告知自己无权建号，角色下拉还是空的。
+    mockActor({ roleIds: [1], perms: [...CREATE_PERMS, 'system:role:list'], deptIds: [10] }, {
+      roles: [
+        { id: 1, dataScope: DATA_SCOPE_DEPT, perms: [...CREATE_PERMS, 'system:role:list'] },
+        { id: 3, dataScope: DATA_SCOPE_DEPT, perms: ['system:role:list'] },
+        // 越权角色：含操作者没有的权限码，与部门无关，任何时候都不该出现。
+        { id: 5, dataScope: DATA_SCOPE_ALL, perms: ['system:audit:export'] },
+      ],
+      depts: [{ id: 10, parentId: null }, { id: 20, parentId: null }],
+    })
+    mockDepts([10, 20])
+    mockDeptTree()
+    mockRoleRows([{ id: 3, name: '专员' }, { id: 5, name: '越权角色' }])
+
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: `${BASE}/create-options`, headers: AUTH })
+    expect(res.statusCode).toBe(200)
+    const data = res.json().data
+    expect(data.creatable).toBe(true)
+    expect(data.departments.map((d: any) => d.id)).toEqual([10])
+    // 没有传 deptIds 也必须看得到可授予的角色。
+    expect(data.roles.map((r: any) => r.id)).toEqual([3])
+    expect(data.roles.map((r: any) => r.id)).not.toContain(5)
+    // 补上部门之后仍然一致：候选不是「空部门时的特例」。
+    const after = await app.inject({ method: 'GET', url: `${BASE}/create-options?deptIds=10`, headers: AUTH })
+    expect(after.json().data.roles.map((r: any) => r.id)).toEqual([3])
+    await app.close()
+  })
+
   it('受限范围传入越权 deptIds 时不会因此放宽部门树', async () => {
     // 传了 deptIds 也不能扩大可见范围：20 不在操作者范围内，就不能出现在候选里。
     mockActor({ roleIds: [1], perms: CREATE_PERMS, deptIds: [10] }, {

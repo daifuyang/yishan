@@ -135,7 +135,10 @@ describe('Action draft expiry', () => {
   it('expires 24 hours after creation and never extends on edit', async () => {
     const f = fixture()
     const draft = await f.create({ phone: '13800000000' })
-    expect(draft.expiresAt.getTime() - f.clock.getTime()).toBe(ACTION_DRAFT_TTL_MS)
+    // 断言**字面量**而不是常量本身：拿常量跟自己比等于把常量改成 5 分钟也照样绿，
+    // 产品却已经静默地把草稿寿命缩到 1/288。规格写死 24 小时。
+    expect(draft.expiresAt.getTime() - f.clock.getTime()).toBe(24 * 60 * 60 * 1000)
+    expect(ACTION_DRAFT_TTL_MS).toBe(24 * 60 * 60 * 1000)
     f.advance(ACTION_DRAFT_TTL_MS - 1)
     const edited = await f.service.patch(7, draft.draftId, draft.draftVersion, { realName: '张三' })
     expect(edited.expiresAt.getTime() - f.clock.getTime()).toBeLessThan(ACTION_DRAFT_TTL_MS)
