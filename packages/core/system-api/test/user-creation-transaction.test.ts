@@ -374,6 +374,32 @@ describe('业务失败保留草稿', () => {
 })
 
 describe('replay：只回读已验证回执，不变成按 id 查用户', () => {
+  it('重放不广播 user.created —— 用户不是这一次创建的', async () => {
+    // 回归：重复点击一次已经完成的草稿时，`user.created` 不该再发一次。
+    // 扩展消费者（Demo 资料同步、欢迎消息）会为同一个用户被触发两次，
+    // 而这次请求既没有 INSERT，也没有发生任何权限变更。
+    superAdminActor()
+    harness()
+    createParticipant({ claim: vi.fn().mockResolvedValue({ kind: 'replay', userId: 21 }) })
+    vi.spyOn(UserRepository, 'findById').mockResolvedValue(userDetailRow(21))
+    const notify = vi.spyOn(testRuntime(), 'notifyUser')
+
+    await expect(UserService.createUser(request() as never, ACTOR_ID)).resolves.toMatchObject({ id: 21 })
+    expect(notify).not.toHaveBeenCalled()
+  })
+
+  it('真正创建时仍然广播 user.created', async () => {
+    uniqueFieldsFree()
+    superAdminActor()
+    harness()
+    createParticipant()
+    const notify = vi.spyOn(testRuntime(), 'notifyUser').mockResolvedValue()
+
+    await UserService.createUser(request() as never, ACTOR_ID)
+    expect(notify).toHaveBeenCalledTimes(1)
+    expect(notify.mock.calls[0][0]).toMatchObject({ type: 'user.created', actorId: ACTOR_ID })
+  })
+
   it('已完成时读取既有结果且不创建', async () => {
     superAdminActor()
     const h = harness()

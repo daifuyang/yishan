@@ -56,21 +56,30 @@ export interface AiUserCreationParticipantOptions {
    * 生产路径是 `createActionDraftTx`（真实 SQL）；测试注入内存实现，
    * 断言的仍是同一套「锁会话 → 读草稿 → CAS」的动作序列。
    */
-  createTx?: (tx: AppTx) => ActionDraftTx
+  __createTxForTest?: (tx: AppTx) => ActionDraftTx
   /** 时钟（测试用）。 */
   now?: () => Date
 }
 
 export class AiUserCreationParticipant implements UserCreationParticipant {
+  private readonly createTx: (tx: AppTx) => ActionDraftTx
+
   constructor(
     private readonly drafts: ActionDraftService,
     private readonly audit: AiAuditRepository,
     private readonly options: AiUserCreationParticipantOptions = {},
-  ) {}
+  ) {
+    // 这个接缝一旦在生产被启用，真实 SQL 就不执行了：会话行锁、草稿行锁与 CAS 的
+    // 原子性会**静默**消失，而功能测试全绿。宁可启动即崩，也不要安静地丢掉互斥。
+    if (options.__createTxForTest && process.env.NODE_ENV !== 'test') {
+      throw new Error('AiUserCreationParticipant.__createTxForTest is test-only and must not be supplied outside NODE_ENV=test')
+    }
+    this.createTx = options.__createTxForTest ?? (tx => createActionDraftTx(tx as never))
+  }
 
   /** 每个事务句柄只在本次调用内包装一次，不缓存。 */
   private handle(tx: AppTx): ActionDraftTx {
-    return this.options.createTx ? this.options.createTx(tx) : createActionDraftTx(tx as never)
+    return this.createTx(tx)
   }
 
   private now(): Date {
@@ -83,8 +92,9 @@ export class AiUserCreationParticipant implements UserCreationParticipant {
    */
   async claim(tx: AppTx, actorId: number, submission: { draftId: string; draftVersion: number }) {
     const handle = this.handle(tx)
-    // 第一步：无锁读，只为拿到会话 id。此刻不持有任何行锁。
-    const located = await handle.find(actorId, submission.draftId)
+    // 第一步：**快照读**（不加锁），只为拿到不可变的 conversationId。
+    // 判定绝不能用它的结果 —— REPEATABLE READ 下它可能是事务开始时的旧值。
+    const located = await handle.peek(actorId, submission.draftId)
     if (!located) throw aiError(404, '草稿不存在')
 
     // 第二步：锁会话行。删除会话的守卫也锁这一行，因此从这里开始互斥。
@@ -92,7 +102,8 @@ export class AiUserCreationParticipant implements UserCreationParticipant {
       throw aiError(404, '会话不存在')
     }
 
-    // 第三步：在锁保护下重新读草稿 —— 之前那份可能已经过期。
+    // 第三步：在会话行锁保护下用**当前读**重读草稿。之前那份是事务开始时的快照，
+    // 可能还停在 A 提交之前；当前读才能看见刚提交的 completed / submitting。
     const row = await handle.find(actorId, submission.draftId)
     if (!row) throw aiError(404, '草稿不存在')
 
@@ -107,12 +118,14 @@ export class AiUserCreationParticipant implements UserCreationParticipant {
     if (row.expiresAt.getTime() <= this.now().getTime()) {
       throw aiError(409, '草稿已过期，请重新开始填写')
     }
-    if (row.draftVersion !== submission.draftVersion) {
-      throw aiError(409, '草稿版本已更新，请刷新后重试')
-    }
+    // 状态判定**先于**版本判定。并发提交会把版本推进一格，因此此时报「版本已更新」
+    // 是一句误导：真正的事实是「另一个请求正在提交，去读服务器状态」。
     if (row.status === 'submitting') {
       // 可重查提示：另一个请求正在提交。让客户端去读服务器草稿状态，而不是重发。
       throw aiError(409, '草稿正在提交，请稍后重新查询结果')
+    }
+    if (row.draftVersion !== submission.draftVersion) {
+      throw aiError(409, '草稿版本已更新，请刷新后重试')
     }
     if (!(CLAIMABLE_STATUSES as readonly string[]).includes(row.status)) {
       throw aiError(409, '草稿当前状态不允许提交')

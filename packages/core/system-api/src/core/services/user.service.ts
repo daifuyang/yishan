@@ -148,6 +148,8 @@ export class UserService {
     // 只有**成功认领**过草稿的失败才记录 failed。claim 本身失败（版本不符、已过期、
     // 别人正在提交）时草稿根本没有被我们动过，写 failureReason 只会撒谎。
     let claimed = false;
+    // 本次请求是否**真的创建了**用户。replay 是重复提交，用户早就存在了。
+    let createdNow = false;
     try {
       resp = await UserRepository.transaction(async (tx) => {
         const claim = participant
@@ -177,6 +179,7 @@ export class UserService {
 
         // 回执与创建同事务：这里抛错，用户和草稿一起回滚。
         if (participant) await participant.complete(tx, currentUserId, draftSubmission!, created);
+        createdNow = true;
         return created;
       });
     } catch (error) {
@@ -186,6 +189,8 @@ export class UserService {
     }
 
     // ---- 以下全部在提交之后：失败只记录，不再抛 ----------------------------
+    // 缓存写入**不**按 createdNow 门控：写详情缓存是幂等的、幂等缓存对幂等回放
+    // 有利（同一个用户、同一份内容），而 Redis 故障本来就只记 warn 不影响结果。
     if (fastify?.redis) {
       try {
         const cacheKey = this.getUserDetailCacheKey(resp.id);
@@ -195,9 +200,14 @@ export class UserService {
       }
     }
 
-    // Section 1 — RBAC：用户新建时若分配了角色，全局失效权限缓存以确保立即生效。
-    UserService.invalidatePermissionCache(resp.roleIds);
-    await currentSystemRuntime().notifyUser({ type: 'user.created', actorId: currentUserId, user: resp });
+    // 角色权限缓存失效与生命周期通知**都**按 createdNow 门控。replay 是重复提交，
+    // 用户此刻并不存在权限变更；如果在这里广播 user.created，扩展（Demo 的资料同步、
+    // 欢迎消息之类）就会为同一个用户被触发第二次。
+    if (createdNow) {
+      // Section 1 — RBAC：用户新建时若分配了角色，全局失效权限缓存以确保立即生效。
+      UserService.invalidatePermissionCache(resp.roleIds);
+      await currentSystemRuntime().notifyUser({ type: 'user.created', actorId: currentUserId, user: resp });
+    }
 
     return resp;
   }

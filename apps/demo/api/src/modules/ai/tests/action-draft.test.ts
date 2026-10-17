@@ -31,6 +31,9 @@ function memoryStore() {
     async insert(draft) { drafts.set(draft.draftId, structuredClone(draft)); return structuredClone(draft) },
     async conversationExists(ownerId, conversationId) { return conversations.get(conversationId) === ownerId },
     find: async (ownerId, draftId) => find(ownerId, draftId),
+    // 无锁快照读。本文件不涉及并发重放，两种读在这里可以等价；
+    // 区分它们的行为由 user-creation-participant.test.ts 的 snapshotStore 覆盖。
+    peek: async (ownerId, draftId) => find(ownerId, draftId),
     compareAndSwap,
   }
   const store: ActionDraftStore = {

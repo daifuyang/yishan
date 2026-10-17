@@ -45,12 +45,28 @@ export interface ActionDraftCompareSwapInput {
 }
 
 /**
- * 事务级句柄。刻意只暴露三件事：会话行锁的确认、草稿归属读取与 CAS。
+ * 事务级句柄。刻意只暴露几件事：会话行锁的确认、草稿归属读取与 CAS。
  * 它**不**暴露 `insert` / `removeByConversation` —— 事务内部不应该凭空多出一张草稿。
+ *
+ * `find` 与 `peek` 的区别不是风格，是正确性：
+ *
+ * - `peek` 是**一致性读**（InnoDB REPEATABLE READ 下的快照读）。它读的是事务开始
+ *   时的快照，不加锁。**只能**用来定位 `conversationId` 这类不可变的定位信息，
+ *   绝不能拿它的结果做「能不能提交」的判定。
+ * - `find` 是**当前读**（`FOR UPDATE`）。它读到的是最新已提交的值，并持有行锁。
+ *   所有提交相关的判定都必须走它。
+ *
+ * 在 REPEATABLE READ 下混用两者会直接坏掉幂等性：并发请求 B 阻塞在会话行锁上之后，
+ * 若用 `peek` 重读草稿，读到的仍是 A 提交之前的 `ready/v3`，于是 B 会跳过
+ * 「completed → replay」与「submitting → 重新查询」两条分支，直到 CAS 才发现零行，
+ * 把一次本该返回既有用户的重放变成 409。
  */
 export interface ActionDraftTx {
   conversationExists(ownerId: number, conversationId: string): Promise<boolean>
   insert(draft: ActionDraftRecord): Promise<ActionDraftRecord>
+  /** 无锁快照读。仅用于在拿到会话行锁之前定位 `conversationId`。 */
+  peek(ownerId: number, draftId: string): Promise<ActionDraftRecord | null>
+  /** 加行锁的当前读。所有提交判定都用它。 */
   find(ownerId: number, draftId: string): Promise<ActionDraftRecord | null>
   compareAndSwap(input: ActionDraftCompareSwapInput): Promise<boolean>
 }
@@ -97,9 +113,18 @@ function txHandle(db: AppQueryDb): ActionDraftTx {
       await db.insert(aiActionDrafts).values(draft)
       return draft
     },
-    async find(ownerId, draftId) {
+    async peek(ownerId, draftId) {
       const [row] = await db.select().from(aiActionDrafts)
         .where(and(eq(aiActionDrafts.ownerId, ownerId), eq(aiActionDrafts.draftId, draftId))).limit(1)
+      return row ?? null
+    },
+    async find(ownerId, draftId) {
+      // `for update` 是这里的关键：它把这次读变成**当前读**，读到的是最新已提交值。
+      // 少了它，REPEATABLE READ 下的重读会退回事务开始时的快照，并发重放因此会
+      // 错过 `completed` 分支而变成 409。
+      const [row] = await db.select().from(aiActionDrafts)
+        .where(and(eq(aiActionDrafts.ownerId, ownerId), eq(aiActionDrafts.draftId, draftId)))
+        .limit(1).for('update')
       return row ?? null
     },
     compareAndSwap: input => compareAndSwap(db, input),
