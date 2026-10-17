@@ -7,9 +7,12 @@ import { BusinessError } from '@yishan/core-api/errors';
 import {
   UserListQuery,
   CreateUserReq,
-  UpdateUserReq
+  UpdateUserReq,
+  UserCreateOptionsQuery,
 } from '@/core/schemas/user.js';
 import { UserService } from '@/core/services/user.service.js';
+import { UserCreationFormService } from '@/core/services/user-creation-form.service.js';
+import type { UserCreationSubject } from '@/core/services/user-creation-policy.js';
 import { UserErrorCode } from '@yishan/core-api/business-codes/user';
 import { getUserMessage, UserMessageKeys } from '@/constants/messages/user.js';
 const CRUD_OPTIONS = {
@@ -52,6 +55,55 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       return UserService.getUserList(query as UserListQuery);
     },
   });
+
+  // 只读元数据端点：原生表单与 AI 助手共用同一份字段/候选来源。
+  // 两者都要求 system:user:create —— 能建号才有资格问「可以建什么样」；
+  // 但**出现在候选里不等于被授权**，最终提交仍会重新走 validateUserCreation。
+  //
+  // 路径用固定的 `create-form` / `create-options`，且注册在 `/:id` 之前；
+  // test/user-creation-routes.test.ts 断言它们不会被参数路由吞掉。
+  route.get(
+    "/create-form",
+    {
+      access: { permission: crud.permissions.create },
+      schema: {
+        summary: "获取新增用户表单定义",
+        description: "返回真实创建 Schema 派生的字段名/标签/必填/约束/敏感标记与选择器标识，不含可执行渲染代码",
+        operationId: "getUserCreateForm",
+        tags: ["sysUsers"],
+        querystring: { type: "object", additionalProperties: false, properties: {} },
+        response: { 200: { $ref: "userCreateFormResp#" } },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      return ResponseUtil.success(reply, UserCreationFormService.getCreateForm());
+    }
+  );
+
+  route.get(
+    "/create-options",
+    {
+      access: { permission: crud.permissions.create },
+      schema: {
+        summary: "获取新增用户候选选项",
+        description: "返回按当前授权范围过滤后的部门树，以及按候选 deptIds 重算后的可授予角色",
+        operationId: "getUserCreateOptions",
+        tags: ["sysUsers"],
+        querystring: { $ref: "userCreateOptionsQuery#" },
+        response: { 200: { $ref: "userCreateOptionsResp#" } },
+      },
+    },
+    async (request: FastifyRequest<{ Querystring: UserCreateOptionsQuery }>, reply: FastifyReply) => {
+      // 操作者身份完全来自服务端：actorId 取自已认证用户，tokenScope 取自本次 PAT。
+      // 不接受请求体里的任何身份/权限声明。
+      const subject: UserCreationSubject = {
+        actorId: request.currentUser.id,
+        tokenScope: (request as FastifyRequest & { tokenScope?: string[] }).tokenScope,
+      };
+      const data = await UserCreationFormService.listCandidates(subject, request.query ?? {});
+      return ResponseUtil.success(reply, data);
+    }
+  );
 
   // GET /api/v1/admin/user/{id} - 获取用户详情
   route.get(
@@ -165,23 +217,9 @@ const sysUser: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         },
     },
     service: async (userId, request) => {
-
-      // 删除限制：不允许删除超级管理员（ID=1）或当前登录用户自身
-      if (userId === 1) {
-        throw new BusinessError(
-          UserErrorCode.USER_STATUS_ERROR,
-          "系统管理员不可删除"
-        );
-      }
-      if (request.currentUser && request.currentUser.id === userId) {
-        throw new BusinessError(
-          UserErrorCode.USER_STATUS_ERROR,
-          "不能删除当前登录用户"
-        );
-      }
-
-      // 使用UserService删除用户（带缓存清除）
-      return UserService.deleteUser(userId, fastify);
+      // 删除限制（系统管理员 / 当前登录用户）由 UserService.deleteUser 统一实施，
+      // 此处只提供操作者身份，避免绕过 HTTP 的调用方失去这层保护。
+      return UserService.deleteUser(userId, request.currentUser?.id, fastify);
     },
   });
 };

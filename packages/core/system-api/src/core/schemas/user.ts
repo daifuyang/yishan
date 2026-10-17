@@ -228,7 +228,102 @@ export const UserCreateDraftPartialSchema = Type.Partial(UserCreateDraftFieldsSc
 });
 
 export type UserCreateDraftFields = Static<typeof UserCreateDraftFieldsSchema>;
+/** 候选查询参数（与 `UserCreateOptionsQuerySchema` 同源）。 */
+export type UserCreateOptionsQuery = Static<typeof UserCreateOptionsQuerySchema>;
 export type UserCreateDraftPartial = Static<typeof UserCreateDraftPartialSchema>;
+
+// ---------------------------------------------------------------------------
+// 新增用户表单的只读元数据（原生表单与 AI 助手共用）
+// ---------------------------------------------------------------------------
+
+/** 表单字段元数据。`selector` 只是既有候选来源的标识，不是可执行渲染代码。 */
+const UserCreateFormFieldSchema = Type.Object(
+  {
+    name: Type.String({ description: "字段名", example: "phone" }),
+    label: Type.String({ description: "字段标签", example: "手机号" }),
+    required: Type.Boolean({ description: "是否必填（来自真实 create schema）" }),
+    sensitive: Type.Boolean({ description: "是否敏感字段（只能由用户在表单里输入）" }),
+    selector: Type.String({
+      description: "选择器标识：enum/date/email/password/text/deptTree/roleOptions",
+      example: "text",
+    }),
+    constraints: Type.Object({}, {
+      additionalProperties: true,
+      description: "来自真实 schema 的约束（minLength/maxLength/pattern/format/enum/...）",
+    }),
+  },
+  { additionalProperties: false }
+);
+
+/** 真实表单里有、但对话不应收集的字段。 */
+const UserCreateFormMissingFieldSchema = Type.Object(
+  {
+    name: Type.String({ description: "字段名", example: "password" }),
+    label: Type.String({ description: "字段标签", example: "初始密码" }),
+    required: Type.Boolean(),
+    sensitive: Type.Boolean(),
+    mustCompleteInForm: Type.Literal(true, { description: "必须由用户在表单中完成" }),
+  },
+  { additionalProperties: false }
+);
+
+const UserCreateFormRespSchema = successResponse({
+  data: Type.Object(
+    {
+      schemaVersion: Type.Integer({ description: "表单契约版本，版本不符时必须重新读取" }),
+      fields: Type.Array(UserCreateFormFieldSchema, { description: "真实表单字段定义" }),
+      defaults: Type.Object({}, { additionalProperties: true, description: "真实 schema 声明的默认值" }),
+      editableFields: Type.Array(Type.String(), { description: "对话可写入的字段白名单" }),
+      missingFields: Type.Array(UserCreateFormMissingFieldSchema, { description: "需要在表单中完成的字段" }),
+    },
+    { additionalProperties: false }
+  ),
+  $id: "userCreateFormResp",
+});
+
+/**
+ * 候选查询参数。
+ *
+ * `additionalProperties: false` 是有意的：伪造的「可编辑字段」「要哪些角色」之类的
+ * 声明会被 400 直接拒绝，而不是被静默忽略后让人以为生效了。
+ */
+export const UserCreateOptionsQuerySchema = Type.Object(
+  {
+    keyword: Type.Optional(Type.String({ description: "角色名称关键词" })),
+    deptIds: Type.Optional(Type.Array(Type.Integer({ minimum: 1 }), { description: "候选归属部门（角色按此重算）" })),
+    page: Type.Optional(Type.Integer({ minimum: 1, description: "页码，从 1 开始" })),
+    pageSize: Type.Optional(Type.Integer({ minimum: 1, maximum: 100, description: "每页条数" })),
+  },
+  { $id: "userCreateOptionsQuery", additionalProperties: false }
+);
+
+const UserCreateRoleOptionSchema = Type.Object(
+  {
+    id: Type.Integer({ description: "角色 ID（名字可重名，身份一律以 ID 为准" }),
+    name: Type.String({ description: "角色名称" }),
+  },
+  { additionalProperties: false }
+);
+
+const UserCreateOptionsRespSchema = successResponse({
+  data: Type.Object(
+    {
+      // 刻意不 $ref `deptTreeNode`：用户 Schema 模块不必依赖部门模块的注册顺序，
+      // 而节点形状就是既有部门树节点的形状（id/name/parentId/.../children），不另造树模型。
+      departments: Type.Array(Type.Object({}, { additionalProperties: true }), {
+        description: "按授权范围过滤后的部门树（沿用原有部门树结构）",
+      }),
+      roles: Type.Array(UserCreateRoleOptionSchema, { description: "本次可授予的角色候选" }),
+      total: Type.Integer({ description: "过滤后的候选总数" }),
+      page: Type.Integer(),
+      pageSize: Type.Integer(),
+      creatable: Type.Boolean({ description: "当前操作者在 system:user:create 上能否建号" }),
+    },
+    { additionalProperties: false }
+  ),
+  $id: "userCreateOptionsResp",
+  message: "获取成功",
+});
 
 // 获取用户列表
 const UserListRespSchema = successResponse({
@@ -261,6 +356,9 @@ const registerUser = (fastify: FastifyInstance) => {
   fastify.addSchema(UpdateUserReqSchema);
   fastify.addSchema(UserDetailRespSchema);
   fastify.addSchema(UserDeleteRespSchema);
+  fastify.addSchema(UserCreateOptionsQuerySchema);
+  fastify.addSchema(UserCreateFormRespSchema);
+  fastify.addSchema(UserCreateOptionsRespSchema);
 };
 
 export default registerUser;

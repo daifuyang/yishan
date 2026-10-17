@@ -132,7 +132,9 @@ function targetScope(
  */
 export async function validateUserCreation(
   subject: UserCreationSubject,
-  fields: UserCreateDraftFields,
+  // 授权判定只看 roleIds / deptIds；其余字段（手机号、密码…）在这里毫无作用。
+  // 因此接受 Partial：候选查询在还不知道手机号时就要用同一套规则判定。
+  fields: Partial<UserCreateDraftFields>,
   options: ValidateUserCreationOptions = {},
 ): Promise<void> {
   const db = options.db ?? drizzleDb
