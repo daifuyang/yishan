@@ -10,6 +10,7 @@
  * - 每次执行前执行链会按 `permissionCode` 重走一遍 RBAC；`enabled` 只是开关，不是安全边界。
  */
 import { Type, type Static } from '@sinclair/typebox'
+import { Value } from '@sinclair/typebox/value'
 import { registerAiCapabilities, type AiCapability, type AiCapabilityContext, type AiCapabilityResult } from '@yishan/core-api/ai-capabilities/catalog'
 import { UserService } from '../services/user.service.js'
 import { RoleService } from '../services/role.service.js'
@@ -18,7 +19,7 @@ import { UserCreationFormService } from '../services/user-creation-form.service.
 import type { DeptCandidateNode } from '../services/user-creation-form.service.js'
 import type { UserCreationSubject } from '../services/user-creation-policy.js'
 import { asEchoValue, untrustedRow, untrustedRows } from './untrusted-text.js'
-import { UserListQuerySchema, type UserListQuery } from '../schemas/user.js'
+import { UserListQuerySchema, UserCreateDraftPartialSchema, UserCreateDraftFieldsSchema, USER_CREATE_DRAFT_FIELD_KEYS, type UserListQuery } from '../schemas/user.js'
 import { RoleListQuerySchema, type RoleListQuery } from '../schemas/role.js'
 import { DeptListQuerySchema, type DeptListQuery } from '../schemas/department.js'
 
@@ -141,17 +142,13 @@ const PREFILL_ROUTES = {
   'department.create': '/system/department',
 } as const
 
-/** 用户表单必填项。缺失时返回给模型，让它主动追问而不是硬凑一个空值。 */
-const USER_REQUIRED = ['username', 'realName'] as const
 const DEPT_REQUIRED = ['name'] as const
 
 /**
  * 新增用户表单的**只读**能力。
  *
  * 字段与候选来自 `UserCreationFormService` —— 与原生表单同一份定义、同一套授权。
- * 这里不再保留任何 `prepare_create_user`：草稿写入是 AI 模块的事（它拥有草稿表），
- * System 侧只负责「表单长什么样、哪些候选可选」。这样 System 永远不需要依赖 AI，
- * 也不会出现第二份字段常量。
+ * System 侧提供原生表单定义、候选与一次性字段预填，不依赖 AI 模块的草稿存储。
  *
  * 两项都是 `read`：它们不改任何数据，也**不持有**任何敏感字段内容。
  */
@@ -293,6 +290,29 @@ export const systemAiCapabilities: readonly AiCapability[] = [
   },
   ...userCreationReadCapabilities,
   {
+    name: 'prepare_user_create',
+    description: '提取非敏感用户字段，打开原生新增用户表单供用户补齐和保存。允许信息不完整；密码必须由用户在原生表单输入。仅返回预填 JSON，不创建用户或草稿。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminUsersCreate',
+    permissionCode: 'system:user:create',
+    inputSchema: UserCreateDraftPartialSchema,
+    riskLevel: 'prepare',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      assertNoSecrets(input)
+      if (!Value.Check(UserCreateDraftPartialSchema, input)) throw new Error('用户预填字段格式不正确')
+      // 原生 schema 的 String({ enum }) 由 HTTP Ajv 校验；TypeBox Value 需要额外检查 enum。
+      for (const key of USER_CREATE_DRAFT_FIELD_KEYS) {
+        const allowed: unknown = UserCreateDraftFieldsSchema.properties[key].enum
+        if (input[key] !== undefined && Array.isArray(allowed) && !allowed.includes(input[key])) {
+          throw new Error(`用户预填字段 ${key} 格式不正确`)
+        }
+      }
+      const fields = pick(input as Record<string, unknown>, USER_CREATE_DRAFT_FIELD_KEYS)
+      return prefill(fields, missingFields(fields, UserCreateDraftFieldsSchema.required ?? []), 'user.create')
+    },
+  },
+  {
     name: 'prepare_update_user',
     description: '抽取要修改的用户字段并预填到「编辑用户」表单。**不会保存修改**。必须先调用 get_user 或 list_users 确认目标用户，再把用户提到的字段合并进来。',
     moduleId: SYSTEM_MODULE,
@@ -313,18 +333,40 @@ export const systemAiCapabilities: readonly AiCapability[] = [
     async execute(_context: AiCapabilityContext, input: unknown) {
       assertNoSecrets(input)
       const raw = (input ?? {}) as Record<string, unknown>
-      const id = typeof raw.id === 'number' ? raw.id : undefined
-      if (id === undefined) throw new Error('缺少目标用户 ID，请先查询确认用户后再预填')
-      // 读一次目标用户，确认它落在当前用户的数据范围内；同时把未提及的现有值带进预填。
+      if (!Value.Check(IdInput, { id: raw.id })) throw new Error('缺少有效目标用户 ID，请先查询确认用户后再预填')
+      const id = raw.id as number
+      // 只确认目标的数据范围；现有值由原生表单加载，避免覆盖用户在表单中修改的字段。
       const existing = await UserService.getUserById(id)
       if (!existing) throw new Error(`用户 ${id} 不存在或不在你的数据范围内`)
       const fields = {
         id,
-        realName: existing.realName,
-        phone: existing.phone,
         ...pick(raw, USER_PREFILL_FIELDS),
       }
-      return prefill(fields, missingFields(fields, USER_REQUIRED), 'user.update')
+      return prefill(fields, [], 'user.update')
+    },
+  },
+  {
+    name: 'prepare_delete_user',
+    description: '读取数据范围内的明确用户，准备原生删除确认。必须先查询确认用户 ID；只等待用户确认，不执行删除。',
+    moduleId: SYSTEM_MODULE,
+    operationId: 'adminUsersDelete',
+    permissionCode: 'system:user:delete',
+    inputSchema: IdInput,
+    riskLevel: 'prepare',
+    enabled: true,
+    async execute(_context: AiCapabilityContext, input: unknown) {
+      assertNoSecrets(input)
+      if (!Value.Check(IdInput, input)) throw new Error('缺少有效目标用户 ID，请先查询确认用户后再准备删除')
+      const { id } = input
+      const existing = await UserService.getUserById(id)
+      if (!existing) throw new Error(`用户 ${id} 不存在或不在你的数据范围内`)
+      const payload = { target: 'user.delete', id, label: existing.realName || existing.username || existing.phone || String(id) }
+      return {
+        data: { ...payload, label: untrustedRow({ label: payload.label }, ['label']).label },
+        render: { kind: 'action.confirm', payload },
+        summary: '删除用户操作等待确认。',
+        mutated: false,
+      } satisfies AiCapabilityResult
     },
   },
   {

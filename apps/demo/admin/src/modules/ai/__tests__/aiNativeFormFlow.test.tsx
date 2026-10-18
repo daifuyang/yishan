@@ -881,7 +881,7 @@ test('创建请求网络异常：只读查询草稿，绝不自动重发创建',
   await waitFor(() => expect(reconcile).toHaveBeenCalledTimes(1));
   expect(createCalls()).toHaveLength(1);
   // 表单仍然开着，用户可以自己核对后再次保存。
-  expect(document.querySelectorAll('.ant-modal')).toHaveLength(1);
+  expect(screen.getByText('新建用户').closest('.ant-modal')).toBeTruthy();
   unregisterLink();
 });
 
@@ -925,7 +925,7 @@ test('业务失败：表单数据与密码控件保留，创建不会被重发',
   });
   await waitFor(() => expect(createCalls()).toHaveLength(1));
 
-  expect(document.querySelectorAll('.ant-modal')).toHaveLength(1);
+  expect(screen.getByText('新建用户').closest('.ant-modal')).toBeTruthy();
   const passwordInput = document.querySelector(
     'input[type="password"]',
   ) as HTMLInputElement | null;
@@ -970,12 +970,13 @@ test('草稿表单被关掉后，另一次手动新建既不 PATCH 也不关联�
 
     jest.useRealTimers();
     // 用户关掉这个表单。
-    const closeButtons = Array.from(
-      document.querySelectorAll('.ant-modal-close'),
-    ) as HTMLElement[];
-    expect(closeButtons.length).toBeGreaterThan(0);
+    const closeButton = screen
+      .getByText('新建用户')
+      .closest('.ant-modal')
+      ?.querySelector('.ant-modal-close');
+    expect(closeButton).toBeTruthy();
     await act(async () => {
-      fireEvent.click(closeButtons[closeButtons.length - 1] as Element);
+      fireEvent.click(closeButton as Element);
     });
     // 注意：关掉表单本身**不会**清空句柄的 instanceId（那是另一个设计的语义），
     // 真正改变局面的是下一次打开铸出的新实例 —— 下面这条才是判定依据。

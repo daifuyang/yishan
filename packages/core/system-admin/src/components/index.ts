@@ -7,3 +7,5 @@ export { default as QiniuUpload } from './QiniuUpload';
 export { default as ImageCropperModal } from './ImageCropperModal';
 export type { ImageCropperModalProps, ImageCropperShape } from './ImageCropperModal';
 export type { AttachmentLibraryModalProps } from './AttachmentLibraryModal/types';
+export { AiPrefillGate } from './AiPrefillGate';
+export type { AiPrefillGateProps } from './AiPrefillGate';

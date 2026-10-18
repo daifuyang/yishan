@@ -11,6 +11,7 @@
  *    展示**真实**结果，而不是让模型转述。
  */
 import { createContext } from 'react';
+import type { AiPrefill } from '@yishan/core-system-admin/ai-prefill';
 
 export interface FormUiRequest {
   uiRequestId: string;
@@ -35,6 +36,7 @@ export interface DraftOutcome {
 }
 
 export interface AiFormAssistanceHandlers {
+  onPrefill?: (request: AiPrefill) => void;
   /** 本轮 stream 里的新草稿结果。Bridge 负责去重与自动开表单。 */
   onUiRequest: (request: FormUiRequest) => void;
   /** 用户在结果卡片上点「继续填写」。 */
@@ -50,6 +52,7 @@ export interface AiFormAssistanceValue {
   setOutcome: (draftId: string, outcome: DraftOutcome) => void;
   bindHandlers: (handlers: AiFormAssistanceHandlers) => () => void;
   requestRestore: (draftId: string) => void;
+  requestPrefill?: (request: AiPrefill) => void;
   flush: () => Promise<void>;
 }
 

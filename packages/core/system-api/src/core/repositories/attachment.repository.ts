@@ -18,6 +18,7 @@ import {
 } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysAttachment, sysAttachmentFolder, sysUser } from "@/db/schema";
+
 import { dateUtils } from "../../utils/date.js";
 import { clampOffset } from "./_pagination.js";
 
@@ -151,8 +152,11 @@ function buildAttachmentWhere(opts: {
   mimeType?: string;
   storage?: string;
   status?: number;
+  dataScope?: SQL;
 }): SQL | undefined {
   const conds: SQL[] = [isNull(sysAttachment.deletedAt)];
+  // sys_attachment 无部门列，不施加行级数据范围（见 AttachmentRepository.dataScopeCondition）。
+  if (opts.dataScope) conds.push(opts.dataScope);
   if (opts.keyword) {
     const like_ = `%${opts.keyword}%`;
     conds.push(or(like(sysAttachment.name, like_), like(sysAttachment.originalName, like_))!);
@@ -362,9 +366,20 @@ export class AttachmentRepository {
   // Attachment - New Standard Methods
   // -------------------------------------------------------------------------
 
+  /**
+   * 附件**不施加**行级数据范围。
+   *
+   * `sys_attachment` 没有 dept 列，「仅上传者」是凭空发明的规则：附件列表本身就是
+   * 全站共享的素材库，收窄成只看自己上传的会让文件夹树与引用统计失效。
+   * 是否需要按部门隔离附件属于待确认的产品规则（要落地需先补 dept_id + 迁移）。
+   */
+  static async dataScopeCondition(): Promise<SQL | undefined> {
+    return undefined
+  }
+
   static async listAttachments(query: { page?: number; pageSize?: number; keyword?: string; kind?: number; folderId?: number | null; mimeType?: string; storage?: string; status?: number; sortBy?: string; sortOrder?: string } = {}): Promise<AttachmentListRow[]> {
     const { page = 1, pageSize = 10, keyword, kind, folderId, mimeType, storage, status, sortBy, sortOrder = "desc" } = query;
-    const where = buildAttachmentWhere({ keyword, kind, folderId: folderId === 0 ? null : folderId, mimeType, storage, status });
+    const where = buildAttachmentWhere({ keyword, kind, folderId: folderId === 0 ? null : folderId, mimeType, storage, status, dataScope: await AttachmentRepository.dataScopeCondition() });
     const dir = sortOrder === "asc" ? asc : desc;
     const orderCol = resolveAttachmentOrderColumn(sortBy);
 
@@ -400,6 +415,7 @@ export class AttachmentRepository {
       mimeType: query.mimeType,
       storage: query.storage,
       status: query.status,
+      dataScope: await AttachmentRepository.dataScopeCondition(),
     });
     const [row] = await drizzleDb.select({ c: sqlCount() }).from(sysAttachment).where(where);
     return Number(row?.c ?? 0);

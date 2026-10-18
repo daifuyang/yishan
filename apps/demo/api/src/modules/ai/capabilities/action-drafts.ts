@@ -93,7 +93,14 @@ function draftSummary(draft: ActionDraft, requestId: string) {
   }
   return {
     data,
-    render: { kind: 'action.draft', payload: { draftId: draft.draftId, draftVersion: draft.draftVersion, uiRequestId: requestId } },
+    render: { kind: 'action.draft', payload: {
+      draftId: draft.draftId, draftVersion: draft.draftVersion, uiRequestId: requestId,
+      interaction: {
+        type: draft.validationErrors.length || draft.missingFields.some(field => !field.mustCompleteInForm) || !('deptIds' in draft.formData && 'roleIds' in draft.formData) ? 'question' : 'form-preview',
+        id: draft.draftId + ':' + draft.draftVersion,
+        formKey: 'user.create', draftId: draft.draftId, draftVersion: draft.draftVersion,
+      },
+    } },
     summary: summarize(draft),
     mutated: false,
   } satisfies AiCapabilityResult

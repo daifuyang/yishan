@@ -98,7 +98,7 @@ describe('Action draft routes', () => {
     try {
       const response = await app.inject({ method: 'POST', url: '/conversations/c1/drafts', payload: { ...draftBody, formData: { phone: '13' } } })
       expect(response.statusCode, response.body).toBe(200)
-      expect(create).toHaveBeenCalledWith(17, 'c1', { module: 'system', action: 'user.create', formData: { phone: '13' } })
+      expect(create).toHaveBeenCalledWith(17, 'c1', { module: 'system', action: 'user.create', formData: { phone: '13' }, subject: { actorId: 17, tokenScope: undefined } })
     } finally { await app.close() }
   })
 
@@ -131,7 +131,7 @@ describe('Action draft routes', () => {
     try {
       const response = await app.inject({ method: 'PATCH', url: '/drafts/d1', payload: { draftVersion: 3, formData: { nickname: null, realName: '张三' } } })
       expect(response.statusCode, response.body).toBe(200)
-      expect(patch).toHaveBeenCalledWith(17, 'd1', 3, { nickname: null, realName: '张三' })
+      expect(patch).toHaveBeenCalledWith(17, 'd1', 3, { nickname: null, realName: '张三' }, { subject: { actorId: 17, tokenScope: undefined } })
     } finally { await app.close() }
   })
 

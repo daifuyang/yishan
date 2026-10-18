@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, Checkbox, Input, Space, Spin, Tabs, Tree, Typography } from 'antd';
+import { Alert, Checkbox, Form, Input, Space, Spin, Tabs, Tree, Typography } from 'antd';
 import {
   DrawerForm,
   ProFormRadio,
@@ -18,6 +18,7 @@ import { useSystemAdmin } from '../../../runtime';
 import type { DataNode } from 'antd/es/tree';
 import { getMenuTree } from '../../../services/generated/sysMenus';
 import { getAppMenuTree } from '../../../services/generated/sysAppMenus';
+import { getDeptTree } from '../../../services/generated/sysDepts';
 import {
   createRole,
   getRoleDetail,
@@ -38,6 +39,20 @@ const DATA_SCOPE_OPTIONS = [
   { label: '仅本人数据', value: '4' },
   { label: '自定义数据', value: '5' },
 ];
+
+/** 「自定义数据」的档位值。与后端 DATA_SCOPE_CUSTOM 一致，改动须同步。 */
+const DATA_SCOPE_CUSTOM = '5';
+
+function toDeptTreeData(nodes: SystemAPI.deptTreeNode[]): DataNode[] {
+  return nodes.map((node) => ({
+    key: node.id,
+    title: node.status === '1' ? node.name : `${node.name}（已禁用）`,
+    children:
+      node.children && node.children.length > 0
+        ? toDeptTreeData(node.children)
+        : undefined,
+  }));
+}
 
 function flattenMenuTree(nodes: SystemAPI.menuTreeNode[]): SystemAPI.menuTreeNode[] {
   return nodes.flatMap((node) => [node, ...flattenMenuTree(node.children || [])]);
@@ -71,6 +86,10 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const [checkedPermissionCodes, setCheckedPermissionCodes] = useState<
     string[]
   >([]);
+  const [deptTree, setDeptTree] = useState<SystemAPI.deptTreeNode[]>([]);
+  const [dataScope, setDataScope] = useState<string>(
+    String(initialValues.dataScope ?? '1'),
+  );
   const [authorizationSearch, setAuthorizationSearch] = useState('');
   const [onlySelected, setOnlySelected] = useState(false);
   const [parentChildLinked, setParentChildLinked] = useState(true);
@@ -82,6 +101,7 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const defaultStatusDict: Array<{ label: string; value: string }> =
     initialState?.dictDataMap?.default_status || [];
   const allNodes = useMemo(() => flattenMenuTree(menuTree), [menuTree]);
+  const deptTreeData = useMemo(() => toDeptTreeData(deptTree), [deptTree]);
   const menuNodeById = useMemo(
     () => new Map(allNodes.map((node) => [node.id, node])),
     [allNodes],
@@ -248,6 +268,10 @@ const RoleForm: React.FC<RoleFormProps> = ({
     const response = await getRoleDetail({ id });
     if (!response.success || !response.data) return;
     formRef.current?.setFieldsValue(response.data);
+    setDataScope(String(response.data.dataScope ?? '1'));
+    // 自定义档位（5）保存的是部门 id 列表；回显必须与保存用同一份数据，
+    // 否则「改了没生效」会被误判成保存失败。
+    formRef.current?.setFieldsValue({ deptIds: response.data.deptIds || [] });
     setCheckedMenuKeys(response.data.menuIds || []);
     setCheckedPermissionCodes(response.data.permissionCodes || []);
     const entryIds = new Set(
@@ -260,6 +284,8 @@ const RoleForm: React.FC<RoleFormProps> = ({
   const handleOpenChange = async (open: boolean) => {
     if (!open) return;
     setActiveTab('basic');
+    setDataScope(String(initialValues.dataScope ?? '1'));
+    formRef.current?.setFieldsValue({ deptIds: [] });
     setAuthorizationSearch('');
     setOnlySelected(false);
     if (!initialValues.id) {
@@ -268,6 +294,13 @@ const RoleForm: React.FC<RoleFormProps> = ({
       setCheckedAppEntryKeys([]);
     }
     const [, appTree] = await Promise.all([fetchMenuTree(), fetchAppMenuTree()]);
+    // 部门树只有自定义档位用得上，但仍随抽屉打开一起拉取，避免切换档位时再等一次。
+    try {
+      const deptResponse = await getDeptTree();
+      setDeptTree(deptResponse.data || []);
+    } catch {
+      setDeptTree([]);
+    }
     if (initialValues.id) await fetchRoleDetail(Number(initialValues.id), appTree);
   };
 
@@ -280,8 +313,8 @@ const RoleForm: React.FC<RoleFormProps> = ({
       trigger={trigger}
       initialValues={initialValues}
       drawerProps={{
-        destroyOnClose: true,
-        maskClosable: false,
+        destroyOnHidden: true,
+        mask: { closable: false },
         width: 920,
         styles: { body: { padding: '0 24px', overflow: 'hidden' } },
       }}
@@ -292,6 +325,12 @@ const RoleForm: React.FC<RoleFormProps> = ({
           description: values.description,
           status: values.status,
           dataScope: values.dataScope,
+          // 只有「自定义」档位才带部门列表；其他档位显式传空数组，
+          // 让后端清掉历史遗留的 sys_role_dept 行，而不是留着生效。
+          deptIds:
+            String(values.dataScope) === DATA_SCOPE_CUSTOM
+              ? ((values.deptIds as number[]) || [])
+              : [],
           menuIds: (checkedMenuKeys as number[]).filter(
             (id) => menuNodeById.get(id)?.type !== 2,
           ),
@@ -344,8 +383,44 @@ const RoleForm: React.FC<RoleFormProps> = ({
                   name="dataScope"
                   label="数据权限"
                   options={DATA_SCOPE_OPTIONS}
+                  fieldProps={{
+                    onChange: (value: string) => {
+                      setDataScope(value);
+                      // 离开自定义档位时清空勾选，否则下次切回来会看到
+                      // 一个看不见来源的部门集合。
+                      if (value !== DATA_SCOPE_CUSTOM) {
+                        formRef.current?.setFieldsValue({ deptIds: [] });
+                      }
+                    },
+                  }}
                   rules={[{ required: true, message: '请选择数据权限' }]}
                 />
+                {dataScope === DATA_SCOPE_CUSTOM && (
+                  <Form.Item
+                    name="deptIds"
+                    label="授权部门"
+                    valuePropName="checkedKeys"
+                    rules={[
+                      {
+                        validator: (_rule, value) =>
+                          Array.isArray(value) && value.length > 0
+                            ? Promise.resolve()
+                            : Promise.reject(
+                                new Error('自定义数据权限至少需要一个部门'),
+                              ),
+                      },
+                    ]}
+                    extra="勾选后，该角色在这些部门及其用户上生效。父节点与子节点联动。"
+                  >
+                    <Tree
+                      checkable
+                      treeData={deptTreeData}
+                      checkStrictly={false}
+                      selectable={false}
+                      defaultExpandAll
+                    />
+                  </Form.Item>
+                )}
                 <ProFormTextArea
                   name="description"
                   label="角色描述"

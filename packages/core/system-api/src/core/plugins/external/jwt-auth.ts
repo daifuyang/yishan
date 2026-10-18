@@ -120,7 +120,8 @@ export default fp(async (fastify) => {
         )
       }
 
-      const currentUser = await UserService.getUserById(apiToken.userId)
+      // 身份解析不受数据范围约束：本人永远属于自己。
+      const currentUser = await UserService.getUserById(apiToken.userId, undefined, false)
       if (!currentUser) {
         throw new BusinessError(
           AuthErrorCode.API_TOKEN_REVOKED,
@@ -166,7 +167,8 @@ export default fp(async (fastify) => {
       )
     }
 
-    const currentUser = await UserService.getUserById(record.userId)
+    // 同上：身份解析必须先于数据范围生效，否则「仅本人」角色无法登录。
+    const currentUser = await UserService.getUserById(record.userId, undefined, false)
     if (!currentUser) {
       throw new BusinessError(
         AuthErrorCode.TOKEN_INVALID,
@@ -222,7 +224,8 @@ export default fp(async (fastify) => {
           'API Token 不存在、已过期或已被撤销。'
         )
       }
-      const currentUser = await UserService.getUserById(apiToken.userId)
+      // 身份解析不受数据范围约束：本人永远属于自己。
+      const currentUser = await UserService.getUserById(apiToken.userId, undefined, false)
       if (!currentUser) {
         throw new BusinessError(
           AuthErrorCode.API_TOKEN_REVOKED,
@@ -261,7 +264,8 @@ export default fp(async (fastify) => {
       )
     }
 
-    const currentUser = await UserService.getUserById(record.userId)
+    // 同上：身份解析必须先于数据范围生效，否则「仅本人」角色无法登录。
+    const currentUser = await UserService.getUserById(record.userId, undefined, false)
     if (!currentUser) {
       throw new BusinessError(
         AuthErrorCode.TOKEN_INVALID,

@@ -51,7 +51,7 @@ describe.runIf(!ctx.skip)('integration: user lifecycle', () => {
       deptIds: [32, 32],
       roleIds: [42, 42],
     });
-    const updated = await UserRepository.findById(user.id);
+    const updated = await UserRepository.findById(user.id, undefined, false);
     expect(updated).toMatchObject({ deptIds: [32], roleIds: [42] });
 
     const now = new Date();
@@ -64,7 +64,7 @@ describe.runIf(!ctx.skip)('integration: user lifecycle', () => {
 
     await UserRepository.deleteUserInTransaction(user.id);
 
-    await expect(UserRepository.findById(user.id)).resolves.toBeNull();
+    await expect(UserRepository.findById(user.id, undefined, false)).resolves.toBeNull();
     const [tokens] = await ctx.pool!.query<RevokedTokenRow[]>(
       'SELECT is_revoked AS isRevoked, revoked_at AS revokedAt FROM sys_user_token WHERE user_id = ?',
       [user.id],

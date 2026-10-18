@@ -69,7 +69,7 @@ export const makeRequirePermissionHandler = (
       throw new BusinessError(AuthErrorCode.FORBIDDEN, `当前用户没有权限访问要求 ${permCode} 的接口`);
     }
 
-    (request as any).effectivePermissions = effectivePerms;
+    request.effectivePermissions = effectivePerms;
   };
 
 export default fp(

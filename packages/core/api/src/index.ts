@@ -4,3 +4,10 @@ export { ModuleLoader, moduleRoutePrefix, orderModules } from './module-loader'
 export type { ApiModule } from './module-loader'
 export { PermissionCatalog } from './permission-catalog'
 export type { PermissionRef } from './permission-catalog'
+export { AiCapabilityCatalog } from './ai-capability-catalog'
+export type {
+  AiCapability,
+  AiCapabilityContext,
+  AiCapabilityResult,
+  AiRiskLevel,
+} from './ai-capability-catalog'

@@ -5,8 +5,8 @@
  * 只有「业务浮层是否开着」「助手面板的 DOM 在哪」「焦点该还给谁」。
  *
  * 之所以需要一个协作契约而不是全局关掉 Modal 的焦点保护：
- * Ant Design / rc-dialog 没有公开的「关闭焦点捕获」开关，全局关掉会让**所有**
- * Modal 失去键盘可达性（这是无障碍倒退）。因此这里采取显式、按目标注册的协作：
+ * 业务 Modal 保留默认焦点捕获，只允许已注册的助手区域接收自己的焦点事件。
+ * 这里采取显式、按目标注册的协作：
  *
  * - 参与协作的表单（首期只有 `user.create`）注册自己的浮层信息；
  * - 助手面板注册自己的 DOM 区域；
@@ -17,7 +17,7 @@
  * 表单提交入口。这些仍然是设计 §5 禁止的能力。
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 // 仅类型导入：编译后擦除，避免 index ↔ overlay 的运行期循环依赖。
 import type { UserFormAssistanceTarget } from './index';
 
@@ -150,7 +150,7 @@ export function isEventInsideAssistant(target: EventTarget | null): boolean {
 }
 
 /**
- * 参与协作的表单用它安装**作用域内**的 Esc 协调。
+ * 参与协作的表单用它安装**作用域内**的焦点与 Esc 协调。
  *
  * 行为：捕获阶段挂在 `document` 上，只有当按键目标位于助手面板内时才
  * `stopPropagation`，因此业务 Modal 的 Esc 处理收不到这次按键 ——
@@ -158,8 +158,6 @@ export function isEventInsideAssistant(target: EventTarget | null): boolean {
  * 所有未参与协作的 Modal 保持 Ant Design 默认行为。
  */
 export function useCoordinatedFormFocus(enabled: boolean): void {
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
   useEffect(() => {
     if (!enabled) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -171,7 +169,17 @@ export function useCoordinatedFormFocus(enabled: boolean): void {
         event.stopPropagation();
       }
     };
+    const onFocusIn = (event: FocusEvent) => {
+      if (!isEventInsideAssistant(event.target)) return;
+      // rc-dialog 在 window 的冒泡监听中将焦点拉回表单。React 的 onFocus 已经在根节点
+      // 处理完，只截断助手事件到 window 的传播，保留输入行为及其他区域的焦点保护。
+      event.stopPropagation();
+    };
+    document.addEventListener('focusin', onFocusIn);
     document.addEventListener('keydown', onKeyDown, true);
-    return () => document.removeEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
   }, [enabled]);
 }

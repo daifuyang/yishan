@@ -10,7 +10,8 @@ import { RoleErrorCode } from "@yishan/core-api/business-codes/role";
 import { PermissionService } from "./permission.service.js";
 import { PERMISSION_CODES as ACTIVE_CODES } from '@yishan/core-api/permissions/catalog';
 import { ROLE_CODES, SUPER_ADMIN_BYPASS } from "../../constants/permission-codes.js";
-import { dbManager } from "@/db";
+import { dbManager, drizzleDb } from "@/db";
+import { DATA_SCOPE_CUSTOM } from "@/core/auth/data-scope";
 
 export class RoleService {
   /** 获取角色列表 */
@@ -37,9 +38,16 @@ export class RoleService {
     };
   }
 
-  /** 获取角色详情 */
-  static async getRoleById(id: number) {
-    const role = await RoleRepository.findById(id);
+  /**
+   * 获取角色详情。`sys_role` 不施加行级数据范围，因此 `enforceScope` 目前是保留参数：
+   * 保留它是为了让「角色是否纳入数据范围」这个决定显式可见，而不是靠漏写过滤。
+   */
+  static async getRoleById(id: number, enforceScope = true) {
+    const role = await RoleRepository.findById(
+      id,
+      drizzleDb,
+      enforceScope ? await RoleRepository.dataScopeCondition() : undefined,
+    );
     return role ? RoleMapper.toDetailResp(role) : null;
   }
 
@@ -48,14 +56,18 @@ export class RoleService {
     await this.ensureUnique(req.name);
     await this.assertGrantablePermissionCodes(operatorId, req.permissionCodes);
 
+    const dataScope = req.dataScope ? parseInt(req.dataScope, 10) : 1;
     const input: CreateRoleInput = {
       name: req.name,
       description: req.description,
       status: req.status ? parseInt(req.status, 10) : 1,
-      dataScope: req.dataScope ? parseInt(req.dataScope, 10) : 1,
+      dataScope,
       menuIds: req.menuIds,
       appMenuIds: req.appMenuIds,
       permissionCodes: req.permissionCodes,
+      // 自定义档位才有意义：其他档位下这些部门不会被任何解析路径读取，
+      // 写进去只会让回显显示一个实际不生效的配置。
+      deptIds: dataScope === DATA_SCOPE_CUSTOM ? req.deptIds : undefined,
       creatorId: operatorId,
       updaterId: operatorId,
     };
@@ -89,6 +101,12 @@ export class RoleService {
     if (req.menuIds !== undefined) input.menuIds = req.menuIds;
     if (req.appMenuIds !== undefined) input.appMenuIds = req.appMenuIds;
     if (req.permissionCodes !== undefined) input.permissionCodes = req.permissionCodes;
+    // 档位切到自定义时本次请求带的 deptIds 生效；从自定义切走时要显式清空，
+    // 否则 sys_role_dept 里的旧配置会一直留着，在下次切回自定义时突然生效。
+    const nextDataScope = input.dataScope ?? existing.dataScope;
+    if (req.deptIds !== undefined || nextDataScope !== DATA_SCOPE_CUSTOM) {
+      input.deptIds = nextDataScope === DATA_SCOPE_CUSTOM ? (req.deptIds ?? existing.deptIds ?? []) : [];
+    }
 
     const role = await dbManager.transaction((tx) => RoleRepository.update(id, input, tx));
     // menuIds 变更直接影响该角色的权限集合；status 变更影响 disabled 过滤。

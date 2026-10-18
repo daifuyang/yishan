@@ -1,5 +1,9 @@
 import { history } from '@umijs/max';
-import { AI_PREFILL_ROUTES } from '@yishan/core-system-admin/ai-prefill';
+import {
+  setAiPrefill,
+  subscribeAiPrefillResults,
+  AI_PREFILL_ROUTES,
+} from '@yishan/core-system-admin/ai-prefill';
 import {
   APPLY_CONFLICT,
   peekUserCreateFormHandle,
@@ -518,8 +522,30 @@ export function AiNativeFormBridge() {
     onRestore: () => {},
     flush: async () => {},
   });
-  handlers.current = { onUiRequest, onRestore, flush };
+  handlers.current = {
+    onUiRequest,
+    onRestore,
+    flush,
+    onPrefill: (request) => {
+      switchDraft();
+      activeRef.current = null;
+      setConflict(null);
+      if (request.requestId)
+        setOutcome(request.requestId, {
+          status: 'notice',
+          message:
+            request.target === 'user.delete'
+              ? '请在原生界面确认删除。'
+              : '已交给原生表单，请核对后保存。',
+        });
+      setAiPrefill(request);
+      if (history.location?.pathname !== AI_PREFILL_ROUTES[request.target])
+        history.push(AI_PREFILL_ROUTES[request.target]);
+      if (chat.viewMode === 'fullscreen') chat.minimize();
+    },
+  };
   const handlersRef = useRef(handlers.current);
+  handlersRef.current = handlers.current;
 
   useEffect(
     () => formAssistance.bindHandlers(handlersRef.current),
@@ -613,6 +639,14 @@ export function AiNativeFormBridge() {
     activeRef.current = null;
     setConflict(null);
   }, [identityEpoch, switchDraft]);
+
+  useEffect(
+    () =>
+      subscribeAiPrefillResults((result) =>
+        setOutcome(result.requestId, result),
+      ),
+    [setOutcome],
+  );
 
   // 表单变化 → 合并延迟同步。
   useEffect(() => subscribeUserCreateFormChanges(onFormChange), [onFormChange]);

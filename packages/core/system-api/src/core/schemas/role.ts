@@ -37,6 +37,7 @@ const SysRoleSchema = Type.Object(
     menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),
     appMenuIds: Type.Optional(Type.Array(Type.Number(), { description: "App 工作台菜单ID列表" })),
     permissionCodes: Type.Optional(Type.Array(Type.String(), { description: "后端功能/API 权限码列表" })),
+    deptIds: Type.Optional(Type.Array(Type.Integer({ minimum: 1 }), { description: "自定义数据范围的部门ID列表（dataScope=\"5\" 时生效）" })),
   },
   { $id: "sysRole" }
 );
@@ -70,6 +71,8 @@ const SaveRoleReqSchema = Type.Object(
     menuIds: Type.Optional(Type.Array(Type.Number(), { description: "菜单ID列表" })),
     appMenuIds: Type.Optional(Type.Array(Type.Number(), { description: "App 工作台菜单ID列表" })),
     permissionCodes: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 128 }), { description: "后端功能/API 权限码列表" })),
+    // 仅 dataScope = "5"（自定义）时生效；其余档位忽略该字段。
+    deptIds: Type.Optional(Type.Array(Type.Integer({ minimum: 1 }), { description: "自定义数据范围的部门ID列表（dataScope=5 时生效）" })),
   },
   { $id: "saveRoleReq" }
 );
@@ -84,7 +87,7 @@ export type SaveRoleReq = Static<typeof SaveRoleReqSchema>;
 export type UpdateRoleReq = Static<typeof UpdateRoleReqSchema>;
 
 // 角色列表查询参数 Schema
-const RoleListQuerySchema = Type.Object(
+export const RoleListQuerySchema = Type.Object(
   {
     ...PaginationQuerySchema.properties,
     keyword: Type.Optional(

@@ -20,6 +20,7 @@
  * 执行期间存在，因此并发请求与流式工具调用各自持有自己的身份，不会串用。
  */
 import { Value } from '@sinclair/typebox/value'
+import { FormatRegistry } from '@sinclair/typebox'
 import type { TSchema } from '@sinclair/typebox'
 import { getAiCapability, isModelInvocableRiskLevel, listAiCapabilitiesFor, type AiCapability, type AiCapabilityContext } from '@yishan/core-api/ai-capabilities/catalog'
 import { PERMISSION_CODES } from '@yishan/core-api/permissions/catalog'
@@ -46,6 +47,14 @@ export interface AiExecutionRequest {
   readonly runtime: SystemRuntime
   readonly audit: AiAuditStore
 }
+
+// TypeBox Value does not install JSON Schema formats automatically like Fastify Ajv.
+if (!FormatRegistry.Has('email')) FormatRegistry.Set('email', value => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value))
+if (!FormatRegistry.Has('date')) FormatRegistry.Set('date', value => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const date = new Date(value + 'T00:00:00.000Z')
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+})
 
 /** 执行链的对外结果。失败也是结构化的，模型据此调整而不是看到一句 500。 */
 export type AiExecutionOutcome =

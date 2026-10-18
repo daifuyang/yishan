@@ -2,12 +2,15 @@
  * 登录日志用户隔离真实 MySQL 集成测试。
  *
  * 单元测试 mock 掉了 repository，只能证明 service 的错误映射；这里用真实 SQL
- * 证明 findByIdForUser 的 where 条件确实带上了 userId，且未收窄管理员用的
- * findById。test:integration 创建随机本地 schema，迁移后在显式
+ * 证明 findByIdForUser 的 where 条件确实带上了 userId，管理员读取需显式范围。
+ * test:integration 创建随机本地 schema，迁移后在显式
  * SystemRuntime 内执行。
  */
 import { afterAll, describe, expect } from 'vitest';
 import { setupIntegration, it, type IntegrationContext } from './_setup.js';
+import { runWithDataScope } from '../../src/core/auth/data-scope.js';
+
+const asAdmin = <T>(fn: () => T): T => runWithDataScope({ userId: 1, roleIds: [], deptIds: [], superAdmin: true }, fn);
 
 const ctx: IntegrationContext = await setupIntegration();
 const { LoginLogRepository } = await import('../../src/core/repositories/login-log.repository.js');
@@ -48,9 +51,8 @@ describe.runIf(!ctx.skip)('integration: login log user scoping', () => {
       userId: 7002,
     });
 
-    // The unconstrained admin lookup is unchanged: it still returns the row
-    // regardless of ownership.
-    await expect(LoginLogRepository.findById(owner.id)).resolves.toMatchObject({
+    await expect(LoginLogRepository.findById(owner.id)).resolves.toBeNull();
+    await expect(asAdmin(() => LoginLogRepository.findById(owner.id))).resolves.toMatchObject({
       id: owner.id,
       userId: 7001,
     });
@@ -66,7 +68,7 @@ describe.runIf(!ctx.skip)('integration: login log user scoping', () => {
 
     await expect(LoginLogRepository.findByIdForUser(anonymous.id, 7001)).resolves.toBeNull();
     await expect(LoginLogRepository.findByIdForUser(anonymous.id, 7002)).resolves.toBeNull();
-    await expect(LoginLogRepository.findById(anonymous.id)).resolves.toMatchObject({
+    await expect(asAdmin(() => LoginLogRepository.findById(anonymous.id))).resolves.toMatchObject({
       id: anonymous.id,
       userId: null,
     });

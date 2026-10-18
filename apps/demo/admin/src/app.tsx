@@ -1,4 +1,21 @@
-import React, { type JSX, lazy } from "react";
+import type {
+  Settings as LayoutSettings,
+  MenuDataItem,
+} from '@ant-design/pro-components';
+import { PageLoading, SettingDrawer } from '@ant-design/pro-components';
+import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
+import { history, Link, Navigate, useModel } from '@umijs/max';
+import { filterAvailableMenus } from '@yishan/core-admin/menu/availability';
+import type { CloudStorageConfig } from '@yishan/core-system-admin/attachment-upload';
+import {
+  fetchCloudStorageConfig,
+  uploadAttachmentFile,
+} from '@yishan/core-system-admin/attachment-upload';
+import { appGetCapabilities } from '@yishan/core-system-admin/services/appAuth';
+import { authGetCurrentUser } from '@yishan/core-system-admin/services/auth';
+import { getDictDataMap } from '@yishan/core-system-admin/services/sysDictData';
+import { getAuthorizedMenuTree } from '@yishan/core-system-admin/services/sysMenus';
+import { App as AntdApp } from 'antd';
 import {
   Barcode,
   BookOpen,
@@ -15,6 +32,7 @@ import {
   Hospital,
   Inbox,
   LayoutDashboard,
+  type LucideIcon,
   Package,
   Send,
   Settings,
@@ -22,43 +40,61 @@ import {
   ShoppingCart,
   Smile,
   Tags,
-  type LucideIcon,
   UsersRound,
-} from "lucide-react";
-import type { Settings as LayoutSettings, MenuDataItem } from "@ant-design/pro-components";
-import { PageLoading, SettingDrawer } from "@ant-design/pro-components";
-import type { RequestConfig, RunTimeLayoutConfig } from "@umijs/max";
-import { history, Link, Navigate, useModel } from "@umijs/max";
+} from 'lucide-react';
+import React, { type JSX, lazy } from 'react';
 import {
   AvatarDropdown,
   AvatarName,
   Footer,
   Question,
   SelectLang,
-} from "@/components";
-import { authGetCurrentUser } from "@yishan/core-system-admin/services/auth";
-import { App as AntdApp } from "antd";
-import defaultSettings from "../config/defaultSettings";
-import { errorConfig } from "./requestErrorConfig";
-import { appGetCapabilities } from '@yishan/core-system-admin/services/appAuth';
-import { filterAvailableMenus } from '@yishan/core-admin/menu/availability';
-import { getAuthorizedMenuTree } from "@yishan/core-system-admin/services/sysMenus";
-import { getDictDataMap } from "@yishan/core-system-admin/services/sysDictData";
-import type { CloudStorageConfig } from "@yishan/core-system-admin/attachment-upload";
-import { fetchCloudStorageConfig, uploadAttachmentFile } from "@yishan/core-system-admin/attachment-upload";
-import type { AttachmentKind, CurrentUser, MenuTreeList, MenuTreeNode, UploadAttachmentsResp } from "@/types/sdk";
-const avatarFallback = '/icons/avatar.png';
-import queryString from "query-string";
-import { getBasePrefixFromPublicPath, stripBasePrefix } from "@yishan/core-admin/public-path";
-import { menuTreeToRoutes } from "@yishan/core-admin/menu";
-import { resolve as resolveComponent } from "@/utils/moduleComponents";
-import { flattenPathlessDirectories } from "@yishan/core-admin/dynamic-routes";
+} from '@/components';
+import type {
+  AttachmentKind,
+  CurrentUser,
+  MenuTreeList,
+  MenuTreeNode,
+  UploadAttachmentsResp,
+} from '@/types/sdk';
+import defaultSettings from '../config/defaultSettings';
+import { errorConfig } from './requestErrorConfig';
 
+const avatarFallback = '/icons/avatar.png';
+
+import { flattenPathlessDirectories } from '@yishan/core-admin/dynamic-routes';
+import { menuTreeToRoutes } from '@yishan/core-admin/menu';
+import {
+  getBasePrefixFromPublicPath,
+  stripBasePrefix,
+} from '@yishan/core-admin/public-path';
 import { SystemAdminProvider } from '@yishan/core-system-admin';
+import queryString from 'query-string';
+import {
+  AiChatHost,
+  AiChatIdentityBridge,
+  AiChatProvider,
+  AiNativeFormBridge,
+} from '@/modules/ai';
+import { resolve as resolveComponent } from '@/utils/moduleComponents';
+
+export function rootContainer(container: React.ReactNode) {
+  return <AiChatProvider>{container}</AiChatProvider>;
+}
 
 function SystemRuntimeBridge({ children }: React.PropsWithChildren) {
   const { initialState } = useModel('@@initialState');
-  return <SystemAdminProvider value={{ ...initialState, navigate: history.replace }}>{children}</SystemAdminProvider>;
+  // AiChatHost sits outside the router outlet, so it survives business-route changes.
+  return (
+    <SystemAdminProvider value={{ ...initialState, navigate: history.replace }}>
+      <AiChatIdentityBridge />
+      {children}
+      {/* Bridge 没有渲染任何界面：它把本轮草稿结果接到原生 UserForm 上，
+          并注册「同步 + 锁定版本」的草稿链接。它无法提交表单。 */}
+      <AiNativeFormBridge />
+      <AiChatHost />
+    </SystemAdminProvider>
+  );
 }
 
 // Umi renders innerProvider inside its model provider; rootContainer cannot read useModel.
@@ -66,16 +102,19 @@ export function innerProvider(container: React.ReactNode) {
   return <SystemRuntimeBridge>{container}</SystemRuntimeBridge>;
 }
 
-const isDev = process.env.NODE_ENV === "development";
-const loginPath = "/user/login";
+const isDev = process.env.NODE_ENV === 'development';
+const loginPath = '/user/login';
 const ADMIN_BASE = getBasePrefixFromPublicPath(__APP_BASE__);
 
 const getRelativePath = (pathname: string) => {
   return stripBasePrefix(pathname, ADMIN_BASE);
 };
 
-const isLoginRoute = (pathname: string) => getRelativePath(pathname) === loginPath;
-const isPublicQuoteRoute = (pathname: string) => __INSTALLED_MODULE_IDS__.includes('crm') && /^\/q\/[^/]+\/?$/.test(getRelativePath(pathname));
+const isLoginRoute = (pathname: string) =>
+  getRelativePath(pathname) === loginPath;
+const isPublicQuoteRoute = (pathname: string) =>
+  __INSTALLED_MODULE_IDS__.includes('crm') &&
+  /^\/q\/[^/]+\/?$/.test(getRelativePath(pathname));
 
 const IconMap: Record<string, LucideIcon> = {
   appstore: LayoutDashboard,
@@ -154,16 +193,26 @@ export async function getInitialState(): Promise<{
   fetchDictDataMap?: () => Promise<Record<string, any> | undefined>;
   cloudStorageConfig?: CloudStorageConfig;
   authorizedMenuPaths?: string[];
-  fetchCloudStorageConfig?: (options?: { force?: boolean }) => Promise<CloudStorageConfig>;
+  fetchCloudStorageConfig?: (options?: {
+    force?: boolean;
+  }) => Promise<CloudStorageConfig>;
   uploadAttachmentFile?: (
     file: File,
-    params: { folderId?: number; kind?: AttachmentKind; name?: string; dir?: string }
+    params: {
+      folderId?: number;
+      kind?: AttachmentKind;
+      name?: string;
+      dir?: string;
+    },
   ) => Promise<UploadAttachmentsResp>;
 }> {
   const fetchUserInfo = async () => {
     const response = await authGetCurrentUser();
     if (response.success && response.data) {
-      return { ...response.data, permissions: currentCapabilities?.permissions };
+      return {
+        ...response.data,
+        permissions: currentCapabilities?.permissions,
+      };
     }
     return undefined;
   };
@@ -183,7 +232,10 @@ export async function getInitialState(): Promise<{
   // 如果不是登录页面，执行
   const { location } = history;
   const currentPath = getRelativePath(location.pathname);
-  if (![loginPath, "/user/register"].includes(currentPath) && !isPublicQuoteRoute(location.pathname)) {
+  if (
+    ![loginPath, '/user/register'].includes(currentPath) &&
+    !isPublicQuoteRoute(location.pathname)
+  ) {
     const currentUser = await fetchUserInfo();
     if (!currentUser) {
       return {
@@ -196,7 +248,7 @@ export async function getInitialState(): Promise<{
     }
     const [dictDataMap, cloudStorageConfig] = await Promise.all([
       fetchDictDataMap(),
-      fetchCloudStorageConfig()
+      fetchCloudStorageConfig(),
     ]);
 
     return {
@@ -234,7 +286,6 @@ const normalizeRoutePath = (path?: string) => {
 };
 
 const transformToMenuData = (nodes: MenuTreeNode[] = []): MenuDataItem[] => {
-
   const toItem = (n: MenuTreeNode): MenuDataItem => {
     const item: MenuDataItem = {
       name: n.name,
@@ -282,7 +333,11 @@ export const layout: RunTimeLayoutConfig = ({
     onPageChange: () => {
       const { location } = history;
       const currentPath = getRelativePath(location.pathname);
-      if (!initialState?.currentUser && currentPath !== loginPath && !isPublicQuoteRoute(location.pathname)) {
+      if (
+        !initialState?.currentUser &&
+        currentPath !== loginPath &&
+        !isPublicQuoteRoute(location.pathname)
+      ) {
         history.push(loginPath);
       }
     },
@@ -293,40 +348,48 @@ export const layout: RunTimeLayoutConfig = ({
       const normalizedPath = normalizeRoutePath(route.path);
       const index = routes.indexOf(route);
       const isMiddle = index > 0 && index < routes.length - 1;
-      const canLink = isMiddle && normalizedPath.startsWith('/') && clickableRoutePaths.has(normalizedPath);
+      const canLink =
+        isMiddle &&
+        normalizedPath.startsWith('/') &&
+        clickableRoutePaths.has(normalizedPath);
 
-      return canLink ? <Link to={normalizedPath}>{label}</Link> : <span>{label}</span>;
+      return canLink ? (
+        <Link to={normalizedPath}>{label}</Link>
+      ) : (
+        <span>{label}</span>
+      );
     },
     bgLayoutImgList: [
       {
-        src: "https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr",
+        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr',
         left: 85,
         bottom: 100,
-        height: "303px",
+        height: '303px',
       },
       {
-        src: "https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/C2TWRpJpiC0AAAAAAAAAAAAAFl94AQBr",
+        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/C2TWRpJpiC0AAAAAAAAAAAAAFl94AQBr',
         bottom: -68,
         right: -45,
-        height: "303px",
+        height: '303px',
       },
       {
-        src: "https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/F6vSTbj8KpYAAAAAAAAAAAAAFl94AQBr",
+        src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/F6vSTbj8KpYAAAAAAAAAAAAAFl94AQBr',
         bottom: 0,
         left: 0,
-        width: "331px",
+        width: '331px',
       },
     ],
     links: (() => {
-      const isSuperAdmin = initialState?.currentUser?.roleCodes?.includes('super_admin')
-      const out: JSX.Element[] = []
+      const isSuperAdmin =
+        initialState?.currentUser?.roleCodes?.includes('super_admin');
+      const out: JSX.Element[] = [];
       // 共享的图标-文字布局：flex + 居中 + 间距 + 颜色，跟 ProLayout 默认 link 风格对齐。
       const linkStyle: React.CSSProperties = {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 6,
         whiteSpace: 'nowrap',
-      }
+      };
       if (isDev) {
         // 后端 Swagger UI：dev 下走 umi proxy(/api/** → :3000)，保持同源；
         // prod 下跟 /api 同站则继续工作，跨域需要后端 CORS 配置。
@@ -341,17 +404,21 @@ export const layout: RunTimeLayoutConfig = ({
             <ExternalLink size={16} strokeWidth={1.8} />
             <span>OpenAPI 文档</span>
           </Link>,
-        )
+        );
         if (isSuperAdmin) {
           out.push(
-            <Link key="module-management" to="/system/module-management" style={linkStyle}>
+            <Link
+              key="module-management"
+              to="/system/module-management"
+              style={linkStyle}
+            >
               <Package size={16} strokeWidth={1.8} />
               <span>模块管理</span>
             </Link>,
-          )
+          );
         }
       }
-      return out
+      return out;
     })(),
     menuHeaderRender: undefined,
     // 自定义 403 页面
@@ -401,9 +468,12 @@ export const request: RequestConfig = {
 
 const resolveFirstPath = (nodes: any[] = []): string => {
   if (!Array.isArray(nodes) || nodes.length === 0) return '/';
-  const isValid = (n: any) => n && n.status !== "0" && !n.isExternalLink && n.type !== 2 && !n.hideInMenu;
-  const getChildren = (n: any) => (Array.isArray(n?.children) ? n.children : []);
-  const pickFirst = (list: any[] = []) => (list || []).find(isValid) ?? (list || [])[0];
+  const isValid = (n: any) =>
+    n && n.status !== '0' && !n.isExternalLink && n.type !== 2 && !n.hideInMenu;
+  const getChildren = (n: any) =>
+    Array.isArray(n?.children) ? n.children : [];
+  const pickFirst = (list: any[] = []) =>
+    (list || []).find(isValid) ?? (list || [])[0];
   let current = pickFirst(nodes);
   while (current) {
     const children = (getChildren(current) || []).filter(isValid);
@@ -413,7 +483,8 @@ const resolveFirstPath = (nodes: any[] = []): string => {
     }
     break;
   }
-  const originalPath = typeof current?.path === "string" && current.path ? current.path : '/';
+  const originalPath =
+    typeof current?.path === 'string' && current.path ? current.path : '/';
   return originalPath;
 };
 
@@ -449,7 +520,9 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
     }
     // 如果rootRoute.children包含/, 则删除
     if (rootRoute.children.find((r: any) => r.path === '/')) {
-      rootRoute.children = rootRoute.children.filter((r: any) => r.path !== '/');
+      rootRoute.children = rootRoute.children.filter(
+        (r: any) => r.path !== '/',
+      );
     }
 
     // 后端 sys_menu 驱动的业务路由：单一真相源，无需在 routes.ts 重复声明。
@@ -462,14 +535,20 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
     // 线索），递归展开所有 path 叶子后追加到 rootRoute.children。helper
     // 内部按 path 去重，并与上述 existingPaths 联合去重。path-bearing 节
     // 点视为叶子（不递归下钻 routes），以保留 umi 的 layout route 嵌套语义。
-    for (const r of flattenPathlessDirectories<any>(dynamicRoutes, existingPaths)) {
+    for (const r of flattenPathlessDirectories<any>(
+      dynamicRoutes,
+      existingPaths,
+    )) {
       rootRoute.children.push(r);
     }
 
     const firstPath = resolveFirstPath(extraRoutes || []);
     if (firstPath !== '/') {
       rootRoute.children.unshift({
-        id: '/', path: '/', element: <Navigate to={firstPath} replace />, redirect: firstPath
+        id: '/',
+        path: '/',
+        element: <Navigate to={firstPath} replace />,
+        redirect: firstPath,
       });
     }
 
@@ -479,16 +558,20 @@ export function patchClientRoutes({ routes }: { routes: any[] }) {
     // 会出 race → 404。改成:dev 下始终挂路由,可见性靠 layout.links 包一层;
     // URL 直访会被 page 内的 super_admin 校验弹到 /404。
     if (isDev) {
-      const devPath = '/system/module-management'
+      const devPath = '/system/module-management';
       if (!existingPaths.has(devPath)) {
         rootRoute.children.push({
           id: 'dev-module-management',
           path: devPath,
           // 跟 menuTreeToRoutes 一样用 React.createElement 包一下,
           // 避免 umi 4 + React 19 把 lazy 函数当 Route children 渲染。
-          element: React.createElement(lazy(() => import('@yishan/core-system-admin/pages/module-management'))) as unknown as JSX.Element,
-        } as any)
-        existingPaths.add(devPath)
+          element: React.createElement(
+            lazy(
+              () => import('@yishan/core-system-admin/pages/module-management'),
+            ),
+          ) as unknown as JSX.Element,
+        } as any);
+        existingPaths.add(devPath);
       }
     }
 
@@ -510,7 +593,12 @@ export function render(oldRender: () => void) {
   Promise.all([getAuthorizedMenuTree(), appGetCapabilities()])
     .then(([res, capabilities]) => {
       currentCapabilities = capabilities.data;
-      extraRoutes = filterAvailableMenus(res.data || [], __INSTALLED_MODULE_IDS__, capabilities.data?.enabledModuleIds ?? [], key => resolveComponent(key) !== null);
+      extraRoutes = filterAvailableMenus(
+        res.data || [],
+        __INSTALLED_MODULE_IDS__,
+        capabilities.data?.enabledModuleIds ?? [],
+        (key) => resolveComponent(key) !== null,
+      );
       oldRender();
     })
     .catch((error: any) => {

@@ -11,7 +11,8 @@ export function toUserIdentity(user: SysUserResp): UserIdentity {
 
 export function createUserDirectory(runtime: SystemRuntime): UserDirectory {
   return {
-    findById: id => runtime.run(async () => { const user = await UserService.getUserById(id); return user ? toUserIdentity(user) : null }),
+    // 内部身份目录与批量读取保持一致；业务可见性由调用方授权，用户管理走受限 Service。
+    findById: id => runtime.run(async () => { const user = await UserService.getUserById(id, undefined, false); return user ? toUserIdentity(user) : null }),
     async findByIds(ids, options?: { includeDeleted?: boolean }) {
       if (ids.length === 0) return new Map()
       // History display can include deleted identities, without exposing private user fields.

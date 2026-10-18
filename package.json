@@ -59,7 +59,7 @@
   "license": "MIT",
   "packageManager": "pnpm@8.15.9",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=8.0.0"
   },
   "devDependencies": {

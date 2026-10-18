@@ -12,6 +12,11 @@ import systemMenu from '../config/system-menu.json'
  * 真 DB 写入由 seedDemo() 跑 pnpm db:seed 时覆盖，不进单元测试。
  */
 describe('system-menu.json', () => {
+  it('不再声明 AI 助手菜单：入口已改为全局右下角悬浮宿主', () => {
+    const flat = flattenMenuTree(systemMenu as AdminMenuNode[])
+    expect(flat.find(({ node }) => node.path === '/demo/ai-chat')).toBeUndefined()
+    expect(flat.flatMap(({ node }) => node.permissionCodes ?? []).filter((code) => code.startsWith('ai:'))).toEqual([])
+  })
   it('顶层是数组', () => {
     expect(Array.isArray(systemMenu)).toBe(true)
     expect(systemMenu.length).toBeGreaterThan(0)

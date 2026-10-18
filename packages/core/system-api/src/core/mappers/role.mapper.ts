@@ -25,6 +25,8 @@ type RoleDetailRow = RoleListRow & {
   menuIds: number[];
   appMenuIds: number[];
   permissionCodes: string[];
+  /** dataScope = "5"（自定义）时生效的授权部门，供角色表单回显。 */
+  deptIds: number[];
 };
 
 export class RoleMapper {
@@ -65,6 +67,7 @@ export class RoleMapper {
       menuIds: role.menuIds,
       appMenuIds: role.appMenuIds,
       permissionCodes: role.permissionCodes,
+      deptIds: role.deptIds,
     };
   }
 }

@@ -1,12 +1,11 @@
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
-import React, {
-  createContext,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { collectFormPrefills } from '../adapters/formRequests';
+import {
+  clearAiPrefill,
+  type AiPrefill,
+} from '@yishan/core-system-admin/ai-prefill';
 import { messageText, toolResults } from '../adapters/messages';
 import {
   type AiConversation,
@@ -29,42 +28,18 @@ import {
  * 全局展示状态。悬浮与全屏只是同一份聊天状态的两种外层布局，
  * 不做任何路由跳转，也不销毁 Provider。
  */
-export type AiViewMode = 'closed' | 'floating' | 'fullscreen';
+export {
+  AiChatContext,
+  type AiChatContextValue,
+  type AiViewMode,
+} from './chatContext';
 
-export interface AiChatContextValue {
-  authorized: boolean;
-  identity: string | null;
-  setIdentity: (identity: string | null) => void;
-  viewMode: AiViewMode;
-  setViewMode: (mode: AiViewMode) => void;
-  toggleFloating: () => void;
-  expand: () => void;
-  minimize: () => void;
-  conversations: AiConversation[];
-  activeId: string | null;
-  messages: UIMessage[];
-  draft: string;
-  setDraft: (draft: string) => void;
-  busy: boolean;
-  loading: boolean;
-  error: string;
-  clearError: () => void;
-  loadConversations: () => Promise<void>;
-  selectConversation: (id: string) => Promise<void>;
-  newConversation: () => void;
-  rename: (id: string, title: string) => Promise<boolean>;
-  removeConversation: (id: string) => Promise<void>;
-  send: (text: string) => Promise<void>;
-  regenerate: (messageId?: string) => Promise<void>;
-  retry: () => Promise<void>;
-  stop: () => Promise<void>;
-  /**
-   * 表单协作的**引用**。刻意不含表单状态：可见值只有原生表单一处（设计 §6）。
-   * Bridge 挂载后把自己接进来，Provider 只负责「本轮结果」「身份 epoch」「结果回执」。
-   */
-  formAssistance: AiFormAssistanceValue;
-}
-export const AiChatContext = createContext<AiChatContextValue | null>(null);
+import {
+  AiChatContext,
+  type AiChatContextValue,
+  type AiViewMode,
+} from './chatContext';
+
 const NEW_DRAFT = '$new';
 
 export function AiChatProvider({ children }: React.PropsWithChildren) {
@@ -92,8 +67,11 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
   // ---- 表单协作引用：只有「本轮结果 / 身份 epoch / 结果回执」，没有任何表单状态 ----
   const formHandlers = useRef<AiFormAssistanceHandlers | null>(null);
   /** 非空 = 本轮 stream 正在跑；历史消息重放/刷新时它是 null，因此不会自动开表单。 */
-  const turn = useRef<{ seen: Set<string> } | null>(null);
+  const turn = useRef<{ seen: Set<string>; identityEpoch: number } | null>(
+    null,
+  );
   const queued = useRef<FormUiRequest[]>([]);
+  const queuedPrefills = useRef<AiPrefill[]>([]);
   const [outcomes, setOutcomes] = useState<Record<string, DraftOutcome>>({});
 
   /**
@@ -135,18 +113,24 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
 
   const beginTurn = () => {
     // 先把历史里已有的 uiRequestId 记成见过，再开始收集本轮的。
-    turn.current = { seen: new Set() };
+    turn.current = { seen: new Set(), identityEpoch: epoch.current };
     collectDraftRequests(chatRef.current.messages, turn.current.seen);
+    collectFormPrefills(chatRef.current.messages, turn.current.seen);
+    queuedPrefills.current = [];
     queued.current = [];
   };
 
-  const endTurn = () => {
+  const endTurn = (version: number) => {
+    if (turn.current?.identityEpoch !== version) return;
     const batch = queued.current;
+    const prefills = operation.current?.cancelled ? [] : queuedPrefills.current;
+    queuedPrefills.current = [];
     const active = turn.current;
     turn.current = null;
     queued.current = [];
     if (!active) return;
     const handlers = formHandlers.current;
+    for (const prefill of prefills) handlers?.onPrefill?.(prefill);
     for (const request of batch) {
       // epoch 已经变了（换账号）就整批丢弃：旧身份的草稿不再驱动任何界面动作。
       if (request.identityEpoch !== epoch.current) continue;
@@ -154,22 +138,16 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     }
   };
 
-  const setOutcome = useCallback(
-    (draftId: string, outcome: DraftOutcome) => {
-      setOutcomes((values) => ({ ...values, [draftId]: outcome }));
-    },
-    [],
-  );
+  const setOutcome = useCallback((draftId: string, outcome: DraftOutcome) => {
+    setOutcomes((values) => ({ ...values, [draftId]: outcome }));
+  }, []);
 
-  const bindFormHandlers = useCallback(
-    (handlers: AiFormAssistanceHandlers) => {
-      formHandlers.current = handlers;
-      return () => {
-        if (formHandlers.current === handlers) formHandlers.current = null;
-      };
-    },
-    [],
-  );
+  const bindFormHandlers = useCallback((handlers: AiFormAssistanceHandlers) => {
+    formHandlers.current = handlers;
+    return () => {
+      if (formHandlers.current === handlers) formHandlers.current = null;
+    };
+  }, []);
 
   const requestRestore = useCallback((draftId: string) => {
     formHandlers.current?.onRestore(draftId);
@@ -185,6 +163,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     setOutcome,
     bindHandlers: bindFormHandlers,
     requestRestore,
+    requestPrefill: (request) => formHandlers.current?.onPrefill?.(request),
     flush: flushDraftSync,
   };
   // One transport and one useChat live above routes. The persisted conversation id is supplied per request.
@@ -216,6 +195,12 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     id: 'ai-chat',
     transport,
     onError: recordFailure,
+    onFinish: ({ message, isAbort, isError }) => {
+      if (!turn.current || isAbort || isError) return;
+      queuedPrefills.current.push(
+        ...collectFormPrefills([message], turn.current.seen),
+      );
+    },
   });
   const chatRef = useRef(chat);
   chatRef.current = chat;
@@ -248,6 +233,8 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     setViewMode('closed');
     setPending(false);
     setLoading(false);
+    queuedPrefills.current = [];
+    clearAiPrefill();
     // 身份变了：旧草稿的协作引用与回执一并清掉（设计 §7）。
     turn.current = null;
     queued.current = [];
@@ -391,7 +378,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
         recordFailure(cause);
       }
     } finally {
-      endTurn();
+      endTurn(version);
       if (version === epoch.current) {
         operation.current = null;
         locked.current = false;
@@ -426,7 +413,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     } catch (cause) {
       if (version === epoch.current) setError(chatError(cause));
     } finally {
-      endTurn();
+      endTurn(version);
       if (version === epoch.current) {
         operation.current = null;
         locked.current = false;
@@ -466,6 +453,8 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
           : values,
       );
       if (detail.messages.some((item) => item.id === userMessage.id)) {
+        if (turn.current)
+          collectFormPrefills(detail.messages, turn.current.seen);
         chat.setMessages(detail.messages);
         await chat.regenerate();
       } else {
@@ -480,7 +469,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     } catch (cause) {
       if (version === epoch.current) recordFailure(cause);
     } finally {
-      endTurn();
+      endTurn(version);
       if (version === epoch.current) {
         operation.current = null;
         locked.current = false;

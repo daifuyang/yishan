@@ -135,7 +135,7 @@ describe('multi-turn draft collection', () => {
     expect(data.missingFields.every((f: any) => f.mustCompleteInForm)).toBe(true)
     expect(data.missingFields.find((f: any) => f.name === 'password')).toMatchObject({ sensitive: true })
     // Task 9/10 绑定的渲染契约。
-    expect(result.render).toEqual({ kind: 'action.draft', payload: { draftId: data.draftId, draftVersion: data.draftVersion, uiRequestId: 'req-turn-1' } })
+    expect(result.render).toMatchObject({ kind: 'action.draft', payload: { draftId: data.draftId, draftVersion: data.draftVersion, uiRequestId: 'req-turn-1', interaction: { type: 'question', formKey: 'user.create', draftId: data.draftId, draftVersion: data.draftVersion } } })
     // 回执里出现「初始密码」这个**字段名**是对的（用户据此知道要在表单里填），
     // 但任何位置都不得出现密码的**值**——它连草稿都进不去。
     // 回执里只有**字段名**：值不进来，因此密码的字段名也只能来自 missingFields。

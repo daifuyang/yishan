@@ -19,6 +19,33 @@ const end = (text: string, finish = false) => textBlock(text) + (finish
   : '')
 
 describe('native ESM AI SDK 7 runtime', () => {
+  it('opens the direct reply stream with pending tool state before execution finishes', async () => {
+    configured()
+    let release!: () => void
+    const pending = new Promise<void>(resolve => { release = resolve })
+    const responsePromise = start({
+      messages: [{ id: 'u', role: 'user', parts: [{ type: 'text', text: '用户列表' }] }],
+      signal: new AbortController().signal,
+      execution: {
+        capabilities: [{ name: 'list_users' } as AiCapability],
+        execute: async () => { await pending; return { ok: true, result: { data: { items: [] }, summary: '查询完成' } } },
+      },
+      onEnd: async () => {},
+    })
+    try {
+      const response = await Promise.race([responsePromise, new Promise<undefined>(resolve => setTimeout(resolve, 100))])
+      expect(response).toBeInstanceOf(Response)
+      const reader = response!.body!.getReader()
+      let partial = ''
+      while (!partial.includes('tool-input-available')) {
+        const chunk = await reader.read()
+        partial += new TextDecoder().decode(chunk.value)
+      }
+      expect(partial).not.toContain('tool-output-available')
+      release()
+      while (!(await reader.read()).done) { /* consume remaining stream */ }
+    } finally { release() }
+  })
   it.each([true, false])('emits valid tool stream chunks and persists direct reply results (ok=%s)', async ok => {
     configured()
     const fetch = vi.fn()
@@ -72,12 +99,12 @@ describe('native ESM AI SDK 7 runtime', () => {
     expect(JSON.parse(posted)).toMatchObject({ model: 'test-model', max_tokens: 4096, stream: true })
   })
   it('states the native form assistance boundary: ask only what is missing, the password is typed in the form', () => {
-    expect(SYSTEM_PROMPT).toContain('原生表单协助')
-    expect(SYSTEM_PROMPT).toContain('只询问**当前还缺**的非敏感字段')
-    expect(SYSTEM_PROMPT).toContain('密码**由用户在表单中填写**')
+    expect(SYSTEM_PROMPT).toContain('原生表单')
+    expect(SYSTEM_PROMPT).toContain('每轮只填用户本轮提供或明确修改的字段')
+    expect(SYSTEM_PROMPT).toContain('密码、头像和附件由用户在原生表单里填写')
     // 「直接创建」「我确认了」必须被写成不构成授权。
-    expect(SYSTEM_PROMPT).toMatch(/不是授权/)
-    expect(SYSTEM_PROMPT).toContain('不能提交')
+    expect(SYSTEM_PROMPT).toContain('不能把聊天里的确认当成已经删除')
+    expect(SYSTEM_PROMPT).toContain('真正的校验、权限、字段联动、上传、提交和保存结果均由原生表单及既有业务 API 负责')
   })
   it('sends the current draft as a transient trailing system message, never as stored history', async () => {
     configured()
@@ -103,7 +130,7 @@ describe('native ESM AI SDK 7 runtime', () => {
     })
     await response.text()
     const body = JSON.parse(posted)
-    expect(JSON.stringify(body.system)).toContain('原生表单协助')
+    expect(JSON.stringify(body.system)).toContain('原生表单')
     // 草稿摘要进系统提示（Anthropic 端点不接受 role:system 的消息），但不进历史。
     expect(JSON.stringify(body.system)).toContain("username='zhangsan'")
     expect(JSON.stringify(body.system)).toContain('仍需向用户询问：手机号')
@@ -143,4 +170,67 @@ describe('native ESM AI SDK 7 runtime', () => {
     expect(saved?.metadata?.status).toBe('error')
     expect(stderr).not.toHaveBeenCalled()
   })
+})
+
+it('requires a real prefill tool before a create request can end with prose', async () => {
+  configured()
+  const calls: string[] = []
+  const choices: unknown[] = []
+  let requestCount = 0
+  vi.stubGlobal('fetch', async (_url: unknown, init: RequestInit) => {
+    const body = JSON.parse(String(init.body))
+    choices.push(body.tool_choice)
+    const choice = body.tool_choice?.name || (JSON.stringify(body.system).includes('下一步只调用 prepare_user_create') ? 'prepare_user_create' : undefined)
+    const name = choice || (requestCount === 0 ? 'get_user_create_form' : requestCount === 1 ? 'get_user_create_options' : undefined)
+    requestCount++
+    if (!name) return new Response(start_ + end('已为您打开新增用户表单', true), { headers: { 'content-type': 'text/event-stream' } })
+    const input = name === 'prepare_user_create' ? { username: 'zhangjie', realName: '张杰', nickname: '杰威尔' } : {}
+    return new Response(start_ + sse('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tool-' + requestCount, name, input: {} } }) + sse('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify(input) } }) + sse('content_block_stop', { type: 'content_block_stop', index: 0 }) + sse('message_delta', { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 1 } }) + sse('message_stop', { type: 'message_stop' }), { headers: { 'content-type': 'text/event-stream' } })
+  })
+  const response = await start({ messages: [{ id: 'create', role: 'user', parts: [{ type: 'text', text: '帮我增加一个用户，用户名叫张杰，昵称杰威尔' }] }], signal: new AbortController().signal, onEnd: async () => {}, execution: {
+    capabilities: ['get_user_create_form', 'get_user_create_options', 'prepare_user_create'].map(name => ({ name, description: name, inputSchema: { type: 'object', additionalProperties: true } }) as AiCapability),
+    execute: async (name, input) => { calls.push(name); return { ok: true, result: { data: {}, ...(name === 'prepare_user_create' ? { render: { kind: 'form.prefill', payload: { target: 'user.create', fields: input, missing: [] } } } : {}) } } },
+  } })
+  const output = await response.text()
+  expect(calls).toContain('prepare_user_create')
+  expect(output).toContain('form.prefill')
+  expect(choices).toContainEqual(expect.objectContaining({ type: 'any' }))
+})
+
+it.each(['创建用户有哪些必填字段？', '新增用户需要什么权限？'])('does not force open a form for a schema question: %s', async question => {
+ configured()
+ let posted: Record<string, unknown> = {}
+ vi.stubGlobal('fetch', async (_url: unknown, init: RequestInit) => {
+  posted = JSON.parse(String(init.body))
+  return new Response(start_ + end('这是字段说明。', true), {headers:{'content-type':'text/event-stream'}})
+ })
+ const response = await start({messages:[{id:'question',role:'user',parts:[{type:'text',text:question}]}],signal:new AbortController().signal,onEnd:async()=>{},execution:{
+  capabilities:['get_user_create_form','prepare_user_create'].map(name=>({name,description:name,inputSchema:{type:'object'}}) as AiCapability),
+  execute:async()=>({ok:false,error:'should not execute'}),
+ }})
+ await response.text()
+ expect(posted.tool_choice).not.toMatchObject({type:'tool'})
+})
+
+it('keeps registered read tools available when the provider returns a different read call than tool_choice', async () => {
+ configured()
+ let step=0
+ const executed: string[]=[]
+ vi.stubGlobal('fetch',async(_url:unknown,init:RequestInit)=>{
+  const body=JSON.parse(String(init.body))
+  const name=step===0?'get_user_create_form':step===1?'list_departments':step===2?'prepare_user_create':undefined
+  step++
+  if(!name)return new Response(start_+end('请在原生表单核对。',true),{headers:{'content-type':'text/event-stream'}})
+  if(step===2)expect(body.tools.map((tool:{name:string})=>tool.name)).toContain('list_departments')
+  const input=name==='prepare_user_create'?{nickname:'豆包'}:{}
+  return new Response(start_+sse('content_block_start',{type:'content_block_start',index:0,content_block:{type:'tool_use',id:'read-'+step,name,input:{}}})+sse('content_block_delta',{type:'content_block_delta',index:0,delta:{type:'input_json_delta',partial_json:JSON.stringify(input)}})+sse('content_block_stop',{type:'content_block_stop',index:0})+sse('message_delta',{type:'message_delta',delta:{stop_reason:'tool_use'},usage:{output_tokens:1}})+sse('message_stop',{type:'message_stop'}),{headers:{'content-type':'text/event-stream'}})
+ })
+ const response=await start({messages:[{id:'u',role:'user',parts:[{type:'text',text:'帮我创建一个用户，昵称豆包，部门开发岗位上海'}]}],signal:new AbortController().signal,onEnd:async()=>{},execution:{
+  capabilities:['get_user_create_form','get_user_create_options','prepare_user_create','list_departments'].map(name=>({name,description:name,inputSchema:{type:'object'}}) as AiCapability),
+  execute:async(name)=>{executed.push(name);return{ok:true,result:{data:{},...(name==='prepare_user_create'?{render:{kind:'form.prefill',payload:{target:'user.create',fields:{nickname:'豆包'},missing:[]}}}:{})}}},
+ }})
+ const output=await response.text()
+ expect(executed).toContain('list_departments')
+ expect(output).toContain('form.prefill')
+ expect(output).not.toContain('tool-output-error')
 })

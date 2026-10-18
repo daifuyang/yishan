@@ -41,7 +41,8 @@ export const defaultAuthProvider: AuthProvider = {
       : await UserTokenRepository.findByAccessToken(token);
     if (!record) return null;
 
-    const user = await UserService.getUserById(record.userId);
+    // 身份解析发生在数据范围上下文建立之前，目标 ID 只来自已验证的令牌。
+    const user = await UserService.getUserById(record.userId, undefined, false);
     if (!user) {
       throw new BusinessError(AuthErrorCode.TOKEN_INVALID, "当前用户不存在，请联系管理员处理。");
     }
@@ -53,7 +54,7 @@ export const defaultAuthProvider: AuthProvider = {
     const apiToken = await ApiTokenRepository.findByRawToken(token);
     if (!apiToken) return null;
 
-    const user = await UserService.getUserById(apiToken.userId);
+    const user = await UserService.getUserById(apiToken.userId, undefined, false);
     if (!user) {
       throw new BusinessError(AuthErrorCode.API_TOKEN_REVOKED, "API Token 关联用户不存在或已不可用。");
     }

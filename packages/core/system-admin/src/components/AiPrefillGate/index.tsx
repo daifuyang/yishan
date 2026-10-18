@@ -1,8 +1,14 @@
 import { Alert } from 'antd';
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   consumeAiPrefill,
   peekAiPrefill,
+  publishAiPrefillResult,
   subscribeAiPrefill,
   type AiPrefill,
   type AiPrefillTarget,
@@ -26,13 +32,19 @@ export interface AiPrefillGateProps {
     open: boolean;
     initialValues: Record<string, unknown>;
     missing: readonly string[];
+    requestId?: string;
     close: () => void;
   }) => React.ReactNode;
 }
 
-export const AiPrefillGate: React.FC<AiPrefillGateProps> = ({ target, mapFields, children }) => {
+export const AiPrefillGate: React.FC<AiPrefillGateProps> = ({
+  target,
+  mapFields,
+  children,
+}) => {
   const [prefill, setPrefill] = useState<AiPrefill | null>(null);
   const [open, setOpen] = useState(false);
+  const active = useRef(false);
 
   // 订阅只在「本页确实存在待处理预填」时才需要；用快照避免额外渲染。
   useSyncExternalStore(subscribeAiPrefill, peekAiPrefill, peekAiPrefill);
@@ -41,6 +53,16 @@ export const AiPrefillGate: React.FC<AiPrefillGateProps> = ({ target, mapFields,
     const consume = () => {
       const next = consumeAiPrefill(target);
       if (!next) return;
+      if (active.current) {
+        if (next.requestId)
+          publishAiPrefillResult({
+            requestId: next.requestId,
+            status: 'failed',
+            message: '请先保存或关闭当前表单，再打开另一条记录。',
+          });
+        return;
+      }
+      active.current = true;
       setPrefill(next);
       setOpen(true);
     };
@@ -51,7 +73,9 @@ export const AiPrefillGate: React.FC<AiPrefillGateProps> = ({ target, mapFields,
   }, [target]);
 
   if (!prefill) return null;
-  const fields = mapFields ? mapFields({ ...prefill.fields }) : { ...prefill.fields };
+  const fields = mapFields
+    ? mapFields({ ...prefill.fields })
+    : { ...prefill.fields };
   return (
     <>
       {prefill.missing.length > 0 && (
@@ -68,7 +92,9 @@ export const AiPrefillGate: React.FC<AiPrefillGateProps> = ({ target, mapFields,
         open,
         initialValues: fields,
         missing: prefill.missing,
+        requestId: prefill.requestId,
         close: () => {
+          active.current = false;
           setOpen(false);
           setPrefill(null);
         },

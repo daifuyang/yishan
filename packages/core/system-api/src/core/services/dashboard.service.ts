@@ -5,12 +5,13 @@ import { DeptRepository } from "../repositories/dept.repository.js";
 import { LoginLogRepository } from "../repositories/login-log.repository.js";
 import { DashboardStats } from "../schemas/dashboard.js";
 
-const dashboardCacheKey = () => `${currentSystemRuntime().config.cacheNamespace}:dashboard:stats`;
+const dashboardCacheKey = () => `${currentSystemRuntime().config.cacheNamespace}:dashboard:stats:v2`;
 const DASHBOARD_STATS_CACHE_TTL = 30;
 
 export class DashboardService {
   static async getStats(fastify?: FastifyInstance): Promise<DashboardStats> {
-    if (fastify?.redis) {
+    const cacheable = await UserRepository.dataScopeCondition(true) === undefined;
+    if (fastify?.redis && cacheable) {
       try {
         const cached = await fastify.redis.get(dashboardCacheKey());
         if (cached) {
@@ -39,7 +40,7 @@ export class DashboardService {
       online,
     };
 
-    if (fastify?.redis) {
+    if (fastify?.redis && cacheable) {
       try {
         await fastify.redis.setex(
           dashboardCacheKey(),

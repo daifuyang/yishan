@@ -53,7 +53,7 @@ export type CreateDeptReq = Static<typeof CreateDeptReqSchema>;
 export type UpdateDeptReq = Static<typeof UpdateDeptReqSchema>;
 
 // 部门列表查询参数 Schema
-const DeptListQuerySchema = Type.Object(
+export const DeptListQuerySchema = Type.Object(
   {
     ...PaginationQuerySchema.properties,
     keyword: Type.Optional(Type.String({ description: "搜索关键词（名称、描述）" })),

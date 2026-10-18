@@ -9,6 +9,9 @@ export interface DepartmentFormProps {
   trigger?: React.JSX.Element;
   initialValues?: Partial<SystemAPI.sysDept>;
   onFinish?: () => Promise<void>;
+  /** 受控开关。AI 预填命中时用它直接弹表单，此时不需要 trigger。 */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const topDepartment = {
@@ -29,6 +32,8 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
     status: '1'
   },
   onFinish,
+  open,
+  onOpenChange,
 }) => {
   const formRef = useRef<any>(undefined);
 
@@ -36,7 +41,7 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
   const dictDataMap = initialState?.dictDataMap || {};
   const defaultStatusDict: Array<{ label: string; value: string }> = dictDataMap.default_status || [];
 
-  if (!trigger) return null;
+  if (!trigger && open === undefined) return null;
 
   return (
       <ModalForm
@@ -44,12 +49,14 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
         width={520}
         title={title}
         trigger={trigger}
-        modalProps={{ destroyOnClose: true, maskClosable: false }}
+        open={open}
+        modalProps={{ destroyOnHidden: true, mask: { closable: false } }}
         autoFocusFirstInput
         grid
         initialValues={initialValues}
-        onOpenChange={(open) => {
-          if (open && initialValues?.id) {
+        onOpenChange={(nextOpen) => {
+          onOpenChange?.(nextOpen);
+          if (nextOpen && initialValues?.id) {
             getDeptDetail({ id: Number(initialValues.id) }).then((res) => {
               if (res.success && res.data) {
                 formRef.current?.setFieldsValue(res.data as any);

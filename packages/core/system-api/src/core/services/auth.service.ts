@@ -201,8 +201,9 @@ export class AuthService {
         throw new BusinessError(AuthErrorCode.REFRESH_TOKEN_INVALID, '无效的用户ID');
       }
 
-      // 根据用户ID获取最新用户信息
-      const user = await UserRepository.findById(userId);
+      // 根据用户ID获取最新用户信息。刷新令牌自身尚未建立请求身份，
+      // 因此这是明确的免过滤路径（enforceScope=false），不走行级范围。
+      const user = await UserRepository.findById(userId, undefined, false);
 
       if (!user) {
         throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");

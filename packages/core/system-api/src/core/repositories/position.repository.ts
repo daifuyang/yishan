@@ -8,6 +8,7 @@
 import { aliasedTable, and, asc, desc, eq, isNull, like, or, sql, type SQL } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysPost, sysUser } from "@/db/schema";
+
 import { dateUtils } from "../../utils/date.js";
 import { clampOffset } from "./_pagination.js";
 
@@ -59,8 +60,10 @@ export interface UpdatePositionInput {
 // Helpers
 // ============================================================================
 
-function buildPositionWhere(opts: { keyword?: string; status?: number }): SQL | undefined {
+function buildPositionWhere(opts: { keyword?: string; status?: number; dataScope?: SQL }): SQL | undefined {
   const conds: SQL[] = [isNull(sysPost.deletedAt)];
+  // sys_post 无部门列，不施加行级数据范围（见 SysPositionRepository.dataScopeCondition）。
+  if (opts.dataScope) conds.push(opts.dataScope);
   if (opts.keyword) {
     const like_ = `%${opts.keyword}%`;
     conds.push(or(like(sysPost.name, like_), like(sysPost.description, like_))!);
@@ -116,11 +119,24 @@ async function fetchPositionRowById(id: number, db: AppQueryDb = drizzleDb): Pro
 // ============================================================================
 
 export class SysPositionRepository {
+  /**
+   * 岗位**不施加**行级数据范围。
+   *
+   * `sys_post` 没有 dept 列，无法表达「本部门岗位」这类档位。此前按「仅创建人」
+   * 降级会让所有普通管理员在用户表单里看不到任何岗位。
+   * RuoYi 能给 sys_post 加 `@DataScope` 正是因为它带 dept_id；本仓库没有该列，
+   * 因此不发明降级规则。补 dept_id 需要配套迁移，属于待确认的产品规则。
+   */
+  static async dataScopeCondition(): Promise<SQL | undefined> {
+    return undefined
+  }
+
   static async list(query: PositionListQuery): Promise<{ rows: PositionRow[]; total: number }> {
     const { page = 1, pageSize = 10, keyword, status, sortBy = "sortOrder", sortOrder = "asc" } = query;
     const where = buildPositionWhere({
       keyword,
       status: status !== undefined ? (typeof status === "string" ? parseInt(status, 10) : status) : undefined,
+      dataScope: await SysPositionRepository.dataScopeCondition(),
     });
     const dir = sortOrder === "asc" ? asc : desc;
     const orderCol = resolvePositionOrderColumn(sortBy);

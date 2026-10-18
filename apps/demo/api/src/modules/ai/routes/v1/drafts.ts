@@ -95,7 +95,7 @@ export default (async app => {
   route.post<{ Params: { id: string }; Body: ActionDraftCreateTransportBody }>(
     '/conversations/:id/drafts',
     { access, schema: { tags: ['ai'], summary: '创建表单草稿', operationId: 'aiActionDraftCreate', params: AiIdParamsSchema, body: ActionDraftCreateTransportBodySchema, response: { 200: ActionDraftResponseSchema } } },
-    async (request, reply) => ResponseUtil.success(reply, serialize(await service.create(request.currentUser.id, request.params.id, request.body))),
+    async (request, reply) => ResponseUtil.success(reply, serialize(await service.create(request.currentUser.id, request.params.id, { ...request.body, subject: { actorId: request.currentUser.id, tokenScope: request.tokenScope } }))),
   )
 
   route.get<ConversationParams>(
@@ -113,7 +113,7 @@ export default (async app => {
   route.patch<DraftIdParams & { Body: ActionDraftPatchTransportBody }>(
     '/drafts/:draftId',
     { access, schema: { tags: ['ai'], summary: '按字段补丁更新草稿', operationId: 'aiActionDraftPatch', params: ActionDraftIdParamsSchema, body: ActionDraftPatchTransportBodySchema, response: { 200: ActionDraftResponseSchema } } },
-    async (request, reply) => ResponseUtil.success(reply, serialize(await service.patch(request.currentUser.id, request.params.draftId, request.body.draftVersion, request.body.formData))),
+    async (request, reply) => ResponseUtil.success(reply, serialize(await service.patch(request.currentUser.id, request.params.draftId, request.body.draftVersion, request.body.formData, { subject: { actorId: request.currentUser.id, tokenScope: request.tokenScope } }))),
   )
 
   route.post<DraftIdParams & { Body: { draftVersion: number } }>(

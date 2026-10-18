@@ -330,6 +330,29 @@ export const sysUserRole = mysqlTable(
   })
 )
 
+/**
+ * 角色 ↔ 自定义数据范围部门映射（sys_role.data_scope = 5 时生效）。
+ *
+ * data_scope 1~4 档只需要「角色自己的部门 + 部门树 + 本人」，无需额外存储；
+ * 只有第 5 档「自定义」必须显式指定允许访问的部门集合，此前无处落库。
+ */
+export const sysRoleDept = mysqlTable(
+  'sys_role_dept',
+  {
+  id: int('id').primaryKey().autoincrement().notNull(),
+  roleId: int('role_id').notNull(),
+  deptId: int('dept_id').notNull(),
+  createdAt: datetime('created_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
+  deletedAt: datetime('deleted_at', { mode: 'date' }),
+  },
+  (t) => ({
+    idxRoleDeptRoleId: index('idx_role_dept_role_id').on(t.roleId),
+    idxRoleDeptDeptId: index('idx_role_dept_dept_id').on(t.deptId),
+    uniqRoleDept: uniqueIndex('uniq_role_dept').on(t.roleId, t.deptId),
+  })
+)
+
 export const sysUserDept = mysqlTable(
   'sys_user_dept',
   {

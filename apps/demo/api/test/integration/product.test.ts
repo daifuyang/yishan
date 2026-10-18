@@ -144,6 +144,40 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
         expect(audits).toHaveLength(9)
         expect(audits.every(row => row.execution_status === 'success')).toBe(true)
       })
+      // Structured collection uses only drafts until the final protected business request.
+      const formDefinition = await app.inject({ url: '/api/v1/admin/users/create-form', headers })
+      expect(formDefinition.statusCode, formDefinition.body).toBe(200)
+      expect(formDefinition.json().data.fields).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'password', sensitive: true })]))
+      const candidatesResponse = await app.inject({ url: '/api/v1/admin/users/create-options', headers })
+      expect(candidatesResponse.statusCode, candidatesResponse.body).toBe(200)
+      const candidates = candidatesResponse.json<{ data: { departments: { id: number }[]; roles: { id: number }[] } }>().data
+      const interactionConversation = await app.inject({ method: 'POST', url: chatUrl, headers })
+      const interactionConversationId = interactionConversation.json<{ data: { id: string } }>().data.id
+      const prepared = await app.inject({ method: 'POST', url: chatUrl + '/' + interactionConversationId + '/drafts', headers,
+        payload: { module: 'system', action: 'user.create', formData: { username: 'ai_interactive_user', phone: '17625458588', realName: '周杰伦', nickname: '阿伦' } } })
+      expect(prepared.statusCode, prepared.body).toBe(200)
+      const preparedDraft = prepared.json<{ data: { draftId: string; draftVersion: number } }>().data
+      const answered = await app.inject({ method: 'PATCH', url: '/api/ai/v1/drafts/' + preparedDraft.draftId, headers,
+        payload: { draftVersion: preparedDraft.draftVersion, formData: { deptIds: candidates.departments.slice(0, 1).map(item => item.id), roleIds: candidates.roles.slice(0, 1).map(item => item.id) } } })
+      expect(answered.statusCode, answered.body).toBe(200)
+      const reviewDraft = answered.json<{ data: { draftId: string; draftVersion: number; formData: Record<string, unknown> } }>().data
+      const [beforeConfirm] = await database.pool.query<CountRow[]>('SELECT COUNT(*) AS count FROM sys_user WHERE username = ?', ['ai_interactive_user'])
+      expect(Number(beforeConfirm[0].count)).toBe(0)
+      expect(reviewDraft.formData).not.toHaveProperty('password')
+      expect(reviewDraft.formData).not.toHaveProperty('avatar')
+      const finalPayload = { ...reviewDraft.formData, password: 'InteractiveLocal123', avatar: '/uploads/test-avatar.png', draftSubmission: { draftId: reviewDraft.draftId, draftVersion: reviewDraft.draftVersion } }
+      const confirmed = await app.inject({ method: 'POST', url: '/api/v1/admin/users', headers, payload: finalPayload })
+      expect(confirmed.statusCode, confirmed.body).toBe(200)
+      const confirmedUser = confirmed.json<{ data: { id: number; avatar: string } }>().data
+      expect(confirmedUser.avatar).toBe('/uploads/test-avatar.png')
+      const replayed = await app.inject({ method: 'POST', url: '/api/v1/admin/users', headers, payload: finalPayload })
+      expect(replayed.statusCode, replayed.body).toBe(200)
+      expect(replayed.json().data.id).toBe(confirmedUser.id)
+      const [afterConfirm] = await database.pool.query<CountRow[]>('SELECT COUNT(*) AS count FROM sys_user WHERE username = ?', ['ai_interactive_user'])
+      expect(Number(afterConfirm[0].count)).toBe(1)
+      const receipt = await app.inject({ url: '/api/ai/v1/drafts/' + preparedDraft.draftId, headers })
+      expect(receipt.json().data.status).toBe('completed')
+      expect(JSON.stringify(receipt.json())).not.toContain('InteractiveLocal123')
       const chatRenamed = await app.inject({ method: 'PATCH', url: `${chatUrl}/${chatId}`, headers, payload: { title: '持久化验收' } })
       expect(chatRenamed.json().data.title).toBe('持久化验收')
       expect((await app.inject({ url: chatUrl, headers })).json().data.items).toEqual(expect.arrayContaining([expect.objectContaining({ id: chatId, title: '持久化验收' })]))

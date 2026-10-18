@@ -22,15 +22,19 @@ import {
 import zhCN from '@ant-design/x/es/locale/zh_CN';
 import XMarkdown, { type ComponentProps } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/themes/light.css';
-import { Alert, Button, Collapse, Flex, Spin, theme } from 'antd';
+import { Alert, Button, Flex, Spin, theme } from 'antd';
 import { createStyles } from 'antd-style';
 import React, { useEffect, useState } from 'react';
 import {
   normalizeCodeLanguage,
   toBubbleItems,
   toolResults,
+  visibleAssistantText,
 } from '../adapters/messages';
 import { useAiChat } from '../hooks/useAiChat';
+import { useLiveReplyIds } from '../hooks/useLiveReplyIds';
+import { useTypewriterText } from '../hooks/useTypewriterText';
+import { AiMessageProgress } from './AiMessageProgress';
 import { AiToolResultCard, type ToolResultPayload } from './AiToolResultCard';
 import { ConversationList } from './ConversationList';
 
@@ -108,10 +112,14 @@ const markdownComponents = { code: MarkdownCode, pre: MarkdownPre };
 function MarkdownReply({
   content,
   streaming,
+  animate = false,
 }: {
   content: string;
   streaming: boolean;
+  animate?: boolean;
 }) {
+  const displayed = useTypewriterText(content, animate);
+  const hasNextChunk = streaming || displayed.pending;
   const { token } = theme.useToken();
   const style: React.CSSProperties & Record<`--${string}`, string | number> = {
     '--font-size': `${token.fontSize}px`,
@@ -131,10 +139,10 @@ function MarkdownReply({
     <XMarkdown
       className="x-markdown-light"
       style={style}
-      content={content}
+      content={displayed.text}
       escapeRawHtml
       components={markdownComponents}
-      streaming={{ hasNextChunk: streaming }}
+      streaming={{ hasNextChunk, tail: hasNextChunk }}
     />
   );
 }
@@ -193,6 +201,12 @@ export function AiChatView({
   headerProps?: React.HTMLAttributes<HTMLDivElement>;
 }) {
   const chat = useAiChat();
+  const liveReplyIds = useLiveReplyIds(
+    chat.messages,
+    chat.busy,
+    chat.loading,
+    chat.activeId,
+  );
   const { styles } = useStyles();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -200,52 +214,77 @@ export function AiChatView({
     void chat.loadConversations();
   }, [chat.authorized]);
   const lastMessage = chat.messages.at(-1);
+  const latestInteraction = new Map<string, string>();
+  for (const message of chat.messages) {
+    for (const result of toolResults(message)) {
+      const render = result.output.render as
+        | { payload?: { draftId?: string; interaction?: unknown } }
+        | undefined;
+      if (render?.payload?.interaction && render.payload.draftId)
+        latestInteraction.set(render.payload.draftId, result.toolCallId);
+    }
+  }
   const items = toBubbleItems(chat.messages, chat.busy).map((item) => {
     const message = chat.messages.find((entry) => entry.id === item.key);
     const results =
-      item.role === 'assistant' && message ? toolResults(message) : [];
+      item.role === 'assistant' && message
+        ? toolResults(message).filter((result) => {
+            const render = result.output.render as
+              | { payload?: { draftId?: string; interaction?: unknown } }
+              | undefined;
+            return (
+              !render?.payload?.interaction ||
+              !render.payload.draftId ||
+              latestInteraction.get(render.payload.draftId) ===
+                result.toolCallId
+            );
+          })
+        : [];
     const hasStructuredResult = results.some(
       (result) => result.output.ok === true && result.output.render,
     );
     return {
       ...item,
       loading: item.loading && results.length === 0,
-      ...(hasStructuredResult
+      ...(item.role === 'assistant'
         ? {
-            contentRender: (text: string) =>
-              text.trim() &&
-              text.trim() !== '已处理。' &&
-              !results.some(
-                (result) => result.output.summary === text.trim(),
-              ) ? (
-                <Collapse
-                  ghost
-                  size="small"
-                  items={[
-                    {
-                      key: 'explanation',
-                      label: '补充说明',
-                      children: (
-                        <MarkdownReply
-                          content={text}
-                          streaming={item.streaming === true}
-                        />
-                      ),
-                    },
-                  ]}
+            // 只**去掉与卡片重复的那一句**：工具的 summary 卡片上已经原样显示，
+            // 再重复一遍就是同一份数据出现两次。模型的对话正文必须照常显示 ——
+            // 曾经把整段正文折进「补充说明」，于是「收到，我先存草稿」「后端查询异常」
+            // 这些真正对用户说的话全部藏起来，助手看上去一声不吭。
+            contentRender: (text: string) => {
+              const visible = hasStructuredResult
+                ? visibleAssistantText(
+                    text,
+                    results.map(
+                      (result) => result.output.summary as string | undefined,
+                    ),
+                  )
+                : text;
+              return visible ? (
+                <MarkdownReply
+                  content={visible}
+                  streaming={item.streaming === true}
+                  animate={liveReplyIds.has(String(item.key))}
                 />
-              ) : null,
+              ) : null;
+            },
           }
         : {}),
       header: (() => {
         // 结果始终由卡片展示，模型的补充解释默认折叠，避免同一份数据出现两张表。
         if (item.role !== 'assistant') return undefined;
-        if (!results.length) return undefined;
+        if (!message) return undefined;
         return (
           <Flex vertical gap={8} style={{ width: '100%' }}>
+            <AiMessageProgress
+              message={message}
+              streaming={item.streaming === true}
+            />
             {results.map((result) => (
               <AiToolResultCard
                 key={result.toolCallId}
+                requestId={result.toolCallId}
                 payload={result.output as unknown as ToolResultPayload}
               />
             ))}
@@ -422,6 +461,7 @@ export function AiChatView({
                   </Flex>
                 ) : items.length ? (
                   <Bubble.List
+                    key={chat.activeId || '$new'}
                     autoScroll
                     style={{
                       maxWidth: 900,

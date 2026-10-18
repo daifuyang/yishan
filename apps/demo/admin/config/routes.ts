@@ -36,6 +36,11 @@ export default [
     path: '/account/api-tokens',
     redirect: '/account/center',
   },
+  // AI 助手已改为右下角全局悬浮入口，旧书签不再有独立页面；避免直接 404。
+  {
+    path: '/demo/ai-chat',
+    redirect: '/',
+  },
   {
     path: '/',
     component: './index',

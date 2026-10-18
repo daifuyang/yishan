@@ -5,6 +5,7 @@
 import { and, asc, desc, eq, getTableColumns, gte, isNotNull, isNull, like, lte, or, sql, type SQL } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
 import { sysLoginLog } from "@/db/schema";
+import { currentDataScope, isDataScopeBypassed, resolveDataScope, userIdInScopeCondition } from "@/core/auth/data-scope";
 import { dateUtils } from "../../utils/date.js";
 import { clampOffset } from "./_pagination.js";
 import type { LoginLogListRow, LoginLogDetailRow } from "../mappers/login-log.mapper.js";
@@ -34,18 +35,21 @@ const { deletedAt, ...loginLogPublicColumns } = getTableColumns(sysLoginLog);
 // ============================================================================
 
 /**
- * Single detail-query helper shared by the unconstrained admin lookup and the
- * user-scoped "my login log" lookup. `userId` is optional: when omitted the
- * `and(...)` gains no extra condition, so the existing admin paths are
- * unaffected.
+ * Single detail-query helper shared by the admin lookup and the user-scoped
+ * "my login log" lookup. `userId` pins to one user; `dataScope` applies the
+ * caller's row-level range. Both are optional but a caller that omits *both*
+ * is an unconstrained read — `findById` refuses that and always supplies the
+ * range, so a detail lookup can't be used to walk around the list filter.
  */
 async function fetchLoginLogDetail(
   id: number,
   db: AppQueryDb = drizzleDb,
   userId?: number,
+  dataScope?: SQL,
 ): Promise<LoginLogDetailRow | null> {
   const conds: SQL[] = [eq(sysLoginLog.id, id), isNull(sysLoginLog.deletedAt)];
   if (userId !== undefined) conds.push(eq(sysLoginLog.userId, userId));
+  if (dataScope) conds.push(dataScope);
   const [row] = await db
     .select(loginLogPublicColumns)
     .from(sysLoginLog)
@@ -59,8 +63,14 @@ function buildLoginLogWhere(opts: {
   status?: number;
   startTime?: Date;
   endTime?: Date;
+  dataScope?: SQL;
 }): SQL | undefined {
   const conds: SQL[] = [isNull(sysLoginLog.deletedAt)];
+  // 行级数据范围：登录日志以 user_id 关联到用户，按「范围内用户」收敛。
+  // user_id 为空的行（用户名不存在导致的失败登录）天然被 IN 排除。
+  if (opts.dataScope) {
+    conds.push(opts.dataScope);
+  }
   if (opts.keyword) {
     const like_ = `%${opts.keyword}%`;
     conds.push(
@@ -124,7 +134,13 @@ export class LoginLogRepository {
       sortOrder = "desc",
     } = query;
 
-    const where = buildLoginLogWhere({ keyword, status, startTime, endTime });
+    const where = buildLoginLogWhere({
+      keyword,
+      status,
+      startTime,
+      endTime,
+      dataScope: await LoginLogRepository.dataScopeCondition(),
+    });
 
     const dir = sortOrder === "asc" ? asc : desc;
     const orderCol = resolveLoginLogOrderColumn(sortBy);
@@ -137,13 +153,35 @@ export class LoginLogRepository {
     return rows;
   }
 
+  /**
+   * 登录日志的行级范围条件。
+   *
+   * 与列表共用同一解析结果：登录日志本身就是「谁登录了什么」，
+   * 一个部门管理员看到本部门之外谁的登录记录，没有业务上的道理。
+   *
+   * 用 `user_id in (select ...)` 而不是把子查询塞进 `=`：范围内的用户是多行时，
+   * 标量比较在 MySQL 下会直接报 `Operand should contain 1 column`。
+   */
+  static async dataScopeCondition(): Promise<SQL | undefined> {
+    const subject = currentDataScope()
+    if (!subject && !isDataScopeBypassed()) {
+      // 缺上下文的业务查询 fail closed，而不是静默放开。
+      return sql`1 = 0`
+    }
+    if (!subject) return undefined
+    return userIdInScopeCondition(await resolveDataScope(subject), sysLoginLog.userId)
+  }
+
   static async count(query: {
     keyword?: string;
     status?: number;
     startTime?: Date;
     endTime?: Date;
   } = {}): Promise<number> {
-    const where = buildLoginLogWhere(query);
+    const where = buildLoginLogWhere({
+      ...query,
+      dataScope: await LoginLogRepository.dataScopeCondition(),
+    });
     const [row] = await drizzleDb
       .select({ c: sql<number>`count(*)` })
       .from(sysLoginLog)
@@ -151,8 +189,9 @@ export class LoginLogRepository {
     return Number(row?.c ?? 0);
   }
 
+  /** 管理端详情。与列表同一行级范围：范围外的记录返回 null（不区分「不存在」与「不是你的」）。 */
   static async findById(id: number): Promise<LoginLogDetailRow | null> {
-    return fetchLoginLogDetail(id);
+    return fetchLoginLogDetail(id, drizzleDb, undefined, await LoginLogRepository.dataScopeCondition());
   }
 
   /**
@@ -232,6 +271,7 @@ export class LoginLogRepository {
           gte(sysLoginLog.createdAt, since),
           isNotNull(sysLoginLog.userId),
           isNull(sysLoginLog.deletedAt),
+          await LoginLogRepository.dataScopeCondition(),
         ),
       );
     return Number(row?.c ?? 0);

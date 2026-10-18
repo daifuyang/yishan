@@ -1,13 +1,23 @@
-import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { SystemAdminProvider } from '@yishan/core-system-admin';
-import UserList from '@yishan/core-system-admin/pages/user';
+import {
+  setAiPrefill,
+  subscribeAiPrefillResults,
+} from '@yishan/core-system-admin/ai-prefill';
 import {
   clearUserCreateFormHandle,
   peekUserCreateFormHandle,
   registerUserCreateFormHandle,
 } from '@yishan/core-system-admin/form-assistance';
-import { setAiPrefill } from '@yishan/core-system-admin/ai-prefill';
+import UserList from '@yishan/core-system-admin/pages/user';
+import React from 'react';
 
 /**
  * Task 7 行为测试：助手协作的是**同一个原生 UserForm**。
@@ -62,19 +72,104 @@ const CREATE_FORM = {
   schemaVersion: 1,
   defaults: {},
   editableFields: EDITABLE_FIELDS,
-  missingFields: [{ name: 'password', label: '初始密码', required: true, sensitive: true, mustCompleteInForm: true }],
+  missingFields: [
+    {
+      name: 'password',
+      label: '初始密码',
+      required: true,
+      sensitive: true,
+      mustCompleteInForm: true,
+    },
+  ],
   fields: [
-    { name: 'username', label: '登录名称', required: false, sensitive: false, selector: 'text', constraints: {} },
-    { name: 'phone', label: '手机号码', required: true, sensitive: false, selector: 'text', constraints: { maxLength: 11 } },
-    { name: 'email', label: '邮箱', required: false, sensitive: false, selector: 'email', constraints: {} },
-    { name: 'realName', label: '真实姓名', required: false, sensitive: false, selector: 'text', constraints: {} },
-    { name: 'nickname', label: '用户昵称', required: false, sensitive: false, selector: 'text', constraints: {} },
-    { name: 'password', label: '用户密码', required: true, sensitive: true, selector: 'password', constraints: {} },
-    { name: 'gender', label: '用户性别', required: false, sensitive: false, selector: 'enum', constraints: { enum: ['0', '1', '2'] } },
-    { name: 'status', label: '状态', required: false, sensitive: false, selector: 'enum', constraints: { enum: ['0', '1', '2'] } },
-    { name: 'birthDate', label: '出生日期', required: false, sensitive: false, selector: 'date', constraints: {} },
-    { name: 'deptIds', label: '归属部门', required: false, sensitive: false, selector: 'deptTree', constraints: {} },
-    { name: 'roleIds', label: '角色', required: false, sensitive: false, selector: 'roleOptions', constraints: {} },
+    {
+      name: 'username',
+      label: '登录名称',
+      required: false,
+      sensitive: false,
+      selector: 'text',
+      constraints: {},
+    },
+    {
+      name: 'phone',
+      label: '手机号码',
+      required: true,
+      sensitive: false,
+      selector: 'text',
+      constraints: { maxLength: 11 },
+    },
+    {
+      name: 'email',
+      label: '邮箱',
+      required: false,
+      sensitive: false,
+      selector: 'email',
+      constraints: {},
+    },
+    {
+      name: 'realName',
+      label: '真实姓名',
+      required: false,
+      sensitive: false,
+      selector: 'text',
+      constraints: {},
+    },
+    {
+      name: 'nickname',
+      label: '用户昵称',
+      required: false,
+      sensitive: false,
+      selector: 'text',
+      constraints: {},
+    },
+    {
+      name: 'password',
+      label: '用户密码',
+      required: true,
+      sensitive: true,
+      selector: 'password',
+      constraints: {},
+    },
+    {
+      name: 'gender',
+      label: '用户性别',
+      required: false,
+      sensitive: false,
+      selector: 'enum',
+      constraints: { enum: ['0', '1', '2'] },
+    },
+    {
+      name: 'status',
+      label: '状态',
+      required: false,
+      sensitive: false,
+      selector: 'enum',
+      constraints: { enum: ['0', '1', '2'] },
+    },
+    {
+      name: 'birthDate',
+      label: '出生日期',
+      required: false,
+      sensitive: false,
+      selector: 'date',
+      constraints: {},
+    },
+    {
+      name: 'deptIds',
+      label: '归属部门',
+      required: false,
+      sensitive: false,
+      selector: 'deptTree',
+      constraints: {},
+    },
+    {
+      name: 'roleIds',
+      label: '角色',
+      required: false,
+      sensitive: false,
+      selector: 'roleOptions',
+      constraints: {},
+    },
   ],
 };
 
@@ -94,44 +189,56 @@ const LIST_ROW = {
 beforeEach(() => {
   mockRequest.mockReset();
   clearUserCreateFormHandle();
-  mockRequest.mockImplementation(async (
-    url: string,
-    options?: { params?: Record<string, unknown>; method?: string },
-  ) => {
-    const params = options?.params ?? {};
-    if (String(url).includes('/create-form')) return { success: true, data: CREATE_FORM };
-    // 部门树：手改路径要在真实 TreeSelect 上点一个部门，因此必须真的有节点。
-    if (String(url).includes('/dept') && String(url).includes('tree')) {
-      return { success: true, data: [{ id: 1, name: '总部', parentId: 0 }] };
-    }
-    if (String(url).includes('/create-options')) {
-      const rawDeptIds = params.deptIds;
-      const deptIds: number[] = Array.isArray(rawDeptIds)
-        ? (rawDeptIds as unknown[]).map(Number)
-        : String(rawDeptIds ?? '').split(',').filter(Boolean).map(Number);
-      return {
-        success: true,
-        data: {
-          departments: [{ id: 1, name: '总部', parentId: 0 }],
-          roles: deptIds.length
-            ? [{ id: 3, name: '受限角色' }]
-            : [{ id: 2, name: '普通角色' }],
-          total: 1,
-          page: 1,
-          pageSize: 20,
-          creatable: true,
-        },
-      };
-    }
-    if (String(url).includes('/admin/users/') && options?.method !== 'POST') {
-      return { success: true, data: [LIST_ROW], pagination: { total: 1 } };
-    }
-    return { success: true, data: [] };
-  });
+  mockRequest.mockImplementation(
+    async (
+      url: string,
+      options?: { params?: Record<string, unknown>; method?: string },
+    ) => {
+      const params = options?.params ?? {};
+      if (String(url).includes('/create-form'))
+        return { success: true, data: CREATE_FORM };
+      // 部门树：手改路径要在真实 TreeSelect 上点一个部门，因此必须真的有节点。
+      if (String(url).includes('/dept') && String(url).includes('tree')) {
+        return { success: true, data: [{ id: 1, name: '总部', parentId: 0 }] };
+      }
+      if (String(url).includes('/create-options')) {
+        const rawDeptIds = params.deptIds;
+        const deptIds: number[] = Array.isArray(rawDeptIds)
+          ? (rawDeptIds as unknown[]).map(Number)
+          : String(rawDeptIds ?? '')
+              .split(',')
+              .filter(Boolean)
+              .map(Number);
+        return {
+          success: true,
+          data: {
+            departments: [{ id: 1, name: '总部', parentId: 0 }],
+            roles: deptIds.length
+              ? [{ id: 3, name: '受限角色' }]
+              : [{ id: 2, name: '普通角色' }],
+            total: 1,
+            page: 1,
+            pageSize: 20,
+            creatable: true,
+          },
+        };
+      }
+      if (String(url).includes('/admin/users/') && options?.method !== 'POST') {
+        return { success: true, data: [LIST_ROW], pagination: { total: 1 } };
+      }
+      return { success: true, data: [] };
+    },
+  );
 });
 
-const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'ResizeObserver');
-const messageChannelDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'MessageChannel');
+const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(
+  globalThis,
+  'ResizeObserver',
+);
+const messageChannelDescriptor = Object.getOwnPropertyDescriptor(
+  globalThis,
+  'MessageChannel',
+);
 const nativeGetComputedStyle = window.getComputedStyle;
 
 beforeAll(() => {
@@ -149,23 +256,34 @@ beforeAll(() => {
     value: class {
       port1: { onmessage?: (event: { data: unknown }) => void } = {};
       port2 = {
-        postMessage: (data: unknown) => setTimeout(() => this.port1.onmessage?.({ data }), 0),
+        postMessage: (data: unknown) =>
+          setTimeout(() => this.port1.onmessage?.({ data }), 0),
       };
     },
   });
   // jsdom 没有伪元素布局；表格只量滚动条宽度。
-  jest.spyOn(window, 'getComputedStyle').mockImplementation((element) => nativeGetComputedStyle(element));
+  jest
+    .spyOn(window, 'getComputedStyle')
+    .mockImplementation((element) => nativeGetComputedStyle(element));
 });
 
 afterAll(() => {
   jest.restoreAllMocks();
   if (resizeObserverDescriptor) {
-    Object.defineProperty(globalThis, 'ResizeObserver', resizeObserverDescriptor);
+    Object.defineProperty(
+      globalThis,
+      'ResizeObserver',
+      resizeObserverDescriptor,
+    );
   } else {
     Reflect.deleteProperty(globalThis, 'ResizeObserver');
   }
   if (messageChannelDescriptor) {
-    Object.defineProperty(globalThis, 'MessageChannel', messageChannelDescriptor);
+    Object.defineProperty(
+      globalThis,
+      'MessageChannel',
+      messageChannelDescriptor,
+    );
   } else {
     Reflect.deleteProperty(globalThis, 'MessageChannel');
   }
@@ -195,7 +313,11 @@ function currentHandle() {
 }
 
 function modalCount(): number {
-  return document.querySelectorAll('.ant-modal').length;
+  return [...document.querySelectorAll('.ant-modal')].filter((modal) =>
+    /^(新建用户|编辑用户)$/.test(
+      modal.querySelector('.ant-modal-title')?.textContent ?? '',
+    ),
+  ).length;
 }
 
 async function openByAssistant() {
@@ -230,7 +352,11 @@ test('注册返回注销函数；注销后引用被清空', async () => {
 test('句柄本身只有 open/apply/snapshot：没有 submit / loading / setOpen', async () => {
   renderUserList();
   await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
-  expect(Object.keys(currentHandle()).sort()).toEqual(['apply', 'open', 'snapshot']);
+  expect(Object.keys(currentHandle()).sort()).toEqual([
+    'apply',
+    'open',
+    'snapshot',
+  ]);
 });
 
 test('没有表单打开时，open() 恰好创建一次', async () => {
@@ -281,7 +407,9 @@ test('snapshot() 永远不包含 password，密码补丁在入口被拒绝', asy
       instanceId: snapshot.instanceId,
       baseRevision: snapshot.revision,
       // 契约里根本没有 password；这一条只能靠运行期拒绝，因此显式越过类型。
-      fields: { password: 'secret123' } as unknown as Parameters<typeof handle.apply>[0]['fields'],
+      fields: { password: 'secret123' } as unknown as Parameters<
+        typeof handle.apply
+      >[0]['fields'],
     });
   });
   expect(result.applied).toBe(false);
@@ -444,7 +572,12 @@ test('表单关闭后拒绝应用', async () => {
   const handle = currentHandle();
 
   await act(async () => {
-    fireEvent.click(document.querySelector('.ant-modal-close') as HTMLElement);
+    fireEvent.click(
+      screen
+        .getByText('新建用户')
+        .closest('.ant-modal')
+        ?.querySelector('.ant-modal-close') as HTMLElement,
+    );
   });
   await waitFor(() => expect(modalCount()).toBe(0));
 
@@ -510,6 +643,143 @@ test('既有的一次性预填也进入同一个表单，不再另挂第二个',
   expect(await screen.findByText(/还需要你补充：password/)).toBeTruthy();
 });
 
+test('打开的原生创建表单直接接收增量预填，保留用户已填字段且显示真实输入值', async () => {
+  renderUserList();
+  await openByAssistant();
+  const username = await screen.findByPlaceholderText('请输入登录名称');
+  fireEvent.change(username, { target: { value: 'manual-name' } });
+  await act(async () => {
+    setAiPrefill({
+      target: 'user.create',
+      requestId: 'light-1',
+      fields: { phone: '13800000000' },
+      missing: [],
+    });
+  });
+  await waitFor(() =>
+    expect(
+      (screen.getByPlaceholderText('请输入手机号') as HTMLInputElement).value,
+    ).toBe('13800000000'),
+  );
+  expect((username as HTMLInputElement).value).toBe('manual-name');
+  expect(modalCount()).toBe(1);
+});
+
+test('关闭的创建表单预填等待挂载后写入真实控件', async () => {
+  renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+  await act(async () => {
+    setAiPrefill({
+      target: 'user.create',
+      fields: { username: 'visible-prefill' },
+      missing: [],
+    });
+  });
+  await waitFor(() =>
+    expect(
+      (screen.getByPlaceholderText('请输入登录名称') as HTMLInputElement).value,
+    ).toBe('visible-prefill'),
+  );
+});
+
+test('编辑详情加载后只叠加指定的 AI 字段，继续接收同一用户增量补丁', async () => {
+  const original = mockRequest.getMockImplementation();
+  let resolveDetail!: (value: unknown) => void;
+  const detail = new Promise((resolve) => {
+    resolveDetail = resolve;
+  });
+  mockRequest.mockImplementation(
+    (url: string, options?: { method?: string }) =>
+      url.endsWith('/users/7') && options?.method !== 'PUT'
+        ? detail
+        : original?.(url, options),
+  );
+  renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+  await act(async () => {
+    setAiPrefill({
+      target: 'user.update',
+      requestId: 'update-1',
+      fields: { id: 7, phone: '13800000000' },
+      missing: [],
+    });
+  });
+  await screen.findByText('编辑用户');
+  await act(async () => {
+    resolveDetail({ success: true, data: LIST_ROW });
+  });
+  await waitFor(() =>
+    expect(
+      (screen.getByPlaceholderText('请输入手机号') as HTMLInputElement).value,
+    ).toBe('13800000000'),
+  );
+  expect(
+    (screen.getByPlaceholderText('请输入真实姓名') as HTMLInputElement).value,
+  ).toBe('已有用户');
+  await act(async () => {
+    setAiPrefill({
+      target: 'user.update',
+      requestId: 'update-2',
+      fields: { id: 7, nickname: '新昵称' },
+      missing: [],
+    });
+  });
+  await waitFor(() =>
+    expect(
+      (screen.getByPlaceholderText('请输入用户昵称') as HTMLInputElement).value,
+    ).toBe('新昵称'),
+  );
+  expect(
+    (screen.getByPlaceholderText('请输入手机号') as HTMLInputElement).value,
+  ).toBe('13800000000');
+  expect(modalCount()).toBe(1);
+});
+
+test.each([undefined, '1996-10-01', '1996-10-02'])('AI 创建带出生日期 %s，点击原生提交后调用原接口并发布完成结果', async (birthDate) => {
+  const results: unknown[] = [];
+  const off = subscribeAiPrefillResults((result) => results.push(result));
+  try {
+    renderUserList();
+    await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+    await act(async () => {
+      setAiPrefill({
+        target: 'user.create',
+        requestId: 'create-result',
+        fields: { phone: '13800000000', username: 'native-save', ...(birthDate ? { birthDate } : {}) },
+        missing: [],
+      });
+    });
+    await waitFor(() =>
+      expect(
+        (screen.getByPlaceholderText('请输入手机号') as HTMLInputElement).value,
+      ).toBe('13800000000'),
+    );
+    if (birthDate) expect((screen.getByPlaceholderText('请选择出生日期') as HTMLInputElement).value).toBe(birthDate);
+    expect(results).toEqual([]);
+    fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
+      target: { value: 'local-password' },
+    });
+    fireEvent.click(
+      within(
+        screen.getByText('新建用户').closest('.ant-modal') as HTMLElement,
+      ).getByRole('button', { name: /提.?交|确.?定/ }),
+    );
+    await waitFor(() =>
+      expect(results).toContainEqual({
+        requestId: 'create-result',
+        status: 'completed',
+        message: '用户创建成功',
+      }),
+    );
+    if (birthDate) expect(mockRequest.mock.calls.some(([, options]) => options?.method === 'POST' && options.data?.birthDate === birthDate)).toBe(true);
+    expect(JSON.stringify(currentHandle().snapshot())).not.toContain(
+      'local-password',
+    );
+  } finally {
+    off();
+  }
+});
+
 test('助手写入的 deptIds 也会重新验证角色', async () => {
   renderUserList();
   await openByAssistant();
@@ -555,7 +825,9 @@ test('编辑表单关掉后，创建协作句柄自己回来', async () => {
   await waitFor(() => expect(screen.getByText('编辑用户')).toBeTruthy());
   expect(peekUserCreateFormHandle()).toBeNull();
 
-  const editModal = screen.getByText('编辑用户').closest('.ant-modal') as HTMLElement;
+  const editModal = screen
+    .getByText('编辑用户')
+    .closest('.ant-modal') as HTMLElement;
   await act(async () => {
     fireEvent.click(editModal.querySelector('.ant-modal-close') as HTMLElement);
   });
@@ -639,7 +911,9 @@ test('手改部门触发角色重校验，但版本不会在网络返回后才�
   });
 
   // 用户自己在原生 TreeSelect 上选部门：这是 onValuesChange，也就是手改路径。
-  await waitFor(() => expect(document.querySelector('#deptIds')).not.toBeNull());
+  await waitFor(() =>
+    expect(document.querySelector('#deptIds')).not.toBeNull(),
+  );
   const selector = document.querySelector('#deptIds') as HTMLElement;
   let immediate!: number;
   await act(async () => {
@@ -654,7 +928,9 @@ test('手改部门触发角色重校验，但版本不会在网络返回后才�
 
   // 重校验落定（角色 2 在部门 1 下不再可授予）。
   await waitFor(() =>
-    expect(screen.getByText('所选角色在当前部门下不再可授予，请重新选择')).toBeTruthy(),
+    expect(
+      screen.getByText('所选角色在当前部门下不再可授予，请重新选择'),
+    ).toBeTruthy(),
   );
   expect(handle.snapshot().fields.deptIds).toEqual([1]);
   // 落定之后版本没有再跳：助手用 immediate 发的下一版补丁不该被拒。
@@ -670,4 +946,41 @@ test('手改部门触发角色重校验，但版本不会在网络返回后才�
   });
   expect(next.conflicts).not.toContain('__revision__');
   expect(next.applied).toBe(true);
+});
+test('编辑已有出生日期的用户，点击确定仍走原修改接口', async () => {
+  const original = mockRequest.getMockImplementation();
+  mockRequest.mockImplementation((url: string, options?: { method?: string }) => {
+    if (url.endsWith('/users/7') && options?.method !== 'PUT') {
+      return Promise.resolve({ success: true, data: { ...LIST_ROW, birthDate: '1996-10-01' } });
+    }
+    return original?.(url, options);
+  });
+  renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+  await act(async () => setAiPrefill({ target: 'user.update', fields: { id: 7, nickname: '修改昵称' }, missing: [] }));
+  const modal = (await screen.findByText('编辑用户')).closest('.ant-modal') as HTMLElement;
+  await waitFor(() => expect((within(modal).getByPlaceholderText('请选择出生日期') as HTMLInputElement).value).toBe('1996-10-01'));
+  fireEvent.click(within(modal).getByRole('button', { name: /提.?交|确.?定/ }));
+  await waitFor(() => expect(mockRequest.mock.calls.some(([url, options]) => url.endsWith('/users/7') && options?.method === 'PUT' && options.data?.birthDate === '1996-10-01')).toBe(true));
+});
+test('已打开表单里的旧生日 1996-10-01 被新 AI 补丁替换为 1996-10-02', async () => {
+  renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+  await act(async () => setAiPrefill({ target: 'user.create', fields: { birthDate: '1996-10-01' }, missing: [] }));
+  const date = await screen.findByPlaceholderText('请选择出生日期') as HTMLInputElement;
+  await waitFor(() => expect(date.value).toBe('1996-10-01'));
+  await act(async () => setAiPrefill({ target: 'user.create', fields: { birthDate: '1996-10-02' }, missing: [] }));
+  await waitFor(() => expect(date.value).toBe('1996-10-02'));
+});
+test('生日已由 AI 填为 10 月 2 日，悬停日历中的 1 日不改变输入框文字', async () => {
+  renderUserList();
+  await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+  await act(async () => setAiPrefill({ target: 'user.create', fields: { birthDate: '1996-10-02' }, missing: [] }));
+  const date = await screen.findByPlaceholderText('请选择出生日期') as HTMLInputElement;
+  await waitFor(() => expect(date.value).toBe('1996-10-02'));
+  fireEvent.mouseDown(date);
+  fireEvent.click(date);
+  await waitFor(() => expect(document.querySelector('.ant-picker-cell-in-view[title="1996-10-01"]')).not.toBeNull());
+  fireEvent.mouseEnter(document.querySelector('.ant-picker-cell-in-view[title="1996-10-01"]') as HTMLElement);
+  expect(date.value).toBe('1996-10-02');
 });

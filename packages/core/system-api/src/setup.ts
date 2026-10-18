@@ -6,11 +6,13 @@ import { cookiePlugin, multipartPlugin, sensiblePlugin, typeboxPlugin, swaggerPl
 import schemas from './core/schemas'
 import jwtAuth from './core/plugins/external/jwt-auth'
 import rbac from './core/plugins/external/rbac'
+import dataScope from './core/plugins/external/data-scope'
 import rateLimit from './core/plugins/external/rate-limit'
 import security from './core/plugins/external/security'
 import audit from './core/plugins/external/audit'
 import staticAssets from './core/plugins/external/static'
 import dictMap from './core/plugins/app/dict-map'
+import { registerSystemAiCapabilities } from './core/ai/system-capabilities'
 import passwordManager from './core/plugins/app/password-manager'
 import type { SystemRuntime } from './runtime'
 import type { AppDb } from './db'
@@ -49,9 +51,14 @@ export async function setupSystem(fastify: FastifyInstance, runtime: SystemRunti
   await fastify.register(rateLimit)
   await fastify.register(jwtAuth)
   await fastify.register(rbac)
+  // 水平权限：rbac 放行之后，把身份绑进 data_scope 上下文供 repository 过滤。
+  await fastify.register(dataScope)
   await fastify.register(security)
   await fastify.register(audit)
   await fastify.register(dictMap)
   await fastify.register(passwordManager)
+  // 显式注册本域开放的 AI 能力。放在权限目录之后：能力声明的 permissionCode
+  // 指向既有 CRUD 权限，必须先于消费方（ai 模块）建立。
+  registerSystemAiCapabilities()
   if (runtime.options.staticAssets !== false) await fastify.register(staticAssets)
 }

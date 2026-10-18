@@ -10,7 +10,7 @@
   "scripts": {
     "test": "vitest run",
     "test:integration": "node scripts/test-integration.cjs",
-    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json && node scripts/copy-resources.cjs",
+    "build": "node scripts/clean-dist.cjs && tsc -p tsconfig.json && tsc-alias -p tsconfig.json && node scripts/copy-resources.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/main.js",
     "dev": "node --watch dist/main.js",
@@ -22,17 +22,23 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.81",
+    "@ai-sdk/openai": "^4.0.95",
     "@fastify/autoload": "^6.0.0",
     "@sinclair/typebox": "^0.34.41",
+    "@yishan/core-api": "workspace:*",
+    "@yishan/core-contracts": "workspace:*",
+    "@yishan/core-database": "workspace:*",
+    "@yishan/core-system-api": "workspace:*",
+    "ai": "^7.0.142",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",
     "fastify": "^5.0.0",
-    "mysql2": "^3.15.3",
-    "@yishan/core-api": "workspace:*",
-    "@yishan/core-system-api": "workspace:*",
-    "@yishan/core-database": "workspace:*",
-    "@yishan/core-contracts": "workspace:*"
+    "mysql2": "^3.15.3"
   },
   "devDependencies": {
     "@types/node": "^22.1.0",

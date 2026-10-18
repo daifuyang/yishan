@@ -1,5 +1,5 @@
-import { datetime, int, mysqlTable, varchar } from 'drizzle-orm/mysql-core'
 import { sql } from 'drizzle-orm'
+import { datetime, int, mysqlTable, varchar } from 'drizzle-orm/mysql-core'
 
 /**
  * 入门演示 Todo 表。

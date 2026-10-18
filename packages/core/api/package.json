@@ -37,13 +37,17 @@
     "./permissions/catalog": {
       "types": "./dist/permissions/catalog.d.ts",
       "default": "./dist/permissions/catalog.js"
+    },
+    "./ai-capabilities/catalog": {
+      "types": "./dist/ai-capabilities/catalog.d.ts",
+      "default": "./dist/ai-capabilities/catalog.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "pnpm build && node --test test/*.test.cjs"
   },

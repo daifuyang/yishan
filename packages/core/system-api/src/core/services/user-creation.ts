@@ -152,5 +152,7 @@ export function mergeDraftFields(
       `提交的数据与服务端草稿不一致：${mismatched.join('、')}`,
     )
   }
+  // Media is local form input, never a model-editable draft field.
+  if (submitted.avatar !== undefined) merged.avatar = submitted.avatar
   return merged as CreateUserFieldsReq
 }

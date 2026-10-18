@@ -66,5 +66,15 @@ declare module 'fastify' {
     currentUser: CurrentUser
     /** PAT 请求的 scope；JWT / cookie 请求为 undefined。 */
     tokenScope?: string[]
+    /**
+     * 本次请求的有效权限码集合，由 rbac 的 requirePermission 在校验通过后写入。
+     * 已完成活动目录过滤与 PAT scope 交集（computeEffectivePerms），可能含超管哨兵
+     * `__super_admin__`。
+     *
+     * 只有当该请求经过 requirePermission 时才存在；未声明权限守卫的路由没有它，
+     * 读取方必须按 optional 处理并自行决定回退策略。判定请用
+     * PermissionService.has()，它才会正确处理超管哨兵。
+     */
+    effectivePermissions?: ReadonlySet<string>
   }
 }

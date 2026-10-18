@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "test:integration": "node scripts/test-integration.cjs",
-    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json && node scripts/copy-resources.cjs",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && tsc-alias -p tsconfig.json && node scripts/copy-resources.cjs",
     "test": "pnpm build && vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
@@ -47,6 +47,10 @@
     "./database": {
       "types": "./dist/db/index.d.ts",
       "default": "./dist/db/index.js"
+    },
+    "./auth/permissions": {
+      "types": "./dist/core/auth/index.d.ts",
+      "default": "./dist/core/auth/index.js"
     },
     "./schema": {
       "types": "./dist/db/schema/index.d.ts",

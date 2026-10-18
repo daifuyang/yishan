@@ -209,6 +209,12 @@ describe('草稿字段是唯一可信来源', () => {
     expect(h.rollbacks()).toBe(1)
   })
 
+  it('头像仅来自最终业务请求，不进入对话草稿', () => {
+    const merged = mergeDraftFields(DRAFT_FIELDS, { avatar: '/uploads/avatar.png' } as never)
+    expect(merged.avatar).toBe('/uploads/avatar.png')
+    expect(DRAFT_FIELDS).not.toHaveProperty('avatar')
+  })
+
   it('规范化之后相同即视为一致（空白、数组顺序、去重不算差异）', () => {
     const merged = mergeDraftFields(DRAFT_FIELDS, {
       username: ' zhangsan ',

@@ -7,9 +7,9 @@ import {
   ProFormRadio,
   ProFormDatePicker,
   ProFormSelect,
+  ProForm,
 } from "@ant-design/pro-components";
-import type { Dayjs } from "dayjs";
-import { Alert, type FormItemProps } from "antd";
+import { Alert, Col, type FormItemProps } from "antd";
 import { useSystemAdmin } from "../../../runtime";
 import { getRoleList } from "../../../services/generated/sysRoles";
 import {
@@ -20,6 +20,7 @@ import {
   getUserCreateOptions as requestUserCreateOptions,
 } from "../../../services/generated/sysUsers";
 import { ProFormDeptTreeSelect } from "../../../components/DeptTreeSelect";
+import { AttachmentSelect } from "../../../components/AttachmentSelect";
 import {
   APPLY_CONFLICT,
   invalidateUserCreateFormHandle,
@@ -41,6 +42,9 @@ import {
 import {
   consumeAiPrefill,
   subscribeAiPrefill,
+  registerAiPrefillHandler,
+  publishAiPrefillResult,
+  type AiPrefill,
 } from "../../../ai-prefill";
 
 /**
@@ -89,7 +93,12 @@ export interface UserFormProps {
    * 助手因此无法把创建意图写进一个编辑表单（设计 §3.2）。
    */
   assistance?: typeof USER_FORM_ASSISTANCE_TARGET;
+  aiPrefill?: { requestId?: string; fields: Record<string, unknown> };
 }
+
+/** 协作 `open()` 等待 ModalForm 挂载 form 实例的上限（次数 × 间隔 ≈ 320ms）。 */
+const FORM_MOUNT_TICKS = 20;
+const FORM_MOUNT_TICK_MS = 16;
 
 type DraftFields = UserCreateDraftFields & Record<string, unknown>;
 
@@ -101,6 +110,7 @@ const UserForm: React.FC<UserFormProps> = ({
   open,
   onOpenChange,
   assistance,
+  aiPrefill,
 }) => {
   // 获取全局字典数据
   const { initialState } = useSystemAdmin();
@@ -117,6 +127,13 @@ const UserForm: React.FC<UserFormProps> = ({
   const isEdit = Boolean(initialValues?.id);
   const assistEnabled = assistance === USER_FORM_ASSISTANCE_TARGET && !isEdit;
   const identity = initialState?.currentUser?.id ?? 'anonymous';
+  const identityRef = useRef(identity);
+  identityRef.current = identity;
+  const requestIdRef = useRef<string | undefined>(undefined);
+  const aiPrefillRef = useRef(aiPrefill);
+  aiPrefillRef.current = aiPrefill;
+  const pendingFieldsRef = useRef<Record<string, unknown>>({});
+  const detailLoadingRef = useRef(false);
 
   /** 当前打开的表单实例标识；未打开过为空串。 */
   const instanceIdRef = useRef('');
@@ -179,12 +196,21 @@ const UserForm: React.FC<UserFormProps> = ({
     const live = readValues();
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(live)) {
-      if (key === 'password') continue;
+      if (!fallbackEditableFields.includes(key)) continue;
       if (value === undefined || value === null || value === '') continue;
       out[key] = value;
     }
     return out as DraftFields;
-  }, [readValues]);
+  }, [fallbackEditableFields, readValues]);
+
+  const safePrefillFields = useCallback((fields: Readonly<Record<string, unknown>>) => {
+    const normalized = { ...fields };
+    if (normalized.deptId !== undefined) normalized.deptIds = [Number(normalized.deptId)];
+    const editable = createFormRef.current?.editableFields ?? fallbackEditableFields;
+    return Object.fromEntries(Object.entries(normalized).filter(([key]) =>
+      fallbackEditableFields.includes(key) && editable.includes(key),
+    ));
+  }, [fallbackEditableFields]);
 
   const buildSnapshot = useCallback((): UserFormSnapshot => {
     const provenance = provenanceRef.current;
@@ -231,9 +257,17 @@ const UserForm: React.FC<UserFormProps> = ({
         provenanceRef.current = {};
         valuesRef.current = { ...initialValuesRef.current };
         delete (valuesRef.current as Record<string, unknown>).password;
+        requestIdRef.current = aiPrefillRef.current?.requestId;
+        pendingFieldsRef.current = safePrefillFields(aiPrefillRef.current?.fields ?? {});
+        submittingRef.current = false;
         const editId = initialValuesRef.current?.id;
         if (editId) void fetchUserDetail(Number(editId));
         notifyChange();
+      }
+      if (!next) {
+        openCountRef.current += 1;
+        pendingFieldsRef.current = {};
+        detailLoadingRef.current = false;
       }
       onOpenChangeRef.current?.(next);
       if (isEdit) {
@@ -248,7 +282,7 @@ const UserForm: React.FC<UserFormProps> = ({
         }
       }
     },
-    [isControlled, isEdit, notifyChange],
+    [isControlled, isEdit, notifyChange, safePrefillFields],
   );
 
   /**
@@ -296,6 +330,39 @@ const UserForm: React.FC<UserFormProps> = ({
     notifyChange();
   }, [notifyChange]);
 
+  const applyPrefill = useCallback(async (request: AiPrefill) => {
+    const generation = openCountRef.current;
+    const owner = identityRef.current;
+    const fields = safePrefillFields(request.fields);
+    requestIdRef.current = request.requestId;
+    pendingFieldsRef.current = { ...pendingFieldsRef.current, ...fields };
+    for (let tick = 0; tick < FORM_MOUNT_TICKS; tick += 1) {
+      if (!openRef.current || generation !== openCountRef.current || owner !== identityRef.current) return;
+      if (formRef.current && !detailLoadingRef.current) {
+        writeFields(fields);
+        const deptIds = fields.deptIds as number[] | undefined;
+        if (deptIds !== undefined) void revalidateRoles(deptIds, { bumpRevision: false });
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, FORM_MOUNT_TICK_MS));
+    }
+  }, [revalidateRoles, safePrefillFields, writeFields]);
+
+  useEffect(() => {
+    return registerAiPrefillHandler(isEdit ? 'user.update' : 'user.create', (request) => {
+      if (!openRef.current) return false;
+      if (isEdit && Number(request.fields.id) !== Number(initialValuesRef.current.id)) return false;
+      setPrefillMissing(request.missing);
+      void applyPrefill(request);
+      return true;
+    });
+  }, [applyPrefill, isEdit, identity]);
+
+  useEffect(() => () => {
+    openCountRef.current += 1;
+    openRef.current = false;
+  }, [identity]);
+
   // ---- 协作契约注册：挂载即注册，卸载即摘除（身份变化时引用自动作废） ----
   useEffect(() => {
     if (!assistEnabled) return;
@@ -305,8 +372,15 @@ const UserForm: React.FC<UserFormProps> = ({
         if (!openRef.current) {
           setCollaborationRendered(true);
           setOpen(true);
-          // 等一拍让 ModalForm 真正挂载 form 实例再返回快照。
-          await new Promise((resolve) => setTimeout(resolve, 0));
+          // **必须等到 form 实例真的挂上**，不能只等一拍：`writeFields` 用的是
+          // `formRef.current?.setFieldsValue?.()`，实例还没挂上时它会静默跳过 ——
+          // 补丁「已套用」，界面却一个字都没填进去，而回执还说「已填入」。
+          // antd Modal 在真实浏览器里要等一次挂载提交（jsdom 同步挂载，掩盖了这个竞态），
+          // 所以这里有界轮询，兜底仍然返回快照让 `apply` 按既有冲突规则处理。
+          for (let tick = 0; tick < FORM_MOUNT_TICKS; tick += 1) {
+            if (formRef.current) break;
+            await new Promise((resolve) => setTimeout(resolve, FORM_MOUNT_TICK_MS));
+          }
         }
         return buildSnapshot();
       },
@@ -405,25 +479,14 @@ const UserForm: React.FC<UserFormProps> = ({
     const consume = () => {
       const next = consumeAiPrefill(USER_FORM_ASSISTANCE_TARGET);
       if (!next) return;
-      const fields = { ...next.fields } as Record<string, unknown>;
-      // 模型给 deptId，表单字段是 deptIds（多选）。
-      if (fields.deptId !== undefined) {
-        fields.deptIds = [fields.deptId as number];
-        delete fields.deptId;
-      }
       setPrefillMissing(next.missing);
+      setCollaborationRendered(true);
       setOpen(true);
-      writeFields(fields);
-      notifyChange();
-      // 同理：预填写进来的 deptIds 也要补一次角色重校验（setFieldsValue 不触发
-      // onValuesChange）。预填不是补丁，没有返回值契约，因此不 await。
-      // 也不 bumpRevision：writeFields() 已经在同一次写入里 +1 过版本。
-      const nextDeptIds = fields.deptIds as number[] | undefined;
-      if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds, { bumpRevision: false });
+      void applyPrefill(next);
     };
     consume();
     return subscribeAiPrefill(consume);
-  }, [assistEnabled, notifyChange, revalidateRoles, setOpen, writeFields]);
+  }, [applyPrefill, assistEnabled, setOpen]);
 
   // 同源字段定义：约束、必填、白名单都以服务端 create schema 为准。
   useEffect(() => {
@@ -439,9 +502,24 @@ const UserForm: React.FC<UserFormProps> = ({
 
   // 获取用户详情
   const fetchUserDetail = async (id: number) => {
-    const res = await getUserDetail({ id });
-    if (res.success && res.data) {
-      formRef.current?.setFieldsValue(res.data);
+    const generation = openCountRef.current;
+    const owner = identityRef.current;
+    detailLoadingRef.current = true;
+    try {
+      const res = await getUserDetail({ id });
+      for (let tick = 0; tick < FORM_MOUNT_TICKS && !formRef.current; tick += 1) {
+        if (!openRef.current || generation !== openCountRef.current || owner !== identityRef.current) return;
+        await new Promise((resolve) => setTimeout(resolve, FORM_MOUNT_TICK_MS));
+      }
+      if (!openRef.current || generation !== openCountRef.current || owner !== identityRef.current) return;
+      if (res.success && res.data) {
+        const userFields = Object.fromEntries(Object.entries(readValues()).filter(([key]) => provenanceRef.current[key] === 'user'));
+        const fields = { ...res.data, ...pendingFieldsRef.current, ...userFields };
+        formRef.current?.setFieldsValue(fields);
+        valuesRef.current = { ...valuesRef.current, ...fields };
+      }
+    } finally {
+      if (generation === openCountRef.current && owner === identityRef.current) detailLoadingRef.current = false;
     }
   };
 
@@ -516,6 +594,18 @@ const UserForm: React.FC<UserFormProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleFinish = async (values: UserFormValues) => {
+    const requestId = requestIdRef.current;
+    const report = (status: 'completed' | 'failed') => {
+      if (!requestId) return;
+      const operation = isEdit ? '修改' : '创建';
+      publishAiPrefillResult({
+        requestId,
+        status,
+        message: status === 'completed'
+          ? `用户${operation}成功`
+          : `用户${operation}失败，请在表单中检查后重试`,
+      });
+    };
     const basePayload: SystemAPI.updateUserReq = {
       username: values.username,
       realName: values.realName,
@@ -527,6 +617,7 @@ const UserForm: React.FC<UserFormProps> = ({
       birthDate: values.birthDate,
       deptIds: values.deptIds,
       roleIds: values.roleIds,
+      avatar: values.avatar,
     };
 
     if (!initialValues?.id) {
@@ -546,6 +637,7 @@ const UserForm: React.FC<UserFormProps> = ({
         const reason = cause instanceof Error ? cause.message : '草稿联动未成功';
         // 只取这句人话：错误对象里可能夹带请求细节，这里不整段外显。
         setSubmitError(reason);
+        report('failed');
         submittingRef.current = false;
         return false;
       }
@@ -564,12 +656,15 @@ const UserForm: React.FC<UserFormProps> = ({
       try {
         const res = await createUser(payload as SystemAPI.createUserReq);
         if (res.success) {
+          report('completed');
           if (onFinish) await onFinish();
           return true;
         }
         // 明确的业务失败：保留表单数据与密码控件（返回 false，不清空、不关闭），
         // 由用户改完再点一次。
         submittingRef.current = false;
+        report('failed');
+        setSubmitError('用户创建失败，请检查表单后重试');
         return false;
       } catch {
         // 响应可能已经丢了。**绝不自动重发创建**（设计 §11）：只把草稿当前状态读回来，
@@ -577,11 +672,14 @@ const UserForm: React.FC<UserFormProps> = ({
         if (link) {
           const outcome = await link.reconcile();
           if (outcome === 'completed') {
+            report('completed');
             if (onFinish) await onFinish();
             return true;
           }
         }
         submittingRef.current = false;
+        report('failed');
+        setSubmitError('用户创建失败，请检查表单后重试');
         return false;
       }
     }
@@ -590,11 +688,18 @@ const UserForm: React.FC<UserFormProps> = ({
     if (values.password && String(values.password).trim().length > 0) {
       payload.password = values.password;
     }
-    const res = await updateUser({ id: Number(initialValues.id) }, payload);
-    if (res.success) {
-      if (onFinish) await onFinish();
-      return true;
+    try {
+      const res = await updateUser({ id: Number(initialValues.id) }, payload);
+      if (res.success) {
+        report('completed');
+        if (onFinish) await onFinish();
+        return true;
+      }
+    } catch {
+      // 保留当前表单供用户检查并重试。
     }
+    report('failed');
+    setSubmitError('用户修改失败，请检查表单后重试');
     return false;
   };
 
@@ -622,6 +727,7 @@ const UserForm: React.FC<UserFormProps> = ({
         autoFocusFirstInput
         modalProps={{ destroyOnHidden: true, mask: { closable: false } }}
         grid
+        rowProps={{ style: { marginInline: 0 } }}
         formRef={formRef}
         initialValues={initialValues}
         onFinish={handleFinish}
@@ -714,6 +820,12 @@ const UserForm: React.FC<UserFormProps> = ({
         colProps={{ span: 12 }}
       />
 
+      <Col span={12}>
+        <ProForm.Item name="avatar" label="头像">
+          <AttachmentSelect kind="image" multiple={false} maxCount={1} />
+        </ProForm.Item>
+      </Col>
+
       <ProFormRadio.Group
         name="status"
         label="状态"
@@ -760,9 +872,8 @@ const UserForm: React.FC<UserFormProps> = ({
         name="birthDate"
         label="出生日期"
         placeholder="请选择出生日期"
-        fieldProps={{ style: { width: "100%" } }}
+        fieldProps={{ style: { width: "100%" }, previewValue: false }}
         colProps={{ span: 12 }}
-        transform={(value: Dayjs | null) => ({ birthDate: value ? value.format("YYYY-MM-DD") : undefined })}
       />
 
     </ModalForm>

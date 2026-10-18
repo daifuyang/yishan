@@ -7,20 +7,28 @@ import {
   ProTable,
 } from '@ant-design/pro-components';
 import { useSystemAdmin } from '../../runtime';
-import { Button, message, Popconfirm, Space } from 'antd';
-import React, { useRef, useState } from 'react';
+import { Button, message, Modal, Popconfirm, Space } from 'antd';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   deleteUser,
   getUserList,
+  getUserDetail,
   updateUser,
 } from '../../services/generated/sysUsers';
 import UserForm from './components/UserForm';
+import {
+  consumeAiPrefill,
+  subscribeAiPrefill,
+  publishAiPrefillResult,
+} from '../../ai-prefill';
 import { AiPrefillGate } from '../../components/AiPrefillGate';
 
 /**
  * 用户管理列表页面
  */
 const UserList: React.FC = () => {
+  const [modal, modalContext] = Modal.useModal();
+  const deleteConfirmation = useRef(false);
   const actionRef = useRef<ActionType>(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   /** 唯一的「新建用户」表单开关：手动按钮与助手协作 open() 共用它。 */
@@ -59,11 +67,99 @@ const UserList: React.FC = () => {
    */
   const handleRemove = async (id: number) => {
     const res = await deleteUser({ id });
-    if (res.success) {
-      message.success(res.message);
-    }
+    if (!res.success) throw new Error(res.message || '删除失败，请重试');
+    message.success(res.message);
     actionRef.current?.reload();
   };
+
+  useEffect(() => {
+    let alive = true;
+    let dialog: ReturnType<typeof modal.confirm> | undefined;
+    const consume = () => {
+      if (deleteConfirmation.current) return;
+      const request = consumeAiPrefill('user.delete');
+      if (!request) return;
+      const id = request.fields.id;
+      const feedback = (
+        status: 'completed' | 'failed' | 'notice',
+        text: string,
+      ) => {
+        if (alive && request.requestId)
+          publishAiPrefillResult({
+            requestId: request.requestId,
+            status,
+            message: text,
+          });
+      };
+      if (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 1) {
+        feedback('failed', '删除目标无效，请重新查询');
+        return;
+      }
+      deleteConfirmation.current = true;
+      void (async () => {
+        try {
+          const response = await getUserDetail({ id });
+          if (!alive) return;
+          if (!response.success || !response.data || response.data.id !== id)
+            throw new Error('无法读取要删除的用户，请重新查询');
+          if (response.data.status === '2')
+            throw new Error('该用户处于锁定状态，不能从此入口删除');
+          const label =
+            response.data.realName ||
+            response.data.username ||
+            response.data.phone ||
+            String(id);
+          dialog = modal.confirm({
+            title: '确认删除该用户？',
+            content:
+              '将删除「' +
+              label +
+              '」（ID：' +
+              id +
+              '），请核对目标用户后确认。',
+            okText: '确认删除',
+            okButtonProps: { danger: true },
+            cancelText: '取消',
+            onCancel: () => {
+              deleteConfirmation.current = false;
+              feedback('notice', '已取消删除，未修改用户数据。');
+            },
+            onOk: async () => {
+              if (!alive) throw new Error('页面已切换，请重新确认');
+              try {
+                await handleRemove(id);
+                deleteConfirmation.current = false;
+                feedback(
+                  'completed',
+                  '已删除用户「' + label + '」（ID：' + id + '）。',
+                );
+              } catch {
+                feedback(
+                  'failed',
+                  '删除失败，未确认删除结果，请在用户列表核对后重试。',
+                );
+                throw new Error('删除失败，请重试');
+              }
+            },
+          });
+        } catch (cause) {
+          deleteConfirmation.current = false;
+          feedback(
+            'failed',
+            cause instanceof Error ? cause.message : '无法打开删除确认，请重试',
+          );
+        }
+      })();
+    };
+    consume();
+    const unsubscribe = subscribeAiPrefill(consume);
+    return () => {
+      alive = false;
+      unsubscribe();
+      dialog?.destroy();
+      deleteConfirmation.current = false;
+    };
+  }, [initialState?.currentUser?.id, modal]);
 
   /**
    * 批量删除选中用户
@@ -204,6 +300,7 @@ const UserList: React.FC = () => {
 
   return (
     <PageContainer>
+      {modalContext}
       {/*
         用户创建**只有一个**表单实例，就是下面这个受控的 UserForm：
         工具栏「新建」按钮、AI 一次性预填（UserForm 内部消费）和助手的协作 open()
@@ -228,13 +325,14 @@ const UserList: React.FC = () => {
           const { deptId, ...rest } = fields;
           return {
             ...rest,
-            deptIds: deptId === undefined ? undefined : [deptId as number],
+            ...(deptId === undefined ? {} : { deptIds: [deptId as number] }),
           };
         }}
       >
-        {({ open, initialValues, close }) => (
+        {({ open, initialValues, close, requestId }) => (
           <UserForm
             title="编辑用户"
+            aiPrefill={{ requestId, fields: initialValues }}
             open={open}
             onOpenChange={(next) => {
               if (!next) close();
@@ -252,7 +350,11 @@ const UserList: React.FC = () => {
           labelWidth: 120,
         }}
         toolBarRender={() => [
-          <Button key="create" type="primary" onClick={() => setCreateOpen(true)}>
+          <Button
+            key="create"
+            type="primary"
+            onClick={() => setCreateOpen(true)}
+          >
             <PlusOutlined /> 新建
           </Button>,
         ]}

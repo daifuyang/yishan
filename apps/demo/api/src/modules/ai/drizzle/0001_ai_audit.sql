@@ -1,0 +1,23 @@
+CREATE TABLE `ai_audit` (
+  `id` bigint AUTO_INCREMENT NOT NULL,
+  `request_id` varchar(64) NOT NULL,
+  `conversation_id` varchar(64),
+  `actor_id` int NOT NULL,
+  `session_id` varchar(64),
+  `capability_name` varchar(64) NOT NULL,
+  `operation_id` varchar(64) NOT NULL,
+  `risk_level` varchar(16) NOT NULL,
+  `permission_decision` varchar(16) NOT NULL,
+  `execution_status` varchar(16) NOT NULL,
+  `target_type` varchar(32),
+  `target_id` varchar(64),
+  `input_digest` varchar(512),
+  `error_summary` varchar(512),
+  `duration_ms` int,
+  `token_usage` json,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  CONSTRAINT `ai_audit_id` PRIMARY KEY (`id`),
+  INDEX `ai_audit_actor_created` (`actor_id`, `created_at`),
+  INDEX `ai_audit_capability_created` (`capability_name`, `created_at`),
+  INDEX `ai_audit_request_id` (`request_id`)
+);

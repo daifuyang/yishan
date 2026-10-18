@@ -17,7 +17,8 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { drizzleDb, type AppQueryDb } from "@/db";
-import { sysRole, sysRoleWorkbenchMenu, sysRoleMenu, sysRolePermission, sysUser } from "@/db/schema";
+import { sysRole, sysRoleWorkbenchMenu, sysRoleMenu, sysRolePermission, sysRoleDept, sysUser } from "@/db/schema";
+
 import { dateUtils } from "../../utils/date.js";
 import { clampOffset } from "./_pagination.js";
 
@@ -37,6 +38,8 @@ export interface CreateRoleInput extends RolePersistedFields {
   menuIds?: number[];
   appMenuIds?: number[];
   permissionCodes?: string[];
+  /** `dataScope = 5`（自定义）时的授权部门；其他档位忽略。 */
+  deptIds?: number[];
 }
 
 /** `undefined` 表示不更新。 */
@@ -45,6 +48,8 @@ export interface UpdateRoleInput extends Partial<RolePersistedFields> {
   menuIds?: number[];
   appMenuIds?: number[];
   permissionCodes?: string[];
+  /** `dataScope = 5`（自定义）时的授权部门；其他档位忽略。 */
+  deptIds?: number[];
 }
 
 // ============================================================================
@@ -63,6 +68,8 @@ interface RoleDetailRow extends RoleListRow {
   menuIds: number[];
   appMenuIds: number[];
   permissionCodes: string[];
+  /** `dataScope = 5` 时生效的授权部门，供表单回显。 */
+  deptIds: number[];
 }
 
 // ============================================================================
@@ -89,8 +96,10 @@ function resolveRoleOrderColumn(sortBy: string | undefined) {
   return ROLE_ORDER_COLUMNS[DEFAULT_ROLE_ORDER_BY];
 }
 
-function buildRoleWhere(opts: { keyword?: string; status?: number }): SQL | undefined {
+function buildRoleWhere(opts: { keyword?: string; status?: number; dataScope?: SQL }): SQL | undefined {
   const conds: SQL[] = [isNull(sysRole.deletedAt)];
+  // sys_role 无部门归属，不施加行级数据范围（见 RoleRepository.dataScopeCondition）。
+  if (opts.dataScope) conds.push(opts.dataScope);
   if (opts.keyword) {
     const like_ = `%${opts.keyword}%`;
     conds.push(or(like(sysRole.name, like_), like(sysRole.description, like_))!);
@@ -99,7 +108,7 @@ function buildRoleWhere(opts: { keyword?: string; status?: number }): SQL | unde
   return and(...conds);
 }
 
-async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb): Promise<RoleDetailRow | null> {
+async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb, dataScope?: SQL): Promise<RoleDetailRow | null> {
   const creatorUser = aliasedTable(sysUser, "creator_user");
   const updaterUser = aliasedTable(sysUser, "updater_user");
 
@@ -112,12 +121,12 @@ async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
     .from(sysRole)
     .leftJoin(creatorUser, eq(creatorUser.id, sysRole.creatorId))
     .leftJoin(updaterUser, eq(updaterUser.id, sysRole.updaterId))
-    .where(and(eq(sysRole.id, id), isNull(sysRole.deletedAt)))
+    .where(and(eq(sysRole.id, id), isNull(sysRole.deletedAt), dataScope))
     .limit(1);
 
   if (!row) return null;
 
-  const [roleMenus, roleAppMenus, rolePermissions] = await Promise.all([
+  const [roleMenus, roleAppMenus, rolePermissions, roleDepts] = await Promise.all([
     db
       .select({ menuId: sysRoleMenu.menuId })
       .from(sysRoleMenu)
@@ -130,6 +139,10 @@ async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
       .select({ permissionCode: sysRolePermission.permissionCode })
       .from(sysRolePermission)
       .where(and(eq(sysRolePermission.roleId, id), isNull(sysRolePermission.deletedAt))),
+    db
+      .select({ deptId: sysRoleDept.deptId })
+      .from(sysRoleDept)
+      .where(and(eq(sysRoleDept.roleId, id), isNull(sysRoleDept.deletedAt))),
   ]);
 
   return {
@@ -137,6 +150,7 @@ async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
     menuIds: roleMenus.map((rm) => rm.menuId),
     appMenuIds: roleAppMenus.map((rm) => rm.appMenuId),
     permissionCodes: rolePermissions.map((rp) => rp.permissionCode),
+    deptIds: roleDepts.map((rd) => rd.deptId),
   };
 }
 
@@ -145,10 +159,29 @@ async function fetchRoleDetail(id: number, db: AppQueryDb = drizzleDb): Promise<
 // ============================================================================
 
 export class RoleRepository {
+  /**
+   * 角色**不施加**行级数据范围。
+   *
+   * `sys_role` 没有部门列，也没有任何业务上的部门归属。此前按「仅创建人」降级是
+   * 凭空发明的规则：结果是除了超管，任何管理员都只能看到自己建的角色，角色选择
+   * 框、用户表单里的角色分配直接失效。RuoYi 同样不给 sys_role 加 `@DataScope`。
+   *
+   * 保留这个空实现是为了让「角色不走数据范围」是一个显式决定，而不是遗漏。
+   * `sys_role_dept` 配置决定该角色的用户数据范围，其修改由角色授权权限控制，
+   * 不代表角色记录本身已经施加行级过滤。
+   */
+  static async dataScopeCondition(): Promise<SQL | undefined> {
+    return undefined
+  }
+
   /** 获取角色列表 */
   static async list(query: { page?: number; pageSize?: number; keyword?: string; status?: number; sortBy?: string; sortOrder?: string } = {}): Promise<RoleListRow[]> {
     const { page = 1, pageSize = 10, keyword, status, sortBy, sortOrder = "desc" } = query;
-    const where = buildRoleWhere({ keyword, status });
+    const where = buildRoleWhere({
+      keyword,
+      status,
+      dataScope: await RoleRepository.dataScopeCondition(),
+    });
     const dir = sortOrder === "asc" ? asc : desc;
     const orderCol = resolveRoleOrderColumn(sortBy);
 
@@ -175,14 +208,14 @@ export class RoleRepository {
 
   /** 获取角色总数 */
   static async count(query: { keyword?: string; status?: number } = {}): Promise<number> {
-    const where = buildRoleWhere(query);
+    const where = buildRoleWhere({ ...query, dataScope: await RoleRepository.dataScopeCondition() });
     const [row] = await drizzleDb.select({ c: sqlCount() }).from(sysRole).where(where);
     return Number(row?.c ?? 0);
   }
 
-  /** 根据角色ID获取角色信息 */
-  static async findById(id: number, db: AppQueryDb = drizzleDb): Promise<RoleDetailRow | null> {
-    return fetchRoleDetail(id, db);
+  /** 根据角色ID获取角色信息。`dataScope` 由调用方传入，避免绕过列表的行级限制。 */
+  static async findById(id: number, db: AppQueryDb = drizzleDb, dataScope?: SQL): Promise<RoleDetailRow | null> {
+    return fetchRoleDetail(id, db, dataScope);
   }
 
   /** 根据角色名称获取原始角色信息（用于唯一性校验） */
@@ -197,7 +230,7 @@ export class RoleRepository {
 
   /** 创建角色 */
   static async create(input: CreateRoleInput, db: AppQueryDb = drizzleDb): Promise<RoleDetailRow> {
-    const { creatorId, updaterId, menuIds, appMenuIds, permissionCodes, ...fields } = input;
+    const { creatorId, updaterId, menuIds, appMenuIds, permissionCodes, deptIds, ...fields } = input;
     const uniqueMenuIds = menuIds ? [...new Set(menuIds)] : [];
     const uniqueAppMenuIds = appMenuIds ? [...new Set(appMenuIds)] : [];
     const uniquePermissionCodes = permissionCodes ? [...new Set(permissionCodes)] : [];
@@ -226,6 +259,12 @@ export class RoleRepository {
         uniquePermissionCodes.map((permissionCode) => ({ roleId: inserted.id, permissionCode, creatorId })),
       );
     }
+    // 自定义数据范围（档位 5）。此前该档位只存得进算不出：没有写入路径，
+    // sys_role_dept 永远是空的，解析出来的范围为空集 → 看不到任何人。
+    const uniqueDeptIds = deptIds ? [...new Set(deptIds)] : [];
+    if (uniqueDeptIds.length > 0) {
+      await db.insert(sysRoleDept).values(uniqueDeptIds.map((deptId) => ({ roleId: inserted.id, deptId, creatorId })));
+    }
 
     const role = await fetchRoleDetail(inserted.id, db);
     if (!role) throw new Error("Failed to read back created role");
@@ -234,7 +273,7 @@ export class RoleRepository {
 
   /** 更新角色 */
   static async update(id: number, input: UpdateRoleInput, db: AppQueryDb = drizzleDb): Promise<RoleDetailRow> {
-    const { updaterId, menuIds, appMenuIds, permissionCodes, ...fields } = input;
+    const { updaterId, menuIds, appMenuIds, permissionCodes, deptIds, ...fields } = input;
 
     await db
       .update(sysRole)
@@ -293,6 +332,23 @@ export class RoleRepository {
         await db.delete(sysRolePermission).where(
           and(eq(sysRolePermission.roleId, id), inArray(sysRolePermission.permissionCode, toDelete)),
         );
+      }
+    }
+
+    if (deptIds !== undefined) {
+      const uniqueDeptIds = [...new Set(deptIds)];
+      const existingLinks = await db
+        .select({ deptId: sysRoleDept.deptId })
+        .from(sysRoleDept)
+        .where(and(eq(sysRoleDept.roleId, id), isNull(sysRoleDept.deletedAt)));
+      const existingIds = existingLinks.map((l) => l.deptId);
+      const toCreate = uniqueDeptIds.filter((d) => !existingIds.includes(d));
+      const toDelete = existingIds.filter((d) => !uniqueDeptIds.includes(d));
+      if (toCreate.length > 0) {
+        await db.insert(sysRoleDept).values(toCreate.map((deptId) => ({ roleId: id, deptId, creatorId: updaterId })));
+      }
+      if (toDelete.length > 0) {
+        await db.delete(sysRoleDept).where(and(eq(sysRoleDept.roleId, id), inArray(sysRoleDept.deptId, toDelete)));
       }
     }
 
