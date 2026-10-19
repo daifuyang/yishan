@@ -173,7 +173,6 @@ jobs:
       UBUNTU_SSH_FINGERPRINT: ${{ vars.UBUNTU_SSH_FINGERPRINT }}
       RELEASE_TS: ${{ needs.build.outputs.release_ts }}
       SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://admin.zerocmf.com' }}
-      ARTIFACT: ${{ runner.temp }}/yishan-api-${{ github.sha }}.tar.gz
     steps:
       - name: Validate deployment variables
         env:
@@ -215,9 +214,11 @@ jobs:
       - name: Upload artifact
         run: |
           set -euo pipefail
+          # runner 上下文在 job 级 env 里不可用，这里用 shell 变量。
+          test -f "$RUNNER_TEMP/yishan-api-${GITHUB_SHA}.tar.gz"
           ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
             "mkdir -p /opt/yishan/incoming /opt/yishan/releases"
-          scp -i ~/.ssh/ubuntu-deployer.pem "$ARTIFACT" \
+          scp -i ~/.ssh/ubuntu-deployer.pem "$RUNNER_TEMP/yishan-api-${GITHUB_SHA}.tar.gz" \
             "$UBUNTU_USER@$UBUNTU_HOST:/opt/yishan/incoming/yishan-api-${GITHUB_SHA}.tar.gz"
 
       # 解包与迁移都失败时直接 exit，软链尚未切换，服务不受影响。
