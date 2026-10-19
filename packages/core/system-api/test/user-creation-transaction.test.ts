@@ -21,6 +21,7 @@ import { UserService } from '../src/core/services/user.service'
 import { UserRepository, type CreateUserInput } from '../src/core/repositories/user.repository'
 import { PermissionRepository } from '../src/core/repositories/permission.repository'
 import { PermissionService } from '../src/core/services/permission.service'
+import { DeptRepository } from '../src/core/repositories/dept.repository'
 import { mergeDraftFields } from '../src/core/services/user-creation'
 import type { UserCreationParticipant } from '../src/core/services/user-creation'
 import type { AppTx } from '../src/db'
@@ -129,6 +130,8 @@ function harness(options: { onCreate?: () => Promise<unknown> } = {}): Harness {
 }
 
 function superAdminActor(): void {
+  vi.spyOn(PermissionRepository, 'loadPermissionsByRole').mockImplementation(async ids => new Map(ids.filter(id => id === 2).map(id => [id, { code: null, perms: new Set<string>() }])))
+  vi.spyOn(DeptRepository, 'findEnabledIdsByIds').mockImplementation(async ids => ids.filter(id => id === 10))
   vi.spyOn(PermissionRepository, 'loadActiveRoleIdsByUserId').mockResolvedValue([1])
   vi.spyOn(UserRepository, 'loadActiveDeptIdsByUserId').mockResolvedValue([10])
   vi.spyOn(PermissionService, 'loadForRoleIds').mockResolvedValue({

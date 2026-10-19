@@ -172,29 +172,36 @@ describe('native ESM AI SDK 7 runtime', () => {
   })
 })
 
-it('requires a real prefill tool before a create request can end with prose', async () => {
+it('runs discover, describe, query and draft through generic tools without business-specific forced steps', async () => {
   configured()
   const calls: string[] = []
-  const choices: unknown[] = []
   let requestCount = 0
+  const flow = [
+    { name: 'discover_operations', input: { keyword: '创建用户' } },
+    { name: 'describe_operation', input: { operationId: 'user.create' } },
+    { name: 'query_business_data', input: { operationId: 'user.options', params: {} } },
+    { name: 'update_form_draft', input: { operationId: 'user.create', values: { nickname: '新昵称' } } },
+  ]
   vi.stubGlobal('fetch', async (_url: unknown, init: RequestInit) => {
     const body = JSON.parse(String(init.body))
-    choices.push(body.tool_choice)
-    const choice = body.tool_choice?.name || (JSON.stringify(body.system).includes('下一步只调用 prepare_user_create') ? 'prepare_user_create' : undefined)
-    const name = choice || (requestCount === 0 ? 'get_user_create_form' : requestCount === 1 ? 'get_user_create_options' : undefined)
+    expect(body.tool_choice).not.toMatchObject({ type: 'any' })
+    expect(body.tools.map((tool: { name: string }) => tool.name).sort()).toEqual(['describe_operation', 'discover_operations', 'query_business_data', 'update_form_draft'])
+    const next = flow[requestCount]
     requestCount++
-    if (!name) return new Response(start_ + end('已为您打开新增用户表单', true), { headers: { 'content-type': 'text/event-stream' } })
-    const input = name === 'prepare_user_create' ? { username: 'zhangjie', realName: '张杰', nickname: '杰威尔' } : {}
-    return new Response(start_ + sse('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tool-' + requestCount, name, input: {} } }) + sse('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify(input) } }) + sse('content_block_stop', { type: 'content_block_stop', index: 0 }) + sse('message_delta', { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 1 } }) + sse('message_stop', { type: 'message_stop' }), { headers: { 'content-type': 'text/event-stream' } })
+    if (!next) return new Response(start_ + end('请在原生表单核对。', true), { headers: { 'content-type': 'text/event-stream' } })
+    return new Response(start_ + sse('content_block_start', { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tool-' + requestCount, name: next.name, input: {} } }) + sse('content_block_delta', { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: JSON.stringify(next.input) } }) + sse('content_block_stop', { type: 'content_block_stop', index: 0 }) + sse('message_delta', { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 1 } }) + sse('message_stop', { type: 'message_stop' }), { headers: { 'content-type': 'text/event-stream' } })
   })
   const response = await start({ messages: [{ id: 'create', role: 'user', parts: [{ type: 'text', text: '帮我增加一个用户，用户名叫张杰，昵称杰威尔' }] }], signal: new AbortController().signal, onEnd: async () => {}, execution: {
-    capabilities: ['get_user_create_form', 'get_user_create_options', 'prepare_user_create'].map(name => ({ name, description: name, inputSchema: { type: 'object', additionalProperties: true } }) as AiCapability),
+    capabilities: [
+      { name: 'get_user_create_options', enabled: true, riskLevel: 'read', moduleId: 'system', description: '查询候选', inputSchema: { type: 'object' }, operation: { id: 'user.options', name: '候选', type: 'query' } },
+      { name: 'prepare_user_create', enabled: true, riskLevel: 'prepare', moduleId: 'system', description: '创建用户', inputSchema: { type: 'object' }, operation: { id: 'user.create', name: '创建用户', type: 'create', formKey: 'user.create' } },
+    ] as AiCapability[],
     execute: async (name, input) => { calls.push(name); return { ok: true, result: { data: {}, ...(name === 'prepare_user_create' ? { render: { kind: 'form.prefill', payload: { target: 'user.create', fields: input, missing: [] } } } : {}) } } },
   } })
   const output = await response.text()
-  expect(calls).toContain('prepare_user_create')
+  expect(calls).toEqual(['get_user_create_options', 'prepare_user_create'])
   expect(output).toContain('form.prefill')
-  expect(choices).toContainEqual(expect.objectContaining({ type: 'any' }))
+  expect(requestCount).toBe(5)
 })
 
 it.each(['创建用户有哪些必填字段？', '新增用户需要什么权限？'])('does not force open a form for a schema question: %s', async question => {
@@ -212,16 +219,16 @@ it.each(['创建用户有哪些必填字段？', '新增用户需要什么权限
  expect(posted.tool_choice).not.toMatchObject({type:'tool'})
 })
 
-it('keeps registered read tools available when the provider returns a different read call than tool_choice', async () => {
+it('does not execute a hallucinated legacy tool outside the generic operation facade', async () => {
  configured()
  let step=0
  const executed: string[]=[]
  vi.stubGlobal('fetch',async(_url:unknown,init:RequestInit)=>{
   const body=JSON.parse(String(init.body))
-  const name=step===0?'get_user_create_form':step===1?'list_departments':step===2?'prepare_user_create':undefined
+  expect(body.tools.map((tool:{name:string})=>tool.name)).not.toContain('list_departments')
+  const name=step===0?'list_departments':undefined
   step++
   if(!name)return new Response(start_+end('请在原生表单核对。',true),{headers:{'content-type':'text/event-stream'}})
-  if(step===2)expect(body.tools.map((tool:{name:string})=>tool.name)).toContain('list_departments')
   const input=name==='prepare_user_create'?{nickname:'豆包'}:{}
   return new Response(start_+sse('content_block_start',{type:'content_block_start',index:0,content_block:{type:'tool_use',id:'read-'+step,name,input:{}}})+sse('content_block_delta',{type:'content_block_delta',index:0,delta:{type:'input_json_delta',partial_json:JSON.stringify(input)}})+sse('content_block_stop',{type:'content_block_stop',index:0})+sse('message_delta',{type:'message_delta',delta:{stop_reason:'tool_use'},usage:{output_tokens:1}})+sse('message_stop',{type:'message_stop'}),{headers:{'content-type':'text/event-stream'}})
  })
@@ -230,7 +237,7 @@ it('keeps registered read tools available when the provider returns a different 
   execute:async(name)=>{executed.push(name);return{ok:true,result:{data:{},...(name==='prepare_user_create'?{render:{kind:'form.prefill',payload:{target:'user.create',fields:{nickname:'豆包'},missing:[]}}}:{})}}},
  }})
  const output=await response.text()
- expect(executed).toContain('list_departments')
- expect(output).toContain('form.prefill')
- expect(output).not.toContain('tool-output-error')
+ expect(executed).toEqual([])
+ expect(output).not.toContain('form.prefill')
+ expect(output).toContain('tool-output-error')
 })

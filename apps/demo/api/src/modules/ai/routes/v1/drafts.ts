@@ -15,6 +15,7 @@ import { drizzleDb } from '@yishan/core-system-api/database'
 import { ActionDraftService, type ActionDraft } from '../../services/action-draft.service.js'
 import { AI_PERMISSION, AiIdParamsSchema } from '../../schemas/ai-chat.schema.js'
 import { aiError, installAiErrorHandler } from '../../ai-chat-error.js'
+import { draftFieldSchemas } from '../../services/draft-forms.js'
 import {
   ActionDraftCancelBodySchema,
   ActionDraftCreateTransportBodySchema,
@@ -56,7 +57,7 @@ function serialize(draft: ActionDraft) {
  * 只判「形状」：未知字段、`password`、错误的原始类型。半截手机号照放行 ——
  * 业务格式由 Service 用真实约束算成 `validationErrors`，并保留原值。
  */
-const allowedFormFields = new Set<string>(USER_CREATE_DRAFT_FIELD_KEYS)
+const allowedFormFields = new Set<string>([...USER_CREATE_DRAFT_FIELD_KEYS, ...Object.keys(draftFieldSchemas('department.create'))])
 
 function assertFormDataShape(body: unknown, allowNull: boolean) {
   const formData = (body as { formData?: unknown } | undefined)?.formData
@@ -78,7 +79,9 @@ function assertFormDataShape(body: unknown, allowNull: boolean) {
     if (value === undefined) continue
     // 类型判定来自 schema 派生的唯一清单（`matchesDraftFieldType`），与 Service 的
     // `normalize()` 同一个实现：新增数组字段不需要在这里补一份。
-    if (!matchesDraftFieldType(key, value)) rejected.push(key)
+    const validUserField = (USER_CREATE_DRAFT_FIELD_KEYS as readonly string[]).includes(key) && matchesDraftFieldType(key, value)
+    const validDeptField = key in draftFieldSchemas('department.create') && matchesDraftFieldType(key, value, 'department.create')
+    if (!validUserField && !validDeptField) rejected.push(key)
   }
   if (rejected.length) throw aiError(400, `不支持的字段：${[...new Set(rejected)].join('、')}`)
 }

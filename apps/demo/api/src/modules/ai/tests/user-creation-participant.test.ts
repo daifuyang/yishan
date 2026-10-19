@@ -19,6 +19,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { MySqlDialect } from 'drizzle-orm/mysql-core'
 import { AiUserCreationParticipant } from '../services/user-creation-participant.js'
+import { AiDepartmentCreationParticipant } from '../services/department-creation-participant.js'
 import { ActionDraftService } from '../services/action-draft.service.js'
 import { createActionDraftTx } from '../repositories/action-draft.repository.js'
 import type { ActionDraftRecord, ActionDraftStore, ActionDraftTx } from '../repositories/action-draft.repository.js'
@@ -116,6 +117,21 @@ function fixture(rows?: ActionDraftRecord[]) {
 const SUBMISSION = { draftId: DRAFT_ID, draftVersion: 3 }
 
 describe('认领：锁顺序与状态守卫', () => {
+  it('部门复用认领和成功回执协议，重复提交返回既有部门', async () => {
+    const memory = memoryStore([draft({ action: 'department.create', formData: { name: '研发部', sort_order: 2 }, missingFields: [] })])
+    const service = new ActionDraftService(memory.store, { now: () => START })
+    const audit = { writeInTransaction: vi.fn(async () => {}) }
+    const participant = new AiDepartmentCreationParticipant(service, audit as never, { now: () => START, __createTxForTest: () => memory.tx })
+    expect(await participant.claim(memory.tx as never, OWNER, SUBMISSION)).toEqual({ kind: 'create', fields: { name: '研发部', sort_order: 2 } })
+    await participant.complete(memory.tx as never, OWNER, SUBMISSION, { id: 42 })
+    expect(memory.drafts.get(DRAFT_ID)?.resultRef).toEqual({ targetType: 'sys_dept', targetId: '42' })
+    expect(await participant.claim(memory.tx as never, OWNER, SUBMISSION)).toEqual({ kind: 'replay', departmentId: 42 })
+  })
+  it('拒绝用部门草稿提交用户创建', async () => {
+    const f = fixture([draft({ action: 'department.create' })])
+    await expect(f.participant.claim(f.memory.tx as never, OWNER, SUBMISSION)).rejects.toThrow('表单目标')
+    expect(f.row.status).toBe('ready')
+  })
   it('先锁会话行，再动草稿', async () => {
     const f = fixture()
     await f.participant.claim(f.memory.tx as never, OWNER, SUBMISSION)

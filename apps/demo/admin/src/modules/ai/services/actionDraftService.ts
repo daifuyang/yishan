@@ -24,7 +24,8 @@ type CancelResult = Awaited<ReturnType<typeof aiActionDraftCancel>>;
 /** 草稿的响应体由后端 schema 决定；这里只是给生成类型起个本地名字。 */
 export type ActionDraft = DetailResult['data'];
 export type ActionDraftMissingField = ActionDraft['missingFields'][number];
-export type ActionDraftValidationError = ActionDraft['validationErrors'][number];
+export type ActionDraftValidationError =
+  ActionDraft['validationErrors'][number];
 
 /** 拆信封：失败时只用服务端给的文案，不拼接任何本地字段值。 */
 function unwrap<T>(
@@ -59,7 +60,7 @@ export async function listConversationDrafts(
 export async function patchActionDraft(
   draftId: string,
   draftVersion: number,
-  formData: Record<string, string | number[] | null>,
+  formData: Record<string, string | number | number[] | null>,
 ): Promise<ActionDraft> {
   return unwrap<ActionDraft>(
     await aiActionDraftPatch({ draftId }, { draftVersion, formData }, options),

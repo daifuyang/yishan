@@ -1,5 +1,11 @@
 import type {} from '../../../types/index';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ModalForm,
   type ProFormInstance,
@@ -8,21 +14,22 @@ import {
   ProFormDatePicker,
   ProFormSelect,
   ProForm,
-} from "@ant-design/pro-components";
-import { Alert, Col, type FormItemProps } from "antd";
-import { useSystemAdmin } from "../../../runtime";
-import { getRoleList } from "../../../services/generated/sysRoles";
+} from '@ant-design/pro-components';
+import { Alert, Button, Col, type FormItemProps } from 'antd';
+import { useSystemAdmin } from '../../../runtime';
+import { getRoleList } from '../../../services/generated/sysRoles';
 import {
   getUserDetail,
   createUser,
   updateUser,
   getUserCreateForm as requestUserCreateForm,
   getUserCreateOptions as requestUserCreateOptions,
-} from "../../../services/generated/sysUsers";
-import { ProFormDeptTreeSelect } from "../../../components/DeptTreeSelect";
-import { AttachmentSelect } from "../../../components/AttachmentSelect";
+} from '../../../services/generated/sysUsers';
+import { ProFormDeptTreeSelect } from '../../../components/DeptTreeSelect';
+import { AttachmentSelect } from '../../../components/AttachmentSelect';
 import {
   APPLY_CONFLICT,
+  requestNativeFormAssistance,
   invalidateUserCreateFormHandle,
   isCurrentUserCreateFormHandle,
   notifyUserFormOverlay,
@@ -38,14 +45,14 @@ import {
   type UserCreateDraftSubmission,
   type UserFormOverlayInfo,
   type UserFormSnapshot,
-} from "../../../form-assistance";
+} from '../../../form-assistance';
 import {
   consumeAiPrefill,
   subscribeAiPrefill,
   registerAiPrefillHandler,
   publishAiPrefillResult,
   type AiPrefill,
-} from "../../../ai-prefill";
+} from '../../../ai-prefill';
 
 /**
  * 同源字段定义与候选，**直接来自生成的客户端**。
@@ -67,7 +74,9 @@ async function getUserCreateForm(): Promise<UserCreateForm | null> {
   }
 }
 
-async function getUserCreateOptions(query: SystemAPI.getUserCreateOptionsParams): Promise<UserCreateOptions | null> {
+async function getUserCreateOptions(
+  query: SystemAPI.getUserCreateOptionsParams,
+): Promise<UserCreateOptions | null> {
   try {
     const response = await requestUserCreateOptions(query);
     return response?.success && response.data ? response.data : null;
@@ -105,7 +114,7 @@ type DraftFields = UserCreateDraftFields & Record<string, unknown>;
 const UserForm: React.FC<UserFormProps> = ({
   title,
   trigger,
-  initialValues = { status: "1", gender: "0" },
+  initialValues = { status: '1', gender: '0' },
   onFinish,
   open,
   onOpenChange,
@@ -184,7 +193,9 @@ const UserForm: React.FC<UserFormProps> = ({
     const instance = formRef.current;
     if (!instance) return { ...valuesRef.current };
     try {
-      const live = instance.getFieldsValue?.(true) as Record<string, unknown> | undefined;
+      const live = instance.getFieldsValue?.(true) as
+        | Record<string, unknown>
+        | undefined;
       return { ...valuesRef.current, ...(live ?? {}) };
     } catch {
       // destroyOnHidden 之后 form 实例可能已经断开；退回最后一次已知值。
@@ -203,14 +214,22 @@ const UserForm: React.FC<UserFormProps> = ({
     return out as DraftFields;
   }, [fallbackEditableFields, readValues]);
 
-  const safePrefillFields = useCallback((fields: Readonly<Record<string, unknown>>) => {
-    const normalized = { ...fields };
-    if (normalized.deptId !== undefined) normalized.deptIds = [Number(normalized.deptId)];
-    const editable = createFormRef.current?.editableFields ?? fallbackEditableFields;
-    return Object.fromEntries(Object.entries(normalized).filter(([key]) =>
-      fallbackEditableFields.includes(key) && editable.includes(key),
-    ));
-  }, [fallbackEditableFields]);
+  const safePrefillFields = useCallback(
+    (fields: Readonly<Record<string, unknown>>) => {
+      const normalized = { ...fields };
+      if (normalized.deptId !== undefined)
+        normalized.deptIds = [Number(normalized.deptId)];
+      const editable =
+        createFormRef.current?.editableFields ?? fallbackEditableFields;
+      return Object.fromEntries(
+        Object.entries(normalized).filter(
+          ([key]) =>
+            fallbackEditableFields.includes(key) && editable.includes(key),
+        ),
+      );
+    },
+    [fallbackEditableFields],
+  );
 
   const buildSnapshot = useCallback((): UserFormSnapshot => {
     const provenance = provenanceRef.current;
@@ -247,7 +266,8 @@ const UserForm: React.FC<UserFormProps> = ({
       if (next && !wasOpen) {
         // 打开瞬间记录焦点持有者（通常是「新建」按钮）：关闭助手后焦点回到这里，
         // 而不是靠 CSS 选择器去找某个类名（设计 §5）。
-        const active = typeof document === 'undefined' ? null : document.activeElement;
+        const active =
+          typeof document === 'undefined' ? null : document.activeElement;
         returnFocusRef.current = active instanceof HTMLElement ? active : null;
         notifyUserFormOverlay();
         // 每次打开都是新实例：迟到的补丁因此不会落在一个已经被关闭过的表单上。
@@ -258,7 +278,9 @@ const UserForm: React.FC<UserFormProps> = ({
         valuesRef.current = { ...initialValuesRef.current };
         delete (valuesRef.current as Record<string, unknown>).password;
         requestIdRef.current = aiPrefillRef.current?.requestId;
-        pendingFieldsRef.current = safePrefillFields(aiPrefillRef.current?.fields ?? {});
+        pendingFieldsRef.current = safePrefillFields(
+          aiPrefillRef.current?.fields ?? {},
+        );
         submittingRef.current = false;
         const editId = initialValuesRef.current?.id;
         if (editId) void fetchUserDetail(Number(editId));
@@ -300,7 +322,10 @@ const UserForm: React.FC<UserFormProps> = ({
    * `setFieldsValue` 不触发 `onValuesChange`，那次 +1 是唯一一次，必须由本函数补。
    */
   const revalidateRoles = useCallback(
-    async (deptIds: number[], settings: { bumpRevision?: boolean } = {}): Promise<number[]> => {
+    async (
+      deptIds: number[],
+      settings: { bumpRevision?: boolean } = {},
+    ): Promise<number[]> => {
       if (!assistEnabled) return [];
       const options_ = await getUserCreateOptions({ deptIds });
       if (!options_) return [];
@@ -320,48 +345,89 @@ const UserForm: React.FC<UserFormProps> = ({
     [assistEnabled, readValues],
   );
 
-  const writeFields = useCallback((patch: Record<string, unknown>) => {
-    if (Object.keys(patch).length === 0) return;
-    formRef.current?.setFieldsValue?.(patch);
-    valuesRef.current = { ...valuesRef.current, ...patch };
-    for (const key of Object.keys(patch)) provenanceRef.current[key] = 'assistant';
-    revisionRef.current += 1;
-    // 助手写入的字段同样以表单为准（设计 §6），因此也要让同步逻辑看到它们。
-    notifyChange();
-  }, [notifyChange]);
+  const writeFields = useCallback(
+    (patch: Record<string, unknown>) => {
+      if (Object.keys(patch).length === 0) return;
+      formRef.current?.setFieldsValue?.(patch);
+      valuesRef.current = { ...valuesRef.current, ...patch };
+      for (const key of Object.keys(patch))
+        provenanceRef.current[key] = 'assistant';
+      revisionRef.current += 1;
+      // 助手写入的字段同样以表单为准（设计 §6），因此也要让同步逻辑看到它们。
+      notifyChange();
+    },
+    [notifyChange],
+  );
 
-  const applyPrefill = useCallback(async (request: AiPrefill) => {
-    const generation = openCountRef.current;
-    const owner = identityRef.current;
-    const fields = safePrefillFields(request.fields);
-    requestIdRef.current = request.requestId;
-    pendingFieldsRef.current = { ...pendingFieldsRef.current, ...fields };
-    for (let tick = 0; tick < FORM_MOUNT_TICKS; tick += 1) {
-      if (!openRef.current || generation !== openCountRef.current || owner !== identityRef.current) return;
-      if (formRef.current && !detailLoadingRef.current) {
-        writeFields(fields);
-        const deptIds = fields.deptIds as number[] | undefined;
-        if (deptIds !== undefined) void revalidateRoles(deptIds, { bumpRevision: false });
-        return;
+  const applyPrefill = useCallback(
+    async (request: AiPrefill) => {
+      const generation = openCountRef.current;
+      const owner = identityRef.current;
+      const fields = safePrefillFields(request.fields);
+      requestIdRef.current = request.requestId;
+      pendingFieldsRef.current = { ...pendingFieldsRef.current, ...fields };
+      for (let tick = 0; tick < FORM_MOUNT_TICKS; tick += 1) {
+        if (
+          !openRef.current ||
+          generation !== openCountRef.current ||
+          owner !== identityRef.current
+        )
+          return;
+        if (formRef.current && !detailLoadingRef.current) {
+          const current = readValues();
+          const conflicts = Object.keys(fields).filter(
+            (key) =>
+              provenanceRef.current[key] === 'user' &&
+              JSON.stringify(current[key]) !== JSON.stringify(fields[key]),
+          );
+          if (conflicts.length) {
+            if (request.requestId)
+              publishAiPrefillResult({
+                requestId: request.requestId,
+                status: 'failed',
+                message:
+                  '以下字段已由你修改，未覆盖：' +
+                  conflicts.join('、') +
+                  '。请在原生表单中核对。',
+              });
+            return;
+          }
+          writeFields(fields);
+          const deptIds = fields.deptIds as number[] | undefined;
+          if (deptIds !== undefined)
+            void revalidateRoles(deptIds, { bumpRevision: false });
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, FORM_MOUNT_TICK_MS));
       }
-      await new Promise((resolve) => setTimeout(resolve, FORM_MOUNT_TICK_MS));
-    }
-  }, [revalidateRoles, safePrefillFields, writeFields]);
+    },
+    [readValues, revalidateRoles, safePrefillFields, writeFields],
+  );
 
   useEffect(() => {
-    return registerAiPrefillHandler(isEdit ? 'user.update' : 'user.create', (request) => {
-      if (!openRef.current) return false;
-      if (isEdit && Number(request.fields.id) !== Number(initialValuesRef.current.id)) return false;
-      setPrefillMissing(request.missing);
-      void applyPrefill(request);
-      return true;
-    });
+    return registerAiPrefillHandler(
+      isEdit ? 'user.update' : 'user.create',
+      (request) => {
+        if (!openRef.current) return false;
+        if (
+          isEdit &&
+          Number(request.fields.id) !== Number(initialValuesRef.current.id)
+        )
+          return false;
+        setPrefillMissing(request.missing);
+        void applyPrefill(request);
+        return true;
+      },
+    );
   }, [applyPrefill, isEdit, identity]);
 
-  useEffect(() => () => {
-    openCountRef.current += 1;
-    openRef.current = false;
-  }, [identity]);
+  useEffect(
+    () => () => {
+      openCountRef.current += 1;
+      openRef.current = false;
+    },
+    [identity],
+  );
 
   // ---- 协作契约注册：挂载即注册，卸载即摘除（身份变化时引用自动作废） ----
   useEffect(() => {
@@ -379,7 +445,9 @@ const UserForm: React.FC<UserFormProps> = ({
           // 所以这里有界轮询，兜底仍然返回快照让 `apply` 按既有冲突规则处理。
           for (let tick = 0; tick < FORM_MOUNT_TICKS; tick += 1) {
             if (formRef.current) break;
-            await new Promise((resolve) => setTimeout(resolve, FORM_MOUNT_TICK_MS));
+            await new Promise((resolve) =>
+              setTimeout(resolve, FORM_MOUNT_TICK_MS),
+            );
           }
         }
         return buildSnapshot();
@@ -418,7 +486,9 @@ const UserForm: React.FC<UserFormProps> = ({
             conflicts.push(key);
             continue;
           }
-          const userOwned = provenance[key] === 'user' && current[key] !== undefined;
+          const userOwned =
+            provenance[key] === 'user' &&
+            JSON.stringify(readValues()[key]) !== JSON.stringify(value);
           if (userOwned && !authorized.has(key)) {
             conflicts.push(key);
             continue;
@@ -436,7 +506,10 @@ const UserForm: React.FC<UserFormProps> = ({
         const invalidRoles = await revalidateRoles(nextDeptIds);
         // 补丁本身写成功了（deptIds 已落），但它让已选角色变得不可授予：
         // 把它作为 roleIds 冲突回报，助手据此让用户重新选，而不是静默留一个表单错误。
-        return { applied: true, conflicts: invalidRoles.length > 0 ? ['roleIds'] : [] };
+        return {
+          applied: true,
+          conflicts: invalidRoles.length > 0 ? ['roleIds'] : [],
+        };
       },
     };
     const unsubscribe = registerUserCreateFormHandle(handle, identity);
@@ -451,7 +524,15 @@ const UserForm: React.FC<UserFormProps> = ({
       unsubscribeTarget();
       unsubscribe();
     };
-  }, [assistEnabled, buildSnapshot, draftFields, fallbackEditableFields, identity, setOpen, writeFields]);
+  }, [
+    assistEnabled,
+    buildSnapshot,
+    draftFields,
+    fallbackEditableFields,
+    identity,
+    setOpen,
+    writeFields,
+  ]);
 
   // ---- 浮层 / 焦点协作（设计 §4）：只声明状态，不给助手任何业务能力 ----
   // 读取器读取最新开关与焦点目标，因此表单每次开合不必反推通知助手；
@@ -507,19 +588,42 @@ const UserForm: React.FC<UserFormProps> = ({
     detailLoadingRef.current = true;
     try {
       const res = await getUserDetail({ id });
-      for (let tick = 0; tick < FORM_MOUNT_TICKS && !formRef.current; tick += 1) {
-        if (!openRef.current || generation !== openCountRef.current || owner !== identityRef.current) return;
+      for (
+        let tick = 0;
+        tick < FORM_MOUNT_TICKS && !formRef.current;
+        tick += 1
+      ) {
+        if (
+          !openRef.current ||
+          generation !== openCountRef.current ||
+          owner !== identityRef.current
+        )
+          return;
         await new Promise((resolve) => setTimeout(resolve, FORM_MOUNT_TICK_MS));
       }
-      if (!openRef.current || generation !== openCountRef.current || owner !== identityRef.current) return;
+      if (
+        !openRef.current ||
+        generation !== openCountRef.current ||
+        owner !== identityRef.current
+      )
+        return;
       if (res.success && res.data) {
-        const userFields = Object.fromEntries(Object.entries(readValues()).filter(([key]) => provenanceRef.current[key] === 'user'));
-        const fields = { ...res.data, ...pendingFieldsRef.current, ...userFields };
+        const userFields = Object.fromEntries(
+          Object.entries(readValues()).filter(
+            ([key]) => provenanceRef.current[key] === 'user',
+          ),
+        );
+        const fields = {
+          ...res.data,
+          ...pendingFieldsRef.current,
+          ...userFields,
+        };
         formRef.current?.setFieldsValue(fields);
         valuesRef.current = { ...valuesRef.current, ...fields };
       }
     } finally {
-      if (generation === openCountRef.current && owner === identityRef.current) detailLoadingRef.current = false;
+      if (generation === openCountRef.current && owner === identityRef.current)
+        detailLoadingRef.current = false;
     }
   };
 
@@ -530,9 +634,12 @@ const UserForm: React.FC<UserFormProps> = ({
       if (!field) return undefined;
       const constraints = field.constraints ?? {};
       const rules: Exclude<FormItemProps['rules'], undefined> = [];
-      if (field.required) rules.push({ required: true, message: `请输入${field.label}` });
-      if (typeof constraints.maxLength === 'number') rules.push({ max: constraints.maxLength });
-      if (typeof constraints.minLength === 'number') rules.push({ min: constraints.minLength });
+      if (field.required)
+        rules.push({ required: true, message: `请输入${field.label}` });
+      if (typeof constraints.maxLength === 'number')
+        rules.push({ max: constraints.maxLength });
+      if (typeof constraints.minLength === 'number')
+        rules.push({ min: constraints.minLength });
       if (typeof constraints.pattern === 'string') {
         try {
           rules.push({ pattern: new RegExp(constraints.pattern) });
@@ -550,7 +657,9 @@ const UserForm: React.FC<UserFormProps> = ({
 
   /** 同源部门候选；拿不到时退回空树（用户仍可手输既有值，提交时服务端再校验）。 */
   const deptTreeRequest = useCallback(async () => {
-    const options = await getUserCreateOptions({ deptIds: readValues().deptIds as number[] | undefined });
+    const options = await getUserCreateOptions({
+      deptIds: readValues().deptIds as number[] | undefined,
+    });
     return options?.departments ?? [];
   }, [readValues]);
 
@@ -565,7 +674,8 @@ const UserForm: React.FC<UserFormProps> = ({
       if (!Array.isArray(values) || values.length === 0) return fallback;
       return values.map((raw) => {
         const value = String(raw);
-        const label = fallback.find((item) => item.value === value)?.label ?? value;
+        const label =
+          fallback.find((item) => item.value === value)?.label ?? value;
         return { label, value };
       });
     },
@@ -575,7 +685,8 @@ const UserForm: React.FC<UserFormProps> = ({
   const genderOptions = enumOptions('gender', genderDict);
   const userStatusOptions = enumOptions('status', userStatusDict);
 
-  type UserFormValues = Partial<SystemAPI.createUserReq> & Partial<SystemAPI.updateUserReq>;
+  type UserFormValues = Partial<SystemAPI.createUserReq> &
+    Partial<SystemAPI.updateUserReq>;
 
   /**
    * 提交期本地锁。
@@ -601,9 +712,10 @@ const UserForm: React.FC<UserFormProps> = ({
       publishAiPrefillResult({
         requestId,
         status,
-        message: status === 'completed'
-          ? `用户${operation}成功`
-          : `用户${operation}失败，请在表单中检查后重试`,
+        message:
+          status === 'completed'
+            ? `用户${operation}成功`
+            : `用户${operation}失败，请在表单中检查后重试`,
       });
     };
     const basePayload: SystemAPI.updateUserReq = {
@@ -634,7 +746,8 @@ const UserForm: React.FC<UserFormProps> = ({
         // 同步失败**不**降级成一次没有草稿关联的创建：那会绕开「同一草稿只完成一次
         // 创建」的约束，也等于把用户的确认当成无关的一次普通创建。
         // 但必须把原因摆出来 —— 静默返回 false 会让人对着没反应的按钮一直点。
-        const reason = cause instanceof Error ? cause.message : '草稿联动未成功';
+        const reason =
+          cause instanceof Error ? cause.message : '草稿联动未成功';
         // 只取这句人话：错误对象里可能夹带请求细节，这里不整段外显。
         setSubmitError(reason);
         report('failed');
@@ -656,6 +769,7 @@ const UserForm: React.FC<UserFormProps> = ({
       try {
         const res = await createUser(payload as SystemAPI.createUserReq);
         if (res.success) {
+          link?.complete?.();
           report('completed');
           if (onFinish) await onFinish();
           return true;
@@ -736,147 +850,180 @@ const UserForm: React.FC<UserFormProps> = ({
           for (const key of Object.keys(changed ?? {})) {
             provenanceRef.current[key] = 'user';
           }
-          valuesRef.current = { ...valuesRef.current, ...(changed as Record<string, unknown>) };
+          valuesRef.current = {
+            ...valuesRef.current,
+            ...(changed as Record<string, unknown>),
+          };
           revisionRef.current += 1;
           // 用户手改推给产品侧合并同步；快照已剔除密码，因此同步负载里不会有它。
           notifyChange();
-          const nextDeptIds = (changed as Record<string, unknown>).deptIds as number[] | undefined;
+          const nextDeptIds = (changed as Record<string, unknown>).deptIds as
+            | number[]
+            | undefined;
           // 不 bumpRevision：上面那次同步 +1 已经是这次用户动作的版本推进。
           // 这里再补一次会晚于网络返回，让助手读到过期快照而拒掉下一版补丁。
-          if (nextDeptIds !== undefined) void revalidateRoles(nextDeptIds, { bumpRevision: false });
+          if (nextDeptIds !== undefined)
+            void revalidateRoles(nextDeptIds, { bumpRevision: false });
         }}
         onOpenChange={setOpen}
       >
-      {submitError ? (
-        <Alert type="error" showIcon message={submitError} style={{ marginBottom: 16 }} />
-      ) : null}
-      <ProFormText
-        name="username"
-        label="登录名称"
-        placeholder="请输入登录名称"
-        colProps={{ span: 12 }}
-        rules={rulesFor('username')}
-        fieldProps={{
-          autoComplete: 'off'
-        }}
-      />
+        {assistEnabled && (
+          <Col span={24}>
+            <Button
+              type="link"
+              onClick={() => requestNativeFormAssistance('user.create')}
+            >
+              AI 辅助填写
+            </Button>
+          </Col>
+        )}
+        {submitError ? (
+          <Alert
+            type="error"
+            showIcon
+            message={submitError}
+            style={{ marginBottom: 16 }}
+          />
+        ) : null}
+        <ProFormText
+          name="username"
+          label="登录名称"
+          placeholder="请输入登录名称"
+          colProps={{ span: 12 }}
+          rules={rulesFor('username')}
+          fieldProps={{
+            autoComplete: 'off',
+          }}
+        />
 
-      <ProFormDeptTreeSelect
-        name="deptIds"
-        label="归属部门"
-        placeholder="请选择归属部门"
-        allowClear
-        colProps={{ span: 12 }}
-        {...(assistEnabled ? { request: deptTreeRequest } : {})}
-      />
+        <ProFormDeptTreeSelect
+          name="deptIds"
+          label="归属部门"
+          placeholder="请选择归属部门"
+          allowClear
+          colProps={{ span: 12 }}
+          {...(assistEnabled ? { request: deptTreeRequest } : {})}
+        />
 
-      <ProFormText
-        name="phone"
-        label="手机号码"
-        placeholder="请输入手机号"
-        rules={rulesFor('phone') ?? [{ required: true, message: "请输入手机号" }, { max: 11 }]}
-        colProps={{ span: 12 }}
-      />
-      <ProFormText
-        name="email"
-        label="邮箱"
-        placeholder="请输入邮箱"
-        rules={rulesFor('email')}
-        colProps={{ span: 12 }}
-      />
-
-      <ProFormText
-        name="realName"
-        label="真实姓名"
-        placeholder="请输入真实姓名"
-        rules={rulesFor('realName') ?? [{ min: 1, max: 50, message: "真实姓名长度不能超过50个字符" }]}
-        colProps={{ span: 12 }}
-      />
-      <ProFormText
-        name="nickname"
-        label="用户昵称"
-        placeholder="请输入用户昵称"
-        rules={rulesFor('nickname') ?? [{ min: 1, max: 50, message: "用户昵称长度必须在1到50个字符之间" }]}
-        colProps={{ span: 12 }}
-      />
-      <ProFormText.Password
-        name="password"
-        label="用户密码"
-        placeholder={!initialValues?.id ? "请输入密码" : "不输入则保持原密码"}
-        rules={[
-          { required: !initialValues?.id, message: "请输入密码" },
-          { min: 6, message: "至少6位" },
-        ]}
-        colProps={{ span: 12 }}
-        fieldProps={{
-          autoComplete: 'new-password'
-        }}
-      />
-
-      <ProFormRadio.Group
-        name="gender"
-        label="用户性别"
-        options={genderOptions}
-        colProps={{ span: 12 }}
-      />
-
-      <Col span={12}>
-        <ProForm.Item name="avatar" label="头像">
-          <AttachmentSelect kind="image" multiple={false} maxCount={1} />
-        </ProForm.Item>
-      </Col>
-
-      <ProFormRadio.Group
-        name="status"
-        label="状态"
-        options={userStatusOptions}
-        colProps={{ span: 12 }}
-      />
-
-      <ProFormSelect
-        name="roleIds"
-        label="角色"
-        placeholder="请选择角色"
-        showSearch
-        debounceTime={200}
-        request={async (params) => {
-          if (assistEnabled) {
-            // 同源候选：角色按当前 deptIds 重算，不另建一套选项权限。
-            const options = await getUserCreateOptions({
-              deptIds: (readValues().deptIds as number[] | undefined) ?? [],
-              keyword: params.keyWords,
-            });
-            return (options?.roles ?? []).map((role) => ({
-              label: role.name,
-              value: role.id,
-            }));
+        <ProFormText
+          name="phone"
+          label="手机号码"
+          placeholder="请输入手机号"
+          rules={
+            rulesFor('phone') ?? [
+              { required: true, message: '请输入手机号' },
+              { max: 11 },
+            ]
           }
-          const res = await getRoleList({
-            page: 1,
-            pageSize: 100,
-            status: "1",
-            keyword: params.keyWords,
-            sortBy: "createdAt",
-            sortOrder: "desc",
-          });
-          return (res.data || []).map((r: SystemAPI.sysRole) => ({
-            label: r.name,
-            value: r.id,
-          }));
-        }}
-        fieldProps={{ mode: "multiple", maxTagCount: "responsive" }}
-        colProps={{ span: 12 }}
-      />
+          colProps={{ span: 12 }}
+        />
+        <ProFormText
+          name="email"
+          label="邮箱"
+          placeholder="请输入邮箱"
+          rules={rulesFor('email')}
+          colProps={{ span: 12 }}
+        />
 
-      <ProFormDatePicker
-        name="birthDate"
-        label="出生日期"
-        placeholder="请选择出生日期"
-        fieldProps={{ style: { width: "100%" }, previewValue: false }}
-        colProps={{ span: 12 }}
-      />
+        <ProFormText
+          name="realName"
+          label="真实姓名"
+          placeholder="请输入真实姓名"
+          rules={
+            rulesFor('realName') ?? [
+              { min: 1, max: 50, message: '真实姓名长度不能超过50个字符' },
+            ]
+          }
+          colProps={{ span: 12 }}
+        />
+        <ProFormText
+          name="nickname"
+          label="用户昵称"
+          placeholder="请输入用户昵称"
+          rules={
+            rulesFor('nickname') ?? [
+              { min: 1, max: 50, message: '用户昵称长度必须在1到50个字符之间' },
+            ]
+          }
+          colProps={{ span: 12 }}
+        />
+        <ProFormText.Password
+          name="password"
+          label="用户密码"
+          placeholder={!initialValues?.id ? '请输入密码' : '不输入则保持原密码'}
+          rules={[
+            { required: !initialValues?.id, message: '请输入密码' },
+            { min: 6, message: '至少6位' },
+          ]}
+          colProps={{ span: 12 }}
+          fieldProps={{
+            autoComplete: 'new-password',
+          }}
+        />
 
-    </ModalForm>
+        <ProFormRadio.Group
+          name="gender"
+          label="用户性别"
+          options={genderOptions}
+          colProps={{ span: 12 }}
+        />
+
+        <Col span={12}>
+          <ProForm.Item name="avatar" label="头像">
+            <AttachmentSelect kind="image" multiple={false} maxCount={1} />
+          </ProForm.Item>
+        </Col>
+
+        <ProFormRadio.Group
+          name="status"
+          label="状态"
+          options={userStatusOptions}
+          colProps={{ span: 12 }}
+        />
+
+        <ProFormSelect
+          name="roleIds"
+          label="角色"
+          placeholder="请选择角色"
+          showSearch
+          debounceTime={200}
+          request={async (params) => {
+            if (assistEnabled) {
+              // 同源候选：角色按当前 deptIds 重算，不另建一套选项权限。
+              const options = await getUserCreateOptions({
+                deptIds: (readValues().deptIds as number[] | undefined) ?? [],
+                keyword: params.keyWords,
+              });
+              return (options?.roles ?? []).map((role) => ({
+                label: role.name,
+                value: role.id,
+              }));
+            }
+            const res = await getRoleList({
+              page: 1,
+              pageSize: 100,
+              status: '1',
+              keyword: params.keyWords,
+              sortBy: 'createdAt',
+              sortOrder: 'desc',
+            });
+            return (res.data || []).map((r: SystemAPI.sysRole) => ({
+              label: r.name,
+              value: r.id,
+            }));
+          }}
+          fieldProps={{ mode: 'multiple', maxTagCount: 'responsive' }}
+          colProps={{ span: 12 }}
+        />
+
+        <ProFormDatePicker
+          name="birthDate"
+          label="出生日期"
+          placeholder="请选择出生日期"
+          fieldProps={{ style: { width: '100%' }, previewValue: false }}
+          colProps={{ span: 12 }}
+        />
+      </ModalForm>
     </>
   );
 };

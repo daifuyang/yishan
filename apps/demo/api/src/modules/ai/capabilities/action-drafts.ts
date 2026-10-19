@@ -26,8 +26,10 @@ import { registerAiCapabilities, type AiCapability, type AiCapabilityContext, ty
 import type { UserCreationSubject } from '@yishan/core-system-api'
 import { ActionDraftService, type ActionDraft } from '../services/action-draft.service.js'
 import { aiError } from '../ai-chat-error.js'
+import { draftFieldSchemas, draftForm } from '../services/draft-forms.js'
 import {
   ActionDraftFormDataPatchSchema,
+  relaxedField,
   ActionDraftFormDataSchema,
   EDITABLE_ACTION_DRAFT_STATUSES,
 } from '../schemas/action-draft.schema.js'
@@ -96,9 +98,9 @@ function draftSummary(draft: ActionDraft, requestId: string) {
     render: { kind: 'action.draft', payload: {
       draftId: draft.draftId, draftVersion: draft.draftVersion, uiRequestId: requestId,
       interaction: {
-        type: draft.validationErrors.length || draft.missingFields.some(field => !field.mustCompleteInForm) || !('deptIds' in draft.formData && 'roleIds' in draft.formData) ? 'question' : 'form-preview',
+        type: draft.validationErrors.length || draft.missingFields.some(field => !field.mustCompleteInForm) || (draft.action === 'user.create' && !('deptIds' in draft.formData && 'roleIds' in draft.formData)) ? 'question' : 'form-preview',
         id: draft.draftId + ':' + draft.draftVersion,
-        formKey: 'user.create', draftId: draft.draftId, draftVersion: draft.draftVersion,
+        formKey: draft.action, draftId: draft.draftId, draftVersion: draft.draftVersion,
       },
     } },
     summary: summarize(draft),
@@ -115,7 +117,7 @@ function summarize(draft: ActionDraft): string {
   if (pending.length) parts.push(`还需要确认：${pending.map(field => field.label).join('、')}`)
   if (inForm.length) parts.push(`${inForm.map(field => field.label).join('、')} 请用户在表单中填写`)
   if (problems.length) parts.push(`请更正：${problems.join('；')}`)
-  if (!parts.length) return '信息已收齐，用户核对表单并填写密码后即可保存。'
+  if (!parts.length) return '信息已收齐，请用户核对原生表单并点击保存。'
   return `${parts.join('。')}。信息已保存在草稿里，用户仍需在表单中确认保存。`
 }
 
@@ -249,7 +251,42 @@ export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): 
     },
   }
 
-  return [prepareCreateUser, updateActionDraft, getActionDraft]
+  const formDrafts = (['user.create', 'department.create'] as const).map(action => {
+    const isUser = action === 'user.create'
+    const references: Record<string, string> = isUser ? { deptIds: 'user.create.options', roleIds: 'user.create.options' } : { parentId: 'department.list', leaderId: 'user.list' }
+    return {
+      name: isUser ? 'prepare_user_form_draft' : 'prepare_department_form_draft',
+      moduleId: 'system', operationId: isUser ? 'createUser' : 'createDept',
+      permissionCode: isUser ? 'system:user:create' : 'system:department:create',
+      operation: { id: action, name: isUser ? '新增用户' : '新增部门', type: 'create' as const, formKey: action,
+        describeCapability: isUser ? 'get_user_create_form' : 'get_department_create_form', references },
+      description: '增量保存原生表单草稿。未明确确认前不会创建正式记录。修改已有字段必须携带当前草稿版本；用户手动输入后版本不符会拒绝。',
+      inputSchema: Type.Object({
+        ...Object.fromEntries(Object.entries(draftFieldSchemas(action)).map(([key, schema]) => [key, Type.Optional(Type.Union([relaxedField(schema), Type.Null()]))])),
+        draftId: Type.Optional(Type.String({ minLength: 1, maxLength: 64 })),
+        draftVersion: Type.Optional(Type.Integer({ minimum: 1 })), schemaVersion: Type.Optional(Type.Integer({ minimum: 1 })),
+      }, { additionalProperties: false }),
+      riskLevel: 'prepare' as const, enabled: true,
+      async execute(context: AiCapabilityContext, input: unknown) {
+        const { draftId, draftVersion, schemaVersion, ...fields } = input as { draftId?: string; draftVersion?: number; schemaVersion?: number } & Record<string, unknown>
+        const conversationId = requireConversation(context)
+        const existing = draftId ? await ownDraft(drafts, context, draftId) : (await drafts.list(context.actorId, conversationId)).filter(row => row.action === action && EDITABLE_ACTION_DRAFT_STATUSES.includes(row.status)).at(-1)
+        if (existing && existing.action !== action) throw aiError(400, '草稿表单目标不匹配')
+        const draft = existing
+          ? draftVersion === undefined
+            ? await merge(drafts, context, existing, fields, undefined, { schemaVersion })
+            : await drafts.patch(context.actorId, existing.draftId, draftVersion, fields, { schemaVersion, subject: subjectOf(context) })
+          : await drafts.create(context.actorId, conversationId, { module: 'system', action, formData: fields, schemaVersion, subject: subjectOf(context) })
+        return draftSummary(draft, context.requestId)
+      },
+    } satisfies AiCapability
+  })
+  const departmentForm: AiCapability = {
+    name: 'get_department_create_form', moduleId: 'system', operationId: 'createDept', permissionCode: 'system:department:create', riskLevel: 'read', enabled: true,
+    description: '读取原生新增部门表单的同源字段与约束。', inputSchema: Type.Object({}, { additionalProperties: false }),
+    async execute() { return { data: draftForm('department.create'), mutated: false } },
+  }
+  return [prepareCreateUser, updateActionDraft, getActionDraft, ...formDrafts, departmentForm]
 }
 
 export function registerAiActionDraftCapabilities(deps: ActionDraftCapabilityDeps): void {

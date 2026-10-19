@@ -16,7 +16,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import { drizzleDb, type AppQueryDb } from "@/db";
+import { drizzleDb, type AppQueryDb, type AppTx } from "@/db";
 import { sysDept, sysUser } from "@/db/schema";
 import { dateUtils } from "../../utils/date.js";
 import { clampOffset } from "./_pagination.js";
@@ -186,8 +186,10 @@ export class DeptRepository {
   }
 
   /** 根据名称获取部门（用于唯一性校验） */
-  static async findByName(name: string): Promise<DeptRow | null> {
-    const [row] = await drizzleDb
+  static transaction<T>(operation: (tx: AppTx) => Promise<T>): Promise<T> { return drizzleDb.transaction(operation); }
+
+  static async findByName(name: string, db: AppQueryDb = drizzleDb): Promise<DeptRow | null> {
+    const [row] = await db
       .select()
       .from(sysDept)
       .where(and(isNull(sysDept.deletedAt), eq(sysDept.name, name)))

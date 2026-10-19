@@ -354,7 +354,9 @@ function fakeHandle(
   };
 }
 
-function renderBridge(options: { identityEpoch?: number } = {}) {
+function renderBridge(
+  options: { identityEpoch?: number; activeId?: string } = {},
+) {
   const setOutcome = jest.fn();
   const minimize = jest.fn();
   const bound: { current: unknown } = { current: null };
@@ -371,18 +373,30 @@ function renderBridge(options: { identityEpoch?: number } = {}) {
     requestRestore: jest.fn(),
     flush: async () => {},
   };
-  const view = render(
+  const tree = (activeId?: string) => (
     <AiChatContext.Provider
       value={
-        { viewMode: 'floating', minimize, formAssistance: assistance } as never
+        {
+          viewMode: 'floating',
+          minimize,
+          formAssistance: assistance,
+          activeId,
+        } as never
       }
     >
       <AiFormAssistanceContext.Provider value={assistance as never}>
         <AiNativeFormBridge />
       </AiFormAssistanceContext.Provider>
-    </AiChatContext.Provider>,
+    </AiChatContext.Provider>
   );
-  return { setOutcome, minimize, bound, view };
+  const view = render(tree(options.activeId));
+  return {
+    setOutcome,
+    minimize,
+    bound,
+    view,
+    changeConversation: (id: string) => view.rerender(tree(id)),
+  };
 }
 
 function liveRequest(overrides: Record<string, unknown> = {}) {
@@ -1054,4 +1068,122 @@ test('助手从未填过表单（自动填入被未保存的编辑挡住）时�
   expect(payload.username).toBe('zhangsan');
   // 被挡住时不该有任何人替用户同步过一次。
   expect(mockPatchDraft).not.toHaveBeenCalled();
+});
+
+test('不同原生操作的句柄独立注册，不把部门草稿填到用户表单', () => {
+  const user = fakeHandle();
+  const department = {
+    ...fakeHandle(),
+    snapshot: () => ({
+      target: 'department.create',
+      instanceId: 'department#1',
+      revision: 0,
+      fields: { name: '研发' },
+      dirtyFields: [],
+    }),
+  };
+  const offUser = registerUserCreateFormHandle(user as never);
+  const offDepartment = registerUserCreateFormHandle(department as never);
+  expect(peekUserCreateFormHandle()).toBe(user);
+  expect(peekUserCreateFormHandle('department.create' as never)).toBe(
+    department,
+  );
+  offDepartment();
+  offUser();
+});
+
+test('部门草稿按自己的原生句柄恢复，不填到用户表单', async () => {
+  const user = fakeHandle();
+  const department = {
+    ...fakeHandle(),
+    snapshot: () => ({
+      target: 'department.create',
+      instanceId: 'department#1',
+      revision: 0,
+      fields: { name: '研发' },
+      dirtyFields: [],
+    }),
+  };
+  const offUser = registerUserCreateFormHandle(user as never);
+  const offDepartment = registerUserCreateFormHandle(department as never);
+  mockGetDraft.mockResolvedValue(
+    draft({
+      action: 'department.create',
+      formData: { name: '研发', sort_order: 3 },
+    }),
+  );
+  const { bound } = renderBridge();
+  await act(async () => {
+    (bound.current as { onRestore: (id: string) => void }).onRestore('draft-1');
+  });
+  await waitFor(() => expect(department.apply).toHaveBeenCalled());
+  expect(user.apply).not.toHaveBeenCalled();
+  expect(department.apply).toHaveBeenCalledWith(
+    expect.objectContaining({ fields: { name: '研发', sort_order: 3 } }),
+  );
+  offDepartment();
+  offUser();
+});
+
+test('切换会话解绑旧草稿，旧表单的后续修改不会同步到另一会话', async () => {
+  const handle = fakeHandle({ username: 'zhangsan', realName: '张三' });
+  const off = registerUserCreateFormHandle(handle as never);
+  const { bound, changeConversation } = renderBridge({ activeId: 'conv-1' });
+  await act(async () => {
+    (bound.current as { onRestore: (id: string) => void }).onRestore('draft-1');
+  });
+  await waitFor(() => expect(handle.apply).toHaveBeenCalled());
+  changeConversation('conv-2');
+  handle.state.fields.realName = '人工修改';
+  await act(async () => {
+    await (bound.current as { flush: () => Promise<void> }).flush();
+  });
+  expect(mockPatchDraft).not.toHaveBeenCalled();
+  off();
+});
+
+test('确认覆盖期间又手改时仍使用原冲突版本，不能把新输入当作已授权', async () => {
+  const handle = fakeHandle({ username: 'manual' }, ['username']);
+  handle.apply.mockResolvedValueOnce({
+    applied: false,
+    conflicts: ['username'],
+  });
+  const off = registerUserCreateFormHandle(handle as never);
+  const { bound } = renderBridge();
+  await act(async () => {
+    (bound.current as { onRestore: (id: string) => void }).onRestore('draft-1');
+  });
+  await screen.findByText('确认覆盖你在表单里改过的内容');
+  handle.state.revision = 8;
+  fireEvent.click(screen.getByRole('button', { name: '确认覆盖' }));
+  await waitFor(() => expect(handle.apply).toHaveBeenCalledTimes(2));
+  expect(handle.apply).toHaveBeenNthCalledWith(
+    2,
+    expect.objectContaining({ baseRevision: 7 }),
+  );
+  off();
+});
+
+test('部门仅名称草稿提交前将原生默认值真正同步到服务器并返回新版本', async () => {
+  // open 与 snapshot 必须说同一个实例：applyDraft 以 open() 的返回为准记下协作
+  // 落在哪个表单上，之后 prepare() 再拿它和 snapshot().instanceId 比对。这里若沿用
+  // fakeHandle 的 open（返回 user.create#1），等于「记的是 A、开着的是 B」，会正确地
+  // 判成草稿已被放弃。
+  const departmentSnapshot = { target: 'department.create' as const, instanceId: 'department#defaults', revision: 1, fields: { name: '研发部', parentId: 0, status: '1', sort_order: 0 }, dirtyFields: [] };
+  const department = {
+    ...fakeHandle(),
+    open: jest.fn(async () => ({ ...departmentSnapshot })),
+    snapshot: jest.fn(() => ({ ...departmentSnapshot })),
+  };
+  const off = registerUserCreateFormHandle(department as never);
+  mockGetDraft.mockResolvedValue(draft({ action: 'department.create', formData: { name: '研发部' } }));
+  mockPatchDraft.mockResolvedValue(draft({ action: 'department.create', draftVersion: 5, formData: { name: '研发部', parentId: 0, status: '1', sort_order: 0 } }));
+  const { bound } = renderBridge();
+  await act(async () => { (bound.current as { onRestore: (id: string) => void }).onRestore('draft-1'); });
+  await waitFor(() => expect(department.apply).toHaveBeenCalled());
+  let submission: unknown;
+  await act(async () => { submission = await peekUserCreateDraftLink('department.create')?.prepare(); });
+  expect(mockPatchDraft).toHaveBeenCalledWith('draft-1', 4, { parentId: 0, status: '1', sort_order: 0 });
+  expect(submission).toEqual({ draftId: 'draft-1', draftVersion: 5 });
+  off();
 });

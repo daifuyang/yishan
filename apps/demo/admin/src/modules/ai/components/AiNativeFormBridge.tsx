@@ -6,6 +6,7 @@ import {
 } from '@yishan/core-system-admin/ai-prefill';
 import {
   APPLY_CONFLICT,
+  subscribeNativeFormAssistance,
   peekUserCreateFormHandle,
   registerUserCreateDraftLink,
   subscribeUserCreateFormChanges,
@@ -14,6 +15,7 @@ import {
   type UserCreateDraftFields,
   type UserCreateFormHandle,
   type UserFormSnapshot,
+  type UserFormAssistanceTarget,
 } from '@yishan/core-system-admin/form-assistance';
 import { Alert, Modal, Table, type TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -51,7 +53,6 @@ import { chatError } from '../services/aiChatService';
 const SYNC_DEBOUNCE_MS = 600;
 /** 等原生表单注册句柄的上限；用户没装/没挂载协作表单时不该无限等下去。 */
 const HANDLE_WAIT_MS = 3000;
-const USER_LIST_ROUTE = AI_PREFILL_ROUTES['user.create'];
 
 const FIELD_LABELS: Record<string, string> = {
   username: '登录名称',
@@ -64,6 +65,11 @@ const FIELD_LABELS: Record<string, string> = {
   deptIds: '归属部门',
   roleIds: '角色',
   birthDate: '出生日期',
+  name: '部门名称',
+  parentId: '上级部门',
+  sort_order: '排序',
+  description: '描述',
+  leaderId: '负责人',
 };
 
 const label = (key: string) => FIELD_LABELS[key] ?? key;
@@ -89,13 +95,16 @@ const CLOSED_STATUSES = new Set([
 export function diffDraftFields(
   synced: Record<string, unknown>,
   current: Record<string, unknown>,
-): Record<string, string | number[] | null> {
-  const patch: Record<string, string | number[] | null> = {};
+): Record<string, string | number | number[] | null> {
+  const patch: Record<string, string | number | number[] | null> = {};
   for (const [key, value] of Object.entries(current)) {
     // 双保险：密码即使出现在任何来源里也不进同步负载。
     if (key === 'password') continue;
     if (JSON.stringify(synced[key]) === JSON.stringify(value)) continue;
-    patch[key] = value as string | number[];
+    patch[key] =
+      value == null || value === ''
+        ? null
+        : (value as string | number | number[]);
   }
   for (const key of Object.keys(synced)) {
     if (key === 'password') continue;
@@ -108,8 +117,9 @@ export function diffDraftFields(
 /** 等原生表单挂上协作句柄（切换路由后它才会注册）。 */
 function waitForHandle(
   timeoutMs = HANDLE_WAIT_MS,
+  target: UserFormAssistanceTarget = 'user.create',
 ): Promise<UserCreateFormHandle | null> {
-  const current = peekUserCreateFormHandle();
+  const current = peekUserCreateFormHandle(target);
   if (current) return Promise.resolve(current);
   return new Promise((resolve) => {
     let settled = false;
@@ -122,26 +132,33 @@ function waitForHandle(
     };
     const timer = setTimeout(() => done(null), timeoutMs);
     const unsubscribe = subscribeUserCreateFormHandle(() =>
-      done(peekUserCreateFormHandle()),
+      done(peekUserCreateFormHandle(target)),
     );
   });
 }
 
 interface PendingConflict {
   draftId: string;
+  target: UserFormAssistanceTarget;
+  instanceId: string;
+  baseRevision: number;
   fields: Partial<UserCreateDraftFields>;
   rows: { key: string; label: string; old: string; next: string }[];
 }
 
 export function AiNativeFormBridge() {
   const chat = useAiChat();
+  const chatRef = useRef(chat);
+  chatRef.current = chat;
   const { formAssistance } = chat;
   const { identityEpoch, setOutcome } = formAssistance;
 
   /** 当前正在协助的草稿。它只是「协助目标」，不是可编辑状态。 */
-  const activeRef = useRef<{ draftId: string; draftVersion: number } | null>(
-    null,
-  );
+  const activeRef = useRef<{
+    draftId: string;
+    draftVersion: number;
+    target?: UserFormAssistanceTarget;
+  } | null>(null);
   /** 已经同步进草稿的字段值，用来算差。 */
   const syncedRef = useRef<Record<string, unknown>>({});
   /** 最近一次表单变化。只作为 `patchNow` 不可用时的兜底读数。 */
@@ -177,6 +194,11 @@ export function AiNativeFormBridge() {
   const fillingDepthRef = useRef(0);
   const epochRef = useRef(identityEpoch);
   epochRef.current = identityEpoch;
+  const conversationRef = useRef(chat.activeId);
+  conversationRef.current = chat.activeId;
+  const loadVersion = useRef(0);
+  const currentHandle = () =>
+    peekUserCreateFormHandle(activeRef.current?.target);
   const [conflict, setConflict] = useState<PendingConflict | null>(null);
 
   /**
@@ -207,7 +229,7 @@ export function AiNativeFormBridge() {
   const stillAssistingThisInstance = useCallback((): boolean => {
     const expected = assistedInstanceRef.current;
     if (!expected) return false;
-    const live = peekUserCreateFormHandle()?.snapshot().instanceId ?? '';
+    const live = currentHandle()?.snapshot().instanceId ?? '';
     return live === expected;
   }, []);
 
@@ -224,7 +246,7 @@ export function AiNativeFormBridge() {
   }, []);
 
   const patchNow = useCallback(
-    async (patch: Record<string, string | number[] | null>) => {
+    async (patch: Record<string, string | number | number[] | null>) => {
       const target = activeRef.current;
       if (!target || Object.keys(patch).length === 0) return;
       const epoch = epochRef.current;
@@ -281,7 +303,7 @@ export function AiNativeFormBridge() {
       await chainRef.current;
       return;
     }
-    const handle = peekUserCreateFormHandle();
+    const handle = currentHandle();
     const current = handle?.snapshot().fields ?? latestRef.current?.fields;
     if (!current || !activeRef.current) {
       await chainRef.current;
@@ -366,7 +388,14 @@ export function AiNativeFormBridge() {
           });
           return;
         }
-        setConflict({ draftId: draft.draftId, fields, rows });
+        setConflict({
+          draftId: draft.draftId,
+          fields,
+          rows,
+          target: current.target,
+          instanceId: current.instanceId,
+          baseRevision: current.revision,
+        });
         return;
       }
       setOutcome(
@@ -380,7 +409,7 @@ export function AiNativeFormBridge() {
             }
           : {
               status: 'notice',
-              message: '已填入新建用户表单，请核对后自行保存。',
+              message: '已填入原生表单，请核对后自行保存。',
             },
       );
     },
@@ -400,6 +429,7 @@ export function AiNativeFormBridge() {
       try {
         const opened = await handle.open();
         const snapshot = opened?.instanceId ? opened : handle.snapshot();
+        assistedInstanceRef.current = snapshot.instanceId;
         const fields = (draft.formData ?? {}) as Partial<UserCreateDraftFields>;
         const result = await handle.apply({
           instanceId: snapshot.instanceId,
@@ -409,15 +439,18 @@ export function AiNativeFormBridge() {
         if (result.applied) {
           // 记住这次协作落在哪个实例上：只有它还开着，才谈得上「继续同步」。
           assistedInstanceRef.current = snapshot.instanceId;
-          // 填完之后重新建立「已同步」基线：助手写入的内容与表单自身的默认值
-          // 都不是用户的编辑，既不该被当成差去 PATCH，也不会被当成「要清空」。
-          const current = handle.snapshot().fields;
-          for (const [key, value] of Object.entries(current)) {
-            if (value === undefined || value === null || value === '') continue;
-            syncedRef.current[key] = value;
-          }
+          // 填完之后重新建立「已同步」基线 —— 基线的含义是**服务器草稿现在有什么**，
+          // 所以只能按 draft.formData 铺（与 onRestore 同一口径）。
+          //
+          // 不能按表单当前值铺：apply 写入的字段就来自 draft.formData，表单里多出来
+          // 的是原生默认值（status / sort_order / parentId 之类）。拿表单当前值当基线
+          // 等于宣称「服务器已经存了这些默认值」，它们就再也不会被 PATCH 上去 ——
+          // 于是用户看到的是草稿只填了 name，提交时服务端按自己的默认值建部门。
+          syncedRef.current = { ...(draft.formData ?? {}) };
         }
         reportApplyResult(draft, fields, handle, result);
+        if (chatRef.current.viewMode === 'fullscreen')
+          chatRef.current.minimize();
       } finally {
         fillingDepthRef.current = Math.max(0, fillingDepthRef.current - 1);
       }
@@ -429,12 +462,60 @@ export function AiNativeFormBridge() {
     async (draftId: string, options: { manual: boolean }) => {
       // 用户主动恢复时 `activeRef` 可能还是空的（刷新后第一次点「继续填写」），
       // 因此这里不以它作为前置条件：草稿状态由下面读回来的服务器数据决定。
-      let handle = peekUserCreateFormHandle();
+      const existing = currentHandle();
+      if (
+        !options.manual &&
+        !assistedInstanceRef.current &&
+        existing?.snapshot().dirtyFields.length
+      ) {
+        setOutcome(draftId, {
+          status: 'blocked',
+          message:
+            '表单里还有你未保存的修改，已暂停自动填入。核对后点「继续填写」即可。',
+        });
+        return;
+      }
+      const version = ++loadVersion.current;
+      const owner = epochRef.current;
+      const conversation = conversationRef.current;
+      const valid = () =>
+        version === loadVersion.current &&
+        owner === epochRef.current &&
+        conversation === conversationRef.current;
+      let draft: ActionDraft;
+      try {
+        draft = await getActionDraft(draftId);
+      } catch (cause) {
+        setOutcome(draftId, {
+          status: 'unknown',
+          message: `读取草稿失败：${chatError(cause)}`,
+        });
+        return;
+      }
+      if (!valid()) return;
+      if (conversation && draft.conversationId !== conversation) {
+        setOutcome(draftId, {
+          status: 'blocked',
+          message: '这份草稿不属于当前会话。',
+        });
+        return;
+      }
+      const target: UserFormAssistanceTarget =
+        draft.action === 'department.create'
+          ? 'department.create'
+          : 'user.create';
+      const route = AI_PREFILL_ROUTES[target];
+      let handle = peekUserCreateFormHandle(target);
+
       // 未保存的编辑先于任何导航判断：把用户从正在编辑的表单上导航走，
       // 等于用一次自动填入换掉他的输入。
       if (handle && !options.manual) {
         const current = handle.snapshot();
-        if (current.instanceId && current.dirtyFields.length > 0) {
+        if (
+          current.instanceId &&
+          current.dirtyFields.length > 0 &&
+          activeRef.current?.draftId !== draftId
+        ) {
           setOutcome(draftId, {
             status: 'blocked',
             message:
@@ -444,26 +525,16 @@ export function AiNativeFormBridge() {
         }
       }
       if (!handle) {
-        if (history.location.pathname !== USER_LIST_ROUTE) {
-          history.push(USER_LIST_ROUTE);
+        if (history.location.pathname !== route) {
+          history.push(route);
         }
-        handle = await waitForHandle();
+        handle = await waitForHandle(HANDLE_WAIT_MS, target);
+        if (!valid()) return;
       }
       if (!handle) {
         setOutcome(draftId, {
           status: 'unsupported',
-          message:
-            '当前页面没有接入「新建用户」表单，助手无法代填。请到用户管理页手动新建。',
-        });
-        return;
-      }
-      let draft: ActionDraft;
-      try {
-        draft = await getActionDraft(draftId);
-      } catch (cause) {
-        setOutcome(draftId, {
-          status: 'unknown',
-          message: `读取草稿失败：${chatError(cause)}`,
+          message: '当前页面未接入此操作的原生表单，请到对应管理页面填写。',
         });
         return;
       }
@@ -485,6 +556,7 @@ export function AiNativeFormBridge() {
       activeRef.current = {
         draftId,
         draftVersion: draft.draftVersion,
+        target,
       };
       syncedRef.current = { ...(draft.formData ?? {}) };
       await applyDraft(draft, handle);
@@ -544,6 +616,18 @@ export function AiNativeFormBridge() {
       if (chat.viewMode === 'fullscreen') chat.minimize();
     },
   };
+  useEffect(
+    () =>
+      subscribeNativeFormAssistance((target) => {
+        chat.setViewMode('floating');
+        chat.setDraft(
+          target === 'department.create'
+            ? '请帮助我完善当前新建部门表单'
+            : '请帮助我完善当前新建用户表单',
+        );
+      }),
+    [chat],
+  );
   const handlersRef = useRef(handlers.current);
   handlersRef.current = handlers.current;
 
@@ -563,7 +647,7 @@ export function AiNativeFormBridge() {
     const target = activeRef.current;
     // 从来没有协助中的草稿 → 这次提交与草稿无关，普通创建，行为与从前一致。
     if (!target) return null;
-    const handle = peekUserCreateFormHandle();
+    const handle = currentHandle();
     // 有协助中的草稿却拿不到打开的表单：**硬失败**，不降级成一次不带草稿关联的
     // 创建 —— 那会绕开服务端「同一草稿最多完成一次创建」的保证（设计 §11）。
     if (!handle || !handle.snapshot().instanceId) {
@@ -629,16 +713,51 @@ export function AiNativeFormBridge() {
     }
   }, [setOutcome]);
 
-  const linkRef = useRef({ prepare, reconcile });
-  linkRef.current = { prepare, reconcile };
-  useEffect(() => registerUserCreateDraftLink(linkRef.current), []);
+  const complete = () => {
+    const target = activeRef.current;
+    if (!target) return;
+    setOutcome(target.draftId, {
+      status: 'completed',
+      message: '已通过原生表单保存成功。',
+    });
+    activeRef.current = null;
+    switchDraft();
+  };
+  const linkRef = useRef({ prepare, reconcile, complete });
+  linkRef.current = { prepare, reconcile, complete };
+  useEffect(() => {
+    const user = registerUserCreateDraftLink({
+      prepare: () =>
+        activeRef.current?.target === 'department.create'
+          ? Promise.resolve(null)
+          : linkRef.current.prepare(),
+      reconcile: () => linkRef.current.reconcile(),
+      complete: () => linkRef.current.complete(),
+    });
+    const department = registerUserCreateDraftLink(
+      {
+        prepare: () =>
+          activeRef.current?.target === 'department.create'
+            ? linkRef.current.prepare()
+            : Promise.resolve(null),
+        reconcile: () => linkRef.current.reconcile(),
+        complete: () => linkRef.current.complete(),
+      },
+      'department.create',
+    );
+    return () => {
+      user();
+      department();
+    };
+  }, []);
 
   // 身份变了：丢掉上一个账号的协作目标（设计 §7）。
   useEffect(() => {
     switchDraft();
     activeRef.current = null;
     setConflict(null);
-  }, [identityEpoch, switchDraft]);
+    loadVersion.current += 1;
+  }, [identityEpoch, chat.activeId, switchDraft]);
 
   useEffect(
     () =>
@@ -677,13 +796,12 @@ export function AiNativeFormBridge() {
         const current = conflict;
         setConflict(null);
         if (!current) return;
-        const handle = peekUserCreateFormHandle();
+        const handle = peekUserCreateFormHandle(current.target);
         if (!handle) return;
-        const snapshot = handle.snapshot();
         // 只授权用户**刚刚确认过的那些字段**，不是补丁的全部键。
         const result = await handle.apply({
-          instanceId: snapshot.instanceId,
-          baseRevision: snapshot.revision,
+          instanceId: current.instanceId,
+          baseRevision: current.baseRevision,
           fields: current.fields,
           authorizedFields: current.rows.map((row) => row.key),
         });

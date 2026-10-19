@@ -60,7 +60,19 @@ export async function aiConversationsCreate(options?: { [key: string]: any }) {
         id: string;
         role: "user" | "assistant";
         parts: Record<string, any>[];
-        metadata?: { status?: "complete" | "aborted" | "error" };
+        metadata?: {
+          status?: "complete" | "aborted" | "error";
+          tokenUsage?: {
+            inputTokens?: number;
+            outputTokens?: number;
+            totalTokens?: number;
+          };
+          metrics: {
+            durationMs: number;
+            toolCalls: number;
+            modelCalls: number;
+          };
+        };
       }[];
     };
   }>("/api/ai/v1/conversations", {
@@ -91,7 +103,19 @@ export async function aiConversationsDetail(
         id: string;
         role: "user" | "assistant";
         parts: Record<string, any>[];
-        metadata?: { status?: "complete" | "aborted" | "error" };
+        metadata?: {
+          status?: "complete" | "aborted" | "error";
+          tokenUsage?: {
+            inputTokens?: number;
+            outputTokens?: number;
+            totalTokens?: number;
+          };
+          metrics: {
+            durationMs: number;
+            toolCalls: number;
+            modelCalls: number;
+          };
+        };
       }[];
     };
   }>(`/api/ai/v1/conversations/${param0}`, {
@@ -146,7 +170,19 @@ export async function aiConversationsRename(
         id: string;
         role: "user" | "assistant";
         parts: Record<string, any>[];
-        metadata?: { status?: "complete" | "aborted" | "error" };
+        metadata?: {
+          status?: "complete" | "aborted" | "error";
+          tokenUsage?: {
+            inputTokens?: number;
+            outputTokens?: number;
+            totalTokens?: number;
+          };
+          metrics: {
+            durationMs: number;
+            toolCalls: number;
+            modelCalls: number;
+          };
+        };
       }[];
     };
   }>(`/api/ai/v1/conversations/${param0}`, {
@@ -178,7 +214,7 @@ export async function aiActionDraftList(
         ownerId: number;
         conversationId: string;
         module: "system";
-        action: "user.create";
+        action: "user.create" | "department.create";
         schemaVersion: number;
         formData: Record<string, any>;
         missingFields: {
@@ -224,7 +260,7 @@ export async function aiActionDraftCreate(
   params: API.aiActionDraftCreateParams,
   body: {
     module: "system";
-    action: "user.create";
+    action: "user.create" | "department.create";
     formData: Record<string, any>;
     schemaVersion?: number;
   },
@@ -241,7 +277,7 @@ export async function aiActionDraftCreate(
       ownerId: number;
       conversationId: string;
       module: "system";
-      action: "user.create";
+      action: "user.create" | "department.create";
       schemaVersion: number;
       formData: Record<string, any>;
       missingFields: {
@@ -301,7 +337,7 @@ export async function aiActionDraftDetail(
       ownerId: number;
       conversationId: string;
       module: "system";
-      action: "user.create";
+      action: "user.create" | "department.create";
       schemaVersion: number;
       formData: Record<string, any>;
       missingFields: {
@@ -361,7 +397,7 @@ export async function aiActionDraftPatch(
       ownerId: number;
       conversationId: string;
       module: "system";
-      action: "user.create";
+      action: "user.create" | "department.create";
       schemaVersion: number;
       formData: Record<string, any>;
       missingFields: {

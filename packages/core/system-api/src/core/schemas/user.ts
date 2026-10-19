@@ -247,6 +247,9 @@ export const UserCreateDraftPartialSchema = Type.Partial(UserCreateDraftFieldsSc
 });
 
 export type UserCreateDraftFields = Static<typeof UserCreateDraftFieldsSchema>;
+export const UserUpdatePrefillFieldsSchema = Type.Pick(UpdateUserReqSchema, [...USER_CREATE_DRAFT_FIELD_KEYS], {
+  $id: 'userUpdatePrefillFields', additionalProperties: false, minProperties: 0,
+});
 /** 候选查询参数（与 `UserCreateOptionsQuerySchema` 同源）。 */
 export type UserCreateOptionsQuery = Static<typeof UserCreateOptionsQuerySchema>;
 export type UserCreateDraftPartial = Static<typeof UserCreateDraftPartialSchema>;

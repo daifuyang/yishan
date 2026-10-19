@@ -11,6 +11,50 @@ function moduleDefinition(id, overrides = {}) {
   }
 }
 
+test('assembles declared capabilities inside the application catalog without leaking between servers', async () => {
+  const { listAiCapabilities } = require('../dist/ai-capabilities/catalog.js')
+  const capability = { name: 'read_demo', description: 'Read demo', moduleId: 'demo', operationId: 'demoRead', permissionCode: 'demo:read', inputSchema: {}, riskLevel: 'read', enabled: true, execute: async () => ({ data: {} }) }
+  const definition = moduleDefinition('demo', {
+    capabilities: [capability],
+    async register(router) { router.get('/capabilities', async () => listAiCapabilities().map(item => item.name)) },
+    async initialize() { assert.deepEqual(listAiCapabilities().map(item => item.name), ['read_demo']) },
+  })
+  const a = await createYishanApi({ modules: [definition], context: {} })
+  const b = await createYishanApi({ modules: [moduleDefinition('other', { async register(router) { router.get('/capabilities', async () => listAiCapabilities().map(item => item.name)) } })], context: {} })
+  try {
+    assert.deepEqual((await a.inject('/api/demo/capabilities')).json(), ['read_demo'])
+    assert.deepEqual((await b.inject('/api/other/capabilities')).json(), [])
+  } finally { await Promise.all([a.close(), b.close()]) }
+})
+
+test('rejects capability declarations claiming another module', async () => {
+  await assert.rejects(createYishanApi({ modules: [moduleDefinition('demo', { capabilities: [{ name: 'spoof', moduleId: 'system' }] })], context: {} }), /capability.*module/)
+})
+
+test('preserves the host runtime capability catalog for module contributions', async () => {
+  const { AiCapabilityCatalog } = require('../dist/index.js')
+  const { runWithAiCapabilities, listAiCapabilities } = require('../dist/ai-capabilities/catalog.js')
+  const catalog = new AiCapabilityCatalog()
+  const contribution = { name: 'declared', description: 'Read', operationId: 'readDemo', permissionCode: 'demo:read', inputSchema: {}, riskLevel: 'read', enabled: true, execute: async () => ({ data: 1 }) }
+  const app = await createYishanApi({ modules: [moduleDefinition('demo', { capabilities: [contribution] })], context: {}, runInContext: fn => runWithAiCapabilities(catalog, fn) })
+  try { assert.deepEqual(runWithAiCapabilities(catalog, () => listAiCapabilities().map(item => item.name)), ['declared']) }
+  finally { await app.close() }
+})
+
+test('rolls back declared capabilities when startup fails so the host can retry', async () => {
+  const { AiCapabilityCatalog } = require('../dist/index.js')
+  const { runWithAiCapabilities } = require('../dist/ai-capabilities/catalog.js')
+  const catalog = new AiCapabilityCatalog()
+  const contribution = { name: 'declared', description: 'Read', operationId: 'readDemo', permissionCode: 'demo:read', inputSchema: {}, riskLevel: 'read', enabled: true, execute: async () => ({ data: 1 }) }
+  const module = moduleDefinition('demo', { capabilities: [contribution], async register() { throw new Error('transient startup failure') } })
+  const options = { modules: [module], context: {}, runInContext: fn => runWithAiCapabilities(catalog, fn) }
+  await assert.rejects(createYishanApi(options), /transient startup failure/)
+  assert.equal(catalog.has('declared'), false)
+  module.register = async () => {}
+  const app = await createYishanApi(options)
+  await app.close()
+})
+
 test('validates module graph before acquiring resources', async () => {
   const mutations = [
     [[null], /invalid module definition/],

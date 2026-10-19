@@ -12,6 +12,7 @@ import { ActionDraftService } from './modules/ai/services/action-draft.service'
 import { ActionDraftRepository } from './modules/ai/repositories/action-draft.repository'
 import { AiAuditRepository } from './modules/ai/repositories/ai-audit.repository'
 import { AiUserCreationParticipant } from './modules/ai/services/user-creation-participant'
+import { AiDepartmentCreationParticipant } from './modules/ai/services/department-creation-participant'
 
 export interface DemoAppOptions {
   redis?: false | Record<string, unknown>
@@ -32,6 +33,9 @@ export async function buildApp(config: DemoConfig, modules: readonly ApiModule<S
             new ActionDraftService(new ActionDraftRepository(database.db)),
             new AiAuditRepository(database.db),
           )
+        : undefined,
+      departmentCreationParticipant: modules.some(module => module.id === 'ai')
+        ? new AiDepartmentCreationParticipant(new ActionDraftService(new ActionDraftRepository(database.db)), new AiAuditRepository(database.db))
         : undefined,
     })
     const installed = modules.map(module => module.id === 'demo' ? {

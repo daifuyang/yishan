@@ -21,7 +21,7 @@
  *    「别动它」。两者混为一谈会让助手一次补丁清空半个表单。
  */
 import { Type, type Static, type TSchema } from '@sinclair/typebox'
-import { USER_CREATE_DRAFT_FIELD_KEYS, UserCreateDraftFieldsSchema } from '@yishan/core-system-api'
+import { USER_CREATE_DRAFT_FIELD_KEYS, UserCreateDraftFieldsSchema, CreateDeptFieldsSchema } from '@yishan/core-system-api'
 
 /**
  * 草稿状态机。
@@ -57,7 +57,7 @@ export const EDITABLE_ACTION_DRAFT_STATUSES: readonly ActionDraftStatus[] = ['co
  * 新增协作目标必须先在这里登记一个真实存在的表单适配器。
  */
 export const ACTION_DRAFT_MODULES = ['system'] as const
-export const ACTION_DRAFT_ACTIONS = ['user.create'] as const
+export const ACTION_DRAFT_ACTIONS = ['user.create', 'department.create'] as const
 export type ActionDraftModule = (typeof ACTION_DRAFT_MODULES)[number]
 export type ActionDraftAction = (typeof ACTION_DRAFT_ACTIONS)[number]
 
@@ -95,15 +95,22 @@ export function isDraftArrayField(key: string): boolean {
  * 数组字段要纯数字数组，其余字段是字符串 —— 判定的是原始 JSON 的类型，
  * 因为半截手机号要照存，业务格式错误留给 `validationErrors`。
  */
-export function matchesDraftFieldType(key: string, value: unknown): boolean {
+export function matchesDraftFieldType(key: string, value: unknown, action = 'user.create'): boolean {
+  if (action === 'department.create') {
+    const fields: Record<string, TSchema> = CreateDeptFieldsSchema.properties
+    const source = fields[key]
+    if (!source) return false
+    return source.type === 'number' || source.type === 'integer' ? typeof value === 'number' && Number.isFinite(value) : typeof value === 'string'
+  }
   if (!isDraftArrayField(key)) return typeof value === 'string'
   return Array.isArray(value) && value.every(item => typeof item === 'number' && Number.isFinite(item))
 }
 
 /** 取源字段的「基本类型」，丢掉 enum / pattern / format。 */
-function relaxedField(source: unknown): TSchema {
+export function relaxedField(source: unknown): TSchema {
   const schema = (source ?? {}) as { type?: string; items?: { type?: string }; anyOf?: unknown[]; maxLength?: number }
   if (schema.type === 'array') return Type.Array(schema.items?.type === 'string' ? Type.String() : Type.Number())
+  if (schema.type === 'number' || schema.type === 'integer') return Type.Number()
   // birthDate 之类的联合类型：取第一个成员的原始类型，宽松成单个字符串。
   if (!schema.type && Array.isArray(schema.anyOf)) return relaxedField(schema.anyOf[0])
   return Type.String({ maxLength: schema.maxLength ?? 255 })

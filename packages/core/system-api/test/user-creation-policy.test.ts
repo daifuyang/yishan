@@ -140,6 +140,19 @@ const baseSubject = (over: Partial<UserCreationSubject> = {}): UserCreationSubje
 const CREATE_PERMS = ['system:user:create']
 
 describe('validateUserCreation — 角色授权', () => {
+  it.each([{ perms: ['__super_admin__'] }, { perms: CREATE_PERMS }])('rejects invented role IDs for actor permissions %j', async ({ perms }) => {
+    mockActor({ roleIds: [1], perms })
+    mockDepts([10])
+    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS }] })
+    await expect(validateUserCreation(baseSubject(), { roleIds: [999], deptIds: [10] }, { db })).rejects.toThrow('角色不存在或已被停用')
+  })
+
+  it.each([{ perms: ['__super_admin__'] }, { perms: CREATE_PERMS }])('rejects invented department IDs for actor permissions %j', async ({ perms }) => {
+    mockActor({ roleIds: [1], perms })
+    mockDepts([10])
+    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS }] })
+    await expect(validateUserCreation(baseSubject(), { deptIds: [999] }, { db })).rejects.toThrow('部门不存在或已被停用')
+  })
   it('grants a role whose permission codes are a subset of the operator effective permissions', async () => {
     mockActor({ roleIds: [1], perms: CREATE_PERMS })
     const db = fakeDb({
@@ -198,12 +211,12 @@ describe('validateUserCreation — 角色授权', () => {
     ).rejects.toMatchObject({ code: UserErrorCode.USER_CREATE_FORBIDDEN })
   })
 
-  it('lets a super administrator assign any role', async () => {
+  it('lets a super administrator assign any existing role and department', async () => {
     mockActor({ perms: ['__super_admin__'] })
     const db = fakeDb({
       roles: [{ id: 3, dataScope: DATA_SCOPE_ALL, code: 'super_admin', perms: [] }],
     })
-    mockDepts([])
+    mockDepts([99])
 
     await expect(
       validateUserCreation(baseSubject(), { roleIds: [3], deptIds: [99] }, { db }),
@@ -240,7 +253,7 @@ describe('validateUserCreation — 角色授权', () => {
     ).rejects.toMatchObject({ code: UserErrorCode.USER_CREATE_FORBIDDEN })
   })
 
-  it('ignores a disabled role because it is not loaded at all', async () => {
+  it('rejects selecting a disabled role absent from the active permission matrix', async () => {
     mockActor({ roleIds: [1], perms: CREATE_PERMS })
     // 禁用角色不会出现在权限矩阵里（status/deletedAt 由 repository 过滤）。
     const db = fakeDb({
@@ -253,7 +266,7 @@ describe('validateUserCreation — 角色授权', () => {
 
     await expect(
       validateUserCreation(baseSubject(), { roleIds: [3, 404], deptIds: [10] }, { db }),
-    ).resolves.toBeUndefined()
+    ).rejects.toThrow('角色不存在或已被停用')
   })
 
   it('ignores permissions revoked from the candidate role', async () => {

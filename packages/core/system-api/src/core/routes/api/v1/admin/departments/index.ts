@@ -77,7 +77,7 @@ const adminDepts: FastifyPluginAsync = async (fastify): Promise<void> => {
       body: { $ref: 'createDeptReq#' },
       response: { 200: { $ref: 'deptDetailResp#' } },
     },
-    service: (request) => DeptService.createDept(request.body as CreateDeptReq),
+    service: (request) => DeptService.createDept(request.body as CreateDeptReq, request.currentUser.id),
   });
 
   crud.update({

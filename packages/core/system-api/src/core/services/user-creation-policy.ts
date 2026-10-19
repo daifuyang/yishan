@@ -207,17 +207,21 @@ export async function validateUserCreation(
   // ---- 操作者身份：全部服务端重载 ------------------------------------------
   const { actorRoleIds, actorDeptIds, actorPerms } = await reloadActor(subject, db)
 
-  // 超管（按**本次请求**的有效权限判定，PAT 收窄在内）可以分配任何角色与部门。
-  if (actorPerms.has(SUPER_ADMIN_BYPASS)) return
-
-  if (!actorPerms.has(USER_CREATE_PERMISSION)) {
+  const superAdmin = actorPerms.has(SUPER_ADMIN_BYPASS)
+  if (!superAdmin && !actorPerms.has(USER_CREATE_PERMISSION)) {
     forbidden('你没有新增用户的权限')
   }
+
+  // 超管可跨授权范围，但不存在或停用的引用仍不能分配；同一规则也服务原生提交。
+  const candidateMatrix = await PermissionRepository.loadPermissionsByRole(requestedRoleIds, db)
+  if (candidateMatrix.size !== requestedRoleIds.length) forbidden('选择的角色不存在或已被停用')
+  const existingDeptIds = await DeptRepository.findEnabledIdsByIds(requestedDeptIds, db)
+  if (existingDeptIds.length !== requestedDeptIds.length) forbidden('选择的部门不存在或已被停用')
+  if (superAdmin) return
 
   // ---- 规则 1/2：角色组合的权限码 ------------------------------------------
   // 逐角色取权限码再合并：合并后的集合就是「组合授予什么」。禁用/已删角色不在
   // 矩阵里，权限回收后也不在其中 —— 两者都不会再授权。
-  const candidateMatrix = await PermissionRepository.loadPermissionsByRole(requestedRoleIds, db)
   const candidatePerms = new Set<string>()
   for (const entry of candidateMatrix.values()) {
     if (entry.code === ROLE_CODES.SUPER_ADMIN) candidatePerms.add(SUPER_ADMIN_BYPASS)
@@ -259,9 +263,4 @@ export async function validateUserCreation(
     }
   }
 
-  // 范围算的是 ID 集合；停用/软删的部门 ID 仍可能落在集合里，所以还要确认它可用。
-  const existingDeptIds = await DeptRepository.findEnabledIdsByIds(requestedDeptIds, db)
-  if (existingDeptIds.length !== requestedDeptIds.length) {
-    forbidden('选择的部门不存在或已被停用')
-  }
 }

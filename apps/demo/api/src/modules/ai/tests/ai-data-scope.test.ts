@@ -64,7 +64,7 @@ function harness(capabilities: AiCapability[], enabled: string[] = ['demo', 'ai'
   return {
     runtime,
     run,
-    toolsForActor: (actor: never) => run(() => toolsForActor(actor)),
+    toolsForActor: (actor: never) => run(() => toolsForActor(actor, runtime)),
     base: {
       requestId: 'r1',
       conversationId: 'c1',

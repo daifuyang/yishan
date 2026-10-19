@@ -6,6 +6,8 @@ export type ChatMessage = UIMessage<{
   status?: 'complete' | 'aborted' | 'error'
   /** 本轮 token 用量。落库后用于成本核算，不参与业务逻辑。 */
   tokenUsage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number }
+  /** 仅含计数和耗时，不含提示词、参数或业务数据。 */
+  metrics?: { durationMs: number; toolCalls: number; modelCalls: number }
 }>
 
 export const AI_PERMISSION: PermissionRef = { code: 'ai:chat:use', label: 'AI 助手-使用', group: 'ai' }
@@ -23,7 +25,11 @@ const AiMessageSchema = Type.Object({
   id: Id,
   role: Type.Union([Type.Literal('user'), Type.Literal('assistant')]),
   parts: Type.Array(Type.Record(Type.String(), Type.Unknown())),
-  metadata: Type.Optional(Type.Object({ status: Type.Optional(Type.Union([Type.Literal('complete'), Type.Literal('aborted'), Type.Literal('error')])) })),
+  metadata: Type.Optional(Type.Object({
+    status: Type.Optional(Type.Union([Type.Literal('complete'), Type.Literal('aborted'), Type.Literal('error')])),
+    tokenUsage: Type.Optional(Type.Object({ inputTokens: Type.Optional(Type.Number()), outputTokens: Type.Optional(Type.Number()), totalTokens: Type.Optional(Type.Number()) })),
+    metrics: Type.Optional(Type.Object({ durationMs: Type.Number(), toolCalls: Type.Number(), modelCalls: Type.Number() })),
+  })),
 })
 const AiSummarySchema = Type.Object({ id: Id, title: Type.String(), createdAt: Type.String({ format: 'date-time' }), updatedAt: Type.String({ format: 'date-time' }) })
 export const AiConversationSchema = Type.Intersect([AiSummarySchema, Type.Object({ messages: Type.Array(AiMessageSchema) })])

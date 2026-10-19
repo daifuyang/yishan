@@ -304,9 +304,9 @@ describe('draft tool boundary', () => {
   it('registers only read / prepare capabilities, with no create or submit tool', () => {
     const f = fixture()
     expect(f.capabilities.map(capability => capability.riskLevel).every(level => level === 'read' || level === 'prepare')).toBe(true)
-    expect(f.capabilities.map(capability => capability.name)).toEqual(['prepare_create_user', 'update_action_draft', 'get_action_draft'])
+    expect(f.capabilities.map(capability => capability.name)).toEqual(['prepare_create_user', 'update_action_draft', 'get_action_draft', 'prepare_user_form_draft', 'prepare_department_form_draft', 'get_department_create_form'])
     expect(f.capabilities.map(capability => capability.name).some(name => /submit|confirm|create_user$/.test(name.replace('prepare_create_user', '')))).toBe(false)
-    for (const capability of f.capabilities) expect(capability.permissionCode).toBe('system:user:create')
+    for (const capability of f.capabilities) expect(capability.permissionCode).toBe(capability.name.includes('department') ? 'system:department:create' : 'system:user:create')
   })
 
   it('refuses the whole turn once the permission is revoked, without touching the draft', async () => {
@@ -317,7 +317,7 @@ describe('draft tool boundary', () => {
     expect(outcome).toEqual({ ok: false, error: '没有权限执行该操作' })
     expect(f.memory.drafts.size).toBe(0)
     // 撤权同时把工具从清单里撤掉，模型根本看不到它。
-    expect(await h.run(() => toolsForActor({ userId: 7, roleIds: [1] })).then(r => r.capabilities.map(c => c.name))).toEqual([])
+    expect(await h.run(() => toolsForActor({ userId: 7, roleIds: [1], deptIds: [] }, h.base.runtime)).then(r => r.capabilities.map(c => c.name))).toEqual([])
   })
 
   it('survives a prompt-injection attempt to skip confirmation: it still only returns a draft', async () => {

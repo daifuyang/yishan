@@ -76,8 +76,8 @@ describe('native user UI preparation', () => {
   })
 
   it('uses separate existing mutation permissions while exposing only preparation', () => {
-    expect(tool('prepare_user_create')).toMatchObject({ moduleId: 'system', operationId: 'adminUsersCreate', permissionCode: 'system:user:create', riskLevel: 'prepare' })
-    expect(tool('prepare_update_user')).toMatchObject({ moduleId: 'system', operationId: 'adminUsersUpdate', permissionCode: 'system:user:update', riskLevel: 'prepare' })
-    expect(tool('prepare_delete_user')).toMatchObject({ moduleId: 'system', operationId: 'adminUsersDelete', permissionCode: 'system:user:delete', riskLevel: 'prepare' })
+    expect(tool('prepare_user_create')).toMatchObject({ moduleId: 'system', operationId: 'createUser', permissionCode: 'system:user:create', riskLevel: 'prepare' })
+    expect(tool('prepare_update_user')).toMatchObject({ moduleId: 'system', operationId: 'updateUser', permissionCode: 'system:user:update', riskLevel: 'prepare' })
+    expect(tool('prepare_delete_user')).toMatchObject({ moduleId: 'system', operationId: 'deleteUser', permissionCode: 'system:user:delete', riskLevel: 'prepare' })
   })
 })

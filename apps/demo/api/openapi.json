@@ -2396,6 +2396,7 @@
         ]
       },
       "createDeptReq": {
+        "additionalProperties": false,
         "type": "object",
         "properties": {
           "name": {
@@ -2428,6 +2429,25 @@
           "leaderId": {
             "description": "负责人ID",
             "type": "number"
+          },
+          "draftSubmission": {
+            "additionalProperties": false,
+            "type": "object",
+            "properties": {
+              "draftId": {
+                "minLength": 1,
+                "maxLength": 64,
+                "type": "string"
+              },
+              "draftVersion": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "draftId",
+              "draftVersion"
+            ]
           }
         },
         "required": [
@@ -13380,6 +13400,39 @@
                                             ]
                                           }
                                         ]
+                                      },
+                                      "tokenUsage": {
+                                        "type": "object",
+                                        "properties": {
+                                          "inputTokens": {
+                                            "type": "number"
+                                          },
+                                          "outputTokens": {
+                                            "type": "number"
+                                          },
+                                          "totalTokens": {
+                                            "type": "number"
+                                          }
+                                        }
+                                      },
+                                      "metrics": {
+                                        "type": "object",
+                                        "properties": {
+                                          "durationMs": {
+                                            "type": "number"
+                                          },
+                                          "toolCalls": {
+                                            "type": "number"
+                                          },
+                                          "modelCalls": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "durationMs",
+                                          "toolCalls",
+                                          "modelCalls"
+                                        ]
                                       }
                                     }
                                   }
@@ -13552,6 +13605,39 @@
                                               "error"
                                             ]
                                           }
+                                        ]
+                                      },
+                                      "tokenUsage": {
+                                        "type": "object",
+                                        "properties": {
+                                          "inputTokens": {
+                                            "type": "number"
+                                          },
+                                          "outputTokens": {
+                                            "type": "number"
+                                          },
+                                          "totalTokens": {
+                                            "type": "number"
+                                          }
+                                        }
+                                      },
+                                      "metrics": {
+                                        "type": "object",
+                                        "properties": {
+                                          "durationMs": {
+                                            "type": "number"
+                                          },
+                                          "toolCalls": {
+                                            "type": "number"
+                                          },
+                                          "modelCalls": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "durationMs",
+                                          "toolCalls",
+                                          "modelCalls"
                                         ]
                                       }
                                     }
@@ -13745,6 +13831,39 @@
                                             ]
                                           }
                                         ]
+                                      },
+                                      "tokenUsage": {
+                                        "type": "object",
+                                        "properties": {
+                                          "inputTokens": {
+                                            "type": "number"
+                                          },
+                                          "outputTokens": {
+                                            "type": "number"
+                                          },
+                                          "totalTokens": {
+                                            "type": "number"
+                                          }
+                                        }
+                                      },
+                                      "metrics": {
+                                        "type": "object",
+                                        "properties": {
+                                          "durationMs": {
+                                            "type": "number"
+                                          },
+                                          "toolCalls": {
+                                            "type": "number"
+                                          },
+                                          "modelCalls": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "durationMs",
+                                          "toolCalls",
+                                          "modelCalls"
+                                        ]
                                       }
                                     }
                                   }
@@ -13937,7 +14056,8 @@
                   },
                   "action": {
                     "enum": [
-                      "user.create"
+                      "user.create",
+                      "department.create"
                     ],
                     "type": "string"
                   },
@@ -14022,7 +14142,8 @@
                         },
                         "action": {
                           "enum": [
-                            "user.create"
+                            "user.create",
+                            "department.create"
                           ],
                           "type": "string"
                         },
@@ -14295,7 +14416,8 @@
                               },
                               "action": {
                                 "enum": [
-                                  "user.create"
+                                  "user.create",
+                                  "department.create"
                                 ],
                                 "type": "string"
                               },
@@ -14572,7 +14694,8 @@
                         },
                         "action": {
                           "enum": [
-                            "user.create"
+                            "user.create",
+                            "department.create"
                           ],
                           "type": "string"
                         },
@@ -14866,7 +14989,8 @@
                         },
                         "action": {
                           "enum": [
-                            "user.create"
+                            "user.create",
+                            "department.create"
                           ],
                           "type": "string"
                         },

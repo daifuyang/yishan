@@ -3,6 +3,8 @@ import type { ModuleStateStore, ResourceLifecycle } from '@yishan/core-contracts
 import { ModuleLoader, moduleRoutePrefix, orderModules, type ApiModule } from './module-loader'
 import { PermissionCatalog } from './permission-catalog'
 import { runWithPermissions } from './permissions/catalog'
+import { AiCapabilityCatalog } from './ai-capability-catalog'
+import { currentAiCapabilityCatalog, runWithAiCapabilities } from './ai-capabilities/catalog'
 
 export interface CreateYishanApiOptions<Context> {
   readonly modules: readonly ApiModule<Context>[]
@@ -29,15 +31,21 @@ function failure(code: number, message: string) {
 export async function createYishanApi<Context>(options: CreateYishanApiOptions<Context>): Promise<FastifyInstance> {
   const modules = orderModules(options.modules)
   const catalog = options.permissionCatalog ?? new PermissionCatalog()
+  const resolveAiCatalog = () => {
+    try { return currentAiCapabilityCatalog() } catch { return new AiCapabilityCatalog() }
+  }
+  const aiCatalog = options.runInContext ? options.runInContext(resolveAiCatalog) : resolveAiCatalog()
+  const scoped = <T>(fn: () => T): T => runWithPermissions(catalog, () => runWithAiCapabilities(aiCatalog, fn))
   const run = <T>(fn: () => T): T => options.runInContext
-    ? options.runInContext(() => runWithPermissions(catalog, fn))
-    : runWithPermissions(catalog, fn)
+    ? options.runInContext(() => scoped(fn))
+    : scoped(fn)
   const app = run(() => Fastify(options.serverOptions))
   const loader = new ModuleLoader(modules, options.moduleState)
   app.decorate('moduleLoader', loader)
   app.decorate('permissionCatalog', catalog)
   const resources: ResourceLifecycle[] = []
   const activated: ApiModule<Context>[] = []
+  const declaredCapabilities: string[] = []
   let closed = false
   const close = async (): Promise<void> => {
     if (closed) return
@@ -83,6 +91,16 @@ export async function createYishanApi<Context>(options: CreateYishanApiOptions<C
         await resource.connect?.()
       }
       await options.setup?.(app)
+      for (const module of modules) {
+        for (const declaration of module.capabilities ?? []) {
+          if ('moduleId' in declaration && declaration.moduleId !== module.id) throw new Error(`AI capability module mismatch: ${module.id}/${declaration.name}`)
+          aiCatalog.register({
+            ...declaration,
+            moduleId: module.id,
+          })
+          declaredCapabilities.push(declaration.name)
+        }
+      }
       await options.moduleState?.sync(modules.filter(module => moduleRoutePrefix(module) !== '').map(({ id, name, version, tablePrefix }) => ({ id, name, version, tablePrefix })))
       for (const module of modules) {
         activated.push(module)
@@ -106,6 +124,7 @@ export async function createYishanApi<Context>(options: CreateYishanApiOptions<C
   } catch (error) {
     try { await app.close() } catch (cleanupError) { app.log.error(cleanupError, 'API cleanup failed') }
     try { await close() } catch (cleanupError) { app.log.error(cleanupError, 'API cleanup failed') }
+    for (const name of declaredCapabilities) aiCatalog.unregister(name)
     throw error
   }
 }

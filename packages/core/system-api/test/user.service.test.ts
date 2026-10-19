@@ -4,6 +4,7 @@ import { UserService } from '../src/core/services/user.service';
 import { UserRepository } from '../src/core/repositories/user.repository';
 import { PermissionRepository } from '../src/core/repositories/permission.repository';
 import { PermissionService } from '../src/core/services/permission.service';
+import { DeptRepository } from '../src/core/repositories/dept.repository';
 import { UserErrorCode } from '@yishan/core-api/business-codes/user';
 import { hashPassword } from '../src/utils/password';
 import { eq } from 'drizzle-orm';
@@ -60,6 +61,10 @@ function mockUniqueFields(): void {
  * 创建用户现在会走统一的授权规则（user-creation-policy）。这条用例只关心**输入
  * 映射**，因此把操作者装成超管（种子数据里 id=1 就是），让它通过授权后继续。
  * 规则本身的用例在 test/user-creation-policy.test.ts。
+ *
+ * 光装操作者还不够：超管跳过的是范围比较，不是「引用必须存在」。策略仍然会查被
+ * 分配的角色/部门是否真实存在且启用，查不到就报「选择的角色不存在或已被停用」。
+ * 这一条不测策略，所以直接把两个仓储按「传入的都存在」桩掉。
  */
 function mockSuperAdminActor(): void {
   vi.spyOn(PermissionRepository, 'loadActiveRoleIdsByUserId').mockResolvedValue([1]);
@@ -68,6 +73,10 @@ function mockSuperAdminActor(): void {
     perms: new Set(['__super_admin__']),
     roleCodes: new Set(['super_admin']),
   });
+  vi.spyOn(PermissionRepository, 'loadPermissionsByRole').mockImplementation(
+    async (roleIds: number[]) => new Map(roleIds.map((id) => [id, { perms: new Set<string>(), code: null }])),
+  );
+  vi.spyOn(DeptRepository, 'findEnabledIdsByIds').mockImplementation(async (ids: number[]) => ids);
 }
 
 describe('UserService persistence input mapping', () => {

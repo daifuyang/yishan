@@ -329,8 +329,14 @@ describe('create-form — 字段元数据来自真实 schema', () => {
   })
 
   it('客户端无法用 query 伪造 create-options 的候选身份', async () => {
+    // roles 就是假库里的 sys_role；mockRoleRows 是候选来源。两者必须一致 —— 候选
+    // 判定会经 loadPermissionsByRole 复查角色是否存在且启用，一个「list 里有、
+    // 库里没有」的角色会被正确地剔除，所以这里要把 3 号角色放进库里。
     mockActor({ roleIds: [1], perms: CREATE_PERMS }, {
-      roles: [{ id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS }],
+      roles: [
+        { id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS },
+        { id: 3, dataScope: DATA_SCOPE_DEPT, perms: [] },
+      ],
     })
     mockDepts([])
     mockDeptTree()
@@ -647,7 +653,10 @@ describe('create-options — 候选按 Task 2 策略过滤', () => {
 
   it('超管拿到全部候选角色与完整部门树', async () => {
     mockActor({ roleIds: [1], perms: ['__super_admin__'] }, {
-      roles: [{ id: 3, dataScope: DATA_SCOPE_SELF, code: 'super_admin', perms: [] }],
+      roles: [
+        { id: 3, dataScope: DATA_SCOPE_SELF, code: 'super_admin', perms: [] },
+        { id: 4, dataScope: DATA_SCOPE_DEPT, perms: [] },
+      ],
     })
     mockDepts([])
     mockDeptTree()
@@ -697,7 +706,12 @@ describe('create-options — 候选按 Task 2 策略过滤', () => {
     mockDepts([])
     mockDeptTree()
     mockRoleRows([{ id: 3, name: '普通' }])
-    const db = fakeDb({ roles: [{ id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS }] })
+    const db = fakeDb({
+      roles: [
+        { id: 1, dataScope: DATA_SCOPE_ALL, perms: CREATE_PERMS },
+        { id: 3, dataScope: DATA_SCOPE_DEPT, perms: [] },
+      ],
+    })
 
     const form = UserCreationFormService.getCreateForm()
     expect(form.editableFields).not.toContain('password')

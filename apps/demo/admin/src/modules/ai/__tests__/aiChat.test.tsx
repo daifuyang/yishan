@@ -38,6 +38,8 @@ jest.mock('@umijs/max', () => ({
     },
   },
 }));
+let mockSetMessages: (messages: import('ai').UIMessage[]) => void = () => {};
+type mockUIMessage = import('ai').UIMessage;
 let mockEngineMounts = 0;
 jest.mock('ai', () => ({ DefaultChatTransport: class {} }));
 jest.mock('@ai-sdk/react', () => ({
@@ -48,7 +50,8 @@ jest.mock('@ai-sdk/react', () => ({
     mockOnFinish = options.onFinish || (() => {});
     mockOnError = options.onError || (() => {});
     const hooks = jest.requireActual<typeof import('react')>('react');
-    const [messages, setMessages] = hooks.useState([]);
+    const [messages, setMessages] = hooks.useState([] as mockUIMessage[]);
+    mockSetMessages = setMessages;
     hooks.useEffect(() => {
       mockEngineMounts += 1;
     }, []);
@@ -584,3 +587,103 @@ it.each([false, true])(
     unbind();
   },
 );
+
+it('完整工具结果在模型尚未结束时就交给原生表单，完成回调不重复应用', async () => {
+  render(<Harness />);
+  await act(async () => {
+    await current.selectConversation('1');
+  });
+  const onPrefill = jest.fn();
+  current.formAssistance.bindHandlers({
+    onPrefill,
+    onUiRequest: () => {},
+    onRestore: () => {},
+    flush: async () => {},
+  });
+  let resolve: () => void = () => {};
+  mockSend.mockImplementationOnce(
+    () =>
+      new Promise<void>((done) => {
+        resolve = done;
+      }),
+  );
+  let pending: Promise<void>;
+  await act(async () => {
+    pending = current.send('帮我新建用户');
+  });
+  const message = {
+    id: 'live-form',
+    role: 'assistant',
+    parts: [
+      {
+        type: 'tool-prepare_user_create',
+        toolCallId: 'immediate',
+        state: 'output-available',
+        input: {},
+        output: {
+          ok: true,
+          render: {
+            kind: 'form.prefill',
+            payload: {
+              target: 'user.create',
+              fields: { nickname: '即时' },
+              missing: [],
+            },
+          },
+        },
+      },
+    ],
+  } as import('ai').UIMessage;
+  await act(async () => mockSetMessages([message]));
+  expect(onPrefill).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    mockOnFinish({ message, isAbort: false, isError: false });
+    resolve();
+    await pending;
+  });
+  expect(onPrefill).toHaveBeenCalledTimes(1);
+});
+
+it('同一请求内不同工具调用的草稿增量分别应用，不按请求级ID丢弃第二次', async () => {
+  render(<Harness />);
+  await act(async () => {
+    await current.selectConversation('1');
+  });
+  const onUiRequest = jest.fn();
+  current.formAssistance.bindHandlers({
+    onUiRequest,
+    onRestore: () => {},
+    flush: async () => {},
+  });
+  mockSend.mockImplementationOnce(async () => {
+    mockOnFinish({
+      isAbort: false,
+      isError: false,
+      message: {
+        id: 'drafts',
+        role: 'assistant',
+        parts: [1, 2].map((version) => ({
+          type: 'tool-update_form_draft',
+          toolCallId: 'draft-call-' + version,
+          state: 'output-available',
+          input: {},
+          output: {
+            ok: true,
+            render: {
+              kind: 'action.draft',
+              payload: {
+                uiRequestId: 'same-request',
+                draftId: 'draft-1',
+                draftVersion: version,
+              },
+            },
+          },
+        })),
+      } as import('ai').UIMessage,
+    });
+  });
+  await act(async () => {
+    await current.send('补充当前草稿');
+  });
+  expect(onUiRequest).toHaveBeenCalledTimes(2);
+});

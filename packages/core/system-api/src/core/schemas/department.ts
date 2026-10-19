@@ -34,7 +34,7 @@ export type SysDeptResp = Static<typeof SysDeptSchema>;
 // 注意：Type.Optional 字段不允许设置 default，否则 UpdateDeptReq = Type.Partial(CreateDeptReq)
 // 在 Fastify Ajv (useDefaults:true) 校验下会把缺省字段注入默认值，导致 update 时把数据库原值覆盖。
 // 缺省值由 Service 层（createDept）显式设置。
-const CreateDeptReqSchema = Type.Object(
+export const CreateDeptFieldsSchema = Type.Object(
   {
     name: Type.String({ description: "部门名称", minLength: 1, maxLength: 100 }),
     parentId: Type.Optional(Type.Number({ description: "上级部门ID" })),
@@ -43,11 +43,16 @@ const CreateDeptReqSchema = Type.Object(
     description: Type.Optional(Type.String({ description: "部门描述", maxLength: 255 })),
     leaderId: Type.Optional(Type.Number({ description: "负责人ID" })),
   },
-  { $id: "createDeptReq" }
+  { $id: "createDeptFields" }
 );
 
+export const CreateDeptReqSchema = Type.Object({
+  ...CreateDeptFieldsSchema.properties,
+  draftSubmission: Type.Optional(Type.Object({ draftId: Type.String({ minLength: 1, maxLength: 64 }), draftVersion: Type.Integer({ minimum: 1 }) }, { additionalProperties: false })),
+}, { $id: 'createDeptReq', additionalProperties: false });
+
 // 更新部门请求 Schema
-const UpdateDeptReqSchema = Type.Partial(CreateDeptReqSchema, { $id: "updateDeptReq", minProperties: 1 });
+const UpdateDeptReqSchema = Type.Partial(CreateDeptFieldsSchema, { $id: "updateDeptReq", minProperties: 1 });
 
 export type CreateDeptReq = Static<typeof CreateDeptReqSchema>;
 export type UpdateDeptReq = Static<typeof UpdateDeptReqSchema>;

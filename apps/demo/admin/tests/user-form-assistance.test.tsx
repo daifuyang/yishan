@@ -735,50 +735,69 @@ test('编辑详情加载后只叠加指定的 AI 字段，继续接收同一用�
   expect(modalCount()).toBe(1);
 });
 
-test.each([undefined, '1996-10-01', '1996-10-02'])('AI 创建带出生日期 %s，点击原生提交后调用原接口并发布完成结果', async (birthDate) => {
-  const results: unknown[] = [];
-  const off = subscribeAiPrefillResults((result) => results.push(result));
-  try {
-    renderUserList();
-    await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
-    await act(async () => {
-      setAiPrefill({
-        target: 'user.create',
-        requestId: 'create-result',
-        fields: { phone: '13800000000', username: 'native-save', ...(birthDate ? { birthDate } : {}) },
-        missing: [],
+test.each([undefined, '1996-10-01', '1996-10-02'])(
+  'AI 创建带出生日期 %s，点击原生提交后调用原接口并发布完成结果',
+  async (birthDate) => {
+    const results: unknown[] = [];
+    const off = subscribeAiPrefillResults((result) => results.push(result));
+    try {
+      renderUserList();
+      await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
+      await act(async () => {
+        setAiPrefill({
+          target: 'user.create',
+          requestId: 'create-result',
+          fields: {
+            phone: '13800000000',
+            username: 'native-save',
+            ...(birthDate ? { birthDate } : {}),
+          },
+          missing: [],
+        });
       });
-    });
-    await waitFor(() =>
-      expect(
-        (screen.getByPlaceholderText('请输入手机号') as HTMLInputElement).value,
-      ).toBe('13800000000'),
-    );
-    if (birthDate) expect((screen.getByPlaceholderText('请选择出生日期') as HTMLInputElement).value).toBe(birthDate);
-    expect(results).toEqual([]);
-    fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
-      target: { value: 'local-password' },
-    });
-    fireEvent.click(
-      within(
-        screen.getByText('新建用户').closest('.ant-modal') as HTMLElement,
-      ).getByRole('button', { name: /提.?交|确.?定/ }),
-    );
-    await waitFor(() =>
-      expect(results).toContainEqual({
-        requestId: 'create-result',
-        status: 'completed',
-        message: '用户创建成功',
-      }),
-    );
-    if (birthDate) expect(mockRequest.mock.calls.some(([, options]) => options?.method === 'POST' && options.data?.birthDate === birthDate)).toBe(true);
-    expect(JSON.stringify(currentHandle().snapshot())).not.toContain(
-      'local-password',
-    );
-  } finally {
-    off();
-  }
-});
+      await waitFor(() =>
+        expect(
+          (screen.getByPlaceholderText('请输入手机号') as HTMLInputElement)
+            .value,
+        ).toBe('13800000000'),
+      );
+      if (birthDate)
+        expect(
+          (screen.getByPlaceholderText('请选择出生日期') as HTMLInputElement)
+            .value,
+        ).toBe(birthDate);
+      expect(results).toEqual([]);
+      fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
+        target: { value: 'local-password' },
+      });
+      fireEvent.click(
+        within(
+          screen.getByText('新建用户').closest('.ant-modal') as HTMLElement,
+        ).getByRole('button', { name: /提.?交|确.?定/ }),
+      );
+      await waitFor(() =>
+        expect(results).toContainEqual({
+          requestId: 'create-result',
+          status: 'completed',
+          message: '用户创建成功',
+        }),
+      );
+      if (birthDate)
+        expect(
+          mockRequest.mock.calls.some(
+            ([, options]) =>
+              options?.method === 'POST' &&
+              options.data?.birthDate === birthDate,
+          ),
+        ).toBe(true);
+      expect(JSON.stringify(currentHandle().snapshot())).not.toContain(
+        'local-password',
+      );
+    } finally {
+      off();
+    }
+  },
+);
 
 test('助手写入的 deptIds 也会重新验证角色', async () => {
   renderUserList();
@@ -949,38 +968,120 @@ test('手改部门触发角色重校验，但版本不会在网络返回后才�
 });
 test('编辑已有出生日期的用户，点击确定仍走原修改接口', async () => {
   const original = mockRequest.getMockImplementation();
-  mockRequest.mockImplementation((url: string, options?: { method?: string }) => {
-    if (url.endsWith('/users/7') && options?.method !== 'PUT') {
-      return Promise.resolve({ success: true, data: { ...LIST_ROW, birthDate: '1996-10-01' } });
-    }
-    return original?.(url, options);
-  });
+  mockRequest.mockImplementation(
+    (url: string, options?: { method?: string }) => {
+      if (url.endsWith('/users/7') && options?.method !== 'PUT') {
+        return Promise.resolve({
+          success: true,
+          data: { ...LIST_ROW, birthDate: '1996-10-01' },
+        });
+      }
+      return original?.(url, options);
+    },
+  );
   renderUserList();
   await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
-  await act(async () => setAiPrefill({ target: 'user.update', fields: { id: 7, nickname: '修改昵称' }, missing: [] }));
-  const modal = (await screen.findByText('编辑用户')).closest('.ant-modal') as HTMLElement;
-  await waitFor(() => expect((within(modal).getByPlaceholderText('请选择出生日期') as HTMLInputElement).value).toBe('1996-10-01'));
+  await act(async () =>
+    setAiPrefill({
+      target: 'user.update',
+      fields: { id: 7, nickname: '修改昵称' },
+      missing: [],
+    }),
+  );
+  const modal = (await screen.findByText('编辑用户')).closest(
+    '.ant-modal',
+  ) as HTMLElement;
+  await waitFor(() =>
+    expect(
+      (within(modal).getByPlaceholderText('请选择出生日期') as HTMLInputElement)
+        .value,
+    ).toBe('1996-10-01'),
+  );
   fireEvent.click(within(modal).getByRole('button', { name: /提.?交|确.?定/ }));
-  await waitFor(() => expect(mockRequest.mock.calls.some(([url, options]) => url.endsWith('/users/7') && options?.method === 'PUT' && options.data?.birthDate === '1996-10-01')).toBe(true));
+  await waitFor(() =>
+    expect(
+      mockRequest.mock.calls.some(
+        ([url, options]) =>
+          url.endsWith('/users/7') &&
+          options?.method === 'PUT' &&
+          options.data?.birthDate === '1996-10-01',
+      ),
+    ).toBe(true),
+  );
 });
 test('已打开表单里的旧生日 1996-10-01 被新 AI 补丁替换为 1996-10-02', async () => {
   renderUserList();
   await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
-  await act(async () => setAiPrefill({ target: 'user.create', fields: { birthDate: '1996-10-01' }, missing: [] }));
-  const date = await screen.findByPlaceholderText('请选择出生日期') as HTMLInputElement;
+  await act(async () =>
+    setAiPrefill({
+      target: 'user.create',
+      fields: { birthDate: '1996-10-01' },
+      missing: [],
+    }),
+  );
+  const date = (await screen.findByPlaceholderText(
+    '请选择出生日期',
+  )) as HTMLInputElement;
   await waitFor(() => expect(date.value).toBe('1996-10-01'));
-  await act(async () => setAiPrefill({ target: 'user.create', fields: { birthDate: '1996-10-02' }, missing: [] }));
+  await act(async () =>
+    setAiPrefill({
+      target: 'user.create',
+      fields: { birthDate: '1996-10-02' },
+      missing: [],
+    }),
+  );
   await waitFor(() => expect(date.value).toBe('1996-10-02'));
 });
 test('生日已由 AI 填为 10 月 2 日，悬停日历中的 1 日不改变输入框文字', async () => {
   renderUserList();
   await waitFor(() => expect(peekUserCreateFormHandle()).not.toBeNull());
-  await act(async () => setAiPrefill({ target: 'user.create', fields: { birthDate: '1996-10-02' }, missing: [] }));
-  const date = await screen.findByPlaceholderText('请选择出生日期') as HTMLInputElement;
+  await act(async () =>
+    setAiPrefill({
+      target: 'user.create',
+      fields: { birthDate: '1996-10-02' },
+      missing: [],
+    }),
+  );
+  const date = (await screen.findByPlaceholderText(
+    '请选择出生日期',
+  )) as HTMLInputElement;
   await waitFor(() => expect(date.value).toBe('1996-10-02'));
   fireEvent.mouseDown(date);
   fireEvent.click(date);
-  await waitFor(() => expect(document.querySelector('.ant-picker-cell-in-view[title="1996-10-01"]')).not.toBeNull());
-  fireEvent.mouseEnter(document.querySelector('.ant-picker-cell-in-view[title="1996-10-01"]') as HTMLElement);
+  await waitFor(() =>
+    expect(
+      document.querySelector('.ant-picker-cell-in-view[title="1996-10-01"]'),
+    ).not.toBeNull(),
+  );
+  fireEvent.mouseEnter(
+    document.querySelector(
+      '.ant-picker-cell-in-view[title="1996-10-01"]',
+    ) as HTMLElement,
+  );
   expect(date.value).toBe('1996-10-02');
+});
+
+test('增量预填不能静默覆盖用户手改过的同名字段', async () => {
+  renderUserList();
+  await openByAssistant();
+  const username = await screen.findByPlaceholderText('请输入登录名称');
+  fireEvent.change(username, { target: { value: 'manual-name' } });
+  const outcomes: unknown[] = [];
+  const unsubscribe = subscribeAiPrefillResults((result) =>
+    outcomes.push(result),
+  );
+  await act(async () =>
+    setAiPrefill({
+      target: 'user.create',
+      requestId: 'overwrite',
+      fields: { username: 'ai-name' },
+      missing: [],
+    }),
+  );
+  await waitFor(() => expect(outcomes.length).toBeGreaterThan(0));
+  expect((username as HTMLInputElement).value).toBe('manual-name');
+  expect(outcomes).toContainEqual(
+    expect.objectContaining({ requestId: 'overwrite', status: 'failed' }),
+  );
+  unsubscribe();
 });

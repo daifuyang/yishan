@@ -75,6 +75,22 @@ function fixture(start = '2026-10-17T00:00:00.000Z') {
   return { service, memory, advance, create, beginSubmitting, authorized, get clock() { return clock } }
 }
 
+describe('department form adapter', () => {
+  it('persists native numeric fields and evaluates required fields with the existing CAS engine', async () => {
+    const memory = memoryStore()
+    memory.conversations.set('conv-1', 7)
+    const service = new ActionDraftService(memory.store)
+    const draft = await service.create(7, 'conv-1', { module: 'system', action: 'department.create', formData: { sort_order: 3 } })
+    expect(draft.status).toBe('collecting')
+    expect(draft.missingFields.map(field => field.name)).toEqual(['name'])
+    const patched = await service.patch(7, draft.draftId, 1, { name: '研发部', parentId: 2 })
+    expect(patched.formData).toEqual({ sort_order: 3, name: '研发部', parentId: 2 })
+    expect(patched.status).toBe('ready')
+    await expect(service.patch(7, draft.draftId, 1, { name: '过期修改' })).rejects.toThrow('版本')
+    await expect(service.create(7, 'conv-1', { module: 'system', action: 'department.create', formData: { password: 'forged' } })).rejects.toThrow('不支持的字段')
+  })
+})
+
 /**
  * 一个只实现「删会话」所需的聊天服务：内存 store + 真实的草稿守卫。
  *

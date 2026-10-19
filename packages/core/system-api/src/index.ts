@@ -29,6 +29,11 @@ export { validateUserCreation, resolveCreatableDeptScope, USER_CREATE_PERMISSION
 export type { UserCreationSubject, ValidateUserCreationOptions, CreatableDeptScope } from './core/services/user-creation-policy'
 // 表单元数据与候选查询：AI 能力（Task 6）与只读端点走同一个 service，不内部 HTTP 自调用。
 export { UserCreationFormService, USER_CREATE_FORM_SCHEMA_VERSION } from './core/services/user-creation-form.service'
+export { CreateDeptFieldsSchema, CreateDeptReqSchema } from './core/schemas/department'
+export type { CreateDeptReq } from './core/schemas/department'
+export { DeptService } from './core/services/dept.service'
+export { DepartmentCreationFormService } from './core/services/department-creation-form.service'
+export type { DepartmentCreationParticipant } from './core/services/department-creation'
 // 新增用户表单的只读能力定义：装配层（setup.ts）与 AI 模块的测试都从这里取，
 // 保证「注册的那份」与「断言的那份」不会分叉。
 export { systemCapabilitiesForUserCreation, registerSystemAiCapabilities, systemAiCapabilities } from './core/ai/system-capabilities'

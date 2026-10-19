@@ -24,7 +24,6 @@ import {
   USER_CREATE_DRAFT_FIELD_KEYS,
   type DraftSubmissionFailure,
   type UserCreateDraftFields,
-  type UserCreationParticipant,
 } from '@yishan/core-system-api'
 import {
   createActionDraftTx,
@@ -50,6 +49,9 @@ interface CompletionResult {
 }
 
 export interface AiUserCreationParticipantOptions {
+  action?: 'user.create' | 'department.create'
+  targetType?: 'sys_user' | 'sys_dept'
+  fieldKeys?: readonly string[]
   /**
    * 把 System 交来的事务句柄包装成草稿句柄。
    *
@@ -61,7 +63,7 @@ export interface AiUserCreationParticipantOptions {
   now?: () => Date
 }
 
-export class AiUserCreationParticipant implements UserCreationParticipant {
+export class AiUserCreationParticipant<TFields extends object = UserCreateDraftFields> {
   private readonly createTx: (tx: AppTx) => ActionDraftTx
 
   constructor(
@@ -106,10 +108,11 @@ export class AiUserCreationParticipant implements UserCreationParticipant {
     // 可能还停在 A 提交之前；当前读才能看见刚提交的 completed / submitting。
     const row = await handle.find(actorId, submission.draftId)
     if (!row) throw aiError(404, '草稿不存在')
+    if (row.module !== 'system' || row.action !== (this.options.action ?? 'user.create')) throw aiError(400, '草稿表单目标不匹配')
 
     // 已完成优先于版本判定：重复点击带的是旧版本号，但它要的是**既有结果**。
     if (row.status === 'completed') {
-      const userId = completedUserId(row)
+      const userId = completedUserId(row, this.options.targetType ?? 'sys_user')
       // completed 的回执缺失说明数据被外力破坏；宁可拒绝，也不要凭空重建一个用户。
       if (userId === null) throw aiError(409, '该草稿已完成但缺少结果记录，请联系管理员')
       return { kind: 'replay' as const, userId }
@@ -140,7 +143,7 @@ export class AiUserCreationParticipant implements UserCreationParticipant {
     })
     if (!claimed) throw aiError(409, '草稿状态已变化，请刷新后重试')
 
-    return { kind: 'create' as const, fields: pickDraftFields(row) }
+    return { kind: 'create' as const, fields: pickDraftFields<TFields>(row, this.options.fieldKeys ?? USER_CREATE_DRAFT_FIELD_KEYS) }
   }
 
   /**
@@ -165,12 +168,12 @@ export class AiUserCreationParticipant implements UserCreationParticipant {
       allowedStatuses: ['submitting'],
       patch: {
         status: 'completed',
-        resultRef: { targetType: 'sys_user', targetId: String(user.id) },
+        resultRef: { targetType: this.options.targetType ?? 'sys_user', targetId: String(user.id) },
       },
     })
     if (!ok) throw aiError(409, '草稿状态已变化，无法记录提交结果')
 
-    await this.audit.writeInTransaction(tx as never, successAudit(actorId, user.id))
+    await this.audit.writeInTransaction(tx as never, successAudit(actorId, user.id, this.options.targetType ?? 'sys_user', this.options.action ?? 'user.create'))
   }
 
   /**
@@ -194,8 +197,8 @@ export class AiUserCreationParticipant implements UserCreationParticipant {
   }
 }
 
-function completedUserId(row: ActionDraftRecord): number | null {
-  if (row.resultRef?.targetType !== 'sys_user') return null
+function completedUserId(row: ActionDraftRecord, targetType: string): number | null {
+  if (row.resultRef?.targetType !== targetType) return null
   const id = Number(row.resultRef.targetId)
   return Number.isInteger(id) && id > 0 ? id : null
 }
@@ -206,27 +209,27 @@ function completedUserId(row: ActionDraftRecord): number | null {
  * 逐键取而不是整个展开：`formData` 是 JSON 列，形状由写入时的白名单保证，
  * 但读取端再过一次白名单，可以让「多出来的键」永远到不了 System 的字段组装。
  */
-function pickDraftFields(row: ActionDraftRecord): UserCreateDraftFields {
+function pickDraftFields<TFields extends object>(row: ActionDraftRecord, keys: readonly string[]): TFields {
   const out: Record<string, unknown> = {}
-  for (const key of USER_CREATE_DRAFT_FIELD_KEYS) {
+  for (const key of keys) {
     const value = row.formData[key]
     if (value === undefined) continue
     out[key] = value
   }
-  return out as UserCreateDraftFields
+  return out as TFields
 }
 
-function successAudit(actorId: number, userId: number): AiAuditRecord {
+function successAudit(actorId: number, userId: number, targetType: string, action: string): AiAuditRecord {
   return {
     // 回执里没有 requestId 可用；这里生成一个只为把审计行与这次提交绑在一起。
     requestId: randomUUID(),
     actorId,
-    capabilityName: 'user.create',
-    operationId: 'createUser',
+    capabilityName: action,
+    operationId: targetType === 'sys_dept' ? 'createDept' : 'createUser',
     riskLevel: 'write',
     permissionDecision: 'allowed',
     executionStatus: 'success',
-    targetType: 'sys_user',
+    targetType,
     targetId: String(userId),
     // 只留字段名：绝不把表单值（可能含个人信息）或密码写进审计正文。
     inputDigest: 'draftSubmission',

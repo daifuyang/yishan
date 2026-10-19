@@ -8,6 +8,7 @@ import type { AppQueryDb } from '@yishan/core-system-api/database'
 import { currentSystemRuntime } from '@yishan/core-system-api'
 import { executeCapability, toolsForActor, type AiActor, type AiExecutionOutcome } from './ai-execution-chain.js'
 import { buildDraftContext } from './draft-context.js'
+import { selectModelHistory } from './model-history.js'
 import { aiError } from '../ai-chat-error.js'
 export { aiError } from '../ai-chat-error.js'
 
@@ -136,7 +137,7 @@ export class AiChatService {
       const execution = actor && this.execution
         ? await this.execution().env(resolvedActor, { requestId: token, conversationId: input.id })
         : { capabilities: [], execute: async () => ({ ok: false, error: '不可用' } as AiExecutionOutcome) }
-      const response = await runtime.start({ messages, signal, execution, context: await this.draftContext(ownerId, input.id), onEnd: async message => {
+      const response = await runtime.start({ messages: selectModelHistory(messages), signal, execution, context: await this.draftContext(ownerId, input.id), onEnd: async message => {
         try { await this.store.finish(ownerId, input.id, token, [...messages, message]) }
         finally { await this.store.release(ownerId, input.id, token) }
       } })

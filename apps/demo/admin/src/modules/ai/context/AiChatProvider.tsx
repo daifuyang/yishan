@@ -98,8 +98,9 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
         const payload = output.render.payload ?? {};
         const uiRequestId = String(payload.uiRequestId ?? '');
         const draftId = String(payload.draftId ?? '');
-        if (!uiRequestId || !draftId || seen.has(uiRequestId)) continue;
-        seen.add(uiRequestId);
+        const deliveryId = `draft:${result.toolCallId}`;
+        if (!uiRequestId || !draftId || seen.has(deliveryId)) continue;
+        seen.add(deliveryId);
         found.push({
           uiRequestId,
           draftId,
@@ -118,6 +119,20 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     collectFormPrefills(chatRef.current.messages, turn.current.seen);
     queuedPrefills.current = [];
     queued.current = [];
+  };
+
+  const applyCurrentResults = (messages: UIMessage[]) => {
+    const active = turn.current;
+    if (
+      !active ||
+      active.identityEpoch !== epoch.current ||
+      operation.current?.cancelled
+    )
+      return;
+    for (const prefill of collectFormPrefills(messages, active.seen))
+      formHandlers.current?.onPrefill?.(prefill);
+    for (const request of collectDraftRequests(messages, active.seen))
+      formHandlers.current?.onUiRequest(request);
   };
 
   const endTurn = (version: number) => {
@@ -197,9 +212,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     onError: recordFailure,
     onFinish: ({ message, isAbort, isError }) => {
       if (!turn.current || isAbort || isError) return;
-      queuedPrefills.current.push(
-        ...collectFormPrefills([message], turn.current.seen),
-      );
+      applyCurrentResults([message]);
     },
   });
   const chatRef = useRef(chat);
@@ -207,10 +220,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
   // 本轮 stream 的草稿结果：**只有**在本轮进行中才收集（`turn.current` 为空时不收），
   // 因此历史消息重放、刷新、切换会话都不会触发自动开表单。
   useEffect(() => {
-    if (!turn.current) return;
-    queued.current.push(
-      ...collectDraftRequests(chat.messages, turn.current.seen),
-    );
+    applyCurrentResults(chat.messages);
   }, [chat.messages]);
   const generating = chat.status === 'submitted' || chat.status === 'streaming';
   const busy = pending || generating;
@@ -455,6 +465,8 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
       if (detail.messages.some((item) => item.id === userMessage.id)) {
         if (turn.current)
           collectFormPrefills(detail.messages, turn.current.seen);
+        if (turn.current)
+          collectDraftRequests(detail.messages, turn.current.seen);
         chat.setMessages(detail.messages);
         await chat.regenerate();
       } else {

@@ -1,5 +1,5 @@
 /**
- * form-assistance — 页面/表单**协作契约**（首期只有 `system / user.create`）。
+ * form-assistance — 用户与部门原生表单的协作契约。
  *
  * 这个模块是助手与原生表单之间唯一的接缝，也是**唯一**允许外界触碰表单的东西。
  * 契约刻意很窄：
@@ -20,10 +20,12 @@
  * System Admin 不导入 Demo AI 模块，Demo AI 模块反过来订阅这里。
  */
 
-/** 首期唯一接入的业务目标。未接入的页面必须明说暂不支持。 */
+/** 兼容现有用户表单调用方；部门使用相同的操作范围契约。 */
 export const USER_FORM_ASSISTANCE_TARGET = 'user.create' as const;
 
-export type UserFormAssistanceTarget = typeof USER_FORM_ASSISTANCE_TARGET;
+export type UserFormAssistanceTarget =
+  | typeof USER_FORM_ASSISTANCE_TARGET
+  | 'department.create';
 
 /**
  * 助手可读写的草稿字段。
@@ -31,11 +33,11 @@ export type UserFormAssistanceTarget = typeof USER_FORM_ASSISTANCE_TARGET;
  * 派生自**生成的公开类型** `SystemAPI.createUserReq`（剔除 `password` 并全部转为可选），
  * 而不是从后端运行时导入 —— 前端类型与后端契约同源，但依赖方向仍是单向的。
  *
- * 已知缺口：Task 5 给 `CreateUserReqSchema` 加了可选的 `draftSubmission`，
- * 但生成的 OpenAPI 客户端要到 Task 10 才重新生成，因此这里看到的
- * `createUserReq` 还没有该字段。Task 10 之后本类型自动跟随，无需改动。
  */
-export type UserCreateDraftFields = Partial<Omit<SystemAPI.createUserReq, 'password'>>;
+export type UserCreateDraftFields = Partial<
+  Omit<SystemAPI.createUserReq, 'password' | 'draftSubmission' | 'avatar'>
+> &
+  Partial<Omit<SystemAPI.createDeptReq, 'draftSubmission'>>;
 
 /** 冲突原因标记。字段名本身也用作冲突项，便于调用方逐字段展示差异。 */
 export const APPLY_CONFLICT = {
@@ -98,7 +100,9 @@ export interface UserCreateFormHandle {
    * 变得不再合法」的提示（当前只有 `roleIds`：改了部门之后已选角色不可再授予），
    * 调用方应当把它转成对用户的一句话，而不是当成失败。
    */
-  apply(input: UserCreateFormApplyInput): Promise<{ applied: boolean; conflicts: readonly string[] }>;
+  apply(
+    input: UserCreateFormApplyInput,
+  ): Promise<{ applied: boolean; conflicts: readonly string[] }>;
 }
 
 interface Registration {
@@ -106,7 +110,7 @@ interface Registration {
   handle: UserCreateFormHandle;
 }
 
-let active: Registration | null = null;
+const registrations = new Map<UserFormAssistanceTarget, Registration>();
 const listeners = new Set<() => void>();
 /** 前台目标变化（被编辑表单顶替 / 顶替者关掉）的订阅者。 */
 const targetListeners = new Set<(event: 'invalidated' | 'restored') => void>();
@@ -126,11 +130,12 @@ export function registerUserCreateFormHandle(
   identity: string | number = 'anonymous',
 ): () => void {
   const next: Registration = { identity: String(identity), handle };
-  active = next;
+  const target = handle.snapshot().target;
+  registrations.set(target, next);
   emit();
   return () => {
-    if (active?.handle === handle) {
-      active = null;
+    if (registrations.get(target)?.handle === handle) {
+      registrations.delete(target);
       emit();
     }
   };
@@ -138,14 +143,16 @@ export function registerUserCreateFormHandle(
 
 /** 清空引用。登出/切换账号时必须调用。 */
 export function clearUserCreateFormHandle(): void {
-  if (!active) return;
-  active = null;
+  if (!registrations.size) return;
+  registrations.clear();
   emit();
 }
 
 /** 供 `useSyncExternalStore` 使用：快照必须稳定，不能每次新建对象。 */
-export function peekUserCreateFormHandle(): UserCreateFormHandle | null {
-  return active?.handle ?? null;
+export function peekUserCreateFormHandle(
+  target: UserFormAssistanceTarget = USER_FORM_ASSISTANCE_TARGET,
+): UserCreateFormHandle | null {
+  return registrations.get(target)?.handle ?? null;
 }
 
 /**
@@ -157,7 +164,8 @@ export function peekUserCreateFormHandle(): UserCreateFormHandle | null {
 export function invalidateUserCreateFormHandle(reason: string): void {
   // 目前只有一种原因（被编辑用户表单顶替），保留参数便于审计与后续扩展。
   void reason;
-  clearUserCreateFormHandle();
+  registrations.delete(USER_FORM_ASSISTANCE_TARGET);
+  emit();
   for (const listener of [...targetListeners]) listener('invalidated');
 }
 
@@ -186,11 +194,15 @@ export function subscribeUserCreateFormTarget(
  * 已经被顶替的旧句柄（例如编辑用户表单打开之前的创建句柄）必须停止接受补丁 ——
  * 它的表单可能还开在底层，但那已经不是用户此刻在看的目标。
  */
-export function isCurrentUserCreateFormHandle(handle: UserCreateFormHandle): boolean {
-  return active?.handle === handle;
+export function isCurrentUserCreateFormHandle(
+  handle: UserCreateFormHandle,
+): boolean {
+  return registrations.get(handle.snapshot().target)?.handle === handle;
 }
 
-export function subscribeUserCreateFormHandle(listener: () => void): () => void {
+export function subscribeUserCreateFormHandle(
+  listener: () => void,
+): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
@@ -246,6 +258,8 @@ export interface UserCreateDraftSubmission {
 export type UserCreateDraftReconcileResult = 'completed' | 'failed' | 'unknown';
 
 export interface UserCreateDraftLink {
+  /** 原生业务 API 已返回成功，仅同步显示回执。 */
+  complete?(): void;
   /**
    * 人工点击「确定」后、表单校验通过后调用：把待同步的非敏感字段落地，并返回**锁定**
    * 的精确 `{draftId, draftVersion}`。没有草稿时返回 `null`（普通创建，行为不变）。
@@ -262,22 +276,27 @@ export interface UserCreateDraftLink {
   reconcile(): Promise<UserCreateDraftReconcileResult>;
 }
 
-let draftLink: UserCreateDraftLink | null = null;
+const draftLinks = new Map<UserFormAssistanceTarget, UserCreateDraftLink>();
 
 /**
  * 注册草稿链接。**没有草稿时不必注册** —— `peekUserCreateDraftLink()` 返回 `null` 时
  * 表单走的是与从前完全一致的普通创建路径。
  */
-export function registerUserCreateDraftLink(link: UserCreateDraftLink): () => void {
-  draftLink = link;
+export function registerUserCreateDraftLink(
+  link: UserCreateDraftLink,
+  target: UserFormAssistanceTarget = USER_FORM_ASSISTANCE_TARGET,
+): () => void {
+  draftLinks.set(target, link);
   return () => {
-    if (draftLink === link) draftLink = null;
+    if (draftLinks.get(target) === link) draftLinks.delete(target);
   };
 }
 
 /** 供 `UserForm` 在人工提交里读取。`null` 表示这次是与草稿无关的普通创建。 */
-export function peekUserCreateDraftLink(): UserCreateDraftLink | null {
-  return draftLink;
+export function peekUserCreateDraftLink(
+  target: UserFormAssistanceTarget = USER_FORM_ASSISTANCE_TARGET,
+): UserCreateDraftLink | null {
+  return draftLinks.get(target) ?? null;
 }
 
 /**
@@ -297,3 +316,26 @@ export {
   useCoordinatedFormFocus,
   type UserFormOverlayInfo,
 } from './overlay';
+
+const assistanceListeners = new Set<
+  (target: UserFormAssistanceTarget) => void
+>();
+export function requestNativeFormAssistance(
+  target: UserFormAssistanceTarget,
+): void {
+  for (const listener of assistanceListeners) listener(target);
+}
+export function subscribeNativeFormAssistance(
+  listener: (target: UserFormAssistanceTarget) => void,
+): () => void {
+  assistanceListeners.add(listener);
+  return () => {
+    assistanceListeners.delete(listener);
+  };
+}
+
+/** 操作中性名称；旧 UserCreate 名称保留兼容已有调用方。 */
+export type NativeFormTarget = UserFormAssistanceTarget;
+export type NativeFormFields = UserCreateDraftFields;
+export type NativeFormSnapshot = UserFormSnapshot;
+export type NativeFormHandle = UserCreateFormHandle;

@@ -94,4 +94,22 @@ describe('AI chat ownership and lifecycle', () => {
     await expect(f.service.chat(1, input, new AbortController().signal)).resolves.toBeInstanceOf(Response)
     await f.finish()
   })
+
+  it('bounds model context while preserving the full stored conversation', async () => {
+    const f = fixture(); const c = await f.service.create(1)
+    const history: ChatMessage[] = []
+    for (let turn = 0; turn < 25; turn += 1) {
+      history.push(user(`u${turn}`, 'x'.repeat(2000)), { id: `a${turn}`, role: 'assistant', parts: [{ type: 'text', text: 'y'.repeat(2000) }] })
+    }
+    f.histories.set(c.id, history)
+    await f.service.chat(1, { id: c.id, messages: [user('current', 'continue')], trigger: 'submit-message' }, new AbortController().signal)
+    expect(f.sent().length).toBeLessThan(history.length)
+    expect(JSON.stringify(f.sent()).length).toBeLessThanOrEqual(48000)
+    expect(f.sent()[0].role).toBe('user')
+    expect(f.sent().at(-1)?.id).toBe('current')
+    await f.finish()
+    const stored = (await f.service.detail(1, c.id)).messages
+    expect(stored).toHaveLength(52)
+    expect(stored[0].id).toBe('u0')
+  })
 })

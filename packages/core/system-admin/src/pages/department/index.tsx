@@ -15,7 +15,6 @@ import {
   updateDept,
 } from '../../services/generated/sysDepts';
 import DepartmentForm from './components/DepartmentForm';
-import { AiPrefillGate } from '../../components/AiPrefillGate';
 
 type DeptTreeNode = SystemAPI.deptTreeNode;
 
@@ -170,20 +169,6 @@ const DepartmentList: React.FC = () => {
 
   return (
     <PageContainer>
-      {/* AI 预填：命中时打开既有的新建部门表单，父部门等字段由用户确认后保存。 */}
-      <AiPrefillGate target="department.create">
-        {({ open, initialValues, close }) => (
-          <DepartmentForm
-            title="新建部门"
-            open={open}
-            onOpenChange={(next) => {
-              if (!next) close();
-            }}
-            initialValues={{ parentId: 0, status: '1', ...initialValues } as Partial<SystemAPI.sysDept>}
-            onFinish={handleFormSuccess}
-          />
-        )}
-      </AiPrefillGate>
       <ProTable<DeptTreeNode>
         headerTitle="部门树"
         actionRef={actionRef}
@@ -192,6 +177,7 @@ const DepartmentList: React.FC = () => {
         toolBarRender={() => [
           <DepartmentForm
             key="create"
+            assistance="department.create"
             title="新建部门"
             trigger={
               <Button type="primary">

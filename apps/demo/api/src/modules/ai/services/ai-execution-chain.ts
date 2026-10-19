@@ -24,7 +24,7 @@ import { FormatRegistry } from '@sinclair/typebox'
 import type { TSchema } from '@sinclair/typebox'
 import { getAiCapability, isModelInvocableRiskLevel, listAiCapabilitiesFor, type AiCapability, type AiCapabilityContext } from '@yishan/core-api/ai-capabilities/catalog'
 import { PERMISSION_CODES } from '@yishan/core-api/permissions/catalog'
-import { computeEffectivePerms, establishDataScopeFor, hasPermission, SUPER_ADMIN_BYPASS, PermissionService } from '@yishan/core-system-api'
+import { computeEffectivePerms, establishDataScopeFor, hasPermission, SUPER_ADMIN_BYPASS, PermissionService, currentSystemRuntime } from '@yishan/core-system-api'
 import type { SystemRuntime } from '@yishan/core-system-api'
 import { digestInput, summarizeError, type AiAuditStore } from '../repositories/ai-audit.repository.js'
 
@@ -73,9 +73,10 @@ export async function resolveEffectivePermissions(actor: AiActor): Promise<Set<s
 }
 
 /** 给模型看的工具定义。已禁用或无权的能力**不出现在清单里**，也不要泄露错误原因。 */
-export async function toolsForActor(actor: AiActor): Promise<{ permissions: Set<string>; capabilities: readonly AiCapability[] }> {
+export async function toolsForActor(actor: AiActor, runtime: Pick<SystemRuntime, 'moduleState'> = currentSystemRuntime()): Promise<{ permissions: Set<string>; capabilities: readonly AiCapability[] }> {
   const permissions = await resolveEffectivePermissions(actor)
-  return { permissions, capabilities: listAiCapabilitiesFor(permissions) }
+  const enabled = await runtime.moduleState.enabledIds()
+  return { permissions, capabilities: listAiCapabilitiesFor(permissions).filter(capability => capability.moduleId === 'system' || enabled.has(capability.moduleId)) }
 }
 
 export async function executeCapability(request: AiExecutionRequest, name: string, input: unknown): Promise<AiExecutionOutcome> {

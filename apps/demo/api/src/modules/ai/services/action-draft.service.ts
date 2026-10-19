@@ -19,23 +19,19 @@
  */
 import { randomUUID } from 'node:crypto'
 import {
-  UserCreationFormService,
-  USER_CREATE_FORM_SCHEMA_VERSION,
-  validateUserCreation,
   type UserCreateForm,
   type UserCreationSubject,
 } from '@yishan/core-system-api'
 import type { AppQueryDb } from '@yishan/core-system-api/database'
 import { ActionDraftRepository, type ActionDraftRecord, type ActionDraftStore, type ActionDraftTx } from '../repositories/action-draft.repository.js'
 import { aiError } from '../ai-chat-error.js'
+import { authorizeDraft, draftFieldSchemas, draftForm } from './draft-forms.js'
 import {
   ACTION_DRAFT_ACTIONS,
   ACTION_DRAFT_MODULES,
   ACTION_DRAFT_TTL_MS,
   ACTION_DRAFT_STATUSES,
   EDITABLE_ACTION_DRAFT_STATUSES,
-  USER_CREATE_DRAFT_FIELD_KEYS,
-  matchesDraftFieldType,
   type ActionDraftAction,
   type ActionDraftModule,
   type ActionDraftResultRef,
@@ -71,7 +67,6 @@ export interface ActionDraftServiceOptions {
   authorize?: (subject: UserCreationSubject, fields: Record<string, unknown>) => Promise<void>
 }
 
-const EDITABLE_FIELDS = new Set<string>(USER_CREATE_DRAFT_FIELD_KEYS)
 
 /** 允许 `null` 的补丁值：`null` 清空，省略不动。 */
 function isPatch(value: unknown): value is Record<string, unknown> {
@@ -100,10 +95,11 @@ export class ActionDraftService {
 
   private now() { return this.options.now ? this.options.now() : new Date() }
   private ttlMs() { return this.options.ttlMs ?? ACTION_DRAFT_TTL_MS }
-  private form(): UserCreateForm { return this.options.form ?? UserCreationFormService.getCreateForm() }
-  private async authorize(subject: UserCreationSubject | undefined, fields: Record<string, unknown>) {
+  private form(action = 'user.create'): UserCreateForm { return this.options.form ?? draftForm(action) }
+  private async authorize(subject: UserCreationSubject | undefined, fields: Record<string, unknown>, action = 'user.create') {
     if (!subject) return
-    await (this.options.authorize ?? ((s, f) => validateUserCreation(s, f)))(subject, fields)
+    if (this.options.authorize) await this.options.authorize(subject, fields)
+    else await authorizeDraft(action, subject, fields)
   }
 
   // ---------------------------------------------------------------- 读
@@ -133,18 +129,18 @@ export class ActionDraftService {
 
   async create(ownerId: number, conversationId: string, input: CreateActionDraftInput): Promise<ActionDraft> {
     this.assertTarget(input.module, input.action)
-    this.assertSchemaVersion(input.schemaVersion)
-    const formData = this.normalize(input.formData, false)
-    await this.authorize(input.subject, formData)
+    this.assertSchemaVersion(input.schemaVersion, input.action)
+    const formData = this.normalize(input.formData, false, input.action)
+    await this.authorize(input.subject, formData, input.action)
     const now = this.now()
-    const evaluation = this.evaluate(formData)
+    const evaluation = this.evaluate(formData, input.action)
     const draft: ActionDraft = {
       draftId: randomUUID(),
       ownerId,
       conversationId,
       module: input.module,
       action: input.action,
-      schemaVersion: USER_CREATE_FORM_SCHEMA_VERSION,
+      schemaVersion: this.form(input.action).schemaVersion,
       formData,
       missingFields: evaluation.missingFields,
       validationErrors: evaluation.validationErrors,
@@ -165,9 +161,9 @@ export class ActionDraftService {
   }
 
   async patch(ownerId: number, draftId: string, draftVersion: number, formData: Record<string, unknown>, context: PatchActionDraftInput = {}): Promise<ActionDraft> {
-    this.assertSchemaVersion(context.schemaVersion)
-    const patch = this.normalize(formData, true)
     const row = await this.get(ownerId, draftId)
+    this.assertSchemaVersion(context.schemaVersion, row.action)
+    const patch = this.normalize(formData, true, row.action)
     if (row.draftVersion !== draftVersion) throw conflict(this.explain(row, draftVersion))
     // 补丁合并：省略的键不动，`null` 的键移除。未提及的字段必须原样保留（设计 §6）。
     const merged = { ...row.formData }
@@ -175,8 +171,8 @@ export class ActionDraftService {
       if (value === null) delete merged[key]
       else merged[key] = value
     }
-    await this.authorize(context.subject, merged)
-    const evaluation = this.evaluate(merged)
+    await this.authorize(context.subject, merged, row.action)
+    const evaluation = this.evaluate(merged, row.action)
     return this.swap(ownerId, row, draftVersion, EDITABLE_ACTION_DRAFT_STATUSES, {
       formData: merged,
       missingFields: evaluation.missingFields,
@@ -310,7 +306,7 @@ export class ActionDraftService {
   async markPreviewing(ownerId: number, draftId: string, draftVersion: number, open = true): Promise<ActionDraft> {
     const row = await this.get(ownerId, draftId)
     if (row.draftVersion !== draftVersion) throw conflict(this.explain(row, draftVersion))
-    const evaluation = this.evaluate(row.formData)
+    const evaluation = this.evaluate(row.formData, row.action)
     return this.swap(ownerId, row, draftVersion, EDITABLE_ACTION_DRAFT_STATUSES, {
       status: open ? 'previewing' : evaluation.status,
       missingFields: evaluation.missingFields,
@@ -326,8 +322,8 @@ export class ActionDraftService {
     }
   }
 
-  private assertSchemaVersion(schemaVersion?: number): void {
-    if (schemaVersion !== undefined && schemaVersion !== USER_CREATE_FORM_SCHEMA_VERSION) {
+  private assertSchemaVersion(schemaVersion?: number, action = 'user.create'): void {
+    if (schemaVersion !== undefined && schemaVersion !== this.form(action).schemaVersion) {
       // 版本对不上必须重新读表单定义，而不是拿旧字段名继续写（Task 3 契约）。
       throw aiError(400, '表单定义已更新，请重新读取表单后再保存草稿')
     }
@@ -344,20 +340,25 @@ export class ActionDraftService {
    * `{phone:null}` 表示「还没问到手机号」，而不是「手机号为空」—— 一律 400，
    * 否则必填字段会同时是「已清空」和「已收集」，草稿宣称 ready 而提交被拒。
    */
-  private normalize(formData: Record<string, unknown>, allowNull: boolean): Record<string, unknown> {
+  private normalize(formData: Record<string, unknown>, allowNull: boolean, action = 'user.create'): Record<string, unknown> {
     if (!isPatch(formData)) throw aiError(400, '表单数据格式无效')
     const rejected: string[] = []
     const out: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(formData)) {
       if (value === undefined) continue
-      if (!EDITABLE_FIELDS.has(key as string)) { rejected.push(key); continue }
+      const source = draftFieldSchemas(action)[key]
+      if (!source) { rejected.push(key); continue }
       if (value === null) {
         // 创建不接受 null；补丁里 null 是「清空」，由调用方在合并时移除该键。
         if (allowNull) out[key] = null
         else rejected.push(key)
         continue
       }
-      if (!matchesDraftFieldType(key as string, value)) { rejected.push(key); continue }
+      const valid = source.type === 'number' || source.type === 'integer'
+        ? typeof value === 'number' && Number.isFinite(value)
+        : source.type === 'array' ? Array.isArray(value) && value.every(item => typeof item === 'number' && Number.isFinite(item))
+          : typeof value === 'string'
+      if (!valid) { rejected.push(key); continue }
       out[key] = value
     }
     if (rejected.length) throw aiError(400, `不支持的字段：${[...new Set(rejected)].join('、')}`)
@@ -365,8 +366,8 @@ export class ActionDraftService {
   }
 
   /** 用真实表单定义算「缺什么、哪里不合法」。值一律原样保留。 */
-  private evaluate(formData: Record<string, unknown>) {
-    const form = this.form()
+  private evaluate(formData: Record<string, unknown>, action = 'user.create') {
+    const form = this.form(action)
     const byName = new Map(form.fields.map(field => [field.name, field]))
     const validationErrors: ActionDraft['validationErrors'] = []
     for (const [name, value] of Object.entries(formData)) {

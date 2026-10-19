@@ -63,6 +63,7 @@ const TARGET_FIELDS: Record<AiPrefillTarget, readonly string[]> = {
     'parentId',
     'status',
     'sortOrder',
+    'sort_order',
     'description',
     'leaderId',
   ],

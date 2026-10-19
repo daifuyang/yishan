@@ -12,6 +12,7 @@ import { assertJwtSecretOrThrow } from './core/plugins/external/jwt-secret-valid
 import { createUserDirectory, toUserIdentity } from './users'
 import type { SysUserResp } from './core/schemas/user'
 import type { UserCreationParticipant } from './core/services/user-creation'
+import type { DepartmentCreationParticipant } from './core/services/department-creation'
 import { setupSystem } from './setup'
 import { createModuleStateStore } from './module-state'
 import { createModuleAdministration } from './module-administration'
@@ -39,6 +40,7 @@ export interface SystemRuntimeOptions {
    * 被拒绝而不是降级 —— 见 `core/services/user-creation.ts`。
    */
   userCreationParticipant?: UserCreationParticipant
+  departmentCreationParticipant?: DepartmentCreationParticipant
 }
 
 export class SystemRuntime {

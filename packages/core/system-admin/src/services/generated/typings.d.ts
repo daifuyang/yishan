@@ -371,6 +371,7 @@ declare namespace SystemAPI {
     description?: string;
     /** 负责人ID */
     leaderId?: number;
+    draftSubmission?: { draftId: string; draftVersion: number };
   };
 
   type createUserReq = {

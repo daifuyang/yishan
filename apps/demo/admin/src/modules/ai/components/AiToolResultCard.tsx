@@ -324,7 +324,10 @@ function DraftResult({
   const inForm = missing.filter((field) => field.mustCompleteInForm);
   return (
     <div>
-      <Typography.Text strong>正在协助：新建用户</Typography.Text>
+      <Typography.Text strong>
+        正在协助：
+        {data.action === 'department.create' ? '新建部门' : '新建用户'}
+      </Typography.Text>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
         信息已存在草稿里，助手不会替你保存：仍需你在表单里核对并点击「确定」。
       </Typography.Paragraph>

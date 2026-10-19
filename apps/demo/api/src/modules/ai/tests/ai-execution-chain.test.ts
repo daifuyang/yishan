@@ -50,6 +50,14 @@ function harness(capabilities: AiCapability[], enabled: string[] = ['demo', 'ai'
 beforeEach(() => { AUDIT.length = 0; loadForRoleIds.mockClear() })
 
 describe('AI execution chain', () => {
+  it('hides disabled optional modules during discovery while keeping system capabilities', async () => {
+    const h = harness([
+      capability({ name: 'core_users', permissionCode: 'system:user:list' }),
+      capability({ name: 'demo_users', moduleId: 'demo', permissionCode: 'system:user:list' }),
+    ], [])
+    const listed = await h.run(() => toolsForActor({ userId: 7, roleIds: [1], deptIds: [] }, h.runtime))
+    expect(listed.capabilities.map(item => item.name)).toEqual(['core_users'])
+  })
   it('denies an unknown capability and still leaves an audit trail', async () => {
     const h = harness([capability({ name: 'list_users', permissionCode: 'system:user:list' })])
     const outcome = await h.run(() => executeCapability(h.base, 'hallucinated_tool', {}))
@@ -89,7 +97,7 @@ describe('AI execution chain', () => {
 
   it('re-resolves permissions at execution time instead of trusting the tool list', async () => {
     const h = harness([capability({ name: 'list_users', permissionCode: 'system:user:list' })])
-    const listed = await h.run(() => toolsForActor({ userId: 7, roleIds: [1] }))
+    const listed = await h.run(() => toolsForActor({ userId: 7, roleIds: [1] }, h.runtime))
     expect(listed.capabilities.map(c => c.name)).toContain('list_users')
     // 清单裁剪发生在权限还充足时；执行前权限已被回收。
     loadForRoleIds.mockResolvedValue({ perms: new Set(), roleCodes: new Set() })
@@ -101,14 +109,14 @@ describe('AI execution chain', () => {
   it('lets a PAT without the matching scope lose the capability', async () => {
     const h = harness([capability({ name: 'list_users', permissionCode: 'system:user:list' })])
     loadForRoleIds.mockResolvedValue({ perms: new Set(ACTIVE_CODES), roleCodes: new Set() })
-    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1], tokenScope: ["ai:chat:use"] }))
+    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1], tokenScope: ["ai:chat:use"] }, h.runtime))
     expect(tools.capabilities.map(c => c.name)).not.toContain('list_users')
   })
 
   it('rejects a PAT that explicitly scopes to nothing', async () => {
     const h = harness([capability({ name: 'list_users', permissionCode: 'system:user:list' })])
     loadForRoleIds.mockResolvedValue({ perms: new Set(ACTIVE_CODES), roleCodes: new Set() })
-    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1], tokenScope: [] }))
+    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1], tokenScope: [] }, h.runtime))
     expect(tools.capabilities).toEqual([])
   })
 
@@ -124,7 +132,7 @@ describe('AI execution chain', () => {
       capability({ name: 'list_users', permissionCode: 'system:user:list' }),
       capability({ name: 'off', permissionCode: 'system:user:list', enabled: false }),
     ])
-    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1] }))
+    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1] }, h.runtime))
     expect(tools.capabilities.map(c => c.name)).toEqual(['list_users'])
     const outcome = await h.run(() => executeCapability(h.base, 'off', {}))
     expect(outcome.ok).toBe(false)
@@ -133,7 +141,7 @@ describe('AI execution chain', () => {
   it('keeps the super-admin sentinel out of reach of an ordinary role', async () => {
     const h = harness([capability({ name: 'list_users', permissionCode: 'system:user:list' })])
     loadForRoleIds.mockResolvedValue({ perms: new Set(['__super_admin__']), roleCodes: new Set() })
-    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1], tokenScope: ["system:user:list"] }))
+    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1], tokenScope: ["system:user:list"] }, h.runtime))
     // tokenScope 不含哨兵，交集之后超管旁路被剥离。
     expect(tools.capabilities.map(c => c.name)).toEqual([])
   })
@@ -162,7 +170,7 @@ describe('model-facing capability boundary', () => {
     const h = harness([capability({ name: 'list_users', permissionCode: 'system:user:list' })])
     forceRegister(h.catalog, capability({ name: 'create_user', permissionCode: 'system:user:create', riskLevel: 'write' }))
     loadForRoleIds.mockResolvedValue({ perms: new Set(['__super_admin__']), roleCodes: new Set() })
-    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1] }))
+    const tools = await h.run(() => toolsForActor({ userId: 7, roleIds: [1] }, h.runtime))
     expect(tools.capabilities.map(c => c.name)).toEqual(['list_users'])
   })
 
@@ -201,7 +209,7 @@ describe('model-facing capability boundary', () => {
     // 没有权限参数的门面导出也必须挡住——否则将来的调用方能拿它绕过 listFor。
     expect(await h.run(async () => listAiCapabilities().map(c => c.name))).toEqual(['list_users'])
     expect(await h.run(async () => listAiCapabilitiesFor(new Set(['__super_admin__'])).map(c => c.name))).toEqual(['list_users'])
-    expect(await h.run(async () => toolsForActor({ userId: 7, roleIds: [1] })).then(r => r.capabilities.map(c => c.name))).toEqual(['list_users'])
+    expect(await h.run(async () => toolsForActor({ userId: 7, roleIds: [1] }, h.runtime)).then(r => r.capabilities.map(c => c.name))).toEqual(['list_users'])
   })
 
   it('still executes a prepare capability', async () => {
