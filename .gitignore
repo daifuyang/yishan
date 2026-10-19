@@ -47,5 +47,7 @@ tmp/
 
 # Generated local artifacts
 artifacts/
+# scripts/package-api.mjs 输出（dist + node_modules 闭包，~170M），只用于上传部署
+out/
 
 # Local dev module enable/disable overrides — 已废弃。启停事实迁入 sys_module 表。
