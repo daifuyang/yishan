@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, existsSync, realpathSync, statSync, lstatSync, mkdirSync, mkdtempSync, cpSync, rmSync, writeFileSync, symlinkSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, realpathSync, statSync, lstatSync, readlinkSync, mkdirSync, mkdtempSync, cpSync, rmSync, writeFileSync, symlinkSync } from 'node:fs'
 import { join, resolve, dirname, relative, isAbsolute, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire, isBuiltin } from 'node:module'
@@ -11,6 +11,30 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 function contains(root, target) {
   const rel = relative(root, target)
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
+
+/**
+ * 产物里的符号链接必须是**相对**路径，否则产物只在本机能用。
+ *
+ * 为什么这条必须单独查：`contains(artifactRoot, realpathSync(link))` 只保证链接
+ * 指向产物内部，Windows 上 `pnpm deploy` 生成的 junction（目标形如
+ * `\?\C:\Users\...`）指向的确实是内部路径，能通过检查 —— 但拷到任何另一台机器
+ * 都是死链。症状是部署后才暴露的 `Cannot find module 'dotenv/config'`，那时产物
+ * 已经进了发布目录。
+ *
+ * 为什么不能在事后「修正」：Windows junction 不支持相对目标，没有后处理的空间。
+ * 唯一的正确做法是在打包机上就拒绝 —— 即在 Linux / CI 上打包。
+ */
+export function assertPortableLink(target, label, allow = false) {
+  if (allow) return
+  if (isAbsolute(target) || /^[A-Za-z]:/.test(target) || target.startsWith('\\\\')) {
+    throw new Error([
+      `Artifact link is not portable: ${label} -> ${target}`,
+      'pnpm on Windows emits absolute junction targets, so this artifact only works on this machine.',
+      'Build on Linux (or CI) to produce a deployable artifact.',
+      'Pass --allow-nonportable-links only for a local smoke check, never for deployment.',
+    ].join('\n'))
+  }
 }
 
 function exportTargets(value) {
@@ -34,7 +58,7 @@ function verifyPackage(directory, artifactRoot) {
   return packageJson
 }
 
-export function verifyApiArtifact(directory) {
+export function verifyApiArtifact(directory, { allowNonPortableLinks = false } = {}) {
   const artifactRoot = realpathSync(directory)
   const application = verifyPackage(artifactRoot, artifactRoot)
   const visited = new Set()
@@ -80,6 +104,7 @@ export function verifyApiArtifact(directory) {
       const stats = lstatSync(target)
       if (stats.isSymbolicLink()) {
         if (!contains(artifactRoot, realpathSync(target))) throw new Error(`Artifact symlink escapes output: ${relative(artifactRoot, target)}`)
+        assertPortableLink(readlinkSync(target), relative(artifactRoot, target), allowNonPortableLinks)
       } else if (stats.isDirectory()) walk(target)
       else if (entry === '.env' || /^\.env\./.test(entry)) throw new Error(`Artifact contains an environment file: ${relative(artifactRoot, target)}`)
     }
@@ -121,7 +146,7 @@ export function pruneUninstalledModules(directory, modules) {
   }
 }
 
-export function packageApi({ apiRoot = join(repositoryRoot, 'apps/demo/api'), output, admin }) {
+export function packageApi({ apiRoot = join(repositoryRoot, 'apps/demo/api'), output, admin, allowNonPortableLinks = false }) {
   const root = resolve(apiRoot)
   const target = resolve(output ?? join(root, 'deploy/fc3/.build/function-code'))
   if (contains(target, repositoryRoot) || contains(target, root)) throw new Error('Artifact output cannot contain the repository or application source')
@@ -148,7 +173,7 @@ export function packageApi({ apiRoot = join(repositoryRoot, 'apps/demo/api'), ou
     if (!statSync(resources).isDirectory() || !existsSync(join(resources, 'index.html'))) throw new Error(`Admin build does not contain index.html: ${resources}`)
     cpSync(resources, join(target, 'public/admin'), { recursive: true })
   }
-  const dependencies = verifyApiArtifact(target)
+  const dependencies = verifyApiArtifact(target, { allowNonPortableLinks })
   smokeApiArtifact(target)
   writeFileSync(join(target, '.yishan-api-artifact.json'), JSON.stringify({ application: root, dependencies }, null, 2))
   console.log(`[api-package] standalone production closure verified: ${target}`)
@@ -159,8 +184,14 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const args = process.argv.slice(2)
   const options = {}
   for (let index = 0; index < args.length; index += 2) {
+    if (args[index] === '--allow-nonportable-links') {
+      // 无值开关，所以要自己把游标往前挪一格（下面的循环按 2 步进）。
+      options.allowNonPortableLinks = true
+      index -= 1
+      continue
+    }
     const key = { '--api': 'apiRoot', '--output': 'output', '--admin': 'admin' }[args[index]]
-    if (!key || !args[index + 1]) throw new Error('Usage: node scripts/package-api.mjs [--api path] [--output path] [--admin path]')
+    if (!key || !args[index + 1]) throw new Error('Usage: node scripts/package-api.mjs [--api path] [--output path] [--admin path] [--allow-nonportable-links]')
     options[key] = args[index + 1]
   }
   packageApi(options)

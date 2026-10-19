@@ -37,7 +37,18 @@
 
 ## 发布
 
-在**本地或 CI** 构建，然后上传产物：
+**打包必须在 Linux 上做**（CI，或一台 Linux 构建机）。第 4 步在 Windows 上会直接失败：
+
+```
+Artifact link is not portable: node_modules\.pnpm\...\provider -> C:\Users\...\provider
+pnpm on Windows emits absolute junction targets, so this artifact only works on this machine.
+```
+
+`pnpm deploy` 在 Windows 上生成的是 junction（目标 `\\?\C:\...`）。产物在本机能跑、能过
+启动冒烟，拷到 Ubuntu 就是一堆死链，报错还是部署之后才出现的
+`Cannot find module 'dotenv/config'`。junction 不支持相对目标，没有事后修正的余地，
+所以 `scripts/package-api.mjs` 现在直接在打包时拒绝。Admin 的 `dist` 不受此限——纯静态
+文件，哪台机器构建都行。
 
 ```bash
 # 1. 依赖
@@ -51,9 +62,12 @@ PUBLIC_PATH=/ pnpm --filter @yishan/demo-admin build
 # 3. API
 pnpm -r --filter @yishan/demo-api... build
 
-# 4. 打包（含产物闭包自检：依赖完整性 + 启动冒烟）
+# 4. 打包（必须在 Linux 上跑；含产物闭包自检：依赖完整性 + 可移植性 + 启动冒烟）
 node scripts/package-api.mjs --output ./out/function-code --admin ./apps/demo/admin/dist
 ```
+
+只在本机做冒烟、不用于部署时，可以加 `--allow-nonportable-links` 跳过可移植性检查——
+但那样出来的产物**只能**在本机用。
 
 上传并切换：
 
