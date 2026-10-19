@@ -15,6 +15,9 @@ importers:
 
   .:
     devDependencies:
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.17
       '@yishan/core-admin':
         specifier: workspace:*
         version: link:packages/core/admin
