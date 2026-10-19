@@ -1,0 +1,310 @@
+name: yishan-api-cd-ubuntu
+
+# 演示环境发布：Fastify API + Admin 静态 → 腾讯云 Ubuntu（admin.zerocmf.com）。
+#
+# 与 yishan-api-cd.yml（阿里云 FC）的分工：那条给正式环境，这条给演示环境，
+# fc 上的 yishan-demo 下线后本流水线是唯一的发布路径。两者触发条件相同，
+# 因此同一个 push 会同时跑两条 —— 这是有意的，FC 侧暂不下线。
+#
+# 与 FC 版的两个实质差异：
+#   1. Admin 以 PUBLIC_PATH=/ 打包，挂在站点根（root 模式），不再是 /admin/*。
+#   2. 迁移在目标机上跑。Demo 的 MySQL/Redis 在阿里云 ECS，安全组只放行腾讯云
+#      机器的出口 IP，runner 连不上；FC 版是走 SSH 端口转发绕过去的。
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/yishan-api-cd-ubuntu.yml"
+      - ".github/workflows/yishan-fc-migrate.yml"
+      - "apps/demo/api/**"
+      - "apps/demo/admin/**"
+      - "packages/core/**"
+      - "packages/yishan-tiptap/**"
+      - "packages/ui/**"
+      - "apps/demo/config/**"
+      - "scripts/**"
+      - ".tool-versions"
+      - ".npmrc"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+    inputs:
+      skip_ci_gate:
+        description: "紧急覆盖：跳过对 yishan-fullstack-ci 的等待，直接部署该 commit。"
+        required: false
+        default: false
+        type: boolean
+      skip_migrations:
+        description: "跳过本次迁移（仅在刚手动执行过迁移时勾选）。"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: yishan-api-cd-ubuntu
+  cancel-in-progress: true
+
+jobs:
+  ci-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Require green yishan-fullstack-ci on this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          SKIP_GATE: ${{ inputs.skip_ci_gate }}
+        run: |
+          set -euo pipefail
+          if [ "$SKIP_GATE" = "true" ]; then
+            echo "::warning::skip_ci_gate=true — 跳过 CI 门禁（紧急覆盖），直接部署。"
+            exit 0
+          fi
+          echo "等待 yishan-fullstack-ci @ ${SHA}"
+          deadline=$(( $(date +%s) + 3000 ))
+          while :; do
+            json="$(gh api "repos/${REPO}/actions/workflows/yishan-fullstack-ci.yml/runs?head_sha=${SHA}&per_page=100" 2>/dev/null || echo '{}')"
+            status="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request")] | sort_by(.created_at) | last | .status // "missing"')"
+            conclusion="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request")] | sort_by(.created_at) | last | .conclusion // ""')"
+            echo "ci status=${status} conclusion=${conclusion}"
+            # workflow_dispatch 落在从未跑过 CI 的 commit 上时，"missing" 会一直保持，
+            # 白等到超时没有意义，直接给出可操作的提示。
+            if [ "$status" = "missing" ] && [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+              echo "::error::${SHA} 上不存在 yishan-fullstack-ci 运行；如需跳过门禁请勾选 skip_ci_gate。"
+              exit 1
+            fi
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" = "success" ]; then
+                echo "CI 已通过，继续部署。"
+                exit 0
+              fi
+              echo "::error::yishan-fullstack-ci 在该 commit 上结论为 ${conclusion}，拒绝部署。"
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::等待 yishan-fullstack-ci（${SHA}）超时；如需紧急部署，请用 workflow_dispatch 并勾选 skip_ci_gate。"
+              exit 1
+            fi
+            sleep 15
+          done
+
+  # 打包必须发生在 Linux runner 上：package-api.mjs 的 assertPortableLink 会拒绝
+  # Windows junction/绝对路径目标（那是本机打出来的包，不是可部署产物）。
+  # 目标机只有 3.6G 内存，跑不动全 monorepo 构建，所以构建与产物都在这里完成。
+  build:
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      release_ts: ${{ steps.stamp.outputs.release_ts }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Prepare yishan-tiptap
+        working-directory: packages/yishan-tiptap
+        run: pnpm install --frozen-lockfile && pnpm build
+
+      - name: Generate Admin plugin routes
+        run: pnpm --filter @yishan/demo-admin exec max setup
+
+      - name: Build Demo Admin
+        env:
+          # root 挂载：admin 静态资源以站点根为基准打包。写成 /admin/ 会让所有
+          # asset URL 带上前缀，在根路径下 404 白屏。
+          PUBLIC_PATH: /
+        run: pnpm --filter @yishan/demo-admin build
+
+      - name: Build API and check migration manifest
+        run: |
+          set -euo pipefail
+          pnpm -r --filter @yishan/demo-api... build
+          # --check 只打印迁移清单，不连库。产物的迁移必须存在，否则目标机上
+          # --dry-run 会因为空清单"成功"，把"表没建"这个问题推迟到运行时。
+          pnpm --filter @yishan/demo-api db:migrate --check
+
+      - name: Stamp release id
+        id: stamp
+        run: echo "release_ts=$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Package standalone API artifact
+        run: |
+          set -euo pipefail
+          node scripts/package-api.mjs --output "$RUNNER_TEMP/yishan-api-artifact" --admin apps/demo/admin/dist
+          # 打成单顶层目录，目标机解包时 --strip-components=1 即可。
+          tar -czf "$RUNNER_TEMP/yishan-api-${{ github.sha }}.tar.gz" \
+            -C "$RUNNER_TEMP" yishan-api-artifact
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yishan-api-${{ steps.stamp.outputs.release_ts }}
+          path: ${{ runner.temp }}/yishan-api-${{ github.sha }}.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: [ci-gate, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: YISHAN_DEMO_UBUNTU
+    env:
+      UBUNTU_HOST: ${{ vars.UBUNTU_HOST }}
+      UBUNTU_USER: ${{ vars.UBUNTU_USER || 'ubuntu' }}
+      UBUNTU_SSH_FINGERPRINT: ${{ vars.UBUNTU_SSH_FINGERPRINT }}
+      RELEASE_TS: ${{ needs.build.outputs.release_ts }}
+      SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://admin.zerocmf.com' }}
+      ARTIFACT: ${{ runner.temp }}/yishan-api-${{ github.sha }}.tar.gz
+    steps:
+      - name: Validate deployment variables
+        env:
+          UBUNTU_DEPLOYER_SSH_KEY: ${{ secrets.UBUNTU_DEPLOYER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          : "${UBUNTU_HOST:?Missing UBUNTU_HOST in the YISHAN_DEMO_UBUNTU environment}"
+          : "${UBUNTU_DEPLOYER_SSH_KEY:?Missing UBUNTU_DEPLOYER_SSH_KEY secret}"
+          : "${RELEASE_TS:?Missing RELEASE_TS from the build job}"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: yishan-api-${{ needs.build.outputs.release_ts }}
+          path: ${{ runner.temp }}
+
+      # 现有的 ECS_DEPLOYER_SSH_KEY 对应远端受限命令 tunnel-dsh，只能做端口转发，
+      # 不能 scp。这里用一把独立密钥。
+      - name: Setup SSH client
+        env:
+          UBUNTU_DEPLOYER_SSH_KEY: ${{ secrets.UBUNTU_DEPLOYER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$UBUNTU_DEPLOYER_SSH_KEY" > ~/.ssh/ubuntu-deployer.pem
+          chmod 600 ~/.ssh/ubuntu-deployer.pem
+          # 指纹对不上就中止：盲信任 keyscan 等于把部署机敞给中间人。
+          if [ -n "$UBUNTU_SSH_FINGERPRINT" ]; then
+            scan="$(ssh-keyscan -t ed25519 "$UBUNTU_HOST" 2>/dev/null | ssh-keygen -lf - | awk '{print $2}')"
+            echo "host ed25519 fingerprint: ${scan}"
+            [ "$scan" = "$UBUNTU_SSH_FINGERPRINT" ] \
+              || { echo "::error::目标机指纹不匹配，拒绝部署。"; exit 1; }
+            echo "$UBUNTU_HOST $scan" > ~/.ssh/known_hosts
+          else
+            echo "::warning::UBUNTU_SSH_FINGERPRINT 未配置，退回 ssh-keyscan 直采。"
+            ssh-keyscan -t ed25519 "$UBUNTU_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+
+      - name: Upload artifact
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
+            "mkdir -p /opt/yishan/incoming /opt/yishan/releases"
+          scp -i ~/.ssh/ubuntu-deployer.pem "$ARTIFACT" \
+            "$UBUNTU_USER@$UBUNTU_HOST:/opt/yishan/incoming/yishan-api-${GITHUB_SHA}.tar.gz"
+
+      # 解包与迁移都失败时直接 exit，软链尚未切换，服务不受影响。
+      - name: Unpack and migrate on the target host
+        if: inputs.skip_migrations != true
+        run: |
+          set -euo pipefail
+          # heredoc 必须加引号：否则远端脚本里的 $ROOT/$DEST 会在本机先展开成空串。
+          # 需要传过去的值走位置参数（$1/$2），不靠插值。
+          ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
+            bash -s -- "$RELEASE_TS" "$GITHUB_SHA" <<'REMOTE'
+          set -euo pipefail
+          TS="${1:?missing release ts}"
+          SHA="${2:?missing commit sha}"
+          ROOT=/opt/yishan
+          DEST="$ROOT/releases/$TS"
+          TARBALL="$ROOT/incoming/yishan-api-$SHA.tar.gz"
+
+          [ -f "$TARBALL" ] || { echo "release: missing $TARBALL" >&2; exit 1; }
+          rm -rf "$DEST"
+          mkdir -p "$DEST"
+          tar -xzf "$TARBALL" -C "$DEST" --strip-components=1
+
+          # 迁移在目标机上跑：数据库在阿里云 ECS，安全组只放行本机出口 IP。
+          # 环境变量复用 systemd 同源的 shared/.env，不给仓库新增任何凭据。
+          cd "$DEST"
+          set -a
+          . "$ROOT/shared/.env"
+          set +a
+          node dist/scripts/migrate.js --dry-run
+          node dist/scripts/migrate.js --apply
+          # 再确认一次：仍有 pending 说明没迁干净，不允许继续发布代码。
+          if node dist/scripts/migrate.js --dry-run 2>&1 | grep -qE '[1-9][0-9]* pending'; then
+            echo "::error::迁移后仍有待执行项，判定部署失败。" >&2; exit 1
+          fi
+          echo "migrations up to date in $DEST"
+          REMOTE
+
+      - name: Switch release
+        run: |
+          set -euo pipefail
+          # release.sh 校验产物、切 current、systemctl restart、轮询健康检查，
+          # 健康检查不过自动回滚到上一个 release。
+          ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
+            "bash /opt/yishan/bin/release.sh '$RELEASE_TS'"
+
+      - name: Cleanup upload
+        if: always()
+        run: |
+          ssh -i ~/.ssh/ubuntu-deployer.pem -o ConnectTimeout=10 "$UBUNTU_USER@$UBUNTU_HOST" \
+            "rm -f '/opt/yishan/incoming/yishan-api-${GITHUB_SHA}.tar.gz'" || true
+
+      # release.sh 只证明进程起来了。冒烟打的是公网入口，能挡住 nginx、
+      # 静态资源和域名这一层的问题 —— 这些都不在 release.sh 的视野内。
+      - name: Post-deploy smoke check
+        run: |
+          set -euo pipefail
+          BASE="${SMOKE_BASE_URL%/}"
+          echo "Smoke target: ${BASE}"
+
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            HEALTH="$(curl -fsS --max-time 15 "${BASE}/api/health" 2>/dev/null || true)"
+            if [ -n "$HEALTH" ]; then
+              echo "health: ${HEALTH}"
+              echo "$HEALTH" | jq -e '.success == true and .data.status == "ok"' >/dev/null \
+                || { echo "::error::/api/health 返回体不符合预期。"; exit 1; }
+              echo "$HEALTH" | jq -e '.data.db.ok == true' >/dev/null \
+                || { echo "::error::/api/health 报告数据库不可用。"; exit 1; }
+              break
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "::error::/api/health 连续 10 次不可用，部署视为失败。"
+              exit 1
+            fi
+            echo "health 暂不可用（第 ${attempt} 次），5s 后重试…"
+            sleep 5
+          done
+
+          # root 挂载下站点根就是 admin 页面。只看 200 不够：一个恰好返回
+          # index.html 但 asset 全 404 的产物同样是白屏，所以校验挂载点存在。
+          PAGE="$(curl -fsS --max-time 15 "${BASE}/" || true)"
+          echo "$PAGE" | grep -q 'id="root"' \
+            || { echo "::error::${BASE}/ 不是 admin 入口页（缺少 #root 挂载点）。"; exit 1; }
+
+          # 旧前缀必须仍然 301 回根路径，否则老书签会停在跳转链上。
+          CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${BASE}/admin" || true)"
+          echo "/admin -> ${CODE}"
+          [ "$CODE" = "301" ] || { echo "::error::/admin 返回 ${CODE}，期望 301。"; exit 1; }
+
+          echo "Smoke check passed."

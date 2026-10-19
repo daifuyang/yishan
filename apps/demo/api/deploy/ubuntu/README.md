@@ -69,7 +69,47 @@ node scripts/package-api.mjs --output ./out/function-code --admin ./apps/demo/ad
 只在本机做冒烟、不用于部署时，可以加 `--allow-nonportable-links` 跳过可移植性检查——
 但那样出来的产物**只能**在本机用。
 
-上传并切换：
+### 自动发布（CI）
+
+推 `main` 会触发 `.github/workflows/yishan-api-cd-ubuntu.yml`，它替你做完上面全部步骤：
+
+```
+ci-gate → build（Linux runner 打包）→ 上传 → 目标机解包 + 迁移 → release.sh → 公网冒烟
+```
+
+几个和手工不同的点：
+
+- **打包在 runner 上，不在本机。** runner 是 ubuntu-latest，天然满足 `assertPortableLink`；
+  本机（Windows）打的包会被打包脚本自己挡下。目标机 3.6G 内存跑不动完整构建，所以构建
+  也在 runner 上完成，只传产物。
+- **迁移在目标机上跑**，不在 runner 上。数据库在阿里云 ECS，安全组只放行本机出口 IP，
+  runner 连不上（FC 那条流水线是靠 SSH 端口转发绕过去的，这里不能用）。
+  迁移读的是 `/opt/yishan/shared/.env`——与 systemd 同源，**仓库不新增任何数据库凭据**。
+- **失败不会切软链。** 解包或迁移失败直接中断，`current` 指向的还是老版本，服务不受影响。
+  迁移成功之后 `release.sh` 才切换；它自己健康检查不过会自动回滚。
+- **冒烟打的是公网入口** `https://admin.zerocmf.com`：`/api/health`（含 `db.ok`）、
+  `/` 必须包含 SPA 挂载点、`/admin` 必须返回 301。这几条是 `release.sh` 视野之外的
+  （nginx、域名、静态资源路径），release.sh 只看得到本机进程。
+
+需要的 GitHub 配置（environment `YISHAN_DEMO_UBUNTU`）：
+
+| 名称 | 类型 | 值 |
+|---|---|---|
+| `UBUNTU_DEPLOYER_SSH_KEY` | secret | 能执行 `release.sh` 的 deployer 私钥 |
+| `UBUNTU_HOST` | var | `43.143.122.225` |
+| `UBUNTU_USER` | var | `ubuntu` |
+| `UBUNTU_SSH_FINGERPRINT` | var | 目标机 ed25519 指纹；不配则退回 `ssh-keyscan` 直采 |
+| `SMOKE_BASE_URL` | var | `https://admin.zerocmf.com` |
+
+现有的 `ECS_DEPLOYER_SSH_KEY` 不能复用：它对应的远端 `tunnel-dsh` 是受限命令，只能做
+端口转发，scp 会被拒。
+
+重放某一次发布：Actions 上手动 `workflow_dispatch`，需要跳过 CI 门禁时勾 `skip_ci_gate`
+（刚手工跑过迁移可再勾 `skip_migrations`）。
+
+### 手工发布（排障用）
+
+上面几条命令仍然是唯一能在不依赖 CI 的情况下改现场的路径，也是新机器初始化时的路径。
 
 ```bash
 TS=$(date +%Y%m%d-%H%M%S)
@@ -85,7 +125,10 @@ ssh -i ~/workspace/certs/ubuntu_tencent.pem ubuntu@43.143.122.225 \
 回滚，迁移必须单独在 API 起来之前执行：
 
 ```bash
-pnpm --filter @yishan/demo-api db:migrate --apply   # 先 --dry-run 看一遍
+# 迁移要在新 release 目录里跑，读 shared/.env 的 DATABASE_URL
+ssh -i ~/workspace/certs/ubuntu_tencent.pem ubuntu@43.143.122.225 \
+    "cd /opt/yishan/releases/$TS && set -a && . /opt/yishan/shared/.env && set +a && \
+     node dist/scripts/migrate.js --dry-run && node dist/scripts/migrate.js --apply"
 ```
 
 ## 路径形态：为什么是 `/` 而不是 `/admin/`

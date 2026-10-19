@@ -209,12 +209,12 @@ ADMIN_REDIRECT_ROOT=false
 
 | 目标 | 说明 |
 | --- | --- |
-| 演示环境（腾讯云 Ubuntu 单机） | Admin + API + nginx 同机，Admin 静态由后端托管。完整 runbook 见 **[deploy/ubuntu/README.md](apps/demo/api/deploy/ubuntu/README.md)** |
+| 演示环境（腾讯云 Ubuntu 单机） | Admin + API + nginx 同机，Admin 静态由后端托管并占根路径（`PUBLIC_PATH=/`）。推 `main` 由 `.github/workflows/yishan-api-cd-ubuntu.yml` 自动发布（打包 → 上传 → 目标机迁移 → 切换 → 公网冒烟）。完整 runbook 见 **[deploy/ubuntu/README.md](apps/demo/api/deploy/ubuntu/README.md)** |
 | 生产环境（阿里云 FC） | `PUBLIC_PATH=/admin/`，配置见 [deploy/fc3/README.md](apps/demo/api/deploy/fc3/README.md) 与 `.github/workflows/yishan-api-cd.yml` |
 
-生产产物由 `scripts/package-api.mjs` 用 pnpm 生产依赖闭包打包，包含公开 package exports、迁移和 JSON 资源，可以脱离仓库运行。
+生产产物由 `scripts/package-api.mjs` 用 pnpm 生产依赖闭包打包，包含公开 package exports、迁移和 JSON 资源，可以脱离仓库运行。**打包必须在 Linux 上跑**：Windows 上 `pnpm deploy` 产出的是 junction，脚本会直接拒绝。
 
-> **构建、打包与部署都不执行数据库迁移，也不会自动发布。** DDL 不保证事务回滚，迁移必须在 API 起来之前单独执行。
+> **构建与打包不执行数据库迁移。** DDL 不保证事务回滚，迁移必须在 API 起来之前单独执行——FC 流水线用独立 job 跑，Ubuntu 流水线在目标机上跑（数据库在阿里云 ECS，安全组只放行该机出口 IP）。
 
 ---
 
