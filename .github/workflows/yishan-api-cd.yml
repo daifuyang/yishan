@@ -3,25 +3,11 @@ name: yishan-api-cd
 # 发布 API + Admin：Fastify API → 阿里云 FC 函数 yishan-demo-layered，
 # Admin 前端编译进同一产物、由该函数的 /admin/* 提供，所以 Admin 源码路径也在触发范围内。
 # 迁移是部署的前置条件：先跑迁移，失败就不部署代码。
+#
+# 自动触发已冻结：演示环境改由 yishan-api-cd-ubuntu.yml 发布，FC 上的
+# yishan-demo 下线后不再需要每次推 main 都发一次。手动重放仍可用
+# workflow_dispatch 触发同一条流水线，流程、门禁、冒烟检查一个字没改。
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/yishan-api-cd.yml"
-      - ".github/workflows/yishan-fc-migrate.yml"
-      - "apps/demo/api/**"
-      - "apps/demo/admin/**"
-      - "packages/core/**"
-      - "packages/yishan-tiptap/**"
-      - "packages/ui/**"
-      - "apps/demo/config/**"
-      - "scripts/**"
-      - ".tool-versions"
-      - ".npmrc"
-      - "pnpm-lock.yaml"
-      - "package.json"
-      - "pnpm-workspace.yaml"
   workflow_dispatch:
     inputs:
       skip_ci_gate:
