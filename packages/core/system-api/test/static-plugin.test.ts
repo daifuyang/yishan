@@ -116,3 +116,94 @@ describe('static 插件 — admin SPA 注册', () => {
     await app.close()
   })
 })
+
+/**
+ * root 挂载模式（admin 独立子域名、占用根路径）下的回归。
+ *
+ * 背景：root 模式下 admin 作用域就是整个 `/`，SPA fallback 会把所有未匹配
+ * 路径吞成 index.html + 200 —— 包括拼错的 `/api/...`。调用方拿到 HTML 却以为是
+ * 成功响应，"接口 404"在现场表现为"接口正常返回"，极难排查。
+ *
+ * 验证：
+ *   1. /system/user      → 200 + HTML（SPA 深链仍归 admin）
+ *   2. /api/v1/missing   → 404 + envelope（让给全局 handler）
+ *   3. /api 带 query     → 同样 404（query 不参与路径判断）
+ */
+describe('static 插件 — root 挂载模式', () => {
+  // 不走 vi.resetModules：那会让 static.ts 与 runtime-fixture 落在两套不同的
+  // AsyncLocalStorage 上，插件里的 currentSystemRuntime() 直接抛 scope 缺失。
+  // ADMIN 是普通导出对象，直接改 mount.mode 就能切换到 root 形态。
+  let previousMode: string
+
+  async function buildRootApp(): Promise<FastifyInstance> {
+    previousMode = ADMIN.mount.mode
+    ADMIN.mount.mode = 'root'
+    testRuntime().config.ADMIN.diskPath = TMP_ROOT
+
+    const app = Fastify({ logger: false })
+    // 与生产一致：全局 notFoundHandler 返回 envelope 404。
+    app.setNotFoundHandler((request, reply) =>
+      reply.code(404).send({ code: 25005, message: `Route ${request.method}:${request.url} not found` }))
+    const { errorHandlerPlugin } = await import('@yishan/core-api/plugins')
+    await app.register(errorHandlerPlugin)
+    await app.register(staticPlugin)
+    return app
+  }
+
+  afterEach(() => {
+    ADMIN.mount.mode = previousMode as typeof ADMIN.mount.mode
+  })
+
+  it('/system/user 仍走 SPA fallback', async () => {
+    const app = await buildRootApp()
+    const res = await app.inject({ method: 'GET', url: '/system/user' })
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toContain('admin-spa')
+    await app.close()
+  })
+
+  it('/api/<unknown> 返回 404 envelope 而不是 index.html', async () => {
+    const app = await buildRootApp()
+    const res = await app.inject({ method: 'GET', url: '/api/v1/definitely-missing' })
+    expect(res.statusCode).toBe(404)
+    expect(res.headers['content-type']).toMatch(/application\/json/)
+    expect(res.body).not.toContain('admin-spa')
+    expect(JSON.parse(res.body)).toMatchObject({ success: false, code: 25005, data: null })
+    await app.close()
+  })
+
+  it('/api 带 query 同样让给全局 404', async () => {
+    const app = await buildRootApp()
+    const res = await app.inject({ method: 'GET', url: '/api/v1/definitely-missing?page=1&pageSize=20' })
+    expect(res.statusCode).toBe(404)
+    expect(res.headers['content-type']).toMatch(/application\/json/)
+    expect(res.body).not.toContain('admin-spa')
+    await app.close()
+  })
+
+  // root 模式下 /admin 不再是有效路由。浏览器书签与地址栏自动补全仍会送来，
+  // 落进 SPA 的 404 页表现为「怎么又回到 /admin 了」—— 301 回根路径，并保留后缀。
+  it('/admin 301 回 /', async () => {
+    const app = await buildRootApp()
+    const res = await app.inject({ method: 'GET', url: '/admin' })
+    expect(res.statusCode).toBe(301)
+    expect(res.headers.location).toBe('/')
+    await app.close()
+  })
+
+  it('/admin/<path> 301 回对应根路径，保留后缀', async () => {
+    const app = await buildRootApp()
+    const res = await app.inject({ method: 'GET', url: '/admin/system/user' })
+    expect(res.statusCode).toBe(301)
+    expect(res.headers.location).toBe('/system/user')
+    await app.close()
+  })
+
+  it('/admin/?query 的 query 不进重定向目标', async () => {
+    const app = await buildRootApp()
+    const res = await app.inject({ method: 'GET', url: '/admin/?page=1&pageSize=20' })
+    expect(res.statusCode).toBe(301)
+    expect(res.headers.location).toBe('/')
+    await app.close()
+  })
+})
