@@ -13,7 +13,7 @@ import {
   ProFormDependency,
 } from "@ant-design/pro-components";
 import { upsertStorageConfig } from "../../services/generated/storage";
-import { regionOptions, boolOptions, providerOptions, defaultQiniuValues, defaultAliyunOssValues } from "./constants";
+import { regionOptions, boolOptions, providerOptions } from "./constants";
 import type { FormValues } from "./types";
 import { useStorageConfig } from "./hooks/useStorageConfig";
 

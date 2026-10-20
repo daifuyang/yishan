@@ -26,17 +26,16 @@ import {
   Spin,
   Tabs,
   Tag,
-  Tooltip,
   Tree,
   Upload,
 } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { AttachmentEditForm } from '../../components/AttachmentEditForm';
-import { deleteAttachmentFolder, uploadAttachments } from '../../services/generated/attachments';
+import { deleteAttachmentFolder } from '../../services/generated/attachments';
 import { resolveAttachmentPublicUrl } from '../../utils/attachmentUpload';
 import { attachmentKindMeta } from './constants';
-import { getKindFromFile, highlightText, flattenFolders as _ff } from './utils';
+import { getKindFromFile, highlightText } from './utils';
 import { useAttachmentFolders } from './hooks/useAttachmentFolders';
 import { useAttachmentGridColumns } from './hooks/useAttachmentGridColumns';
 import AttachmentFolderForm from './components/AttachmentFolderForm';

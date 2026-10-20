@@ -1,13 +1,11 @@
-import { CheckOutlined } from '@ant-design/icons';
-import { useIntl, useModel } from '@umijs/max';
-import { App, Avatar, Button, Card, DatePicker, Form, Input, Modal, Row, Select, Space, Spin } from 'antd';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { authGetCurrentUser } from '@yishan/core-system-admin/services/auth';
+import type { useIntl } from '@umijs/max';
+import { App, Button, Card, DatePicker, Form, Input, Select } from 'antd';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { appUpdateMe } from '@yishan/core-system-admin/services/appUsers';
 import { ImageCropperModal } from '@/components';
 import { AttachmentImageSelect } from '@yishan/core-system-admin/components/AttachmentSelect';
 import dayjs from 'dayjs';
-import { DATE_FMT, GENDER_OPTIONS, PHONE_PATTERN } from '../constants';
+import { GENDER_OPTIONS, PHONE_PATTERN } from '../constants';
 
 interface ProfilePanelProps {
   intl: ReturnType<typeof useIntl>;

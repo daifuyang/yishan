@@ -23,7 +23,6 @@ import React, { useRef, useState } from 'react'
 import {
   deleteShopV1CategoriesId,
   getShopV1Categories,
-  getShopV1CategoriesId,
   patchShopV1CategoriesId,
   postShopV1Categories,
 } from '@/services/generated/shop'

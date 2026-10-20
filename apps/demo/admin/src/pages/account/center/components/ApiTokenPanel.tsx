@@ -1,14 +1,12 @@
-import { CheckCircleFilled, CheckOutlined, CopyOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { useIntl, useModel } from '@umijs/max';
-import { Alert, App, Button, Card, Empty, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { CheckCircleFilled, CopyOutlined, PlusOutlined } from '@ant-design/icons';
+import type { useIntl } from '@umijs/max';
+import { Alert, App, Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import React, { useEffect, useMemo, useState } from 'react';
-import { authGetCurrentUser } from '@yishan/core-system-admin/services/auth';
+import React, { useEffect, useState } from 'react';
 import { meCreateApiToken, meListApiTokens, meListAvailableScopes, meRevokeApiToken } from '@yishan/core-system-admin/services/meApiTokens';
-import { AttachmentImageSelect } from '@yishan/core-system-admin/components/AttachmentSelect';
 import { DATE_FMT, DURATION_OPTIONS } from '../constants';
-import type { ApiTokenRecord, AvailableScopeGroup, ApiTokenDurationValue, ApiTokenFormValues } from '../types';
+import type { ApiTokenRecord, AvailableScopeGroup, ApiTokenFormValues } from '../types';
 
 interface ApiTokenPanelProps {
   intl: ReturnType<typeof useIntl>;

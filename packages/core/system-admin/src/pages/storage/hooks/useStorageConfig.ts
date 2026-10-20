@@ -1,6 +1,6 @@
 import type {} from '../../../types/index';
 import { useState, useEffect, useRef } from 'react';
-import { getStorageConfig, upsertStorageConfig, exportStorageConfig, importStorageConfig } from '../../../services/generated/storage';
+import { getStorageConfig, exportStorageConfig, importStorageConfig } from '../../../services/generated/storage';
 import type { FormValues } from '../types';
 import { defaultQiniuValues, defaultAliyunOssValues } from '../constants';
 

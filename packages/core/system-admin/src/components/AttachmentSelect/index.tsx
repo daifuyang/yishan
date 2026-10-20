@@ -17,7 +17,6 @@ import type {
   AttachmentSelectProps,
   AttachmentSelectValue,
   KindTab,
-  ValueType,
 } from '../AttachmentLibraryModal/types';
 
 const getKindFromFile = (file: File): AttachmentKind => {

@@ -11,7 +11,6 @@ import {
   VideoCameraOutlined,
 } from '@ant-design/icons';
 import { useSystemAdmin } from '../../runtime';
-import type { UploadFile } from 'antd';
 import {
   App,
   Button,
@@ -23,7 +22,6 @@ import {
   Modal,
   Pagination,
   Segmented,
-  Space,
   Spin,
   Tooltip,
   Tree,
@@ -42,7 +40,6 @@ import {
 import type {
   Attachment,
   AttachmentFolder,
-  UploadAttachmentsResp,
 } from '../../types/index';
 import { resolveAttachmentPublicUrl } from '../../utils/attachmentUpload';
 import type {

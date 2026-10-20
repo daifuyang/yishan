@@ -1,5 +1,4 @@
 import type {} from '../../types/index';
-import type { FormValues } from './types';
 
 export const regionOptions = [
   { label: "华东 z0", value: "z0" },
