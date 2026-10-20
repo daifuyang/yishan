@@ -49,7 +49,11 @@ AI 从当前应用能力目录读取已注册适配器，生成准备能力并�
 
 ### 结构化候选问询
 
-草稿卡片通过 `GET /api/ai/v1/drafts/:draftId/questions?conversationId=...` 读取最新问题。用户创建先确认归属部门，再按所选部门查询可授予角色；同名部门展示完整层级路径。空选择须点击确认，唯一候选也不自动选择。候选超过上限时明确提示在原生表单查询完整选项。
+草稿卡片通过 `GET /api/ai/v1/drafts/:draftId/questions?conversationId=...` 读取最新问题。用户创建先确认归属部门，再按所选部门查询可授予角色。树形候选使用 `parentValue` 保留父子关系，`label` 仅为节点自身名称；前端还原树形选择器，不拼接完整路径。空选择须点击确认，唯一候选也不自动选择。候选超过上限时明确提示在原生表单查询完整选项。
+
+前端在 `registerNativeFormOperation` 的 `fieldComponents` 中声明字段组件，例如 `deptIds: { component: 'treeSelect', placeholder: '请选择归属部门' }`、`roleIds: { component: 'select' }`。卡片按操作和字段查找配置，内置支持 `select`、`treeSelect` 及原有单选/多选列表；未注册的字段保留原展示。业务可以通过公开的 `registerNativeFieldComponent(name, Component)` 注册自定义组件，返回函数用于注销。组件接收受控的 `value`、`onChange`、`options`、`multiple`、`disabled`、`placeholder`，不接收提交权限。
+
+当前问询接口是数字候选选择协议；文本、日期和敏感字段继续由原生表单承接，不把任意输入伪装成候选答案。注册仅决定展示方式，候选范围仍由服务端返回并在提交时重新验证。
 
 答案通过 `POST /api/ai/v1/drafts/:draftId/questions/answer` 提交 `conversationId`、`questionId`、`draftVersion` 和数字 ID 数组 `values`。服务端核对当前用户、会话、草稿状态与版本，并重查业务授权和候选后 CAS 更新。重复的同一答案可回读紧邻版本结果；中间发生其他更新则拒绝。问题不拥有正式写入权限，也不把客户端传入的“确认”当成业务提交凭证。
 

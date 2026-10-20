@@ -50,7 +50,7 @@ export function createOperationTools(execution: AiExecutionEnv): AiExecutionEnv 
         if (!execution.capabilities.some(c => c.name === describe)) return unavailable()
         const described = await execution.execute(describe, {})
         if (!described.ok) return described
-        return succeed({ ...capability.operation, module: capability.moduleId, form: described.result.data, description: capability.description })
+        return succeed({ ...capability.operation, module: capability.moduleId, form: described.result.data, inputSchema: capability.inputSchema, description: capability.description })
       }
       return succeed({ ...capability.operation, module: capability.moduleId, inputSchema: capability.inputSchema, description: capability.description })
     }
@@ -61,7 +61,16 @@ export function createOperationTools(execution: AiExecutionEnv): AiExecutionEnv 
     if (capability.riskLevel !== 'prepare' || !capability.operation!.formKey) return unavailable()
     const values = raw.values as Record<string, unknown>
     if (['draftId', 'draftVersion', 'schemaVersion', 'module', 'action', 'actorId', 'ownerId', 'conversationId'].some(key => key in values)) return { ok: false as const, error: '草稿字段中不允许携带身份或控制参数' }
-    const patch = { ...values, ...(raw.draftId ? { draftId: raw.draftId } : {}), ...(raw.draftVersion ? { draftVersion: raw.draftVersion } : {}), ...(raw.schemaVersion ? { schemaVersion: raw.schemaVersion } : {}) }
+    const fields = (capability.inputSchema as { properties?: Record<string, TSchema> }).properties ?? {}
+    const normalized = { ...values }
+    for (const [key, value] of Object.entries(values)) {
+      const source = fields[key]
+      const variants: TSchema[] = source?.anyOf ?? (source ? [source] : [])
+      const nonNull = variants.filter(schema => schema.type !== 'null')
+      // Models can emit digit-only text as a number. Preserve IDs/arrays and reject lossy numbers later.
+      if (typeof value === 'number' && Number.isSafeInteger(value) && nonNull.length && nonNull.every(schema => schema.type === 'string')) normalized[key] = String(value)
+    }
+    const patch = { ...normalized, ...(raw.draftId ? { draftId: raw.draftId } : {}), ...(raw.draftVersion ? { draftVersion: raw.draftVersion } : {}), ...(raw.schemaVersion ? { schemaVersion: raw.schemaVersion } : {}) }
     return execution.execute(capability.name, patch)
   }
   return { capabilities: definitions, execute }

@@ -339,6 +339,7 @@ function DraftResult({
       </Typography.Paragraph>
       {chat?.activeId && draftId && !['completed', 'cancelled', 'expired', 'submitting'].includes(String(data.status)) && (
         <AiQuestionCard
+          operationId={String(data.action)}
           key={`${chat.identity}:${draftId}`}
           draftId={draftId}
           conversationId={chat.activeId}

@@ -20,6 +20,18 @@ async function appFor(status = 200) {
 const body = { conversationId: 'c1', questionId: 'd1:3:deptIds', draftVersion: 3, values: [10] }
 
 describe('Question HTTP boundary', () => {
+  it('preserves candidate hierarchy in the HTTP response', async () => {
+    const options = [{ value: 1, label: '公司' }, { value: 2, label: '销售部', parentValue: 1 }]
+    const list = vi.spyOn(DraftQuestionService.prototype, 'list').mockResolvedValue({ questions: [{
+      questionId: 'd1:3:deptIds', draftId: 'd1', draftVersion: 3, field: 'deptIds', title: '选择部门', multiple: true, allowEmpty: true, truncated: false, options,
+    }] })
+    const app = await appFor()
+    try {
+      const response = await app.inject({ method: 'GET', url: '/drafts/d1/questions?conversationId=c1' })
+      expect(response.statusCode).toBe(200)
+      expect(response.json().data.questions[0].options).toEqual(options)
+    } finally { list.mockRestore(); await app.close() }
+  })
   it('keeps the published OpenAPI question operations equal to the registered route contracts', async () => {
     const app = await appFor()
     try {

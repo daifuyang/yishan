@@ -44,13 +44,13 @@ describe('user draft questions', () => {
   const subject = { actorId: 7, tokenScope: ['system:user:create'] }
   const candidates = () => ({ departments: [] as DeptCandidateNode[], roles: [] as { id: number; name: string }[], total: 0, page: 1, pageSize: 100, creatable: true })
 
-  it('asks departments first and distinguishes duplicate names with parent paths', async () => {
+  it('asks departments first and distinguishes duplicate names with parent references', async () => {
     const raw = candidates()
     raw.departments = [{ id: 1, name: '总部', children: [{ id: 2, name: '研发' }] }, { id: 3, name: '分部', children: [{ id: 4, name: '研发' }] }] as DeptCandidateNode[]
     const list = vi.spyOn(UserCreationFormService, 'listCandidates').mockResolvedValue(raw)
     const fields = { phone: '13800000000' }
     const questions = await draftAdapter('user.create').questions!(subject, fields)
-    expect(questions).toMatchObject([{ field: 'deptIds', multiple: true, options: [{ value: 1, label: '总部' }, { value: 2, label: '总部 / 研发' }, { value: 3, label: '分部' }, { value: 4, label: '分部 / 研发' }] }])
+    expect(questions).toMatchObject([{ field: 'deptIds', multiple: true, options: [{ value: 1, label: '总部' }, { value: 2, label: '研发', parentValue: 1 }, { value: 3, label: '分部' }, { value: 4, label: '研发', parentValue: 3 }] }])
     expect(list).toHaveBeenCalledWith(subject, { deptIds: undefined, page: 1, pageSize: 100 })
     expect(fields).toEqual({ phone: '13800000000' })
   })

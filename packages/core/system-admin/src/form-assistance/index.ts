@@ -24,8 +24,7 @@
 export const USER_FORM_ASSISTANCE_TARGET = 'user.create' as const;
 
 export type UserFormAssistanceTarget =
-  | typeof USER_FORM_ASSISTANCE_TARGET
-  | 'department.create';
+  typeof USER_FORM_ASSISTANCE_TARGET | 'department.create';
 
 /**
  * 助手可读写的草稿字段。
@@ -134,6 +133,10 @@ export type NativeFormTarget = string;
 registerNativeFormOperation({
   name: '用户',
   operationId: 'user.create',
+  fieldComponents: {
+    deptIds: { component: 'treeSelect', placeholder: '请选择归属部门' },
+    roleIds: { component: 'select', placeholder: '请选择角色' },
+  },
   route: '/system/user',
   assistancePrompt: '请帮助我完善当前新建用户表单',
   fieldLabels: {

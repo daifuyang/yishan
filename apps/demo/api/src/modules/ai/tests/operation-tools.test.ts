@@ -13,6 +13,15 @@ const capability: AiCapability = {
 }
 
 describe('operation tools', () => {
+  it('normalizes safe numeric text from model arguments without coercing numeric ids or mutating the input', async () => {
+    const userDraft = { ...capability, inputSchema: Type.Object({ phone: Type.Optional(Type.String()), deptIds: Type.Optional(Type.Array(Type.Number())) }, { additionalProperties: false }) }
+    const execute = vi.fn(async () => ({ ok: true as const, result: { data: {} } }))
+    const tools = createOperationTools({ capabilities: [userDraft], execute })
+    const values = { phone: 13900001021, deptIds: [10] }
+    await tools.execute('update_form_draft', { operationId: 'department.create', values })
+    expect(execute).toHaveBeenLastCalledWith('department_draft', { phone: '13900001021', deptIds: [10] })
+    expect(values.phone).toBe(13900001021)
+  })
   it('keeps existing native edit and delete preparations reachable through the four tools', async () => {
     const execute = vi.fn(async () => ({ ok: true as const, result: { data: {}, mutated: false } }))
     const tools = createOperationTools({ capabilities: systemAiCapabilities, execute })
@@ -31,6 +40,13 @@ describe('operation tools', () => {
     expect(await tools.execute('describe_operation', { operationId: 'department.create' })).toMatchObject({ ok: true, result: { data: { form } } })
     expect(execute).toHaveBeenCalledWith('describe_department', {})
     expect(await tools.execute('update_form_draft', { operationId: 'department.create', values: { draftVersion: 7 } })).toMatchObject({ ok: false })
+  })
+  it('includes the declared input types alongside form metadata so numeric-looking text is not guessed', async () => {
+    const execute = vi.fn(async () => ({ ok: true as const, result: { data: { fields: [{ name: 'phone', label: '手机号' }] } } }))
+    const inputSchema = Type.Object({ phone: Type.Optional(Type.String()) })
+    const described = { ...capability, inputSchema, operation: { ...capability.operation!, describeCapability: 'describe_department' } }
+    const tools = createOperationTools({ capabilities: [described, { ...capability, name: 'describe_department', riskLevel: 'read' }], execute })
+    expect(await tools.execute('describe_operation', { operationId: 'department.create' })).toMatchObject({ ok: true, result: { data: { inputSchema } } })
   })
   it('discovers only authorized semantic operations and describes schema on demand', async () => {
     const execute = vi.fn()

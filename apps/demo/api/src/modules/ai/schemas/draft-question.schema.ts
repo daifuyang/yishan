@@ -9,7 +9,7 @@ export const DraftQuestionSchema = Type.Object({
   multiple: Type.Boolean(),
   allowEmpty: Type.Boolean(),
   truncated: Type.Boolean(),
-  options: Type.Array(Type.Object({ value: Type.Number(), label: Type.String(), description: Type.Optional(Type.String()) })),
+  options: Type.Array(Type.Object({ value: Type.Number(), label: Type.String(), parentValue: Type.Optional(Type.Number()), description: Type.Optional(Type.String()) })),
 })
 export const DraftQuestionQuerySchema = Type.Object({ conversationId: Type.String({ minLength: 1, maxLength: 64 }) }, { additionalProperties: false })
 export const DraftQuestionAnswerSchema = Type.Object({

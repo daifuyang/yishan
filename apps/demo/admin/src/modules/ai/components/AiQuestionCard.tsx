@@ -1,4 +1,5 @@
-import { Alert, Button, Checkbox, Flex, Radio, Typography } from 'antd';
+import { Alert, Button, Flex, Typography } from 'antd';
+import { AiQuestionField } from './AiQuestionField';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   answerDraftQuestion,
@@ -6,6 +7,7 @@ import {
   type DraftQuestion,
 } from '../services/draftQuestionService';
 import type { ActionDraft } from '../services/actionDraftService';
+import { chatError } from '../services/chatError';
 
 export function AiQuestionCard({
   draftId,
@@ -13,12 +15,14 @@ export function AiQuestionCard({
   draftVersion,
   onAnswered,
   beforeRequest,
+  operationId,
 }: {
   draftId: string;
   conversationId: string;
   draftVersion: number;
   onAnswered?: (draft: ActionDraft) => void;
   beforeRequest?: () => Promise<void>;
+  operationId?: string;
 }) {
   const [question, setQuestion] = useState<DraftQuestion | null>(null);
   const [values, setValues] = useState<number[]>([]);
@@ -41,8 +45,7 @@ export function AiQuestionCard({
       setQuestion(result.questions[0] ?? null);
       setValues([]);
     } catch (cause) {
-      if (current === generation.current)
-        setError(cause instanceof Error ? cause.message : '读取问题失败');
+      if (current === generation.current) setError(chatError(cause));
     } finally {
       if (current === generation.current) setLoading(false);
     }
@@ -70,10 +73,31 @@ export function AiQuestionCard({
     try {
       await beforeRequest?.();
       if (current !== generation.current) return;
+      // Native edits may have advanced the draft while this question was visible.
+      const fresh = await listDraftQuestions(draftId, conversationId);
+      if (current !== generation.current) return;
+      const latest = fresh.questions.find(
+        (item) => item.field === question.field,
+      );
+      if (!latest) {
+        setQuestion(fresh.questions[0] ?? null);
+        setValues([]);
+        setError('该字段已在原生表单中更新，请核对当前信息。');
+        return;
+      }
+      setQuestion(latest);
+      if (
+        values.some(
+          (value) => !latest.options.some((option) => option.value === value),
+        )
+      ) {
+        setError('可选项已更新，请重新选择。');
+        return;
+      }
       const draft = await answerDraftQuestion(draftId, {
         conversationId,
-        questionId: question.questionId,
-        draftVersion: question.draftVersion,
+        questionId: latest.questionId,
+        draftVersion: latest.draftVersion,
         values,
       });
       if (current !== generation.current) return;
@@ -81,8 +105,7 @@ export function AiQuestionCard({
       onAnswered?.(draft);
       await load();
     } catch (cause) {
-      if (current === generation.current)
-        setError(cause instanceof Error ? cause.message : '保存选择失败');
+      if (current === generation.current) setError(chatError(cause));
     } finally {
       if (owner === lifecycle.current) {
         pending.current = false;
@@ -101,26 +124,15 @@ export function AiQuestionCard({
       {question && (
         <>
           <Typography.Text strong>{question.title}</Typography.Text>
-          {question.multiple ? (
-            <Checkbox.Group<number>
-              value={values}
-              disabled={submitting}
-              onChange={setValues}
-              options={question.options.map((option) => ({
-                value: option.value,
-                label: option.description
-                  ? `${option.label} · ${option.description}`
-                  : option.label,
-              }))}
-            />
-          ) : (
-            <Radio.Group
-              value={values[0]}
-              disabled={submitting}
-              onChange={(event) => setValues([event.target.value])}
-              options={question.options}
-            />
-          )}
+          <AiQuestionField
+            operationId={operationId}
+            field={question.field}
+            multiple={question.multiple}
+            value={values}
+            disabled={submitting}
+            onChange={setValues}
+            options={question.options}
+          />
           {question.allowEmpty && (
             <Typography.Text type="secondary">
               可以不选，点击确认表示本次不分配。

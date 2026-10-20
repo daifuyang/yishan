@@ -48,7 +48,9 @@ it('does not submit on history replay and preserves failed selections for an exp
   expect(
     (screen.getByLabelText('上海 / 销售部') as HTMLInputElement).checked,
   ).toBe(true);
-  mockList.mockResolvedValue({ questions: [] });
+  mockList
+    .mockResolvedValueOnce({ questions: [question] })
+    .mockResolvedValue({ questions: [] });
   fireEvent.click(screen.getByRole('button', { name: '确认选择' }));
   await waitFor(() => expect(onAnswered).toHaveBeenCalled());
   expect(mockAnswer).toHaveBeenLastCalledWith('d1', {
@@ -69,4 +71,86 @@ it('retains a useful load error and allows refreshing an expired question', asyn
   fireEvent.click(screen.getByRole('button', { name: '重新读取问题' }));
   expect(await screen.findByText('北京 / 销售部')).toBeTruthy();
   expect(mockAnswer).not.toHaveBeenCalled();
+});
+
+it('uses the latest question version after syncing native form changes before answering', async () => {
+  let version = 3;
+  mockList.mockImplementation(async () => ({
+    questions: [
+      {
+        ...question,
+        draftVersion: version,
+        questionId: `d1:${version}:deptIds`,
+      },
+    ],
+  }));
+  const sync = jest.fn(async () => {
+    if (sync.mock.calls.length > 1) version = 4;
+  });
+  mockAnswer.mockImplementation(async (_id, input) => {
+    if (input.draftVersion !== version) throw new Error('草稿版本已更新');
+    mockList.mockResolvedValue({ questions: [] });
+    return { draftVersion: 5 };
+  });
+  render(
+    <AiQuestionCard
+      draftId="d1"
+      conversationId="c1"
+      draftVersion={3}
+      beforeRequest={sync}
+    />,
+  );
+  await screen.findByText('上海 / 销售部');
+  fireEvent.click(screen.getByLabelText('上海 / 销售部'));
+  fireEvent.click(screen.getByRole('button', { name: '确认选择' }));
+  await waitFor(() =>
+    expect(mockAnswer).toHaveBeenCalledWith('d1', {
+      conversationId: 'c1',
+      questionId: 'd1:4:deptIds',
+      draftVersion: 4,
+      values: [10],
+    }),
+  );
+  expect(
+    await screen.findByText('选择已保存到草稿，请在原生表单核对后提交。'),
+  ).toBeTruthy();
+});
+
+it('does not apply an old selection when the native form already answered that field', async () => {
+  mockList
+    .mockResolvedValueOnce({ questions: [question] })
+    .mockResolvedValue({
+      questions: [
+        {
+          ...question,
+          field: 'roleIds',
+          title: '选择用户角色',
+          questionId: 'd1:4:roleIds',
+          draftVersion: 4,
+        },
+      ],
+    });
+  render(
+    <AiQuestionCard
+      draftId="d1"
+      conversationId="c1"
+      draftVersion={3}
+      beforeRequest={async () => {}}
+    />,
+  );
+  await screen.findByText('上海 / 销售部');
+  fireEvent.click(screen.getByLabelText('上海 / 销售部'));
+  fireEvent.click(screen.getByRole('button', { name: '确认选择' }));
+  expect(await screen.findByText('选择用户角色')).toBeTruthy();
+  expect(mockAnswer).not.toHaveBeenCalled();
+});
+
+it('shows the server conflict reason rather than the generic HTTP status text', async () => {
+  mockAnswer.mockRejectedValueOnce({
+    response: { status: 409, data: { message: '草稿版本已更新，请重新选择' } },
+  });
+  render(<AiQuestionCard draftId="d1" conversationId="c1" draftVersion={3} />);
+  await screen.findByText('上海 / 销售部');
+  fireEvent.click(screen.getByRole('button', { name: '确认选择' }));
+  expect(await screen.findByText('草稿版本已更新，请重新选择')).toBeTruthy();
 });

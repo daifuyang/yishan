@@ -1,4 +1,41 @@
-import { useEffect } from 'react';
+import { useEffect, type ComponentType } from 'react';
+
+export interface NativeFieldOption {
+  value: number;
+  label: string;
+  parentValue?: number;
+  description?: string;
+}
+export interface NativeFieldComponentProps {
+  value: number[];
+  onChange(value: number[]): void;
+  options: readonly NativeFieldOption[];
+  multiple: boolean;
+  disabled: boolean;
+  placeholder?: string;
+}
+export interface NativeFieldDefinition {
+  component: string;
+  placeholder?: string;
+}
+const fieldComponents = new Map<
+  string,
+  ComponentType<NativeFieldComponentProps>
+>();
+export function registerNativeFieldComponent(
+  name: string,
+  component: ComponentType<NativeFieldComponentProps>,
+): () => void {
+  fieldComponents.set(name, component);
+  return () => {
+    if (fieldComponents.get(name) === component) fieldComponents.delete(name);
+  };
+}
+export function peekNativeFieldComponent(
+  name: string,
+): ComponentType<NativeFieldComponentProps> | undefined {
+  return fieldComponents.get(name);
+}
 
 /** Only business-approved, non-sensitive values belong in these snapshots. */
 export type NativeFormFields = Record<string, unknown>;
@@ -33,6 +70,7 @@ export interface NativeFormOperation {
   operationId: string;
   route: string;
   fieldLabels: Readonly<Record<string, string>>;
+  fieldComponents?: Readonly<Record<string, NativeFieldDefinition>>;
   assistancePrompt: string;
 }
 const operations = new Map<string, NativeFormOperation>();

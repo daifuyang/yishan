@@ -24,12 +24,11 @@ export const userDraftAdapter: AiDraftAdapter = {
     const candidates = await UserCreationFormService.listCandidates(subject, { deptIds, page: 1, pageSize: 100 })
     if (!candidates.creatable) return []
     if (!('deptIds' in fields)) {
-      const options: { value: number; label: string }[] = []
-      const visit = (nodes: readonly DeptCandidateNode[], parents: string[] = []) => {
+      const options: { value: number; label: string; parentValue?: number }[] = []
+      const visit = (nodes: readonly DeptCandidateNode[], parentValue?: number) => {
         for (const node of nodes) {
-          const path = [...parents, node.name]
-          options.push({ value: node.id, label: path.join(' / ') })
-          if (node.children) visit(node.children, path)
+          options.push({ value: node.id, label: node.name, ...(parentValue === undefined ? {} : { parentValue }) })
+          if (node.children) visit(node.children, node.id)
         }
       }
       visit(candidates.departments)

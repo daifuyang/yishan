@@ -9,7 +9,7 @@ interface QuestionDefinition {
   field: string
   title: string
   multiple: boolean
-  options: readonly { value: number; label: string; description?: string }[]
+  options: readonly { value: number; label: string; parentValue?: number; description?: string }[]
   allowEmpty?: boolean
   truncated?: boolean
 }
