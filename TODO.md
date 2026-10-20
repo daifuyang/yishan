@@ -38,7 +38,7 @@
 - **问题**：两条基线的检查力度差了一整档。runtime 基线恰恰是被**最严格**检查的那一条 —— `product.test.ts:187-198`
   读取它，断言没有基线路径从运行中的应用里消失、应用相对基线只多出 `['/api/demo/v1/me/profile']`、**每一个** operation
   都与实时结果深比较（仅 `module-management` 与 app 登录/刷新的 `security` 三处有明确豁免），component schema 也整体
-  deep-equal；CI 通过 `pnpm test:integration` 跑到它（`.github/workflows/yishan-fullstack-ci.yml:244`），本地实测 1/1 通过。
+  deep-equal；CI 通过 `pnpm test:integration` 跑到它（`yishan-fullstack-ci` 的 api job，步骤 `API isolated MySQL integration tests`），本地实测 1/1 通过。
   真正的缺口是**另一条旧版基线** `api-v1-openapi.json`：`product.test.ts:202` 读取它、`:203-207` 算出增删的 operation、
   `:208` 把 diff 写进 `tmpdir()`、`:209-210` 打出四个计数
   （`OpenAPI comparison: {"baselinePaths":166,"currentPaths":110,"removedOperations":103,"addedOperations":12}`），

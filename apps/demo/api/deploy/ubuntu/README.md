@@ -118,6 +118,17 @@ ci-gate → build（Linux runner 打包）→ 上传 → 目标机解包 + 迁�
 重放某一次发布：Actions 上手动 `workflow_dispatch`，需要跳过 CI 门禁时勾 `skip_ci_gate`
 （刚手工跑过迁移可再勾 `skip_migrations`）。
 
+### 迭代发布时不要陪跑 CI
+
+`ci-gate` 会轮询 `yishan-fullstack-ci` 在同一 commit 上的运行结论，超时 3000s。改部署脚本
+本身（解包/迁移/切换/冒烟）时这条等待是纯粹的浪费——你要验的是部署逻辑，不是产品代码。
+勾 `skip_ci_gate` 直接部署，零等待；等改完再推一个正常 commit 让 CI 兜底。
+
+完整发布周期 = `yishan-fullstack-ci` + 本工作流的 build/deploy。CI 现在按
+`guards` / `admin` / `api` / `mobile` 四条线并行（`browser`、`package` 依赖 admin+api 的产物，
+只能放在最后），所以墙钟时间取决于最慢那条线，而不是所有步骤之和。
+
+
 ### 手工发布（排障用）
 
 上面几条命令仍然是唯一能在不依赖 CI 的情况下改现场的路径，也是新机器初始化时的路径。

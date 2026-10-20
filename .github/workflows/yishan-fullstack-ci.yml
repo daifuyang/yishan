@@ -1,5 +1,20 @@
 name: yishan-fullstack-ci
 
+# 这个工作流原本是**一个** verify job，26 个步骤串成一条直线，墙钟时间 16m36s。
+# 但这些步骤之间几乎不存在依赖：Docs 构建和 API 测试互不相干，浏览器套件和
+# 移动端检查也是。串行的代价是墙钟时间 = 所有步骤之和，而不是最慢那条线。
+#
+# 现在按「需要什么」拆成五条线并行：
+#   guards  —— 架构守卫 + TipTap 产物自检，不碰数据库
+#   admin   —— Admin setup/lint/build/jest
+#   api     —— API 构建/类型/迁移/OpenAPI/单测/MySQL 集成测试（要 MySQL + Redis）
+#   mobile  —— Taro/Core App/移动端 + Docs
+#   browser —— Playwright + 独立 Admin 复用验证（需要 admin 与 api 两个 dist）
+#
+# 覆盖范围与拆分前**完全一致**，只是并发。门禁仍以整个工作流为准，
+# yishan-api-cd-ubuntu.yml 的 ci-gate 不需要改动。
+#
+# 迭代部署时不必陪跑：CD 支持 workflow_dispatch + skip_ci_gate=true。
 on:
   push:
     paths:
@@ -40,10 +55,122 @@ on:
       - "package.json"
       - "pnpm-workspace.yaml"
 
+# 每个 job 都要 checkout + 装依赖 + 把 tip tap 编出来，这段固定开销约 60s。
+# 刻意不复用成共享 job：GitHub 的 job 之间只能传产物，传不了 node_modules，
+# 抽出去并不能省掉任何一条线的安装时间，只是把同一段 YAML 复制到更多地方。
 jobs:
-  verify:
+  guards:
+    name: guards (architecture + scripts)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Prepare yishan-tiptap
+        run: |
+          pnpm --filter @yishan/tiptap typecheck
+          pnpm --filter @yishan/tiptap build
+          pnpm --filter @yishan/tiptap verify:package
+
+      - name: Verify independent TipTap tarball consumer
+        run: pnpm verify:tiptap --output "$RUNNER_TEMP/yishan-tiptap-consumer"
+
+      - name: API and Admin architecture and product manifests
+        run: |
+          node scripts/check-api-architecture.cjs
+          node scripts/check-main-baseline.mjs
+          node scripts/check-module-naming.mjs
+          node scripts/check-admin-boundaries.mjs
+          node scripts/check-deploy-workflows.mjs
+          node --test scripts/*.test.mjs scripts/test/*.test.mjs
+
+  admin:
+    name: admin (setup, lint, build, jest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Prepare yishan-tiptap
+        run: |
+          pnpm --filter @yishan/tiptap typecheck
+          pnpm --filter @yishan/tiptap build
+          pnpm --filter @yishan/tiptap verify:package
+
+      - name: Admin Setup and strict public package typechecks
+        run: pnpm typecheck:admin
+
+      - name: Admin public package lint and typechecks
+        run: |
+          pnpm --filter @yishan/core-admin lint
+          pnpm --filter @yishan/core-system-admin lint
+
+      - name: Core Admin build registry tests
+        run: pnpm --filter @yishan/core-admin test
+
+      - name: Admin Lint
+        run: pnpm --filter @yishan/demo-admin lint
+
+      - name: Admin Build
+        env:
+          PUBLIC_PATH: /admin/
+        run: pnpm --filter @yishan/demo-admin build
+
+      # Admin Test 依赖 Admin Setup 生成的 .umi/ 产物；Max 不在 pretest 钩子上，
+      # 必须显式依赖 setup 步骤，确保 jest 能解析 .umi/plugin-initialState 等。
+      - name: Admin Test
+        run: pnpm --filter @yishan/demo-admin test
+
+      - name: Upload Admin dist for the browser and packaging jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-dist
+          path: apps/demo/admin/dist
+          retention-days: 1
+          include-hidden-files: false
+
+  api:
+    name: api (build, typecheck, migrate, openapi, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: YISHAN_API
     services:
       mysql:
@@ -89,69 +216,6 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile --prod=false
 
-      - name: Check installed Taro versions and local shim
-        run: pnpm check:taro
-
-      - name: Prepare yishan-tiptap
-        run: |
-          pnpm --filter @yishan/tiptap typecheck
-          pnpm --filter @yishan/tiptap build
-          pnpm --filter @yishan/tiptap verify:package
-
-      - name: Verify independent TipTap tarball consumer
-        run: pnpm verify:tiptap --output "$RUNNER_TEMP/yishan-tiptap-consumer"
-
-      - name: Core App and mobile product checks
-        run: |
-          pnpm typecheck:mobile
-          pnpm --filter @yishan/core-app test
-          pnpm --filter @yishan/demo-app lint
-          pnpm --filter @yishan/demo-app test
-          pnpm build:mobile
-          pnpm build:app
-          pnpm --filter @yishan/demo-app build:h5
-          node scripts/check-app-boundaries.mjs
-
-      - name: Admin Setup and strict public package typechecks
-        run: pnpm typecheck:admin
-
-      - name: Docs typecheck and production build
-        run: |
-          pnpm --filter @yishan/docs-kit typecheck
-          pnpm --filter @yishan/demo-docs typecheck
-          pnpm --filter @yishan/portal-docs typecheck
-          pnpm build:docs
-
-      - name: Admin public package lint and typechecks
-        run: |
-          pnpm --filter @yishan/core-admin lint
-          pnpm --filter @yishan/core-system-admin lint
-
-      - name: Core Admin build registry tests
-        run: pnpm --filter @yishan/core-admin test
-
-      - name: Admin Lint
-        run: pnpm --filter @yishan/demo-admin lint
-
-      - name: API and Admin architecture and product manifests
-        run: |
-          node scripts/check-api-architecture.cjs
-          node scripts/check-main-baseline.mjs
-          node scripts/check-module-naming.mjs
-          node scripts/check-admin-boundaries.mjs
-          node scripts/check-deploy-workflows.mjs
-          node --test scripts/*.test.mjs scripts/test/*.test.mjs
-
-      - name: Admin Build
-        env:
-          PUBLIC_PATH: /admin/
-        run: pnpm --filter @yishan/demo-admin build
-
-      # Admin Test 依赖 Admin Setup 生成的 .umi/ 产物；Max 不在 pretest 钩子上，
-      # 必须显式依赖 setup 步骤，确保 jest 能解析 .umi/plugin-initialState 等。
-      - name: Admin Test
-        run: pnpm --filter @yishan/demo-admin test
-
       - name: Prepare API .env
         working-directory: apps/demo/api
         env:
@@ -180,8 +244,8 @@ jobs:
       - name: API Schema Migrate
         run: pnpm --filter @yishan/demo-api db:migrate --apply
 
-      - name: Verify standalone API artifact
-        run: node scripts/package-api.mjs --output /tmp/yishan-api-artifact --admin apps/demo/admin/dist
+      # 产物自检在下面的 package job 里跑，因为它要把 admin 的静态资源一起打进去；
+      # 那需要 admin job 的产物，所以不能在这里做（这里的 dist 只有 API 半边）。
 
       - name: Verify OpenAPI spec is in sync
         shell: bash
@@ -221,6 +285,140 @@ jobs:
             exit 1
           fi
 
+      - name: API Test
+        run: pnpm test:api
+
+      - name: API isolated MySQL integration tests
+        env:
+          YISHAN_TEST_MYSQL_HOST: 127.0.0.1
+          YISHAN_TEST_MYSQL_PORT: '3306'
+          YISHAN_TEST_MYSQL_USER: root
+          YISHAN_TEST_MYSQL_PASSWORD: root
+        run: pnpm test:integration
+
+      - name: Upload API dist for the browser and packaging jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-dist
+          path: apps/demo/api/dist
+          retention-days: 1
+          include-hidden-files: false
+
+  mobile:
+    name: mobile + docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Check installed Taro versions and local shim
+        run: pnpm check:taro
+
+      - name: Core App and mobile product checks
+        run: |
+          pnpm typecheck:mobile
+          pnpm --filter @yishan/core-app test
+          pnpm --filter @yishan/demo-app lint
+          pnpm --filter @yishan/demo-app test
+          pnpm build:mobile
+          pnpm build:app
+          pnpm --filter @yishan/demo-app build:h5
+          node scripts/check-app-boundaries.mjs
+
+      - name: Docs typecheck and production build
+        run: |
+          pnpm --filter @yishan/docs-kit typecheck
+          pnpm --filter @yishan/demo-docs typecheck
+          pnpm --filter @yishan/portal-docs typecheck
+          pnpm build:docs
+
+  # Playwright 与 verify-admin-reuse 都需要 admin **和** api 两个 dist：e2e 的
+  # product-runtime 直接 require('../api/dist/app.js') 并读 admin/dist/index.html。
+  # 所以这两步只能在两条线都产出产物之后跑，不能再往前并。
+  browser:
+    name: browser (playwright + admin reuse)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [admin, api]
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: yishan
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Prepare yishan-tiptap
+        run: |
+          pnpm --filter @yishan/tiptap typecheck
+          pnpm --filter @yishan/tiptap build
+          pnpm --filter @yishan/tiptap verify:package
+
+      - name: Download Admin and API dist
+        uses: actions/download-artifact@v4
+        with:
+          name: admin-dist
+          path: apps/demo/admin/dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: api-dist
+          path: apps/demo/api/dist
+
       - name: Install Chromium for isolated Admin verification
         run: pnpm --filter @yishan/demo-admin exec playwright install --with-deps chromium
 
@@ -232,13 +430,48 @@ jobs:
       - name: Independent Admin package consumers and product module combinations
         run: node scripts/verify-admin-reuse.mjs --mode all
 
-      - name: API Test
-        run: pnpm test:api
+  # package-api.mjs 要把 admin 的静态资源一起打进产物的 public/admin。它在拆分前
+  # 跑在同一个 job 里，能直接读 admin/dist；拆开后必须显式把 admin 的产物接进来，
+  # 否则 cpSync 会因为目录不存在而抛错 —— 这正是我们要保留的那道校验。
+  package:
+    name: package (deployable API artifact with Admin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [admin, api]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: API isolated MySQL integration tests
-        env:
-          YISHAN_TEST_MYSQL_HOST: 127.0.0.1
-          YISHAN_TEST_MYSQL_PORT: '3306'
-          YISHAN_TEST_MYSQL_USER: root
-          YISHAN_TEST_MYSQL_PASSWORD: root
-        run: pnpm test:integration
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Prepare yishan-tiptap
+        run: |
+          pnpm --filter @yishan/tiptap build
+
+      - name: Download Admin dist
+        uses: actions/download-artifact@v4
+        with:
+          name: admin-dist
+          path: apps/demo/admin/dist
+
+      - name: API dependencies and TypeScript build
+        run: pnpm -r --filter @yishan/demo-api... build
+
+      - name: Verify standalone API artifact
+        run: node scripts/package-api.mjs --output /tmp/yishan-api-artifact --admin apps/demo/admin/dist
