@@ -212,12 +212,18 @@ jobs:
           printf '%s\n' "$UBUNTU_DEPLOYER_SSH_KEY" > ~/.ssh/ubuntu-deployer.pem
           chmod 600 ~/.ssh/ubuntu-deployer.pem
           # 指纹对不上就中止：盲信任 keyscan 等于把部署机敞给中间人。
+          #
+          # 注意 known_hosts 要的是**公钥行**（host key-type base64），不是指纹。
+          # 早先这里写的是 `echo "$UBUNTU_HOST $scan"`，$scan 是 `SHA256:...`，
+          # 指纹校验照过（所以这步还是绿的），但写进去的行不是合法条目，
+          # 后面每一条 ssh/scp 都在 "Host key verification failed" 上退出。
           if [ -n "$UBUNTU_SSH_FINGERPRINT" ]; then
-            scan="$(ssh-keyscan -t ed25519 "$UBUNTU_HOST" 2>/dev/null | ssh-keygen -lf - | awk '{print $2}')"
+            keys="$(ssh-keyscan -t ed25519 "$UBUNTU_HOST" 2>/dev/null)"
+            scan="$(printf '%s\n' "$keys" | ssh-keygen -lf - | awk '{print $2}')"
             echo "host ed25519 fingerprint: ${scan}"
             [ "$scan" = "$UBUNTU_SSH_FINGERPRINT" ] \
               || { echo "::error::目标机指纹不匹配，拒绝部署。"; exit 1; }
-            echo "$UBUNTU_HOST $scan" > ~/.ssh/known_hosts
+            printf '%s\n' "$keys" > ~/.ssh/known_hosts
           else
             echo "::warning::UBUNTU_SSH_FINGERPRINT 未配置，退回 ssh-keyscan 直采。"
             ssh-keyscan -t ed25519 "$UBUNTU_HOST" >> ~/.ssh/known_hosts 2>/dev/null
