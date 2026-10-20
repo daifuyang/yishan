@@ -49,8 +49,13 @@ function hmacSha1Base64(secretKey, text) {
 // 上传凭证（uptoken）：scope 绑到 bucket，具体对象 key 走表单的 key 字段。
 // 这里刻意用 bucket 级 scope + 表单 key，而不是 scope: "bucket:key" ——
 // 后者会被七牛判成 "key doesn't match with scope"。
+//
+// 刻意**不**写 insertOnly: 七牛的策略里 insertOnly=1 表示"只允许新建"，
+// 同一个 commit 重放发布（workflow_dispatch）时 key 相同，会被拒成 614
+// "file exists"——恰好把"失败后重放"这条路堵死。key 里带了 sha，覆盖写也
+// 只影响同一个 commit 自己的产物。
 function uploadToken({ accessKey, secretKey, bucket }, deadline) {
-  const policy = { scope: bucket, deadline, insertOnly: 1 }
+  const policy = { scope: bucket, deadline }
   const encodedPolicy = urlSafeEncode(JSON.stringify(policy))
   const sign = hmacSha1Base64(secretKey, encodedPolicy)
   return `${accessKey}:${sign}:${encodedPolicy}`

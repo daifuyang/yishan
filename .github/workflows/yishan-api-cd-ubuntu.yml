@@ -221,6 +221,14 @@ jobs:
       ARTIFACT_SHA256: ${{ needs.build.outputs.artifact_sha256 }}
       SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://admin.zerocmf.com' }}
     steps:
+      # deploy 作业要跑 scripts/qiniu-artifact.mjs（生成签名下载链接），所以必须
+      # 先把仓库代码拉下来。build 作业有 checkout、deploy 没有，缺了这一步会报
+      # "Cannot find module .../scripts/qiniu-artifact.mjs" —— 产物已经传到七牛
+      # 了，却在取链接这步挂掉。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
       - name: Validate deployment variables
         env:
           UBUNTU_DEPLOYER_SSH_KEY: ${{ secrets.UBUNTU_DEPLOYER_SSH_KEY }}
