@@ -1,0 +1,25 @@
+name: yishan-tmp-keyid
+
+# 临时：打印 UBUNTU_DEPLOYER_SSH_KEY 对应的**公钥**，用来确认目标机上
+# authorized_keys 里哪一条是 CI 用的那把（换密钥后要把它摘掉）。
+# 只输出公钥，不输出私钥。用完即删。
+
+on:
+  workflow_dispatch:
+
+jobs:
+  keyid:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Show public key
+        env:
+          KEY: ${{ secrets.UBUNTU_DEPLOYER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$KEY" > /tmp/k.pem
+          chmod 600 /tmp/k.pem
+          ssh-keygen -lf /tmp/k.pem
+          ssh-keygen -y -f /tmp/k.pem
+          rm -f /tmp/k.pem
