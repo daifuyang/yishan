@@ -1,3 +1,8 @@
 # Migration hashes depend on exact published bytes, including line endings.
 /packages/core/system-api/drizzle/*.sql -text
 /apps/demo/api/src/modules/*/drizzle/*.sql -text
+
+# Shell scripts must keep LF endings: a CRLF checkout on Windows turns
+# `#!/usr/bin/env bash\r` into "bad interpreter" on Linux, and the deploy
+# runner (bin/deploy.sh) is installed onto the target host from a checkout.
+*.sh text eol=lf
