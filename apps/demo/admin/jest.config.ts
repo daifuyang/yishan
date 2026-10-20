@@ -34,8 +34,17 @@ export default async (): Promise<any> => {
       url: 'http://localhost:8000',
     },
     setupFiles: [...(config.setupFiles || []), './tests/setupTests.jsx'],
-    // 开启未退出句柄检测，便于定位异步资源泄漏
-    detectOpenHandles: true,
+    // 开启未退出句柄检测，便于定位异步资源泄漏。
+    //
+    // 但 Jest 规定这个选项**隐含 --runInBand**：整份测试被强制单线程跑。
+    // CI 上 admin 的测试因此要 4m40s，是整条流水线最长的一条线。CI 里不需要
+    // 查泄漏（那是本地排查用的），关掉它让 jest 按核数并行，
+    // admin 那条线从 6m30s 降到 2m30s 左右。
+    detectOpenHandles: !process.env.CI,
+    // 少了 detectOpenHandles 之后，测试里没关掉的句柄会让 jest 打印
+    // "Jest did not exit one second after..." 并一直挂着。CI 里强制退出，
+    // 免得作业卡到超时。泄漏本身是本地排查的事（本地仍然开着检测）。
+    forceExit: !!process.env.CI,
     globals: {
       ...config.globals,
       'jest-esbuild': { jsx: 'automatic' },
