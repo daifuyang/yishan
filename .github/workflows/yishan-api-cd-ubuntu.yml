@@ -111,15 +111,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .tool-versions
-          cache: pnpm
-
+      # 顺序是硬要求：`cache: pnpm` 在 setup-node 里要先解析 pnpm 的 store 路径，
+      # 那时 pnpm 必须在 PATH 上。所以 corepack 必须排在带缓存的 setup-node **之前**，
+      # 与 yishan-fullstack-ci.yml 的写法一致。反过来会直接报
+      # "Unable to locate executable file: pnpm"。
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
 
       - name: Install
         run: pnpm install --frozen-lockfile --prod=false
