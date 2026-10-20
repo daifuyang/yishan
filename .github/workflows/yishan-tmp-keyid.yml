@@ -10,6 +10,7 @@ on:
 jobs:
   keyid:
     runs-on: ubuntu-latest
+    environment: YISHAN_DEMO_UBUNTU
     permissions:
       contents: read
     steps:
