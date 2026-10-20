@@ -87,8 +87,19 @@ ci-gate → build（Linux runner 打包）→ 上传 → 目标机解包 + 迁�
   迁移读的是 `/opt/yishan/shared/.env`——与 systemd 同源，**仓库不新增任何数据库凭据**。
 - **失败不会切软链。** 解包或迁移失败直接中断，`current` 指向的还是老版本，服务不受影响。
   迁移成功之后 `release.sh` 才切换；它自己健康检查不过会自动回滚。
+- **解包和迁移是两个独立步骤。** 解包无条件执行，只有迁移受 `skip_migrations` 控制——
+  早先把两者合在一个 `if` 里，勾了跳过迁移就连 release 目录都不存在，`release.sh`
+  必然失败。
+- **迁移用的 node 版本是钉死的。** 目标机交互式 shell 走 nvm，PATH 上的 node 是 v24，
+  而 systemd 单元 `ExecStart` 用的是 `/usr/local/lib/nodejs/node-v22.22.1-linux-x64/bin/node`
+  （v22.22.1）。流水线显式解析绝对路径，让迁移和线上运行时跑在同一个 Node 上。
+- **`release.sh` 是用 `sudo` 调的。** 它内部要 `systemctl restart`，`ubuntu` 用户虽有
+  免密 sudo，但非 root 直接 systemctl 一样会被拒。
+- **并发不打断。** `cancel-in-progress: false`：取消点不可控，可能正好落在「已解包、
+  迁移跑一半、软链还没切」的窗口里，留下半成品目录和悬空迁移。
 - **冒烟打的是公网入口** `https://admin.zerocmf.com`：`/api/health`（含 `db.ok`）、
-  `/` 必须包含 SPA 挂载点、`/admin` 必须返回 301。这几条是 `release.sh` 视野之外的
+  `/` 必须包含 SPA 挂载点**并且**能把入口页引用的 `umi.<hash>.js` 真正取回来（校验
+  `Content-Type` 是 JavaScript）、`/admin` 必须返回 301。这几条是 `release.sh` 视野之外的
   （nginx、域名、静态资源路径），release.sh 只看得到本机进程。
 
 需要的 GitHub 配置（environment `YISHAN_DEMO_UBUNTU`）：
@@ -125,11 +136,15 @@ ssh -i ~/workspace/certs/ubuntu_tencent.pem ubuntu@43.143.122.225 \
 回滚，迁移必须单独在 API 起来之前执行：
 
 ```bash
-# 迁移要在新 release 目录里跑，读 shared/.env 的 DATABASE_URL
+# 迁移要在新 release 目录里跑，读 shared/.env 的 DATABASE_URL。
+# node 用绝对路径：交互式 shell 的 PATH 上是 nvm 的 v24，服务跑的是 v22.22.1。
+NODE=/usr/local/lib/nodejs/node-v22.22.1-linux-x64/bin/node
 ssh -i ~/workspace/certs/ubuntu_tencent.pem ubuntu@43.143.122.225 \
     "cd /opt/yishan/releases/$TS && set -a && . /opt/yishan/shared/.env && set +a && \
-     node dist/scripts/migrate.js --dry-run && node dist/scripts/migrate.js --apply"
+     $NODE dist/scripts/migrate.js --dry-run && $NODE dist/scripts/migrate.js --apply"
 ```
+
+`skip_migrations` 只在「刚手工跑完迁移」时勾选，否则新版本的迁移不会执行就发布了代码。
 
 ## 路径形态：为什么是 `/` 而不是 `/admin/`
 

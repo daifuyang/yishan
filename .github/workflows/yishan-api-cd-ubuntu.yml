@@ -44,7 +44,10 @@ on:
 
 concurrency:
   group: yishan-api-cd-ubuntu
-  cancel-in-progress: true
+  # 故意不 cancel-in-progress：取消点是不可控的，可能正好落在「已解包、迁移跑一半、
+  # 软链还没切」的窗口里，留一个半成品 release 目录和一列悬空迁移。上一次发布排队
+  # 比互相打断安全得多。
+  cancel-in-progress: false
 
 jobs:
   ci-gate:
@@ -221,9 +224,10 @@ jobs:
           scp -i ~/.ssh/ubuntu-deployer.pem "$RUNNER_TEMP/yishan-api-${GITHUB_SHA}.tar.gz" \
             "$UBUNTU_USER@$UBUNTU_HOST:/opt/yishan/incoming/yishan-api-${GITHUB_SHA}.tar.gz"
 
-      # 解包与迁移都失败时直接 exit，软链尚未切换，服务不受影响。
-      - name: Unpack and migrate on the target host
-        if: inputs.skip_migrations != true
+      # 解包必须无条件执行。之前把「解包 + 迁移」合在同一个 if 里，勾了
+      # skip_migrations 就整个跳过 —— 于是 releases/<ts> 根本不存在，下一步
+      # release.sh 找不到产物直接失败。迁移才是可跳的那一步。
+      - name: Unpack on the target host
         run: |
           set -euo pipefail
           # heredoc 必须加引号：否则远端脚本里的 $ROOT/$DEST 会在本机先展开成空串。
@@ -241,17 +245,45 @@ jobs:
           rm -rf "$DEST"
           mkdir -p "$DEST"
           tar -xzf "$TARBALL" -C "$DEST" --strip-components=1
+          [ -f "$DEST/dist/main.js" ] || { echo "release: dist/main.js missing after unpack" >&2; exit 1; }
+          echo "unpacked into $DEST"
+          REMOTE
 
-          # 迁移在目标机上跑：数据库在阿里云 ECS，安全组只放行本机出口 IP。
-          # 环境变量复用 systemd 同源的 shared/.env，不给仓库新增任何凭据。
+      # 迁移在目标机上跑：数据库在阿里云 ECS，安全组只放行本机出口 IP，runner 连不上。
+      # 失败直接 exit，软链尚未切换，服务不受影响。
+      - name: Migrate on the target host
+        if: inputs.skip_migrations != true
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
+            bash -s -- "$RELEASE_TS" <<'REMOTE'
+          set -euo pipefail
+          DEST="/opt/yishan/releases/${1:?missing release ts}"
           cd "$DEST"
+
+          # 必须钉死 node 版本。目标机的交互式 shell 走 nvm，PATH 上的 node 是
+          # v24.19.0；而 systemd 单元 ExecStart 用的是 /usr/local/lib/nodejs 下的
+          # v22.22.1。直接写 `node` 会用 24 跑迁移，和线上运行时不是同一个版本。
+          # 找不到就报错退出，不要退化成静默跳过迁移。
+          NODE=""
+          for candidate in \
+            /usr/local/lib/nodejs/node-v22.22.1-linux-x64/bin/node \
+            "$(command -v node 2>/dev/null || true)" \
+            /usr/local/bin/node /usr/bin/node; do
+            if [ -n "$candidate" ] && [ -x "$candidate" ]; then NODE="$candidate"; break; fi
+          done
+          [ -n "$NODE" ] || { echo "::error::目标机上找不到可执行的 node。" >&2; exit 1; }
+          echo "using node: $NODE ($("$NODE" -v))"
+
+          # 环境变量复用 systemd 同源的 shared/.env，不给仓库新增任何凭据。
           set -a
-          . "$ROOT/shared/.env"
+          . /opt/yishan/shared/.env
           set +a
-          node dist/scripts/migrate.js --dry-run
-          node dist/scripts/migrate.js --apply
+
+          "$NODE" dist/scripts/migrate.js --dry-run
+          "$NODE" dist/scripts/migrate.js --apply
           # 再确认一次：仍有 pending 说明没迁干净，不允许继续发布代码。
-          if node dist/scripts/migrate.js --dry-run 2>&1 | grep -qE '[1-9][0-9]* pending'; then
+          if "$NODE" dist/scripts/migrate.js --dry-run 2>&1 | grep -qE '[1-9][0-9]* pending'; then
             echo "::error::迁移后仍有待执行项，判定部署失败。" >&2; exit 1
           fi
           echo "migrations up to date in $DEST"
@@ -261,9 +293,10 @@ jobs:
         run: |
           set -euo pipefail
           # release.sh 校验产物、切 current、systemctl restart、轮询健康检查，
-          # 健康检查不过自动回滚到上一个 release。
+          # 健康检查不过自动回滚到上一个 release。systemctl 需要 root，
+          # ubuntu 用户是免密 sudo。
           ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
-            "bash /opt/yishan/bin/release.sh '$RELEASE_TS'"
+            "sudo bash /opt/yishan/bin/release.sh '$RELEASE_TS'"
 
       - name: Cleanup upload
         if: always()
@@ -298,10 +331,30 @@ jobs:
           done
 
           # root 挂载下站点根就是 admin 页面。只看 200 不够：一个恰好返回
-          # index.html 但 asset 全 404 的产物同样是白屏，所以校验挂载点存在。
+          # index.html 但 asset 全 404 的产物同样是白屏，所以校验挂载点存在，
+          # 并且真的把入口页引用的第一个 js chunk 取回来。
           PAGE="$(curl -fsS --max-time 15 "${BASE}/" || true)"
           echo "$PAGE" | grep -q 'id="root"' \
             || { echo "::error::${BASE}/ 不是 admin 入口页（缺少 #root 挂载点）。"; exit 1; }
+
+          # 优先取带内容哈希的 umi 主 chunk：入口页里排在它前面的是 /scripts/loading.js
+          # 这类固定名文件，取不到就说明静态目录没部署对。
+          ENTRY_JS="$(printf '%s' "$PAGE" \
+            | grep -oE 'src="[^"]+\.js"' | sed 's/^src="//; s/"$//' \
+            | grep -E '(^|/)umi\.[0-9a-f]+\.js$' | head -1 || true)"
+          if [ -z "$ENTRY_JS" ]; then
+            ENTRY_JS="$(printf '%s' "$PAGE" | grep -oE 'src="[^"]+\.js"' | head -1 | sed 's/^src="//; s/"$//' || true)"
+          fi
+          [ -n "$ENTRY_JS" ] \
+            || { echo "::error::${BASE}/ 的入口页没有引用任何 js chunk。"; exit 1; }
+          case "$ENTRY_JS" in
+            /*) ASSET_URL="${BASE}${ENTRY_JS}" ;;
+            *)  ASSET_URL="${BASE}/${ENTRY_JS}" ;;
+          esac
+          ASSET_CODE="$(curl -sS -o /dev/null -w '%{http_code} %{content_type}' --max-time 20 "$ASSET_URL" || true)"
+          echo "entry asset ${ASSET_URL} -> ${ASSET_CODE}"
+          echo "$ASSET_CODE" | grep -qE '^200 .*(javascript|ecmascript)' \
+            || { echo "::error::入口 js chunk 取不到或 MIME 不对（期望 200 + JavaScript）。"; exit 1; }
 
           # 旧前缀必须仍然 301 回根路径，否则老书签会停在跳转链上。
           CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${BASE}/admin" || true)"
