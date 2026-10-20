@@ -108,7 +108,11 @@ describe('UserService persistence input mapping', () => {
       deptIds: [1, 1],
       roleIds: [2, 2],
     });
-    expect(input.birthDate).toEqual(new Date('2000-01-02'));
+    // 落库的日期是「用户填的那天」：按**本地日历日**构造，与服务器时区无关。
+    // （`new Date('2000-01-02')` 走 UTC 午夜，在负时区会写进 `date` 列前一天。）
+    expect(input.birthDate?.getFullYear()).toBe(2000);
+    expect(input.birthDate?.getMonth()).toBe(0);
+    expect(input.birthDate?.getDate()).toBe(2);
     expect(input.passwordHash).not.toBe('Password1');
     expect(input).not.toHaveProperty('password');
   });

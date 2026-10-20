@@ -230,6 +230,41 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('AI 助手在真实 
     expect(await countUsersByTestPhone(phone)).toBe(0)
   })
 
+  /**
+   * 日期字段的**规范形式**：草稿里只存 `YYYY-MM-DD`，原生表单提交什么形状都能对上。
+   *
+   * 模型给的是 ISO 时间戳（`1996-10-02T00:00:00.000Z`），原生表单提交的是
+   * `1996-10-02`（HTTP 契约 `format: "date"`）。这两种写法表示同一天，
+   * 但草稿一致性比较原本拿写法比事实 —— 于是每一次带日期的 AI 建号都死在
+   * 「与服务端草稿不一致」上。这里在真实 MySQL 上把整条链走一遍。
+   */
+  it('accepts an ISO birth date from the assistant and stores the canonical day', async () => {
+    const conversationId = await newConversation()
+    const phone = nextPhone()
+    const username = 'iso_birthdate_person'
+    const draft = await readyDraft(conversationId, { username, phone, birthDate: '1996-10-02T00:00:00.000Z' })
+
+    // 草稿里存的是规范形式，不是模型给的 ISO。
+    const stored = await query<RowDataPacket>('SELECT form_data FROM ai_action_drafts WHERE draft_id = ?', [draft.draftId])
+    expect((stored[0].form_data as Record<string, unknown>).birthDate).toBe('1996-10-02')
+
+    // 原生表单提交的是 `YYYY-MM-DD`（pro-field 的日期序列化结果）。
+    const created = await appA.inject({
+      method: 'POST', url: CREATE_USER, headers: admin,
+      payload: {
+        username, phone, password: CREATED_USER_PASSWORD, birthDate: '1996-10-02',
+        draftSubmission: { draftId: draft.draftId, draftVersion: draft.draftVersion },
+      },
+    })
+    expect(created.json<{ success: boolean }>().success, created.body).toBe(true)
+
+    // 落库的是「用户填的那天」，与服务器时区无关。
+    const rows = await query<RowDataPacket>(
+      "SELECT DATE_FORMAT(birth_date, '%Y-%m-%d') AS day FROM sys_user WHERE username = ?", [username],
+    )
+    expect(rows[0].day).toBe('1996-10-02')
+  })
+
   it('creates exactly one user when two independent app instances submit the same draft at once', async () => {
     const conversationId = await newConversation()
     const phone = nextPhone()

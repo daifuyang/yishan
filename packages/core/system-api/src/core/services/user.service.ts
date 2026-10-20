@@ -10,6 +10,7 @@ import { comparePassword, hashPassword } from "../../utils/password.js";
 import { PermissionService } from "./permission.service.js";
 import { validateUserCreation, resolveCreatableDeptScope, type UserCreationSubject } from "./user-creation-policy.js";
 import { mergeDraftFields, type DraftSubmission, type UserCreationParticipant } from "./user-creation.js";
+import { canonicalDateOnly, canonicalDateToLocalDate } from "./draft-field-format.js";
 import { currentDataScope } from "@/core/auth/data-scope";
 import type { AppQueryDb, AppTx } from "@/db";
 
@@ -486,9 +487,22 @@ export class UserService {
     };
   }
 
+  /**
+   * 落库前的日期归一。
+   *
+   * `YYYY-MM-DD` 按**本地日历日**构造 `Date`：`new Date('1996-10-02')` 走的是
+   * UTC 午夜，在负时区会落到前一天，写进 `date` 列就差一天。
+   * 「用户填的哪天就是存进去的哪天」不该取决于服务器时区。
+   *
+   * 完整 ISO 时间戳先取字面日期部分（日期字段没有时刻语义），再按本地日历日构造。
+   */
   private static toNullableDate(value: string | undefined): Date | null | undefined {
     if (value === undefined) return undefined;
-    return value === "" ? null : new Date(value);
+    if (value === "") return null;
+    const canonical = canonicalDateOnly(value);
+    if (canonical) return canonicalDateToLocalDate(canonical);
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
   private static async clearUserDetailCache(userId: number, fastify?: FastifyInstance): Promise<void> {

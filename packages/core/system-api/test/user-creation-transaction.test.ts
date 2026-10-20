@@ -227,6 +227,36 @@ describe('草稿字段是唯一可信来源', () => {
     expect(merged).toMatchObject({ username: 'zhangsan', deptIds: [10], roleIds: [2] })
   })
 
+  /**
+   * 日期字段按**规范形式**比，不按写法比。
+   *
+   * 草稿里存的是模型给的 ISO 时间戳（原生表单回填也会回写成 ISO），
+   * 提交上来的永远是 `YYYY-MM-DD`（HTTP 契约 `format: "date"`）。
+   * 不折就等于拿两种形状比事实，于是每一次带草稿的创建都被判「与服务端草稿不一致」。
+   */
+  it('草稿里存 ISO、提交 YYYY-MM-DD：视为同一个日期，落库用规范形式', () => {
+    const merged = mergeDraftFields(
+      { ...DRAFT_FIELDS, birthDate: '1996-10-02T00:00:00.000Z' } as never,
+      { birthDate: '1996-10-02' } as never,
+    )
+    expect(merged.birthDate).toBe('1996-10-02')
+  })
+
+  it('日期真的不同仍然拒绝（归一不放松实质冲突）', () => {
+    expect(() => mergeDraftFields(
+      { ...DRAFT_FIELDS, birthDate: '1996-10-02' } as never,
+      { birthDate: '1996-10-03' } as never,
+    )).toThrow(/与服务端草稿不一致/)
+  })
+
+  it('折不出来的日期原样保留，不制造假差异', () => {
+    const merged = mergeDraftFields(
+      { ...DRAFT_FIELDS, birthDate: '1996-13-01' } as never,
+      { birthDate: '1996-13-01' } as never,
+    )
+    expect(merged.birthDate).toBe('1996-13-01')
+  })
+
   it('缺失的非敏感字段从服务端草稿补齐，password 只用于本次创建', async () => {
     uniqueFieldsFree()
     superAdminActor()

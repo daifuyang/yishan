@@ -18,6 +18,9 @@ export {
 // 草稿关联创建的事务参与契约。只由产品组合根注入；不放进 contracts（无后端依赖），
 // 也不作为模型能力暴露。见 core/services/user-creation.ts 的边界说明。
 export { mergeDraftFields } from './core/services/user-creation'
+// 草稿字段的规范形式：日期字段在系统内部一律是 `YYYY-MM-DD`。
+// 草稿写入侧（AI 模块）与合并侧（System）共用同一份实现，避免两处各写一遍。
+export { canonicalDateOnly, canonicalDateToLocalDate, dateFormatFieldKeys, formatOf, CANONICAL_DATE_PATTERN } from './core/services/draft-field-format'
 export type {
   UserCreationParticipant,
   DraftSubmission,

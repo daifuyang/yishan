@@ -20,6 +20,7 @@
 import { randomUUID } from 'node:crypto'
 import type { AiDraftForm, AiDraftSubject } from '@yishan/core-api/ai-capabilities/catalog'
 import type { AppQueryDb } from '@yishan/core-system-api/database'
+import { canonicalDateOnly, dateFormatFieldKeys } from '@yishan/core-system-api'
 import { ActionDraftRepository, type ActionDraftRecord, type ActionDraftStore, type ActionDraftTx } from '../repositories/action-draft.repository.js'
 import { aiError } from '../ai-chat-error.js'
 import { authorizeDraft, draftFieldSchemas, draftForm, draftAdapter } from './draft-forms.js'
@@ -339,11 +340,21 @@ export class ActionDraftService {
    * 入库前会被规范化成**移除**该键。创建路径上的 `null` 没有语义 —— 模型传
    * `{phone:null}` 表示「还没问到手机号」，而不是「手机号为空」—— 一律 400，
    * 否则必填字段会同时是「已清空」和「已收集」，草稿宣称 ready 而提交被拒。
+   *
+   * **日期字段在这里归一成规范形式**（`YYYY-MM-DD`）：写入草稿的形状由生产者
+   * 决定 —— 模型给 ISO 时间戳是常态，原生表单回填也会把 DatePicker 序列化成 ISO。
+   * 草稿里若留着 ISO，最终提交上来的永远是 `YYYY-MM-DD`，而草稿一致性比较是
+   * 拿事实比形状，于是每一次带草稿的创建都会被判「与服务端草稿不一致」。
+   * 归一之后草稿里只有一种日期写法，比较、落库、回填都指向同一个事实。
+   *
+   * 折不出来（`1996-13-01` 这类日历上不存在的日期）时**原样保留**：
+   * 那是「还没填对」，归 `validationErrors` 通道报错，不是在这里当形状错误拒掉。
    */
   private normalize(formData: Record<string, unknown>, allowNull: boolean, action: string): Record<string, unknown> {
     if (!isPatch(formData)) throw aiError(400, '表单数据格式无效')
     const rejected: string[] = []
     const out: Record<string, unknown> = {}
+    const dateFields = dateFormatFieldKeys(draftFieldSchemas(action) as Record<string, unknown>)
     for (const [key, value] of Object.entries(formData)) {
       if (value === undefined) continue
       const source = draftFieldSchemas(action)[key]
@@ -356,7 +367,7 @@ export class ActionDraftService {
       }
       const valid = matchesDraftFieldType(key, value, action)
       if (!valid) { rejected.push(key); continue }
-      out[key] = value
+      out[key] = dateFields.has(key) ? (canonicalDateOnly(value) ?? value) : value
     }
     if (rejected.length) throw aiError(400, `不支持的字段：${[...new Set(rejected)].join('、')}`)
     return out
@@ -468,7 +479,7 @@ function checkString(constraints: Record<string, unknown>, value: string): { cod
   if (typeof pattern === 'string' && value !== '' && !new RegExp(pattern).test(value)) errors.push({ code: 'pattern_mismatch', message: '格式不正确' })
   const format = constraints.format
   if (format === 'email' && value !== '' && !/^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/.test(value)) errors.push({ code: 'not_an_email', message: '邮箱格式不正确' })
-  if (format === 'date' && value !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) errors.push({ code: 'not_a_date', message: '日期格式应为 YYYY-MM-DD' })
+  if (format === 'date' && value !== '' && canonicalDateOnly(value) === undefined) errors.push({ code: 'not_a_date', message: '日期格式应为 YYYY-MM-DD' })
   return errors
 }
 

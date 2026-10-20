@@ -21,6 +21,7 @@ import type { AppQueryDb } from '@/db'
 import { DeptRepository } from '@/core/repositories/dept.repository'
 import { RoleRepository } from '@/core/repositories/role.repository'
 import { DeptService } from '@/core/services/dept.service'
+import { formatOf } from '@/core/services/draft-field-format'
 import {
   validateUserCreation,
   resolveCreatableDeptScope,
@@ -95,11 +96,19 @@ const SELECTORS: Readonly<Record<string, string>> = {
  */
 const NON_FORM_FIELDS = new Set(['draftSubmission'])
 
-/** 只从 schema 里挑出「值得表达的约束」，不整体倒出 schema 对象。 */
+/**
+ * 只从 schema 里挑出「值得表达的约束」，不整体倒出 schema 对象。
+ *
+ * `format` 取**联合类型的成员格式**（`birthDate` 是
+ * `Union([String({ format: 'date' }), Literal('')])`，顶层没有 `format`）。
+ * 少了这一步，草稿侧的 `not_a_date` 校验就永远不会触发 ——
+ * 一个写不出来的日期会以「看起来合法」的形状躺在草稿里。
+ */
 function deriveConstraints(schema: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   if (Array.isArray(schema.enum)) out.enum = [...(schema.enum as unknown[])]
-  if (typeof schema.format === 'string') out.format = schema.format
+  const format = formatOf(schema)
+  if (format) out.format = format
   if (typeof schema.minLength === 'number') out.minLength = schema.minLength
   if (typeof schema.maxLength === 'number') out.maxLength = schema.maxLength
   if (typeof schema.pattern === 'string') out.pattern = schema.pattern

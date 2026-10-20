@@ -21,7 +21,8 @@
  */
 import type { AppTx } from '@/db'
 import type { CreateUserFieldsReq, UserCreateDraftFields } from '@/core/schemas/user'
-import { USER_CREATE_DRAFT_FIELD_KEYS } from '@/core/schemas/user'
+import { USER_CREATE_DRAFT_FIELD_KEYS, UserCreateDraftFieldsSchema } from '@/core/schemas/user'
+import { canonicalDateOnly, dateFormatFieldKeys } from '@/core/services/draft-field-format'
 import { UserErrorCode } from '@yishan/core-api/business-codes/user'
 import { BusinessError } from '@yishan/core-api/errors'
 
@@ -123,6 +124,28 @@ function sameDraftValue(a: unknown, b: unknown): boolean {
 }
 
 /**
+ * 用户草稿里的**日期字段**。
+ *
+ * 派生自表单契约本身（`UserCreateDraftFieldsSchema`），因此加一个日期字段时
+ * 不需要改第二处清单。
+ */
+const USER_CREATE_DATE_FIELD_KEYS = dateFormatFieldKeys(
+  UserCreateDraftFieldsSchema.properties as unknown as Record<string, unknown>,
+)
+
+/**
+ * 草稿字段的**规范形式**。
+ *
+ * 日期字段折成 `YYYY-MM-DD`（见 `draft-field-format.ts`）；其余字段原样。
+ * 无法识别的值保持原样 —— 那是「还没填对」，由 `validationErrors` 通道负责，
+ * 这里只负责消除**形状**差异。
+ */
+function canonicalDraftValue(key: string, value: unknown): unknown {
+  if (!USER_CREATE_DATE_FIELD_KEYS.has(key)) return value
+  return canonicalDateOnly(value) ?? value
+}
+
+/**
  * 用服务端草稿字段组装最终的创建字段。
  *
  * 两件事同时发生：
@@ -132,6 +155,12 @@ function sameDraftValue(a: unknown, b: unknown): boolean {
  *    草稿」提交另一份数据 —— 拒绝，而不是采纳请求里的那一份。
  * 2. 密码不在比较范围内：它从不进草稿，只用于**这一次**创建，且绝不持久化
  *    到草稿、回执或审计里（设计 §11）。
+ *
+ * 比较前双方都会折成**规范形式**（日期 → `YYYY-MM-DD`，见
+ * `draft-field-format.ts`）：草稿里存的是模型给的 ISO 时间戳、原生表单回填的
+ * 也是 ISO，而提交上来的永远是 `YYYY-MM-DD` —— 不折就等于拿两种形状比事实，
+ * 于是每一次带草稿的创建都会被判「与服务端草稿不一致」。
+ * 折叠之后落库的值也是规范形式，不把 ISO 带进 `date` 列。
  */
 export function mergeDraftFields(
   draft: UserCreateDraftFields,
@@ -140,8 +169,8 @@ export function mergeDraftFields(
   const mismatched: string[] = []
   const merged: Record<string, unknown> = {}
   for (const key of USER_CREATE_DRAFT_FIELD_KEYS) {
-    const persisted = normalizeDraftValue((draft as Record<string, unknown>)[key])
-    const supplied = normalizeDraftValue((submitted as Record<string, unknown>)[key])
+    const persisted = normalizeDraftValue(canonicalDraftValue(key, (draft as Record<string, unknown>)[key]))
+    const supplied = normalizeDraftValue(canonicalDraftValue(key, (submitted as Record<string, unknown>)[key]))
     // 省略的字段不算不一致 —— 草稿本来就是补齐来源。
     if (supplied !== undefined && !sameDraftValue(supplied, persisted)) mismatched.push(key)
     if (persisted !== undefined) merged[key] = persisted

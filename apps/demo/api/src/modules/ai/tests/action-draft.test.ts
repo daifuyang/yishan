@@ -149,6 +149,36 @@ function chatDeletingConversation(f: ReturnType<typeof fixture>) {
   return new AiChatService(store, async () => { throw new Error('runtime not needed') }, undefined, f.service)
 }
 
+/**
+ * 草稿里的日期字段只有一种写法。
+ *
+ * 写入草稿的形状由**生产者**决定：模型给 ISO 时间戳是常态，原生表单回填也会把
+ * DatePicker 序列化成 ISO。而最终提交上来的永远是 `YYYY-MM-DD`（HTTP 契约
+ * `format: "date"`），草稿一致性比较拿事实比形状 —— 不归一就等于让每一次带草稿的
+ * 创建都死在「与服务端草稿不一致」上。
+ */
+describe('Action draft 日期字段的规范形式', () => {
+  it('把模型给的 ISO 日期折成 YYYY-MM-DD', async () => {
+    const f = fixture()
+    const draft = await f.create({ phone: '13800000000', birthDate: '1996-10-02T00:00:00.000Z' })
+    expect(draft.formData.birthDate).toBe('1996-10-02')
+  })
+
+  it('补丁里的 ISO 日期同样被折成规范形式', async () => {
+    const f = fixture()
+    const draft = await f.create({ phone: '13800000000' })
+    const patched = await f.service.patch(7, draft.draftId, 1, { birthDate: '1996-10-02T12:00:00.000Z' })
+    expect(patched.formData.birthDate).toBe('1996-10-02')
+  })
+
+  it('折不出来的日期原样保留，并报 not_a_date（不是形状错误，不当场拒）', async () => {
+    const f = fixture()
+    const draft = await f.create({ phone: '13800000000', birthDate: '1996-13-01' })
+    expect(draft.formData.birthDate).toBe('1996-13-01')
+    expect(draft.validationErrors).toContainEqual(expect.objectContaining({ field: 'birthDate', code: 'not_a_date' }))
+  })
+})
+
 describe('Action draft ownership', () => {
   it('scopes every read, patch and cancel to the owner and never leaks another user’s draft', async () => {
     const f = fixture()
