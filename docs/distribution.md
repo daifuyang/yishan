@@ -8,35 +8,31 @@ Yishan 的公共代码以**源码**交付：你复制它、拥有它、可以直
 
 ## 1. 源码边界
 
-`apps/yishan-api/src` 按“谁依赖谁”分为五层。边界由 `pnpm check:boundaries`（`scripts/check-architecture-boundaries.mjs`）在 CI 中执行，当前**零已知违规**。
+服务端源码按“谁依赖谁”分为五层。API V2 之后，kernel / platform / system 各自已成为 source-only 的公开包，Demo 只保留 app 与 module 两层。边界由 `pnpm check:boundaries`（`scripts/check-api-architecture.cjs` + `check-main-baseline.mjs` + `check-module-naming.mjs` + `check-admin-boundaries.mjs` + `check-app-boundaries.mjs`）在 CI 中执行。
 
 | 层 | 路径 | 职责 | 规则 |
 |---|---|---|---|
-| kernel | `core/module-loader/`、`core/permissions/`、`core/auth/`、`core/routes/route-registrar.ts`、`core/module-api.ts` | 模块生命周期、权限目录、身份/权限契约、路由注册 | 不依赖 system；只用相对导入（可整体搬成包） |
-| platform | `core/plugins/external/`、`db/` | Fastify 官方插件装配（jwt、cors、swagger、redis…）、连接与 schema | 不依赖 system |
-| system（默认实现） | `core/services/`、`core/repositories/`、`core/schemas/`、`core/mappers/`、`core/routes/api/`、`core/routes/_dev/`、`core/plugins/app/`、`scripts/` | 用户、角色、菜单、PAT、附件……以及默认 `AuthProvider` | 可替换；可以依赖 kernel / platform |
-| module | `modules/<id>/` | 业务能力 | 只能导入 `core/module-api`、`core/system-api`；不得导入其他模块 |
-| app | `app.ts`、`config/` | 组合根：选择 `AuthProvider`、装配顺序、环境变量 | — |
+| contracts | `packages/core/contracts`、`packages/core/database` | `YishanModule` / `ModuleMetadata` / `ModuleSeedContext` 等纯类型与 Drizzle schema | 只有类型，无运行时 |
+| kernel | `packages/core/api`（`module-loader.ts`、`permissions/`、`create-app.ts`、`routes/`） | 模块生命周期、权限目录、契约注册、Fastify 运行时装配 | 不依赖 system |
+| system（默认实现） | `packages/core/system-api`（`core/`、`db/`、`config/`、`scripts/`） | 用户、角色、菜单、PAT、附件……以及默认 `AuthProvider`、`seedModuleMenus` | 可替换；可以依赖 kernel |
+| module | `apps/demo/api/src/modules/<id>/` | 业务能力 | 只能导入 `@yishan/core-api`、`@yishan/core-system-api`；不得导入其他模块 |
+| app | `apps/demo/api/src/{app.ts,config/,manifest.ts,main.ts}` | 组合根：选择 `AuthProvider`、装配顺序、环境变量、静态 manifest | — |
 
 模块可用的稳定入口：
 
-- `core/module-api.ts`（kernel 契约，纯重导出）：`registerPermissions`、`registerPermissionGroups`、`createRouteRegistrar`、`ResponseUtil`、`BusinessError`、`AppDb`/`AppTx`/`AppQueryDb`、`Principal`、`ModuleMeta`、`ModuleSeedContext`。
-- `core/system-api.ts`（system 对模块开放的能力）：`seedModuleMenus`。
+- `@yishan/core-api`：模块契约与权限/路由注册、数据库与错误类型（`AppDb`/`AppTx`/`AppQueryDb`、`BusinessError`、`ResponseUtil`）。
+- `@yishan/core-system-api`：system 对模块开放的能力（`seedModuleMenus`、用户目录、受控用户扩展）。
 - 运行时依赖走 Fastify 原生：`app.drizzleDb`、`request.currentUser`、`request.log`。
+
+导入没有连接/启动副作用；资源、JWT 设置、RBAC 目录与模块缓存属于**显式创建的 runtime**，未创建前调用会抛错的旧 facade 仍在原处。
 
 ### 替换身份与权限来源
 
-jwt-auth 与 rbac 只依赖 `core/auth/identity.ts` 中的 `AuthProvider`（三个函数：`resolveSession`、可选的 `resolveApiToken`、`loadPermissions`）。在 `app.ts`（或 `fastify.register(app, { authProvider })`）传入你自己的实现即可接入 SSO / 外部用户中心，模块与 kernel 不需要改动。替换后删除 `core/services/auth-provider.ts` 中对 `CurrentUser` 的声明合并。契约测试：`apps/yishan-api/test/auth-provider.contract.test.ts`。
+jwt-auth 与 rbac 只依赖 `AuthProvider`（三个函数：`resolveSession`、可选的 `resolveApiToken`、`loadPermissions`），定义在 `packages/core/contracts/src/auth.ts`。在 `app.ts`（或 `fastify.register(app, { authProvider })`）传入你自己的实现即可接入 SSO / 外部用户中心，模块与 kernel 不需要改动。替换后删除 `packages/core/system-api/src/core/services/auth-provider.ts` 中对 `CurrentUser` 的声明合并。
 
-### 为什么不是独立 npm / workspace 包
+### 提取条件
 
-经原型验证（`docs/verification/yishan-source-first-final.md` §3）：
-
-- API 以 `tsc`（CommonJS，`rootDir: src`）构建；直接引用源码包会报 TS6059（文件不在 rootDir 内）。
-- 预构建的包可行，但要增加包构建/监听步骤，且 FC 运行时层用 `npm install` 安装依赖，无法解析 `workspace:*`。
-- Yishan 仓库内只有一个服务端消费者，包化不减少任何重复。
-
-因此 kernel 保持在 App 内，但以“可包化约束”维护（零 `@/`、不依赖 system，由 `kernel-alias-import` / `kernel-imports-system` 规则保证）。满足任一条件时再提取为一个 source-only 包（候选名 `@yishan/server-kernel`）：同一仓库出现第二个服务端进程；某个下游（如在一个仓库里有两个 Yishan 派生服务端）确认要共享同一份 kernel；有项目要求以 npm 依赖方式使用 kernel。
+`packages/core/*` 已经是 workspace 内的 source-only 包（`private: true`、无构建产物、通过包 `exports` 消费）。任何新增的跨产品服务端复用需求直接落成新包，不再在 App 内保留“待包化”的 kernel 副本。
 
 ---
 
@@ -45,9 +41,10 @@ jwt-auth 与 rbac 只依赖 `core/auth/identity.ts` 中的 `AuthProvider`（三�
 在你的仓库中（干净工作区）：
 
 ```bash
-# 1. 取得上游某个版本的服务端源码（示例：放到 server/）
+# 1. 取得上游某个版本的服务端源码（示例：Core 放 core/，Demo 的组合根放 server/）
 git fetch https://github.com/daifuyang/yishan.git main
-git archive --format=tar --prefix=server/ FETCH_HEAD:apps/yishan-api | tar -x
+git archive --format=tar --prefix=core/ FETCH_HEAD:packages/core | tar -x
+git archive --format=tar --prefix=server/ FETCH_HEAD:apps/demo/api | tar -x
 cp <yishan>/scripts/yishan-upstream.mjs scripts/
 
 # 2. 删除不需要的业务模块（例如 demo），并在来源标记里排除它
@@ -60,8 +57,15 @@ rm -rf server/src/modules/demo
 {
   "repo": "https://github.com/daifuyang/yishan.git",
   "base": "<刚才 FETCH_HEAD 的完整 sha>",
-  "pathMap": { "apps/yishan-api": "server" },
-  "exclude": ["apps/yishan-api/src/modules/demo", "apps/yishan-api/openapi.json", "apps/yishan-api/deploy"]
+  "pathMap": {
+    "packages/core": "core",
+    "apps/demo/api": "server"
+  },
+  "exclude": [
+    "apps/demo/api/src/modules/demo",
+    "apps/demo/api/openapi.json",
+    "apps/demo/api/deploy"
+  ]
 }
 ```
 

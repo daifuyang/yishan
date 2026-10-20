@@ -11,7 +11,9 @@ name: yishan-fullstack-ci
 #   mobile  —— Taro/Core App/移动端 + Docs
 #   package —— 打出可部署产物并校验（依赖 admin 与 api 两个 dist）
 #
-# 门禁仍以整个工作流为准，yishan-api-cd-ubuntu.yml 的 ci-gate 不需要改动。
+# 门禁仍以整个工作流为准。生产 FC（yishan-api-cd.yml）与 H5（yishan-h5-cd.yml）
+# 的 ci-gate 仍会等这里变绿；演示环境（yishan-api-cd-ubuntu.yml）自 2026-10-20 起
+# **不等**——它把 CI 当成并行质量报表，发布与否看自己的构建与冒烟。
 #
 # 2026-10 起去掉了 browser 那条线（Playwright e2e + 独立 Admin 复用验证）：
 # 它要起 MySQL/Redis 容器、装 Chromium，只为跑浏览器用例，却把整条 CI 的
@@ -20,7 +22,7 @@ name: yishan-fullstack-ci
 # verify-admin-reuse.mjs 本身也要 Chromium，随之一起去掉（脚本仍在仓库里，
 # 需要时可在本地跑）。
 #
-# 迭代部署时不必陪跑：CD 支持 workflow_dispatch + skip_ci_gate=true。
+# 迭代部署时不必陪跑：生产 CD 支持 workflow_dispatch + skip_ci_gate=true。
 on:
   push:
     paths:

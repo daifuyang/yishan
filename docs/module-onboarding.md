@@ -6,7 +6,7 @@
 
 ## 一句话总览
 
-每个业务能力 = `apps/yishan-api/src/modules/<id>/` 下一个目录。
+每个业务能力 = `apps/demo/api/src/modules/<id>/` 下一个目录。
 该目录自带：路由、表定义、drizzle 配置、drizzle 输出、repository、service、schema、测试、README。
 **程序不跑迁移**；表、路由、查询全是模块自己的事。
 Core 只提供三件基础设施：Fastify 实例、`app.drizzleDb` 句柄、几个 hook（用于命名校验）。
@@ -28,7 +28,7 @@ Core 只提供三件基础设施：Fastify 实例、`app.drizzleDb` 句柄、几
 ## 步骤 1：创建模块目录
 
 ```bash
-mkdir -p apps/yishan-api/src/modules/<id>/{db,drizzle/meta,repositories,services,schemas,tests}
+mkdir -p apps/demo/api/src/modules/<id>/{db,drizzle/meta,repositories,services,schemas,tests}
 ```
 
 `<id>` 用业务名（单数小写），决定：
@@ -98,11 +98,11 @@ CREATE TABLE `<id>_sample` (
 );
 ```
 
-加一份 `drizzle/meta/_journal.json`（drizzle-kit 格式）。已发布的 SQL 永远不改；新迁移只追加，且 `when` 必须严格递增（`pnpm check:migrations` 校验，新文件评审后 `node scripts/check-migrations.mjs --update` 登记）。
+加一份 `drizzle/meta/_journal.json`（drizzle-kit 格式）。已发布的 SQL 永远不改；新迁移只追加，且 `when` 必须严格递增（`pnpm check:migrations` 校验：`check-migration-history.mjs` 检查 journal 与已发布历史一致，`db:migrate --check` 检查每条迁移流都无待执行项）。
 
 ## 步骤 3：装上 repositories / services / schemas / tests
 
-业务复杂了再装。可参见 `apps/yishan-api/src/modules/demo/`：
+业务复杂了再装。可参见 `apps/demo/api/src/modules/demo/`：
 
 | 文件 | 装什么 |
 | --- | --- |
@@ -115,12 +115,12 @@ CREATE TABLE `<id>_sample` (
 ## 步骤 4：生成与执行 migration（手动）
 
 ```bash
-cd apps/yishan-api/src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts   # 改 schema 后
-pnpm --filter yishan-api db:migrate:modules <id>   # 执行：独立历史表 + 历史核对 + 真实表结构核对，失败退出码 1
+cd apps/demo/api/src/modules/<id> && npx drizzle-kit generate --config=./drizzle.config.ts   # 改 schema 后
+pnpm --filter @yishan/demo-api db:migrate:modules <id>   # 执行：独立历史表 + 历史核对 + 真实表结构核对，失败退出码 1
 ```
 
 > 模块启动时**不**自动跑迁移。`db:migrate:modules` 与 `drizzle-kit migrate --config=...` 读写同一张历史表，但前者会核对结果。
-> 已部署过旧版本（共享 `__drizzle_migrations`）的库，先跑 `pnpm --filter yishan-api db:migrations:bridge`（默认 dry-run）。
+> 已部署过旧版本（共享 `__drizzle_migrations`）的库，先跑 `pnpm --filter @yishan/demo-api db:migrations:bridge`（默认 dry-run）。
 
 ## 步骤 5：装载与流量
 
@@ -134,14 +134,14 @@ pnpm --filter yishan-api db:migrate:modules <id>   # 执行：独立历史表 + 
 ## 步骤 6：启动与验证
 
 ```bash
-pnpm --filter yishan-api dev
+pnpm --filter @yishan/demo-api dev
 ```
 
 按 `/api/<id>` 暴露的路径调用即可。
 
 ## 关键约束清单
 
-- ✖ 模块只能从 `@/core/module-api`（kernel 契约：`registerPermissions`、`registerPermissionGroups`、`createRouteRegistrar`、`ResponseUtil`、`BusinessError`、`AppDb` 类型等）与 `@/core/system-api`（system 开放能力：`seedModuleMenus`）导入 Yishan 代码；不许 import `@/db`、`core/services`、`core/repositories` 等内部文件（`pnpm check:boundaries` 的 `module-imports-internal` 规则）。数据库句柄用 `app.drizzleDb`，当前用户用 `request.currentUser`（模块只应依赖 `id`）
+- ✖ 模块只能从 `@yishan/core-api`（kernel 契约：`registerPermissions`、`registerPermissionGroups`、`createRouteRegistrar`、`ResponseUtil`、`BusinessError`、`AppDb` 类型等）与 `@yishan/core-system-api`（system 开放能力：`seedModuleMenus`）导入 Yishan 代码；不许 import `@/db`、`core/services`、`core/repositories` 等内部文件（`pnpm check:boundaries` 的 `module-imports-internal` 规则）。数据库句柄用 `app.drizzleDb`，当前用户用 `request.currentUser`（模块只应依赖 `id`）
 - ✔ 匿名接口在权限声明上写 `public: true`；权限分组展示名用 `registerPermissionGroups({ id: '<id>', label })` 自己登记
 - ✖ 不许在 `services/` / `module.ts` 直接写 SQL —— 走 `repositories/`
 - ✖ 不许改 Core 表（`sys_*` 全部不许动）
@@ -164,24 +164,24 @@ schema 生成、迁移、seed、reset 都不暴露 HTTP，全部走 CLI。理由
 | 生成迁移文件 | CLI（`npx drizzle-kit --config=... generate`） | 写源码，多人并发会冲突 |
 | 应用迁移 | CLI（`db:migrate:all` / `db:migrate:modules`，或 `db:seed` 走 onboard-modules） | 改表结构，受控流程 |
 | seed 数据 | CLI（同上，onboard-modules 第二步） | 写业务数据，受控流程 |
-| DROP / 重建 | CLI（`pnpm --filter yishan-api db:reset`，仅 dev） | 毁数据，必须显式 + NODE_ENV≠production |
+| DROP / 重建 | CLI（`pnpm --filter @yishan/demo-api db:reset`，仅 dev） | 毁数据，必须显式 + NODE_ENV≠production |
 
-dev-only 路由树（`core/routes/_dev/`）在 `NODE_ENV=production` 时整棵不挂载，但这一层只是兜底；
+dev-only 路由树（`packages/core/system-api/src/core/routes/_dev/`）在 `NODE_ENV=production` 时整棵不挂载，但这一层只是兜底；
 分类标准（什么走 HTTP、什么走 CLI）必须显式遵守，不能依赖 prod 自动屏蔽作为安全护栏。
 
 CI / 部署侧用：
 
 ```bash
-pnpm --filter yishan-api db:generate   # 改 Core schema 后生成迁移（Core drizzle/meta 已提交）
-pnpm --filter yishan-api db:migrate:all            # Core + 全部已打包模块，执行后核对
-pnpm --filter yishan-api db:migrations:bridge      # 旧版本已部署库：只读诊断 + 衔接计划（--apply 才写）
-pnpm --filter yishan-api db:seed       # 上线首次部署：migrate + seed + sync sys_module
-pnpm --filter yishan-api db:reset      # 仅 dev：重建数据库
+pnpm --filter @yishan/demo-api db:generate   # 改 Core schema 后生成迁移（Core drizzle/meta 已提交）
+pnpm --filter @yishan/demo-api db:migrate:all            # Core + 全部已打包模块，执行后核对
+pnpm --filter @yishan/demo-api db:migrations:bridge      # 旧版本已部署库：只读诊断 + 衔接计划（--apply 才写）
+pnpm --filter @yishan/demo-api db:seed       # 上线首次部署：migrate + seed + sync sys_module
+pnpm --filter @yishan/demo-api db:reset      # 仅 dev：重建数据库
 ```
 
 ## 完整 demo
 
-参考 `apps/yishan-api/src/modules/demo/`：
+参考 `apps/demo/api/src/modules/demo/`：
 - `GET  /api/demo/server-info` — 不读库，拿到当前进程信息
 - `GET  /api/demo/documents` — 读库
 - `POST /api/demo/documents` — 写库（TypeBox 校验）
@@ -191,10 +191,10 @@ pnpm --filter yishan-api db:reset      # 仅 dev：重建数据库
 每个后端模块对应一个 admin 子目录，路径硬约定：
 
 ```
-apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx
+apps/demo/admin/src/modules/<id>/pages/<page>/index.tsx
 ```
 
-`apps/yishan-admin/plugin.ts` 编译期扫描这个目录，生成 `moduleComponentsMap`：注册 key `./modules/<id>/<page>` → 真实 import `@/modules/<id>/pages/<page>`。
+`apps/demo/admin/plugin.ts` 编译期扫描这个目录，生成 `moduleComponentsMap`：注册 key `./modules/<id>/<page>` → 真实 import `@/modules/<id>/pages/<page>`。
 
 菜单 JSON 的 `component` 字段用虚拟路径，例如：
 
@@ -211,7 +211,7 @@ apps/yishan-admin/src/modules/<id>/pages/<page>/index.tsx
 }
 ```
 
-页面写法参考 `apps/yishan-admin/src/modules/demo/pages/todos/index.tsx`：ProTable + ModalForm + Popconfirm 三件套。调用 `@/services/generated/<module>.ts` 里的 openapi 自动生成函数，类型与后端 schema 同步。
+页面写法参考 `apps/demo/admin/src/modules/demo/pages/todos/index.tsx`：ProTable + ModalForm + Popconfirm 三件套。调用 `@/services/generated/<module>.ts` 里的 openapi 自动生成函数，类型与后端 schema 同步。
 
 **关键点**：
 - 虚拟路径 `./modules/<id>/<page>` 必须带 `./modules/` 前缀（demo 已用此写法；portal/shop 早期漏了导致 404，见 commit `0023d2f` 的修复）

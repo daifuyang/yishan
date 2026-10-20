@@ -1,5 +1,9 @@
 # Admin V2 产品化迁移报告
 
+> 本文档是一次性验收记录，记录的是**当时**执行的命令与结果。其中的
+> `scripts/verify-api-main.cjs` 已于 2026-10-20 移除，命令不再可执行；当前的产物自检由
+> `scripts/package-api.mjs` 与两条 CD 流水线承担。
+
 状态：**PASS WITH RESTRICTIONS**
 
 分支：`refactor/admin-v2-product-first`，基于 `refactor/api-v2-product-first` 的 `684e4f3`。本次未部署、未上传七牛、未写生产数据库、未推送或创建 PR。

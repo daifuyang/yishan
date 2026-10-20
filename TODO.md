@@ -77,17 +77,6 @@
 - **下一步**：刷新完成时重置计数（例如监听 `list.refreshing` 的 true→false 跳变），并让封顶之后的状态诚实起来：要么换一套
   更准确的文案（例如「已加载 N 条仍无匹配」），要么给一个真正可用的手动入口。一行代码加一个文案决定，不涉及设计问题。
 
-## 三个设置分子失去调用方
-
-- **涉及**：`apps/demo/app/src/components/molecules/{SettingCell,SettingGroup,DangerAction}/`；三者仍从
-  `src/components/molecules/index.ts:9-11,21-23` 再导出（值导出与类型导出各一组）。
-- **问题**：`mine` / `security` 迁到共享 `ManagementList` / `ManagementCell` / `ActionSheet` 之后，这三个组件的调用方归零。
-  全仓已核对：除各自的模块与 molecules barrel 外，源码、测试、浏览器脚本里都没有引用；本次新增的回归断言只覆盖
-  `mine` / `security` 两个页面不再引用它们，不构成新的调用方。barrel 对其它分子仍在服役，所以它们现在是「还导出着、
-  但没人用」的状态。
-- **下一步**：二选一并写清理由 —— 删掉这三个组件并同步去掉 barrel 的导出，或者保留（若仓库外的产品在消费这个 barrel，
-  它算是半个公开面）。选择本身还没定，属于一次独立判断，不该顺手在页面迁移里做掉。
-
 ## `FormError` 缺少尺寸/缩进变体
 
 - **涉及**：`apps/demo/app/src/components/management/FormLayout.tsx`（`FormError`）与其 `FormLayout.module.scss`。
@@ -118,14 +107,14 @@
   `bell` | `settings` | `info` | `logOut` | `chevronRight` | `lock` | `history` | `eye` | `eyeOff`），以及它们的消费方。
 - **问题**：两套图标词汇并存，谁也没去并掉另一套。management 这套缺 `user` / `bell` / `settings` / `info` / `logOut` /
   `history` 共六个语义，**legacy 那套六个都已经在那里实现了**；缺它们的页面只能取最近的名字糊上，于是 mine 退出登录
-  行被画成「上传」箭头，messages/about/个人资料同样借了不对应的形状 —— 用户看到的是个「妥协」，不是设计。复验消费方：
-  全仓 `from '@/components/icons'` 导入 `LineIcon` 的只有 `components/molecules/SettingCell.tsx:3` 与
-  `components/molecules/DangerAction.tsx:3` 两个文件（`components/organisms/StatCard/index.tsx:2` 走的是同一 barrel
-  但导入的是 `IconFont`，不是 `LineIcon`）。**这两个组件本身也是本次 1ad3b793 提交里被 orphan 掉的（见上一条 TODO）**，
-  将来若按那条把它们删掉，legacy 这套 `LineIcon` 很可能**完全没人用了**，到时候「删一套、把七个名字并进另一套」就是
-  顺理成章的下一步。
-- **下一步**：在**基础线**里挑一套作为规范，把缺的六个名字并过去、把另一套退役 —— 起手就是上面那个事实：legacy 的最后
-  两个 `LineIcon` 消费者本身也是待删分子。**这里不加图标，也不改两个组件。**
+  行被画成「上传」箭头，messages/about/个人资料同样借了不对应的形状 —— 用户看到的是个「妥协」，不是设计。
+- **2026-10-20 更新（前提已变）**：`SettingCell` / `DangerAction` 这两个最后的 `LineIcon` 消费者已随设置三件套一起删除
+  （见 [归档记录](docs/engineering/archive/todos/TODO-settings-molecules-orphaned.md)）。复验：`from '@/components/icons'`
+  现在只有 `components/organisms/StatCard/index.tsx:2` 一个导入者，而它导入的是 `IconFont`。
+  **legacy 的 `LineIcon` 现在零调用方** —— 于是「两套并一套」退化成一个更简单的问题：直接删掉 legacy 那套，
+  不需要把它的六个名字并过去（没有任何在用的页面在用它们画出来的妥协图形）。
+- **下一步**：删 `apps/demo/app/src/components/icons/LineIcon/` 并去掉 `components/icons/index.ts` 里它的
+  两行导出（`IconFont` 的导出保留，StatCard 在用）。**并入 management 那套的工作随之取消** —— 没有消费者。
 
 ## apps 工作台样式表的清理
 

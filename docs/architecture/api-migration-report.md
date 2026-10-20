@@ -1,5 +1,10 @@
 # API V2 迁移报告
 
+> 本文档是一次性验收记录，记录的是**当时**执行的命令与结果。其中的
+> `scripts/verify-api-main.cjs` 与 `scripts/check-migrations.mjs` 已于 2026-10-20 随旧守卫脚本
+> 一并移除，命令不再可执行；当前的等价门禁是 `pnpm check:boundaries` + `pnpm check:migrations`，
+> 产物自检由 `scripts/package-api.mjs` 与两条 CD 流水线承担。
+
 ## 结论
 
 **PASS WITH RESTRICTIONS**。四个 Core Package 与 Demo 产品已完成真实迁移，旧 API 实现移除。已安装的 demo、portal、shop 与 System 完成编译、认证/RBAC、模块启停、隔离 MySQL、OpenAPI、双实例和独立生产产物验证。CRM 保留代码与测试，默认不安装，与迁移前相同；其既有历史迁移不能在空库完整执行，因此不能报告所有业务模块的数据库安装验收通过。FC3 云端验证未执行。

@@ -1,4 +1,0 @@
-{
-  "description": "Known architecture boundary violations on main (P1-A baseline, 2026-10-08). New violations fail; fixed ones must be removed. Each entry names the phase expected to remove it.",
-  "violations": []
-}
