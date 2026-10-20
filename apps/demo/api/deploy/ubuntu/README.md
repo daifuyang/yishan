@@ -36,6 +36,21 @@
 
 `uploads` 放在 release 之外是刻意的：回滚或清理旧版本时不能丢用户文件。
 
+### 目标机上的文件与仓库的对应关系
+
+目标机上有三份"机器才有、仓库没有"的文件。它们现在**全部在仓库里**，目标机是它们的安装副本：
+
+| 目标机 | 仓库 | 说明 |
+|---|---|---|
+| `/opt/yishan/bin/deploy.sh` | `bin/deploy.sh` | 受控部署执行器，CI 唯一能跑的入口 |
+| `/opt/yishan/bin/release.sh` | `bin/release.sh` | 切软链 + 重启 + 健康检查 + 自动回滚 |
+| `/etc/systemd/system/yishan-api.service` | `templates/yishan-api.service` | systemd 单元 |
+| `/opt/yishan/shared/.env` | `templates/env.example` | 运行时环境变量（**只有模板进仓库**，真值留在机器上，0640 root:ubuntu） |
+
+> 曾经 `release.sh` 只存在于那台机器上，连同它的修复（健康检查竞态、保留回滚落点）
+> 一起躺在别人的分支里。现在主机上的文件与仓库逐字节一致，改法见下面「改了 deploy.sh 怎么办」
+> 同款的"装到机器上"流程。
+
 ## 发布
 
 **打包必须在 Linux 上做**（CI，或一台 Linux 构建机）。第 4 步在 Windows 上会直接失败：
@@ -179,6 +194,9 @@ ssh -i ~/workspace/certs/ubuntu_tencent.pem ubuntu@43.143.122.225 \
      sudo rm -f /tmp/deploy.sh"
 # 3. 同步 bump .github/workflows/yishan-api-cd-ubuntu.yml 里的 DEPLOY_SCRIPT_VERSION
 ```
+
+`release.sh` 的改动同理（`bin/release.sh` → `/opt/yishan/bin/release.sh`），只是它没有版本
+号校验，装完直接生效；systemd 单元改完还要 `sudo systemctl daemon-reload`。
 
 ### 换 deployer 密钥
 

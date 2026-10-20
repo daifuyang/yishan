@@ -1,0 +1,21 @@
+[Unit]
+Description=yishan demo API (serves /api and /admin)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/yishan/current
+EnvironmentFile=/opt/yishan/shared/.env
+ExecStart=/usr/local/lib/nodejs/node-v22.22.1-linux-x64/bin/node dist/main.js
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
