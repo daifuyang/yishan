@@ -74,11 +74,16 @@ node scripts/package-api.mjs --output ./out/function-code --admin ./apps/demo/ad
 推 `main` 会触发 `.github/workflows/yishan-api-cd-ubuntu.yml`，它替你做完上面全部步骤：
 
 ```
-ci-gate → build（Linux runner 打包）→ 传到七牛云 → 目标机拉取 + 解包 + 迁移 → release.sh → 公网冒烟
+build（Linux runner 打包）→ 传到七牛云 → 目标机拉取 + 解包 + 迁移 → release.sh → 公网冒烟
 ```
 
 几个和手工不同的点：
 
+- **不等 CI 绿。** FC 那条流水线会等 `yishan-fullstack-ci` 通过才发布；演示环境不等，
+  CI 只是并行的质量报表（deploy 作业里有一步只报告不拦截）。这是显式取舍：演示站
+  是给外部看的，上线时效比「代码必须先绿」更要紧。兜底是 `release.sh` 的健康检查与
+  自动回滚，外加「编译不过根本打不出包」——build 失败就不会发布。
+  要改回等 CI，把 deploy 作业的 `needs` 加回一个 `ci-gate` 作业即可。
 - **打包在 runner 上，不在本机。** runner 是 ubuntu-latest，天然满足 `assertPortableLink`；
   本机（Windows）打的包会被打包脚本自己挡下。目标机 3.6G 内存跑不动完整构建，所以构建
   也在 runner 上完成，只传产物。
@@ -124,14 +129,20 @@ ci-gate → build（Linux runner 打包）→ 传到七牛云 → 目标机拉�
 现有的 `ECS_DEPLOYER_SSH_KEY` 不能复用：它对应的远端 `tunnel-dsh` 是受限命令，只能做
 端口转发，scp 会被拒。
 
-重放某一次发布：Actions 上手动 `workflow_dispatch`，需要跳过 CI 门禁时勾 `skip_ci_gate`
-（刚手工跑过迁移可再勾 `skip_migrations`）。
+重放某一次发布：Actions 上手动 `workflow_dispatch`（刚手工跑过迁移可再勾 `skip_migrations`）。
 
-### 迭代发布时不要陪跑 CI
+### 一次发布要多久
 
-`ci-gate` 会轮询 `yishan-fullstack-ci` 在同一 commit 上的运行结论，超时 3000s。改部署脚本
-本身（解包/迁移/切换/冒烟）时这条等待是纯粹的浪费——你要验的是部署逻辑，不是产品代码。
-勾 `skip_ci_gate` 直接部署，零等待；等改完再推一个正常 commit 让 CI 兜底。
+推 `main` 到站点可访问，大约 **4 分钟**：
+
+| 阶段 | 耗时 |
+|---|---|
+| build：装依赖 → 编 Admin → 编 API → 打包 → 传七牛 | ~2.5 min |
+| deploy：目标机拉取 → 解包 → 迁移 → 切软链 → 冒烟 | ~1.5 min |
+
+CI 与发布**并行**跑，互不等待（CI 现在约 5 分钟，只作质量报表）。
+早先的版本要在 CI 上白等 8 分钟，而且产物是跨境 scp 传的（30 分钟），
+两处加起来要 45 分钟左右。
 
 ### 产物怎么传到目标机（七牛云中转）
 
