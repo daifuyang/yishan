@@ -21,6 +21,7 @@
 
 ```
 /opt/yishan/
+├── bin/deploy.sh                # 受控部署执行器（CI 唯一能跑的东西，root:root 0755）
 ├── bin/release.sh              # 切换 + 健康检查 + 自动回滚
 ├── current -> releases/<时间戳> # systemd 的 WorkingDirectory
 ├── releases/<时间戳>/           # 每次发布一个新目录，保留最近 3 个
@@ -98,8 +99,8 @@ build（Linux runner 打包）→ 传到七牛云 → 目标机拉取 + 解包 +
 - **迁移用的 node 版本是钉死的。** 目标机交互式 shell 走 nvm，PATH 上的 node 是 v24，
   而 systemd 单元 `ExecStart` 用的是 `/usr/local/lib/nodejs/node-v22.22.1-linux-x64/bin/node`
   （v22.22.1）。流水线显式解析绝对路径，让迁移和线上运行时跑在同一个 Node 上。
-- **`release.sh` 是用 `sudo` 调的。** 它内部要 `systemctl restart`，`ubuntu` 用户虽有
-  免密 sudo，但非 root 直接 systemctl 一样会被拒。
+- **`release.sh` 是由受控执行器以 root 跑的。** CI 不再直接 ssh 执行任意脚本，
+  详见下面「部署凭据与权限模型」。
 - **并发不打断。** `cancel-in-progress: false`：取消点不可控，可能正好落在「已解包、
   迁移跑一半、软链还没切」的窗口里，留下半成品目录和悬空迁移。
 - **冒烟打的是公网入口** `https://admin.zerocmf.com`：`/api/health`（含 `db.ok`）、
@@ -111,10 +112,10 @@ build（Linux runner 打包）→ 传到七牛云 → 目标机拉取 + 解包 +
 
 | 名称 | 类型 | 值 |
 |---|---|---|
-| `UBUNTU_DEPLOYER_SSH_KEY` | secret | 能执行 `release.sh` 的 deployer 私钥 |
+| `UBUNTU_DEPLOYER_SSH_KEY` | secret | **专用** deployer 私钥（不是管理员钥匙） |
 | `UBUNTU_HOST` | var | `43.143.122.225` |
-| `UBUNTU_USER` | var | `ubuntu` |
-| `UBUNTU_SSH_FINGERPRINT` | var | 目标机 ed25519 指纹；不配则退回 `ssh-keyscan` 直采 |
+| `UBUNTU_USER` | var | `deployer` |
+| `UBUNTU_SSH_FINGERPRINT` | var | 目标机 ed25519 指纹，**必填**（不填直接中止发布） |
 | `SMOKE_BASE_URL` | var | `https://admin.zerocmf.com` |
 
 产物中转用的七牛凭据是**仓库级**的（build 和 deploy 两个作业都要用）：
@@ -130,6 +131,86 @@ build（Linux runner 打包）→ 传到七牛云 → 目标机拉取 + 解包 +
 端口转发，scp 会被拒。
 
 重放某一次发布：Actions 上手动 `workflow_dispatch`（刚手工跑过迁移可再勾 `skip_migrations`）。
+
+## 部署凭据与权限模型
+
+CI 用的私钥一旦泄露，爆炸半径取决于**目标机上这把钥匙能干什么**。早先的形态是：CI 用的是
+`ubuntu` 这个日常管理账号的钥匙，而 `ubuntu` 有 `(ALL) NOPASSWD: ALL`——等于把 root
+交给了 GitHub secret。secret 又存在仓库级 / 无保护 environment 里，任何能改 workflow
+的人都能把它读出来。
+
+现在的模型是三层收口，**这把钥匙能做的最坏事 = 发布一个产物**：
+
+```
+CI ──ssh──▶ deployer 账号
+             ├─ authorized_keys: command="sudo -n /opt/yishan/bin/deploy.sh",restrict
+             │    ├─ command=  忽略客户端请求的任何命令，只跑这一个脚本
+             │    └─ restrict  关掉 pty / 端口转发 / agent 转发 / X11 / user rc
+             ├─ sudoers: deployer ALL=(root) NOPASSWD: /opt/yishan/bin/deploy.sh
+             │    └─ 只放行这一个命令，不是 ALL
+             └─ deploy.sh（root:root 0755，仓库里在 bin/deploy.sh）
+                  └─ 严格解析 SSH_ORIGINAL_COMMAND：白名单动词 + 参数逐个正则校验
+```
+
+- 客户端请求的内容通过 `SSH_ORIGINAL_COMMAND` 传过去（sudo 默认清空环境，所以
+  sudoers 里配了 `Defaults:deployer env_keep += "SSH_ORIGINAL_COMMAND"`）。
+- `deploy.sh` 只认 `fetch` / `unpack` / `migrate` / `release` / `cleanup` / `version`
+  六个动词，参数按正则校验（文件名、时间戳、sha、sha256、base64），**不做 eval**，
+  也不把参数拼回 shell 命令行。
+- 整个脚本以 root 跑，所以它能读 `shared/.env`、能 `systemctl restart`；但它只做
+  这六件事。
+- 每次部署在 `auth.log` 留一条 sudo 记录，脚本另外用 `logger -t yishan-deploy` 记审计日志。
+
+### 改了 deploy.sh 怎么办
+
+仓库里的 `bin/deploy.sh` 是**源**，目标机上的 `/opt/yishan/bin/deploy.sh` 是它的安装副本。
+改了源要同步装到机器上，并 bump 脚本里的 `VERSION` 与 workflow 里的
+`DEPLOY_SCRIPT_VERSION`——流水线每次发布前会核对版本，不一致直接中止（避免"workflow
+传了新参数、机器上还是旧脚本"这种糊涂错）。
+
+```bash
+# 1. 改仓库里的 apps/demo/api/deploy/ubuntu/bin/deploy.sh，并 bump VERSION
+# 2. 装到目标机
+scp -i ~/workspace/certs/ubuntu_tencent.pem \
+    apps/demo/api/deploy/ubuntu/bin/deploy.sh \
+    ubuntu@43.143.122.225:/tmp/deploy.sh
+ssh -i ~/workspace/certs/ubuntu_tencent.pem ubuntu@43.143.122.225 \
+    "sudo install -o root -g root -m 0755 /tmp/deploy.sh /opt/yishan/bin/deploy.sh && \
+     sudo rm -f /tmp/deploy.sh"
+# 3. 同步 bump .github/workflows/yishan-api-cd-ubuntu.yml 里的 DEPLOY_SCRIPT_VERSION
+```
+
+### 换 deployer 密钥
+
+```bash
+# 1. 本地生成
+ssh-keygen -t ed25519 -N "" -C "yishan-deployer@ci" -f ~/workspace/certs/yishan_deployer.pem
+# 2. 目标机换公钥（受限条目，注意 command= 和 restrict 都要写）
+ssh -i ~/workspace/certs/ubuntu_tencent.pem ubuntu@43.143.122.225 'sudo tee ...'
+# 3. 更新 GitHub environment secret
+gh secret set UBUNTU_DEPLOYER_SSH_KEY --env YISHAN_DEMO_UBUNTU \
+    --repo daifuyang/yishan < ~/workspace/certs/yishan_deployer.pem
+# 4. 旧私钥从本机删除、并从任何 authorized_keys 里摘掉
+```
+
+### 目标机的 sshd 加固
+
+`/etc/ssh/sshd_config.d/10-yishan-hardening.conf`：
+
+```ini
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitRootLogin no
+```
+
+**文件名里的 `10-` 不能改。** sshd 读 drop-in 按字典序，且是「首次出现即生效」——机器上
+自带一个 `50-cloud-init.conf`，里面写着 `PasswordAuthentication yes`。drop-in 叫
+`99-...` 的话排在它后面，那行 `no` 压根不生效，而 `sshd -T` 会照实显示
+`passwordauthentication yes`。改完记得 `sudo sshd -t && sudo systemctl reload ssh`，
+再用 `sudo sshd -T | grep -E '^(password|permitrootlogin)'` 确认生效值。
+
+> 这台机器在公网上，`auth.log` 里有过两千多条失败登录记录——有扫描器在挨个试。
+> 密钥登录留着，密码和 root 直登已经关掉。
 
 ### 一次发布要多久
 
