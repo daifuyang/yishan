@@ -1,4 +1,10 @@
 import {
+  registerNativeFormOperation,
+  registerNativeFormHandle,
+  peekNativeDraftLink,
+  publishNativeFormChange,
+} from '@yishan/core-admin/form-assistance';
+import {
   act,
   fireEvent,
   render,
@@ -1169,21 +1175,105 @@ test('部门仅名称草稿提交前将原生默认值真正同步到服务器�
   // 落在哪个表单上，之后 prepare() 再拿它和 snapshot().instanceId 比对。这里若沿用
   // fakeHandle 的 open（返回 user.create#1），等于「记的是 A、开着的是 B」，会正确地
   // 判成草稿已被放弃。
-  const departmentSnapshot = { target: 'department.create' as const, instanceId: 'department#defaults', revision: 1, fields: { name: '研发部', parentId: 0, status: '1', sort_order: 0 }, dirtyFields: [] };
+  const departmentSnapshot = {
+    target: 'department.create' as const,
+    instanceId: 'department#defaults',
+    revision: 1,
+    fields: { name: '研发部', parentId: 0, status: '1', sort_order: 0 },
+    dirtyFields: [],
+  };
   const department = {
     ...fakeHandle(),
     open: jest.fn(async () => ({ ...departmentSnapshot })),
     snapshot: jest.fn(() => ({ ...departmentSnapshot })),
   };
   const off = registerUserCreateFormHandle(department as never);
-  mockGetDraft.mockResolvedValue(draft({ action: 'department.create', formData: { name: '研发部' } }));
-  mockPatchDraft.mockResolvedValue(draft({ action: 'department.create', draftVersion: 5, formData: { name: '研发部', parentId: 0, status: '1', sort_order: 0 } }));
+  mockGetDraft.mockResolvedValue(
+    draft({ action: 'department.create', formData: { name: '研发部' } }),
+  );
+  mockPatchDraft.mockResolvedValue(
+    draft({
+      action: 'department.create',
+      draftVersion: 5,
+      formData: { name: '研发部', parentId: 0, status: '1', sort_order: 0 },
+    }),
+  );
   const { bound } = renderBridge();
-  await act(async () => { (bound.current as { onRestore: (id: string) => void }).onRestore('draft-1'); });
+  await act(async () => {
+    (bound.current as { onRestore: (id: string) => void }).onRestore('draft-1');
+  });
   await waitFor(() => expect(department.apply).toHaveBeenCalled());
   let submission: unknown;
-  await act(async () => { submission = await peekUserCreateDraftLink('department.create')?.prepare(); });
-  expect(mockPatchDraft).toHaveBeenCalledWith('draft-1', 4, { parentId: 0, status: '1', sort_order: 0 });
+  await act(async () => {
+    submission = await peekUserCreateDraftLink('department.create')?.prepare();
+  });
+  expect(mockPatchDraft).toHaveBeenCalledWith('draft-1', 4, {
+    parentId: 0,
+    status: '1',
+    sort_order: 0,
+  });
   expect(submission).toEqual({ draftId: 'draft-1', draftVersion: 5 });
   off();
+});
+
+test('第三个操作仅贡献元数据和原生句柄即可恢复草稿并同步提交版本', async () => {
+  const removeOperation = registerNativeFormOperation({
+    operationId: 'ticket.create',
+    route: '/ticket',
+    assistancePrompt: '完善工单',
+    fieldLabels: { subject: '主题' },
+  });
+  let fields: Record<string, unknown> = {};
+  let revision = 0;
+  const snapshot = () => ({
+    target: 'ticket.create',
+    instanceId: 'ticket#1',
+    revision,
+    fields,
+    dirtyFields: [],
+  });
+  const handle = {
+    snapshot,
+    open: async () => snapshot(),
+    apply: async (input: { fields: Record<string, unknown> }) => {
+      fields = { ...input.fields };
+      revision += 1;
+      return { applied: true, conflicts: [] };
+    },
+  };
+  const unregister = registerNativeFormHandle(handle, 42);
+  mockGetDraft.mockResolvedValue(
+    draft({
+      action: 'ticket.create',
+      module: 'ticket',
+      formData: { subject: '初始工单' },
+    }),
+  );
+  const { bound, view } = renderBridge();
+  try {
+    await act(async () => {
+      (
+        bound.current as { onUiRequest: (request: unknown) => void }
+      ).onUiRequest(liveRequest());
+    });
+    await waitFor(() => expect(fields.subject).toBe('初始工单'));
+    await waitFor(() =>
+      expect(peekNativeDraftLink('ticket.create')).not.toBeNull(),
+    );
+    fields = { subject: '人工修订' };
+    revision += 1;
+    act(() => publishNativeFormChange(snapshot()));
+    let submission: unknown;
+    await act(async () => {
+      submission = await peekNativeDraftLink('ticket.create')?.prepare();
+    });
+    expect(mockPatchDraft).toHaveBeenCalledWith('draft-1', 4, {
+      subject: '人工修订',
+    });
+    expect(submission).toEqual({ draftId: 'draft-1', draftVersion: 5 });
+  } finally {
+    view.unmount();
+    unregister();
+    removeOperation();
+  }
 });

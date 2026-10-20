@@ -7,16 +7,16 @@ import {
 import {
   APPLY_CONFLICT,
   subscribeNativeFormAssistance,
-  peekUserCreateFormHandle,
-  registerUserCreateDraftLink,
-  subscribeUserCreateFormChanges,
-  subscribeUserCreateFormHandle,
+  peekNativeFormHandle,
+  registerNativeDraftLink,
+  subscribeNativeFormChanges,
+  subscribeNativeFormHandles,
+  peekNativeFormOperation,
   subscribeUserFormOverlay,
-  type UserCreateDraftFields,
-  type UserCreateFormHandle,
-  type UserFormSnapshot,
-  type UserFormAssistanceTarget,
-} from '@yishan/core-system-admin/form-assistance';
+  type NativeFormFields,
+  type NativeFormHandle,
+  type NativeFormSnapshot,
+} from '@yishan/core-admin/form-assistance';
 import { Alert, Modal, Table, type TableColumnsType } from 'antd';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type {
@@ -54,25 +54,6 @@ const SYNC_DEBOUNCE_MS = 600;
 /** 等原生表单注册句柄的上限；用户没装/没挂载协作表单时不该无限等下去。 */
 const HANDLE_WAIT_MS = 3000;
 
-const FIELD_LABELS: Record<string, string> = {
-  username: '登录名称',
-  realName: '真实姓名',
-  nickname: '用户昵称',
-  email: '邮箱',
-  phone: '手机号码',
-  gender: '性别',
-  status: '状态',
-  deptIds: '归属部门',
-  roleIds: '角色',
-  birthDate: '出生日期',
-  name: '部门名称',
-  parentId: '上级部门',
-  sort_order: '排序',
-  description: '描述',
-  leaderId: '负责人',
-};
-
-const label = (key: string) => FIELD_LABELS[key] ?? key;
 const show = (value: unknown): string => {
   if (value === null || value === undefined || value === '') return '（空）';
   return Array.isArray(value) ? value.join('、') : String(value);
@@ -116,14 +97,14 @@ export function diffDraftFields(
 
 /** 等原生表单挂上协作句柄（切换路由后它才会注册）。 */
 function waitForHandle(
+  target: string,
   timeoutMs = HANDLE_WAIT_MS,
-  target: UserFormAssistanceTarget = 'user.create',
-): Promise<UserCreateFormHandle | null> {
-  const current = peekUserCreateFormHandle(target);
+): Promise<NativeFormHandle | null> {
+  const current = peekNativeFormHandle(target);
   if (current) return Promise.resolve(current);
   return new Promise((resolve) => {
     let settled = false;
-    const done = (value: UserCreateFormHandle | null) => {
+    const done = (value: NativeFormHandle | null) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -131,18 +112,19 @@ function waitForHandle(
       resolve(value);
     };
     const timer = setTimeout(() => done(null), timeoutMs);
-    const unsubscribe = subscribeUserCreateFormHandle(() =>
-      done(peekUserCreateFormHandle(target)),
-    );
+    const unsubscribe = subscribeNativeFormHandles(() => {
+      const handle = peekNativeFormHandle(target);
+      if (handle) done(handle);
+    });
   });
 }
 
 interface PendingConflict {
   draftId: string;
-  target: UserFormAssistanceTarget;
+  target: string;
   instanceId: string;
   baseRevision: number;
-  fields: Partial<UserCreateDraftFields>;
+  fields: Partial<NativeFormFields>;
   rows: { key: string; label: string; old: string; next: string }[];
 }
 
@@ -157,12 +139,12 @@ export function AiNativeFormBridge() {
   const activeRef = useRef<{
     draftId: string;
     draftVersion: number;
-    target?: UserFormAssistanceTarget;
+    target?: string;
   } | null>(null);
   /** 已经同步进草稿的字段值，用来算差。 */
   const syncedRef = useRef<Record<string, unknown>>({});
   /** 最近一次表单变化。只作为 `patchNow` 不可用时的兜底读数。 */
-  const latestRef = useRef<UserFormSnapshot | null>(null);
+  const latestRef = useRef<NativeFormSnapshot | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** 串行化 PATCH：两次同步并发会用同一个旧版本，服务端只会接受一次。 */
   const chainRef = useRef<Promise<unknown>>(Promise.resolve());
@@ -198,7 +180,12 @@ export function AiNativeFormBridge() {
   conversationRef.current = chat.activeId;
   const loadVersion = useRef(0);
   const currentHandle = () =>
-    peekUserCreateFormHandle(activeRef.current?.target);
+    peekNativeFormHandle(activeRef.current?.target ?? '');
+  const label = (key: string) =>
+    peekNativeFormOperation(activeRef.current?.target ?? '')?.fieldLabels[
+      key
+    ] ?? key;
+  const [linkTarget, setLinkTarget] = useState<string>();
   const [conflict, setConflict] = useState<PendingConflict | null>(null);
 
   /**
@@ -326,7 +313,8 @@ export function AiNativeFormBridge() {
 
   /** 用户手改 → 合并延迟后同步（设计 §6）。 */
   const onFormChange = useCallback(
-    (snapshot: UserFormSnapshot) => {
+    (snapshot: NativeFormSnapshot) => {
+      if (snapshot.target !== activeRef.current?.target) return;
       latestRef.current = snapshot;
       if (!activeRef.current || fillingDepthRef.current > 0) return;
       // **先撤掉上一枚定时器**：空差也必须撤。留着它就会在 600ms 后用上一枚
@@ -348,8 +336,8 @@ export function AiNativeFormBridge() {
   const reportApplyResult = useCallback(
     (
       draft: ActionDraft,
-      fields: Partial<UserCreateDraftFields>,
-      handle: UserCreateFormHandle,
+      fields: Partial<NativeFormFields>,
+      handle: NativeFormHandle,
       result: { applied: boolean; conflicts: readonly string[] },
     ) => {
       if (!result.applied) {
@@ -378,8 +366,8 @@ export function AiNativeFormBridge() {
           .map((key) => ({
             key,
             label: label(key),
-            old: show(current.fields[key as keyof UserCreateDraftFields]),
-            next: show(fields[key as keyof UserCreateDraftFields]),
+            old: show(current.fields[key as keyof NativeFormFields]),
+            next: show(fields[key as keyof NativeFormFields]),
           }));
         if (rows.length === 0) {
           setOutcome(draft.draftId, {
@@ -423,19 +411,25 @@ export function AiNativeFormBridge() {
    * 旧版本、已关闭与非目标表单，这里不重复判断，只把它返回的冲突翻译成给用户的话。
    */
   const applyDraft = useCallback(
-    async (draft: ActionDraft, handle: UserCreateFormHandle) => {
+    async (draft: ActionDraft, handle: NativeFormHandle) => {
+      const epoch = epochRef.current;
+      const sequence = seqRef.current;
+      const valid = () =>
+        epoch === epochRef.current && sequence === seqRef.current;
       // 填表期间表单值是中间态，一律不参与同步（见 fillingDepthRef）。
       fillingDepthRef.current += 1;
       try {
         const opened = await handle.open();
+        if (!valid()) return;
         const snapshot = opened?.instanceId ? opened : handle.snapshot();
         assistedInstanceRef.current = snapshot.instanceId;
-        const fields = (draft.formData ?? {}) as Partial<UserCreateDraftFields>;
+        const fields = (draft.formData ?? {}) as Partial<NativeFormFields>;
         const result = await handle.apply({
           instanceId: snapshot.instanceId,
           baseRevision: snapshot.revision,
           fields,
         });
+        if (!valid()) return;
         if (result.applied) {
           // 记住这次协作落在哪个实例上：只有它还开着，才谈得上「继续同步」。
           assistedInstanceRef.current = snapshot.instanceId;
@@ -462,19 +456,6 @@ export function AiNativeFormBridge() {
     async (draftId: string, options: { manual: boolean }) => {
       // 用户主动恢复时 `activeRef` 可能还是空的（刷新后第一次点「继续填写」），
       // 因此这里不以它作为前置条件：草稿状态由下面读回来的服务器数据决定。
-      const existing = currentHandle();
-      if (
-        !options.manual &&
-        !assistedInstanceRef.current &&
-        existing?.snapshot().dirtyFields.length
-      ) {
-        setOutcome(draftId, {
-          status: 'blocked',
-          message:
-            '表单里还有你未保存的修改，已暂停自动填入。核对后点「继续填写」即可。',
-        });
-        return;
-      }
       const version = ++loadVersion.current;
       const owner = epochRef.current;
       const conversation = conversationRef.current;
@@ -500,12 +481,26 @@ export function AiNativeFormBridge() {
         });
         return;
       }
-      const target: UserFormAssistanceTarget =
-        draft.action === 'department.create'
-          ? 'department.create'
-          : 'user.create';
-      const route = AI_PREFILL_ROUTES[target];
-      let handle = peekUserCreateFormHandle(target);
+      const target = draft.action;
+      const route = peekNativeFormOperation(target)?.route;
+      if (activeRef.current?.draftId === draftId) {
+        activeRef.current.target = target;
+        setLinkTarget(target);
+      }
+      const existing = peekNativeFormHandle(target);
+      if (
+        !options.manual &&
+        !assistedInstanceRef.current &&
+        existing?.snapshot().dirtyFields.length
+      ) {
+        setOutcome(draftId, {
+          status: 'blocked',
+          message:
+            '表单里还有你未保存的修改，已暂停自动填入。核对后点「继续填写」即可。',
+        });
+        return;
+      }
+      let handle = peekNativeFormHandle(target);
 
       // 未保存的编辑先于任何导航判断：把用户从正在编辑的表单上导航走，
       // 等于用一次自动填入换掉他的输入。
@@ -525,10 +520,10 @@ export function AiNativeFormBridge() {
         }
       }
       if (!handle) {
-        if (history.location.pathname !== route) {
+        if (route && history.location.pathname !== route) {
           history.push(route);
         }
-        handle = await waitForHandle(HANDLE_WAIT_MS, target);
+        handle = await waitForHandle(target, HANDLE_WAIT_MS);
         if (!valid()) return;
       }
       if (!handle) {
@@ -558,6 +553,7 @@ export function AiNativeFormBridge() {
         draftVersion: draft.draftVersion,
         target,
       };
+      setLinkTarget(target);
       syncedRef.current = { ...(draft.formData ?? {}) };
       await applyDraft(draft, handle);
     },
@@ -621,9 +617,8 @@ export function AiNativeFormBridge() {
       subscribeNativeFormAssistance((target) => {
         chat.setViewMode('floating');
         chat.setDraft(
-          target === 'department.create'
-            ? '请帮助我完善当前新建部门表单'
-            : '请帮助我完善当前新建用户表单',
+          peekNativeFormOperation(target)?.assistancePrompt ??
+            '请帮助我完善当前表单',
         );
       }),
     [chat],
@@ -650,7 +645,7 @@ export function AiNativeFormBridge() {
     const handle = currentHandle();
     // 有协助中的草稿却拿不到打开的表单：**硬失败**，不降级成一次不带草稿关联的
     // 创建 —— 那会绕开服务端「同一草稿最多完成一次创建」的保证（设计 §11）。
-    if (!handle || !handle.snapshot().instanceId) {
+    if (!handle?.snapshot().instanceId) {
       throw new Error('草稿协作表单已不可用，本次未创建');
     }
     // 助手填过实例 A，而现在开着的是另一个实例：这次提交与那份草稿无关。
@@ -689,7 +684,7 @@ export function AiNativeFormBridge() {
         switchDraft();
         setOutcome(draft.draftId, {
           status: 'completed',
-          message: '用户已保存，用户创建成功。',
+          message: '已通过原生表单保存成功。',
         });
         return 'completed';
       }
@@ -726,30 +721,25 @@ export function AiNativeFormBridge() {
   const linkRef = useRef({ prepare, reconcile, complete });
   linkRef.current = { prepare, reconcile, complete };
   useEffect(() => {
-    const user = registerUserCreateDraftLink({
-      prepare: () =>
-        activeRef.current?.target === 'department.create'
-          ? Promise.resolve(null)
-          : linkRef.current.prepare(),
-      reconcile: () => linkRef.current.reconcile(),
-      complete: () => linkRef.current.complete(),
-    });
-    const department = registerUserCreateDraftLink(
+    if (!linkTarget) return;
+    return registerNativeDraftLink(
       {
         prepare: () =>
-          activeRef.current?.target === 'department.create'
+          activeRef.current?.target === linkTarget
             ? linkRef.current.prepare()
             : Promise.resolve(null),
-        reconcile: () => linkRef.current.reconcile(),
-        complete: () => linkRef.current.complete(),
+        reconcile: () =>
+          activeRef.current?.target === linkTarget
+            ? linkRef.current.reconcile()
+            : Promise.resolve('unknown'),
+        complete: () => {
+          if (activeRef.current?.target === linkTarget)
+            linkRef.current.complete();
+        },
       },
-      'department.create',
+      linkTarget,
     );
-    return () => {
-      user();
-      department();
-    };
-  }, []);
+  }, [linkTarget]);
 
   // 身份变了：丢掉上一个账号的协作目标（设计 §7）。
   useEffect(() => {
@@ -768,7 +758,7 @@ export function AiNativeFormBridge() {
   );
 
   // 表单变化 → 合并延迟同步。
-  useEffect(() => subscribeUserCreateFormChanges(onFormChange), [onFormChange]);
+  useEffect(() => subscribeNativeFormChanges(onFormChange), [onFormChange]);
 
   // 表单开着时全屏助手让位给浮窗（设计 §4）：同一份聊天状态，两种外层。
   useEffect(
@@ -796,7 +786,7 @@ export function AiNativeFormBridge() {
         const current = conflict;
         setConflict(null);
         if (!current) return;
-        const handle = peekUserCreateFormHandle(current.target);
+        const handle = peekNativeFormHandle(current.target);
         if (!handle) return;
         // 只授权用户**刚刚确认过的那些字段**，不是补丁的全部键。
         const result = await handle.apply({
@@ -821,7 +811,7 @@ export function AiNativeFormBridge() {
               }
             : {
                 status: 'notice',
-                message: '已填入新建用户表单，请核对后自行保存。',
+                message: '已填入原生表单，请核对后自行保存。',
               },
         );
       }}

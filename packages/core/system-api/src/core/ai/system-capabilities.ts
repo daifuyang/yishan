@@ -15,6 +15,7 @@ import { registerAiCapabilities, type AiCapability, type AiCapabilityContext, ty
 import { UserService } from '../services/user.service.js'
 import { RoleService } from '../services/role.service.js'
 import { DeptService } from '../services/dept.service.js'
+import { DepartmentCreationFormService } from '../services/department-creation-form.service.js'
 import { UserCreationFormService } from '../services/user-creation-form.service.js'
 import type { DeptCandidateNode } from '../services/user-creation-form.service.js'
 import type { UserCreationSubject } from '../services/user-creation-policy.js'
@@ -23,6 +24,8 @@ import { UserListQuerySchema, UserCreateDraftPartialSchema, UserCreateDraftField
 import { RoleListQuerySchema, type RoleListQuery } from '../schemas/role.js'
 import { DeptListQuerySchema, type DeptListQuery } from '../schemas/department.js'
 import { CreateDeptFieldsSchema } from '../schemas/department.js'
+
+import { userDraftAdapter, departmentDraftAdapter } from './draft-adapters.js'
 
 const SYSTEM_MODULE = 'system'
 
@@ -295,7 +298,13 @@ export const systemAiCapabilities: readonly AiCapability[] = [
   },
   ...userCreationReadCapabilities,
   {
+    name: 'get_department_create_form', moduleId: SYSTEM_MODULE, operationId: 'createDept', permissionCode: 'system:department:create', riskLevel: 'read', enabled: true,
+    description: '读取原生新增部门表单的同源字段与约束。', inputSchema: Type.Object({}, { additionalProperties: false }),
+    async execute() { return { data: DepartmentCreationFormService.getCreateForm(), mutated: false } },
+  },
+  {
     name: 'prepare_user_create',
+    draftAdapter: userDraftAdapter,
     description: '提取非敏感用户字段，打开原生新增用户表单供用户补齐和保存。允许信息不完整；密码必须由用户在原生表单输入。仅返回预填 JSON，不创建用户或草稿。',
     moduleId: SYSTEM_MODULE,
     operationId: 'createUser',
@@ -441,6 +450,7 @@ export const systemAiCapabilities: readonly AiCapability[] = [
   },
   {
     name: 'prepare_create_department',
+    draftAdapter: departmentDraftAdapter,
     description: '抽取部门字段并预填到「新增部门」表单。**不会创建部门**。缺少部门名时应追问用户。',
     moduleId: SYSTEM_MODULE,
     operationId: 'createDept',

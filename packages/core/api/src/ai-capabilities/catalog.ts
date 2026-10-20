@@ -9,6 +9,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { AiCapabilityCatalog, isModelInvocableRiskLevel, type AiCapability } from '../ai-capability-catalog'
 
 export type { AiCapability, AiCapabilityContext, AiCapabilityResult, AiRiskLevel } from '../ai-capability-catalog'
+export type { AiDraftAdapter, AiDraftForm, AiDraftSubject, AiDraftQuestion } from '../ai-capability-catalog'
 export { isModelInvocableRiskLevel } from '../ai-capability-catalog'
 
 const scope = new AsyncLocalStorage<AiCapabilityCatalog>()

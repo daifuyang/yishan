@@ -1,10 +1,16 @@
 import type {} from '../../../types/index';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Alert, Button } from 'antd';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import {
   APPLY_CONFLICT,
-  registerUserCreateFormHandle,
+  useAiForm,
   isCurrentUserCreateFormHandle,
   publishUserCreateFormChange,
   peekUserCreateDraftLink,
@@ -135,8 +141,8 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
   };
   const setOpenRef = useRef(setOpen);
   setOpenRef.current = setOpen;
-  useEffect(() => {
-    if (!assistEnabled) return;
+  const assistanceHandle = useMemo(() => {
+    if (!assistEnabled) return null;
     const handle: UserCreateFormHandle = {
       snapshot,
       open: async () => {
@@ -176,7 +182,15 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
         return { applied: true, conflicts: [] };
       },
     };
-    const unregister = registerUserCreateFormHandle(handle);
+    return handle;
+  }, [assistEnabled, snapshot, initialState?.currentUser?.id]);
+  useAiForm({
+    handle: assistanceHandle,
+    identity: initialState?.currentUser?.id,
+  });
+  useEffect(() => {
+    const handle = assistanceHandle;
+    if (!handle) return;
     const applyPrefill = async (request: AiPrefill) => {
       const opened = await handle.open();
       const fields = { ...request.fields };
@@ -212,13 +226,12 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
     consume();
     const unsubscribe = subscribeAiPrefill(consume);
     return () => {
-      unregister();
       unregisterPrefill();
       unsubscribe();
       generation.current += 1;
       openRef.current = false;
     };
-  }, [assistEnabled, snapshot, initialState?.currentUser?.id]);
+  }, [assistanceHandle]);
 
   useCoordinatedFormFocus(assistEnabled && isOpen);
   useEffect(

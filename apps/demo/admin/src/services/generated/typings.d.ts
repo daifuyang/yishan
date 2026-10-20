@@ -22,6 +22,11 @@ declare namespace API {
     draftId: string;
   };
 
+  type aiAnswerDraftQuestionParams = {
+    /** 草稿 ID */
+    draftId: string;
+  };
+
   type aiConversationsDeleteParams = {
     id: string;
   };
@@ -32,6 +37,12 @@ declare namespace API {
 
   type aiConversationsRenameParams = {
     id: string;
+  };
+
+  type aiDraftQuestionsParams = {
+    conversationId: string;
+    /** 草稿 ID */
+    draftId: string;
   };
 
   type deletePortalV1ArticlesIdParams = {

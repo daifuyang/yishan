@@ -14,7 +14,11 @@ import {
   Tag,
   Typography,
 } from 'antd';
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
+import { AiChatContext } from '../context/chatContext';
+import { AiQuestionCard } from './AiQuestionCard';
+import type { ActionDraft } from '../services/actionDraftService';
+import { peekNativeFormHandle, peekNativeFormOperation } from '@yishan/core-admin/form-assistance';
 import {
   AiFormAssistanceContext,
   type AiFormAssistanceValue,
@@ -308,7 +312,9 @@ function DraftResult({
   // draftId，`data` 是能力结果的权威位置 —— 只读顶层曾经读到 `''`，于是「继续填写」
   // 带着空 ID 去读草稿（`draftId must NOT have fewer than 1 characters`），
   // 顺带让所有回执按 `''` 查找而永远查不到。
-  const data = ((payload as { data?: unknown }).data ?? {}) as AnyRecord;
+  const chat = useContext(AiChatContext);
+  const [latest, setLatest] = useState<ActionDraft | null>(null);
+  const data = (latest ?? (payload as { data?: unknown }).data ?? {}) as AnyRecord;
   const draftId = String(
     data.draftId ?? renderPayload.draftId ?? payload.draftId ?? '',
   );
@@ -326,11 +332,24 @@ function DraftResult({
     <div>
       <Typography.Text strong>
         正在协助：
-        {data.action === 'department.create' ? '新建部门' : '新建用户'}
+        {peekNativeFormOperation(String(data.action))?.name ?? String(data.action ?? '业务表单')}
       </Typography.Text>
       <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
         信息已存在草稿里，助手不会替你保存：仍需你在表单里核对并点击「确定」。
       </Typography.Paragraph>
+      {chat?.activeId && draftId && !['completed', 'cancelled', 'expired', 'submitting'].includes(String(data.status)) && (
+        <AiQuestionCard
+          key={`${chat.identity}:${draftId}`}
+          draftId={draftId}
+          conversationId={chat.activeId}
+          draftVersion={Number(data.draftVersion) || 1}
+          beforeRequest={assist?.flush}
+          onAnswered={draft => {
+            setLatest(draft);
+            if (peekNativeFormHandle(draft.action)?.snapshot().instanceId) assist?.requestRestore(draftId);
+          }}
+        />
+      )}
       {askUser.length > 0 && (
         <Alert
           type="info"

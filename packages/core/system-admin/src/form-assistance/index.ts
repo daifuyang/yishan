@@ -105,204 +105,123 @@ export interface UserCreateFormHandle {
   ): Promise<{ applied: boolean; conflicts: readonly string[] }>;
 }
 
-interface Registration {
-  identity: string;
-  handle: UserCreateFormHandle;
-}
-
-const registrations = new Map<UserFormAssistanceTarget, Registration>();
-const listeners = new Set<() => void>();
-/** 前台目标变化（被编辑表单顶替 / 顶替者关掉）的订阅者。 */
-const targetListeners = new Set<(event: 'invalidated' | 'restored') => void>();
-
-function emit(): void {
-  for (const listener of [...listeners]) listener();
-}
-
-/**
- * 注册当前可协作的创建表单。返回注销函数；卸载时调用即可摘掉引用。
- *
- * `identity` 是当前登录身份（通常 `currentUser.id`）。身份变化时旧引用立即作废 ——
- * 否则切换账号后助手还能操作上一个账号的表单。
- */
+import {
+  registerNativeFormHandle,
+  clearNativeFormHandles,
+  peekNativeFormSource,
+  invalidateNativeFormHandle,
+  restoreNativeFormHandle,
+  subscribeNativeFormTarget,
+  isCurrentNativeFormHandle,
+  subscribeNativeFormHandles,
+  subscribeNativeFormChanges,
+  publishNativeFormChange,
+  registerNativeDraftLink,
+  peekNativeDraftLink,
+  registerNativeFormOperation,
+} from '@yishan/core-admin/form-assistance';
+export {
+  requestNativeFormAssistance,
+  subscribeNativeFormAssistance,
+  useAiForm,
+} from '@yishan/core-admin/form-assistance';
+export type {
+  NativeFormFields,
+  NativeFormSnapshot,
+  NativeFormHandle,
+} from '@yishan/core-admin/form-assistance';
+export type NativeFormTarget = string;
+registerNativeFormOperation({
+  name: '用户',
+  operationId: 'user.create',
+  route: '/system/user',
+  assistancePrompt: '请帮助我完善当前新建用户表单',
+  fieldLabels: {
+    username: '登录名称',
+    realName: '真实姓名',
+    nickname: '用户昵称',
+    email: '邮箱',
+    phone: '手机号码',
+    gender: '性别',
+    status: '状态',
+    deptIds: '归属部门',
+    roleIds: '角色',
+    birthDate: '出生日期',
+  },
+});
+registerNativeFormOperation({
+  name: '部门',
+  operationId: 'department.create',
+  route: '/system/department',
+  assistancePrompt: '请帮助我完善当前新建部门表单',
+  fieldLabels: {
+    name: '部门名称',
+    parentId: '上级部门',
+    status: '状态',
+    sort_order: '排序',
+    description: '描述',
+    leaderId: '负责人',
+  },
+});
 export function registerUserCreateFormHandle(
   handle: UserCreateFormHandle,
   identity: string | number = 'anonymous',
 ): () => void {
-  const next: Registration = { identity: String(identity), handle };
-  const target = handle.snapshot().target;
-  registrations.set(target, next);
-  emit();
-  return () => {
-    if (registrations.get(target)?.handle === handle) {
-      registrations.delete(target);
-      emit();
-    }
-  };
+  return registerNativeFormHandle(handle, identity);
 }
-
-/** 清空引用。登出/切换账号时必须调用。 */
-export function clearUserCreateFormHandle(): void {
-  if (!registrations.size) return;
-  registrations.clear();
-  emit();
-}
-
-/** 供 `useSyncExternalStore` 使用：快照必须稳定，不能每次新建对象。 */
+export const clearUserCreateFormHandle = clearNativeFormHandles;
 export function peekUserCreateFormHandle(
   target: UserFormAssistanceTarget = USER_FORM_ASSISTANCE_TARGET,
 ): UserCreateFormHandle | null {
-  return registrations.get(target)?.handle ?? null;
+  return peekNativeFormSource(target) as UserCreateFormHandle | null;
 }
-
-/**
- * 当「不是创建表单」的东西占据前台时，由表单内部调用以作废当前协作句柄。
- *
- * **只在打开那一刻调用**：创建表单可能仍旧开在底层，关掉顶替者之后它还是用户
- * 此刻唯一在看的目标，届时由 {@link restoreUserCreateFormHandle} 让它自己重新注册。
- */
 export function invalidateUserCreateFormHandle(reason: string): void {
-  // 目前只有一种原因（被编辑用户表单顶替），保留参数便于审计与后续扩展。
-  void reason;
-  registrations.delete(USER_FORM_ASSISTANCE_TARGET);
-  emit();
-  for (const listener of [...targetListeners]) listener('invalidated');
+  invalidateNativeFormHandle(USER_FORM_ASSISTANCE_TARGET, reason);
 }
-
-/**
- * 顶替创建表单的东西（编辑用户表单）关掉了。此时仍开着的创建表单会自己重新注册 ——
- * 注册 effect 的依赖是稳定的，没有这次通知它永远等不到「可以回来了」。
- */
 export function restoreUserCreateFormHandle(reason: string): void {
-  void reason;
-  for (const listener of [...targetListeners]) listener('restored');
+  restoreNativeFormHandle(USER_FORM_ASSISTANCE_TARGET, reason);
 }
-
-/** 订阅前台目标变化。创建表单用它在自己被顶替/被归还之间切换注册状态。 */
 export function subscribeUserCreateFormTarget(
   listener: (event: 'invalidated' | 'restored') => void,
 ): () => void {
-  targetListeners.add(listener);
-  return () => {
-    targetListeners.delete(listener);
-  };
+  return subscribeNativeFormTarget(USER_FORM_ASSISTANCE_TARGET, listener);
 }
-
-/**
- * 句柄是否仍是当前注册的那一个。
- *
- * 已经被顶替的旧句柄（例如编辑用户表单打开之前的创建句柄）必须停止接受补丁 ——
- * 它的表单可能还开在底层，但那已经不是用户此刻在看的目标。
- */
-export function isCurrentUserCreateFormHandle(
-  handle: UserCreateFormHandle,
-): boolean {
-  return registrations.get(handle.snapshot().target)?.handle === handle;
-}
-
-export function subscribeUserCreateFormHandle(
-  listener: () => void,
-): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-/* ============================================================================
- * 草稿联动（Task 9，设计 §6/§9/§10）
- *
- * 上面那个句柄刻意只有 `snapshot / open / apply`：**能读、能开、能填，不能提交**。
- * 但「用户边填边把非敏感字段同步回草稿」和「提交前锁定精确草稿版本」这两件事必然要
- * 有接缝，于是有**第二个**、同样没有业务能力的窄接口：
- *
- * - 变化订阅：表单每次可见值变化后**推**一份快照出去。产品侧据此合并延迟后 PATCH。
- *   推送的是快照，因此密码永远不在里面（`snapshot.fields` 已剔除）。
- * - 草稿链接：由**产品侧**注册，表单在人工「确定」里调用。它只有两个方法，
- *   `prepare()`（同步 + 返回精确版本）与 `reconcile()`（网络异常后**只读**查询草稿）。
- *   两者都不含「创建」这个动作：表单仍然用**自己的** `createUser`。
- * ==========================================================================*/
-
-/** 表单可见值变化时推给产品侧的非敏感快照。**永远不含 password。** */
+export const isCurrentUserCreateFormHandle = isCurrentNativeFormHandle;
+export const subscribeUserCreateFormHandle = subscribeNativeFormHandles;
 export type UserCreateFormChangeListener = (snapshot: UserFormSnapshot) => void;
-
-const changeListeners = new Set<UserCreateFormChangeListener>();
-
-/** 订阅表单变化。用于「手动修改按字段合并同步到草稿」（设计 §6）。 */
 export function subscribeUserCreateFormChanges(
   listener: UserCreateFormChangeListener,
 ): () => void {
-  changeListeners.add(listener);
-  return () => {
-    changeListeners.delete(listener);
-  };
+  return subscribeNativeFormChanges((snapshot) => {
+    if (
+      snapshot.target === 'user.create' ||
+      snapshot.target === 'department.create'
+    )
+      listener(snapshot as UserFormSnapshot);
+  });
 }
-
-/** 由 `UserForm` 调用：把一次变化后的快照推给订阅者。 */
-export function publishUserCreateFormChange(snapshot: UserFormSnapshot): void {
-  for (const listener of [...changeListeners]) listener(snapshot);
-}
-
-/** 提交时要携带的草稿关联。**不含任何字段值。** */
+export const publishUserCreateFormChange = publishNativeFormChange;
 export interface UserCreateDraftSubmission {
   draftId: string;
   draftVersion: number;
 }
-
-/**
- * 创建请求抛异常后的**只读**判断结果。
- *
- * `unknown` 覆盖「草稿仍在 submitting」与「查询本身也失败」两种情况：两种都**不允许**
- * 自动重发创建（设计 §11），用户看到的是「正在核对，请稍后刷新」。
- */
 export type UserCreateDraftReconcileResult = 'completed' | 'failed' | 'unknown';
-
 export interface UserCreateDraftLink {
-  /** 原生业务 API 已返回成功，仅同步显示回执。 */
   complete?(): void;
-  /**
-   * 人工点击「确定」后、表单校验通过后调用：把待同步的非敏感字段落地，并返回**锁定**
-   * 的精确 `{draftId, draftVersion}`。没有草稿时返回 `null`（普通创建，行为不变）。
-   *
-   * **不允许**在这里发起创建：这个方法只与草稿有关。
-   */
   prepare(): Promise<UserCreateDraftSubmission | null>;
-  /**
-   * 创建请求抛异常后调用，**只读**查询草稿当前状态。
-   *
-   * 客户端的 `confirmed` 不是授权证明，同理「重试一次」也不是幂等策略：真正的幂等由
-   * 服务端事务保证（设计 §11），这里只是把结果如实显示给用户。
-   */
   reconcile(): Promise<UserCreateDraftReconcileResult>;
 }
-
-const draftLinks = new Map<UserFormAssistanceTarget, UserCreateDraftLink>();
-
-/**
- * 注册草稿链接。**没有草稿时不必注册** —— `peekUserCreateDraftLink()` 返回 `null` 时
- * 表单走的是与从前完全一致的普通创建路径。
- */
 export function registerUserCreateDraftLink(
   link: UserCreateDraftLink,
   target: UserFormAssistanceTarget = USER_FORM_ASSISTANCE_TARGET,
 ): () => void {
-  draftLinks.set(target, link);
-  return () => {
-    if (draftLinks.get(target) === link) draftLinks.delete(target);
-  };
+  return registerNativeDraftLink(link, target);
 }
-
-/** 供 `UserForm` 在人工提交里读取。`null` 表示这次是与草稿无关的普通创建。 */
 export function peekUserCreateDraftLink(
   target: UserFormAssistanceTarget = USER_FORM_ASSISTANCE_TARGET,
 ): UserCreateDraftLink | null {
-  return draftLinks.get(target) ?? null;
+  return peekNativeDraftLink(target);
 }
-
-/**
- * 浮层/焦点协作（设计 §4）。与上面的补丁契约同属公开接缝，但**不含任何业务数据**：
- * 只有业务浮层是否开着、助手面板的 DOM 在哪、焦点该还给谁。
- */
 export {
   isEventInsideAssistant,
   notifyUserFormOverlay,
@@ -316,26 +235,3 @@ export {
   useCoordinatedFormFocus,
   type UserFormOverlayInfo,
 } from './overlay';
-
-const assistanceListeners = new Set<
-  (target: UserFormAssistanceTarget) => void
->();
-export function requestNativeFormAssistance(
-  target: UserFormAssistanceTarget,
-): void {
-  for (const listener of assistanceListeners) listener(target);
-}
-export function subscribeNativeFormAssistance(
-  listener: (target: UserFormAssistanceTarget) => void,
-): () => void {
-  assistanceListeners.add(listener);
-  return () => {
-    assistanceListeners.delete(listener);
-  };
-}
-
-/** 操作中性名称；旧 UserCreate 名称保留兼容已有调用方。 */
-export type NativeFormTarget = UserFormAssistanceTarget;
-export type NativeFormFields = UserCreateDraftFields;
-export type NativeFormSnapshot = UserFormSnapshot;
-export type NativeFormHandle = UserCreateFormHandle;

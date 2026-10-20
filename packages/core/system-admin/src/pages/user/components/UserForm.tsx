@@ -35,10 +35,9 @@ import {
   notifyUserFormOverlay,
   peekUserCreateDraftLink,
   publishUserCreateFormChange,
-  registerUserCreateFormHandle,
+  useAiForm,
   registerUserFormOverlay,
   restoreUserCreateFormHandle,
-  subscribeUserCreateFormTarget,
   useCoordinatedFormFocus,
   USER_FORM_ASSISTANCE_TARGET,
   type UserCreateDraftFields,
@@ -430,8 +429,8 @@ const UserForm: React.FC<UserFormProps> = ({
   );
 
   // ---- 协作契约注册：挂载即注册，卸载即摘除（身份变化时引用自动作废） ----
-  useEffect(() => {
-    if (!assistEnabled) return;
+  const assistanceHandle = useMemo(() => {
+    if (!assistEnabled) return null;
     const handle = {
       snapshot: buildSnapshot,
       open: async () => {
@@ -476,7 +475,6 @@ const UserForm: React.FC<UserFormProps> = ({
           createFormRef.current?.editableFields ?? fallbackEditableFields,
         );
         const authorized = new Set(input.authorizedFields ?? []);
-        const current = draftFields();
         const provenance = provenanceRef.current;
         const accepted: Record<string, unknown> = {};
         const conflicts: string[] = [];
@@ -512,18 +510,7 @@ const UserForm: React.FC<UserFormProps> = ({
         };
       },
     };
-    const unsubscribe = registerUserCreateFormHandle(handle, identity);
-    // 编辑表单关掉后创建表单要能**自己回来**：注册 effect 的依赖稳定，
-    // 没有这次通知它永远等不到恢复时机。
-    const unsubscribeTarget = subscribeUserCreateFormTarget((event) => {
-      if (event !== 'restored') return;
-      if (!assistEnabled || !openRef.current) return;
-      registerUserCreateFormHandle(handle, identity);
-    });
-    return () => {
-      unsubscribeTarget();
-      unsubscribe();
-    };
+    return handle;
   }, [
     assistEnabled,
     buildSnapshot,
@@ -533,6 +520,13 @@ const UserForm: React.FC<UserFormProps> = ({
     setOpen,
     writeFields,
   ]);
+
+  const shouldRestoreAssistance = useCallback(() => openRef.current, []);
+  useAiForm({
+    handle: assistanceHandle,
+    identity,
+    shouldRestore: shouldRestoreAssistance,
+  });
 
   // ---- 浮层 / 焦点协作（设计 §4）：只声明状态，不给助手任何业务能力 ----
   // 读取器读取最新开关与焦点目标，因此表单每次开合不必反推通知助手；

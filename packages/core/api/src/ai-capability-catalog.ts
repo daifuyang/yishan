@@ -23,8 +23,8 @@ export type AiRiskLevel =
   /** 触及敏感数据或不可逆操作 */
   | 'sensitive'
 
-import type { AiCapabilityContext, AiCapabilityResult } from '@yishan/core-contracts'
-export type { AiCapabilityContext, AiCapabilityResult } from '@yishan/core-contracts'
+import type { AiCapabilityContext, AiCapabilityResult, AiDraftAdapter } from '@yishan/core-contracts'
+export type { AiCapabilityContext, AiCapabilityResult, AiDraftAdapter, AiDraftForm, AiDraftSubject, AiDraftQuestion } from '@yishan/core-contracts'
 
 /**
  * 一项 AI 能力。
@@ -34,6 +34,7 @@ export type { AiCapabilityContext, AiCapabilityResult } from '@yishan/core-contr
  * 不能因为「列表里没给模型看这个工具」就认为它安全。
  */
 export interface AiCapability {
+  readonly draftAdapter?: AiDraftAdapter
   readonly operation?: {
     readonly id: string
     readonly name: string

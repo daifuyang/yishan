@@ -213,8 +213,8 @@ export async function aiActionDraftList(
         draftId: string;
         ownerId: number;
         conversationId: string;
-        module: "system";
-        action: "user.create" | "department.create";
+        module: string;
+        action: string;
         schemaVersion: number;
         formData: Record<string, any>;
         missingFields: {
@@ -259,8 +259,8 @@ export async function aiActionDraftCreate(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.aiActionDraftCreateParams,
   body: {
-    module: "system";
-    action: "user.create" | "department.create";
+    module: string;
+    action: string;
     formData: Record<string, any>;
     schemaVersion?: number;
   },
@@ -276,8 +276,8 @@ export async function aiActionDraftCreate(
       draftId: string;
       ownerId: number;
       conversationId: string;
-      module: "system";
-      action: "user.create" | "department.create";
+      module: string;
+      action: string;
       schemaVersion: number;
       formData: Record<string, any>;
       missingFields: {
@@ -336,8 +336,8 @@ export async function aiActionDraftDetail(
       draftId: string;
       ownerId: number;
       conversationId: string;
-      module: "system";
-      action: "user.create" | "department.create";
+      module: string;
+      action: string;
       schemaVersion: number;
       formData: Record<string, any>;
       missingFields: {
@@ -396,8 +396,8 @@ export async function aiActionDraftPatch(
       draftId: string;
       ownerId: number;
       conversationId: string;
-      module: "system";
-      action: "user.create" | "department.create";
+      module: string;
+      action: string;
       schemaVersion: number;
       formData: Record<string, any>;
       missingFields: {
@@ -457,6 +457,106 @@ export async function aiActionDraftCancel(
     timestamp: string;
     data: { ok: boolean };
   }>(`/api/ai/v1/drafts/${param0}/cancel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    params: { ...queryParams },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 读取草稿待回答问题 GET /api/ai/v1/drafts/${param0}/questions */
+export async function aiDraftQuestions(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.aiDraftQuestionsParams,
+  options?: { [key: string]: any }
+) {
+  const { draftId: param0, ...queryParams } = params;
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    timestamp: string;
+    data: {
+      questions: {
+        questionId: string;
+        draftId: string;
+        draftVersion: number;
+        field: string;
+        title: string;
+        multiple: boolean;
+        allowEmpty: boolean;
+        truncated: boolean;
+        options: { value: number; label: string; description?: string }[];
+      }[];
+    };
+  }>(`/api/ai/v1/drafts/${param0}/questions`, {
+    method: "GET",
+    params: {
+      ...queryParams,
+    },
+    ...(options || {}),
+  });
+}
+
+/** 回答问题并更新草稿 POST /api/ai/v1/drafts/${param0}/questions/answer */
+export async function aiAnswerDraftQuestion(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.aiAnswerDraftQuestionParams,
+  body: {
+    conversationId: string;
+    questionId: string;
+    draftVersion: number;
+    values: number[];
+  },
+  options?: { [key: string]: any }
+) {
+  const { draftId: param0, ...queryParams } = params;
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    timestamp: string;
+    data: {
+      draftId: string;
+      ownerId: number;
+      conversationId: string;
+      module: string;
+      action: string;
+      schemaVersion: number;
+      formData: Record<string, any>;
+      missingFields: {
+        name: string;
+        label: string;
+        required: boolean;
+        sensitive: boolean;
+        mustCompleteInForm: boolean;
+      }[];
+      validationErrors: {
+        field: string;
+        label: string;
+        code: string;
+        message: string;
+      }[];
+      draftVersion: number;
+      status:
+        | "collecting"
+        | "ready"
+        | "previewing"
+        | "submitting"
+        | "completed"
+        | "failed"
+        | "cancelled"
+        | "expired";
+      resultRef: { targetType: string; targetId: string } | null;
+      failureReason: string | null;
+      createdAt: string;
+      updatedAt: string;
+      expiresAt: string;
+    };
+  }>(`/api/ai/v1/drafts/${param0}/questions/answer`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

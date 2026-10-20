@@ -27,7 +27,8 @@
       "types": "./build/openapi.d.cts",
       "default": "./build/openapi.cjs"
     },
-    "./menu/availability": "./src/menu/availability.ts"
+    "./menu/availability": "./src/menu/availability.ts",
+    "./form-assistance": "./src/formAssistance.ts"
   },
   "files": [
     "src",

@@ -63,7 +63,48 @@ export interface AiCapabilityResult {
   readonly mutated?: boolean
 }
 
+export interface AiDraftSubject {
+  actorId: number
+  tokenScope?: readonly string[]
+}
+
+export interface AiDraftForm {
+  schemaVersion: number
+  fields: { name: string; label: string; required: boolean; sensitive: boolean; selector: string; constraints: Record<string, unknown> }[]
+  defaults: Record<string, unknown>
+  editableFields: string[]
+  missingFields: { name: string; label: string; required: boolean; sensitive: boolean; mustCompleteInForm: true }[]
+}
+
+export interface AiDraftQuestion {
+  field: string
+  title: string
+  multiple: boolean
+  options: readonly { value: number; label: string; description?: string }[]
+  allowEmpty?: boolean
+  truncated?: boolean
+}
+
+/** Business-owned metadata and authorization; registration never grants permission. */
+export interface AiDraftAdapter {
+  action: string
+  moduleId: string
+  name: string
+  prepareCapabilityName: string
+  legacyPrepareCapabilityNames?: readonly string[]
+  operationId: string
+  permissionCode: string
+  describeCapability?: string
+  references?: Readonly<Record<string, string>>
+  questionFields?: readonly string[]
+  fieldSchemas: Readonly<Record<string, Readonly<Record<string, unknown>>>>
+  form(): AiDraftForm
+  authorize(subject: AiDraftSubject, fields: Record<string, unknown>): Promise<void>
+  questions?(subject: AiDraftSubject, fields: Record<string, unknown>): Promise<readonly AiDraftQuestion[]>
+}
+
 export interface AiCapabilityDeclaration {
+  readonly draftAdapter?: AiDraftAdapter
   readonly operation?: {
     readonly id: string
     readonly name: string

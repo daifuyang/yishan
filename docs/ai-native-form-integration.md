@@ -35,6 +35,26 @@ Bridge 监听原生表单变化并同步草稿；人工修改字段保留来源�
 
 目前原生目标路由与处理器仍需显式接入，并非安装任意页面即可自动操作。用户和部门是两种不同字段结构的实际适配示例；后续模块复用 Runtime 和草稿状态机，仍需声明自己的安全业务语义和原生表单入口。
 
+### 业务草稿适配器
+
+`@yishan/core-contracts` 的 `AiDraftAdapter` 由业务能力的 `draftAdapter` 字段显式贡献。适配器提供 `action`、`moduleId`、原接口 `operationId`、准备能力名、权限码、`fieldSchemas`、`form()`、`authorize()` 和可选的 `questions()`。字段 Schema 必须取自原业务定义，敏感字段不在可编辑集合；授权调用原业务 Service。用户、部门实现位于 System API 的 `core/ai/draft-adapters.ts`。
+
+AI 从当前应用能力目录读取已注册适配器，生成准备能力并复用统一草稿状态机。新业务不再修改 `ActionDraftService` 的动作分支。正式业务提交仍须接入自身事务参与者；只注册适配器不会自动获得创建权限或提交实现。
+
+### 公共原生表单接口
+
+`@yishan/core-admin/form-assistance` 提供 `registerNativeFormOperation` 和 `useAiForm`。业务注册 `operationId`、名称、路由、字段标签及协作提示，再使用 `useAiForm({ handle, identity, enabled, shouldRestore })` 管理句柄生命周期。句柄只有 `snapshot()`、`open()`、`apply()`；原生表单负责实例标识、revision、人工修改来源、字段白名单与异步候选校验。通过 `publishNativeFormChange` 发布非敏感快照，提交前读取 `peekNativeDraftLink(operationId)`，调用 `prepare()` 后把精确草稿版本交给原 API。
+
+公共接口不接收提交函数。System Admin 的旧 UserCreate 命名导出保留兼容，内部委托同一注册中心；新增业务直接使用操作中性接口。
+
+### 结构化候选问询
+
+草稿卡片通过 `GET /api/ai/v1/drafts/:draftId/questions?conversationId=...` 读取最新问题。用户创建先确认归属部门，再按所选部门查询可授予角色；同名部门展示完整层级路径。空选择须点击确认，唯一候选也不自动选择。候选超过上限时明确提示在原生表单查询完整选项。
+
+答案通过 `POST /api/ai/v1/drafts/:draftId/questions/answer` 提交 `conversationId`、`questionId`、`draftVersion` 和数字 ID 数组 `values`。服务端核对当前用户、会话、草稿状态与版本，并重查业务授权和候选后 CAS 更新。重复的同一答案可回读紧邻版本结果；中间发生其他更新则拒绝。问题不拥有正式写入权限，也不把客户端传入的“确认”当成业务提交凭证。
+
+重放历史只读取最新问题，不自动提交。请求失败保留选择，旧问题可以重新读取。原生表单的待同步人工输入先落入草稿；答案保存后，已打开的原生表单通过现有桥接器读取最新版本，继续沿用人工字段冲突保护。
+
 ## 流式体验
 
 正文按真实增量流式渲染，前端平滑逐字展示；供应方返回 reasoning 时显示相应区域，工具进度来自真实执行。没有 reasoning 时不生成虚假的思考文字。停止、超时和失败保存已有消息状态，下一轮忽略未完成工具调用，避免无法继续对话。
