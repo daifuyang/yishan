@@ -1,8 +1,7 @@
+jest.mock('@public/images/yishan-logo.webp', () => 'yishan-logo');
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-jest.mock('@public/images/login-bg.png', () => 'login-bg');
-jest.mock('@public/images/login-brand.png', () => 'login-brand');
 const mockLogin = jest.fn();
 const mockToast = jest.fn();
 jest.mock('@umijs/max', () => ({
@@ -38,11 +37,11 @@ it.each([
 ])('%s 登录失败由表单展示一次，登录请求跳过全局错误处理', async (_label, setup) => {
   setup();
   render(React.createElement(Login));
-  fireEvent.change(screen.getByPlaceholderText('用户名'), { target: { value: 'admin' } });
-  fireEvent.change(screen.getByPlaceholderText('密码'), { target: { value: 'wrong-password' } });
-  fireEvent.click(screen.getByRole('button', { name: '立即登录' }));
+  fireEvent.change(screen.getByLabelText('账号'), { target: { value: 'admin' } });
+  fireEvent.change(screen.getByLabelText('密码'), { target: { value: 'wrong-password' } });
+  fireEvent.click(screen.getByRole('button', { name: /^登\s*录$/ }));
   await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('用户名或密码错误'));
   expect(mockLogin).toHaveBeenCalledWith({ username: 'admin', password: 'wrong-password', rememberMe: false }, { skipErrorHandler: true });
   expect(mockToast).not.toHaveBeenCalled();
-  expect(screen.getByPlaceholderText('密码')).toHaveProperty('value', 'wrong-password');
+  expect(screen.getByLabelText('密码')).toHaveProperty('value', 'wrong-password');
 });

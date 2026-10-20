@@ -1,161 +1,16 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import loginBgImage from '@public/images/login-bg.png';
-import loginBrandImage from '@public/images/login-brand.png';
+import logoSrc from '@public/images/yishan-logo.webp';
 import { FormattedMessage, useIntl, useModel } from '@umijs/max';
-import { Alert, App, Button, Checkbox, Form, Input } from 'antd';
-import { createStyles } from 'antd-style';
-import React, { useState } from 'react';
-import { flushSync } from 'react-dom';
+import { saveTokens } from '@yishan/core-admin/token';
 import {
   authGetCurrentUser,
   authLogin as userLogin,
 } from '@yishan/core-system-admin/services/auth';
-import { saveTokens } from '@yishan/core-admin/token';
-
-const useStyles = createStyles(({ css }) => {
-  return {
-    root: {
-      display: 'flex',
-      backgroundImage: `url('${loginBgImage}')`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      width: '100%',
-      height: '100vh',
-      '@media (max-width: 992px)': {
-        padding: '20px',
-      },
-      '@media (max-width: 768px)': {
-        padding: '16px',
-        alignItems: 'center',
-        justifyContent: 'center',
-      },
-    },
-    brand: {
-      backgroundImage: `url('${loginBrandImage}')`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
-      width: '56.67%',
-      height: '100%',
-      '@media (max-width: 1200px)': {
-        width: '50%',
-      },
-      '@media (max-width: 992px)': {
-        display: 'none',
-      },
-    },
-    loginWrap: {
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    loginCard: {
-      width: 'min(481px, 100%)',
-      backgroundColor: '#fff',
-      padding: '56px 48px 88px 48px',
-      borderRadius: '20px',
-      boxShadow:
-        ' 0px 0px 0px  rgba(0, 0, 0, 0.1), 0px 17px 36px  rgba(23, 57, 222, 0.25)',
-      '@media (max-height: 720px)': {
-        padding: '40px 40px 56px',
-      },
-      '@media (max-width: 768px)': {
-        padding: '28px 20px 32px',
-        borderRadius: '16px',
-      },
-    },
-    loginTitle: {
-      fontFamily: 'Noto Sans SC',
-      textAlign: 'center',
-      fontSize: 'clamp(28px, 4.5vw, 36px)',
-      fontWeight: 700,
-      color: '#000',
-      margin: 0,
-    },
-    loginSubTitle: {
-      fontFamily: 'Noto Sans SC',
-      textAlign: 'center',
-      marginTop: '12px',
-      fontSize: 'clamp(14px, 3.5vw, 16px)',
-      fontWeight: 400,
-      color: '#000',
-      margin: 0,
-    },
-    loginForm: {
-      marginTop: '40px',
-      '@media (max-height: 720px)': {
-        marginTop: '28px',
-      },
-      '@media (max-width: 768px)': {
-        marginTop: '28px',
-      },
-    },
-    loginFormItem: css`
-      background-color: rgba(231, 241, 253, 0.4);
-      &.ant-input-affix-wrapper > input.ant-input {
-        &::placeholder {
-          font-size: 18px;
-          color: rgba(4, 19, 74, 0.4);
-          font-family: 'Noto Sans SC';
-          font-weight: 400;
-        }
-        padding: 6px 8px;
-        font-size: 18px;
-        color: rgba(4, 19, 74, 0.4);
-        font-family: 'Noto Sans SC';
-        font-weight: 400;
-      }
-    `,
-    loginItemIcon: {
-      fontSize: '24px',
-      color: 'rgba(28, 53, 145, 0.6)',
-      '@media (max-width: 768px)': {
-        fontSize: '20px',
-      },
-    },
-    loginFormCheckBox: css`
-      & .ant-checkbox + span {
-        color: rgba(4, 19, 74, 0.4);
-        font-size: 18px;
-        font-weight: 400;
-      }
-      @media (max-width: 768px) {
-        & .ant-checkbox + span {
-          font-size: 15px;
-        }
-      }
-    `,
-    rememberItem: css`
-      margin-bottom: 24px;
-      @media (max-height: 720px) {
-        margin-bottom: 16px;
-      }
-      @media (max-width: 768px) {
-        margin-bottom: 16px;
-      }
-    `,
-    submitItem: css`
-      margin-bottom: 0;
-    `,
-    loginFormBtn: css`
-      &.ant-btn {
-        height: 56px;
-        padding: 0 16px;
-        font-size: 18px;
-        font-weight: 600;
-        border-radius: 8px;
-      }
-      @media (max-width: 768px) {
-        &.ant-btn {
-          height: 48px;
-          font-size: 16px;
-        }
-      }
-    `,
-  };
-});
+import { Alert, App, Button, Checkbox, Form, Input } from 'antd';
+import { Box, ChartNoAxesColumnIncreasing, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { flushSync } from 'react-dom';
+import styles from './index.less';
 
 const LoginMessage: React.FC<{
   content: string;
@@ -176,7 +31,7 @@ const Login: React.FC = () => {
   const [loginError, setLoginError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const { setInitialState } = useModel('@@initialState');
-  const { styles } = useStyles();
+
   const { message } = App.useApp();
   const intl = useIntl();
 
@@ -251,7 +106,7 @@ const Login: React.FC = () => {
 
     try {
       // 登录
-        const msg = await userLogin({ ...values }, { skipErrorHandler: true });
+      const msg = await userLogin({ ...values }, { skipErrorHandler: true });
 
       // 完全依赖API返回的success字段判断成功或失败
       if (msg.success) {
@@ -307,24 +162,67 @@ const Login: React.FC = () => {
     }
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return '上午好';
-    if (hour < 18) return '下午好';
-    return '晚上好';
-  };
-
-  const greeting = getGreeting();
-
   return (
     <div className={styles.root}>
-      <div className={styles.brand}></div>
+      <section className={styles.brand} aria-label="移山品牌">
+        <div className={styles.brandIdentity}>
+          <img src={logoSrc} alt="" className={styles.brandLogo} />
+          <span className={styles.brandName}>移山</span>
+        </div>
+        <div className={styles.brandCopy}>
+          <h2>
+            <span>移山</span> · 让组织
+            <br />
+            成就更大的可能
+          </h2>
+          <p>
+            连接人、数据与业务，
+            <br />
+            让每一个团队都能走得更远。
+          </p>
+        </div>
+        <div className={styles.capabilities}>
+          <div>
+            <Box aria-hidden />
+            <div>
+              <strong>高效协同</strong>
+              <small>打通信息与流程</small>
+            </div>
+          </div>
+          <div>
+            <ChartNoAxesColumnIncreasing aria-hidden />
+            <div>
+              <strong>数据驱动</strong>
+              <small>让决策更智能</small>
+            </div>
+          </div>
+          <div>
+            <ShieldCheck aria-hidden />
+            <div>
+              <strong>安全可靠</strong>
+              <small>企业级数据安全保障</small>
+            </div>
+          </div>
+        </div>
+      </section>
       <div className={styles.loginWrap}>
         <div className={styles.loginCard}>
-          <h1 className={styles.loginTitle}>欢迎登录系统</h1>
-          <p className={styles.loginSubTitle}> {greeting}!</p>
+          <div className={styles.mobileBrand}>
+            <div className={styles.brandIdentity}>
+              <img src={logoSrc} alt="" className={styles.brandLogo} />
+              <span className={styles.brandName}>移山</span>
+            </div>
+          </div>
+          <h1 className={styles.loginTitle}>欢迎使用移山</h1>
+          <p className={styles.loginSubTitle}>登录账号，继续访问工作台</p>
           <Form
-            onFinish={async (values: any) => {
+            layout="vertical"
+            requiredMark={false}
+            onFinish={async (values: {
+              username: string;
+              password: string;
+              remember?: boolean;
+            }) => {
               const { username, password, remember } = values || {};
               await handleSubmit({
                 username,
@@ -338,6 +236,7 @@ const Login: React.FC = () => {
             {loginError && <LoginMessage content={loginError} />}
             <Form.Item
               name="username"
+              label={<span className={styles.formLabel}>账号</span>}
               rules={[
                 {
                   required: true,
@@ -361,17 +260,21 @@ const Login: React.FC = () => {
               ]}
             >
               <Input
+                autoComplete="username"
                 className={styles.loginFormItem}
-                variant="filled"
+                classNames={{ input: styles.input }}
+                styles={{ input: { backgroundColor: 'transparent' } }}
+                variant="outlined"
                 placeholder={intl.formatMessage({
                   id: 'pages.login.username.placeholder',
-                  defaultMessage: '用户名',
+                  defaultMessage: '请输入账号',
                 })}
                 prefix={<UserOutlined className={styles.loginItemIcon} />}
               />
             </Form.Item>
             <Form.Item
               name="password"
+              label={<span className={styles.formLabel}>密码</span>}
               rules={[
                 {
                   required: true,
@@ -383,11 +286,14 @@ const Login: React.FC = () => {
               ]}
             >
               <Input.Password
+                autoComplete="current-password"
                 className={styles.loginFormItem}
-                variant="filled"
+                classNames={{ input: styles.input }}
+                styles={{ input: { backgroundColor: 'transparent' } }}
+                variant="outlined"
                 placeholder={intl.formatMessage({
                   id: 'pages.login.password.placeholder',
-                  defaultMessage: '密码',
+                  defaultMessage: '请输入密码',
                 })}
                 prefix={<LockOutlined className={styles.loginItemIcon} />}
               />
@@ -397,7 +303,7 @@ const Login: React.FC = () => {
               valuePropName="checked"
               className={styles.rememberItem}
             >
-              <Checkbox className={styles.loginFormCheckBox}>
+              <Checkbox style={{ color: '#5e6e91' }}>
                 <FormattedMessage
                   id="pages.login.rememberMe"
                   defaultMessage="自动登录"
@@ -412,7 +318,7 @@ const Login: React.FC = () => {
                 block
                 loading={loading}
               >
-                立即登录
+                登录
               </Button>
             </Form.Item>
           </Form>

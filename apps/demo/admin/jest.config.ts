@@ -8,6 +8,27 @@ export default async (): Promise<any> => {
   });
   return {
     ...config,
+    // Jest 只按默认扩展名表解析模块；public 下的图片靠真实文件存在即可被 jest.mock
+    // 替换，因此必须把 webp 等图片扩展名登记进来，否则 .webp 资源一律解析失败。
+    moduleFileExtensions: [
+      ...(config.moduleFileExtensions || [
+        'js',
+        'mjs',
+        'cjs',
+        'jsx',
+        'ts',
+        'tsx',
+        'json',
+        'node',
+      ]),
+      'png',
+      'jpg',
+      'jpeg',
+      'gif',
+      'webp',
+      'svg',
+      'avif',
+    ],
     testEnvironmentOptions: {
       ...(config?.testEnvironmentOptions || {}),
       url: 'http://localhost:8000',
