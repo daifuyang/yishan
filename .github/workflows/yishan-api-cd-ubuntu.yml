@@ -157,10 +157,15 @@ jobs:
       - name: Package standalone API artifact
         run: |
           set -euo pipefail
-          node scripts/package-api.mjs --output "$RUNNER_TEMP/yishan-api-artifact" --admin apps/demo/admin/dist
+          # 输出目录必须在 /tmp 下，**不能**用 $RUNNER_TEMP。pnpm deploy 内部把
+          # virtual store 的位置按相对路径从仓库根解析（会打印成
+          # `../../_temp/...`），RUNNER_TEMP = /home/runner/work/_temp 这么放会
+          # 被拼成 /_temp，runner 用户无权创建，直接 EACCES 退出 243。
+          # /tmp 是 yishan-fullstack-ci 里同一个脚本已经在用的路径。
+          node scripts/package-api.mjs --output /tmp/yishan-api-artifact --admin apps/demo/admin/dist
           # 打成单顶层目录，目标机解包时 --strip-components=1 即可。
           tar -czf "$RUNNER_TEMP/yishan-api-${{ github.sha }}.tar.gz" \
-            -C "$RUNNER_TEMP" yishan-api-artifact
+            -C /tmp yishan-api-artifact
 
       - uses: actions/upload-artifact@v4
         with:
