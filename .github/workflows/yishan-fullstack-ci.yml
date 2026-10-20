@@ -296,14 +296,6 @@ jobs:
           YISHAN_TEST_MYSQL_PASSWORD: root
         run: pnpm test:integration
 
-      - name: Upload API dist for the browser and packaging jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: api-dist
-          path: apps/demo/api/dist
-          retention-days: 1
-          include-hidden-files: false
-
   mobile:
     name: mobile + docs
     runs-on: ubuntu-latest
@@ -353,12 +345,13 @@ jobs:
 
   # Playwright 与 verify-admin-reuse 都需要 admin **和** api 两个 dist：e2e 的
   # product-runtime 直接 require('../api/dist/app.js') 并读 admin/dist/index.html。
-  # 所以这两步只能在两条线都产出产物之后跑，不能再往前并。
+  # api 那半边在本 job 里现编（十几秒，见下面的注释），贵的那半边 admin/dist 从
+  # admin job 传过来 —— 所以这一步仍然要等 admin 编完，没法再往前并。
   browser:
     name: browser (playwright + admin reuse)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: [admin, api]
+    needs: [admin]
     services:
       mysql:
         image: mysql:8.4
@@ -409,15 +402,18 @@ jobs:
           pnpm --filter @yishan/tiptap build
           pnpm --filter @yishan/tiptap verify:package
 
-      - name: Download Admin and API dist
+      # e2e 的 product-runtime 用 createRequire(api/dist/app.js) 去 require
+      # '@yishan/core-database'，解析路径穿过 apps/demo/api/node_modules 上的 workspace
+      # 链接，落点还是 packages/core/database/dist —— 只搬 api/dist 是不够的，core 各包的
+      # dist 也得在这台 runner 上编出来。十几秒的事，比多传一份产物简单。
+      - name: API dependencies and TypeScript build
+        run: pnpm -r --filter @yishan/demo-api... build
+
+      - name: Download Admin dist
         uses: actions/download-artifact@v4
         with:
           name: admin-dist
           path: apps/demo/admin/dist
-      - uses: actions/download-artifact@v4
-        with:
-          name: api-dist
-          path: apps/demo/api/dist
 
       - name: Install Chromium for isolated Admin verification
         run: pnpm --filter @yishan/demo-admin exec playwright install --with-deps chromium
