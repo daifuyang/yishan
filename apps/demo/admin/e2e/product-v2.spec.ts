@@ -41,17 +41,18 @@ async function login(
 ) {
   await page.goto(`${product.origin}/admin/user/login`);
   await expect(
-    page.getByRole('heading', { name: '欢迎登录系统' }),
+    page.getByRole('heading', { name: '欢迎使用移山' }),
   ).toBeVisible();
-  await page.getByPlaceholder('用户名', { exact: true }).fill(account.username);
-  await page.getByPlaceholder('密码', { exact: true }).fill(account.password);
+  await page.getByPlaceholder('请输入账号', { exact: true }).fill(account.username);
+  await page.getByPlaceholder('请输入密码', { exact: true }).fill(account.password);
   const response = page.waitForResponse(
     (response) => new URL(response.url()).pathname === '/api/v1/auth/login',
   );
-  await page.getByRole('button', { name: '立即登录', exact: true }).click();
+  // antd 会在两个汉字之间插空格，所以要容忍 "登 录"。
+  await page.getByRole('button', { name: /^登\s*录$/ }).click();
   const status = (await response).status();
   if (status !== 200) {
-    await page.getByPlaceholder('密码', { exact: true }).fill('');
+    await page.getByPlaceholder('请输入密码', { exact: true }).fill('');
   }
   expect(status).toBe(200);
   await expect(page).not.toHaveURL(/\/user\/login/);
@@ -174,7 +175,7 @@ test('anonymous direct business navigation returns to the visible login form', a
   await page.goto(`${product.origin}/admin/portal/categories`);
   await expect(page).toHaveURL(/\/admin\/user\/login/);
   await expect(
-    page.getByRole('heading', { name: '欢迎登录系统' }),
+    page.getByRole('heading', { name: '欢迎使用移山' }),
   ).toBeVisible();
   await expect(page.getByText('分类列表', { exact: true })).toHaveCount(0);
 });
