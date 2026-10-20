@@ -88,6 +88,15 @@ Routes → services → repositories → schema remains the business layer direc
 Only repositories execute SQL; modules cannot access private System repos or sys_* tables.
 Public userDirectory and controlled user extensions support independent product profile tables.
 
+**日期字段只有一种形状**：系统内部一律 `YYYY-MM-DD`（DB `date` 列、HTTP 契约
+`format: "date"`、前端 pro-field 序列化都是这个形式）。形状由生产者决定时
+（模型给 ISO、原生表单回填也是 ISO），在**边界**归一：草稿写入端折一次，
+草稿与请求体比较前各折一次（存量草稿因此仍能提交），落库按**本地日历日**构造
+`Date`（`new Date('1996-10-02')` 是 UTC 午夜，负时区会差一天）。归一实现在
+`packages/core/system-api/src/core/services/draft-field-format.ts`，字段是否算日期
+字段从表单契约派生，不另抄清单。详见
+[原生表单接入 AI 的约定](docs/ai-native-form-integration.md)。
+
 ## Architecture: admin / api / shared
 
 - **Admin V2** uses `@yishan/core-admin` for runtime composition and the public `@yishan/core-admin/umi-plugin` build plugin. Demo owns the product adapter in `plugin.ts`; `@yishan/core-system-admin` contributes system management pages. `apps/demo/admin/config/routes.ts` is intentionally lean — menu structure is **driven by backend `sys_menu.component`** (post July 2026 refactor; see root `TODO.md`).
@@ -96,6 +105,9 @@ Public userDirectory and controlled user extensions support independent product 
 - **JWT secret gate**: production refuses to boot with a default/weak `JWT_SECRET` (see System API `src/core/plugins/external/jwt-secret-validator.ts`). Dev/CI only warn.
 - **Auth bypass codes**: `BYPASS_CODES` in admin allows local testing of specific routes; `auth:logout` was removed (bugfix in July 2026) — don't add it back.
 - **TipTap**: builds to `dist/` with both CJS and ESM; admin imports it as `workspace:^` and **must rebuild tiptap after tipTap source changes** before re-running admin.
+- **Static assets are precompressed at build time**: `apps/demo/admin/scripts/precompress.mjs` runs after `max build` and writes `.br` (quality 5) + `.gz` siblings next to every compressible file ≥1 KB. The Fastify static plugin consumes them via `preCompressed: true` (`packages/core/system-api/src/core/plugins/external/static.ts`); nginx's equivalent is `gzip_static` / `brotli_static`. Don't hand-add compression to the server — the precompressed files are already there, and runtime compression is what made the demo site slow (an uncompressed 3 MB `umi.js`).
+- **Cache policy is per file type, in `static.ts`**: hashed assets (`\.[0-9a-f]{8}\.(js|mjs|css)$`) get `public, max-age=31536000, immutable`; `index.html` and the SPA fallback get `no-cache` (it references hashed filenames). It relies on `cacheControl: false` — `send` writes its headers *after* `setHeaders`, so leaving send's `public, max-age=0` on makes the policy unchangeable.
+- **Keep the first-screen bundle honest.** `codeSplitting: { jsStrategy: 'granularChunks' }` is the official recommended value, but it does **not** cut first-screen bytes here (Mako maps it to `strategy: 'granular'`; the default `auto` can't split a single entry chunk because its `entryVendors` group needs `minChunks: 2`). Real wins come from not statically pulling unused code into the entry — e.g. the AI SDK (~265 K raw: `ai` + `zod` + `@ai-sdk/*`) is reached only through the `React.lazy` boundary in `apps/demo/admin/src/modules/ai/lazy/`. **Rule: nothing that imports `ai` / `@ai-sdk/react` / `zod` may be statically re-exported from `src/modules/ai/index.ts`** — the barrel must stay light or the SDK lands back in the entry chunk. Measure with the sourcemap (`devtool: 'source-map'`) rather than guessing; `ANALYZE=1` currently produces no report under Mako.
 
 ## Quality gate before commit
 

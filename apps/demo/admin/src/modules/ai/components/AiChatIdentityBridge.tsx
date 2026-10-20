@@ -4,10 +4,10 @@ import {
   stripBasePrefix,
 } from '@yishan/core-admin/public-path';
 import React, { useEffect, useState } from 'react';
+import { AI_USE_PERMISSION } from '../constants';
 import { useAiChat } from '../hooks/useAiChat';
 
-/** 与后端 schemas/ai-chat.schema.ts 的 AI_PERMISSION.code 保持一致。 */
-export const AI_USE_PERMISSION = 'ai:chat:use';
+export { AI_USE_PERMISSION };
 
 /** 公开页：未登录或不需要 AI 的场景，助手整体隐藏。 */
 const PUBLIC_PATHS = ['/user/', '/q/'];

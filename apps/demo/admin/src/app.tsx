@@ -71,29 +71,17 @@ import {
 } from '@yishan/core-admin/public-path';
 import { SystemAdminProvider } from '@yishan/core-system-admin';
 import queryString from 'query-string';
-import {
-  AiChatHost,
-  AiChatIdentityBridge,
-  AiChatProvider,
-  AiNativeFormBridge,
-} from '@/modules/ai';
+import { AiAssistantLayer } from '@/modules/ai';
 import { resolve as resolveComponent } from '@/utils/moduleComponents';
-
-export function rootContainer(container: React.ReactNode) {
-  return <AiChatProvider>{container}</AiChatProvider>;
-}
 
 function SystemRuntimeBridge({ children }: React.PropsWithChildren) {
   const { initialState } = useModel('@@initialState');
-  // AiChatHost sits outside the router outlet, so it survives business-route changes.
+  // AiAssistantLayer 挂在路由出口之外，业务路由切换不会重建它。
+  // 它是懒加载的：AI SDK 不进首屏主包。
   return (
     <SystemAdminProvider value={{ ...initialState, navigate: history.replace }}>
-      <AiChatIdentityBridge />
       {children}
-      {/* Bridge 没有渲染任何界面：它把本轮草稿结果接到原生 UserForm 上，
-          并注册「同步 + 锁定版本」的草稿链接。它无法提交表单。 */}
-      <AiNativeFormBridge />
-      <AiChatHost />
+      <AiAssistantLayer />
     </SystemAdminProvider>
   );
 }

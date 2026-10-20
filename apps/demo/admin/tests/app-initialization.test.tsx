@@ -140,13 +140,9 @@ jest.mock('../src/requestErrorConfig', () => ({
 }));
 
 // Initialization does not render chat; its engine/identity behavior has a dedicated suite.
-jest.mock('@/modules/ai/context/AiChatProvider', () => ({
-  AiChatProvider: () => null,
-  AiChatContext: {},
-}));
-jest.mock('@/modules/ai/AiChatHost', () => ({ AiChatHost: () => null }));
-jest.mock('@/modules/ai/components/AiChatIdentityBridge', () => ({
-  AiChatIdentityBridge: () => null,
+// 应用只从模块公开入口安装 AI 全局层（懒加载），这里直接把入口替换成空组件。
+jest.mock('@/modules/ai', () => ({
+  AiAssistantLayer: () => null,
   AI_USE_PERMISSION: 'ai:chat:use',
 }));
 

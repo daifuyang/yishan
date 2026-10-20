@@ -57,6 +57,18 @@ export default fp(async (fastify) => {
       // 深层 SPA 路径（如 /admin/user/login）仍然走下面的 setNotFoundHandler。
       index: ['index.html'],
       decorateReply: false,
+      // 打包时预压缩的产物（dist/*.br、dist/*.gz）：按 Accept-Encoding 依次尝试
+      // .br → .gz → 原文件。比服务器实时压缩省 CPU（演示机只有 4 核），而且能用
+      // brotli —— nginx 的动态 gzip 只会出 gzip。
+      preCompressed: true,
+      // 关掉 send 统一的 `public, max-age=0`，改由下面的 setHeaders 按文件类型决定。
+      // send 的响应头是在 setHeaders 之后覆盖写入的，不关掉就改不动。
+      cacheControl: false,
+      setHeaders(res, path) {
+        res.setHeader('cache-control', staticCacheControl(path))
+        // 同一个 URL 可能返回 .br / .gz / 原文件三种形态，共享缓存必须知道。
+        res.setHeader('vary', 'Accept-Encoding')
+      },
     })
     adminScope.setNotFoundHandler(async (request, reply) => {
       // root 模式下 admin 作用域就是整个站点，SPA fallback 会吞掉所有未匹配
@@ -85,7 +97,9 @@ export default fp(async (fastify) => {
       // 未被装饰，调用会抛 TypeError）。
       const indexPath = join(ADMIN.diskPath, 'index.html')
       const html = await readFile(indexPath, 'utf8')
-      return reply.type('text/html; charset=utf-8').send(html)
+      // SPA 深链也回 index.html，入口文件不能缓存：它引用的是带 hash 的产物名，
+      // 发版后 hash 变了，缓存里的旧入口会指向已经不存在的文件。
+      return reply.header('cache-control', 'no-cache').type('text/html; charset=utf-8').send(html)
     })
   }, { prefix: adminPrefix })
 
@@ -127,6 +141,31 @@ async function canReadDir(path: string): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/**
+ * 产物文件名里带内容 hash（`umi.77499b51.js`、`vendors-async.1eac8b54.js`、
+ * `umi.ae2785f3.css`）—— 内容变了文件名就变，可以放心 immutable 一年。
+ */
+const HASHED_ASSET = /\.[0-9a-f]{8}\.(js|mjs|css)$/;
+
+/**
+ * Admin 静态资源的缓存策略。
+ *
+ * - `index.html` → `no-cache`：它引用带 hash 的产物名，入口必须每次回源校验，
+ *   否则发版后用户拿着旧入口去请求已经不存在的旧 hash 文件。
+ * - 带 hash 的产物 → 一年 immutable：内容不可变，重复访问零流量。
+ * - 其余（`public/` 下直接拷贝的 `scripts/loading.js` 之类，无 hash）→ `max-age=0`，
+ *   至少保证回源时能拿到新版本。
+ *
+ * `path` 在开启 `preCompressed` 时是**实际发送的那个文件**（`xxx.js.br`），
+ * 所以要先剥掉压缩后缀再判断。
+ */
+function staticCacheControl(path: string): string {
+  const name = path.replace(/\.(br|gz)$/, '')
+  if (name.endsWith('index.html')) return 'no-cache'
+  if (HASHED_ASSET.test(name)) return 'public, max-age=31536000, immutable'
+  return 'public, max-age=0'
 }
 
 /**

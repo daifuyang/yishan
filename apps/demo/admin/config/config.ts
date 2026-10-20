@@ -205,6 +205,24 @@ export default defineConfig({
     include: ['mock/**/*', 'src/pages/**/_mock.ts'],
   },
   mako: {},
+  /**
+   * 拆包策略。官方推荐值；Mako 会把它翻译成自己的 `codeSplitting.strategy`
+   * （见 @umijs/bundler-mako：granularChunks → `strategy: 'granular'`）。
+   *
+   * 注意它**不减少首屏字节**：默认的 `auto` 内置 group 是 `entryVendors`，
+   * 过滤条件 `minChunks: 2` + `chunks: initial`，我们只有一个入口 chunk，
+   * 条件永远不成立，等于没拆；`granular` 会无条件产出 `framework` chunk
+   * （react 栈，实测 232K），把本来就在首屏里的代码**搬到另一个仍要首屏加载的
+   * chunk**。留它的理由是缓存：`framework.<hash>.js` 只在 react 栈升级时才变，
+   * 纯业务改动不会动它，回访用户能省下这一份。
+   *
+   * 真要减首屏体积只能靠「别把用不到的东西静态引进首屏」——见
+   * `src/modules/ai/lazy/`（AI SDK 因此不进主包）。
+   * @doc https://umijs.org/docs/guides/codesplitting
+   */
+  codeSplitting: {
+    jsStrategy: 'granularChunks',
+  },
   requestRecord: {},
   exportStatic: {}
 }) as any;

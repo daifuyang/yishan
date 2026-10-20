@@ -118,6 +118,97 @@ describe('static 插件 — admin SPA 注册', () => {
 })
 
 /**
+ * 预压缩产物 + 分文件缓存策略的回归。
+ *
+ * 背景：admin 打包时用 `apps/demo/admin/scripts/precompress.mjs` 生成同名
+ * `.br` / `.gz` 产物，服务器侧靠 @fastify/static 的 `preCompressed: true`
+ * 按 Accept-Encoding 选择；缓存策略由 `setHeaders` 按文件类型决定
+ * （send 的默认 `public, max-age=0` 必须被 `cacheControl: false` 关掉才改得动）。
+ *
+ * 验证：
+ *   1. Accept-Encoding: br → 返回 .br 内容 + content-encoding: br + vary
+ *   2. Accept-Encoding: gzip → 返回 .gz 内容 + content-encoding: gzip
+ *   3. 不带 Accept-Encoding → 返回原文件，无 content-encoding
+ *   4. 带 hash 的产物 → cache-control: public, max-age=31536000, immutable
+ *   5. index.html → cache-control: no-cache
+ *   6. SPA 深链回 index.html → cache-control: no-cache
+ */
+describe('static 插件 — 预压缩与缓存策略', () => {
+  beforeEach(() => {
+    writeFileSync(join(TMP_ROOT, 'umi.77499b51.js'), 'console.log("umi")')
+    writeFileSync(join(TMP_ROOT, 'umi.77499b51.js.br'), 'BR-BODY')
+    writeFileSync(join(TMP_ROOT, 'umi.77499b51.js.gz'), 'GZ-BODY')
+  })
+
+  it('Accept-Encoding: br 返回 .br 产物', async () => {
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/umi.77499b51.js',
+      headers: { 'accept-encoding': 'br' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['content-encoding']).toBe('br')
+    expect(res.headers.vary).toBe('Accept-Encoding')
+    expect(res.body).toBe('BR-BODY')
+    await app.close()
+  })
+
+  it('Accept-Encoding: gzip 返回 .gz 产物', async () => {
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/umi.77499b51.js',
+      headers: { 'accept-encoding': 'gzip' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['content-encoding']).toBe('gzip')
+    expect(res.body).toBe('GZ-BODY')
+    await app.close()
+  })
+
+  it('不带 Accept-Encoding 返回原文件', async () => {
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/umi.77499b51.js',
+      headers: { 'accept-encoding': 'identity' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['content-encoding']).toBeUndefined()
+    expect(res.body).toBe('console.log("umi")')
+    await app.close()
+  })
+
+  it('带 hash 的产物走一年 immutable', async () => {
+    const app = await buildApp()
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/umi.77499b51.js',
+      headers: { 'accept-encoding': 'br' },
+    })
+    expect(res.headers['cache-control']).toBe('public, max-age=31536000, immutable')
+    await app.close()
+  })
+
+  it('index.html 走 no-cache', async () => {
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: '/admin/index.html' })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['cache-control']).toBe('no-cache')
+    await app.close()
+  })
+
+  it('SPA 深链回 index.html 也走 no-cache', async () => {
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: '/admin/user/login' })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['cache-control']).toBe('no-cache')
+    await app.close()
+  })
+})
+
+/**
  * root 挂载模式（admin 独立子域名、占用根路径）下的回归。
  *
  * 背景：root 模式下 admin 作用域就是整个 `/`，SPA fallback 会把所有未匹配

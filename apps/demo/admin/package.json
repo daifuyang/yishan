@@ -6,7 +6,7 @@
   "repository": "https://github.com/zerocmf/yishan.git",
   "scripts": {
     "analyze": "cross-env ANALYZE=1 max build",
-    "build": "max build",
+    "build": "max build && node scripts/precompress.mjs",
     "deploy": "npm run build && npm run gh-pages",
     "dev": "pnpm start:dev",
     "gh-pages": "gh-pages -d dist",
