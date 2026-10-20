@@ -177,7 +177,11 @@ jobs:
   deploy:
     needs: [ci-gate, build]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 上传是这条流水线里唯一慢的环节：runner 在 GitHub（境外），目标机在腾讯云，
+    # 实测跨境带宽只有约 16 KB/s，28MB 的包要传 30 分钟出头。原来的 30 分钟超时
+    # 会在**刚好传完**的那一刻把 job 判掉（实测就是这样），60 分钟留足余量。
+    # 想真正提速得换 runner 区域或瘦产物，不是调超时能解决的。
+    timeout-minutes: 60
     environment: YISHAN_DEMO_UBUNTU
     env:
       UBUNTU_HOST: ${{ vars.UBUNTU_HOST }}
@@ -233,11 +237,31 @@ jobs:
         run: |
           set -euo pipefail
           # runner 上下文在 job 级 env 里不可用，这里用 shell 变量。
-          test -f "$RUNNER_TEMP/yishan-api-${GITHUB_SHA}.tar.gz"
+          TARBALL="$RUNNER_TEMP/yishan-api-${GITHUB_SHA}.tar.gz"
+          test -f "$TARBALL"
           ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
-            "mkdir -p /opt/yishan/incoming /opt/yishan/releases"
-          scp -i ~/.ssh/ubuntu-deployer.pem "$RUNNER_TEMP/yishan-api-${GITHUB_SHA}.tar.gz" \
+            "mkdir -p /opt/yishan/incoming /opt/yishan/releases && command -v rsync >/dev/null" \
+            || { echo "::error::目标机缺少 rsync，无法断点续传上传。"; exit 1; }
+
+          # 用 rsync 而不是 scp：跨境链路只有约 16 KB/s，一次上传要半小时，
+          # 中途超时重跑时 scp 会从 0 重新传一遍。--partial 保留已传的临时文件，
+          # --append-verify 接着往尾部写并在写完后校验大小。中断一次，重跑只需要
+          # 补最后那几 MB，而不是重来 28MB。
+          #
+          # 目标机上必须有 rsync（Ubuntu 自带）；下面的 Init task 里会显式确认。
+          rsync --partial --append-verify --timeout=3600 \
+            -e "ssh -i ~/.ssh/ubuntu-deployer.pem -o ServerAliveInterval=30 -o ServerAliveCountMax=120" \
+            "$TARBALL" \
             "$UBUNTU_USER@$UBUNTU_HOST:/opt/yishan/incoming/yishan-api-${GITHUB_SHA}.tar.gz"
+
+          # rsync 退出码 0 也可能对应「内容一致所以没传」，必须核对大小：
+          # 一个被截断的包会在下一步解包时才炸，而那时候报错很难看懂。
+          LOCAL_SIZE=$(stat -c %s "$TARBALL")
+          REMOTE_SIZE=$(ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
+            "stat -c %s /opt/yishan/incoming/yishan-api-${GITHUB_SHA}.tar.gz")
+          [ "$LOCAL_SIZE" = "$REMOTE_SIZE" ] \
+            || { echo "::error::上传大小不符：本地 ${LOCAL_SIZE} / 远端 ${REMOTE_SIZE}"; exit 1; }
+          echo "uploaded ${LOCAL_SIZE} bytes, sizes match"
 
       # 解包必须无条件执行。之前把「解包 + 迁移」合在同一个 if 里，勾了
       # skip_migrations 就整个跳过 —— 于是 releases/<ts> 根本不存在，下一步
