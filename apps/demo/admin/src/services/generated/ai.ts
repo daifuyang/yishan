@@ -489,7 +489,12 @@ export async function aiDraftQuestions(
         multiple: boolean;
         allowEmpty: boolean;
         truncated: boolean;
-        options: { value: number; label: string; description?: string }[];
+        options: {
+          value: number;
+          label: string;
+          parentValue?: number;
+          description?: string;
+        }[];
       }[];
     };
   }>(`/api/ai/v1/drafts/${param0}/questions`, {
@@ -563,6 +568,69 @@ export async function aiAnswerDraftQuestion(
     },
     params: { ...queryParams },
     data: body,
+    ...(options || {}),
+  });
+}
+
+/** 读取单模型 AI 配置 GET /api/ai/v1/settings */
+export async function aiSettingsGet(options?: { [key: string]: any }) {
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    timestamp: string;
+    data: {
+      baseUrl: string;
+      model: string;
+      hasApiKey: boolean;
+      source: "database" | "environment" | "unconfigured";
+    };
+  }>("/api/ai/v1/settings", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
+/** 保存单模型 AI 配置 PUT /api/ai/v1/settings */
+export async function aiSettingsSave(
+  body: {
+    baseUrl?: string;
+    model: string;
+    apiKey?: string;
+  },
+  options?: { [key: string]: any }
+) {
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    timestamp: string;
+    data: {
+      baseUrl: string;
+      model: string;
+      hasApiKey: boolean;
+      source: "database" | "environment" | "unconfigured";
+    };
+  }>("/api/ai/v1/settings", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** 测试已保存的 AI 配置 POST /api/ai/v1/settings/test */
+export async function aiSettingsTest(options?: { [key: string]: any }) {
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    timestamp: string;
+    data: { ok: boolean; message: string };
+  }>("/api/ai/v1/settings/test", {
+    method: "POST",
     ...(options || {}),
   });
 }

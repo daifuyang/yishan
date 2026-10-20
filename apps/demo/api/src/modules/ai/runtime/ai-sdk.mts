@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { consumeStream, convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, jsonSchema, isStepCount, streamText, tool, toUIMessageStream, validateUIMessages } from 'ai'
+import { consumeStream, convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, jsonSchema, isStepCount, streamText, tool, toUIMessageStream, validateUIMessages } from 'ai'
 import type { ToolSet } from 'ai'
 import type { AiExecutionEnv, AiRuntime } from '../services/ai-chat.service.js'
 import type { ChatMessage } from '../repositories/ai-chat.repository.js'
@@ -8,13 +8,19 @@ import { MAX_TOOL_CALLS_PER_TURN, type AiExecutionOutcome } from '../services/ai
 import { isOffTopic, matchDirectIntent, OFF_TOPIC_REPLY } from '../services/ai-intent-router.js'
 import { aiError } from '../ai-chat-error.js'
 import { createOperationTools } from '../services/operation-tools.js'
+import type { AiModelConfiguration } from '../services/ai-settings.service.js'
 
 export const validate: AiRuntime['validate'] = messages => validateUIMessages<ChatMessage>({ messages })
 
-export function checkConfiguration() {
-  if (!process.env.AI_CHAT_API_KEY || !process.env.AI_CHAT_MODEL) {
-    throw aiError(503, 'AI 助手尚未配置，请联系管理员设置服务端 AI_CHAT_API_KEY 和 AI_CHAT_MODEL')
+export function checkConfiguration(configuration?: AiModelConfiguration) {
+  if (!(configuration?.apiKey ?? process.env.AI_CHAT_API_KEY) || !(configuration?.model ?? process.env.AI_CHAT_MODEL)) {
+    throw aiError(503, 'AI 助手尚未配置，请联系管理员在 AI 配置中设置模型，或设置服务端 AI_CHAT_API_KEY 和 AI_CHAT_MODEL')
   }
+}
+
+export async function testConnection(configuration: AiModelConfiguration) {
+  const provider = createAnthropic({ apiKey: configuration.apiKey, baseURL: configuration.baseUrl })
+  await generateText({ model: provider(configuration.model), prompt: 'Reply OK.', maxOutputTokens: 64, maxRetries: 0, abortSignal: AbortSignal.timeout(15000) })
 }
 
 /** 只声明通用操作与安全边界；业务字段和表单规则由按需发现的定义提供。 */
@@ -106,13 +112,13 @@ async function runWithSignal<T>(execute: () => Promise<T>, signal: AbortSignal):
   finally { signal.removeEventListener('abort', onAbort) }
 }
 
-export const start: AiRuntime['start'] = async ({ messages, signal, onEnd, execution, context }) => {
-  checkConfiguration()
+export const start: AiRuntime['start'] = async ({ messages, signal, onEnd, execution, context, configuration }) => {
+  checkConfiguration(configuration)
   const startedAt = Date.now()
   const turnSignal = AbortSignal.any([signal, AbortSignal.timeout(120000)])
-  const apiKey = process.env.AI_CHAT_API_KEY!
-  const model = process.env.AI_CHAT_MODEL!
-  const baseURL = process.env.AI_CHAT_BASE_URL || undefined
+  const apiKey = configuration?.apiKey ?? process.env.AI_CHAT_API_KEY!
+  const model = configuration?.model ?? process.env.AI_CHAT_MODEL!
+  const baseURL = configuration?.baseUrl ?? (process.env.AI_CHAT_BASE_URL || undefined)
   // 走 Anthropic 兼容端点而非 OpenAI 端点：只有这条路 AI SDK 能拿到独立的
   // thinking 块（OpenAI 端点的 reasoning_content 会被本 SDK 版本静默丢弃）。
   const provider = createAnthropic({ apiKey, ...(baseURL ? { baseURL } : {}) })

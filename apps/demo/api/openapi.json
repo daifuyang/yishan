@@ -15374,6 +15374,9 @@
                                     "label": {
                                       "type": "string"
                                     },
+                                    "parentValue": {
+                                      "type": "number"
+                                    },
                                     "description": {
                                       "type": "string"
                                     }
@@ -15712,6 +15715,282 @@
                         "createdAt",
                         "updatedAt",
                         "expiresAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/settings": {
+      "get": {
+        "operationId": "aiSettingsGet",
+        "summary": "读取单模型 AI 配置",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:settings:read",
+        "x-permission-label": "AI 配置-查看",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "baseUrl": {
+                          "type": "string"
+                        },
+                        "model": {
+                          "type": "string"
+                        },
+                        "hasApiKey": {
+                          "type": "boolean"
+                        },
+                        "source": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "database"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "environment"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "unconfigured"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "baseUrl",
+                        "model",
+                        "hasApiKey",
+                        "source"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "aiSettingsSave",
+        "summary": "保存单模型 AI 配置",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "baseUrl": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "model": {
+                    "maxLength": 255,
+                    "type": "string"
+                  },
+                  "apiKey": {
+                    "maxLength": 4096,
+                    "writeOnly": true,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "model"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:settings:update",
+        "x-permission-label": "AI 配置-修改",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "baseUrl": {
+                          "type": "string"
+                        },
+                        "model": {
+                          "type": "string"
+                        },
+                        "hasApiKey": {
+                          "type": "boolean"
+                        },
+                        "source": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "database"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "environment"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "unconfigured"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "baseUrl",
+                        "model",
+                        "hasApiKey",
+                        "source"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/settings/test": {
+      "post": {
+        "operationId": "aiSettingsTest",
+        "summary": "测试已保存的 AI 配置",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:settings:update",
+        "x-permission-label": "AI 配置-修改",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "message"
                       ]
                     }
                   },

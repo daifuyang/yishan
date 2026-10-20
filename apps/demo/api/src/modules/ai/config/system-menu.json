@@ -1,0 +1,14 @@
+[
+  {
+    "type": 1,
+    "name": "AI 配置",
+    "path": "/ai/settings",
+    "sortOrder": 50,
+    "icon": "RobotOutlined",
+    "component": "./modules/ai/settings",
+    "children": [
+      { "type": 2, "name": "查看", "permissionCodes": ["ai:settings:read"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+      { "type": 2, "name": "修改及测试", "permissionCodes": ["ai:settings:update"], "sortOrder": 2, "hideInMenu": 1 }
+    ]
+  }
+]

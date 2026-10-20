@@ -7,12 +7,14 @@ import { registerAiNavigationCapability } from './capabilities/navigation.js'
 import { registerAiActionDraftCapabilities } from './capabilities/action-drafts.js'
 import draftRoutes from './routes/v1/drafts.js'
 import questionRoutes from './routes/v1/questions.js'
+import settingsRoutes from './routes/v1/settings.js'
+import seed from './seed.js'
 import { ActionDraftService } from './services/action-draft.service.js'
 
 /**
  * AI 助手模块。独立于 demo 示例插件，可被产品 Manifest 单独安装或移除。
  *
- * 本模块不声明 config/ 菜单：入口是 Admin 右下角的全局悬浮宿主，不是左侧菜单项。
+ * 聊天使用全局悬浮宿主；模型配置通过独立菜单及权限管理。
  * 权限 `ai:chat:use` 在 routes/v1/index.ts 中声明并由后端强制校验。
  */
 const aiModule: ApiModule<SystemRuntime> = {
@@ -32,11 +34,13 @@ const aiModule: ApiModule<SystemRuntime> = {
       // 文件名也算进路由前缀：`routes/v1/drafts.ts` 会被挂到 `/api/ai/v1/drafts/...`，
       // 前端与文档里的 `/api/ai/v1/drafts/:draftId`、`/api/ai/v1/conversations/:id/drafts`
       // 全部 404。这里跳过该文件并按精确前缀显式注册，路径只有一处定义（drafts.ts）。
-      ignoreFilter: name => name === 'drafts.ts' || name === 'questions.ts',
+      ignoreFilter: name => name === 'drafts.ts' || name === 'questions.ts' || name === 'settings.ts',
     })
     await router.register(draftRoutes, { prefix: '/v1' })
     await router.register(questionRoutes, { prefix: '/v1' })
+    await router.register(settingsRoutes, { prefix: '/v1' })
   },
+  async seed() { await seed() },
   async initialize(runtime) {
     // 能力注册在 initialize 而不是模块顶层：注册中心由 SystemRuntime 显式创建，
     // 顶层 import 时作用域还不存在。

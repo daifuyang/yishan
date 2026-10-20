@@ -18,6 +18,7 @@ import { getAuthorizedMenuTree } from '@yishan/core-system-admin/services/sysMen
 import { App as AntdApp } from 'antd';
 import {
   Barcode,
+  Bot,
   BookOpen,
   Box,
   ClipboardList,
@@ -117,6 +118,8 @@ const isPublicQuoteRoute = (pathname: string) =>
   /^\/q\/[^/]+\/?$/.test(getRelativePath(pathname));
 
 const IconMap: Record<string, LucideIcon> = {
+  robot: Bot,
+  robotoutlined: Bot,
   appstore: LayoutDashboard,
   appstoreoutlined: LayoutDashboard,
   setting: Settings,

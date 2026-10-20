@@ -10,6 +10,7 @@ import { executeCapability, toolsForActor, type AiActor, type AiExecutionOutcome
 import { buildDraftContext } from './draft-context.js'
 import { selectModelHistory } from './model-history.js'
 import { aiError } from '../ai-chat-error.js'
+import { AiSettingsService, type AiModelConfiguration } from './ai-settings.service.js'
 export { aiError } from '../ai-chat-error.js'
 
 export interface AiChatInput { id: string; messages: unknown[]; trigger: 'submit-message' | 'regenerate-message'; messageId?: string }
@@ -23,7 +24,7 @@ export interface AiExecutionEnv {
   execute(name: string, input: unknown): Promise<AiExecutionOutcome>
 }
 export interface AiRuntime {
-  checkConfiguration?(): void
+  checkConfiguration?(configuration?: AiModelConfiguration): void
   validate(messages: unknown[]): Promise<ChatMessage[]>
   /**
    * `context` 是**本轮现算**的会话外上下文（例如当前草稿摘要）。
@@ -31,7 +32,7 @@ export interface AiRuntime {
    * 它刻意不进 `messages`：进消息就意味着落库，而草稿状态每轮都在变，
    * 存进历史只会变成第四份会过期的真相。
    */
-  start(options: { messages: ChatMessage[]; signal: AbortSignal; execution: AiExecutionEnv; context?: string; onEnd(message: ChatMessage): Promise<void> }): Promise<Response>
+  start(options: { messages: ChatMessage[]; signal: AbortSignal; execution: AiExecutionEnv; context?: string; configuration?: AiModelConfiguration; onEnd(message: ChatMessage): Promise<void> }): Promise<Response>
 }
 const loadRuntime = async (): Promise<AiRuntime> => import('../runtime/ai-sdk.mjs')
 
@@ -59,7 +60,14 @@ export class AiChatService {
     private readonly execution?: () => AiExecutionEnvFactory,
     private readonly drafts?: AiConversationDraftGuard,
   ) {}
-  static forDatabase(db: AppQueryDb) { return new AiChatService(new AiChatRepository(db), loadRuntime, () => new AiExecutionEnvFactory({ db }), new ActionDraftService(new ActionDraftRepository(db))) }
+  static forDatabase(db: AppQueryDb) {
+    const settings = AiSettingsService.forDatabase(db)
+    return new AiChatService(new AiChatRepository(db), async () => {
+      const configuration = await settings.resolve()
+      const runtime = await loadRuntime()
+      return { ...runtime, checkConfiguration: () => runtime.checkConfiguration?.(configuration), start: options => runtime.start({ ...options, configuration }) }
+    }, () => new AiExecutionEnvFactory({ db }), new ActionDraftService(new ActionDraftRepository(db)))
+  }
   async list(ownerId: number) { return { items: (await this.store.list(ownerId)).map(summary) } }
   async create(ownerId: number) { const now = new Date(); return { ...summary(await this.store.create({ id: randomUUID(), ownerId, title: '新对话', createdAt: now, updatedAt: now })), messages: [] } }
   async detail(ownerId: number, id: string) {

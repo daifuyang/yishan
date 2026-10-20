@@ -42,7 +42,13 @@
 
 ## 配置
 
-- `AI_CHAT_API_KEY`、`AI_CHAT_MODEL`：必填，密钥只在服务器读取。
+Admin 菜单 `/ai/settings` 管理一个 Anthropic 兼容模型：API 地址、模型名称、API Key。数据库存在 `ai_model_settings` 记录就固定优先使用整组配置，无记录才整组回退环境变量，不提供开关、不混用两套参数。每个新请求读取一次，保存后无需重启。数据库读取失败或记录不完整会明确报错，不静默切换供应方。
+
+API Key 是只写字段：GET 和 PUT 响应仅返回 `hasApiKey`，不返回原值或掩码占位值。编辑时省略或留空保留已有数据库密钥，首次保存必须输入，不复制环境密钥。测试连接使用已保存的有效配置，发出短请求，有 15 秒超时，不开放业务工具、不返回上游原始错误。
+
+接口：`GET /api/ai/v1/settings`、`PUT /api/ai/v1/settings`、`POST /api/ai/v1/settings/test`。启用后地址和密钥只在服务器用于模型调用，不进入聊天消息。
+
+- `AI_CHAT_API_KEY`、`AI_CHAT_MODEL`：环境兜底时必填，密钥只在服务器读取。
 - `AI_CHAT_BASE_URL`：可选。留空使用 Anthropic 官方地址。
   接 MiniMax 时**必须**用 Anthropic 兼容端点并带 `/v1`：
   `https://api.minimaxi.com/anthropic/v1`。
@@ -52,19 +58,19 @@
 
 ## 权限
 
-全部接口要求 `ai:chat:use`（`PermissionRef` 在 `schemas/ai-chat.schema.ts` 声明）。
-入口是 Admin 右下角的全局悬浮宿主，**不在左侧菜单**，因此本模块没有
-`config/system-menu.json`；权限由后端强制校验，前端隐藏入口不构成授权。
+聊天及草稿接口要求 `ai:chat:use`。配置读取要求 `ai:settings:read`，修改与连接测试要求 `ai:settings:update`，使用助手不自动获得配置权限。
+聊天入口是 Admin 右下角的全局悬浮宿主；配置菜单由 `config/system-menu.json` 和 AI 模块 seed 提供。权限由后端强制校验，前端隐藏入口不构成授权。
 
 ## 数据库
 
-表 `ai_conversations`、`ai_messages`、`ai_action_drafts`（前缀 `ai_`），迁移账本
+表 `ai_conversations`、`ai_messages`、`ai_action_drafts`、`ai_model_settings`（前缀 `ai_`），迁移账本
 `__drizzle_migrations_ai`。迁移不会在应用启动时执行，也**永远不会**自动应用到业务库，
 需运维显式运行（重复执行幂等）：
 
 ```bash
 pnpm --filter @yishan/demo-api db:migrate --dry-run
 pnpm --filter @yishan/demo-api db:migrate --apply
+pnpm --filter @yishan/demo-api db:seed
 ```
 
 从早期 `demo` 模块下的 `demo_ai_*` 迁移时：本模块迁移为全新账本，

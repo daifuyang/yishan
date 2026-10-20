@@ -81,6 +81,24 @@ describe('native ESM AI SDK 7 runtime', () => {
     vi.stubEnv('AI_CHAT_API_KEY', ''); vi.stubEnv('AI_CHAT_MODEL', '')
     await expect(start({ messages, signal: new AbortController().signal, onEnd: async () => {}, execution: noTools })).rejects.toThrow('AI_CHAT_API_KEY')
   })
+  it('uses one resolved database configuration instead of environment values', async () => {
+    configured()
+    let posted = ''
+    let destination = ''
+    let sentKey = ''
+    vi.stubGlobal('fetch', async (url: unknown, init: RequestInit) => {
+      destination = String(url)
+      sentKey = new Headers(init.headers).get('x-api-key') ?? ''
+      posted = String(init.body)
+      return new Response(start_ + end('完成') + end('', true), { headers: { 'content-type': 'text/event-stream' } })
+    })
+    const response = await start({ messages, signal: new AbortController().signal, execution: noTools, onEnd: async () => {}, configuration: { apiKey: 'db-test-key', model: 'db-model', baseUrl: 'https://db.test/v1' } })
+    const body = await response.text()
+    expect(destination).toBe('https://db.test/v1/messages')
+    expect(sentKey).toBe('db-test-key')
+    expect(JSON.parse(posted).model).toBe('db-model')
+    expect(body).not.toContain('db-test-key')
+  })
   it('streams the actual SDK UI protocol and persists generated parts', async () => {
     configured()
     let saved: ChatMessage | undefined
