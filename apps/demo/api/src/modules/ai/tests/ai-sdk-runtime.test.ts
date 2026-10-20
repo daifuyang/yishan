@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
+import { it } from './draft-runtime.js'
 import { start, validate, SYSTEM_PROMPT } from '../runtime/ai-sdk.mjs'
 import { buildDraftContext } from '../services/draft-context.js'
 import type { ChatMessage } from '../schemas/ai-chat.schema.js'

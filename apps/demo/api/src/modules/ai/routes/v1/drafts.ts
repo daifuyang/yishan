@@ -15,7 +15,7 @@ import { drizzleDb } from '@yishan/core-system-api/database'
 import { ActionDraftService, type ActionDraft } from '../../services/action-draft.service.js'
 import { AI_PERMISSION, AiIdParamsSchema } from '../../schemas/ai-chat.schema.js'
 import { aiError, installAiErrorHandler } from '../../ai-chat-error.js'
-import { draftFieldSchemas } from '../../services/draft-forms.js'
+import { draftFieldSchemas, listDraftAdapters } from '../../services/draft-forms.js'
 import {
   ActionDraftCancelBodySchema,
   ActionDraftCreateTransportBodySchema,
@@ -24,7 +24,6 @@ import {
   ActionDraftPatchTransportBodySchema,
   ActionDraftResponseSchema,
   ActionDraftIdParamsSchema,
-  USER_CREATE_DRAFT_FIELD_KEYS,
   matchesDraftFieldType,
   type ActionDraftCreateTransportBody,
   type ActionDraftPatchTransportBody,
@@ -57,9 +56,8 @@ function serialize(draft: ActionDraft) {
  * 只判「形状」：未知字段、`password`、错误的原始类型。半截手机号照放行 ——
  * 业务格式由 Service 用真实约束算成 `validationErrors`，并保留原值。
  */
-const allowedFormFields = new Set<string>([...USER_CREATE_DRAFT_FIELD_KEYS, ...Object.keys(draftFieldSchemas('department.create'))])
 
-function assertFormDataShape(body: unknown, allowNull: boolean) {
+function assertFormDataShape(body: unknown, allowNull: boolean, action?: string) {
   const formData = (body as { formData?: unknown } | undefined)?.formData
   if (formData === undefined) return
   // `formData: null` / 数组 / 字符串都要在这里判掉。`preValidation` 跑在 body 校验之前，
@@ -68,9 +66,10 @@ function assertFormDataShape(body: unknown, allowNull: boolean) {
   if (typeof formData !== 'object' || formData === null || Array.isArray(formData)) {
     throw aiError(400, '表单数据格式无效')
   }
+  const actions = action ? [action] : listDraftAdapters().map(adapter => adapter.action)
   const rejected: string[] = []
   for (const [key, value] of Object.entries(formData)) {
-    if (!allowedFormFields.has(key)) { rejected.push(key); continue }
+    if (!actions.some(target => key in draftFieldSchemas(target))) { rejected.push(key); continue }
     if (value === null) {
       // 创建不接受 null：补丁里 null 是「清空」，保存时 null 没有这种语义。
       if (!allowNull) rejected.push(key)
@@ -79,9 +78,7 @@ function assertFormDataShape(body: unknown, allowNull: boolean) {
     if (value === undefined) continue
     // 类型判定来自 schema 派生的唯一清单（`matchesDraftFieldType`），与 Service 的
     // `normalize()` 同一个实现：新增数组字段不需要在这里补一份。
-    const validUserField = (USER_CREATE_DRAFT_FIELD_KEYS as readonly string[]).includes(key) && matchesDraftFieldType(key, value)
-    const validDeptField = key in draftFieldSchemas('department.create') && matchesDraftFieldType(key, value, 'department.create')
-    if (!validUserField && !validDeptField) rejected.push(key)
+    if (!actions.some(target => matchesDraftFieldType(key, value, target))) rejected.push(key)
   }
   if (rejected.length) throw aiError(400, `不支持的字段：${[...new Set(rejected)].join('、')}`)
 }
@@ -89,7 +86,9 @@ function assertFormDataShape(body: unknown, allowNull: boolean) {
 export default (async app => {
   installAiErrorHandler(app)
   app.addHook('preValidation', async request => {
-    assertFormDataShape(request.body, request.method === 'PATCH')
+    if (request.method !== 'POST' && request.method !== 'PATCH') return
+    const action = request.method === 'POST' ? (request.body as { action?: string } | undefined)?.action : undefined
+    assertFormDataShape(request.body, request.method === 'PATCH', action)
   })
   const route = createRouteRegistrar(app)
   const service = ActionDraftService.forDatabase(drizzleDb)

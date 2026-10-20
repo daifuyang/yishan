@@ -7,7 +7,8 @@
  * 覆盖的十一个场景来自 Task 6 的验收清单：完整字段、部分字段、跨轮合并、不重复追问、
  * 手填请求、重名候选、跳过确认的诱导、伪造 actor、password 拒绝、迟到工具、已撤权。
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, vi } from 'vitest'
+import { it } from './draft-runtime.js'
 import { Type } from '@sinclair/typebox'
 import { Value } from '@sinclair/typebox/value'
 import { AiCapabilityCatalog, PermissionCatalog } from '@yishan/core-api'
@@ -304,9 +305,25 @@ describe('draft tool boundary', () => {
   it('registers only read / prepare capabilities, with no create or submit tool', () => {
     const f = fixture()
     expect(f.capabilities.map(capability => capability.riskLevel).every(level => level === 'read' || level === 'prepare')).toBe(true)
-    expect(f.capabilities.map(capability => capability.name)).toEqual(['prepare_create_user', 'update_action_draft', 'get_action_draft', 'prepare_user_form_draft', 'prepare_department_form_draft', 'get_department_create_form'])
+    expect(f.capabilities.map(capability => capability.name)).toEqual(['update_action_draft', 'get_action_draft', 'prepare_user_form_draft', 'prepare_create_user', 'prepare_department_form_draft'])
     expect(f.capabilities.map(capability => capability.name).some(name => /submit|confirm|create_user$/.test(name.replace('prepare_create_user', '')))).toBe(false)
-    for (const capability of f.capabilities) expect(capability.permissionCode).toBe(capability.name.includes('department') ? 'system:department:create' : 'system:user:create')
+    for (const capability of f.capabilities) expect(capability.permissionCode).toBe(capability.name.includes('department') ? 'system:department:create' : capability.name.endsWith('action_draft') ? 'ai:chat:use' : 'system:user:create')
+  })
+
+  it('exposes current draft state through the semantic query tool after a conflict', async () => {
+    const f = fixture()
+    const prepared = await f.call('prepare_create_user', { phone: '13800000000' })
+    const draft = prepared.data as { draftId: string; draftVersion: number }
+    const { createOperationTools } = await import('../services/operation-tools.js')
+    const tools = createOperationTools({ capabilities: f.capabilities, execute: async (name, input) => ({ ok: true as const, result: await f.call(name, input) }) })
+    const result = await tools.execute('query_business_data', { operationId: 'form.draft.detail', params: { draftId: draft.draftId } })
+    expect(result).toMatchObject({ ok: true, result: { data: { draftId: draft.draftId, draftVersion: 1 } } })
+  })
+
+  it('does not ask about optional department references before opening its native form', async () => {
+    const f = fixture()
+    const result = await f.call('prepare_department_form_draft', { name: '研发部' })
+    expect(result.render).toMatchObject({ payload: { interaction: { type: 'form-preview' } } })
   })
 
   it('refuses the whole turn once the permission is revoked, without touching the draft', async () => {
@@ -316,8 +333,8 @@ describe('draft tool boundary', () => {
     const outcome = await h.run(() => executeCapability(h.base, 'prepare_create_user', { username: 'zhangsan' }))
     expect(outcome).toEqual({ ok: false, error: '没有权限执行该操作' })
     expect(f.memory.drafts.size).toBe(0)
-    // 撤权同时把工具从清单里撤掉，模型根本看不到它。
-    expect(await h.run(() => toolsForActor({ userId: 7, roleIds: [1], deptIds: [] }, h.base.runtime)).then(r => r.capabilities.map(c => c.name))).toEqual([])
+    // 撤权移除业务准备工具；操作中性的草稿工具仍由实际草稿业务授权保护。
+    expect(await h.run(() => toolsForActor({ userId: 7, roleIds: [1], deptIds: [] }, h.base.runtime)).then(r => r.capabilities.map(c => c.name))).toEqual(['update_action_draft', 'get_action_draft'])
   })
 
   it('survives a prompt-injection attempt to skip confirmation: it still only returns a draft', async () => {

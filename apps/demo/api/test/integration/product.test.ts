@@ -150,17 +150,21 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
       expect(formDefinition.json().data.fields).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'password', sensitive: true })]))
       const candidatesResponse = await app.inject({ url: '/api/v1/admin/users/create-options', headers })
       expect(candidatesResponse.statusCode, candidatesResponse.body).toBe(200)
-      const candidates = candidatesResponse.json<{ data: { departments: { id: number }[]; roles: { id: number }[] } }>().data
-      const interactionConversation = await app.inject({ method: 'POST', url: chatUrl, headers })
+      const candidates = candidatesResponse.json<{ data: { departments: { id: number; status: string }[]; roles: { id: number }[] } }>().data
+      // 只挑**启用中**的部门。create-options 返回的是整棵树，种子把根部门置成了停用状态
+      // （status '0'），按位置取 slice(0, 1) 会挑到它，草稿服务随即以 30011 拒绝 ——
+      // 那是正确的拒绝，测试要的是一个真正可用的候选，不是「列表里碰巧第一个」。
+      const creatableDepartments = candidates.departments.filter(department => department.status === '1')
+            const interactionConversation = await app.inject({ method: 'POST', url: chatUrl, headers })
       const interactionConversationId = interactionConversation.json<{ data: { id: string } }>().data.id
       const prepared = await app.inject({ method: 'POST', url: chatUrl + '/' + interactionConversationId + '/drafts', headers,
         payload: { module: 'system', action: 'user.create', formData: { username: 'ai_interactive_user', phone: '17625458588', realName: '周杰伦', nickname: '阿伦' } } })
       expect(prepared.statusCode, prepared.body).toBe(200)
       const preparedDraft = prepared.json<{ data: { draftId: string; draftVersion: number } }>().data
       const answered = await app.inject({ method: 'PATCH', url: '/api/ai/v1/drafts/' + preparedDraft.draftId, headers,
-        payload: { draftVersion: preparedDraft.draftVersion, formData: { deptIds: candidates.departments.slice(0, 1).map(item => item.id), roleIds: candidates.roles.slice(0, 1).map(item => item.id) } } })
+        payload: { draftVersion: preparedDraft.draftVersion, formData: { deptIds: creatableDepartments.slice(0, 1).map(item => item.id), roleIds: candidates.roles.slice(0, 1).map(item => item.id) } } })
       expect(answered.statusCode, answered.body).toBe(200)
-      const reviewDraft = answered.json<{ data: { draftId: string; draftVersion: number; formData: Record<string, unknown> } }>().data
+                  const reviewDraft = answered.json<{ data: { draftId: string; draftVersion: number; formData: Record<string, unknown> } }>().data
       const [beforeConfirm] = await database.pool.query<CountRow[]>('SELECT COUNT(*) AS count FROM sys_user WHERE username = ?', ['ai_interactive_user'])
       expect(Number(beforeConfirm[0].count)).toBe(0)
       expect(reviewDraft.formData).not.toHaveProperty('password')
@@ -303,6 +307,7 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
         '/api/ai/v1/chat', '/api/ai/v1/conversations', '/api/ai/v1/conversations/{id}', '/api/demo/v1/me/profile',
         // Task 10：AI 原生建号的动作草稿端点，以及同源的用户创建表单定义/候选端点。
         '/api/ai/v1/conversations/{id}/drafts', '/api/ai/v1/drafts/{draftId}', '/api/ai/v1/drafts/{draftId}/cancel',
+        '/api/ai/v1/drafts/{draftId}/questions', '/api/ai/v1/drafts/{draftId}/questions/answer',
         '/api/v1/admin/users/create-form', '/api/v1/admin/users/create-options',
       ].sort())
       for (const [path, methods] of Object.entries(runtimeBaseline.paths)) {

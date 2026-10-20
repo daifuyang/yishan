@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, } from 'vitest'
+import { it } from './draft-runtime.js'
 import { buildDraftContext } from '../services/draft-context.js'
 import type { ActionDraftRecord } from '../repositories/action-draft.repository.js'
 

@@ -2019,6 +2019,7 @@
         ]
       },
       "createDeptReq": {
+        "additionalProperties": false,
         "type": "object",
         "properties": {
           "name": {
@@ -2051,6 +2052,25 @@
           "leaderId": {
             "description": "负责人ID",
             "type": "number"
+          },
+          "draftSubmission": {
+            "additionalProperties": false,
+            "type": "object",
+            "properties": {
+              "draftId": {
+                "minLength": 1,
+                "maxLength": 64,
+                "type": "string"
+              },
+              "draftVersion": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "draftId",
+              "draftVersion"
+            ]
           }
         },
         "required": [

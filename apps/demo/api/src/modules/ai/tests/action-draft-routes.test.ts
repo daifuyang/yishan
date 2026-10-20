@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import { errorHandlerPlugin } from '@yishan/core-api/plugins'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, vi } from 'vitest'
+import { it } from './draft-runtime.js'
 import aiRoutes from '../routes/v1/index.js'
 import draftRoutes from '../routes/v1/drafts.js'
 import { ActionDraftSchema, ActionDraftFormDataSchema, DRAFT_ARRAY_FIELD_KEYS } from '../schemas/action-draft.schema.js'

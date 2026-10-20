@@ -16,7 +16,8 @@
  *
  * 全部走内存 store：真实并发与行锁由 Task 10 用真实数据库验证。
  */
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, vi } from 'vitest'
+import { it } from './draft-runtime.js'
 import { MySqlDialect } from 'drizzle-orm/mysql-core'
 import { AiUserCreationParticipant } from '../services/user-creation-participant.js'
 import { AiDepartmentCreationParticipant } from '../services/department-creation-participant.js'

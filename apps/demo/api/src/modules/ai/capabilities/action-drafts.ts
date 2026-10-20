@@ -21,22 +21,18 @@
  * 5. **迟到的结果不能复活草稿**：更新走 CAS（版本 + 可编辑状态），取消/完成/过期的
  *    草稿因此结构性地无法被重新激活。
  */
-import { Type } from '@sinclair/typebox'
+import { Type, type TSchema } from '@sinclair/typebox'
 import { registerAiCapabilities, type AiCapability, type AiCapabilityContext, type AiCapabilityResult } from '@yishan/core-api/ai-capabilities/catalog'
-import type { UserCreationSubject } from '@yishan/core-system-api'
+import type { AiDraftSubject } from '@yishan/core-api/ai-capabilities/catalog'
 import { ActionDraftService, type ActionDraft } from '../services/action-draft.service.js'
 import { aiError } from '../ai-chat-error.js'
-import { draftFieldSchemas, draftForm } from '../services/draft-forms.js'
+import { draftFieldSchemas, listDraftAdapters, draftAdapter } from '../services/draft-forms.js'
 import {
-  ActionDraftFormDataPatchSchema,
   relaxedField,
-  ActionDraftFormDataSchema,
   EDITABLE_ACTION_DRAFT_STATUSES,
 } from '../schemas/action-draft.schema.js'
 
 /** 首期唯一真实存在的表单目标（与草稿服务的白名单一致）。 */
-const DRAFT_MODULE = 'system'
-const DRAFT_ACTION = 'user.create'
 
 export interface ActionDraftCapabilityDeps {
   /** 用当前执行环境绑定的草稿服务（生产路径 `ActionDraftService.forDatabase`）。 */
@@ -62,7 +58,7 @@ async function ownDraft(drafts: ActionDraftService, context: AiCapabilityContext
   return draft
 }
 
-function subjectOf(context: AiCapabilityContext): UserCreationSubject {
+function subjectOf(context: AiCapabilityContext): AiDraftSubject {
   return { actorId: context.actorId, tokenScope: context.tokenScope }
 }
 
@@ -98,7 +94,7 @@ function draftSummary(draft: ActionDraft, requestId: string) {
     render: { kind: 'action.draft', payload: {
       draftId: draft.draftId, draftVersion: draft.draftVersion, uiRequestId: requestId,
       interaction: {
-        type: draft.validationErrors.length || draft.missingFields.some(field => !field.mustCompleteInForm) || (draft.action === 'user.create' && !('deptIds' in draft.formData && 'roleIds' in draft.formData)) ? 'question' : 'form-preview',
+        type: draft.validationErrors.length || draft.missingFields.some(field => !field.mustCompleteInForm) || draftAdapter(draft.action).questionFields?.some(field => !(field in draft.formData)) ? 'question' : 'form-preview',
         id: draft.draftId + ':' + draft.draftVersion,
         formKey: draft.action, draftId: draft.draftId, draftVersion: draft.draftVersion,
       },
@@ -159,7 +155,7 @@ async function merge(
   for (const [key, value] of Object.entries(patch)) {
     if (!(key in existing.formData)) continue
     if (JSON.stringify(existing.formData[key]) === JSON.stringify(value)) continue
-    throw aiError(409, `字段 ${key} 已有值，如需修改请先 get_action_draft 读回当前值，再用 update_action_draft 并带上当前版本`)
+    throw aiError(409, `字段 ${key} 已有值，如需修改请先 query_business_data（operationId: form.draft.detail）读回当前版本，再用 update_action_draft 并带上当前版本`)
   }
   return drafts.patch(context.actorId, existing.draftId, existing.draftVersion, patch, { ...options, subject: subjectOf(context) })
 }
@@ -170,54 +166,29 @@ async function merge(
  * 只有 `EDITABLE_ACTION_DRAFT_STATUSES` 里的状态可以被续写：已取消、已完成、过期的
  * 草稿不会因为用户下一轮又说了两句而复活（设计 §9），而是新开一份。
  */
-async function activeDraft(drafts: ActionDraftService, context: AiCapabilityContext): Promise<ActionDraft | null> {
-  const conversationId = requireConversation(context)
-  const rows = await drafts.list(context.actorId, conversationId)
-  const usable = rows
-    .filter(row => row.module === DRAFT_MODULE && row.action === DRAFT_ACTION)
-    .filter(row => EDITABLE_ACTION_DRAFT_STATUSES.includes(row.status))
-  return usable.at(-1) ?? null
-}
 
 export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): readonly AiCapability[] {
   const { drafts } = deps
-
-  const prepareCreateUser: AiCapability = {
-    name: 'prepare_create_user',
-    description: '把本轮从用户话里提取到的**非敏感**用户字段存入「新增用户」表单草稿，并返回还缺什么。**不会创建用户**——用户必须在原生表单里核对、填写密码并点击保存。本会话已有草稿时会合并进去，因此每轮只传本轮**新补充**的字段：已存在的字段再传不同值会被拒绝（用户在表单里可能已经改过），这时请改用 update_action_draft 并带上你读到的 draftVersion。',
-    moduleId: 'ai',
-    operationId: 'adminUsersCreate',
-    permissionCode: 'system:user:create',
-    inputSchema: Type.Object({
-      ...ActionDraftFormDataSchema.properties,
-      draftVersion: Type.Optional(Type.Integer({ minimum: 1, description: '你读到的草稿版本；给了就必须与当前一致' })),
-      schemaVersion: Type.Optional(Type.Integer({ minimum: 1, description: '上次读到的表单定义版本；对不上必须重新读表单' })),
-    }, { additionalProperties: false }),
-    riskLevel: 'prepare',
-    enabled: true,
-    async execute(context: AiCapabilityContext, input: unknown) {
-      const conversationId = requireConversation(context)
-      // 字段平铺在入参顶层：模型只需要说「这一轮我知道了这些」，不必再包一层 formData。
-      const { draftVersion, schemaVersion, ...patch } = (input ?? {}) as { draftVersion?: number; schemaVersion?: number } & Record<string, unknown>
-      const existing = await activeDraft(drafts, context)
-      // 合并而不是新建：跨轮收集的前提就是同一份草稿一直活着。
-      const draft = existing
-        ? await merge(drafts, context, existing, patch, draftVersion, { schemaVersion })
-        : await drafts.create(context.actorId, conversationId, { module: DRAFT_MODULE, action: DRAFT_ACTION, formData: patch, schemaVersion, subject: subjectOf(context) })
-      return draftSummary(draft, context.requestId)
-    },
+  const patchFields = new Map<string, TSchema[]>()
+  for (const adapter of listDraftAdapters()) {
+    for (const [key, schema] of Object.entries(adapter.fieldSchemas)) {
+      const schemas = patchFields.get(key) ?? []
+      schemas.push(relaxedField(schema))
+      patchFields.set(key, schemas)
+    }
   }
+  const patchProperties = Object.fromEntries([...patchFields].map(([key, schemas]) => [key, Type.Optional(Type.Union([...schemas, Type.Null()]))]))
 
   const updateActionDraft: AiCapability = {
     name: 'update_action_draft',
     description: '按字段补丁更新一份已存在的草稿（清空某个可选字段时把值传 null）。必须带上你上次读到的 draftVersion；版本不符会被拒绝，此时重新读取草稿而不是重发补丁。',
     moduleId: 'ai',
     operationId: 'aiActionDraftPatch',
-    permissionCode: 'system:user:create',
+    permissionCode: 'ai:chat:use',
     inputSchema: Type.Object({
       draftId: Type.String({ minLength: 1, maxLength: 64, description: '要更新的草稿 ID' }),
       draftVersion: Type.Integer({ minimum: 1, description: '你读到的草稿版本' }),
-      ...ActionDraftFormDataPatchSchema.properties,
+      ...patchProperties,
       schemaVersion: Type.Optional(Type.Integer({ minimum: 1 })),
     }, { additionalProperties: false }),
     riskLevel: 'prepare',
@@ -236,10 +207,11 @@ export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): 
 
   const getActionDraft: AiCapability = {
     name: 'get_action_draft',
+    operation: { id: 'form.draft.detail', name: '读取表单草稿', type: 'query' },
     description: '读取本会话中的一份草稿当前状态：已收集字段、缺失项、校验错误与版本号。用于版本冲突或用户追问进度时重新对齐，**不会**保存或提交任何东西。',
     moduleId: 'ai',
     operationId: 'aiActionDraftDetail',
-    permissionCode: 'system:user:create',
+    permissionCode: 'ai:chat:use',
     inputSchema: Type.Object({
       draftId: Type.String({ minLength: 1, maxLength: 64 }),
     }, { additionalProperties: false }),
@@ -251,15 +223,15 @@ export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): 
     },
   }
 
-  const formDrafts = (['user.create', 'department.create'] as const).map(action => {
-    const isUser = action === 'user.create'
-    const references: Record<string, string> = isUser ? { deptIds: 'user.create.options', roleIds: 'user.create.options' } : { parentId: 'department.list', leaderId: 'user.list' }
-    return {
-      name: isUser ? 'prepare_user_form_draft' : 'prepare_department_form_draft',
-      moduleId: 'system', operationId: isUser ? 'createUser' : 'createDept',
-      permissionCode: isUser ? 'system:user:create' : 'system:department:create',
-      operation: { id: action, name: isUser ? '新增用户' : '新增部门', type: 'create' as const, formKey: action,
-        describeCapability: isUser ? 'get_user_create_form' : 'get_department_create_form', references },
+  const formDrafts = listDraftAdapters().flatMap(adapter => {
+    const { action, references } = adapter
+    const capability: AiCapability = {
+      draftAdapter: adapter,
+      name: adapter.prepareCapabilityName,
+      moduleId: adapter.moduleId, operationId: adapter.operationId,
+      permissionCode: adapter.permissionCode,
+      operation: { id: action, name: adapter.name, type: 'create' as const, formKey: action,
+        describeCapability: adapter.describeCapability, references },
       description: '增量保存原生表单草稿。未明确确认前不会创建正式记录。修改已有字段必须携带当前草稿版本；用户手动输入后版本不符会拒绝。',
       inputSchema: Type.Object({
         ...Object.fromEntries(Object.entries(draftFieldSchemas(action)).map(([key, schema]) => [key, Type.Optional(Type.Union([relaxedField(schema), Type.Null()]))])),
@@ -271,22 +243,18 @@ export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): 
         const { draftId, draftVersion, schemaVersion, ...fields } = input as { draftId?: string; draftVersion?: number; schemaVersion?: number } & Record<string, unknown>
         const conversationId = requireConversation(context)
         const existing = draftId ? await ownDraft(drafts, context, draftId) : (await drafts.list(context.actorId, conversationId)).filter(row => row.action === action && EDITABLE_ACTION_DRAFT_STATUSES.includes(row.status)).at(-1)
-        if (existing && existing.action !== action) throw aiError(400, '草稿表单目标不匹配')
+        if (existing && (existing.action !== action || existing.module !== adapter.moduleId)) throw aiError(400, '草稿表单目标不匹配')
         const draft = existing
           ? draftVersion === undefined
             ? await merge(drafts, context, existing, fields, undefined, { schemaVersion })
             : await drafts.patch(context.actorId, existing.draftId, draftVersion, fields, { schemaVersion, subject: subjectOf(context) })
-          : await drafts.create(context.actorId, conversationId, { module: 'system', action, formData: fields, schemaVersion, subject: subjectOf(context) })
+          : await drafts.create(context.actorId, conversationId, { module: adapter.moduleId, action, formData: fields, schemaVersion, subject: subjectOf(context) })
         return draftSummary(draft, context.requestId)
       },
-    } satisfies AiCapability
+    }
+    return [capability, ...(adapter.legacyPrepareCapabilityNames ?? []).map(name => ({ ...capability, name, operation: undefined }))]
   })
-  const departmentForm: AiCapability = {
-    name: 'get_department_create_form', moduleId: 'system', operationId: 'createDept', permissionCode: 'system:department:create', riskLevel: 'read', enabled: true,
-    description: '读取原生新增部门表单的同源字段与约束。', inputSchema: Type.Object({}, { additionalProperties: false }),
-    async execute() { return { data: draftForm('department.create'), mutated: false } },
-  }
-  return [prepareCreateUser, updateActionDraft, getActionDraft, ...formDrafts, departmentForm]
+  return [updateActionDraft, getActionDraft, ...formDrafts]
 }
 
 export function registerAiActionDraftCapabilities(deps: ActionDraftCapabilityDeps): void {

@@ -1,29 +1,36 @@
-import { CreateDeptFieldsSchema, UserCreateDraftFieldsSchema, UserCreationFormService, DepartmentCreationFormService, validateUserCreation, PermissionService, computeEffectivePerms, hasPermission, establishDataScopeFor, userDirectory, SUPER_ADMIN_BYPASS, DeptService, type UserCreateForm, type UserCreationSubject } from '@yishan/core-system-api'
-import { PERMISSION_CODES } from '@yishan/core-api/permissions/catalog'
+import { listAiCapabilities, type AiDraftAdapter, type AiDraftSubject } from '@yishan/core-api/ai-capabilities/catalog'
 import type { TSchema } from '@sinclair/typebox'
+import { currentSystemRuntime } from '@yishan/core-system-api'
 import { aiError } from '../ai-chat-error.js'
 
-/** Business adapters provide only metadata and existing service calls; the draft state machine is shared. */
+export function listDraftAdapters(): readonly AiDraftAdapter[] {
+  const adapters = new Map<string, AiDraftAdapter>()
+  for (const capability of listAiCapabilities()) {
+    if (capability.enabled && capability.draftAdapter) adapters.set(capability.draftAdapter.action, capability.draftAdapter)
+  }
+  return [...adapters.values()]
+}
+
+export function draftAdapter(action: string): AiDraftAdapter {
+  const adapter = listDraftAdapters().find(adapter => adapter.action === action)
+  if (!adapter) throw aiError(400, '不支持的表单目标')
+  return adapter
+}
 export function draftFieldSchemas(action: string): Record<string, TSchema> {
-  if (action === 'department.create') return CreateDeptFieldsSchema.properties
-  if (action === 'user.create') return UserCreateDraftFieldsSchema.properties
-  throw aiError(400, '不支持的表单目标')
+  return draftAdapter(action).fieldSchemas as Record<string, TSchema>
 }
-
-export function draftForm(action: string): UserCreateForm {
-  if (action === 'user.create') return UserCreationFormService.getCreateForm()
-  if (action === 'department.create') return DepartmentCreationFormService.getCreateForm()
-  throw aiError(400, '不支持的表单目标')
+export function draftForm(action: string) { return draftAdapter(action).form() }
+export async function assertDraftAvailable(action: string): Promise<void> {
+  const adapter = draftAdapter(action)
+  // Core system routes are always installed and do not enter the optional module table.
+  if (adapter.moduleId !== 'system' && !(await currentSystemRuntime().moduleState.enabledIds()).has(adapter.moduleId)) {
+    throw aiError(400, '表单目标不可用')
+  }
 }
-
-export async function authorizeDraft(action: string, subject: UserCreationSubject, fields: Record<string, unknown>): Promise<void> {
-  if (action === 'user.create') return validateUserCreation(subject, fields)
-  if (action !== 'department.create') throw aiError(400, '不支持的表单目标')
-  const roles = await PermissionService.loadRoleIdsForUser(subject.actorId)
-  const { perms } = await PermissionService.loadForRoleIds(roles, { ttlMs: 0 })
-  const effective = computeEffectivePerms(perms, subject.tokenScope, PERMISSION_CODES)
-  if (!hasPermission(effective, 'system:department:create')) throw aiError(400, '没有新增部门的权限')
-  const identity = await userDirectory.findById(subject.actorId)
-  if (!identity || identity.status !== '1') throw aiError(400, '当前用户身份不可用')
-  await establishDataScopeFor({ userId: subject.actorId, roleIds: roles, deptIds: identity.deptIds, tokenScope: subject.tokenScope ? [...subject.tokenScope] : undefined, superAdmin: effective.has(SUPER_ADMIN_BYPASS) }, 'system:department:create', () => DeptService.validateCreateReferences(fields))
+export async function authorizeDraft(action: string, subject: AiDraftSubject, fields: Record<string, unknown>): Promise<void> {
+  await assertDraftAvailable(action)
+  try { await draftAdapter(action).authorize(subject, fields) } catch (error) {
+    if (error instanceof Error && error.constructor === Error) throw aiError(400, error.message)
+    throw error
+  }
 }

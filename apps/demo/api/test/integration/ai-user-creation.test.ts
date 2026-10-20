@@ -170,7 +170,16 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('AI 助手在真实 
     })
     const names = capabilities.map(capability => capability.name)
     // 约束 1：模型能看到的工具清单里**没有任何**写业务记录的能力。
-    expect(names.some(name => /create_user$|delete_user$|update_user$/.test(name) && name !== 'prepare_create_user' && name !== 'prepare_update_user')).toBe(false)
+    // 只认 `prepare_` 前缀整类，而不是逐个列名字：写业务记录的能力一律以 prepare_ 开头
+    // （prepare_create_user / prepare_update_user / prepare_delete_user），它们只把动作
+    // 暂存成草稿等用户点确认，风险级别也是 prepare。写死了名字列表就等于把「新增一个
+    // prepare_* 能力」变成一次测试红灯，而真正该守的不变式是「没有非 prepare_ 的写能力」。
+    const writeish = capabilities.filter(capability => /(create_user|delete_user|update_user)$/.test(capability.name))
+    expect(writeish.length).toBeGreaterThan(0)
+    for (const capability of writeish) {
+      expect(capability.name.startsWith('prepare_')).toBe(true)
+      expect(capability.riskLevel).toBe('prepare')
+    }
     expect(capabilities.some(capability => capability.riskLevel === 'write')).toBe(false)
     expect(names).toEqual(expect.arrayContaining(['prepare_create_user', 'update_action_draft', 'get_action_draft']))
     expect(names).not.toContain('create_user')

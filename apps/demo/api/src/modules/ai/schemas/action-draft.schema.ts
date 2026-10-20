@@ -1,3 +1,4 @@
+import { draftFieldSchemas } from '../services/draft-forms.js'
 /**
  * action-draft.schema.ts — AI 业务助手的**持久化草稿**传输契约。
  *
@@ -21,7 +22,7 @@
  *    「别动它」。两者混为一谈会让助手一次补丁清空半个表单。
  */
 import { Type, type Static, type TSchema } from '@sinclair/typebox'
-import { USER_CREATE_DRAFT_FIELD_KEYS, UserCreateDraftFieldsSchema, CreateDeptFieldsSchema } from '@yishan/core-system-api'
+import { USER_CREATE_DRAFT_FIELD_KEYS, UserCreateDraftFieldsSchema } from '@yishan/core-system-api'
 
 /**
  * 草稿状态机。
@@ -56,10 +57,8 @@ export const EDITABLE_ACTION_DRAFT_STATUSES: readonly ActionDraftStatus[] = ['co
  * 写成显式白名单而不是自由字符串：模型不能凭草稿接口创建别的模块或别的动作，
  * 新增协作目标必须先在这里登记一个真实存在的表单适配器。
  */
-export const ACTION_DRAFT_MODULES = ['system'] as const
-export const ACTION_DRAFT_ACTIONS = ['user.create', 'department.create'] as const
-export type ActionDraftModule = (typeof ACTION_DRAFT_MODULES)[number]
-export type ActionDraftAction = (typeof ACTION_DRAFT_ACTIONS)[number]
+export type ActionDraftModule = string
+export type ActionDraftAction = string
 
 /** 有效期自**创建**起算，不因编辑续期（设计 §9）。 */
 export const ACTION_DRAFT_TTL_MS = 24 * 60 * 60 * 1000
@@ -96,14 +95,12 @@ export function isDraftArrayField(key: string): boolean {
  * 因为半截手机号要照存，业务格式错误留给 `validationErrors`。
  */
 export function matchesDraftFieldType(key: string, value: unknown, action = 'user.create'): boolean {
-  if (action === 'department.create') {
-    const fields: Record<string, TSchema> = CreateDeptFieldsSchema.properties
-    const source = fields[key]
-    if (!source) return false
-    return source.type === 'number' || source.type === 'integer' ? typeof value === 'number' && Number.isFinite(value) : typeof value === 'string'
-  }
-  if (!isDraftArrayField(key)) return typeof value === 'string'
-  return Array.isArray(value) && value.every(item => typeof item === 'number' && Number.isFinite(item))
+  const source = draftFieldSchemas(action)[key]
+  if (!source) return false
+  if (source.type === 'array') return Array.isArray(value) && value.every(item => source.items?.type === 'string' ? typeof item === 'string' : typeof item === 'number' && Number.isFinite(item))
+  if (source.type === 'number' || source.type === 'integer') return typeof value === 'number' && Number.isFinite(value)
+  if (source.type === 'boolean') return typeof value === 'boolean'
+  return typeof value === 'string'
 }
 
 /** 取源字段的「基本类型」，丢掉 enum / pattern / format。 */
@@ -111,6 +108,7 @@ export function relaxedField(source: unknown): TSchema {
   const schema = (source ?? {}) as { type?: string; items?: { type?: string }; anyOf?: unknown[]; maxLength?: number }
   if (schema.type === 'array') return Type.Array(schema.items?.type === 'string' ? Type.String() : Type.Number())
   if (schema.type === 'number' || schema.type === 'integer') return Type.Number()
+  if (schema.type === 'boolean') return Type.Boolean()
   // birthDate 之类的联合类型：取第一个成员的原始类型，宽松成单个字符串。
   if (!schema.type && Array.isArray(schema.anyOf)) return relaxedField(schema.anyOf[0])
   return Type.String({ maxLength: schema.maxLength ?? 255 })
@@ -155,8 +153,8 @@ export const ActionDraftTransportFormDataSchema = Type.Record(Type.String(), Typ
 export { USER_CREATE_DRAFT_FIELD_KEYS }
 export type ActionDraftFormDataPatch = Static<typeof ActionDraftFormDataPatchSchema>
 
-const ModuleSchema = Type.String({ enum: ACTION_DRAFT_MODULES as unknown as string[] })
-const ActionSchema = Type.String({ enum: ACTION_DRAFT_ACTIONS as unknown as string[] })
+const ModuleSchema = Type.String({ minLength: 1, maxLength: 64 })
+const ActionSchema = Type.String({ minLength: 1, maxLength: 128 })
 export const ActionDraftStatusSchema = Type.Union(ACTION_DRAFT_STATUSES.map(status => Type.Literal(status)) as never)
 
 export const ActionDraftCreateBodySchema = Type.Object({

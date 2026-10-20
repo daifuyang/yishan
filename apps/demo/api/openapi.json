@@ -14049,16 +14049,13 @@
                 "type": "object",
                 "properties": {
                   "module": {
-                    "enum": [
-                      "system"
-                    ],
+                    "minLength": 1,
+                    "maxLength": 64,
                     "type": "string"
                   },
                   "action": {
-                    "enum": [
-                      "user.create",
-                      "department.create"
-                    ],
+                    "minLength": 1,
+                    "maxLength": 128,
                     "type": "string"
                   },
                   "formData": {
@@ -14135,16 +14132,13 @@
                           "type": "string"
                         },
                         "module": {
-                          "enum": [
-                            "system"
-                          ],
+                          "minLength": 1,
+                          "maxLength": 64,
                           "type": "string"
                         },
                         "action": {
-                          "enum": [
-                            "user.create",
-                            "department.create"
-                          ],
+                          "minLength": 1,
+                          "maxLength": 128,
                           "type": "string"
                         },
                         "schemaVersion": {
@@ -14409,16 +14403,13 @@
                                 "type": "string"
                               },
                               "module": {
-                                "enum": [
-                                  "system"
-                                ],
+                                "minLength": 1,
+                                "maxLength": 64,
                                 "type": "string"
                               },
                               "action": {
-                                "enum": [
-                                  "user.create",
-                                  "department.create"
-                                ],
+                                "minLength": 1,
+                                "maxLength": 128,
                                 "type": "string"
                               },
                               "schemaVersion": {
@@ -14687,16 +14678,13 @@
                           "type": "string"
                         },
                         "module": {
-                          "enum": [
-                            "system"
-                          ],
+                          "minLength": 1,
+                          "maxLength": 64,
                           "type": "string"
                         },
                         "action": {
-                          "enum": [
-                            "user.create",
-                            "department.create"
-                          ],
+                          "minLength": 1,
+                          "maxLength": 128,
                           "type": "string"
                         },
                         "schemaVersion": {
@@ -14982,16 +14970,13 @@
                           "type": "string"
                         },
                         "module": {
-                          "enum": [
-                            "system"
-                          ],
+                          "minLength": 1,
+                          "maxLength": 64,
                           "type": "string"
                         },
                         "action": {
-                          "enum": [
-                            "user.create",
-                            "department.create"
-                          ],
+                          "minLength": 1,
+                          "maxLength": 128,
                           "type": "string"
                         },
                         "schemaVersion": {
@@ -15269,6 +15254,464 @@
                       },
                       "required": [
                         "ok"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/drafts/{draftId}/questions": {
+      "get": {
+        "operationId": "aiDraftQuestions",
+        "summary": "读取草稿待回答问题",
+        "tags": [
+          "ai"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "type": "string"
+            },
+            "in": "query",
+            "name": "conversationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "description": "草稿 ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "questionId": {
+                                "type": "string"
+                              },
+                              "draftId": {
+                                "type": "string"
+                              },
+                              "draftVersion": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "field": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "multiple": {
+                                "type": "boolean"
+                              },
+                              "allowEmpty": {
+                                "type": "boolean"
+                              },
+                              "truncated": {
+                                "type": "boolean"
+                              },
+                              "options": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "value": {
+                                      "type": "number"
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "value",
+                                    "label"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "questionId",
+                              "draftId",
+                              "draftVersion",
+                              "field",
+                              "title",
+                              "multiple",
+                              "allowEmpty",
+                              "truncated",
+                              "options"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "questions"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/drafts/{draftId}/questions/answer": {
+      "post": {
+        "operationId": "aiAnswerDraftQuestion",
+        "summary": "回答问题并更新草稿",
+        "tags": [
+          "ai"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "properties": {
+                  "conversationId": {
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "type": "string"
+                  },
+                  "questionId": {
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "type": "string"
+                  },
+                  "draftVersion": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "values": {
+                    "maxItems": 100,
+                    "uniqueItems": true,
+                    "type": "array",
+                    "items": {
+                      "minimum": 1,
+                      "type": "integer"
+                    }
+                  }
+                },
+                "required": [
+                  "conversationId",
+                  "questionId",
+                  "draftVersion",
+                  "values"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "parameters": [
+          {
+            "schema": {
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-zA-Z0-9_-]+$",
+              "type": "string"
+            },
+            "in": "path",
+            "name": "draftId",
+            "required": true,
+            "description": "草稿 ID"
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "draftId": {
+                          "type": "string"
+                        },
+                        "ownerId": {
+                          "type": "integer"
+                        },
+                        "conversationId": {
+                          "type": "string"
+                        },
+                        "module": {
+                          "minLength": 1,
+                          "maxLength": 64,
+                          "type": "string"
+                        },
+                        "action": {
+                          "minLength": 1,
+                          "maxLength": 128,
+                          "type": "string"
+                        },
+                        "schemaVersion": {
+                          "type": "integer"
+                        },
+                        "formData": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "missingFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "mustCompleteInForm": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label",
+                              "required",
+                              "sensitive",
+                              "mustCompleteInForm"
+                            ]
+                          }
+                        },
+                        "validationErrors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "field": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "code": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "field",
+                              "label",
+                              "code",
+                              "message"
+                            ]
+                          }
+                        },
+                        "draftVersion": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "collecting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "ready"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "previewing"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "submitting"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "completed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "failed"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cancelled"
+                              ]
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "expired"
+                              ]
+                            }
+                          ]
+                        },
+                        "resultRef": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "targetType": {
+                                  "type": "string"
+                                },
+                                "targetId": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "targetType",
+                                "targetId"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "failureReason": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "format": "date-time",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "draftId",
+                        "ownerId",
+                        "conversationId",
+                        "module",
+                        "action",
+                        "schemaVersion",
+                        "formData",
+                        "missingFields",
+                        "validationErrors",
+                        "draftVersion",
+                        "status",
+                        "resultRef",
+                        "failureReason",
+                        "createdAt",
+                        "updatedAt",
+                        "expiresAt"
                       ]
                     }
                   },

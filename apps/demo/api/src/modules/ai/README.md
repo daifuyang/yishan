@@ -17,6 +17,8 @@
 | GET /api/ai/v1/drafts/:draftId | 读取草稿（仅归属者可见） |
 | PATCH /api/ai/v1/drafts/:draftId | 按字段合并更新草稿，密码永不在其中 |
 | POST /api/ai/v1/drafts/:draftId/cancel | 取消草稿 |
+| GET /api/ai/v1/drafts/:draftId/questions | 读取本会话草稿的实时候选问题 |
+| POST /api/ai/v1/drafts/:draftId/questions/answer | 人工回答问题，仅更新草稿 |
 
 建号的字段定义与候选来自系统侧 `GET /api/v1/admin/users/create-form` 与
 `/api/v1/admin/users/create-options`，因此助手与普通后台的必填、字段、部门与角色授权同源。
@@ -27,6 +29,8 @@
 `update_form_draft`。工具按需读取已注册的操作、同源字段与真实候选，并经原有执行链查询或更新草稿，
 **没有任何工具写业务表**。草稿存 `ai_action_drafts`，
 有效期 24 小时（自创建起算，编辑不续期），一份草稿最多完成一次创建。
+
+草稿字段、表单元数据、权限校验和候选问题由业务能力显式贡献 `AiDraftAdapter`，公共状态机不再分支识别用户与部门。用户创建的部门/角色问询复用同源候选服务，回答绑定用户、会话和草稿版本，提交时重新检查候选及授权；历史卡片不会自动提交答案。前端公共注册与 `useAiForm` 位于 `@yishan/core-admin/form-assistance`。
 
 真正的创建走系统原有的 `POST /api/v1/admin/users` 或 `POST /api/v1/admin/departments/`：前端在原生表单点「确定」时带上
 `draftSubmission: { draftId, draftVersion }`，服务端以 CAS 取自己存的草稿为唯一可信来源，

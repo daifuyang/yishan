@@ -18,18 +18,14 @@
  *    `validationErrors`。只有「形状不合法」（未知字段、密码、类型错误）才当场拒绝。
  */
 import { randomUUID } from 'node:crypto'
-import {
-  type UserCreateForm,
-  type UserCreationSubject,
-} from '@yishan/core-system-api'
+import type { AiDraftForm, AiDraftSubject } from '@yishan/core-api/ai-capabilities/catalog'
 import type { AppQueryDb } from '@yishan/core-system-api/database'
 import { ActionDraftRepository, type ActionDraftRecord, type ActionDraftStore, type ActionDraftTx } from '../repositories/action-draft.repository.js'
 import { aiError } from '../ai-chat-error.js'
-import { authorizeDraft, draftFieldSchemas, draftForm } from './draft-forms.js'
+import { authorizeDraft, draftFieldSchemas, draftForm, draftAdapter } from './draft-forms.js'
 import {
-  ACTION_DRAFT_ACTIONS,
-  ACTION_DRAFT_MODULES,
   ACTION_DRAFT_TTL_MS,
+  matchesDraftFieldType,
   ACTION_DRAFT_STATUSES,
   EDITABLE_ACTION_DRAFT_STATUSES,
   type ActionDraftAction,
@@ -50,21 +46,21 @@ export interface CreateActionDraftInput {
   /** 模型上次读到的表单版本；带了就必须与当前一致，否则要求重新读表单。 */
   schemaVersion?: number
   /** 提供时才跑授权；生产路径由调用方从认证身份构造。 */
-  subject?: UserCreationSubject
+  subject?: AiDraftSubject
 }
 
 export interface PatchActionDraftInput {
   schemaVersion?: number
-  subject?: UserCreationSubject
+  subject?: AiDraftSubject
 }
 
 export interface ActionDraftServiceOptions {
   now?: () => Date
   ttlMs?: number
   /** 注入表单定义（测试用）；生产路径读真实的 `getCreateForm()`。 */
-  form?: UserCreateForm
+  form?: AiDraftForm
   /** 注入授权规则（测试用）；生产路径是 Task 2 的 `validateUserCreation`。 */
-  authorize?: (subject: UserCreationSubject, fields: Record<string, unknown>) => Promise<void>
+  authorize?: (subject: AiDraftSubject, fields: Record<string, unknown>) => Promise<void>
 }
 
 
@@ -95,8 +91,8 @@ export class ActionDraftService {
 
   private now() { return this.options.now ? this.options.now() : new Date() }
   private ttlMs() { return this.options.ttlMs ?? ACTION_DRAFT_TTL_MS }
-  private form(action = 'user.create'): UserCreateForm { return this.options.form ?? draftForm(action) }
-  private async authorize(subject: UserCreationSubject | undefined, fields: Record<string, unknown>, action = 'user.create') {
+  private form(action: string): AiDraftForm { return this.options.form ?? draftForm(action) }
+  private async authorize(subject: AiDraftSubject | undefined, fields: Record<string, unknown>, action: string) {
     if (!subject) return
     if (this.options.authorize) await this.options.authorize(subject, fields)
     else await authorizeDraft(action, subject, fields)
@@ -162,6 +158,8 @@ export class ActionDraftService {
 
   async patch(ownerId: number, draftId: string, draftVersion: number, formData: Record<string, unknown>, context: PatchActionDraftInput = {}): Promise<ActionDraft> {
     const row = await this.get(ownerId, draftId)
+    this.assertTarget(row.module, row.action)
+    this.assertSchemaVersion(row.schemaVersion, row.action)
     this.assertSchemaVersion(context.schemaVersion, row.action)
     const patch = this.normalize(formData, true, row.action)
     if (row.draftVersion !== draftVersion) throw conflict(this.explain(row, draftVersion))
@@ -306,6 +304,8 @@ export class ActionDraftService {
   async markPreviewing(ownerId: number, draftId: string, draftVersion: number, open = true): Promise<ActionDraft> {
     const row = await this.get(ownerId, draftId)
     if (row.draftVersion !== draftVersion) throw conflict(this.explain(row, draftVersion))
+    this.assertTarget(row.module, row.action)
+    this.assertSchemaVersion(row.schemaVersion, row.action)
     const evaluation = this.evaluate(row.formData, row.action)
     return this.swap(ownerId, row, draftVersion, EDITABLE_ACTION_DRAFT_STATUSES, {
       status: open ? 'previewing' : evaluation.status,
@@ -317,12 +317,12 @@ export class ActionDraftService {
   // ------------------------------------------------------------ 内部规则
 
   private assertTarget(module: string, action: string): void {
-    if (!(ACTION_DRAFT_MODULES as readonly string[]).includes(module) || !(ACTION_DRAFT_ACTIONS as readonly string[]).includes(action)) {
+    if (draftAdapter(action).moduleId !== module) {
       throw aiError(400, `暂不支持的表单目标：${module} / ${action}`)
     }
   }
 
-  private assertSchemaVersion(schemaVersion?: number, action = 'user.create'): void {
+  private assertSchemaVersion(schemaVersion: number | undefined, action: string): void {
     if (schemaVersion !== undefined && schemaVersion !== this.form(action).schemaVersion) {
       // 版本对不上必须重新读表单定义，而不是拿旧字段名继续写（Task 3 契约）。
       throw aiError(400, '表单定义已更新，请重新读取表单后再保存草稿')
@@ -340,7 +340,7 @@ export class ActionDraftService {
    * `{phone:null}` 表示「还没问到手机号」，而不是「手机号为空」—— 一律 400，
    * 否则必填字段会同时是「已清空」和「已收集」，草稿宣称 ready 而提交被拒。
    */
-  private normalize(formData: Record<string, unknown>, allowNull: boolean, action = 'user.create'): Record<string, unknown> {
+  private normalize(formData: Record<string, unknown>, allowNull: boolean, action: string): Record<string, unknown> {
     if (!isPatch(formData)) throw aiError(400, '表单数据格式无效')
     const rejected: string[] = []
     const out: Record<string, unknown> = {}
@@ -354,10 +354,7 @@ export class ActionDraftService {
         else rejected.push(key)
         continue
       }
-      const valid = source.type === 'number' || source.type === 'integer'
-        ? typeof value === 'number' && Number.isFinite(value)
-        : source.type === 'array' ? Array.isArray(value) && value.every(item => typeof item === 'number' && Number.isFinite(item))
-          : typeof value === 'string'
+      const valid = matchesDraftFieldType(key, value, action)
       if (!valid) { rejected.push(key); continue }
       out[key] = value
     }
@@ -366,7 +363,7 @@ export class ActionDraftService {
   }
 
   /** 用真实表单定义算「缺什么、哪里不合法」。值一律原样保留。 */
-  private evaluate(formData: Record<string, unknown>, action = 'user.create') {
+  private evaluate(formData: Record<string, unknown>, action: string) {
     const form = this.form(action)
     const byName = new Map(form.fields.map(field => [field.name, field]))
     const validationErrors: ActionDraft['validationErrors'] = []

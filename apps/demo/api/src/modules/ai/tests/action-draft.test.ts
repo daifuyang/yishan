@@ -1,9 +1,42 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, } from 'vitest'
+import { it } from './draft-runtime.js'
 import { ActionDraftService, ACTION_DRAFT_TTL_MS } from '../services/action-draft.service.js'
 import type { ActionDraftRecord, ActionDraftStore, ActionDraftTx } from '../repositories/action-draft.repository.js'
 import { USER_CREATE_FORM_SCHEMA_VERSION } from '@yishan/core-system-api'
 import { DRAFT_ARRAY_FIELD_KEYS, USER_CREATE_DRAFT_FIELD_KEYS, matchesDraftFieldType } from '../schemas/action-draft.schema.js'
 import { AiChatService } from '../services/ai-chat.service.js'
+import { AiCapabilityCatalog } from '@yishan/core-api'
+import { runWithAiCapabilities } from '@yishan/core-api/ai-capabilities/catalog'
+import { Type } from '@sinclair/typebox'
+import { Value } from '@sinclair/typebox/value'
+import { createActionDraftCapabilities } from '../capabilities/action-drafts.js'
+
+describe('registered business draft adapters', () => {
+  it('creates and patches a third operation and rejects a different module', async () => {
+    const catalog = new AiCapabilityCatalog()
+    let schemaVersion = 1
+    catalog.register({ name: 'prepare_project', moduleId: 'projects', operationId: 'createProject', permissionCode: 'projects:create', riskLevel: 'prepare', enabled: true, description: 'project', inputSchema: {}, execute: async () => ({ data: {} }),
+      draftAdapter: { action: 'project.create', moduleId: 'projects', name: '项目', prepareCapabilityName: 'prepare_project_draft', operationId: 'createProject', permissionCode: 'projects:create', fieldSchemas: { title: Type.String(), active: Type.Boolean() }, form: () => ({ schemaVersion, fields: [{ name: 'title', label: '标题', required: true, sensitive: false, selector: 'text', constraints: {} }], defaults: {}, editableFields: ['title', 'active'], missingFields: [] }), authorize: async () => {} },
+    })
+    await runWithAiCapabilities(catalog, async () => {
+      const f = fixture()
+      const draft = await f.service.create(7, 'conv-1', { module: 'projects', action: 'project.create', formData: { active: false } })
+      expect(draft.status).toBe('collecting')
+      const updated = await f.service.patch(7, draft.draftId, 1, { title: '测试' })
+      expect(updated.formData).toEqual({ active: false, title: '测试' })
+      expect(updated.status).toBe('ready')
+      const update = createActionDraftCapabilities({ drafts: f.service }).find(capability => capability.name === 'update_action_draft')!
+      const input = { draftId: draft.draftId, draftVersion: 2, active: true }
+      expect(Value.Check(update.inputSchema as import('@sinclair/typebox').TSchema, input)).toBe(true)
+      await update.execute({ actorId: 7, conversationId: 'conv-1', requestId: 'r', permissions: new Set(['projects:create']) }, input)
+      expect((await f.service.get(7, draft.draftId)).formData.active).toBe(true)
+      await expect(f.service.create(7, 'conv-1', { module: 'system', action: 'project.create', formData: {} })).rejects.toThrow('表单目标')
+      schemaVersion = 2
+      await expect(f.service.patch(7, draft.draftId, 3, { title: '旧定义' })).rejects.toThrow('表单定义已更新')
+      await expect(f.service.markPreviewing(7, draft.draftId, 3)).rejects.toThrow('表单定义已更新')
+    })
+  })
+})
 
 /**
  * 内存 store：行为测试全部走这里，因此没有任何一条测试需要等待真实过期，
