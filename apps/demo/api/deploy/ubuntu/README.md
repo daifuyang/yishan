@@ -420,6 +420,82 @@ readlink -f /opt/yishan/current/node_modules/@yishan/core-system-api
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+**每个 vhost 的 80 端口块都要显式跳 HTTPS。** 只写 `root /var/www/acme-challenge;`
+的块（ACME webroot）在 HTTP 上会对 `/` 返回 403、对其它路径 404——目录里没有
+index，且 nginx 默认不列目录。正确形态与 `codecloud.tech` / `yugongsoft.com` 一致：
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name <host>;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/acme-challenge;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+```
+
+### 旧域名 yishan.zerocmf.com → admin.zerocmf.com
+
+2026-10-20 起，`yishan.zerocmf.com` 从「FC 自定义域名」改成指向本机的 A 记录，
+由 `/etc/nginx/sites-available/yishan-redirect.conf` 做 **301 永久跳转**：
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name yishan.zerocmf.com;
+
+    location /.well-known/acme-challenge/ { root /var/www/acme-challenge; }
+    location / { return 301 https://admin.zerocmf.com$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 http2;
+    server_name yishan.zerocmf.com;
+
+    ssl_certificate     /etc/nginx/certs/yishan.zerocmf.com.fullchain.crt;
+    ssl_certificate_key /etc/nginx/certs/yishan.zerocmf.com.key;
+
+    location / { return 301 https://admin.zerocmf.com$request_uri; }
+}
+```
+
+`$request_uri` 保留路径与查询串，所以旧 API 客户端打
+`https://yishan.zerocmf.com/api/v1/xxx` 会落到
+`https://admin.zerocmf.com/api/v1/xxx`——后端就托管在 admin 域名的 `/api` 下。
+
+DNS 记录用 `aic` 改（`@zerocmf/aic` 云资源 CLI）：
+
+```bash
+aic dns:list zerocmf.com                       # 记下旧记录 id
+aic dns:delete <旧记录 id>                     # 原 CNAME → FC 自定义域名
+aic dns:add zerocmf.com yishan A 43.143.122.225 --ttl 600
+```
+
+证书用本机 acme.sh 的 **HTTP-01**（webroot `/var/www/acme-challenge`，每日 0:39 的
+cron 自动续期并 reload nginx）：
+
+```bash
+~/acme.sh/acme.sh --issue -d yishan.zerocmf.com -w /var/www/acme-challenge
+~/acme.sh/acme.sh --install-cert -d yishan.zerocmf.com \
+  --key-file /etc/nginx/certs/yishan.zerocmf.com.key \
+  --fullchain-file /etc/nginx/certs/yishan.zerocmf.com.fullchain.crt \
+  --reloadcmd "sudo systemctl reload nginx"
+```
+
+签发必须在 DNS 指到本机**之后**（HTTP-01 要能访问 challenge 路径），且 80 端口
+的 vhost 要先存在。
+
+> 阿里云云解析的 `REDIRECT_URL`（显性 URL）**不能**用来做这件事：转发前域名只支持
+> HTTP，且 `Location` 是写死的目标 URL，不保留路径与查询串。
+
 ## 与 FC 的差异
 
 生产 FC（`yishan-api-cd.yml`）仍在部署，`PUBLIC_PATH` 由 `vars.ADMIN_BASE_PATH` 驱动，

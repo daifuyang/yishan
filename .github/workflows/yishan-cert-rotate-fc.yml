@@ -1,8 +1,9 @@
 name: yishan-cert-rotate-fc
 
+# 2026-10-20：yishan.zerocmf.com 已从 FC 自定义域名迁到演示机（腾讯云 Ubuntu），
+# 由 nginx 做 301 跳到 admin.zerocmf.com，证书改由目标机上的 acme.sh 续期。
+# FC 上这份证书已无人使用，因此停掉每晚的定时轮换，只保留手工触发。
 on:
-  schedule:
-    - cron: '15 19 * * *'
   workflow_dispatch:
 
 concurrency:
