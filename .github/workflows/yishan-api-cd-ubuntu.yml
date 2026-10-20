@@ -267,15 +267,22 @@ jobs:
           # 有效期 2 小时：够跑完迁移和冒烟，也短到链接不会长期有效。
           URL="$(node scripts/qiniu-artifact.mjs private-url "$ARTIFACT_KEY" 7200)"
           ASSET="${ARTIFACT_KEY##*/}"
+
+          # URL 里的 & 会被远端 shell 当成后台执行符：ssh 会把多个参数拼成一行
+          # 交给远端重新解析，"...&token=..." 从中间断开，后半截变成一条
+          # "command not found"。所以这里传 base64 —— 只有 A-Za-z0-9+/=，
+          # 没有 shell 元字符。
+          URL_B64="$(printf '%s' "$URL" | base64 -w0)"
+
           ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
             "mkdir -p /opt/yishan/incoming /opt/yishan/releases"
 
           # heredoc 加引号：远端脚本里的 $1/$2/$3 要留给远端展开，本机不插值。
           ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" bash -s -- \
-            "$ASSET" "$URL" "$ARTIFACT_SHA256" <<'REMOTE'
+            "$ASSET" "$URL_B64" "$ARTIFACT_SHA256" <<'REMOTE'
           set -euo pipefail
           ASSET="$1"
-          URL="$2"
+          URL="$(printf '%s' "$2" | base64 -d)"
           SHA256="$3"
           DIR=/opt/yishan/incoming
           cd "$DIR"
