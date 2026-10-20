@@ -178,7 +178,17 @@ function validateRegistry(admin, installed, systemPages) {
   const result = registry(admin)
   for (const key of Object.keys(systemPages)) assert.ok(result.keys.includes(key), `Missing System page ${key}`)
   for (const key of result.keys.filter(key => key.startsWith('./modules/'))) assert.ok(installed.includes(key.split('/')[2]), `Uninstalled page registered: ${key}`)
-  for (const id of installed) assert.ok(result.keys.some(key => key.startsWith(`./modules/${id}/`)), `No actual pages for installed module ${id}`)
+  // 只对**确实带 pages/ 目录**的模块断言它进了注册表。
+  //
+  // 「每个已安装模块都必须有页面」这条不变式已经不成立：安装列表来自 API 模块清单，
+  // 而一个模块不一定贡献菜单页 —— ai 模块装的是 API 路由，前端形态是浮动助手和
+  // 全屏会话，没有 pages/ 目录。原断言在这种模块上直接失败，却没指出任何真实缺陷。
+  //
+  // 收窄之后仍覆盖它本来要抓的失败：构建插件漏扫了一个**有**页面的模块。这个判断
+  // 看的是磁盘而不是安装列表，所以插件再怎么漏扫也骗不过去。
+  for (const id of installed.filter(id => existsSync(join(admin, 'src', 'modules', id, 'pages')))) {
+    assert.ok(result.keys.some(key => key.startsWith(`./modules/${id}/`)), `No actual pages for installed module ${id}`)
+  }
   assert.ok(!result.source.includes('excluded'), 'Excluded fixture must be absent')
   return result.keys
 }
