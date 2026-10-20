@@ -9,10 +9,16 @@ name: yishan-fullstack-ci
 #   admin   —— Admin setup/lint/build/jest
 #   api     —— API 构建/类型/迁移/OpenAPI/单测/MySQL 集成测试（要 MySQL + Redis）
 #   mobile  —— Taro/Core App/移动端 + Docs
-#   browser —— Playwright + 独立 Admin 复用验证（需要 admin 与 api 两个 dist）
+#   package —— 打出可部署产物并校验（依赖 admin 与 api 两个 dist）
 #
-# 覆盖范围与拆分前**完全一致**，只是并发。门禁仍以整个工作流为准，
-# yishan-api-cd-ubuntu.yml 的 ci-gate 不需要改动。
+# 门禁仍以整个工作流为准，yishan-api-cd-ubuntu.yml 的 ci-gate 不需要改动。
+#
+# 2026-10 起去掉了 browser 那条线（Playwright e2e + 独立 Admin 复用验证）：
+# 它要起 MySQL/Redis 容器、装 Chromium，只为跑浏览器用例，却把整条 CI 的
+# 墙钟从 8 分钟拖到 12 分钟以上，CD 也因此多等这么久。取舍是**放弃浏览器级的
+# 回归覆盖**，保留「代码能编译、能测过、能打出可部署产物」这三道。
+# verify-admin-reuse.mjs 本身也要 Chromium，随之一起去掉（脚本仍在仓库里，
+# 需要时可在本地跑）。
 #
 # 迭代部署时不必陪跑：CD 支持 workflow_dispatch + skip_ci_gate=true。
 on:
@@ -159,7 +165,7 @@ jobs:
       - name: Admin Test
         run: pnpm --filter @yishan/demo-admin test
 
-      - name: Upload Admin dist for the browser and packaging jobs
+      - name: Upload Admin dist for the packaging job
         uses: actions/upload-artifact@v4
         with:
           name: admin-dist
@@ -342,89 +348,6 @@ jobs:
           pnpm --filter @yishan/demo-docs typecheck
           pnpm --filter @yishan/portal-docs typecheck
           pnpm build:docs
-
-  # Playwright 与 verify-admin-reuse 都需要 admin **和** api 两个 dist：e2e 的
-  # product-runtime 直接 require('../api/dist/app.js') 并读 admin/dist/index.html。
-  # api 那半边在本 job 里现编（十几秒，见下面的注释），贵的那半边 admin/dist 从
-  # admin job 传过来 —— 所以这一步仍然要等 admin 编完，没法再往前并。
-  browser:
-    name: browser (playwright + admin reuse)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    needs: [admin]
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: yishan
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .tool-versions
-
-      - name: Enable pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@8.15.9 --activate
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .tool-versions
-          cache: pnpm
-
-      - name: Install
-        run: pnpm install --frozen-lockfile --prod=false
-
-      - name: Prepare yishan-tiptap
-        run: |
-          pnpm --filter @yishan/tiptap typecheck
-          pnpm --filter @yishan/tiptap build
-          pnpm --filter @yishan/tiptap verify:package
-
-      # e2e 的 product-runtime 用 createRequire(api/dist/app.js) 去 require
-      # '@yishan/core-database'，解析路径穿过 apps/demo/api/node_modules 上的 workspace
-      # 链接，落点还是 packages/core/database/dist —— 只搬 api/dist 是不够的，core 各包的
-      # dist 也得在这台 runner 上编出来。十几秒的事，比多传一份产物简单。
-      - name: API dependencies and TypeScript build
-        run: pnpm -r --filter @yishan/demo-api... build
-
-      - name: Download Admin dist
-        uses: actions/download-artifact@v4
-        with:
-          name: admin-dist
-          path: apps/demo/admin/dist
-
-      - name: Install Chromium for isolated Admin verification
-        run: pnpm --filter @yishan/demo-admin exec playwright install --with-deps chromium
-
-      - name: Admin browser suite with disposable local resources
-        env:
-          YISHAN_TEST_MYSQL_PASSWORD: root
-        run: pnpm --filter @yishan/demo-admin exec playwright test e2e/product-v2.spec.ts --reporter=list
-
-      - name: Independent Admin package consumers and product module combinations
-        run: node scripts/verify-admin-reuse.mjs --mode all
 
   # package-api.mjs 要把 admin 的静态资源一起打进产物的 public/admin。它在拆分前
   # 跑在同一个 job 里，能直接读 admin/dist；拆开后必须显式把 admin 的产物接进来，
