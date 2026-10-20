@@ -105,10 +105,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
-      # 要往滚动 release 上传产物资产，需要 contents: write。
-      contents: write
+      contents: read
     outputs:
       release_ts: ${{ steps.stamp.outputs.release_ts }}
+      artifact_key: ${{ steps.qiniu.outputs.artifact_key }}
+      artifact_sha256: ${{ steps.qiniu.outputs.artifact_sha256 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -170,40 +171,29 @@ jobs:
           tar -czf "$RUNNER_TEMP/yishan-api-${{ github.sha }}.tar.gz" \
             -C /tmp yishan-api-artifact
 
-      # 把产物挂到 GitHub Release 上，作为 runner → 目标机的中转站。
+      # 把产物放进七牛云，作为 runner → 目标机的中转站。
       #
       # 为什么不是直接 scp/rsync：runner 在 GitHub（境外），目标机在腾讯云，
       # 跨境单条 SSH 长连接实测只有约 16 KB/s，28MB 的包要传 30 分钟出头。
-      # 改成「runner 传到 GitHub（同一套基础设施，几秒）+ 目标机从 GitHub 拉
-      # （实测约 1 MB/s）」之后，同一个包 30 秒左右就落地了。
+      # 放进七牛（境内对象存储 + CDN）之后，目标机从境内拉，实测约 2-3 MB/s。
       #
-      # 用一个固定 tag 的**滚动 release**，每次覆盖同名资产（资产名带 sha）。
-      # 仓库是 public，资产可匿名下载，目标机不需要任何凭据。
       # 产物里不含凭据：package-api.mjs 打包时会拒绝任何 .env 文件。
-      - name: Publish artifact to the rolling release
+      - name: Upload artifact to Qiniu
+        id: qiniu
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: deploy-ubuntu
+          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
+          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
+          QINIU_BUCKET: ${{ vars.QINIU_BUCKET }}
+          QINIU_DOMAIN: ${{ vars.QINIU_DOMAIN }}
         run: |
           set -euo pipefail
           ASSET="yishan-api-${{ github.sha }}.tar.gz"
           TARBALL="$RUNNER_TEMP/$ASSET"
+          KEY="yishan-cd/$ASSET"
           test -f "$TARBALL"
-          # 校验和文件的内容要写目标机上的**文件名**，不是 runner 上的路径：
-          # 目标机用 sha256sum -c 读它，名字对不上会直接判失败。
-          sha256sum "$TARBALL" | awk -v name="$ASSET" '{print $1"  "name}' > "$TARBALL.sha256"
-
-          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --target "${{ github.sha }}" \
-              --title "Demo Ubuntu deploy artifact" \
-              --notes "滚动发布资产：admin.zerocmf.com 的部署包。每次发布覆盖同名资产。"
-          fi
-          # 让 tag 跟着本次 commit 走，事后能一眼看出线上跑的是哪个 commit。
-          # 这一步只是可追溯性，失败不该拦住发布。
-          gh api -X PATCH "repos/${{ github.repository }}/git/refs/tags/$RELEASE_TAG" \
-            -f sha="${{ github.sha }}" -F force=true >/dev/null \
-            || echo "::warning::未能把 tag ${RELEASE_TAG} 移到本次 commit，不影响发布。"
-          gh release upload "$RELEASE_TAG" "$TARBALL" "$TARBALL.sha256" --clobber
+          node scripts/qiniu-artifact.mjs upload "$TARBALL" "$KEY"
+          echo "artifact_key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "artifact_sha256=$(sha256sum "$TARBALL" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -215,18 +205,20 @@ jobs:
   deploy:
     needs: [ci-gate, build]
     runs-on: ubuntu-latest
-    # 传产物不再走跨境 SSH：runner 传到 GitHub，目标机再从 GitHub 拉（实测
-    # 约 1 MB/s，28MB 半分钟）。原来 60 分钟的超时是给 30 分钟的跨境上传留的，
-    # 现在整条 deploy 正常只要两三分钟，30 分钟足够覆盖迁移与冒烟的波动。
+    # 传产物不再走跨境 SSH：runner 传到七牛，目标机再从境内拉（实测 2-3 MB/s，
+    # 28MB 十来秒）。原来 60 分钟的超时是给 30 分钟的跨境上传留的，现在整条
+    # deploy 正常只要两三分钟，30 分钟足够覆盖迁移与冒烟的波动。
     timeout-minutes: 30
     permissions:
-      contents: write
+      contents: read
     environment: YISHAN_DEMO_UBUNTU
     env:
       UBUNTU_HOST: ${{ vars.UBUNTU_HOST }}
       UBUNTU_USER: ${{ vars.UBUNTU_USER || 'ubuntu' }}
       UBUNTU_SSH_FINGERPRINT: ${{ vars.UBUNTU_SSH_FINGERPRINT }}
       RELEASE_TS: ${{ needs.build.outputs.release_ts }}
+      ARTIFACT_KEY: ${{ needs.build.outputs.artifact_key }}
+      ARTIFACT_SHA256: ${{ needs.build.outputs.artifact_sha256 }}
       SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL || 'https://admin.zerocmf.com' }}
     steps:
       - name: Validate deployment variables
@@ -272,35 +264,40 @@ jobs:
             ssh-keyscan -t ed25519 "$UBUNTU_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           fi
 
-      - name: Fetch artifact on the target host
+      # 目标机自己从七牛拉，runner 只负责把「下载地址 + 校验和」告诉它。
+      #
+      # 这里传的是**带签名的临时下载链接**（?e=过期时间&token=签名），
+      # 目标机不需要持有任何凭据；链接过期后就失效了。
+      - name: Fetch artifact on the target host from Qiniu
+        env:
+          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
+          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
+          QINIU_BUCKET: ${{ vars.QINIU_BUCKET }}
+          QINIU_DOMAIN: ${{ vars.QINIU_DOMAIN }}
         run: |
           set -euo pipefail
-          ASSET="yishan-api-${GITHUB_SHA}.tar.gz"
-          BASE="https://github.com/${{ github.repository }}/releases/download/deploy-ubuntu"
+          : "${ARTIFACT_KEY:?Missing ARTIFACT_KEY from the build job}"
+          : "${ARTIFACT_SHA256:?Missing ARTIFACT_SHA256 from the build job}"
+          # 有效期 2 小时：够跑完迁移和冒烟，也短到链接不会长期有效。
+          URL="$(node scripts/qiniu-artifact.mjs private-url "$ARTIFACT_KEY" 7200)"
+          ASSET="${ARTIFACT_KEY##*/}"
           ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
             "mkdir -p /opt/yishan/incoming /opt/yishan/releases"
 
-          # 目标机直接从 GitHub 拉，不走 runner → 目标机的跨境链路。
-          # 实测目标机 → GitHub 约 1 MB/s，28MB 约 30 秒；
-          # 同样的包走 SSH 上传只有 16 KB/s，要 30 分钟。
-          #
-          # 用 sha256 校验而不是比大小：比大小只能发现截断，发现不了内容损坏；
-          # 而且大小对了内容错了的话，要到解包甚至启动时才炸，排查成本极高。
-          #
-          # heredoc 加引号：远端脚本里的 $1/$2 要留给远端展开，本机不插值。
+          # heredoc 加引号：远端脚本里的 $1/$2/$3 要留给远端展开，本机不插值。
           ssh -i ~/.ssh/ubuntu-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" bash -s -- \
-            "$ASSET" "$BASE" <<'REMOTE'
+            "$ASSET" "$URL" "$ARTIFACT_SHA256" <<'REMOTE'
           set -euo pipefail
           ASSET="$1"
-          BASE="$2"
+          URL="$2"
+          SHA256="$3"
           DIR=/opt/yishan/incoming
           cd "$DIR"
           curl -fSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 20 \
-            -o "$ASSET" "$BASE/$ASSET"
-          curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
-            -o "$ASSET.sha256" "$BASE/$ASSET.sha256"
-          sha256sum -c "$ASSET.sha256"
-          rm -f "$ASSET.sha256"
+            -o "$ASSET" "$URL"
+          # 用 sha256 校验而不是比大小：比大小只能发现截断，发现不了内容损坏；
+          # 大小对了内容错了的话，要到解包甚至启动时才炸，排查成本极高。
+          echo "$SHA256  $ASSET" | sha256sum -c -
           ls -l "$ASSET"
           REMOTE
 
@@ -443,13 +440,16 @@ jobs:
 
           echo "Smoke check passed."
 
-      # 发布成功后把滚动 release 上的资产删掉：产物是公开仓库里公开源码编出来的
-      # 可部署包，没必要长期挂在公网上。失败时**不删** —— 留着才能手工重放这次发布。
-      - name: Remove the published release asset
+      # 发布成功后把七牛上的产物删掉：它是可部署包，没必要长期留在对象存储里。
+      # 失败时**不删** —— 留着才能手工重放这次发布。
+      - name: Remove the published artifact from Qiniu
         if: success()
         env:
-          GH_TOKEN: ${{ github.token }}
+          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
+          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
+          QINIU_BUCKET: ${{ vars.QINIU_BUCKET }}
+          QINIU_DOMAIN: ${{ vars.QINIU_DOMAIN }}
         run: |
           set -euo pipefail
-          gh release delete-asset deploy-ubuntu "yishan-api-${GITHUB_SHA}.tar.gz" -y || true
-          gh release delete-asset deploy-ubuntu "yishan-api-${GITHUB_SHA}.tar.gz.sha256" -y || true
+          node scripts/qiniu-artifact.mjs delete "$ARTIFACT_KEY" \
+            || echo "::warning::删除七牛产物失败，$ARTIFACT_KEY 仍留在桶里。"

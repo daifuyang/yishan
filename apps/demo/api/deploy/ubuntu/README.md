@@ -74,7 +74,7 @@ node scripts/package-api.mjs --output ./out/function-code --admin ./apps/demo/ad
 推 `main` 会触发 `.github/workflows/yishan-api-cd-ubuntu.yml`，它替你做完上面全部步骤：
 
 ```
-ci-gate → build（Linux runner 打包）→ 传到 GitHub Release → 目标机拉取 + 解包 + 迁移 → release.sh → 公网冒烟
+ci-gate → build（Linux runner 打包）→ 传到七牛云 → 目标机拉取 + 解包 + 迁移 → release.sh → 公网冒烟
 ```
 
 几个和手工不同的点：
@@ -112,11 +112,17 @@ ci-gate → build（Linux runner 打包）→ 传到 GitHub Release → 目标�
 | `UBUNTU_SSH_FINGERPRINT` | var | 目标机 ed25519 指纹；不配则退回 `ssh-keyscan` 直采 |
 | `SMOKE_BASE_URL` | var | `https://admin.zerocmf.com` |
 
+产物中转用的七牛凭据是**仓库级**的（build 和 deploy 两个作业都要用）：
+
+| 名称 | 类型 | 值 |
+|---|---|---|
+| `QINIU_ACCESS_KEY` | secret | 七牛 AK |
+| `QINIU_SECRET_KEY` | secret | 七牛 SK |
+| `QINIU_BUCKET` | var | 产物桶（`ai-code`，私有） |
+| `QINIU_DOMAIN` | var | 桶绑定的下载域名（`cdn.zerocmf.com`） |
+
 现有的 `ECS_DEPLOYER_SSH_KEY` 不能复用：它对应的远端 `tunnel-dsh` 是受限命令，只能做
 端口转发，scp 会被拒。
-
-发布资产用 `GITHUB_TOKEN` 推到滚动 release（tag `deploy-ubuntu`），工作流里声明
-`permissions: contents: write`——不需要新增 secret。仓库是 public，目标机匿名下载即可。
 
 重放某一次发布：Actions 上手动 `workflow_dispatch`，需要跳过 CI 门禁时勾 `skip_ci_gate`
 （刚手工跑过迁移可再勾 `skip_migrations`）。
@@ -127,7 +133,7 @@ ci-gate → build（Linux runner 打包）→ 传到 GitHub Release → 目标�
 本身（解包/迁移/切换/冒烟）时这条等待是纯粹的浪费——你要验的是部署逻辑，不是产品代码。
 勾 `skip_ci_gate` 直接部署，零等待；等改完再推一个正常 commit 让 CI 兜底。
 
-### 产物怎么传到目标机（GitHub Release 中转）
+### 产物怎么传到目标机（七牛云中转）
 
 早期版本是 runner 用 `scp`/`rsync` 直传目标机。**这条路不能走**：runner 在 GitHub（境外），
 目标机在腾讯云，跨境单条 SSH 长连接实测只有约 **16 KB/s**，28MB 的产物要传 **30 分钟出头**，
@@ -136,17 +142,25 @@ ci-gate → build（Linux runner 打包）→ 传到 GitHub Release → 目标�
 现在改成两段：
 
 ```
-runner ──上传──▶ GitHub Release 资产 ──下载──▶ 目标机
-        （同机房内网，几秒）      （实测约 1 MB/s，30 秒）
+runner ──上传──▶ 七牛云对象存储 ──下载──▶ 目标机
+        （境外→境内）              （境内→境内，实测 2-3 MB/s）
 ```
 
-- 产物挂在固定 tag `deploy-ubuntu` 的**滚动 release** 上，资产名带 sha
-  （`yishan-api-<sha>.tar.gz`），每次发布覆盖同名资产。
-- 仓库是 public，资产可**匿名下载**，目标机上不需要任何凭据。
-- 随包带一个 `.sha256`，目标机下载后用 `sha256sum -c` 校验——比只比大小强：
-  比大小只能发现截断，发现不了内容损坏。
-- 发布成功后把资产删掉；**失败时保留**，方便手工重放这次发布。
+- 产物 key：`yishan-cd/yishan-api-<sha>.tar.gz`，桶和域名走 `QINIU_BUCKET` / `QINIU_DOMAIN`。
+- 桶是**私有**的。runner 生成一条**带签名的临时下载链接**（`?e=过期时间&token=签名`）
+  交给目标机，目标机不需要持有任何凭据；链接 2 小时后失效。
+- 目标机下载后用 `sha256sum -c` 校验——比只比大小强：比大小只能发现截断，
+  发现不了内容损坏；大小对了内容错了的话，要到解包甚至启动时才炸。
+- 发布成功后 runner 把七牛上的产物删掉；**失败时保留**，方便手工重放这次发布。
 - 产物里不含任何凭据：`scripts/package-api.mjs` 打包时会直接拒绝含 `.env` 的产物。
+
+实现见 `scripts/qiniu-artifact.mjs`（`upload` / `private-url` / `delete` 三个子命令，
+无第三方依赖）。七牛的签名有两套容易踩的坑，脚本里都注释了：
+
+- 上传凭证的 scope 绑**桶**，对象 key 走表单字段。写成 `scope: "bucket:key"` 会被判
+  `key doesn't match with scope`。
+- 下载 token 是 `ak:sign` 明文拼接，**不能再 base64 一遍**；签名串是「域名 + 路径 +
+  `?e=` 过期时间」的完整 base URL。少一个字符就是 `bad token`。
 
 同样的道理，FC 那条流水线（走阿里云 FC/OSS）传同一个包只要 2 分半——不是因为它传得更快，
 而是因为阿里云在国内，路径根本不跨境。
