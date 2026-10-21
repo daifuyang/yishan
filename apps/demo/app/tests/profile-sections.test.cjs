@@ -114,17 +114,16 @@ const pageSource = (file) => fs.readFileSync(path.join(appRoot, file), 'utf8')
 
 const LEGACY_SETTINGS_ATOMS = /SettingCell|SettingGroup|DangerAction/
 
-test('个人中心与账户安全改用 ManagementList/ManagementCell，不再引用旧设置组件', () => {
+test('个人中心与账户安全复用简洁设置行和共享列表分组', () => {
   for (const file of ['src/pages/mine/index.tsx', 'src/pages/security/index.tsx']) {
     const page = pageSource(file)
     assert.doesNotMatch(page, LEGACY_SETTINGS_ATOMS, `${file} 不应再引用旧设置组件`)
-    assert.doesNotMatch(page, /from '@\/components\/molecules'/, `${file} 不再从 molecules 取设置行`)
+    assert.match(page, /import \{ ListItem \} from '@\/components\/molecules'/)
     const shared = page.match(/import \{([^}]*)\} from '@\/components\/management'/)
     assert.ok(shared, `${file} 应从 @/components/management 引入共享原子`)
     assert.match(shared[1], /\bManagementList\b/, '设置分组用共享 ManagementList')
-    assert.match(shared[1], /\bManagementCell\b/, '设置行用共享 ManagementCell')
     assert.match(page, /<ManagementList\b/, '渲染共享 ManagementList')
-    assert.match(page, /<ManagementCell\b/, '渲染共享 ManagementCell')
+    assert.match(page, /<ListItem\b/, '渲染共享设置行')
   }
 })
 
@@ -185,8 +184,8 @@ function mineHarness(confirm, { logout = async () => {} } = {}) {
     '@/components/management': Object.fromEntries(
       ['ManagementList', 'ManagementCell', 'ActionSheet'].map((name) => [name, name]),
     ),
-    // 迁移后个人中心不应再从旧 molecules 取设置行；这里留空对象，误引用会渲染成 undefined 节点而不是加载失败
-    '@/components/molecules': {},
+    '@/components/molecules': { ListItem: 'ListItem' },
+    '@/components/icons/LineIcon': { LineIcon: 'LineIcon' },
     '@/hooks': { confirmAction: async (options) => {
       confirmations.push(options)
       return typeof confirm === 'function' ? confirm() : confirm
@@ -220,7 +219,7 @@ function mineHarness(confirm, { logout = async () => {} } = {}) {
     render,
     tree: () => elements,
     row: (title) =>
-      elements.find((node) => node.type === 'ManagementCell' && node.props.title === title),
+      elements.find((node) => node.type === 'ListItem' && node.props.title === title),
     sheet: () => elements.find((node) => node.type === 'ActionSheet'),
   }
 }

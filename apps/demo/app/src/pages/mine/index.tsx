@@ -3,7 +3,9 @@ import { useDidShow } from '@tarojs/taro'
 import { useRef } from 'react'
 
 import { PageContainer } from '@/components/layout'
-import { ManagementCell, ManagementList } from '@/components/management'
+import { ManagementList } from '@/components/management'
+import { LineIcon } from '@/components/icons/LineIcon'
+import { ListItem } from '@/components/molecules'
 import { UserHeader } from '@/components/organisms'
 import { APP_NAME } from '@/constants'
 import { SECONDARY_PAGES } from '@/constants/routes'
@@ -54,23 +56,25 @@ export default function MinePage() {
         />
 
         <ManagementList>
-          <ManagementCell
-            size="compact"
-            glyph="pencil"
+          <ListItem
+            icon={<LineIcon name="user" />}
+            showArrow
+            bordered
             title="个人资料"
             onClick={open(SECONDARY_PAGES.profileEdit)}
           />
-          <ManagementCell size="compact" glyph="shield" title="账户安全" onClick={open(SECONDARY_PAGES.security)} />
-          <ManagementCell size="compact" glyph="fileText" title="消息中心" onClick={open(SECONDARY_PAGES.messages)} />
-          <ManagementCell
-            size="compact"
-            glyph="building"
+          <ListItem icon={<LineIcon name="shield" />} title="账户安全" showArrow bordered onClick={open(SECONDARY_PAGES.security)} />
+          <ListItem icon={<LineIcon name="bell" />} title="消息中心" showArrow bordered onClick={open(SECONDARY_PAGES.messages)} />
+          <ListItem
+            icon={<LineIcon name="info" />}
+            showArrow
             title={`关于${APP_NAME}`}
             onClick={open(SECONDARY_PAGES.about)}
           />
-          <ManagementCell
-            size="compact"
-            glyph="upload"
+        </ManagementList>
+        <ManagementList>
+          <ListItem
+            icon={<LineIcon name="logOut" />}
             title="退出登录"
             showArrow={false}
             bordered={false}

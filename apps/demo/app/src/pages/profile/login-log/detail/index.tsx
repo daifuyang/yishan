@@ -3,6 +3,7 @@ import { useDidHide, useDidShow, useRouter } from '@tarojs/taro'
 import { userApi } from '@/api'
 import type { LoginLog } from '@/api/types'
 import { getSessionVersion } from '@/api/client'
+import { Tag } from '@/components/atoms'
 import { StateView } from '@/components/feedback'
 import { DetailContent, DetailHero, DetailRow, DetailSection, ManagementPage, ManagementPageHeader } from '@/components/management'
 import { errorMessage, withAccountScope } from '@/utils/account-scope'
@@ -37,8 +38,8 @@ function ProfileLoginLogDetail() {
   return <ManagementPage>
     <ManagementPageHeader title="登录详情" showBack={process.env.TARO_ENV === 'h5'} />
     <DetailContent><StateView kind={error ? 'error' : loading ? 'loading' : !record ? 'empty' : 'ready'} text={error || undefined} onRetry={load}>
-      {record ? <><DetailHero glyph="shield" title={record.status === '1' ? '登录成功' : '登录失败'} subtitle={formatDateTime(record.createdAt)} />
-        <DetailSection title="登录信息"><DetailRow label="账号" value={record.username} /><DetailRow label="状态" value={record.status === '1' ? '成功' : '失败'} /><DetailRow label="提示信息" value={record.message} /><DetailRow label="IP地址" value={record.ipAddress} /><DetailRow label="客户端" value={record.userAgent} /></DetailSection>
+      {record ? <><DetailHero glyph="shield" glyphColor="var(--color-text-secondary)" title="登录记录" tag={<Tag size="sm" variant={record.status === '1' ? 'success' : 'danger'}>{record.status === '1' ? '成功' : '失败'}</Tag>} subtitle={formatDateTime(record.createdAt)} />
+        <DetailSection title="登录信息"><DetailRow label="账号" value={record.username} /><DetailRow label="状态" value={<Tag size="sm" variant={record.status === '1' ? 'success' : 'danger'}>{record.status === '1' ? '成功' : '失败'}</Tag>} /><DetailRow label="提示信息" value={record.message} /><DetailRow label="IP地址" value={record.ipAddress} /><DetailRow label="客户端" value={record.userAgent} /></DetailSection>
         <DetailSection title="日志记录" collapsible defaultCollapsed><DetailRow label="日志 ID" value={record.id} /><DetailRow label="创建时间" value={formatDateTime(record.createdAt)} /><DetailRow label="更新时间" value={formatDateTime(record.updatedAt)} /></DetailSection></> : null}
     </StateView></DetailContent>
   </ManagementPage>

@@ -16,7 +16,7 @@ function harness(entry, mocks = {}) {
     useEffect(fn, next) { const i = ei++; if (!deps[i] || next.some((v, j) => deps[i][j] !== v)) { deps[i] = next; effects.push(() => { cleanups[i]?.(); cleanups[i] = fn() }) } },
   }
   const components = new Proxy({}, { get: (_, key) => key })
-  const Page = loadTs(entry, { react, 'react/jsx-runtime': jsx, '@tarojs/components': components, '@/components/management': components, '@/components/feedback': components, '@/components/molecules': components, '@/utils/account-scope': { withAccountScope: page => page, errorMessage: e => e.message }, './index.module.scss': {}, ...mocks }).default
+  const Page = loadTs(entry, { react, 'react/jsx-runtime': jsx, '@tarojs/components': components, '@/components/management': components, '@/components/atoms': components, '@/components/feedback': components, '@/components/molecules': components, '@/utils/account-scope': { withAccountScope: page => page, errorMessage: e => e.message }, './index.module.scss': {}, ...mocks }).default
   return { render() { si = ri = ei = 0; tree = Page(); while (effects.length) {
       effects.shift()()
     }
@@ -70,7 +70,9 @@ test('profile log detail fetches the record by id and keeps the header, hero and
   assert.equal(view.props.text, undefined)
   const hero = nodesOf(tree, 'DetailHero')[0]
   assert.equal(hero.props.glyph, 'shield')
-  assert.equal(hero.props.title, '登录成功')
+  assert.equal(hero.props.title, '登录记录')
+  assert.equal(hero.props.tag.props.variant, 'success')
+  assert.equal(hero.props.glyphColor, 'var(--color-text-secondary)')
   assert.equal(hero.props.subtitle, LOG.createdAt)
   assert.deepEqual(nodesOf(tree, 'DetailRow').map(row => row.props.label), [
     '账号', '状态', '提示信息', 'IP地址', '客户端', '日志 ID', '创建时间', '更新时间',

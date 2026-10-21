@@ -151,7 +151,6 @@ function ProfileLoginLog() {
             <ManagementCell
               key={record.id}
               bordered={index < records.length - 1}
-              glyph="shield"
               title={formatDateTime(record.createdAt)}
               description={record.ipAddress || '未知IP'}
               tag={

@@ -1,4 +1,5 @@
 import { View, Text, type ITouchEvent } from '@tarojs/components'
+import { LineIcon } from '@/components/icons/LineIcon'
 
 import styles from './ListItem.module.scss'
 
@@ -19,7 +20,7 @@ export function ListItem({
   title,
   value,
   showArrow = false,
-  arrow = '›',
+  arrow,
   size = 'md',
   bordered = false,
   className,
@@ -42,7 +43,9 @@ export function ListItem({
         <Text className={styles.mListItem__value}>{value}</Text>
       ) : null}
       {showArrow ? (
-        <Text className={styles.mListItem__arrow}>{arrow}</Text>
+        <View className={styles.mListItem__arrow}>
+          {arrow ?? <LineIcon name="chevronRight" size={16} />}
+        </View>
       ) : null}
     </View>
   )

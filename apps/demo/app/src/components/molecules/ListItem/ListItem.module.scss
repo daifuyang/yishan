@@ -58,6 +58,8 @@
 }
 
 .mListItem__arrow {
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
   font-size: var(--font-size-18);
   color: var(--color-text-quaternary);
