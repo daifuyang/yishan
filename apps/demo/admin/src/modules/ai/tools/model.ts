@@ -54,7 +54,12 @@ export interface FormPreviewData {
   draftVersion: number;
   status: string;
   fields: Record<string, unknown>;
-  fieldDefinitions: { name: string; label: string; required: boolean; sensitive: boolean }[];
+  fieldDefinitions: {
+    name: string;
+    label: string;
+    required: boolean;
+    sensitive: boolean;
+  }[];
   collectedFields: string[];
   missingFields: PreviewMissingField[];
   validationErrors: PreviewValidationError[];
@@ -149,6 +154,8 @@ export interface ToolCallViewModel {
 
 export interface ToolRendererProps {
   tool: ToolCallViewModel;
+  /** 由统一工具组提供外壳时，仅渲染只读结果。 */
+  bodyOnly?: boolean;
 }
 
 export type ToolRenderer = ComponentType<ToolRendererProps>;

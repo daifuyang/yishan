@@ -4,7 +4,11 @@ import React from 'react';
 import { ToolCallList } from '../tools/components/ToolCallList';
 
 const message = (parts: unknown[]): UIMessage =>
-  ({ id: 'm', role: 'assistant', parts: parts as UIMessage['parts'] }) as UIMessage;
+  ({
+    id: 'm',
+    role: 'assistant',
+    parts: parts as UIMessage['parts'],
+  }) as UIMessage;
 
 const toolPart = (
   id: string,
@@ -128,7 +132,9 @@ it('degrades to the business name when the action cannot be recognised', () => {
       output: {
         ok: true,
         data: {
-          operations: [{ id: 'stock.mystery', name: '库存魔法', type: 'mysteryType' }],
+          operations: [
+            { id: 'stock.mystery', name: '库存魔法', type: 'mysteryType' },
+          ],
         },
         progress: {
           action: 'discover',
@@ -175,7 +181,7 @@ it('reports a failed run with a readable summary', () => {
       errorText: '无权访问业务能力目录',
     }),
   ]);
-  expect(screen.getByText('未完成')).toBeTruthy();
+  expect(screen.getByText('执行失败')).toBeTruthy();
   fireEvent.click(screen.getByText('查找新建用户功能'));
   expect(screen.getByText('无权访问业务能力目录')).toBeTruthy();
 });

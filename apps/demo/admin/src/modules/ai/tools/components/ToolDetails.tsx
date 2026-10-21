@@ -29,25 +29,25 @@ export function ToolDetails({ tool }: { tool: ToolCallViewModel }) {
         工具：{tool.toolName}
         {tool.operationId ? ` / ${tool.operationId}` : ''}
       </Typography.Text>
-      {Object.entries({ 参数: tool.details.input, 结果: tool.details.output }).map(
-        ([label, value]) =>
-          value === undefined ? null : (
-            <div key={label}>
-              <Typography.Text type="secondary">{label}</Typography.Text>
-              <pre
-                style={{
-                  margin: '4px 0',
-                  maxHeight: 240,
-                  maxWidth: '100%',
-                  overflow: 'auto',
-                  whiteSpace: 'pre-wrap',
-                  overflowWrap: 'anywhere',
-                }}
-              >
-                {formatValue(value)}
-              </pre>
-            </div>
-          ),
+      {Object.entries({
+        参数: tool.details.input,
+        结果: tool.details.output,
+      }).map(([label, value]) =>
+        value === undefined ? null : (
+          <div key={label}>
+            <Typography.Text type="secondary">{label}</Typography.Text>
+            <pre
+              style={{
+                margin: '4px 0',
+                maxWidth: '100%',
+                whiteSpace: 'pre-wrap',
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {formatValue(value)}
+            </pre>
+          </div>
+        ),
       )}
     </Flex>
   );

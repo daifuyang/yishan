@@ -34,7 +34,11 @@ import {
 import { useAiChat } from '../hooks/useAiChat';
 import { useLiveReplyIds } from '../hooks/useLiveReplyIds';
 import { useTypewriterText } from '../hooks/useTypewriterText';
-import { latestDraftTool, latestDraftToolIds, operationCatalog } from '../tools/adapter';
+import {
+  latestDraftTool,
+  latestDraftToolIds,
+  operationCatalog,
+} from '../tools/adapter';
 import { ToolCallList } from '../tools/components/ToolCallList';
 import { AiFormCompletion } from './AiFormCompletion';
 import { AiReasoning } from './AiReasoning';
@@ -68,15 +72,20 @@ const useStyles = createStyles(({ token, css }) => ({
   history: css`overflow: auto; flex: 1; min-height: 0; padding: 12px;`,
   messages: css`
     flex: 1; min-height: 0; overflow: hidden;
-    .ant-bubble-list { height: 100%; padding: 20px; box-sizing: border-box; }
+    .ant-bubble-list { height: 100%; box-sizing: border-box; }
+    .ant-bubble-list-scroll-box { height: 100%; overflow-x: hidden; overscroll-behavior-y: contain; }
+    .ant-bubble-list-scroll-content {
+      max-width: 900px; margin-inline: auto; flex-shrink: 0;
+      padding: 20px 24px; min-width: 0;
+    }
     .ant-bubble-content { max-width: 100%; overflow-wrap: anywhere; }
     .ant-bubble-body { min-width: 0; }
     .ant-bubble-start .ant-bubble-body { width: 100%; max-width: 100%; }
     table { display: block; max-width: 100%; overflow-x: auto; }
     pre { max-width: 100%; overflow-x: auto; }
   `,
-  welcome: css`padding: 32px 20px; height: 100%; max-width: 900px; margin: 0 auto; overflow: auto; box-sizing: border-box;`,
-  sender: css`padding: 12px 16px 16px; width: 100%; max-width: 900px; align-self: center; box-sizing: border-box;`,
+  welcome: css`padding: 32px max(20px, calc((100% - 852px) / 2)); height: 100%; overflow-y: auto; box-sizing: border-box;`,
+  sender: css`padding: 12px 24px max(16px, env(safe-area-inset-bottom)); width: 100%; max-width: 900px; align-self: center; box-sizing: border-box; flex-shrink: 0;`,
   mobileHistory: css`@media (min-width: 769px) { display: none; }`,
   desktopCollapse: css`@media (max-width: 768px) { display: none; }`,
 }));
@@ -160,7 +169,7 @@ const bubbleRoles: BubbleListProps['role'] = {
   assistant: {
     placement: 'start',
     variant: 'borderless',
-      styles: { root: { paddingInlineEnd: 0 }, body: { width: '100%' } },
+    styles: { root: { paddingInlineEnd: 0 }, body: { width: '100%' } },
     contentRender: (text: string, info) => (
       <MarkdownReply content={text} streaming={info.status === 'updating'} />
     ),
@@ -219,8 +228,7 @@ export function AiChatView({
   const lastMessage = chat.messages.at(-1);
   const knownOperations = operationCatalog(chat.messages);
   const draftToolIds = latestDraftToolIds(chat.messages);
-  // 补全面板挂在**写下最新草稿的那条消息**下面：它和工具记录共享同一份草稿，
-  // 但表单交互不在工具记录里。
+  // 草稿入口与回执跟随最新草稿消息，编辑和提交由原生表单负责。
   const draftRef = latestDraftTool(chat.messages);
   const items = toBubbleItems(chat.messages, chat.busy).map((item) => {
     const message = chat.messages.find((entry) => entry.id === item.key);
@@ -270,7 +278,10 @@ export function AiChatView({
         if (!hasProgress) return undefined;
         return (
           <Flex vertical gap={8} style={{ width: '100%' }}>
-            <AiReasoning message={message} streaming={item.streaming === true} />
+            <AiReasoning
+              message={message}
+              streaming={item.streaming === true}
+            />
             <ToolCallList
               message={message}
               streaming={item.streaming === true}
@@ -279,6 +290,7 @@ export function AiChatView({
             />
             {draftRef && draftRef.messageId === message.id && (
               <AiFormCompletion
+                key={draftRef.draftId}
                 draftId={draftRef.draftId}
                 operationId={draftRef.operationId}
               />
@@ -458,11 +470,6 @@ export function AiChatView({
                   <Bubble.List
                     key={chat.activeId || '$new'}
                     autoScroll
-                    style={{
-                      maxWidth: 900,
-                      marginInline: 'auto',
-                      width: '100%',
-                    }}
                     role={bubbleRoles}
                     items={items}
                   />

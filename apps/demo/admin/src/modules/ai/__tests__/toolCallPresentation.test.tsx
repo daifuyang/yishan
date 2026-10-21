@@ -6,7 +6,11 @@ import { ToolCallList } from '../tools/components/ToolCallList';
 import type { ToolCallViewModel } from '../tools/model';
 
 const message = (parts: unknown[]): UIMessage =>
-  ({ id: 'm', role: 'assistant', parts: parts as UIMessage['parts'] }) as UIMessage;
+  ({
+    id: 'm',
+    role: 'assistant',
+    parts: parts as UIMessage['parts'],
+  }) as UIMessage;
 
 const toolPart = (
   id: string,
@@ -26,7 +30,11 @@ const discover = toolPart('c1', 'discover_operations', 'output-available', {
     ok: true,
     data: {
       operations: [
-        { id: 'user.list', name: '用户列表', presentation: { kind: 'list', subject: '用户' } },
+        {
+          id: 'user.list',
+          name: '用户列表',
+          presentation: { kind: 'list', subject: '用户' },
+        },
       ],
     },
     progress: {
@@ -39,13 +47,27 @@ const discover = toolPart('c1', 'discover_operations', 'output-available', {
   },
 });
 
-const describeOperation = toolPart('c2', 'describe_operation', 'output-available', {
-  output: {
-    ok: true,
-    data: { id: 'user.create', name: '新增用户', presentation: { kind: 'form', subject: '用户' } },
-    progress: { action: 'describe', kind: 'form', subject: '用户', outcome: 'ready' },
+const describeOperation = toolPart(
+  'c2',
+  'describe_operation',
+  'output-available',
+  {
+    output: {
+      ok: true,
+      data: {
+        id: 'user.create',
+        name: '新增用户',
+        presentation: { kind: 'form', subject: '用户' },
+      },
+      progress: {
+        action: 'describe',
+        kind: 'form',
+        subject: '用户',
+        outcome: 'ready',
+      },
+    },
   },
-});
+);
 
 const query = toolPart('c3', 'query_business_data', 'output-available', {
   input: { operationId: 'user.list', params: { keyword: '张三' } },
@@ -67,7 +89,12 @@ const draft = toolPart('c4', 'update_form_draft', 'output-available', {
   output: {
     ok: true,
     data: { draftId: 'draft-1', draftVersion: 2 },
-    progress: { action: 'draft', kind: 'draft', subject: '用户', outcome: 'saved' },
+    progress: {
+      action: 'draft',
+      kind: 'draft',
+      subject: '用户',
+      outcome: 'saved',
+    },
   },
 });
 
@@ -76,7 +103,10 @@ function renderList(parts: unknown[]) {
 }
 
 it('names the action, the subject and the outcome from real tool events', () => {
-  const tools = toToolCalls(message([discover, describeOperation, query, draft]), false);
+  const tools = toToolCalls(
+    message([discover, describeOperation, query, draft]),
+    false,
+  );
   expect(tools.map((tool) => tool.title)).toEqual([
     '检索业务操作',
     '查看用户填写要求',
@@ -95,7 +125,11 @@ it('names the action, the subject and the outcome from real tool events', () => 
 
 it('falls back to the tool name when the server declares no semantics', () => {
   const tools = toToolCalls(
-    message([toolPart('c9', 'query_business_data', 'output-available', { output: { ok: true, data: {} } })]),
+    message([
+      toolPart('c9', 'query_business_data', 'output-available', {
+        output: { ok: true, data: {} },
+      }),
+    ]),
     false,
   );
   expect(tools[0].title).toBe('查询业务数据');
@@ -109,10 +143,18 @@ it('reports empty and failed runs without claiming business success', () => {
         output: {
           ok: true,
           data: { operations: [] },
-          progress: { action: 'discover', kind: 'operations', subject: '用户', outcome: 'empty', count: 0 },
+          progress: {
+            action: 'discover',
+            kind: 'operations',
+            subject: '用户',
+            outcome: 'empty',
+            count: 0,
+          },
         },
       }),
-      toolPart('e2', 'query_business_data', 'output-error', { errorText: '无权查询' }),
+      toolPart('e2', 'query_business_data', 'output-error', {
+        errorText: '无权查询',
+      }),
     ]),
     false,
   );
@@ -124,13 +166,22 @@ it('reports empty and failed runs without claiming business success', () => {
 });
 
 it('shows the running and cancelled wording of a call that never finished', () => {
-  const running = toToolCalls(message([toolPart('r1', 'query_business_data', 'input-available')]), true);
+  const running = toToolCalls(
+    message([toolPart('r1', 'query_business_data', 'input-available')]),
+    true,
+  );
   expect(running[0].status).toBe('running');
   expect(running[0].resultSummary).toBe('处理中');
-  const pending = toToolCalls(message([toolPart('r2', 'query_business_data', 'input-streaming')]), true);
+  const pending = toToolCalls(
+    message([toolPart('r2', 'query_business_data', 'input-streaming')]),
+    true,
+  );
   expect(pending[0].status).toBe('pending');
   expect(pending[0].resultSummary).toBe('准备中');
-  const stopped = toToolCalls(message([toolPart('r3', 'query_business_data', 'input-available')]), false);
+  const stopped = toToolCalls(
+    message([toolPart('r3', 'query_business_data', 'input-available')]),
+    false,
+  );
   expect(stopped[0].status).toBe('cancelled');
   expect(stopped[0].resultSummary).toBe('已中止');
 });
@@ -142,16 +193,24 @@ it('never shows the raw tool name in the visible card', () => {
   expect(screen.queryByText('执行完成')).toBeNull();
 });
 
-it('keeps the tool records flat: no nested collapse group around the preparation steps', () => {
-  renderList([describeOperation, toolPart('c5', 'describe_operation', 'output-available', {
-    output: {
-      ok: true,
-      data: { id: 'user.create', name: '新增用户' },
-      progress: { action: 'describe', kind: 'form', subject: '用户', outcome: 'ready' },
-    },
-  }), query]);
-  // 不再有「准备过程（N 步）」这层外层折叠：每张卡片自己管自己的展开。
-  expect(screen.queryByText(/准备过程/)).toBeNull();
+it('groups consecutive preparation steps without nesting their individual disclosures', () => {
+  renderList([
+    describeOperation,
+    toolPart('c5', 'describe_operation', 'output-available', {
+      output: {
+        ok: true,
+        data: { id: 'user.create', name: '新增用户' },
+        progress: {
+          action: 'describe',
+          kind: 'form',
+          subject: '用户',
+          outcome: 'ready',
+        },
+      },
+    }),
+    query,
+  ]);
+  fireEvent.click(screen.getByRole('button', { name: /已完成信息准备/ }));
   expect(screen.getAllByText('查看用户填写要求')).toHaveLength(2);
   expect(screen.getByText('查询业务记录')).toBeTruthy();
 });
@@ -183,8 +242,15 @@ it('degrades gracefully when the title, the subtitle and the summary are missing
 it('expands the details on demand and keeps secrets out of them', () => {
   renderList([
     toolPart('s1', 'query_business_data', 'output-available', {
-      input: { operationId: 'user.list', params: { keyword: '张三', password: 'never-show' } },
-      output: { ok: true, data: { items: [{ id: 1 }] }, render: { kind: 'user.table', payload: { items: [{ id: 1 }] } } },
+      input: {
+        operationId: 'user.list',
+        params: { keyword: '张三', password: 'never-show' },
+      },
+      output: {
+        ok: true,
+        data: { items: [{ id: 1 }] },
+        render: { kind: 'user.table', payload: { items: [{ id: 1 }] } },
+      },
     }),
   ]);
   expect(screen.queryByText(/never-show/)).toBeNull();

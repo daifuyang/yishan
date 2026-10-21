@@ -9,7 +9,7 @@ const useStyles = createStyles(({ css }) => ({
   card: css`
     width: 100%;
     min-width: 0;
-    pre { max-width: 100%; overflow: auto; }
+    pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
   `,
 }));
 
@@ -64,11 +64,15 @@ export function ToolCallCard({
   onToggle?: (next: boolean) => void;
 }) {
   const { styles } = useStyles();
-  const [internalExpanded, setInternalExpanded] = useState(
-    defaultExpanded || mode === 'detailed',
-  );
+  const [internalExpanded, setInternalExpanded] = useState<boolean>();
   const controlled = expanded !== undefined;
-  const isExpanded = controlled ? expanded : internalExpanded;
+  const isExpanded = controlled
+    ? expanded
+    : (internalExpanded ??
+      (tool.status === 'running' ||
+        tool.status === 'pending' ||
+        defaultExpanded ||
+        mode === 'detailed'));
   const handleToggle = () => {
     const next = !isExpanded;
     if (!controlled) setInternalExpanded(next);

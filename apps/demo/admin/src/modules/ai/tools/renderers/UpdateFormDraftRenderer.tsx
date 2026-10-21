@@ -1,5 +1,5 @@
 import { Typography } from 'antd';
-import React, { useState } from 'react';
+import React from 'react';
 import { ToolCallCard } from '../components/ToolCallCard';
 import { ToolResultLine } from '../components/ToolResultLine';
 import type { ToolCallViewModel, ToolRendererProps } from '../model';
@@ -17,15 +17,9 @@ import type { ToolCallViewModel, ToolRendererProps } from '../model';
  * - 不放「继续填写」按钮（补全入口只有一个，就是补全面板）；
  * - 不出现部门、头像这类业务控件（那是业务表单的事）。
  */
-export function UpdateFormDraftRenderer({ tool }: ToolRendererProps) {
+export function UpdateFormDraftRenderer({ tool, bodyOnly }: ToolRendererProps) {
   const running = tool.status === 'running' || tool.status === 'pending';
   const failed = tool.status === 'error' || tool.status === 'cancelled';
-  /**
-   * 展开状态由本组件掌握：**执行完成后默认收起**，用户手动展开后不再被
-   * 后续的流式更新覆盖。
-   */
-  const [userExpanded, setUserExpanded] = useState<boolean | undefined>(undefined);
-  const expanded = userExpanded ?? running;
 
   const resultSummary = failed ? '未完成' : running ? '' : '已完成';
   const view: ToolCallViewModel = {
@@ -37,28 +31,23 @@ export function UpdateFormDraftRenderer({ tool }: ToolRendererProps) {
     resultSummary,
   };
 
+  const content = failed ? (
+    <Typography.Text type="danger" style={{ overflowWrap: 'anywhere' }}>
+      {tool.details.error?.message ||
+        '本次保存未完成，可以重新生成回复再试一次。'}
+    </Typography.Text>
+  ) : (
+    <ToolResultLine
+      muted={running}
+      text={
+        running ? '正在把提供的信息填入表单草稿' : '已将提供的信息填入表单草稿'
+      }
+    />
+  );
+  if (bodyOnly) return content;
   return (
-    <ToolCallCard
-      tool={view}
-      showDetails={false}
-      showError={false}
-      showChevron
-      expanded={expanded}
-      onToggle={setUserExpanded}
-    >
-      {failed ? (
-        <Typography.Text type="danger" style={{ overflowWrap: 'anywhere' }}>
-          {tool.details.error?.message ||
-            '本次保存未完成，可以重新生成回复再试一次。'}
-        </Typography.Text>
-      ) : (
-        <ToolResultLine
-          muted={running}
-          text={
-            running ? '正在把提供的信息填入表单草稿' : '已将提供的信息填入表单草稿'
-          }
-        />
-      )}
+    <ToolCallCard tool={view} showDetails={false} showError={false} showChevron>
+      {content}
     </ToolCallCard>
   );
 }

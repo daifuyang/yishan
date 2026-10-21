@@ -31,7 +31,9 @@ it('renders every status with a shape and a label, not only a colour', () => {
   ];
   for (const status of statuses) {
     const { unmount } = render(<ToolStatus status={status} empty={false} />);
-    const label = screen.getByLabelText(/等待执行|执行中|执行完成|执行失败|已取消/);
+    const label = screen.getByLabelText(
+      /准备中|执行中|执行完成|执行失败|已取消/,
+    );
     expect(label.getAttribute('aria-label')).toBeTruthy();
     expect(label.querySelector('svg')).toBeTruthy();
     unmount();

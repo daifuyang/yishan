@@ -1,5 +1,5 @@
 import { Typography } from 'antd';
-import React, { useState } from 'react';
+import React from 'react';
 import { ToolCallCard } from '../components/ToolCallCard';
 import { ToolResultLine } from '../components/ToolResultLine';
 import type { ToolCallViewModel, ToolRendererProps } from '../model';
@@ -16,15 +16,12 @@ import type { ToolCallViewModel, ToolRendererProps } from '../model';
  * - 不做第二层折叠，也不加额外滚动容器；
  * - 不在这里放任何表单：表单补全在独立的补全面板里，不在工具记录里。
  */
-export function DescribeOperationRenderer({ tool }: ToolRendererProps) {
+export function DescribeOperationRenderer({
+  tool,
+  bodyOnly,
+}: ToolRendererProps) {
   const running = tool.status === 'running' || tool.status === 'pending';
   const failed = tool.status === 'error' || tool.status === 'cancelled';
-  /**
-   * 展开状态由本组件掌握：**执行完成后默认收起**，用户手动展开后不再被
-   * 后续的流式更新覆盖。
-   */
-  const [userExpanded, setUserExpanded] = useState<boolean | undefined>(undefined);
-  const expanded = userExpanded ?? running;
 
   const isForm =
     tool.kind === 'form' ||
@@ -42,34 +39,29 @@ export function DescribeOperationRenderer({ tool }: ToolRendererProps) {
     resultSummary,
   };
 
+  const content = failed ? (
+    <Typography.Text type="danger" style={{ overflowWrap: 'anywhere' }}>
+      {tool.details.error?.message ||
+        '本次读取未完成，可以重新生成回复再试一次。'}
+    </Typography.Text>
+  ) : (
+    <ToolResultLine
+      muted={running}
+      text={
+        isForm
+          ? running
+            ? '正在获取需要填写的信息及校验规则'
+            : '已获取需要填写的信息及校验规则'
+          : running
+            ? '正在获取该操作的说明'
+            : '已获取该操作的说明'
+      }
+    />
+  );
+  if (bodyOnly) return content;
   return (
-    <ToolCallCard
-      tool={view}
-      showDetails={false}
-      showError={false}
-      showChevron
-      expanded={expanded}
-      onToggle={setUserExpanded}
-    >
-      {failed ? (
-        <Typography.Text type="danger" style={{ overflowWrap: 'anywhere' }}>
-          {tool.details.error?.message ||
-            '本次读取未完成，可以重新生成回复再试一次。'}
-        </Typography.Text>
-      ) : (
-        <ToolResultLine
-          muted={running}
-          text={
-            isForm
-              ? running
-                ? '正在获取需要填写的信息及校验规则'
-                : '已获取需要填写的信息及校验规则'
-              : running
-                ? '正在获取该操作的说明'
-                : '已获取该操作的说明'
-          }
-        />
-      )}
+    <ToolCallCard tool={view} showDetails={false} showError={false} showChevron>
+      {content}
     </ToolCallCard>
   );
 }

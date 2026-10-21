@@ -1,5 +1,5 @@
 import { Flex, Typography } from 'antd';
-import React, { useState } from 'react';
+import React from 'react';
 import { ToolCallCard } from '../components/ToolCallCard';
 import { ToolResultLine } from '../components/ToolResultLine';
 import type { ToolCallViewModel, ToolRendererProps } from '../model';
@@ -23,7 +23,13 @@ import { record, text } from '../safe-data';
  */
 
 /** 能力类型 → 展示动作。未知类型不猜，按业务名称降级展示。 */
-type CapabilityAction = 'form' | 'create' | 'update' | 'delete' | 'query' | 'describe';
+type CapabilityAction =
+  | 'form'
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'query'
+  | 'describe';
 
 /** 动作 → 结果句尾的语义描述。 */
 const ACTION_SUFFIX: Record<CapabilityAction, string> = {
@@ -155,12 +161,18 @@ function capabilitiesOf(tool: ToolCallViewModel): Capability[] {
  * 不是某个具体 ID 的白名单。
  */
 function actionOf(capability: Capability): CapabilityAction | undefined {
-  if (capability.kind === 'form' || capability.id.endsWith('.form')) return 'form';
-  if (capability.type === 'create' || capability.kind === 'draft') return 'create';
+  if (capability.kind === 'form' || capability.id.endsWith('.form'))
+    return 'form';
+  if (capability.type === 'create' || capability.kind === 'draft')
+    return 'create';
   if (capability.type === 'update') return 'update';
   if (capability.type === 'delete') return 'delete';
   if (capability.type === 'describe') return 'describe';
-  if (capability.type === 'query' || capability.kind === 'list' || capability.kind === 'detail') {
+  if (
+    capability.type === 'query' ||
+    capability.kind === 'list' ||
+    capability.kind === 'detail'
+  ) {
     return 'query';
   }
   return undefined;
@@ -188,7 +200,10 @@ function ResultItem({ text: content }: { text: string }) {
   return <ToolResultLine text={content} />;
 }
 
-export function DiscoverOperationsRenderer({ tool }: ToolRendererProps) {
+export function DiscoverOperationsRenderer({
+  tool,
+  bodyOnly,
+}: ToolRendererProps) {
   const capabilities = capabilitiesOf(tool);
   const input = record(tool.details.input);
   const keyword = text(input.keyword, 60);
@@ -197,13 +212,6 @@ export function DiscoverOperationsRenderer({ tool }: ToolRendererProps) {
   const target = keyword || subject;
   const running = tool.status === 'running' || tool.status === 'pending';
   const failed = tool.status === 'error' || tool.status === 'cancelled';
-
-  /**
-   * 展开状态由本组件掌握：**执行完成后默认收起**，用户手动展开后不再被
-   * 后续的流式更新覆盖。
-   */
-  const [userExpanded, setUserExpanded] = useState<boolean | undefined>(undefined);
-  const expanded = userExpanded ?? running;
 
   const title = target
     ? running
@@ -227,31 +235,27 @@ export function DiscoverOperationsRenderer({ tool }: ToolRendererProps) {
     empty: false,
   };
 
+  const content = failed ? (
+    <Typography.Text type="danger" style={{ overflowWrap: 'anywhere' }}>
+      {tool.details.error?.message ||
+        '本次查找未完成，可以重新生成回复再试一次。'}
+    </Typography.Text>
+  ) : capabilities.length ? (
+    <Flex vertical gap={8} style={{ minWidth: 0 }}>
+      {capabilities.map((capability, index) => (
+        <ResultItem
+          key={capability.id || `${index}`}
+          text={resultText(capability, subject)}
+        />
+      ))}
+    </Flex>
+  ) : (
+    <Typography.Text type="secondary">暂未找到匹配的功能</Typography.Text>
+  );
+  if (bodyOnly) return content;
   return (
-    <ToolCallCard
-      tool={view}
-      showDetails={false}
-      showError={false}
-      showChevron
-      expanded={expanded}
-      onToggle={setUserExpanded}
-    >
-      {failed ? (
-        <Typography.Text type="danger" style={{ overflowWrap: 'anywhere' }}>
-          {tool.details.error?.message || '本次查找未完成，可以重新生成回复再试一次。'}
-        </Typography.Text>
-      ) : capabilities.length ? (
-        <Flex vertical gap={8} style={{ minWidth: 0 }}>
-          {capabilities.map((capability, index) => (
-            <ResultItem
-              key={capability.id || `${index}`}
-              text={resultText(capability, subject)}
-            />
-          ))}
-        </Flex>
-      ) : (
-        <Typography.Text type="secondary">暂未找到匹配的功能</Typography.Text>
-      )}
+    <ToolCallCard tool={view} showDetails={false} showError={false} showChevron>
+      {content}
     </ToolCallCard>
   );
 }

@@ -15,7 +15,11 @@ import { ToolCallList } from '../tools/components/ToolCallList';
  */
 
 const message = (parts: unknown[]): UIMessage =>
-  ({ id: 'm', role: 'assistant', parts: parts as UIMessage['parts'] }) as UIMessage;
+  ({
+    id: 'm',
+    role: 'assistant',
+    parts: parts as UIMessage['parts'],
+  }) as UIMessage;
 
 const toolPart = (
   id: string,
@@ -30,28 +34,48 @@ const toolPart = (
   ...extra,
 });
 
-const describeOperation = toolPart('c1', 'describe_operation', 'output-available', {
-  input: { operationId: 'user.create' },
-  output: {
-    ok: true,
-    data: {
-      id: 'user.create',
-      name: '新增用户',
-      fields: [
-        { name: 'phone', label: '手机号码', required: true, pattern: '^1\\d{10}$' },
-      ],
-      schema: { type: 'object', properties: { phone: { type: 'string' } } },
+const describeOperation = toolPart(
+  'c1',
+  'describe_operation',
+  'output-available',
+  {
+    input: { operationId: 'user.create' },
+    output: {
+      ok: true,
+      data: {
+        id: 'user.create',
+        name: '新增用户',
+        fields: [
+          {
+            name: 'phone',
+            label: '手机号码',
+            required: true,
+            pattern: '^1\\d{10}$',
+          },
+        ],
+        schema: { type: 'object', properties: { phone: { type: 'string' } } },
+      },
+      progress: {
+        action: 'describe',
+        kind: 'form',
+        subject: '新增用户',
+        outcome: 'ready',
+      },
     },
-    progress: { action: 'describe', kind: 'form', subject: '新增用户', outcome: 'ready' },
   },
-});
+);
 
 const updateDraft = toolPart('c2', 'update_form_draft', 'output-available', {
   input: { conversationId: 'c1', values: { phone: '13800000000' } },
   output: {
     ok: true,
     data: { draftId: 'draft-1', draftVersion: 2 },
-    progress: { action: 'draft', kind: 'draft', subject: '新增用户', outcome: 'saved' },
+    progress: {
+      action: 'draft',
+      kind: 'draft',
+      subject: '新增用户',
+      outcome: 'saved',
+    },
   },
 });
 
@@ -72,8 +96,8 @@ it('keeps both records collapsed until the user expands them', () => {
   renderList([describeOperation, updateDraft]);
   expect(screen.queryByText('已获取需要填写的信息及校验规则')).toBeNull();
   expect(screen.queryByText('已将提供的信息填入表单草稿')).toBeNull();
-  expect(screen.getByText('查看新增用户填写要求')).toBeTruthy();
-  expect(screen.getByText('准备新增用户信息')).toBeTruthy();
+  expect(screen.getByRole('button', { name: /已完成信息准备/ })).toBeTruthy();
+  expect(screen.queryByText('准备新增用户信息')).toBeNull();
 });
 
 it('expands the read record into one Chinese sentence without the raw schema', () => {

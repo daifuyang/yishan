@@ -35,8 +35,10 @@ export function ToolHeader({
   chevron?: boolean;
 }) {
   const label = (
-    <Flex align="baseline" gap={8} style={{ minWidth: 0 }}>
-      <span style={{ overflowWrap: 'anywhere' }}>{tool.title || '工具调用'}</span>
+    <Flex component="span" align="baseline" gap={8} style={{ minWidth: 0 }}>
+      <span style={{ overflowWrap: 'anywhere' }}>
+        {tool.title || '工具调用'}
+      </span>
       {tool.subtitle && (
         <Typography.Text
           type="secondary"
@@ -49,7 +51,7 @@ export function ToolHeader({
   );
   return (
     <Flex vertical gap={4} style={{ width: '100%', minWidth: 0 }}>
-      <Flex align="baseline" wrap gap={8} style={{ width: '100%', minWidth: 0 }}>
+      <Flex align="baseline" gap={8} style={{ width: '100%', minWidth: 0 }}>
         <ToolStatus status={tool.status} empty={tool.empty} />
         {onToggle ? (
           <button
@@ -66,45 +68,40 @@ export function ToolHeader({
               textAlign: 'start',
               cursor: 'pointer',
               minWidth: 0,
+              flex: 1,
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 8,
             }}
           >
             {label}
+            <span
+              style={{ marginInlineStart: 'auto', flexShrink: 0, fontSize: 12 }}
+            >
+              {tool.resultSummary}
+            </span>
+            {chevron && (
+              <span aria-hidden style={{ flex: 'none' }}>
+                {expanded ? <DownOutlined /> : <RightOutlined />}
+              </span>
+            )}
           </button>
         ) : (
           label
         )}
-        <Typography.Text
-          type={tool.status === 'error' ? 'danger' : 'secondary'}
-          style={{
-            marginInlineStart: 'auto',
-            fontSize: 12,
-            overflowWrap: 'anywhere',
-          }}
-        >
-          {tool.resultSummary}
-        </Typography.Text>
-        {actions}
-        {chevron && (
-          <button
-            type="button"
-            onClick={onToggle}
-            aria-hidden
-            tabIndex={-1}
+        {!onToggle && (
+          <Typography.Text
+            type={tool.status === 'error' ? 'danger' : 'secondary'}
             style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              margin: 0,
-              font: 'inherit',
-              color: 'inherit',
-              cursor: onToggle ? 'pointer' : 'default',
-              flex: 'none',
-              lineHeight: 1,
+              marginInlineStart: 'auto',
+              fontSize: 12,
+              overflowWrap: 'anywhere',
             }}
           >
-            {expanded ? <DownOutlined /> : <RightOutlined />}
-          </button>
+            {tool.resultSummary}
+          </Typography.Text>
         )}
+        {actions}
       </Flex>
       {tool.summary.length > 0 && (
         <Flex wrap gap={8} style={{ paddingInlineStart: 22 }}>
@@ -122,7 +119,11 @@ export function ToolHeader({
       {tool.note && (
         <Typography.Text
           type="secondary"
-          style={{ fontSize: 12, overflowWrap: 'anywhere', paddingInlineStart: 22 }}
+          style={{
+            fontSize: 12,
+            overflowWrap: 'anywhere',
+            paddingInlineStart: 22,
+          }}
         >
           {tool.note}
         </Typography.Text>
