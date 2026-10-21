@@ -15,7 +15,7 @@ CD 将 `YISHAN_API_REDIS_URL` Secret 原样传给函数的 `REDIS_URL`；`rediss
 > 阿里云 FC 发布链路已于 2026-10-21 下线：`yishan-api-cd.yml`、`yishan-h5-cd.yml`、
 > `yishan-fc-migrate.yml` 与两条证书轮转工作流已移出 `.github/workflows/`，
 > 作为参考实现保留在 `apps/demo/api/deploy/fc-example/`。同账号上仍在运行的
-> 只有 `yishan-crm` 函数。当前唯一的 CD 是演示环境的 `yishan-api-cd-ubuntu.yml`。
+> 只有 `yishan-crm` 函数。当前只有演示环境（Ubuntu 主机）的两条 CD：`yishan-api-cd-ubuntu.yml` 发布 API 与 Admin，`yishan-h5-cd-ubuntu.yml` 发布小程序 H5 静态目录。
 
 发布走 Ubuntu 主机链路，推送 `main` 后按路径自动触发：`yishan-api-cd-ubuntu.yml` 发布 API 与 Admin（先在目标机跑数据库迁移，迁移失败即不部署代码；Admin 编译进同一产物，由后端静态托管在 `/` 提供）。该链路**不等 CI**（演示站对外可见，延迟优先），构建失败本身会挡住发布；`release.sh` 会在健康检查失败时回滚。
 

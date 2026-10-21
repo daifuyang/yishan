@@ -6,11 +6,14 @@
 
 ## 为什么下线
 
+H5 也一并迁走了：`h5.zerocmf.com` 现在由 `yishan-h5-cd-ubuntu.yml` 发布到 Ubuntu 主机
+（`/opt/yishan/h5-current`），走同一套受控执行器，只是换成了 `h5-unpack` / `h5-release`
+两个不碰 `releases/` 的动词。原先 10-19 之后一直是手工往目标机传目录，没有任何自动化。
+
 演示环境迁到 Ubuntu 主机（`43.143.122.225`，腾讯云）后，FC 这条链路的两个问题变得突出：
 FC 的部署产物只在函数内可写，调试和排障都要绕；且 `zerocmf.com` 主域的公网
-解析已经失效，FC 实际不再承载流量。现在**唯一在跑的发布链路**是
-`yishan-api-cd-ubuntu.yml`（演示环境，Ubuntu 主机 + 受控 `deploy.sh`），
-H5 走 `apps/demo/app/deploy/` 的静态产物。
+解析已经失效，FC 实际不再承载流量。现在在跑的发布链路是演示环境的两条 CD
+（Ubuntu 主机 + 受控 `deploy.sh`）。
 
 ## 云上现状
 

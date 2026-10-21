@@ -28,6 +28,8 @@
 │   ├── dist/ node_modules/ package.json
 │   └── public/admin/           # Admin 静态产物（由 package-api.mjs 拷入）
 │                               # public/uploads 是软链 -> shared/uploads
+├── h5-current -> h5/<时间戳>  # nginx 的 root（H5 站点）
+├── h5/<时间戳>/                # H5 静态产物，保留最近 3 个
 ├── incoming/                   # 上传暂存
 └── shared/
     ├── .env                     # 运行时环境变量（不进仓库）
@@ -44,6 +46,7 @@
 |---|---|---|
 | `/opt/yishan/bin/deploy.sh` | `bin/deploy.sh` | 受控部署执行器，CI 唯一能跑的入口 |
 | `/opt/yishan/bin/release.sh` | `bin/release.sh` | 切软链 + 重启 + 健康检查 + 自动回滚 |
+| `/opt/yishan/bin/release-h5.sh` | `bin/release-h5.sh` | 切 `h5-current` + 内容健康检查 + 自动回滚（H5 专用） |
 | `/etc/systemd/system/yishan-api.service` | `templates/yishan-api.service` | systemd 单元 |
 | `/opt/yishan/shared/.env` | `templates/env.example` | 运行时环境变量（**只有模板进仓库**，真值留在机器上，0640 root:ubuntu） |
 
@@ -146,6 +149,40 @@ build（Linux runner 打包）→ 传到七牛云 → 目标机拉取 + 解包 +
 端口转发，scp 会被拒。
 
 重放某一次发布：Actions 上手动 `workflow_dispatch`（刚手工跑过迁移可再勾 `skip_migrations`）。
+
+### H5 发布（小程序 H5）
+
+`h5.zerocmf.com` 由 `.github/workflows/yishan-h5-cd-ubuntu.yml` 发布，形状和上面那条
+流水线同构，但**没有迁移步骤**，产物也换成静态目录：
+
+```
+build（Linux runner 跑 taro build --type h5）→ 七牛 → h5-unpack → h5-release → 公网冒烟
+```
+
+它和 API 共用同一台机器、同一套受控执行器、同一份 deployer 密钥，但动词互不重叠：
+`h5-unpack` / `h5-release` 只碰 `/opt/yishan/h5/`，`unpack` / `release` 只碰
+`/opt/yishan/releases/`。两个目录混在一起会让两边的历史版本清理互相删错东西。
+
+`release-h5.sh` 和 `release.sh` 的关键差别：**不重启任何服务**。H5 是纯静态，nginx 按
+`h5-current` 软链读目录，软链一换下一个请求就读到新版本。代价是"进程在跑"不构成健康
+信号，所以健康检查只能落在内容上：
+
+1. 首页必须返回 200 且含 `<title>`；
+2. **首页引用的每个本地资源都必须真的存在于新目录里**。只看 200 挡不住「index.html 正常、
+   脚本全 404」的白屏，而这是静态发布最常见的坏法（解包不完整、路径前缀写错都长这样）；
+3. 任意一条不过立即把 `h5-current` 切回上一版。
+
+第 2 条在目标机本地 nginx 上验（`--resolve h5.zerocmf.com:443:127.0.0.1`，走正确的
+server 块），公网冒烟再从外网把首页引用的资源逐个取一遍，补上 DNS、证书这一层。
+
+H5 站点与 API 同域：`/api` 和 `/uploads` 由 nginx 反代到 `127.0.0.1:3000`，所以 H5 构建
+必须把 `YISHAN_APP_API_BASE_URL` 留空（空 = 同源请求），写死域名会让它在任何非该域名
+的环境下都去跨域打 API。
+
+需要的 GitHub 配置复用 environment `YISHAN_DEMO_UBUNTU` 里已有的变量，只需多一个可选的
+`H5_SMOKE_BASE_URL`（默认 `https://h5.zerocmf.com`）。`deploy.sh` 的版本从
+`20261020-1` 提到 `20261021-1`，两条流水线共用这个校验值——目标机上跑的还是旧脚本时，
+H5 这条会在开头就报出版本不符，而不是传完 5MB 产物才失败。
 
 ## 部署凭据与权限模型
 

@@ -15,14 +15,17 @@
 #   unpack  <release_ts> <commit_sha>       解包到 releases/<ts>
 #   migrate <release_ts>                    执行数据库迁移
 #   release <release_ts>                    切软链 + 重启 + 健康检查（失败自动回滚）
+#   h5-unpack <release_ts> <commit_sha>     解包 H5 到 h5/<ts>
+#   h5-release <release_ts>                 切 h5-current + 内容健康检查（失败自动回滚）
 #   cleanup <commit_sha>                    删除 incoming 里的上传包
 #   version                                 打印脚本版本
 #
 # 安装（目标机上，root）：
 #   install -o root -g root -m 0755 deploy.sh /opt/yishan/bin/deploy.sh
+#   install -o root -g root -m 0755 release-h5.sh /opt/yishan/bin/release-h5.sh
 set -euo pipefail
 
-VERSION="20261020-1"
+VERSION="20261021-1"
 ROOT=/opt/yishan
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 
@@ -45,7 +48,7 @@ CMD="${SSH_ORIGINAL_COMMAND:-}"
 # 整体形状：动词 + 若干空白分隔的参数。先用一条正则把"含元字符"和"未知动词"
 # 挡在外面，再逐个按动词校验参数。
 case "$CMD" in
-  fetch\ *|unpack\ *|migrate\ *|release\ *|cleanup\ *|version|version\ *)
+  fetch\ *|unpack\ *|migrate\ *|release\ *|cleanup\ *|h5-unpack\ *|h5-release\ *|version|version\ *)
     ;;
   *)
     die "unsupported command: ${CMD%% *}"
@@ -177,20 +180,54 @@ cmd_release() {
   audit "release $ts ok"
 }
 
+cmd_h5_unpack() {
+  need_args 2 "$#"
+  local ts="$1" sha="$2"
+  [[ "$ts"  =~ $SAFE_TS  ]] || die "bad release ts"
+  [[ "$sha" =~ $SAFE_SHA ]] || die "bad commit sha"
+
+  # 和 API 解包分开目录：h5/ 只放静态产物，绝不能和 releases/ 混在一起
+  # —— nginx 的 root 是 h5-current，release.sh 又按 releases/ 清理历史版本，
+  # 混了会让两边的清理逻辑互相删错东西。
+  local dest="$ROOT/h5/$ts"
+  local tarball="$ROOT/incoming/yishan-h5-$sha.tar.gz"
+  [ -f "$tarball" ] || die "missing $tarball"
+
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  tar -xzf "$tarball" -C "$dest" --strip-components=1
+  [ -f "$dest/index.html" ] || die "index.html missing after unpack"
+  log "unpacked h5 into $dest"
+  audit "h5-unpack $ts ok"
+}
+
+cmd_h5_release() {
+  need_args 1 "$#"
+  local ts="$1"
+  [[ "$ts" =~ $SAFE_TS ]] || die "bad release ts"
+  log "switching h5 release $ts"
+  bash "$ROOT/bin/release-h5.sh" "$ts"
+  audit "h5-release $ts ok"
+}
+
 cmd_cleanup() {
   need_args 1 "$#"
   local sha="$1"
   [[ "$sha" =~ $SAFE_SHA ]] || die "bad commit sha"
-  rm -f "$ROOT/incoming/yishan-api-$sha.tar.gz"
+  # API 与 H5 共用同一个 cleanup 动词：两条流水线的产物都按 commit sha 命名，
+  # 一次清理把两边都带走，免得为一条 tar 包再开一个动词。
+  rm -f "$ROOT/incoming/yishan-api-$sha.tar.gz"         "$ROOT/incoming/yishan-h5-$sha.tar.gz"
   audit "cleanup $sha ok"
 }
 
 case "$ACTION" in
-  fetch)   cmd_fetch   "$@" ;;
-  unpack)  cmd_unpack  "$@" ;;
-  migrate) cmd_migrate "$@" ;;
-  release) cmd_release "$@" ;;
-  cleanup) cmd_cleanup "$@" ;;
-  version) cmd_version "$@" ;;
-  *)       die "unsupported command: $ACTION" ;;
+  fetch)      cmd_fetch      "$@" ;;
+  unpack)     cmd_unpack     "$@" ;;
+  migrate)    cmd_migrate    "$@" ;;
+  release)    cmd_release    "$@" ;;
+  h5-unpack)  cmd_h5_unpack  "$@" ;;
+  h5-release) cmd_h5_release "$@" ;;
+  cleanup)    cmd_cleanup    "$@" ;;
+  version)    cmd_version    "$@" ;;
+  *)          die "unsupported command: $ACTION" ;;
 esac

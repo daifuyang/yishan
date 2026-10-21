@@ -1,0 +1,294 @@
+name: yishan-h5-cd-ubuntu
+
+# 小程序 H5 演示环境发布：Taro H5 静态产物 → 腾讯云 Ubuntu（h5.zerocmf.com）。
+#
+# 阿里云 FC 已于 2026-10-21 下线（参考实现留在 apps/demo/api/deploy/fc-example/），
+# 原先手工往 /opt/yishan/h5/ 传产物的做法也停用了 —— 走这条流水线。
+#
+# 与 API 那条（yishan-api-cd-ubuntu.yml）的分工：那条管 dist + Admin 静态，
+# 这条只管 H5 静态目录，两者在同一个目标机、同一套受控执行器里，但动词互不重叠
+# （h5-unpack / h5-release 只碰 /opt/yishan/h5/，绝不碰 releases/）。
+#
+# 和 API 一样的两个取舍：
+#   1. 打包必须发生在 Linux runner 上（目标机只有 3.6G 内存，跑不动 Taro 构建）。
+#   2. 不等 CI。演示站对外可见，延迟优先；构建失败本身会挡住发布，
+#      release-h5.sh 的内容健康检查不过会自动回滚。
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/yishan-h5-cd-ubuntu.yml"
+      - "apps/demo/app/**"
+      - "apps/demo/config/**"
+      - "packages/core/app/**"
+      - "packages/ui/**"
+      - "scripts/**"
+      - ".tool-versions"
+      - ".npmrc"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: yishan-h5-cd-ubuntu
+  # 与 API 那条同一理由：取消点不可控，可能正好落在"已解包、软链还没切"的窗口。
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    outputs:
+      release_ts: ${{ steps.stamp.outputs.release_ts }}
+      artifact_key: ${{ steps.qiniu.outputs.artifact_key }}
+      artifact_sha256: ${{ steps.qiniu.outputs.artifact_sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 顺序是硬要求：`cache: pnpm` 要先解析 store 路径，那时 pnpm 必须已在 PATH，
+      # 所以 corepack 必须排在带缓存的 setup-node 之前（与另两条流水线一致）。
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare --activate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # H5 走 @yishan/ui/mobile 的构建与 typecheck，和 Taro App 编译是并行的两件事。
+      - name: Prepare shared mobile packages
+        run: |
+          pnpm --filter @yishan/core-app build
+          pnpm --filter @yishan/ui typecheck
+
+      - name: Build Demo App (h5)
+        env:
+          # H5 部署在与 API 同域（nginx 把 /api 反代到后端），所以保持空值 = 同源请求。
+          # 写死一个域名会让 H5 在任何非该域名的环境下都去跨域打 API。
+          YISHAN_APP_API_BASE_URL: ''
+        run: pnpm --filter @yishan/demo-app build:h5
+
+      - name: Stamp release id
+        id: stamp
+        run: echo "release_ts=$(date -u +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
+
+      - name: Verify build output
+        run: |
+          set -euo pipefail
+          DIST="apps/demo/app/dist/h5"
+          # 必须在打包前确认产物真的存在：taro build 在某些失败路径下会退出 0
+          # 但 dist/h5 是空的，打出空 tar 包后要到目标机健康检查才会被发现。
+          [ -f "$DIST/index.html" ] || { echo "::error::$DIST/index.html 不存在，H5 构建没产出东西。"; exit 1; }
+          du -sh "$DIST"
+          ls "$DIST" | head
+
+      # 打成单顶层目录，目标机解包时 --strip-components=1 即可（与 API 产物同形）。
+      - name: Package H5 artifact
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/yishan-h5-artifact
+          mkdir -p /tmp/yishan-h5-artifact
+          cp -a apps/demo/app/dist/h5/. /tmp/yishan-h5-artifact/
+          # 标记文件：目标机上 h5-unpack 会核对它，避免把别的 tar 包当 H5 解开。
+          printf '%s\n' "${{ github.sha }}" > /tmp/yishan-h5-artifact/.yishan-h5-artifact.json
+          tar -czf "$RUNNER_TEMP/yishan-h5-${{ github.sha }}.tar.gz" \
+            -C /tmp yishan-h5-artifact
+          ls -l "$RUNNER_TEMP/yishan-h5-${{ github.sha }}.tar.gz"
+
+      # 走七牛中转而不是直接 scp：runner 在 GitHub（境外），目标机在腾讯云，
+      # 跨境单条 SSH 实测约 16 KB/s。H5 产物只有几 MB，但形状问题和 API 一致，
+      # 不值得为它开一条特例路径。
+      - name: Upload artifact to Qiniu
+        id: qiniu
+        env:
+          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
+          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
+          QINIU_BUCKET: ${{ vars.QINIU_BUCKET }}
+          QINIU_DOMAIN: ${{ vars.QINIU_DOMAIN }}
+        run: |
+          set -euo pipefail
+          ASSET="yishan-h5-${{ github.sha }}.tar.gz"
+          TARBALL="$RUNNER_TEMP/$ASSET"
+          KEY="yishan-cd/$ASSET"
+          test -f "$TARBALL"
+          node scripts/qiniu-artifact.mjs upload "$TARBALL" "$KEY"
+          echo "artifact_key=$KEY" >> "$GITHUB_OUTPUT"
+          echo "artifact_sha256=$(sha256sum "$TARBALL" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yishan-h5-${{ steps.stamp.outputs.release_ts }}
+          path: ${{ runner.temp }}/yishan-h5-${{ github.sha }}.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: [build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    environment: YISHAN_DEMO_UBUNTU
+    env:
+      UBUNTU_HOST: ${{ vars.UBUNTU_HOST }}
+      UBUNTU_USER: ${{ vars.UBUNTU_USER || 'deployer' }}
+      UBUNTU_SSH_FINGERPRINT: ${{ vars.UBUNTU_SSH_FINGERPRINT }}
+      # 目标机上受控执行器的版本。改了 apps/demo/api/deploy/ubuntu/bin/deploy.sh
+      # 就要同步 bump，否则目标机跑的还是不认识 h5-unpack 的旧逻辑。
+      DEPLOY_SCRIPT_VERSION: '20261021-1'
+      RELEASE_TS: ${{ needs.build.outputs.release_ts }}
+      ARTIFACT_KEY: ${{ needs.build.outputs.artifact_key }}
+      ARTIFACT_SHA256: ${{ needs.build.outputs.artifact_sha256 }}
+      SMOKE_BASE_URL: ${{ vars.H5_SMOKE_BASE_URL || 'https://h5.zerocmf.com' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # 只报告，不拦截 —— 和 API 那条同一取舍，理由见那边的注释。
+      - name: Report yishan-fullstack-ci status
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          json="$(gh api "repos/${REPO}/actions/workflows/yishan-fullstack-ci.yml/runs?head_sha=${SHA}&per_page=20" 2>/dev/null || echo '{}')"
+          conclusion="$(printf '%s' "$json" | jq -r '[.workflow_runs[]? | select(.event != "pull_request" and .status == "completed")] | sort_by(.created_at) | last | .conclusion // ""')"
+          if [ -z "$conclusion" ]; then
+            echo "::notice::yishan-fullstack-ci 在 ${SHA} 上还没有已完成的运行（可能仍在跑）。本次发布不等待它。"
+          elif [ "$conclusion" = "success" ]; then
+            echo "yishan-fullstack-ci 在 ${SHA} 上：success"
+          else
+            echo "::warning::yishan-fullstack-ci 在 ${SHA} 上是 ${conclusion}；演示环境不因此阻断发布。"
+          fi
+
+      - name: Validate deployment variables
+        env:
+          UBUNTU_DEPLOYER_SSH_KEY: ${{ secrets.UBUNTU_DEPLOYER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          : "${UBUNTU_HOST:?Missing UBUNTU_HOST in the YISHAN_DEMO_UBUNTU environment}"
+          : "${UBUNTU_DEPLOYER_SSH_KEY:?Missing UBUNTU_DEPLOYER_SSH_KEY secret}"
+          : "${RELEASE_TS:?Missing RELEASE_TS from the build job}"
+
+      - name: Setup SSH client
+        env:
+          UBUNTU_DEPLOYER_SSH_KEY: ${{ secrets.UBUNTU_DEPLOYER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$UBUNTU_DEPLOYER_SSH_KEY" > ~/.ssh/yishan-deployer.pem
+          chmod 600 ~/.ssh/yishan-deployer.pem
+          # 指纹是**必填**的：盲信任 keyscan 等于把部署机敞给中间人。
+          : "${UBUNTU_SSH_FINGERPRINT:?Missing UBUNTU_SSH_FINGERPRINT in the YISHAN_DEMO_UBUNTU environment}"
+          keys="$(ssh-keyscan -t ed25519 "$UBUNTU_HOST" 2>/dev/null)"
+          scan="$(printf '%s\n' "$keys" | ssh-keygen -lf - | awk '{print $2}')"
+          echo "host ed25519 fingerprint: ${scan}"
+          [ "$scan" = "$UBUNTU_SSH_FINGERPRINT" ] \
+            || { echo "::error::目标机指纹不匹配，拒绝部署。"; exit 1; }
+          printf '%s\n' "$keys" > ~/.ssh/known_hosts
+
+      - name: Verify target deploy script version
+        run: |
+          set -euo pipefail
+          remote="$(ssh -i ~/.ssh/yishan-deployer.pem -o BatchMode=yes \
+            "$UBUNTU_USER@$UBUNTU_HOST" version)"
+          echo "target deploy script version: ${remote}"
+          [ "$remote" = "$DEPLOY_SCRIPT_VERSION" ] \
+            || { echo "::error::目标机 deploy.sh 版本为 ${remote}，期望 ${DEPLOY_SCRIPT_VERSION}。请先安装仓库里的 apps/demo/api/deploy/ubuntu/bin/deploy.sh 与 release-h5.sh。"; exit 1; }
+
+      # 目标机自己从七牛拉，runner 只给「下载地址 + 校验和」。
+      # URL 走 base64：链接里的 & 会被远端 shell 当后台执行符拆词。
+      - name: Fetch artifact on the target host from Qiniu
+        env:
+          QINIU_ACCESS_KEY: ${{ secrets.QINIU_ACCESS_KEY }}
+          QINIU_SECRET_KEY: ${{ secrets.QINIU_SECRET_KEY }}
+          QINIU_BUCKET: ${{ vars.QINIU_BUCKET }}
+          QINIU_DOMAIN: ${{ vars.QINIU_DOMAIN }}
+        run: |
+          set -euo pipefail
+          : "${ARTIFACT_KEY:?Missing ARTIFACT_KEY from the build job}"
+          : "${ARTIFACT_SHA256:?Missing ARTIFACT_SHA256 from the build job}"
+          URL="$(node scripts/qiniu-artifact.mjs private-url "$ARTIFACT_KEY" 7200)"
+          ASSET="${ARTIFACT_KEY##*/}"
+          URL_B64="$(printf '%s' "$URL" | base64 -w0)"
+          ssh -i ~/.ssh/yishan-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
+            "fetch $ASSET $URL_B64 $ARTIFACT_SHA256"
+
+      # 解包无条件执行：h5-current 尚未切换，解包失败不影响线上版本。
+      - name: Unpack H5 on the target host
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/yishan-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
+            "h5-unpack $RELEASE_TS $GITHUB_SHA"
+
+      # 切软链 + 内容健康检查，不过自动回滚到上一版 H5。
+      - name: Switch H5 release
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/yishan-deployer.pem "$UBUNTU_USER@$UBUNTU_HOST" \
+            "h5-release $RELEASE_TS"
+
+      - name: Cleanup upload
+        if: always()
+        run: |
+          ssh -i ~/.ssh/yishan-deployer.pem -o ConnectTimeout=10 "$UBUNTU_USER@$UBUNTU_HOST" \
+            "cleanup $GITHUB_SHA" || true
+
+      # release-h5.sh 已经查过目标机本地 nginx；这一步打公网入口，把 DNS、
+      # 证书和 CDN 这一层也纳入检查。
+      - name: Post-deploy smoke check
+        run: |
+          set -euo pipefail
+          BASE="${SMOKE_BASE_URL%/}"
+          echo "Smoke target: ${BASE}"
+
+          PAGE="$(curl -fsS --max-time 20 "${BASE}/" || true)"
+          [ -n "$PAGE" ] || { echo "::error::${BASE}/ 取不到首页。"; exit 1; }
+          printf '%s' "$PAGE" | grep -q '<title>' \
+            || { echo "::error::${BASE}/ 不是 H5 入口页（缺少 <title>）。"; exit 1; }
+
+          # 首页引用的每个本地资源都真的取得到：只看 200 挡不住"index.html 正常、
+          # 脚本全 404"的白屏，而这正是静态发布最常见的坏法。
+          refs="$(printf '%s' "$PAGE" \
+            | grep -oE '(src|href)="[^"]+"' | sed 's/^[a-z]*="//; s/"$//' || true)"
+          checked=0
+          for ref in $refs; do
+            case "$ref" in
+              http://*|https://*|//*|data:*) continue ;;
+            esac
+            clean="${ref%%\?*}"; clean="${clean#/}"
+            [ -z "$clean" ] && continue
+            case "$clean" in
+              /*) URL="${BASE}${clean}" ;;
+              *)  URL="${BASE}/${clean}" ;;
+            esac
+            code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || true)"
+            echo "  ${clean} -> ${code}"
+            [ "$code" = "200" ] || { echo "::error::${clean} 返回 ${code}，期望 200。"; exit 1; }
+            checked=$((checked + 1))
+          done
+          [ "$checked" -gt 0 ] || { echo "::error::首页没有引用任何本地资源，冒烟没有意义。"; exit 1; }
+
+          # H5 与后端同源，/api 走 nginx 反代 —— 顺手确认这条还通。
+          HEALTH="$(curl -fsS --max-time 15 "${BASE}/api/health" 2>/dev/null || true)"
+          [ -n "$HEALTH" ] || { echo "::error::${BASE}/api/health 取不到（同源反代可能断了）。"; exit 1; }
+          echo "api: ${HEALTH}"
+
+          echo "Smoke check passed (${checked} assets)."
