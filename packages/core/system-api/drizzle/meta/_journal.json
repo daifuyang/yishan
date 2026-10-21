@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1787238284270,
+      "when": 1792560973443,
       "tag": "0000_init",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1788881192896,
-      "tag": "0002_init",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1791590400000,
-      "tag": "0003_workbench-menu",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1791849600000,
-      "tag": "0004_user-workbench-preference",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1792329600000,
-      "tag": "0005_role-dept",
       "breakpoints": true
     }
   ]

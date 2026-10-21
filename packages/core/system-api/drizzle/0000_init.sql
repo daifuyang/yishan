@@ -180,6 +180,23 @@ CREATE TABLE `sys_dict_type` (
 	CONSTRAINT `sys_dict_type_type_key` UNIQUE(`type`)
 );
 --> statement-breakpoint
+CREATE TABLE `sys_enum` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`type` varchar(64) NOT NULL,
+	`code` varchar(64) NOT NULL,
+	`name` varchar(64) NOT NULL,
+	`sort` int NOT NULL DEFAULT 0,
+	`enabled` tinyint NOT NULL DEFAULT 1,
+	`remark` varchar(255),
+	`creator_id` int,
+	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`updater_id` int,
+	`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`deleted_at` datetime,
+	CONSTRAINT `sys_enum_id` PRIMARY KEY(`id`),
+	CONSTRAINT `uniq_sys_enum_type_code` UNIQUE(`type`,`code`)
+);
+--> statement-breakpoint
 CREATE TABLE `sys_form_data` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`resource_id` int NOT NULL,
@@ -346,6 +363,17 @@ CREATE TABLE `sys_role` (
 	CONSTRAINT `uniq_role_code` UNIQUE(`code`)
 );
 --> statement-breakpoint
+CREATE TABLE `sys_role_dept` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`role_id` int NOT NULL,
+	`dept_id` int NOT NULL,
+	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`deleted_at` datetime,
+	CONSTRAINT `sys_role_dept_id` PRIMARY KEY(`id`),
+	CONSTRAINT `uniq_role_dept` UNIQUE(`role_id`,`dept_id`)
+);
+--> statement-breakpoint
 CREATE TABLE `sys_role_menu` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`role_id` int NOT NULL,
@@ -367,6 +395,17 @@ CREATE TABLE `sys_role_permission` (
 	`deleted_at` datetime,
 	CONSTRAINT `sys_role_permission_id` PRIMARY KEY(`id`),
 	CONSTRAINT `uniq_role_permission` UNIQUE(`role_id`,`permission_code`)
+);
+--> statement-breakpoint
+CREATE TABLE `sys_role_workbench_menu` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`role_id` int NOT NULL,
+	`workbench_menu_id` int NOT NULL,
+	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`deleted_at` datetime,
+	CONSTRAINT `sys_role_workbench_menu_id` PRIMARY KEY(`id`),
+	CONSTRAINT `uniq_role_workbench_menu` UNIQUE(`role_id`,`workbench_menu_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `sys_user` (
@@ -435,6 +474,48 @@ CREATE TABLE `sys_user_token` (
 	CONSTRAINT `sys_user_token_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `sys_user_workbench_pin` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`user_id` int NOT NULL,
+	`workbench_menu_id` int NOT NULL,
+	`sort_order` int NOT NULL DEFAULT 0,
+	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	CONSTRAINT `sys_user_workbench_pin_id` PRIMARY KEY(`id`),
+	CONSTRAINT `uniq_user_workbench_pin` UNIQUE(`user_id`,`workbench_menu_id`)
+);
+--> statement-breakpoint
+CREATE TABLE `sys_user_workbench_usage` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`user_id` int NOT NULL,
+	`workbench_menu_id` int NOT NULL,
+	`open_count` int NOT NULL DEFAULT 0,
+	`last_opened_at` datetime NOT NULL,
+	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	CONSTRAINT `sys_user_workbench_usage_id` PRIMARY KEY(`id`),
+	CONSTRAINT `uniq_user_workbench_usage` UNIQUE(`user_id`,`workbench_menu_id`)
+);
+--> statement-breakpoint
+CREATE TABLE `sys_workbench_menu` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`parent_id` int,
+	`type` tinyint NOT NULL DEFAULT 1,
+	`name` varchar(100) NOT NULL,
+	`icon` varchar(100),
+	`page` varchar(255),
+	`module_id` varchar(64) NOT NULL DEFAULT 'core',
+	`sort_order` int NOT NULL DEFAULT 0,
+	`status` tinyint NOT NULL DEFAULT 1,
+	`creator_id` int,
+	`created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`updater_id` int,
+	`updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
+	`deleted_at` datetime,
+	`version` int NOT NULL DEFAULT 1,
+	CONSTRAINT `sys_workbench_menu_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
 CREATE INDEX `idx_api_token_user_id` ON `sys_api_token` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_api_token_deleted_at` ON `sys_api_token` (`deleted_at`);--> statement-breakpoint
 CREATE INDEX `idx_api_token_expires_at` ON `sys_api_token` (`expires_at`);--> statement-breakpoint
@@ -499,6 +580,8 @@ CREATE INDEX `idx_dict_type_deleted_at` ON `sys_dict_type` (`deleted_at`);--> st
 CREATE INDEX `idx_dict_type_sort_order` ON `sys_dict_type` (`sort_order`);--> statement-breakpoint
 CREATE INDEX `sys_dict_type_creator_id_idx` ON `sys_dict_type` (`creator_id`);--> statement-breakpoint
 CREATE INDEX `sys_dict_type_updater_id_idx` ON `sys_dict_type` (`updater_id`);--> statement-breakpoint
+CREATE INDEX `idx_sys_enum_type_enabled_sort` ON `sys_enum` (`type`,`enabled`,`sort`);--> statement-breakpoint
+CREATE INDEX `idx_sys_enum_deleted_at` ON `sys_enum` (`deleted_at`);--> statement-breakpoint
 CREATE INDEX `idx_form_data_resource_id` ON `sys_form_data` (`resource_id`);--> statement-breakpoint
 CREATE INDEX `idx_form_data_status` ON `sys_form_data` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_form_data_created_at` ON `sys_form_data` (`created_at`);--> statement-breakpoint
@@ -546,10 +629,14 @@ CREATE INDEX `idx_role_created_at` ON `sys_role` (`created_at`);--> statement-br
 CREATE INDEX `idx_role_deleted_at` ON `sys_role` (`deleted_at`);--> statement-breakpoint
 CREATE INDEX `sys_role_creator_id_idx` ON `sys_role` (`creator_id`);--> statement-breakpoint
 CREATE INDEX `sys_role_updater_id_idx` ON `sys_role` (`updater_id`);--> statement-breakpoint
+CREATE INDEX `idx_role_dept_role_id` ON `sys_role_dept` (`role_id`);--> statement-breakpoint
+CREATE INDEX `idx_role_dept_dept_id` ON `sys_role_dept` (`dept_id`);--> statement-breakpoint
 CREATE INDEX `idx_role_menu_role_id` ON `sys_role_menu` (`role_id`);--> statement-breakpoint
 CREATE INDEX `idx_role_menu_menu_id` ON `sys_role_menu` (`menu_id`);--> statement-breakpoint
 CREATE INDEX `idx_role_permission_role_id` ON `sys_role_permission` (`role_id`);--> statement-breakpoint
 CREATE INDEX `idx_role_permission_code` ON `sys_role_permission` (`permission_code`);--> statement-breakpoint
+CREATE INDEX `idx_role_workbench_menu_role_id` ON `sys_role_workbench_menu` (`role_id`);--> statement-breakpoint
+CREATE INDEX `idx_role_workbench_menu_menu_id` ON `sys_role_workbench_menu` (`workbench_menu_id`);--> statement-breakpoint
 CREATE INDEX `idx_status` ON `sys_user` (`status`);--> statement-breakpoint
 CREATE INDEX `idx_created_at` ON `sys_user` (`created_at`);--> statement-breakpoint
 CREATE INDEX `idx_deleted_at` ON `sys_user` (`deleted_at`);--> statement-breakpoint
@@ -565,4 +652,9 @@ CREATE INDEX `idx_user_token_user_id` ON `sys_user_token` (`user_id`);--> statem
 CREATE INDEX `idx_is_revoked` ON `sys_user_token` (`is_revoked`);--> statement-breakpoint
 CREATE INDEX `idx_access_token_expires` ON `sys_user_token` (`access_token_expires_at`);--> statement-breakpoint
 CREATE INDEX `idx_refresh_token_expires` ON `sys_user_token` (`refresh_token_expires_at`);--> statement-breakpoint
-CREATE INDEX `idx_user_revoked` ON `sys_user_token` (`user_id`,`is_revoked`);
+CREATE INDEX `idx_user_revoked` ON `sys_user_token` (`user_id`,`is_revoked`);--> statement-breakpoint
+CREATE INDEX `idx_workbench_menu_parent_id` ON `sys_workbench_menu` (`parent_id`);--> statement-breakpoint
+CREATE INDEX `idx_workbench_menu_page` ON `sys_workbench_menu` (`page`);--> statement-breakpoint
+CREATE INDEX `idx_workbench_menu_module_id` ON `sys_workbench_menu` (`module_id`);--> statement-breakpoint
+CREATE INDEX `idx_workbench_menu_deleted_at` ON `sys_workbench_menu` (`deleted_at`);--> statement-breakpoint
+CREATE INDEX `idx_workbench_menu_sort_order` ON `sys_workbench_menu` (`sort_order`);

@@ -5,6 +5,10 @@
 > 一并移除，命令不再可执行；当前的等价门禁是 `pnpm check:boundaries` + `pnpm check:migrations`，
 > 产物自检由 `scripts/package-api.mjs` 与两条 CD 流水线承担。
 
+> 2026-10-21 更新：System 的 `drizzle/0000_init.sql` 已重新生成为覆盖当前 32 张
+> `sys_*` 表的单一初始基线，后续变更继续单独追加迁移。旧 System 增量和未入 journal、
+> 重复创建 `sys_enum` 的 SQL 已清理；切换已有数据库需运维备份并重建空库，runner 不会清库。
+
 ## 结论
 
 **PASS WITH RESTRICTIONS**。四个 Core Package 与 Demo 产品已完成真实迁移，旧 API 实现移除。已安装的 demo、portal、shop 与 System 完成编译、认证/RBAC、模块启停、隔离 MySQL、OpenAPI、双实例和独立生产产物验证。CRM 保留代码与测试，默认不安装，与迁移前相同；其既有历史迁移不能在空库完整执行，因此不能报告所有业务模块的数据库安装验收通过。FC3 云端验证未执行。
@@ -44,7 +48,7 @@
 | Real integration | PASS | `pnpm test:integration`：34 passed（Database 13 / System 20 / Demo 1），随机隔离 MySQL |
 | Boundaries | PASS | `pnpm check:boundaries`，AST 导入/require/reexport/dynamic import、exports、依赖方向、40 张模块/扩展表 |
 | Negative fixtures | PASS | `pnpm test:scripts`：18 passed，包含跨产品/反向/private 导入、SQL 改写/缺失、产物泄漏与 OpenAPI 漂移的失败夹具 |
-| Migration history | PASS | `pnpm check:migrations`，50 个已发布 SQL hash、五份 journal 历史保持；System/demo/portal/shop manifests 完整 |
+| Migration history | PASS (updated 2026-10-21) | 48 份仍有效的已发布 SQL hash 保持；System 使用单一 32 表基线，Demo/portal/shop/AI 模块仍保留各自 migration histories |
 | Installed migrations/seed | PASS | 空库、重复迁移、独立 ledger、旧共享历史核对/复制、失败不记完成、重复 seed 和管理员密码保留由真实测试验证 |
 | CRM fresh install | FAIL (pre-existing) | `0006_lead-conversion-links` 第 1 条重复添加 `converted_customer_id`，详见下文 |
 | OpenAPI compatibility | PASS | 编译 Demo 集成测试逐项比较旧实际运行的全部 operation 和 130 schemas，仅允许下述明确差异；首次重构提交后 `pnpm check:openapi` 无漂移 |
