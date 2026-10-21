@@ -11,9 +11,10 @@ name: yishan-fullstack-ci
 #   mobile  —— Taro/Core App/移动端 + Docs
 #   package —— 打出可部署产物并校验（依赖 admin 与 api 两个 dist）
 #
-# 门禁仍以整个工作流为准。生产 FC（yishan-api-cd.yml）与 H5（yishan-h5-cd.yml）
-# 的 ci-gate 仍会等这里变绿；演示环境（yishan-api-cd-ubuntu.yml）自 2026-10-20 起
-# **不等**——它把 CI 当成并行质量报表，发布与否看自己的构建与冒烟。
+# 门禁仍以整个工作流为准。阿里云 FC 已下线（2026-10-21，参考实现留在
+# apps/demo/api/deploy/fc-example/），不再有等 CI 的发布方；演示环境
+# （yishan-api-cd-ubuntu.yml）自 2026-10-20 起也**不等**——它把 CI 当成并行
+# 质量报表，发布与否看自己的构建与冒烟。
 #
 # 2026-10 起去掉了 browser 那条线（Playwright e2e + 独立 Admin 复用验证）：
 # 它要起 MySQL/Redis 容器、装 Chromium，只为跑浏览器用例，却把整条 CI 的

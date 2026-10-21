@@ -2,9 +2,8 @@ name: yishan-api-cd-ubuntu
 
 # 演示环境发布：Fastify API + Admin 静态 → 腾讯云 Ubuntu（admin.zerocmf.com）。
 #
-# 与 yishan-api-cd.yml（阿里云 FC）的分工：那条给正式环境，这条给演示环境，
-# fc 上的 yishan-demo 下线后本流水线是唯一的发布路径。两者触发条件相同，
-# 因此同一个 push 会同时跑两条 —— 这是有意的，FC 侧暂不下线。
+# 阿里云 FC 已于 2026-10-21 下线（见 apps/demo/api/deploy/fc-example/README.md），
+# 本流水线是唯一的发布路径。
 #
 # 与 FC 版的三个实质差异：
 #   1. Admin 以 PUBLIC_PATH=/ 打包，挂在站点根（root 模式），不再是 /admin/*。
@@ -27,7 +26,6 @@ on:
       - main
     paths:
       - ".github/workflows/yishan-api-cd-ubuntu.yml"
-      - ".github/workflows/yishan-fc-migrate.yml"
       - "apps/demo/api/**"
       - "apps/demo/admin/**"
       - "packages/core/**"

@@ -1,4 +1,8 @@
-# FC3 deployment
+> **已下线（2026-10-21）**：本目录是阿里云 FC 的打包材料，配套的发布工作流已从
+> `.github/workflows/` 移出，仅作参考保留，见 [`../fc-example/README.md`](../fc-example/README.md)。
+> 同账号上只有 `yishan-crm` 函数仍在运行，其余 yishan FC 函数已删除。本目录对 CRM 仍有用处。
+
+FC3 deployment
 
 The function ships a complete pnpm production dependency closure, including all compiled Core packages. It does not require a runtime Layer or copy source paths from the workspace.
 

@@ -12,6 +12,11 @@ CD 将 `YISHAN_API_REDIS_URL` Secret 原样传给函数的 `REDIS_URL`；`rediss
 
 编译、打包、API启动不生成/执行迁移或 seed。发布前单独审查 `--dry-run`，只有明确 `--apply` 才能写数据库；不要自动 reset 或删除历史。
 
-生产按应用拆成两条 CD 工作流，推送 `main` 后按路径自动触发：`yishan-api-cd.yml` 发布 API 与 Admin（先跑数据库迁移，迁移失败即不部署代码；Admin 编译进同一产物，由函数的 `/admin/*` 提供，所以 Admin、tiptap、UI 的源码路径也在触发范围内），`yishan-h5-cd.yml` 发布小程序 H5 到独立的 FC 函数。两者都先等待该 commit 的 CI 通过；`workflow_dispatch` 提供人工触发的 `skip_ci_gate`（跳过 CI 等待）与 `skip_migrations`（仅在刚手动执行过迁移时勾选）。发布后 `yishan-api-cd` 会 smoke 校验 `/api/health` 与 `/admin/`，`yishan-h5-cd` 会校验首页可达且标题正确。
+> 阿里云 FC 发布链路已于 2026-10-21 下线：`yishan-api-cd.yml`、`yishan-h5-cd.yml`、
+> `yishan-fc-migrate.yml` 与两条证书轮转工作流已移出 `.github/workflows/`，
+> 作为参考实现保留在 `apps/demo/api/deploy/fc-example/`。同账号上仍在运行的
+> 只有 `yishan-crm` 函数。当前唯一的 CD 是演示环境的 `yishan-api-cd-ubuntu.yml`。
+
+发布走 Ubuntu 主机链路，推送 `main` 后按路径自动触发：`yishan-api-cd-ubuntu.yml` 发布 API 与 Admin（先在目标机跑数据库迁移，迁移失败即不部署代码；Admin 编译进同一产物，由后端静态托管在 `/` 提供）。该链路**不等 CI**（演示站对外可见，延迟优先），构建失败本身会挡住发布；`release.sh` 会在健康检查失败时回滚。
 
 CI 覆盖 API类型/构建/单元/隔离数据库集成、包边界、迁移哈希及 OpenAPI一致性。Web/App 的构建与业务行为保持现状。

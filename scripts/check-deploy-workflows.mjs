@@ -24,9 +24,13 @@ const ROOT = resolve(import.meta.dirname, '..')
 // 允许测试指向临时目录；正常使用时固定为仓库内的 .github/workflows。
 const DIR = process.env.DEPLOY_WORKFLOWS_DIR || join(ROOT, '.github', 'workflows')
 
-/** 这些工作流不发布东西，不要求 push 触发和 CI 门禁 */
-const SCHEDULE_ONLY = new Set(['yishan-h5-cert-rotate.yml', 'yishan-cert-rotate-fc.yml'])
-const MANUAL_ONLY = new Set(['yishan-fc-migrate.yml'])
+/**
+ * 这些工作流不发布东西，不要求 push 触发和 CI 门禁。
+ * FC 相关的几条（证书轮转、迁移）已随阿里云 FC 下线移出 .github/workflows，
+ * 仅作为示例保留在 apps/demo/api/deploy/fc-example/。
+ */
+const SCHEDULE_ONLY = new Set()
+const MANUAL_ONLY = new Set()
 /** 持续集成工作流：只跑检查、不发布，不需要 push:main 触发，也不需要自身过 CI 门禁 */
 const CI_ONLY = new Set(['yishan-fullstack-ci.yml'])
 

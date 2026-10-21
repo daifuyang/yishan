@@ -11,6 +11,7 @@
       "default": "./build/umi.cjs"
     },
     "./pages/*": "./src/pages/*/index.tsx",
+    "./pages/user/components/UserCreateFields": "./src/pages/user/components/UserCreateFields.tsx",
     "./services/*": "./src/services/generated/*.ts",
     "./components": "./src/components/index.ts",
     "./components/AttachmentLibraryModal/types": "./src/components/AttachmentLibraryModal/types.ts",

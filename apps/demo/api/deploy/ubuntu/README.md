@@ -498,9 +498,10 @@ cron 自动续期并 reload nginx）：
 
 ## 与 FC 的差异
 
-生产 FC（`yishan-api-cd.yml`）仍在部署，`PUBLIC_PATH` 由 `vars.ADMIN_BASE_PATH` 驱动，
-当前为 `/admin/`。**两套前缀并存是有意的**，不要为了「统一」把生产的也切到 `/`——
-生产站点形态不在本次改动范围内。
+阿里云 FC 已于 2026-10-21 下线（`yishan-api-cd.yml` 已移出 `.github/workflows/`，
+作为参考实现留在 `apps/demo/api/deploy/fc-example/`），`PUBLIC_PATH=/admin/` 的那条路径
+目前只作为静态插件支持的形态保留在代码里。若将来恢复 FC 发布，不要为了「统一」
+把演示环境切到 `/admin/`——两者形态不同是有意的。
 
 | | 演示（Ubuntu） | 生产（FC） |
 |---|---|---|

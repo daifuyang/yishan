@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Form, Button } from 'antd';
 import React from 'react';
-import { UserCreateFields } from '../../../../packages/core/system-admin/src/pages/user/components/UserCreateFields';
+import { UserCreateFields } from '@yishan/core-system-admin/pages/user/components/UserCreateFields';
 jest.mock('@umijs/max', () => ({ request: jest.fn() }));
 const channelDescriptor = Object.getOwnPropertyDescriptor(
   globalThis,
