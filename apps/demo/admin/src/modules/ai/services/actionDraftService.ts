@@ -23,6 +23,14 @@ type CancelResult = Awaited<ReturnType<typeof aiActionDraftCancel>>;
 
 /** 草稿的响应体由后端 schema 决定；这里只是给生成类型起个本地名字。 */
 export type ActionDraft = DetailResult['data'];
+
+/**
+ * 一个待补全字段。
+ *
+ * 服务端按**真实表单契约**算出来：字段名、标签、必填、敏感标记、控件标识、
+ * 约束、能不能写进草稿、是否需要修正。
+ */
+export type ActionDraftCompletionField = ActionDraft['completionFields'][number];
 export type ActionDraftMissingField = ActionDraft['missingFields'][number];
 export type ActionDraftValidationError =
   ActionDraft['validationErrors'][number];

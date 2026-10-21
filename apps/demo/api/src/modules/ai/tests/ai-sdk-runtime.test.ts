@@ -99,6 +99,20 @@ describe('native ESM AI SDK 7 runtime', () => {
     expect(JSON.parse(posted).model).toBe('db-model')
     expect(body).not.toContain('db-test-key')
   })
+  it('sends low effort for MiniMax without changing other providers', async () => {
+    const posted: Record<string, unknown>[] = []
+    vi.stubGlobal('fetch', async (_url: unknown, init: RequestInit) => {
+      posted.push(JSON.parse(String(init.body)))
+      return new Response(start_ + end('完成') + end('', true), { headers: { 'content-type': 'text/event-stream' } })
+    })
+    for (const baseUrl of ['https://api.minimaxi.com/anthropic/v1', 'https://unit.test/v1']) {
+      const response = await start({ messages, signal: new AbortController().signal, execution: noTools, onEnd: async () => {}, configuration: { apiKey: 'test-key', model: 'MiniMax-M3.1-Flash', baseUrl } })
+      await response.text()
+    }
+    expect(posted[0]).toMatchObject({ output_config: { effort: 'low' }, thinking: { type: 'adaptive' } })
+    expect(posted[1]).not.toHaveProperty('output_config')
+    expect(posted[1]).not.toHaveProperty('thinking')
+  })
   it('streams the actual SDK UI protocol and persists generated parts', async () => {
     configured()
     let saved: ChatMessage | undefined

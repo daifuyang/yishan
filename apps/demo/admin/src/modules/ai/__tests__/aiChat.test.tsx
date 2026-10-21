@@ -328,6 +328,50 @@ it('创建会话期间停止，不会在创建完成后开始生成', async () =
   expect(current.busy).toBe(false);
 });
 
+it.each(['stop', 'identity'] as const)(
+  '发送等待表单同步期间 %s，结束同步后不创建会话或发送消息',
+  async (reason) => {
+    render(<Harness />);
+    let flush: () => void = () => {};
+    current.formAssistance.bindHandlers({
+      onUiRequest: () => {},
+      onRestore: () => {},
+      flush: () => new Promise<void>((resolve) => { flush = resolve; }),
+    });
+    let sending: Promise<void>;
+    await act(async () => { sending = current.send('新建用户'); });
+    await act(async () => {
+      if (reason === 'identity') current.setIdentity('8');
+      else await current.stop();
+    });
+    await act(async () => { flush(); await sending; });
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockSend).not.toHaveBeenCalled();
+  },
+);
+
+it.each(['stop', 'identity'] as const)(
+  '重新生成等待表单同步期间 %s，结束同步后不发起生成',
+  async (reason) => {
+    render(<Harness />);
+    await act(async () => { await current.selectConversation('1'); });
+    let flush: () => void = () => {};
+    current.formAssistance.bindHandlers({
+      onUiRequest: () => {},
+      onRestore: () => {},
+      flush: () => new Promise<void>((resolve) => { flush = resolve; }),
+    });
+    let regenerating: Promise<void>;
+    await act(async () => { regenerating = current.regenerate(); });
+    await act(async () => {
+      if (reason === 'identity') current.setIdentity('8');
+      else await current.stop();
+    });
+    await act(async () => { flush(); await regenerating; });
+    expect(mockRegenerate).not.toHaveBeenCalled();
+  },
+);
+
 it('重新生成调用原生 regenerate，不追加新用户消息', async () => {
   render(<Harness />);
   await act(async () => {
@@ -664,7 +708,7 @@ it('同一请求内不同工具调用的草稿增量分别应用，不按请求�
         role: 'assistant',
         parts: [1, 2].map((version) => ({
           type: 'tool-update_form_draft',
-          toolCallId: 'draft-call-' + version,
+          toolCallId: `draft-call-${version}`,
           state: 'output-available',
           input: {},
           output: {

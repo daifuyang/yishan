@@ -207,7 +207,7 @@ export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): 
 
   const getActionDraft: AiCapability = {
     name: 'get_action_draft',
-    operation: { id: 'form.draft.detail', name: '读取表单草稿', type: 'query' },
+    operation: { id: 'form.draft.detail', name: '读取表单草稿', type: 'query', presentation: { kind: 'draft', subject: '表单草稿' } },
     description: '读取本会话中的一份草稿当前状态：已收集字段、缺失项、校验错误与版本号。用于版本冲突或用户追问进度时重新对齐，**不会**保存或提交任何东西。',
     moduleId: 'ai',
     operationId: 'aiActionDraftDetail',
@@ -231,6 +231,7 @@ export function createActionDraftCapabilities(deps: ActionDraftCapabilityDeps): 
       moduleId: adapter.moduleId, operationId: adapter.operationId,
       permissionCode: adapter.permissionCode,
       operation: { id: action, name: adapter.name, type: 'create' as const, formKey: action,
+        aliases: adapter.aliases, presentation: { kind: 'draft', subject: adapter.name },
         describeCapability: adapter.describeCapability, references },
       description: '增量保存原生表单草稿。未明确确认前不会创建正式记录。修改已有字段必须携带当前草稿版本；用户手动输入后版本不符会拒绝。',
       inputSchema: Type.Object({

@@ -15,7 +15,8 @@ import { drizzleDb } from '@yishan/core-system-api/database'
 import { ActionDraftService, type ActionDraft } from '../../services/action-draft.service.js'
 import { AI_PERMISSION, AiIdParamsSchema } from '../../schemas/ai-chat.schema.js'
 import { aiError, installAiErrorHandler } from '../../ai-chat-error.js'
-import { draftFieldSchemas, listDraftAdapters } from '../../services/draft-forms.js'
+import { draftFieldSchemas, draftForm, listDraftAdapters } from '../../services/draft-forms.js'
+import { computeDraftCompletionFields } from '../../services/draft-completion.js'
 import {
   ActionDraftCancelBodySchema,
   ActionDraftCreateTransportBodySchema,
@@ -36,9 +37,29 @@ type ConversationParams = { Params: { id: string } }
 function serialize(draft: ActionDraft) {
   return {
     ...draft,
+    // 「还需要补全哪些字段」由服务端按**真实表单契约**算，不在前端另抄一份规则。
+    completionFields: completionFieldsOf(draft),
     createdAt: draft.createdAt.toISOString(),
     updatedAt: draft.updatedAt.toISOString(),
     expiresAt: draft.expiresAt.toISOString(),
+  }
+}
+
+/**
+ * 待补全字段。
+ *
+ * 表单契约来自业务自己的适配器（`draftForm(action)`），因此换一份业务表单时
+ * 这里自动跟着换；契约取不到时返回空数组 —— 补全面板据此显示「没有需要补全的字段」。
+ */
+function completionFieldsOf(draft: ActionDraft) {
+  try {
+    return computeDraftCompletionFields(
+      draftForm(draft.action),
+      draft.formData,
+      draft.validationErrors,
+    )
+  } catch {
+    return []
   }
 }
 

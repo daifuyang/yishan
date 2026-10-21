@@ -23,6 +23,11 @@
 /** 兼容现有用户表单调用方；部门使用相同的操作范围契约。 */
 export const USER_FORM_ASSISTANCE_TARGET = 'user.create' as const;
 
+import {
+  UserCreateCompletionForm,
+  submitUserCreateCompletion,
+} from '../pages/user/components/UserCreateCompletionForm';
+
 export type UserFormAssistanceTarget =
   typeof USER_FORM_ASSISTANCE_TARGET | 'department.create';
 
@@ -118,6 +123,7 @@ import {
   registerNativeDraftLink,
   peekNativeDraftLink,
   registerNativeFormOperation,
+  registerAiFormCompletion,
 } from '@yishan/core-admin/form-assistance';
 export {
   requestNativeFormAssistance,
@@ -165,6 +171,18 @@ registerNativeFormOperation({
     description: '描述',
     leaderId: '负责人',
   },
+});
+
+/**
+ * 「新建用户」的 **AI 补全表单**。
+ *
+ * 补全表单是原生表单的字段过滤展示模式：字段、校验、候选、头像上传、密码控件
+ * 全部复用 `UserCreateFields`（与 `UserForm` 同一份渲染）。AI 侧只负责把待补全字段
+ * 一次性收齐、合并进草稿、请用户确认；正式创建仍走 `createUser` 这条原有接口。
+ */
+registerAiFormCompletion('user.create', {
+  render: UserCreateCompletionForm,
+  submit: submitUserCreateCompletion,
 });
 export function registerUserCreateFormHandle(
   handle: UserCreateFormHandle,

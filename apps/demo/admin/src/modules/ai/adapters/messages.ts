@@ -1,6 +1,7 @@
 import type { BubbleListProps } from '@ant-design/x';
 import type { UIMessage } from 'ai';
 import dayjs from 'dayjs';
+import { rawToolCalls } from '../tools/adapter';
 
 const codeLanguageAliases: Record<string, string> = {
   js: 'javascript',
@@ -37,30 +38,27 @@ export function hasMessageProgress(message: UIMessage): boolean {
  * AI SDK 把 `tool-<capability>` 形态的 part 直接放进 message.parts，
  * 这里按前缀识别并取出结构化 output。之前只 filter text 会把它们整个丢掉，
  * 于是模型查到的用户表格在界面上根本不存在。
+ *
+ * 归并逻辑复用 `tools/adapter.ts` 的 `rawToolCalls`：同一次调用只留一条，
+ * 迟到的事件不会把已经确认的结果改写。
  */
 export function toolResults(message: UIMessage): {
   toolCallId: string;
   capability: string;
   output: Record<string, unknown>;
 }[] {
-  const results: {
-    toolCallId: string;
-    capability: string;
-    output: Record<string, unknown>;
-  }[] = [];
-  for (const part of message.parts) {
-    if (!part.type.startsWith('tool-')) continue;
-    if ((part as { state?: string }).state !== 'output-available') continue;
-    const output = (part as { output?: unknown }).output;
-    const toolCallId = (part as { toolCallId?: string }).toolCallId;
-    if (!toolCallId || !output || typeof output !== 'object') continue;
-    results.push({
-      toolCallId,
-      capability: part.type.slice('tool-'.length),
-      output: output as Record<string, unknown>,
-    });
-  }
-  return results;
+  return rawToolCalls(message)
+    .filter(
+      (call) =>
+        call.state === 'output-available' &&
+        Boolean(call.output) &&
+        typeof call.output === 'object',
+    )
+    .map((call) => ({
+      toolCallId: call.id,
+      capability: call.toolName,
+      output: call.output as Record<string, unknown>,
+    }));
 }
 
 /**

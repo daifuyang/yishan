@@ -15,6 +15,18 @@ const calls = (count: number) => begin + Array.from({ length: count }, (_, index
 const messages: ChatMessage[] = [{ id: 'u', role: 'user', parts: [{ type: 'text', text: '请检查库存业务数据' }] }]
 function configured() { vi.stubEnv('AI_CHAT_API_KEY', 'fake-secret'); vi.stubEnv('AI_CHAT_MODEL', 'test'); vi.stubEnv('AI_CHAT_BASE_URL', 'https://unit.test/v1') }
 
+it('keeps semantic results on direct reads without making a model call', async () => {
+  configured()
+  const fetch = vi.fn()
+  vi.stubGlobal('fetch', fetch)
+  const response = await start({ messages: [{ id: 'u', role: 'user', parts: [{ type: 'text', text: '用户列表' }] }], signal: new AbortController().signal, onEnd: async () => {}, execution: {
+    capabilities: [{ name: 'list_users', operation: { id: 'user.list', name: '查询用户', type: 'query', presentation: { kind: 'list', subject: '用户' } } } as AiCapability],
+    execute: async () => ({ ok: true, result: { data: { items: [], total: 0 } } }),
+  } })
+  expect(await response.text()).toContain('"progress":{"action":"query","kind":"list","subject":"用户","outcome":"empty"')
+  expect(fetch).not.toHaveBeenCalled()
+})
+
 it('exposes only generic tools and enforces twelve real calls even in a parallel batch', async () => {
   configured()
   let executed = 0
@@ -33,6 +45,11 @@ it('exposes only generic tools and enforces twelve real calls even in a parallel
   expect(posted).toHaveLength(1)
   expect((posted[0].tools as { name: string }[]).map(tool => tool.name).sort()).toEqual(['describe_operation', 'discover_operations', 'query_business_data', 'update_form_draft'])
   expect(output).toContain('本轮工具调用次数已达上限')
+  expect(output).toContain('"progress":{"action":"query"')
+  expect(saved?.parts).toContainEqual(expect.objectContaining({
+    type: 'tool-query_business_data', state: 'output-available',
+    output: expect.objectContaining({ progress: expect.objectContaining({ action: 'query', subject: '库存' }) }),
+  }))
   expect(saved?.metadata?.metrics).toMatchObject({ toolCalls: 12, modelCalls: 1 })
   expect(saved?.metadata?.tokenUsage).toMatchObject({ inputTokens: 2, outputTokens: 3 })
   expect(Object.keys(saved?.metadata?.metrics ?? {}).sort()).toEqual(['durationMs', 'modelCalls', 'toolCalls'])

@@ -97,6 +97,19 @@ const SELECTORS: Readonly<Record<string, string>> = {
 const NON_FORM_FIELDS = new Set(['draftSubmission'])
 
 /**
+ * 表单的**有效默认值**。
+ *
+ * 原生新建用户表单的初始值就是 `{ status: '1', gender: '0' }`，服务端
+ * `toCreateUserInput` 用的是同一组兜底（缺省即这两个值）。把它们写进契约，
+ * AI 侧就不必把「其实已经有默认值的字段」当成待补全项再问一遍用户 ——
+ * 默认值跟着原生表单走，而不是在 AI 侧另抄一份。
+ */
+const EFFECTIVE_DEFAULTS: Readonly<Record<string, unknown>> = {
+  status: '1',
+  gender: '0',
+}
+
+/**
  * 只从 schema 里挑出「值得表达的约束」，不整体倒出 schema 对象。
  *
  * `format` 取**联合类型的成员格式**（`birthDate` 是
@@ -206,9 +219,10 @@ function buildForm(): UserCreateForm {
       }
     })
 
-  // 默认值取自 schema 上真实声明的 default（CreateUserReqSchema 已刻意不带 default，
-  // 这里读到的会是空对象 —— 保留读取逻辑是为了将来 schema 加了 default 时自动跟随）。
-  const defaults: Record<string, unknown> = {}
+  // 默认值：先取表单的有效默认值（与原生表单初始值、服务端兜底一致），
+  // 再叠加 schema 上真实声明的 default（CreateUserReqSchema 已刻意不带 default，
+  // 保留读取逻辑是为了将来 schema 加了 default 时自动跟随）。
+  const defaults: Record<string, unknown> = { ...EFFECTIVE_DEFAULTS }
   for (const [name, schema] of Object.entries(properties)) {
     if (NON_FORM_FIELDS.has(name)) continue
     if (schema.default !== undefined) defaults[name] = schema.default

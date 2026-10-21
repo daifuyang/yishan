@@ -23,7 +23,7 @@ export type AiRiskLevel =
   /** 触及敏感数据或不可逆操作 */
   | 'sensitive'
 
-import type { AiCapabilityContext, AiCapabilityResult, AiDraftAdapter } from '@yishan/core-contracts'
+import type { AiCapabilityContext, AiCapabilityResult, AiDraftAdapter, AiOperation } from '@yishan/core-contracts'
 export type { AiCapabilityContext, AiCapabilityResult, AiDraftAdapter, AiDraftForm, AiDraftSubject, AiDraftQuestion } from '@yishan/core-contracts'
 
 /**
@@ -35,14 +35,7 @@ export type { AiCapabilityContext, AiCapabilityResult, AiDraftAdapter, AiDraftFo
  */
 export interface AiCapability {
   readonly draftAdapter?: AiDraftAdapter
-  readonly operation?: {
-    readonly id: string
-    readonly name: string
-    readonly type: 'query' | 'create' | 'update' | 'delete' | 'describe'
-    readonly formKey?: string
-    readonly describeCapability?: string
-    readonly references?: Readonly<Record<string, string>>
-  }
+  readonly operation?: AiOperation
   readonly name: string
   /** 给模型看的用途描述；写清楚它**不做什么**比写它做什么更能抑制误用 */
   readonly description: string

@@ -210,6 +210,26 @@ const ValidationErrorSchema = Type.Object({
 
 const ResultRefSchema = Type.Object({ targetType: Type.String(), targetId: Type.String() })
 
+/**
+ * 待补全字段。
+ *
+ * 由服务端按**真实表单契约**算出来（`services/draft-completion.ts`）：字段名、中文
+ * 标签、必填、敏感标记、选择器标识、约束、可写标记、是否需要修正。
+ * 前端据此渲染补全表单 —— 不在前端另抄一份字段规则。
+ */
+const CompletionFieldSchema = Type.Object({
+  name: Type.String(),
+  label: Type.String(),
+  required: Type.Boolean(),
+  sensitive: Type.Boolean(),
+  selector: Type.String(),
+  constraints: Type.Record(Type.String(), Type.Unknown()),
+  /** 值能不能写进 AI 草稿（密码、头像不能）。 */
+  draftWritable: Type.Boolean(),
+  /** 已填但不合法的字段：需要用户修正。 */
+  invalid: Type.Boolean(),
+})
+
 export const ActionDraftSchema = Type.Object({
   draftId: Type.String(),
   ownerId: Type.Integer(),
@@ -220,6 +240,8 @@ export const ActionDraftSchema = Type.Object({
   formData: Type.Record(Type.String(), Type.Unknown()),
   missingFields: Type.Array(MissingFieldSchema),
   validationErrors: Type.Array(ValidationErrorSchema),
+  /** 现在还需要用户补全的字段（服务端按真实表单契约算出）。 */
+  completionFields: Type.Array(CompletionFieldSchema),
   draftVersion: Type.Integer(),
   status: ActionDraftStatusSchema,
   resultRef: Type.Union([ResultRefSchema, Type.Null()]),

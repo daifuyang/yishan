@@ -12,6 +12,7 @@ import { userDirectory } from '../../users.js'
 import { DeptService } from '../services/dept.service.js'
 
 export const userDraftAdapter: AiDraftAdapter = {
+  aliases: ['新建用户', '创建用户', '添加用户'],
   action: 'user.create', moduleId: 'system', name: '新增用户', prepareCapabilityName: 'prepare_user_form_draft', legacyPrepareCapabilityNames: ['prepare_create_user'], operationId: 'createUser', permissionCode: 'system:user:create',
   questionFields: ['deptIds', 'roleIds'],
   describeCapability: 'get_user_create_form', references: { deptIds: 'user.create.options', roleIds: 'user.create.options' },
@@ -43,6 +44,7 @@ export const userDraftAdapter: AiDraftAdapter = {
 }
 
 export const departmentDraftAdapter: AiDraftAdapter = {
+  aliases: ['新建部门', '创建部门', '添加部门'],
   action: 'department.create', moduleId: 'system', name: '新增部门', prepareCapabilityName: 'prepare_department_form_draft', operationId: 'createDept', permissionCode: 'system:department:create',
   describeCapability: 'get_department_create_form', references: { parentId: 'department.list', leaderId: 'user.list' },
   fieldSchemas: CreateDeptFieldsSchema.properties,

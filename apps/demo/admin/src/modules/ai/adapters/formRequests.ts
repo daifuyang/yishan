@@ -4,6 +4,7 @@ import {
   type AiPrefill,
   type AiPrefillTarget,
 } from '@yishan/core-system-admin/ai-prefill';
+import { trustedRender } from '../tools/adapter';
 import { toolResults } from './messages';
 
 export function collectFormPrefills(
@@ -14,20 +15,14 @@ export function collectFormPrefills(
   for (const message of messages) {
     if (message.role !== 'assistant') continue;
     for (const result of toolResults(message)) {
-      if (result.output.ok !== true || seen.has(`ui:${result.toolCallId}`))
-        continue;
-      const render = result.output.render as
-        | { kind?: unknown; payload?: Record<string, unknown> }
-        | undefined;
-      if (
-        !render ||
-        typeof render.kind !== 'string' ||
-        !['form.prefill', 'action.confirm'].includes(render.kind)
-      )
+      if (seen.has(`ui:${result.toolCallId}`)) continue;
+      // `render.kind` 只由 `trustedRender` 解读：展示层与动作层共用同一套语义。
+      const render = trustedRender(result.output);
+      if (!render) continue;
+      if (render.kind !== 'form.prefill' && render.kind !== 'action.confirm')
         continue;
       const payload = render.payload;
       if (
-        !payload ||
         typeof payload.target !== 'string' ||
         !Object.hasOwn(AI_PREFILL_ROUTES, payload.target)
       )

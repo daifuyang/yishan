@@ -6,7 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Alert, Button } from 'antd';
+import { Alert } from 'antd';
 import type { ProFormInstance } from '@ant-design/pro-components';
 import {
   APPLY_CONFLICT,
@@ -14,7 +14,6 @@ import {
   isCurrentUserCreateFormHandle,
   publishUserCreateFormChange,
   peekUserCreateDraftLink,
-  requestNativeFormAssistance,
   type UserCreateFormHandle,
   useCoordinatedFormFocus,
 } from '../../../form-assistance';
@@ -337,14 +336,6 @@ const DepartmentForm: React.FC<DepartmentFormProps> = ({
       }}
     >
       {error && <Alert type="error" title={error} />}
-      {assistEnabled && (
-        <Button
-          type="link"
-          onClick={() => requestNativeFormAssistance('department.create')}
-        >
-          AI 辅助填写
-        </Button>
-      )}
       <ProFormTreeSelect
         name="parentId"
         label="上级部门"

@@ -230,6 +230,16 @@ export async function aiActionDraftList(
           code: string;
           message: string;
         }[];
+        completionFields: {
+          name: string;
+          label: string;
+          required: boolean;
+          sensitive: boolean;
+          selector: string;
+          constraints: Record<string, any>;
+          draftWritable: boolean;
+          invalid: boolean;
+        }[];
         draftVersion: number;
         status:
           | "collecting"
@@ -293,6 +303,16 @@ export async function aiActionDraftCreate(
         code: string;
         message: string;
       }[];
+      completionFields: {
+        name: string;
+        label: string;
+        required: boolean;
+        sensitive: boolean;
+        selector: string;
+        constraints: Record<string, any>;
+        draftWritable: boolean;
+        invalid: boolean;
+      }[];
       draftVersion: number;
       status:
         | "collecting"
@@ -353,6 +373,16 @@ export async function aiActionDraftDetail(
         code: string;
         message: string;
       }[];
+      completionFields: {
+        name: string;
+        label: string;
+        required: boolean;
+        sensitive: boolean;
+        selector: string;
+        constraints: Record<string, any>;
+        draftWritable: boolean;
+        invalid: boolean;
+      }[];
       draftVersion: number;
       status:
         | "collecting"
@@ -412,6 +442,16 @@ export async function aiActionDraftPatch(
         label: string;
         code: string;
         message: string;
+      }[];
+      completionFields: {
+        name: string;
+        label: string;
+        required: boolean;
+        sensitive: boolean;
+        selector: string;
+        constraints: Record<string, any>;
+        draftWritable: boolean;
+        invalid: boolean;
       }[];
       draftVersion: number;
       status:
@@ -544,6 +584,16 @@ export async function aiAnswerDraftQuestion(
         label: string;
         code: string;
         message: string;
+      }[];
+      completionFields: {
+        name: string;
+        label: string;
+        required: boolean;
+        sensitive: boolean;
+        selector: string;
+        constraints: Record<string, any>;
+        draftWritable: boolean;
+        invalid: boolean;
       }[];
       draftVersion: number;
       status:

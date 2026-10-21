@@ -34,8 +34,10 @@ import {
 import { useAiChat } from '../hooks/useAiChat';
 import { useLiveReplyIds } from '../hooks/useLiveReplyIds';
 import { useTypewriterText } from '../hooks/useTypewriterText';
-import { AiMessageProgress } from './AiMessageProgress';
-import { AiToolResultCard, type ToolResultPayload } from './AiToolResultCard';
+import { latestDraftTool, latestDraftToolIds, operationCatalog } from '../tools/adapter';
+import { ToolCallList } from '../tools/components/ToolCallList';
+import { AiFormCompletion } from './AiFormCompletion';
+import { AiReasoning } from './AiReasoning';
 import { ConversationList } from './ConversationList';
 
 const useStyles = createStyles(({ token, css }) => ({
@@ -69,7 +71,7 @@ const useStyles = createStyles(({ token, css }) => ({
     .ant-bubble-list { height: 100%; padding: 20px; box-sizing: border-box; }
     .ant-bubble-content { max-width: 100%; overflow-wrap: anywhere; }
     .ant-bubble-body { min-width: 0; }
-    .ant-bubble-start .ant-bubble-body { max-width: 100%; }
+    .ant-bubble-start .ant-bubble-body { width: 100%; max-width: 100%; }
     table { display: block; max-width: 100%; overflow-x: auto; }
     pre { max-width: 100%; overflow-x: auto; }
   `,
@@ -158,6 +160,7 @@ const bubbleRoles: BubbleListProps['role'] = {
   assistant: {
     placement: 'start',
     variant: 'borderless',
+      styles: { root: { paddingInlineEnd: 0 }, body: { width: '100%' } },
     contentRender: (text: string, info) => (
       <MarkdownReply content={text} streaming={info.status === 'updating'} />
     ),
@@ -214,32 +217,15 @@ export function AiChatView({
     void chat.loadConversations();
   }, [chat.authorized]);
   const lastMessage = chat.messages.at(-1);
-  const latestInteraction = new Map<string, string>();
-  for (const message of chat.messages) {
-    for (const result of toolResults(message)) {
-      const render = result.output.render as
-        | { payload?: { draftId?: string; interaction?: unknown } }
-        | undefined;
-      if (render?.payload?.interaction && render.payload.draftId)
-        latestInteraction.set(render.payload.draftId, result.toolCallId);
-    }
-  }
+  const knownOperations = operationCatalog(chat.messages);
+  const draftToolIds = latestDraftToolIds(chat.messages);
+  // 补全面板挂在**写下最新草稿的那条消息**下面：它和工具记录共享同一份草稿，
+  // 但表单交互不在工具记录里。
+  const draftRef = latestDraftTool(chat.messages);
   const items = toBubbleItems(chat.messages, chat.busy).map((item) => {
     const message = chat.messages.find((entry) => entry.id === item.key);
     const results =
-      item.role === 'assistant' && message
-        ? toolResults(message).filter((result) => {
-            const render = result.output.render as
-              | { payload?: { draftId?: string; interaction?: unknown } }
-              | undefined;
-            return (
-              !render?.payload?.interaction ||
-              !render.payload.draftId ||
-              latestInteraction.get(render.payload.draftId) ===
-                result.toolCallId
-            );
-          })
-        : [];
+      item.role === 'assistant' && message ? toolResults(message) : [];
     const hasStructuredResult = results.some(
       (result) => result.output.ok === true && result.output.render,
     );
@@ -272,22 +258,31 @@ export function AiChatView({
           }
         : {}),
       header: (() => {
-        // 结果始终由卡片展示，模型的补充解释默认折叠，避免同一份数据出现两张表。
+        // 思考过程与工具调用都在消息头部：模型先想、再调工具，结果各自成卡。
         if (item.role !== 'assistant') return undefined;
         if (!message) return undefined;
+        const hasProgress = message.parts.some(
+          (part) =>
+            part.type === 'reasoning' ||
+            part.type.startsWith('tool-') ||
+            part.type === 'dynamic-tool',
+        );
+        if (!hasProgress) return undefined;
         return (
           <Flex vertical gap={8} style={{ width: '100%' }}>
-            <AiMessageProgress
+            <AiReasoning message={message} streaming={item.streaming === true} />
+            <ToolCallList
               message={message}
               streaming={item.streaming === true}
+              operations={knownOperations}
+              draftToolIds={draftToolIds}
             />
-            {results.map((result) => (
-              <AiToolResultCard
-                key={result.toolCallId}
-                requestId={result.toolCallId}
-                payload={result.output as unknown as ToolResultPayload}
+            {draftRef && draftRef.messageId === message.id && (
+              <AiFormCompletion
+                draftId={draftRef.draftId}
+                operationId={draftRef.operationId}
               />
-            ))}
+            )}
           </Flex>
         );
       })(),

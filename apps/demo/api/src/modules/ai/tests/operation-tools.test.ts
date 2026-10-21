@@ -13,6 +13,32 @@ const capability: AiCapability = {
 }
 
 describe('operation tools', () => {
+  it('does not add saved or successful presentation facts to rejected execution', async () => {
+    const tools = createOperationTools({ capabilities: [capability], execute: async () => ({ ok: false, error: '草稿版本冲突' }) })
+    expect(await tools.execute('update_form_draft', { operationId: 'department.create', values: { name: '研发' } })).toEqual({ ok: false, error: '草稿版本冲突' })
+  })
+  it('discovers declared business aliases without widening the authorized catalog', async () => {
+    const registered = { ...capability, operation: { ...capability.operation!, aliases: ['新建部门', '新增部门'], presentation: { kind: 'draft' as const, subject: '新增部门' } } }
+    const tools = createOperationTools({ capabilities: [registered], execute: vi.fn() })
+    expect(await tools.execute('discover_operations', { keyword: '新建部门' })).toMatchObject({
+      ok: true, result: { data: { operations: [{ id: 'department.create' }] }, progress: { action: 'discover', kind: 'operations', outcome: 'ready', count: 1 } },
+    })
+    expect(await tools.execute('discover_operations', { keyword: '新建用户' })).toMatchObject({
+      ok: true, result: { progress: { outcome: 'empty', count: 0 } },
+    })
+  })
+
+  it('returns tool-owned form semantics and derives draft labels from the registered schema, never model display text', async () => {
+    const registered = { ...capability, operation: { ...capability.operation!, presentation: { kind: 'draft' as const, subject: '新增部门' } }, inputSchema: Type.Object({ name: Type.String({ title: '部门名称' }) }) }
+    const execute = vi.fn(async () => ({ ok: true as const, result: { data: { draftId: 'd1' }, mutated: false } }))
+    const tools = createOperationTools({ capabilities: [registered], execute })
+    expect(await tools.execute('describe_operation', { operationId: 'department.create' })).toMatchObject({
+      ok: true, result: { progress: { action: 'describe', kind: 'form', subject: '新增部门', outcome: 'ready' } },
+    })
+    expect(await tools.execute('update_form_draft', { operationId: 'department.create', values: { name: '任意用户内容' } })).toMatchObject({
+      ok: true, result: { progress: { action: 'draft', kind: 'draft', subject: '新增部门', outcome: 'saved', fieldLabels: ['部门名称'] } },
+    })
+  })
   it('normalizes safe numeric text from model arguments without coercing numeric ids or mutating the input', async () => {
     const userDraft = { ...capability, inputSchema: Type.Object({ phone: Type.Optional(Type.String()), deptIds: Type.Optional(Type.Array(Type.Number())) }, { additionalProperties: false }) }
     const execute = vi.fn(async () => ({ ok: true as const, result: { data: {} } }))
@@ -56,6 +82,48 @@ describe('operation tools', () => {
     expect(found).toMatchObject({ ok: true, result: { data: { operations: [{ id: 'department.create', type: 'create' }] } } })
     expect(execute).not.toHaveBeenCalled()
     expect(await tools.execute('describe_operation', { operationId: 'department.create' })).toMatchObject({ ok: true, result: { data: { formKey: 'department.create', inputSchema: capability.inputSchema } } })
+  })
+
+  it('coerces digit-only numeric text in query params so a model-written pageSize is not rejected as "Expected integer"', async () => {
+    const listUsers = {
+      ...capability,
+      name: 'list_users',
+      riskLevel: 'read' as const,
+      inputSchema: Type.Object({ page: Type.Optional(Type.Integer()), pageSize: Type.Optional(Type.Integer()), keyword: Type.Optional(Type.String()) }),
+      operation: { id: 'user.list', name: '查询用户', type: 'query' as const },
+    }
+    const execute = vi.fn(async () => ({ ok: true as const, result: { data: {} } }))
+    const tools = createOperationTools({ capabilities: [listUsers], execute })
+    await tools.execute('query_business_data', { operationId: 'user.list', params: { page: '2', pageSize: '20', keyword: '张三' } })
+    expect(execute).toHaveBeenLastCalledWith('list_users', { page: 2, pageSize: 20, keyword: '张三' })
+  })
+
+  it('keeps non-numeric text and string-typed fields untouched while coercing numeric fields', async () => {
+    const listUsers = {
+      ...capability,
+      name: 'list_users',
+      riskLevel: 'read' as const,
+      inputSchema: Type.Object({ pageSize: Type.Optional(Type.Integer()), status: Type.Optional(Type.String()), id: Type.Optional(Type.String()) }),
+      operation: { id: 'user.list', name: '查询用户', type: 'query' as const },
+    }
+    const execute = vi.fn(async () => ({ ok: true as const, result: { data: {} } }))
+    const tools = createOperationTools({ capabilities: [listUsers], execute })
+    await tools.execute('query_business_data', { operationId: 'user.list', params: { pageSize: '20', status: '1', id: '20' } })
+    expect(execute).toHaveBeenLastCalledWith('list_users', { pageSize: 20, status: '1', id: '20' })
+  })
+
+  it('refuses lossy numeric coercion: a decimal string for an integer field stays a string', async () => {
+    const listUsers = {
+      ...capability,
+      name: 'list_users',
+      riskLevel: 'read' as const,
+      inputSchema: Type.Object({ pageSize: Type.Optional(Type.Integer()) }),
+      operation: { id: 'user.list', name: '查询用户', type: 'query' as const },
+    }
+    const execute = vi.fn(async () => ({ ok: true as const, result: { data: {} } }))
+    const tools = createOperationTools({ capabilities: [listUsers], execute })
+    await tools.execute('query_business_data', { operationId: 'user.list', params: { pageSize: '20.5' } })
+    expect(execute).toHaveBeenLastCalledWith('list_users', { pageSize: '20.5' })
   })
 
   it('delegates draft changes through existing authorized execution without accepting arbitrary operations', async () => {

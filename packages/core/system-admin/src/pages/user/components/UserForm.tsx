@@ -9,13 +9,8 @@ import React, {
 import {
   ModalForm,
   type ProFormInstance,
-  ProFormText,
-  ProFormRadio,
-  ProFormDatePicker,
-  ProFormSelect,
-  ProForm,
 } from '@ant-design/pro-components';
-import { Alert, Button, Col, type FormItemProps } from 'antd';
+import { Alert } from 'antd';
 import { useSystemAdmin } from '../../../runtime';
 import { getRoleList } from '../../../services/generated/sysRoles';
 import {
@@ -25,11 +20,14 @@ import {
   getUserCreateForm as requestUserCreateForm,
   getUserCreateOptions as requestUserCreateOptions,
 } from '../../../services/generated/sysUsers';
-import { ProFormDeptTreeSelect } from '../../../components/DeptTreeSelect';
-import { AttachmentSelect } from '../../../components/AttachmentSelect';
+import { toContractDate } from '../../../utils/date-field';
+import {
+  UserCreateFields,
+  useUserCreateEnumOptions,
+  type UserCreateRoleOption,
+} from './UserCreateFields';
 import {
   APPLY_CONFLICT,
-  requestNativeFormAssistance,
   invalidateUserCreateFormHandle,
   isCurrentUserCreateFormHandle,
   notifyUserFormOverlay,
@@ -621,33 +619,8 @@ const UserForm: React.FC<UserFormProps> = ({
     }
   };
 
-  // 同源约束：把 create-form 的 required/maxLength/pattern 用到真实表单上。
-  const rulesFor = useCallback(
-    (name: string) => {
-      const field = createForm?.fields.find((item) => item.name === name);
-      if (!field) return undefined;
-      const constraints = field.constraints ?? {};
-      const rules: Exclude<FormItemProps['rules'], undefined> = [];
-      if (field.required)
-        rules.push({ required: true, message: `请输入${field.label}` });
-      if (typeof constraints.maxLength === 'number')
-        rules.push({ max: constraints.maxLength });
-      if (typeof constraints.minLength === 'number')
-        rules.push({ min: constraints.minLength });
-      if (typeof constraints.pattern === 'string') {
-        try {
-          rules.push({ pattern: new RegExp(constraints.pattern) });
-        } catch {
-          // 服务端正则不可编译时忽略它，仍然由必填与长度约束把关。
-        }
-      }
-      if (name === 'email' || constraints.format === 'email') {
-        rules.push({ type: 'email', message: '邮箱格式不正确' });
-      }
-      return rules.length > 0 ? rules : undefined;
-    },
-    [createForm],
-  );
+  // 同源约束与同源枚举都住在共享的字段组件里（`UserCreateFields`）：
+  // 原生表单与 AI 补全表单用的是**同一份**规则，不在这里另抄。
 
   /** 同源部门候选；拿不到时退回空树（用户仍可手输既有值，提交时服务端再校验）。 */
   const deptTreeRequest = useCallback(async () => {
@@ -657,24 +630,7 @@ const UserForm: React.FC<UserFormProps> = ({
     return options?.departments ?? [];
   }, [readValues]);
 
-  /**
-   * 同源枚举候选：可选值来自 create-form 的 `enum` 约束，字典只负责提供**标签**。
-   * 约束缺失时退回字典 —— 视觉结果不变（标签一律取自字典，没有标签才退回编码）。
-   */
-  const enumOptions = useCallback(
-    (name: string, fallback: { label: string; value: string }[]) => {
-      const field = createForm?.fields.find((item) => item.name === name);
-      const values = field?.constraints?.enum;
-      if (!Array.isArray(values) || values.length === 0) return fallback;
-      return values.map((raw) => {
-        const value = String(raw);
-        const label =
-          fallback.find((item) => item.value === value)?.label ?? value;
-        return { label, value };
-      });
-    },
-    [createForm],
-  );
+  const enumOptions = useUserCreateEnumOptions(createForm);
 
   const genderOptions = enumOptions('gender', genderDict);
   const userStatusOptions = enumOptions('status', userStatusDict);
@@ -720,7 +676,10 @@ const UserForm: React.FC<UserFormProps> = ({
       phone: values.phone,
       gender: values.gender,
       status: values.status,
-      birthDate: values.birthDate,
+      // 契约是 `format: "date"`，只收 YYYY-MM-DD；AI 预填给的是 ISO，
+      // 不折的话 ajv 在 preValidation 就 400（业务码 21001），而且后端
+      // draft-field-format 那层根本接不到这个请求体。认不出的值原样透传。
+      birthDate: toContractDate(values.birthDate) as string | undefined,
       deptIds: values.deptIds,
       roleIds: values.roleIds,
       avatar: values.avatar,
@@ -861,16 +820,6 @@ const UserForm: React.FC<UserFormProps> = ({
         }}
         onOpenChange={setOpen}
       >
-        {assistEnabled && (
-          <Col span={24}>
-            <Button
-              type="link"
-              onClick={() => requestNativeFormAssistance('user.create')}
-            >
-              AI 辅助填写
-            </Button>
-          </Col>
-        )}
         {submitError ? (
           <Alert
             type="error"
@@ -879,109 +828,13 @@ const UserForm: React.FC<UserFormProps> = ({
             style={{ marginBottom: 16 }}
           />
         ) : null}
-        <ProFormText
-          name="username"
-          label="登录名称"
-          placeholder="请输入登录名称"
-          colProps={{ span: 12 }}
-          rules={rulesFor('username')}
-          fieldProps={{
-            autoComplete: 'off',
-          }}
-        />
-
-        <ProFormDeptTreeSelect
-          name="deptIds"
-          label="归属部门"
-          placeholder="请选择归属部门"
-          allowClear
-          colProps={{ span: 12 }}
-          {...(assistEnabled ? { request: deptTreeRequest } : {})}
-        />
-
-        <ProFormText
-          name="phone"
-          label="手机号码"
-          placeholder="请输入手机号"
-          rules={
-            rulesFor('phone') ?? [
-              { required: true, message: '请输入手机号' },
-              { max: 11 },
-            ]
-          }
-          colProps={{ span: 12 }}
-        />
-        <ProFormText
-          name="email"
-          label="邮箱"
-          placeholder="请输入邮箱"
-          rules={rulesFor('email')}
-          colProps={{ span: 12 }}
-        />
-
-        <ProFormText
-          name="realName"
-          label="真实姓名"
-          placeholder="请输入真实姓名"
-          rules={
-            rulesFor('realName') ?? [
-              { min: 1, max: 50, message: '真实姓名长度不能超过50个字符' },
-            ]
-          }
-          colProps={{ span: 12 }}
-        />
-        <ProFormText
-          name="nickname"
-          label="用户昵称"
-          placeholder="请输入用户昵称"
-          rules={
-            rulesFor('nickname') ?? [
-              { min: 1, max: 50, message: '用户昵称长度必须在1到50个字符之间' },
-            ]
-          }
-          colProps={{ span: 12 }}
-        />
-        <ProFormText.Password
-          name="password"
-          label="用户密码"
-          placeholder={!initialValues?.id ? '请输入密码' : '不输入则保持原密码'}
-          rules={[
-            { required: !initialValues?.id, message: '请输入密码' },
-            { min: 6, message: '至少6位' },
-          ]}
-          colProps={{ span: 12 }}
-          fieldProps={{
-            autoComplete: 'new-password',
-          }}
-        />
-
-        <ProFormRadio.Group
-          name="gender"
-          label="用户性别"
-          options={genderOptions}
-          colProps={{ span: 12 }}
-        />
-
-        <Col span={12}>
-          <ProForm.Item name="avatar" label="头像">
-            <AttachmentSelect kind="image" multiple={false} maxCount={1} />
-          </ProForm.Item>
-        </Col>
-
-        <ProFormRadio.Group
-          name="status"
-          label="状态"
-          options={userStatusOptions}
-          colProps={{ span: 12 }}
-        />
-
-        <ProFormSelect
-          name="roleIds"
-          label="角色"
-          placeholder="请选择角色"
-          showSearch
-          debounceTime={200}
-          request={async (params) => {
+        <UserCreateFields
+          definition={createForm}
+          genderOptions={genderOptions}
+          statusOptions={userStatusOptions}
+          isEdit={isEdit}
+          {...(assistEnabled ? { deptTreeRequest } : {})}
+          roleRequest={async (params) => {
             if (assistEnabled) {
               // 同源候选：角色按当前 deptIds 重算，不另建一套选项权限。
               const options = await getUserCreateOptions({
@@ -1004,18 +857,8 @@ const UserForm: React.FC<UserFormProps> = ({
             return (res.data || []).map((r: SystemAPI.sysRole) => ({
               label: r.name,
               value: r.id,
-            }));
+            })) as UserCreateRoleOption[];
           }}
-          fieldProps={{ mode: 'multiple', maxTagCount: 'responsive' }}
-          colProps={{ span: 12 }}
-        />
-
-        <ProFormDatePicker
-          name="birthDate"
-          label="出生日期"
-          placeholder="请选择出生日期"
-          fieldProps={{ style: { width: '100%' }, previewValue: false }}
-          colProps={{ span: 12 }}
         />
       </ModalForm>
     </>

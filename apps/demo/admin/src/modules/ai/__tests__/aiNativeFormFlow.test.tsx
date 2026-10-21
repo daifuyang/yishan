@@ -252,7 +252,6 @@ beforeEach(() => {
       url: string,
       options?: { params?: Record<string, unknown>; method?: string },
     ) => {
-      const params = options?.params ?? {};
       if (String(url).includes('/create-form'))
         return { success: true, data: CREATE_FORM };
       if (String(url).includes('/create-options')) {

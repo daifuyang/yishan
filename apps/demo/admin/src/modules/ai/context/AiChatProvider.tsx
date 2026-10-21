@@ -1,5 +1,5 @@
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, type UIMessage } from 'ai';
+import type { UIMessage } from 'ai';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { collectFormPrefills } from '../adapters/formRequests';
 import {
@@ -7,6 +7,8 @@ import {
   type AiPrefill,
 } from '@yishan/core-system-admin/ai-prefill';
 import { messageText, toolResults } from '../adapters/messages';
+import { trustedRender } from '../tools/adapter';
+import { AiChatTransport } from '../services/AiChatTransport';
 import {
   type AiConversation,
   chatError,
@@ -89,13 +91,10 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     for (const message of messages) {
       if (message.role !== 'assistant') continue;
       for (const result of toolResults(message)) {
-        const output = result.output as {
-          ok?: unknown;
-          render?: { kind?: string; payload?: Record<string, unknown> };
-        };
-        if (output.ok !== true) continue;
-        if (output.render?.kind !== 'action.draft') continue;
-        const payload = output.render.payload ?? {};
+        // `render.kind` 只由 `trustedRender` 解读：展示层与动作层共用同一套语义。
+        const render = trustedRender(result.output);
+        if (render?.kind !== 'action.draft') continue;
+        const payload = render.payload;
         const uiRequestId = String(payload.uiRequestId ?? '');
         const draftId = String(payload.draftId ?? '');
         const deliveryId = `draft:${result.toolCallId}`;
@@ -184,7 +183,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
   // One transport and one useChat live above routes. The persisted conversation id is supplied per request.
   const [transport] = useState(
     () =>
-      new DefaultChatTransport<UIMessage>({
+      new AiChatTransport({
         api: `${__API_BASE_URL__ || ''}/api/ai/v1/chat`,
         credentials: 'include',
         prepareSendMessagesRequest: ({ messages, trigger, messageId }) => ({
@@ -359,6 +358,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
       // 发送下一轮之前先保证待同步的非敏感字段已经落地：模型下一轮读到的草稿必须
       // 是用户在表单里刚改完的那一版（设计 §6）。
       await formAssistance.flush();
+      if (version !== epoch.current || currentOperation.cancelled) return;
       if (!activeRef.current) {
         const conversation = await createConversation();
         if (version !== epoch.current) return;
@@ -410,14 +410,16 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     setError('');
     chat.clearError();
     const version = epoch.current;
-    operation.current = {
+    const currentOperation = {
       cancelled: false,
       version,
       revision: inputRevision.current,
     };
+    operation.current = currentOperation;
     try {
       beginTurn();
       await formAssistance.flush();
+      if (version !== epoch.current || currentOperation.cancelled) return;
       await chat.regenerate({ messageId });
       await refresh(version);
     } catch (cause) {
@@ -454,6 +456,7 @@ export function AiChatProvider({ children }: React.PropsWithChildren) {
     try {
       beginTurn();
       await formAssistance.flush();
+      if (version !== epoch.current || currentOperation.cancelled) return;
       const detail = await getConversation(activeRef.current);
       if (version !== epoch.current || currentOperation.cancelled) return;
       setDrafts((values) =>

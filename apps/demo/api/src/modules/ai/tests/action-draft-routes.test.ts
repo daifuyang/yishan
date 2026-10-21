@@ -67,6 +67,7 @@ describe('Action draft HTTP transport', () => {
     expect(Value.Check(ActionDraftSchema, {
       draftId: 'd1', ownerId: 17, conversationId: 'c1', module: 'system', action: 'user.create',
       schemaVersion: 1, formData: { phone: '13' }, missingFields: [], validationErrors: [],
+      completionFields: [],
       draftVersion: 1, status: 'collecting', resultRef: null, failureReason: null,
       createdAt: '2026-10-17T00:00:00.000Z', updatedAt: '2026-10-17T00:00:00.000Z', expiresAt: '2026-10-18T00:00:00.000Z',
     })).toBe(true)
@@ -145,6 +146,8 @@ describe('Action draft routes', () => {
       expect(list.json()).toMatchObject({ success: true, code: 10000, data: { items: [] } })
       const detail = await app.inject({ method: 'GET', url: '/drafts/d1' })
       expect(detail.json()).toMatchObject({ success: true, data: { draftId: 'd1' } })
+      // 「还需要补全哪些字段」由服务端按真实表单契约算出，随草稿一起下发。
+      expect(Array.isArray(detail.json().data.completionFields)).toBe(true)
     } finally { await app.close() }
   })
 

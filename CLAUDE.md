@@ -90,11 +90,14 @@ Public userDirectory and controlled user extensions support independent product 
 
 **日期字段只有一种形状**：系统内部一律 `YYYY-MM-DD`（DB `date` 列、HTTP 契约
 `format: "date"`、前端 pro-field 序列化都是这个形式）。形状由生产者决定时
-（模型给 ISO、原生表单回填也是 ISO），在**边界**归一：草稿写入端折一次，
-草稿与请求体比较前各折一次（存量草稿因此仍能提交），落库按**本地日历日**构造
-`Date`（`new Date('1996-10-02')` 是 UTC 午夜，负时区会差一天）。归一实现在
+（模型给 ISO、原生表单回填也是 ISO），在**边界**归一：出参端折一次
+（`packages/core/system-admin/src/utils/date-field.ts` 的 `toContractDate`，
+`UserForm` 提交前调用），草稿写入端折一次，草稿与请求体比较前各折一次
+（存量草稿因此仍能提交），落库按**本地日历日**构造 `Date`
+（`new Date('1996-10-02')` 是 UTC 午夜，负时区会差一天）。后端归一实现在
 `packages/core/system-api/src/core/services/draft-field-format.ts`，字段是否算日期
-字段从表单契约派生，不另抄清单。详见
+字段从表单契约派生，不另抄清单。**出参端那一折不能省**：ajv 在 `preValidation`
+就拒掉 ISO（400 / 业务码 21001），后端那层归一永远接不到被拒的请求体。详见
 [原生表单接入 AI 的约定](docs/ai-native-form-integration.md)。
 
 ## Architecture: admin / api / shared
@@ -108,6 +111,35 @@ Public userDirectory and controlled user extensions support independent product 
 - **Static assets are precompressed at build time**: `apps/demo/admin/scripts/precompress.mjs` runs after `max build` and writes `.br` (quality 5) + `.gz` siblings next to every compressible file ≥1 KB. The Fastify static plugin consumes them via `preCompressed: true` (`packages/core/system-api/src/core/plugins/external/static.ts`); nginx's equivalent is `gzip_static` / `brotli_static`. Don't hand-add compression to the server — the precompressed files are already there, and runtime compression is what made the demo site slow (an uncompressed 3 MB `umi.js`).
 - **Cache policy is per file type, in `static.ts`**: hashed assets (`\.[0-9a-f]{8}\.(js|mjs|css)$`) get `public, max-age=31536000, immutable`; `index.html` and the SPA fallback get `no-cache` (it references hashed filenames). It relies on `cacheControl: false` — `send` writes its headers *after* `setHeaders`, so leaving send's `public, max-age=0` on makes the policy unchangeable.
 - **Keep the first-screen bundle honest.** `codeSplitting: { jsStrategy: 'granularChunks' }` is the official recommended value, but it does **not** cut first-screen bytes here (Mako maps it to `strategy: 'granular'`; the default `auto` can't split a single entry chunk because its `entryVendors` group needs `minChunks: 2`). Real wins come from not statically pulling unused code into the entry — e.g. the AI SDK (~265 K raw: `ai` + `zod` + `@ai-sdk/*`) is reached only through the `React.lazy` boundary in `apps/demo/admin/src/modules/ai/lazy/`. **Rule: nothing that imports `ai` / `@ai-sdk/react` / `zod` may be statically re-exported from `src/modules/ai/index.ts`** — the barrel must stay light or the SDK lands back in the entry chunk. Measure with the sourcemap (`devtool: 'source-map'`) rather than guessing; `ANALYZE=1` currently produces no report under Mako.
+
+## AI Tool Call 展示层
+
+工具调用卡片在 `apps/demo/admin/src/modules/ai/tools/`：`model.ts`（展示模型）→
+`adapter.ts`（唯一纯函数转换层，`trustedRender` 是全项目唯一解读服务端 `render.kind`
+的地方）→ `registry.ts`（`register` / `resolve`，未注册即 `GenericToolRenderer` 兜底）
+→ `renderers/`（generic / query / form-preview / action-result 四个通用 Renderer，
+加 discover_operations / describe_operation / update_form_draft 三个工具专属
+Renderer）→ `components/`（ToolCallCard / ToolHeader / ToolStatus / ToolDetails /
+ToolCallList / ToolResultLine）。工具记录一律**单层折叠**。
+详见 [AI Tool Call 展示层架构](docs/architecture/ai-tool-renderer.md)。
+
+三条硬规则：
+- `toolName`（执行的工具）、`operationId`（业务操作）、`presentation.type`（展示模式）
+  是三个概念，不得合并；展示类型只由服务端 `render.kind` 决定，**模型生成的字符串
+  不得决定加载哪个 React 组件**。
+- **新增一个业务工具默认不需要新增 React Renderer**；只有通用组件组合不出来的
+  特殊展示行为才新增专属 Renderer。
+- 展示层不做权限判定、不调后端业务接口：工具记录只说「读到了 / 写进草稿了」，
+  不放表单、不放原始 JSON；工具执行成功 ≠ 业务数据创建成功，结论以真实
+  业务 API 响应为准。
+
+**表单补全不在工具记录里**：独立的 `components/AiFormCompletion.tsx` 面板与工具
+记录共享同一份草稿。缺失字段由**服务端按真实表单契约**算出
+（`computeDraftCompletionFields`，不按字段名硬编码），一次全部展示；字段类型与
+校验**完全复用原业务表单**（业务把自己的补全表单注册到
+`@yishan/core-admin/form-assistance` 的 `registerAiFormCompletion`）；密码、头像
+这类敏感值只活在受保护的表单里，**不进草稿、不进模型上下文、不进日志**；正式
+创建只在用户点「确认创建」之后走**原有业务 API**。
 
 ## Quality gate before commit
 

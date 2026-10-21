@@ -1,4 +1,9 @@
-import { useEffect, type ComponentType } from 'react';
+import {
+  useEffect,
+  type ComponentType,
+  type ForwardRefExoticComponent,
+  type RefAttributes,
+} from 'react';
 
 export interface NativeFieldOption {
   value: number;
@@ -267,6 +272,114 @@ export function subscribeNativeFormAssistance(
   return () => {
     assistance.delete(listener);
   };
+}
+
+/**
+ * AI 补全表单的**共享契约**。
+ *
+ * AI 侧只负责「把还缺的字段一次性收齐、合并进草稿、请用户确认」；
+ * **字段长什么样、怎么校验、怎么提交**全部由业务自己的表单负责。
+ * 因此这里只有一个注册表：业务注册自己的补全表单，AI 侧按 `operationId` 取用。
+ *
+ * 这条边界是刻意的：AI 层不新建第二套字段系统，也不替业务决定规则。
+ */
+
+/** 一个待补全字段。服务端按真实表单契约算出，形状与业务表单一一对应。 */
+export interface AiCompletionField {
+  /** 字段名（业务契约里的名字）。 */
+  name: string;
+  /** 面向用户的中文标签。 */
+  label: string;
+  /** 是否必填。 */
+  required: boolean;
+  /** 敏感字段：值不进草稿、不进模型上下文，只随提交走一次。 */
+  sensitive: boolean;
+  /** 选择器标识（`deptTree` / `roleOptions` / `enum` / `date` / `email` / `password` / `text`）。 */
+  selector: string;
+  /** 来自真实表单契约的约束子集。 */
+  constraints: Record<string, unknown>;
+  /** 值能不能写进 AI 草稿。 */
+  draftWritable: boolean;
+  /** 已填但不合法的字段：需要用户修正。 */
+  invalid: boolean;
+}
+
+/** 补全表单当前持有的全部字段值。 */
+export type AiFormCompletionValues = Record<string, unknown>;
+
+/** 业务表单暴露给 AI 侧的命令式句柄。 */
+export interface AiFormCompletionHandle {
+  /**
+   * 触发**原生表单自己的**校验。
+   *
+   * 通过时返回当前全部字段值；不通过时抛出，错误由表单自己显示在字段上。
+   * AI 侧因此不需要知道任何一条校验规则。
+   */
+  validate(): Promise<AiFormCompletionValues>;
+}
+
+export interface AiFormCompletionProps {
+  /** 只渲染这些字段：一次展示全部待补全字段，不一个一个地问。 */
+  fields: readonly AiCompletionField[];
+  /** 已有值（草稿里已经收集到的部分）。 */
+  values: AiFormCompletionValues;
+  /** 表单值变化时回调。 */
+  onChange(values: AiFormCompletionValues): void;
+  /** 只读（例如正在提交）。 */
+  disabled?: boolean;
+}
+
+export type AiFormCompletionComponent = ForwardRefExoticComponent<
+  AiFormCompletionProps & RefAttributes<AiFormCompletionHandle>
+>;
+
+/** 一次正式提交。 */
+export interface AiFormCompletionSubmission {
+  draftId: string;
+  draftVersion: number;
+  /**
+   * 全部字段值，**包含密码这类敏感值**。
+   *
+   * 它只活在这一次提交里：不进草稿、不进模型上下文、不进日志。
+   */
+  values: AiFormCompletionValues;
+}
+
+/** 提交结果。`ok` 为假时 `message` 是给用户看的原因。 */
+export interface AiFormCompletionOutcome {
+  ok: boolean;
+  message?: string;
+}
+
+export interface AiFormCompletionRegistration {
+  /** 业务自己的补全表单。 */
+  render: AiFormCompletionComponent;
+  /** 走业务自己的创建接口（服务端重新鉴权、校验、保证一次草稿只创建一次）。 */
+  submit(
+    submission: AiFormCompletionSubmission,
+  ): Promise<AiFormCompletionOutcome>;
+}
+
+const completions = new Map<string, AiFormCompletionRegistration>();
+/**
+ * 注册业务自己的补全表单。
+ *
+ * 返回注销函数：注册表是模块级的，卸载时必须摘掉，否则换一份表单后仍然命中旧的。
+ */
+export function registerAiFormCompletion(
+  operationId: string,
+  registration: AiFormCompletionRegistration,
+): () => void {
+  completions.set(operationId, registration);
+  return () => {
+    if (completions.get(operationId) === registration)
+      completions.delete(operationId);
+  };
+}
+export function peekAiFormCompletion(
+  operationId: string,
+): AiFormCompletionRegistration | undefined {
+  return completions.get(operationId);
 }
 
 export {

@@ -314,7 +314,7 @@ function currentHandle() {
 
 function modalCount(): number {
   return [...document.querySelectorAll('.ant-modal')].filter((modal) =>
-    /^(新建用户|编辑用户)$/.test(
+    /^(新建用户|编辑用户)/.test(
       modal.querySelector('.ant-modal-title')?.textContent ?? '',
     ),
   ).length;

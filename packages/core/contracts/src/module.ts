@@ -52,6 +52,29 @@ export interface AiCapabilityContext {
 }
 
 /** 能力执行结果。结构化，不是聊天文本。 */
+export interface AiOperation {
+  readonly id: string
+  readonly name: string
+  readonly type: 'query' | 'create' | 'update' | 'delete' | 'describe'
+  readonly formKey?: string
+  readonly describeCapability?: string
+  readonly references?: Readonly<Record<string, string>>
+  readonly aliases?: readonly string[]
+  readonly presentation?: { readonly kind: 'form' | 'options' | 'list' | 'detail' | 'draft' | 'confirmation'; readonly subject: string }
+}
+
+/** 执行层提供的展示事实；状态和标签不能来自模型生成的文案。 */
+export interface AiToolProgress {
+  readonly action: 'discover' | 'describe' | 'query' | 'draft'
+  readonly kind: 'operations' | 'operation' | 'form' | 'options' | 'list' | 'detail' | 'draft' | 'confirmation'
+  readonly subject: string
+  readonly outcome: 'ready' | 'empty' | 'saved'
+  readonly count?: number
+  readonly returnedCount?: number
+  readonly fieldLabels?: readonly string[]
+  readonly missingLabels?: readonly string[]
+}
+
 export interface AiCapabilityResult {
   /** 供模型理解的结构化结果 */
   readonly data: unknown
@@ -59,6 +82,7 @@ export interface AiCapabilityResult {
   readonly render?: { readonly kind: string; readonly payload: unknown }
   /** 人类可读的一句话，不额外调模型生成 */
   readonly summary?: string
+  readonly progress?: AiToolProgress
   /** 是否触发了数据变更，供审计与幂等判断 */
   readonly mutated?: boolean
 }
@@ -90,6 +114,7 @@ export interface AiDraftAdapter {
   action: string
   moduleId: string
   name: string
+  aliases?: readonly string[]
   prepareCapabilityName: string
   legacyPrepareCapabilityNames?: readonly string[]
   operationId: string
@@ -105,14 +130,7 @@ export interface AiDraftAdapter {
 
 export interface AiCapabilityDeclaration {
   readonly draftAdapter?: AiDraftAdapter
-  readonly operation?: {
-    readonly id: string
-    readonly name: string
-    readonly type: 'query' | 'create' | 'update' | 'delete' | 'describe'
-    readonly formKey?: string
-    readonly describeCapability?: string
-    readonly references?: Readonly<Record<string, string>>
-  }
+  readonly operation?: AiOperation
   readonly name: string
   readonly description: string
   /** 所属业务操作的 operationId，用于追溯到既有 API 而非另造一套 */

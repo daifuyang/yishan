@@ -30,6 +30,11 @@
 **没有任何工具写业务表**。草稿存 `ai_action_drafts`，
 有效期 24 小时（自创建起算，编辑不续期），一份草稿最多完成一次创建。
 
+操作注册可声明 `aliases` 和 `presentation: { kind, subject }`，别名只在已授权的操作目录内匹配。
+工具执行层返回 `progress`（动作、用途、对象、真实结果数量、草稿字段标签），随 UI 消息流和历史持久化；
+展示信息不由模型生成。前端按动作与用途映射标题，不拆解业务名称来猜动词；无匹配是中性空结果，
+不计入成功的准备步骤。只有返回有效草稿引用才显示草稿已保存，正式保存仍由原生表单负责。
+
 草稿字段、表单元数据、权限校验和候选问题由业务能力显式贡献 `AiDraftAdapter`，公共状态机不再分支识别用户与部门。用户创建的部门/角色问询复用同源候选服务，回答绑定用户、会话和草稿版本，提交时重新检查候选及授权；历史卡片不会自动提交答案。前端公共注册与 `useAiForm` 位于 `@yishan/core-admin/form-assistance`。
 
 真正的创建走系统原有的 `POST /api/v1/admin/users` 或 `POST /api/v1/admin/departments/`：前端在原生表单点「确定」时带上
@@ -54,7 +59,7 @@ API Key 是只写字段：GET 和 PUT 响应仅返回 `hasApiKey`，不返回原
   `https://api.minimaxi.com/anthropic/v1`。
   原因：OpenAI 兼容端点的 `reasoning_content` 会被 `@ai-sdk/openai` 的
   chat-completions 路径静默丢弃，只有 Anthropic 端点能拿到独立 thinking 块。
-  MiniMax 的 thinking 默认关闭，运行时按域名前缀注入 `thinking: {type:'adaptive'}`。
+  MiniMax M3.1 的 thinking 不能关闭，未指定强度默认 max；运行时对 MiniMax 地址使用 `thinking: {type:'adaptive'}` 和 `effort: 'low'`（实际请求为 `output_config.effort`），聊天和连接测试保持一致。其他供应方不额外设置思考参数。
 
 ## 权限
 

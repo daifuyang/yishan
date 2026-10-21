@@ -14204,6 +14204,49 @@
                             ]
                           }
                         },
+                        "completionFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "selector": {
+                                "type": "string"
+                              },
+                              "constraints": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "draftWritable": {
+                                "type": "boolean"
+                              },
+                              "invalid": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label",
+                              "required",
+                              "sensitive",
+                              "selector",
+                              "constraints",
+                              "draftWritable",
+                              "invalid"
+                            ]
+                          }
+                        },
                         "draftVersion": {
                           "type": "integer"
                         },
@@ -14314,6 +14357,7 @@
                         "formData",
                         "missingFields",
                         "validationErrors",
+                        "completionFields",
                         "draftVersion",
                         "status",
                         "resultRef",
@@ -14475,6 +14519,49 @@
                                   ]
                                 }
                               },
+                              "completionFields": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "label": {
+                                      "type": "string"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "sensitive": {
+                                      "type": "boolean"
+                                    },
+                                    "selector": {
+                                      "type": "string"
+                                    },
+                                    "constraints": {
+                                      "type": "object",
+                                      "additionalProperties": {}
+                                    },
+                                    "draftWritable": {
+                                      "type": "boolean"
+                                    },
+                                    "invalid": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "label",
+                                    "required",
+                                    "sensitive",
+                                    "selector",
+                                    "constraints",
+                                    "draftWritable",
+                                    "invalid"
+                                  ]
+                                }
+                              },
                               "draftVersion": {
                                 "type": "integer"
                               },
@@ -14585,6 +14672,7 @@
                               "formData",
                               "missingFields",
                               "validationErrors",
+                              "completionFields",
                               "draftVersion",
                               "status",
                               "resultRef",
@@ -14750,6 +14838,49 @@
                             ]
                           }
                         },
+                        "completionFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "selector": {
+                                "type": "string"
+                              },
+                              "constraints": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "draftWritable": {
+                                "type": "boolean"
+                              },
+                              "invalid": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label",
+                              "required",
+                              "sensitive",
+                              "selector",
+                              "constraints",
+                              "draftWritable",
+                              "invalid"
+                            ]
+                          }
+                        },
                         "draftVersion": {
                           "type": "integer"
                         },
@@ -14860,6 +14991,7 @@
                         "formData",
                         "missingFields",
                         "validationErrors",
+                        "completionFields",
                         "draftVersion",
                         "status",
                         "resultRef",
@@ -15042,6 +15174,49 @@
                             ]
                           }
                         },
+                        "completionFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "selector": {
+                                "type": "string"
+                              },
+                              "constraints": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "draftWritable": {
+                                "type": "boolean"
+                              },
+                              "invalid": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label",
+                              "required",
+                              "sensitive",
+                              "selector",
+                              "constraints",
+                              "draftWritable",
+                              "invalid"
+                            ]
+                          }
+                        },
                         "draftVersion": {
                           "type": "integer"
                         },
@@ -15152,6 +15327,7 @@
                         "formData",
                         "missingFields",
                         "validationErrors",
+                        "completionFields",
                         "draftVersion",
                         "status",
                         "resultRef",
@@ -15598,6 +15774,49 @@
                             ]
                           }
                         },
+                        "completionFields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "sensitive": {
+                                "type": "boolean"
+                              },
+                              "selector": {
+                                "type": "string"
+                              },
+                              "constraints": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "draftWritable": {
+                                "type": "boolean"
+                              },
+                              "invalid": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "label",
+                              "required",
+                              "sensitive",
+                              "selector",
+                              "constraints",
+                              "draftWritable",
+                              "invalid"
+                            ]
+                          }
+                        },
                         "draftVersion": {
                           "type": "integer"
                         },
@@ -15708,6 +15927,7 @@
                         "formData",
                         "missingFields",
                         "validationErrors",
+                        "completionFields",
                         "draftVersion",
                         "status",
                         "resultRef",
