@@ -25,6 +25,8 @@ export {
   isDataScopeBypassed,
   runWithDataScope,
   runWithoutDataScope,
+  // 业务模块要按档位翻译自己的查询条件时必须复用这一份解析，而不是自己读 sys_role.data_scope。
+  resolveDataScope,
   type DataScopeFilter,
   type DataScopeSubject,
 } from './data-scope'
