@@ -448,5 +448,12 @@
 }
 .taro-actionsheet__cell { border-color: var(--color-divider) !important; min-height: var(--touch-target-min); }
 .taro-tabbar__tabbar .weui-tabbar { background-color: var(--tab-bar-bg) !important; }
+/* 上边框：Taro 按 borderStyle 写死 #fff / 黑，H5 不会随主题切换（platform.ts 的 syncNative
+   在 H5 不执行），夜间会露出一条白线。统一走 --tab-bar-border；选择器多一层 .taro-tabbar__tabbar
+   以压过上游同为 !important 的单类规则。 */
+.taro-tabbar__tabbar .weui-tabbar.taro-tabbar__border-white:before,
+.taro-tabbar__tabbar .weui-tabbar.taro-tabbar__border-black:before {
+  border-top-color: var(--tab-bar-border) !important;
+}
 .taro-tabbar__tabbar .weui-tabbar__label { color: var(--tab-bar-inactive) !important; }
 .taro-tabbar__tabbar .weui-bar__item_on .weui-tabbar__label { color: var(--tab-bar-active) !important; }
