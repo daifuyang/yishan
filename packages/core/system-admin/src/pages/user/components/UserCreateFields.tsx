@@ -13,9 +13,7 @@ import { AttachmentSelect } from '../../../components/AttachmentSelect';
 /**
  * UserCreateFields — 「新建用户」表单的**字段本体**。
  *
- * 这里是**唯一**一份新建用户字段的渲染：原生表单（`UserForm`）与 AI 补全表单
- * （`UserCreateCompletionForm`）都用它。AI 侧因此不是「再造一套字段系统」，
- * 而是同一个表单的**字段过滤展示模式**：只渲染待补全的那几个字段。
+ * 原生表单统一维护编辑值与校验，AI 通过受控句柄回填。
  *
  * 三条约定：
  *
@@ -27,8 +25,7 @@ import { AttachmentSelect } from '../../../components/AttachmentSelect';
  */
 
 /** 服务端 `create-form` 契约的形状。 */
-export type UserCreateFormDefinition =
-  SystemAPI.userCreateFormResp['data'];
+export type UserCreateFormDefinition = SystemAPI.userCreateFormResp['data'];
 
 /** 部门候选（来自 `create-options`，与提交时的授权范围同源）。 */
 export type UserCreateDeptCandidate =
@@ -52,7 +49,9 @@ export interface UserCreateFieldsProps {
   /** 部门候选来源；不传则用组件自带的部门树。 */
   deptTreeRequest?: () => Promise<UserCreateDeptCandidate>;
   /** 角色候选来源；不传则不提供远程候选。 */
-  roleRequest?: (params: { keyWords?: string }) => Promise<UserCreateRoleOption[]>;
+  roleRequest?: (params: {
+    keyWords?: string;
+  }) => Promise<UserCreateRoleOption[]>;
   /** 编辑态：密码可以留空。 */
   isEdit?: boolean;
   disabled?: boolean;
@@ -131,6 +130,10 @@ export function UserCreateFields({
   disabled = false,
 }: UserCreateFieldsProps) {
   const rulesFor = useUserCreateFieldRules(definition);
+  const passwordRules = rulesFor('password') ?? [
+    { required: !isEdit, message: '请输入密码' },
+    { min: 6, message: '至少6位' },
+  ];
   const show = (name: string) => !only || only.includes(name);
 
   return (
@@ -140,7 +143,7 @@ export function UserCreateFields({
           name="username"
           label="登录名称"
           placeholder="请输入登录名称"
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
           rules={rulesFor('username')}
           fieldProps={{
             autoComplete: 'off',
@@ -154,7 +157,8 @@ export function UserCreateFields({
           label="归属部门"
           placeholder="请选择归属部门"
           allowClear
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
+          rules={rulesFor('deptIds')}
           disabled={disabled}
           {...(deptTreeRequest ? { request: deptTreeRequest } : {})}
         />
@@ -171,7 +175,7 @@ export function UserCreateFields({
               { max: 11 },
             ]
           }
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
         />
       )}
 
@@ -181,7 +185,7 @@ export function UserCreateFields({
           label="邮箱"
           placeholder="请输入邮箱"
           rules={rulesFor('email')}
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
         />
       )}
 
@@ -195,7 +199,7 @@ export function UserCreateFields({
               { min: 1, max: 50, message: '真实姓名长度不能超过50个字符' },
             ]
           }
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
         />
       )}
 
@@ -213,7 +217,7 @@ export function UserCreateFields({
               },
             ]
           }
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
         />
       )}
 
@@ -222,11 +226,16 @@ export function UserCreateFields({
           name="password"
           label="用户密码"
           placeholder={isEdit ? '不输入则保持原密码' : '请输入密码'}
-          rules={[
-            { required: !isEdit, message: '请输入密码' },
-            { min: 6, message: '至少6位' },
-          ]}
-          colProps={{ span: 12 }}
+          rules={
+            isEdit
+              ? [
+                  ...passwordRules.filter(
+                    (rule) => typeof rule === 'function' || !rule.required,
+                  ),
+                ]
+              : passwordRules
+          }
+          colProps={{ xs: 24, md: 12 }}
           fieldProps={{
             autoComplete: 'new-password',
           }}
@@ -238,18 +247,21 @@ export function UserCreateFields({
           name="gender"
           label="用户性别"
           options={genderOptions}
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
+          rules={rulesFor('gender')}
           disabled={disabled}
         />
       )}
 
       {show('avatar') && (
-        <Col span={12}>
-          <ProForm.Item name="avatar" label="头像">
+        <Col xs={24} md={12}>
+          <ProForm.Item name="avatar" label="头像" rules={rulesFor('avatar')}>
             <AttachmentSelect
               kind="image"
               multiple={false}
               maxCount={1}
+              compact
+              uploadText="上传头像"
               disabled={disabled}
             />
           </ProForm.Item>
@@ -261,7 +273,8 @@ export function UserCreateFields({
           name="status"
           label="状态"
           options={statusOptions}
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
+          rules={rulesFor('status')}
           disabled={disabled}
         />
       )}
@@ -276,7 +289,9 @@ export function UserCreateFields({
           disabled={disabled}
           {...(roleRequest ? { request: roleRequest } : {})}
           fieldProps={{ mode: 'multiple', maxTagCount: 'responsive' }}
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
+          rules={rulesFor('roleIds')}
+          dependencies={['deptIds']}
         />
       )}
 
@@ -286,7 +301,8 @@ export function UserCreateFields({
           label="出生日期"
           placeholder="请选择出生日期"
           fieldProps={{ style: { width: '100%' }, previewValue: false }}
-          colProps={{ span: 12 }}
+          colProps={{ xs: 24, md: 12 }}
+          rules={rulesFor('birthDate')}
         />
       )}
     </>

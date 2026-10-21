@@ -5,7 +5,7 @@ import {
 } from '@ant-design/icons';
 import { useSystemAdmin } from '../../runtime';
 import type { UploadFile, UploadProps } from 'antd';
-import { App, Button, Image, Space, Upload } from 'antd';
+import { App, Button, Flex, Image, Space, Typography, Upload } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AttachmentLibraryModal } from '../AttachmentLibraryModal';
 import {
@@ -50,6 +50,8 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
   maxCount,
   disabled,
   beforeUpload,
+  compact = false,
+  uploadText = '上传图片',
 }) => {
   const { message } = App.useApp();
   const { initialState } = useSystemAdmin();
@@ -57,6 +59,8 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState('');
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const currentValues = useMemo(() => toArray(value), [value]);
   const modalSelectedValues = useMemo(() => {
@@ -121,6 +125,8 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
 
   const customRequest: UploadProps['customRequest'] = async (options: any) => {
     const { file, onSuccess, onError } = options;
+    setUploading(true);
+    setUploadError('');
     try {
       let f: File = file as File;
       if (beforeUpload) {
@@ -132,6 +138,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
         kind && kind !== 'all' ? (kind as AttachmentKind) : getKindFromFile(f);
       const upload = initialState?.uploadAttachmentFile;
       if (!upload) {
+        setUploadError('上传能力未初始化');
         onError?.(new Error('上传能力未初始化'));
         return;
       }
@@ -141,6 +148,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
         dir: 'attachments',
       });
       if (!res.success) {
+        setUploadError(res.message || '上传失败');
         onError?.(new Error(res.message || '上传失败'));
         return;
       }
@@ -154,6 +162,7 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
           typeof x === 'string' ? x.trim().length > 0 : Number(x) > 0,
         );
       if (!nextValues.length) {
+        setUploadError('上传成功但未返回可用地址');
         message.error('上传成功但未返回可用地址');
         onSuccess?.(res, file as any);
         return;
@@ -164,8 +173,11 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
       emitValues(merged as Array<string | number>);
       onSuccess?.(res, file as any);
     } catch (e: any) {
+      setUploadError(e instanceof Error ? e.message : '上传失败，请重试');
       if (e instanceof Error) message.error(e.message);
       onError?.(e);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -196,32 +208,75 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
 
   return (
     <>
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <Space>
-          <Upload {...uploadProps}>
-            {kind === 'image' ? (
-              fileList.length >=
-              (multiple ? maxCount || Infinity : 1) ? null : (
-                <div style={{ border: 0, background: 'none' }}>
-                  <UploadOutlined />
-                  <div style={{ marginTop: 8 }}>上传</div>
-                </div>
-              )
-            ) : (
-              <Button icon={<UploadOutlined />} disabled={disabled}>
-                上传
+      {compact && !multiple ? (
+        <Flex vertical gap={4} style={{ width: '100%', minWidth: 0 }}>
+          <Flex align="center" gap={8} style={{ minHeight: 40 }}>
+            {fileList[0]?.url && (
+              <Image
+                src={fileList[0].url}
+                width={32}
+                height={32}
+                style={{ objectFit: 'cover' }}
+              />
+            )}
+            <Upload
+              {...uploadProps}
+              listType="text"
+              showUploadList={false}
+              disabled={disabled || uploading}
+            >
+              <Button
+                icon={currentValues.length ? undefined : <UploadOutlined />}
+                loading={uploading}
+                disabled={disabled}
+              >
+                {currentValues.length ? '更换' : uploadText}
+              </Button>
+            </Upload>
+            {currentValues.length > 0 && (
+              <Button
+                type="text"
+                disabled={disabled || uploading}
+                onClick={() => emitValues([])}
+              >
+                删除
               </Button>
             )}
-          </Upload>
-          <Button
-            icon={kind === 'image' ? <PictureOutlined /> : <FileOutlined />}
-            onClick={() => setLibraryOpen(true)}
-            disabled={disabled}
-          >
-            选择图片
-          </Button>
+          </Flex>
+          {uploadError && (
+            <Typography.Text type="danger" role="alert">
+              {uploadError}
+            </Typography.Text>
+          )}
+        </Flex>
+      ) : (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Space>
+            <Upload {...uploadProps}>
+              {kind === 'image' ? (
+                fileList.length >=
+                (multiple ? maxCount || Infinity : 1) ? null : (
+                  <div style={{ border: 0, background: 'none' }}>
+                    <UploadOutlined />
+                    <div style={{ marginTop: 8 }}>上传</div>
+                  </div>
+                )
+              ) : (
+                <Button icon={<UploadOutlined />} disabled={disabled}>
+                  上传
+                </Button>
+              )}
+            </Upload>
+            <Button
+              icon={kind === 'image' ? <PictureOutlined /> : <FileOutlined />}
+              onClick={() => setLibraryOpen(true)}
+              disabled={disabled}
+            >
+              选择图片
+            </Button>
+          </Space>
         </Space>
-      </Space>
+      )}
 
       {previewImage && (
         <Image
@@ -237,38 +292,40 @@ export const AttachmentSelect: React.FC<AttachmentSelectProps> = ({
         />
       )}
 
-      <AttachmentLibraryModal
-        open={libraryOpen}
-        onCancel={() => setLibraryOpen(false)}
-        kind={kind}
-        multiple={multiple}
-        valueType={valueType}
-        initialFolderId={folderId}
-        initialSelectedValues={
-          (modalSelectedValues as Array<string | number>) || []
-        }
-        beforeUpload={beforeUpload}
-        onSelect={(items) => {
-          const next = items
-            .map((a) => {
-              const v =
-                valueType === 'id'
-                  ? a.id
-                  : a.objectKey || a.path || a.url || '';
-              return v;
-            })
-            .filter((x) =>
-              typeof x === 'string' ? x.trim().length > 0 : Number(x) > 0,
-            );
-          if (!next.length) {
-            message.warning('未选择到可用素材');
-            return;
+      {(!compact || multiple) && (
+        <AttachmentLibraryModal
+          open={libraryOpen}
+          onCancel={() => setLibraryOpen(false)}
+          kind={kind}
+          multiple={multiple}
+          valueType={valueType}
+          initialFolderId={folderId}
+          initialSelectedValues={
+            (modalSelectedValues as Array<string | number>) || []
           }
-          const merged = multiple ? next : [next[0]];
-          emitValues(merged as Array<string | number>);
-          setLibraryOpen(false);
-        }}
-      />
+          beforeUpload={beforeUpload}
+          onSelect={(items) => {
+            const next = items
+              .map((a) => {
+                const v =
+                  valueType === 'id'
+                    ? a.id
+                    : a.objectKey || a.path || a.url || '';
+                return v;
+              })
+              .filter((x) =>
+                typeof x === 'string' ? x.trim().length > 0 : Number(x) > 0,
+              );
+            if (!next.length) {
+              message.warning('未选择到可用素材');
+              return;
+            }
+            const merged = multiple ? next : [next[0]];
+            emitValues(merged as Array<string | number>);
+            setLibraryOpen(false);
+          }}
+        />
+      )}
     </>
   );
 };

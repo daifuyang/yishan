@@ -20,6 +20,9 @@ export type AttachmentSelectProps = {
   maxCount?: number;
   disabled?: boolean;
   beforeUpload?: (file: File) => Promise<File | null | undefined>;
+  /** 单附件使用行内上传与缩略图，隐藏重复的素材库入口。 */
+  compact?: boolean;
+  uploadText?: string;
 };
 
 export type AttachmentLibraryModalProps = {
