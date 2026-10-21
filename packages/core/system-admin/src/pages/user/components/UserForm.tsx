@@ -287,6 +287,7 @@ const UserForm: React.FC<UserFormProps> = ({
         openCountRef.current += 1;
         pendingFieldsRef.current = {};
         detailLoadingRef.current = false;
+        if (wasOpen) notifyUserFormOverlay();
       }
       onOpenChangeRef.current?.(next);
       if (isEdit) {

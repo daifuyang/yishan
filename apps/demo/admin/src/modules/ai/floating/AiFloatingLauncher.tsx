@@ -1,7 +1,11 @@
 import { Tooltip } from 'antd';
+import {
+  peekUserFormOverlay,
+  subscribeUserFormOverlay,
+} from '@yishan/core-system-admin/form-assistance';
 import { createStyles } from 'antd-style';
 import { Sparkles } from 'lucide-react';
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { useAiChat } from '../hooks/useAiChat';
 import { AI_OVERLAY_Z_INDEX } from './aiOverlayLayers';
 
@@ -20,6 +24,11 @@ const useStyles = createStyles(({ token, css }) => ({
   launcher: css`
     position: fixed; right: 24px; bottom: 24px; z-index: ${AI_OVERLAY_Z_INDEX};
     @media (max-width: 768px) { right: 16px; bottom: 16px; }
+  `,
+  withForm: css`
+    @media (max-width: 768px) {
+      bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+    }
   `,
   button: css`
     display: flex; align-items: center; justify-content: center;
@@ -64,9 +73,18 @@ const useStyles = createStyles(({ token, css }) => ({
 export function AiFloatingLauncher() {
   const chat = useAiChat();
   const { styles } = useStyles();
+  const formOpen = useSyncExternalStore(
+    subscribeUserFormOverlay,
+    () => peekUserFormOverlay()?.open === true,
+    () => false,
+  );
   if (!chat.authorized) return null;
   return (
-    <div className={styles.launcher}>
+    <div
+      className={[styles.launcher, formOpen ? styles.withForm : '']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <Tooltip title="AI 助手" placement="left">
         <button
           type="button"
