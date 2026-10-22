@@ -308,7 +308,7 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
         // Task 10：AI 原生建号的动作草稿端点，以及同源的用户创建表单定义/候选端点。
         '/api/ai/v1/conversations/{id}/drafts', '/api/ai/v1/drafts/{draftId}', '/api/ai/v1/drafts/{draftId}/cancel',
         '/api/ai/v1/drafts/{draftId}/questions', '/api/ai/v1/drafts/{draftId}/questions/answer',
-        '/api/ai/v1/settings', '/api/ai/v1/settings/test',
+        '/api/ai/v1/settings', '/api/ai/v1/settings/test', '/api/ai/v1/runtime-config',
         '/api/v1/admin/users/create-form', '/api/v1/admin/users/create-options',
       ].sort())
       for (const [path, methods] of Object.entries(runtimeBaseline.paths)) {
