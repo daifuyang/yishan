@@ -41,11 +41,24 @@ export class AiSettingsService {
     const row = await this.storedSettings()
     const env = row ? null : this.environmentConfiguration()
     return {
+      enabled: row ? Boolean(row.enabled) : true,
       baseUrl: row?.baseUrl ?? env?.baseUrl ?? DEFAULT_BASE_URL,
       model: row?.model ?? env?.model ?? '',
       hasApiKey: Boolean(row ? row.apiKey : env?.apiKey),
       source: row ? 'database' : env ? 'environment' : 'unconfigured',
     }
+  }
+
+  /**
+   * 全局开关。只有数据库行能关掉它；未配置行、或走环境变量回退时一律视为启用，
+   * 这样「用环境变量部署」的人不会因为一条数据库记录也没有而被关在门外。
+   * 读失败按启用处理：开关的唯一职责是不给用，不该反过来把已经在用的功能弄挂。
+   */
+  async isEnabled(): Promise<boolean> {
+    try {
+      const row = await this.store.get()
+      return row ? Boolean(row.enabled) : true
+    } catch { return true }
   }
 
   async save(input: AiSettingsInput, actorId: number): Promise<AiSettingsResponse> {
@@ -54,7 +67,7 @@ export class AiSettingsService {
     if (input.apiKey && !validKey(input.apiKey)) throw aiError(400, 'API Key 不能包含空白或控制字符')
     if (!model) throw aiError(400, '必须填写模型')
     if (!input.apiKey && !(await this.storedSettings())?.apiKey) throw aiError(400, '必须填写 API Key')
-    try { await this.store.save({ baseUrl: url, model, apiKey: input.apiKey || undefined, updatedBy: actorId }) }
+    try { await this.store.save({ baseUrl: url, model, apiKey: input.apiKey || undefined, enabled: input.enabled, updatedBy: actorId }) }
     catch { throw aiError(503, 'AI 配置保存失败，请稍后重试') }
     return this.read()
   }

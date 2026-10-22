@@ -62,6 +62,7 @@ afterAll(() => {
 });
 
 const saved = {
+  enabled: true,
   baseUrl: 'https://gateway.example/v1',
   model: 'claude-model',
   hasApiKey: true,
@@ -82,16 +83,35 @@ beforeEach(() => {
 test('loads only key status and retains existing key on a blank save', async () => {
   render(<Settings />);
   await screen.findByDisplayValue('claude-model');
-  expect(screen.queryByRole('switch')).toBeNull();
+  // 整页唯一的 switch 是「启用 AI 助手」，密钥始终落在密码框里、初始为空。
+  expect(screen.getAllByRole('switch')).toHaveLength(1);
+  expect(screen.getByRole('switch').getAttribute('aria-checked')).toBe('true');
   expect((screen.getByLabelText('API Key') as HTMLInputElement).value).toBe('');
   await act(async () => {
     fireEvent.click(screen.getByRole('button', { name: '保存设置' }));
   });
   await waitFor(() =>
     expect(mockSave).toHaveBeenCalledWith({
+      enabled: true,
       baseUrl: 'https://gateway.example/v1',
       model: 'claude-model',
     }),
+  );
+});
+
+test('turning the switch off saves enabled false rather than omitting it', async () => {
+  render(<Settings />);
+  await screen.findByDisplayValue('claude-model');
+  await act(async () => {
+    fireEvent.click(screen.getByRole('switch'));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: '保存设置' }));
+  });
+  await waitFor(() =>
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false }),
+    ),
   );
 });
 

@@ -622,6 +622,20 @@ export async function aiAnswerDraftQuestion(
   });
 }
 
+/** 读取 AI 运行时开关 GET /api/ai/v1/runtime-config */
+export async function aiRuntimeConfigGet(options?: { [key: string]: any }) {
+  return request<{
+    success: boolean;
+    code: number;
+    message: string;
+    timestamp: string;
+    data: { enabled: boolean };
+  }>("/api/ai/v1/runtime-config", {
+    method: "GET",
+    ...(options || {}),
+  });
+}
+
 /** 读取单模型 AI 配置 GET /api/ai/v1/settings */
 export async function aiSettingsGet(options?: { [key: string]: any }) {
   return request<{
@@ -630,6 +644,7 @@ export async function aiSettingsGet(options?: { [key: string]: any }) {
     message: string;
     timestamp: string;
     data: {
+      enabled: boolean;
       baseUrl: string;
       model: string;
       hasApiKey: boolean;
@@ -644,6 +659,7 @@ export async function aiSettingsGet(options?: { [key: string]: any }) {
 /** 保存单模型 AI 配置 PUT /api/ai/v1/settings */
 export async function aiSettingsSave(
   body: {
+    enabled?: boolean;
     baseUrl?: string;
     model: string;
     apiKey?: string;
@@ -656,6 +672,7 @@ export async function aiSettingsSave(
     message: string;
     timestamp: string;
     data: {
+      enabled: boolean;
       baseUrl: string;
       model: string;
       hasApiKey: boolean;

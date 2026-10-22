@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { bigint, check, datetime, index, int, json, mysqlTable, uniqueIndex, varchar } from 'drizzle-orm/mysql-core'
+import { bigint, boolean, check, datetime, index, int, json, mysqlTable, uniqueIndex, varchar } from 'drizzle-orm/mysql-core'
 import type { ChatMessage } from '../schemas/ai-chat.schema.js'
 import type { ActionDraftStatus } from '../schemas/action-draft.schema.js'
 
@@ -8,6 +8,8 @@ export const aiModelSettings = mysqlTable('ai_model_settings', {
   baseUrl: varchar('base_url', { length: 2048 }).notNull(),
   model: varchar({ length: 255 }).notNull(),
   apiKey: varchar('api_key', { length: 4096 }).notNull(),
+  /** 全局开关。关闭后整个 AI 功能停用：后端拒绝业务请求，Admin 不渲染浮窗。 */
+  enabled: boolean('enabled').notNull().default(true),
   updatedBy: int('updated_by').notNull(),
   updatedAt: datetime('updated_at', { mode: 'date', fsp: 3 }).notNull(),
 }, table => [check('ai_model_settings_singleton', sql`${table.id} = 1`)])

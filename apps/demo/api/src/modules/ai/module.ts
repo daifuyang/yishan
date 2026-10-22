@@ -8,8 +8,11 @@ import { registerAiActionDraftCapabilities } from './capabilities/action-drafts.
 import draftRoutes from './routes/v1/drafts.js'
 import questionRoutes from './routes/v1/questions.js'
 import settingsRoutes from './routes/v1/settings.js'
+import runtimeConfigRoutes from './routes/v1/runtime-config.js'
 import seed from './seed.js'
 import { ActionDraftService } from './services/action-draft.service.js'
+import { AiSettingsService } from './services/ai-settings.service.js'
+import { installAiEnabledGuard } from './services/ai-enabled.guard.js'
 
 /**
  * AI 助手模块。独立于 demo 示例插件，可被产品 Manifest 单独安装或移除。
@@ -26,6 +29,9 @@ const aiModule: ApiModule<SystemRuntime> = {
   dependencies: [{ id: 'system', version: '^2.0.0' }],
   migrations: { id: 'ai', folder: join(__dirname, 'drizzle'), historyTable: '__drizzle_migrations_ai' },
   async register(router) {
+    // 钩子挂在 router 上、且必须在注册路由之前：模块路由都是 router 的子插件，
+    // 同层兄弟插件之间钩子互不可见，顺序反了就只保护得到之后注册的那一半。
+    installAiEnabledGuard(router, AiSettingsService.forDatabase(drizzleDb))
     await router.register(AutoLoad, {
       dir: join(__dirname, 'routes'),
       autoHooks: true,
@@ -34,11 +40,14 @@ const aiModule: ApiModule<SystemRuntime> = {
       // 文件名也算进路由前缀：`routes/v1/drafts.ts` 会被挂到 `/api/ai/v1/drafts/...`，
       // 前端与文档里的 `/api/ai/v1/drafts/:draftId`、`/api/ai/v1/conversations/:id/drafts`
       // 全部 404。这里跳过该文件并按精确前缀显式注册，路径只有一处定义（drafts.ts）。
-      ignoreFilter: name => name === 'drafts.ts' || name === 'questions.ts' || name === 'settings.ts',
+      // runtime-config.ts 同理显式注册：它作为一个平级文件放在 autoload 扫描目录里
+      // 时并没有出现在路由表里，与前三者一起按精确前缀挂载。
+      ignoreFilter: name => name === 'drafts.ts' || name === 'questions.ts' || name === 'settings.ts' || name === 'runtime-config.ts',
     })
     await router.register(draftRoutes, { prefix: '/v1' })
     await router.register(questionRoutes, { prefix: '/v1' })
     await router.register(settingsRoutes, { prefix: '/v1' })
+    await router.register(runtimeConfigRoutes, { prefix: '/v1' })
   },
   async seed() { await seed() },
   async initialize(runtime) {

@@ -1,6 +1,7 @@
 import {
   PageContainer,
   ProForm,
+  ProFormSwitch,
   ProFormText,
 } from '@ant-design/pro-components';
 import { Alert, Button, Form, Space, Typography } from 'antd';
@@ -48,6 +49,7 @@ export default function AiSettings() {
         if (!response.data) throw new Error('Missing settings');
         setSettings(response.data);
         form.setFieldsValue({
+          enabled: response.data.enabled,
           baseUrl: response.data.baseUrl,
           model: response.data.model,
           apiKey: '',
@@ -108,6 +110,7 @@ export default function AiSettings() {
             setNotice(undefined);
             try {
               const response = await aiSettingsSave({
+                enabled: values.enabled ?? true,
                 baseUrl: values.baseUrl?.trim(),
                 model: values.model.trim(),
                 ...(values.apiKey?.trim()
@@ -117,6 +120,7 @@ export default function AiSettings() {
               if (!response.data) throw new Error('Missing settings');
               setSettings(response.data);
               form.setFieldsValue({
+                enabled: response.data.enabled,
                 baseUrl: response.data.baseUrl,
                 model: response.data.model,
                 apiKey: '',
@@ -132,6 +136,15 @@ export default function AiSettings() {
             }
           }}
         >
+          <ProFormSwitch
+            name="enabled"
+            label="启用 AI 助手"
+            fieldProps={{
+              checkedChildren: '启用',
+              unCheckedChildren: '停用',
+            }}
+            extra="停用后所有用户都看不到 AI 悬浮入口，AI 相关接口也不再受理请求。这个页面始终可访问，随时可以拨回来。"
+          />
           <ProFormText
             name="baseUrl"
             label="Base URL"

@@ -24,6 +24,9 @@ let mockOnFinish: (event: {
   isError: boolean;
 }) => void = () => {};
 let mockCurrentUser: { id: number; permissions?: string[] } | undefined;
+const mockRuntimeConfigGet = jest
+  .fn()
+  .mockResolvedValue({ success: true, data: { enabled: true } });
 let mockRouteChange: (update: {
   location: { pathname: string; search: string; hash: string };
 }) => void = () => {};
@@ -81,6 +84,12 @@ jest.mock('../services/aiChatService', () => ({
   renameConversation: jest.fn().mockResolvedValue(undefined),
   deleteConversation: jest.fn().mockResolvedValue(undefined),
   chatError: (error: Error) => error.message,
+}));
+
+// 身份桥在放行之前先问一次「助手开着没」，这里默认开着；关掉的情形由
+// tests/ai-chat-identity-bridge.test.tsx 专门覆盖。
+jest.mock('@/services/generated/ai', () => ({
+  aiRuntimeConfigGet: () => mockRuntimeConfigGet(),
 }));
 
 import { AiChatHost } from '../AiChatHost';
@@ -422,7 +431,8 @@ it('Umi 身份桥在 Router 外工作，缺少权限不放行且登录页清除�
       <Consumer view="桥" />
     </AiChatProvider>,
   );
-  expect(current.authorized).toBe(true);
+  // 放行要先等一次开关查询回来，identity 才推给 Provider。
+  await waitFor(() => expect(current.authorized).toBe(true));
   act(() =>
     mockRouteChange({
       location: { pathname: '/user/login', search: '', hash: '' },

@@ -7,6 +7,7 @@ export interface AiSettingsSave {
   baseUrl: string
   model: string
   apiKey?: string
+  enabled?: boolean
   updatedBy: number
 }
 export interface AiSettingsStore {
@@ -28,6 +29,9 @@ export class AiSettingsRepository implements AiSettingsStore {
         model: input.model,
         // 保留发生在同一条 upsert 内，避免空密钥编辑覆盖并发更新的新密钥。
         apiKey: input.apiKey || sql`${aiModelSettings.apiKey}`,
+        // 缺省表示「本次编辑不动开关」，与 apiKey 同理：只改模型的表单不该顺手把
+        // 功能关掉。存量行由迁移补上 DEFAULT 1，读侧再兜一层未配置即启用。
+        enabled: input.enabled === undefined ? sql`${aiModelSettings.enabled}` : input.enabled,
         updatedBy: input.updatedBy,
         updatedAt,
       } })

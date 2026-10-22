@@ -1,0 +1,1 @@
+ALTER TABLE `ai_model_settings` ADD COLUMN `enabled` tinyint(1) NOT NULL DEFAULT 1;

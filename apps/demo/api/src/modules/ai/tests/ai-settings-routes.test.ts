@@ -5,7 +5,7 @@ import { AiSettingsService } from '../services/ai-settings.service.js'
 import { errorHandlerPlugin } from '@yishan/core-api/plugins'
 
 afterEach(() => vi.restoreAllMocks())
-const data = { baseUrl: 'https://unit.test/v1', model: 'test', hasApiKey: true, source: 'database' as const }
+const data = { enabled: true, baseUrl: 'https://unit.test/v1', model: 'test', hasApiKey: true, source: 'database' as const }
 async function appFor(denied = false) {
   const app = Fastify()
   await app.register(errorHandlerPlugin, { production: true })
