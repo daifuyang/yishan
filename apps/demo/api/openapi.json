@@ -15990,6 +15990,9 @@
                     "data": {
                       "type": "object",
                       "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
                         "baseUrl": {
                           "type": "string"
                         },
@@ -16023,6 +16026,7 @@
                         }
                       },
                       "required": [
+                        "enabled",
                         "baseUrl",
                         "model",
                         "hasApiKey",
@@ -16056,6 +16060,9 @@
                 "additionalProperties": false,
                 "type": "object",
                 "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
                   "baseUrl": {
                     "maxLength": 2048,
                     "type": "string"
@@ -16109,6 +16116,9 @@
                     "data": {
                       "type": "object",
                       "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
                         "baseUrl": {
                           "type": "string"
                         },
@@ -16142,6 +16152,7 @@
                         }
                       },
                       "required": [
+                        "enabled",
                         "baseUrl",
                         "model",
                         "hasApiKey",
@@ -16211,6 +16222,68 @@
                       "required": [
                         "ok",
                         "message"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "code",
+                    "message",
+                    "timestamp",
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ai/v1/runtime-config": {
+      "get": {
+        "operationId": "aiRuntimeConfigGet",
+        "summary": "读取 AI 运行时开关",
+        "tags": [
+          "ai"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permission-code": "ai:chat:use",
+        "x-permission-label": "AI 助手-使用",
+        "x-permission-group": "ai",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "code": {
+                      "type": "number"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "enabled"
                       ]
                     }
                   },
