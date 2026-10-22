@@ -183,7 +183,7 @@ jobs:
       UBUNTU_SSH_FINGERPRINT: ${{ vars.UBUNTU_SSH_FINGERPRINT }}
       # 目标机上受控执行器的版本。改了 apps/demo/api/deploy/ubuntu/bin/deploy.sh
       # 就要同步 bump 这个值，否则目标机上跑的还是旧逻辑。
-      DEPLOY_SCRIPT_VERSION: '20261020-1'
+      DEPLOY_SCRIPT_VERSION: '20261021-1'
       RELEASE_TS: ${{ needs.build.outputs.release_ts }}
       ARTIFACT_KEY: ${{ needs.build.outputs.artifact_key }}
       ARTIFACT_SHA256: ${{ needs.build.outputs.artifact_sha256 }}
