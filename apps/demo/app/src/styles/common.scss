@@ -31,10 +31,15 @@ input, textarea {
 }
 input::placeholder, textarea::placeholder { color: var(--color-text-tertiary); }
 
-view, text, button, input, textarea, scroll-view, image,
+view, text, button, input, textarea, scroll-view, image {
+  box-sizing: border-box;
+}
+/* WXSS 不支持通配符选择器，微信编译会报 unexpected token `*`；仅 H5 需要它兜底 */
+/* #ifdef h5 */
 * {
   box-sizing: border-box;
 }
+/* #endif */
 
 /* ---------- 文字颜色 ---------- */
 .text-primary   { color: var(--color-text-primary); }
