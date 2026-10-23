@@ -284,6 +284,9 @@ importers:
       '@tarojs/react':
         specifier: file:./scripts/tarojs-react-shim
         version: file:apps/demo/app/scripts/tarojs-react-shim
+      '@tarojs/react-mini':
+        specifier: npm:@tarojs/react@4.2.0
+        version: /@tarojs/react@4.2.0(react@18.3.1)
       '@tarojs/runtime':
         specifier: ^4.0.0
         version: 4.2.0
@@ -13570,6 +13573,18 @@ packages:
     dependencies:
       '@tarojs/service': 4.2.0
       '@tarojs/shared': 4.2.0
+    dev: false
+
+  /@tarojs/react@4.2.0(react@18.3.1):
+    resolution: {integrity: sha512-DdRzqNxECKONC+WL27RYX9xlLDiltT+B+BU1lutjnJLdI6epX93Jq5j+Tizeze2kXo+xl0HRzqamtnw64Xdlbw==}
+    engines: {node: '>= 18'}
+    peerDependencies:
+      react: ^18
+    dependencies:
+      '@tarojs/runtime': 4.2.0
+      '@tarojs/shared': 4.2.0
+      react: 18.3.1
+      react-reconciler: 0.29.0(react@18.3.1)
     dev: false
 
   /@tarojs/router@4.2.0(@tarojs/runtime@4.2.0)(@tarojs/shared@4.2.0)(@tarojs/taro@4.2.0):
@@ -35107,6 +35122,17 @@ packages:
 
   /react-property@2.0.2:
     resolution: {integrity: sha512-+PbtI3VuDV0l6CleQMsx2gtK0JZbZKbpdu5ynr+lbsuvtmgbNcS3VM0tuY2QjFNOcWxvXeHjDpy42RO+4U2rug==}
+    dev: false
+
+  /react-reconciler@0.29.0(react@18.3.1):
+    resolution: {integrity: sha512-wa0fGj7Zht1EYMRhKWwoo1H9GApxYLBuhoAuXN0TlltESAjDssB+Apf0T/DngVqaMyPypDmabL37vw/2aRM98Q==}
+    engines: {node: '>=0.10.0'}
+    peerDependencies:
+      react: ^18.2.0
+    dependencies:
+      loose-envify: 1.4.0
+      react: 18.3.1
+      scheduler: 0.23.2
     dev: false
 
   /react-redux@5.1.2(react@19.2.7)(redux@3.7.2):

@@ -33,17 +33,18 @@
     "@tarojs/plugin-platform-tt": "^4.0.0",
     "@tarojs/plugin-platform-weapp": "^4.0.0",
     "@tarojs/react": "file:./scripts/tarojs-react-shim",
+    "@tarojs/react-mini": "npm:@tarojs/react@4.2.0",
     "@tarojs/runtime": "^4.0.0",
     "@tarojs/shared": "^4.0.0",
     "@tarojs/taro": "^4.0.0",
+    "@yishan/core-app": "workspace:*",
+    "@yishan/demo-config": "workspace:*",
+    "@yishan/ui": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "zustand": "^5.0.14",
     "tslib": "^2.6.2",
     "weui.js": "1.2.28",
-    "@yishan/demo-config": "workspace:*",
-    "@yishan/core-app": "workspace:*",
-    "@yishan/ui": "workspace:*"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",

@@ -88,6 +88,9 @@ export default defineConfig(async (merge, _env) => {
         if (process.env.TARO_ENV === 'weapp') chain.plugin('yishan-theme').use(WechatThemePlugin)
         // Platform plugins and the React runtime belong to the consuming Taro application.
         chain.resolve.modules.add('node_modules').prepend(path.resolve(__dirname, '../node_modules'))
+        // framework-react 把 react-dom 别名到 @tarojs/react；小程序端必须是真正的 Taro 渲染器
+        // （提供 createRoot），而本地 shim 只转出 react-dom，会在 app.js 报 createRoot is not a function。
+        chain.resolve.alias.set('@tarojs/react$', require.resolve('@tarojs/react-mini'))
       },
       miniCssExtractPluginOption: { ignoreOrder: true },
       postcss: {

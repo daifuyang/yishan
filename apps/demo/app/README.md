@@ -13,7 +13,7 @@
 
 ## 管理页面交互规范
 
-用户管理、角色管理是移动管理页面的基准。列表使用 `ManagementPageHeader`（标题、数量、新建）、白色 `ManagementFilterBar`、`ManagementSearchBar` 和 `ManagementList` / `ManagementCell`。有多种筛选条件时按接口能力展示入口；状态、排序等单选使用 `BottomSelectSheet`，点击选项生效并关闭，取消不修改。多条件筛选在底部面板内保留草稿，确认后生效。
+用户管理、角色管理是移动管理页面的基准。列表使用 `ManagementPageHeader`（标题、数量、新建）、白色 `ManagementFilterBar`、`ManagementSearchBar` 和 `ManagementList` / `ManagementCell`。有多种筛选条件时按接口能力展示入口；状态、排序等单选在筛选触发器上配置 `picker`（原生 Picker，与表单 `EnumField` 同一套交互），点击选项生效并关闭，取消不修改。多条件筛选在底部面板内保留草稿，确认后生效。
 
 列表点击进入独立详情页，使用 `DetailHero` 和业务分组；创建、更新记录放在默认折叠的分组。详情操作放在 `BottomActionBar`，次要和删除操作进入 `ActionSheet`。新建与编辑使用同一个独立表单页及 `FormContent` / `FormSection` / `FormSubmitBar`；关联对象继承来源上下文，失败保留输入，成功返回后刷新。
 
@@ -114,7 +114,7 @@ pnpm --filter @yishan/demo-app build:weapp
 
 通用 atoms/feedback 移至 `@yishan/ui/mobile`，原本地 barrels 仅转出公共实现；产品专属组合组件保留本地。`src/styles/tokens.scss` 转出公开样式入口，原视觉与交互保持一致。Taro 官方 `compile.include` 编译外部源码包；消费应用提供 React/Taro/platform 插件。Storage 使用调用时适配，避免捕获初始化前的 Taro API。
 
-当前锁定安装组合为 Taro `4.2.0`、React/ReactDOM `18.3.1`，配置沿用 `framework: 'react'`、Webpack 5 和关闭 prebundle。`scripts/tarojs-react-shim` 是通过 `file:` 安装的本地 `@tarojs/react` 包，其 JavaScript 和声明仅转出应用的 `react-dom`，用于现有 framework-react 插件的别名解析；shim 的 `4.2.0` 是本地兼容标记，不代表安装了上游同名渲染器。保留该适配前提，微信真机验收仍独立于构建检查。只有官方 runner 不再要求这一别名、直接消费应用 ReactDOM，并在无 shim 的 H5/WeApp 构建与浏览器/设备回归均通过后，才可移除；本轮不升级 Taro 或移除 shim。
+当前锁定安装组合为 Taro `4.2.0`、React/ReactDOM `18.3.1`，配置沿用 `framework: 'react'`、Webpack 5 和关闭 prebundle。`scripts/tarojs-react-shim` 是通过 `file:` 安装的本地 `@tarojs/react` 包，其 JavaScript 和声明仅转出应用的 `react-dom`，用于现有 framework-react 插件的别名解析；shim 的 `4.2.0` 是本地兼容标记，不代表安装了上游同名渲染器。该 shim 只服务 H5（H5 直接使用 react-dom）。小程序端不能用它：渲染器必须是真正的 Taro `@tarojs/react`（提供 `createRoot`），否则 app.js 启动即报 `createRoot is not a function`；因此依赖里另装了别名包 `@tarojs/react-mini`（`npm:@tarojs/react@4.2.0`），并在 `config/index.ts` 的 `mini.webpackChain` 里把 `@tarojs/react` 别名过去，仅对小程序构建生效。保留该适配前提，微信真机验收仍独立于构建检查。只有官方 runner 不再要求这一别名、直接消费应用 ReactDOM，并在无 shim 的 H5/WeApp 构建与浏览器/设备回归均通过后，才可移除；本轮不升级 Taro 或移除 shim。
 
 从根目录运行 `pnpm check:taro` 可核对应用、Core App 和移动 UI 实际解析到的 Taro 包及 Babel preset，要求与已安装 CLI 的 Taro 4 版本一致，也核对本地 shim。检查实际安装版本，不仅检查 manifest 中的 `^4.0.0` 声明；不会修改依赖或锁文件。两种构建目标都通过公开 package exports 定位 Core App/UI 源码，再交给 `compile.include` 编译。
 
