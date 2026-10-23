@@ -64,6 +64,12 @@ export function createAuthStore<User extends { permissions?: string[] }, Credent
       if (bootstrapFlight) return bootstrapFlight
       if (get().bootstrapped && !force) return Promise.resolve()
       if (!get().token) {
+        // 初始 state 在模块求值时读取存储，此时小程序的 Taro API 可能尚未就绪而读到空值；
+        // 启动时用已就绪的存储重新水合一次，避免每次冷启动都要重新登录。
+        const token = storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN)
+        if (token) set({ token, refreshToken: storage.get<string>(STORAGE_KEYS.REFRESH_TOKEN) })
+      }
+      if (!get().token) {
         set({ bootstrapped: true, user: null, enabledModuleIds: null, bootstrapError: null })
         return Promise.resolve()
       }

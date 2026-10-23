@@ -258,3 +258,27 @@ test('one product refresh rejection clears its own session once without interrup
   assert.equal(await successful, 'b')
   assert.equal(h.storage.get(b.keys.ACCESS_TOKEN), 'b-new')
 })
+
+test('bootstrap rehydrates a token that was unreadable when the store module was evaluated', async () => {
+  let ready = false
+  const values = new Map([['k:access', 'saved'], ['k:refresh', 'saved-refresh']])
+  const core = loadSource('src/index.ts', { '@tarojs/taro': { request: async () => response('ok') } })
+  const storage = core.createStorage({
+    getStorageSync: key => { if (!ready) throw new Error('taro not ready'); return values.get(key) },
+    setStorageSync: (key, value) => values.set(key, value),
+    removeStorageSync: key => values.delete(key),
+    clearStorageSync: () => values.clear(),
+  })
+  const keys = { ACCESS_TOKEN: 'k:access', REFRESH_TOKEN: 'k:refresh', USER: 'k:user' }
+  const client = core.createApiClient({ baseUrl: 'https://k.test', storage, storageKeys: keys, refreshPath: '/refresh' })
+  const auth = core.createAuthStore({ client, storage, storageKeys: keys, onUnauthorized() {}, api: {
+    login: async () => null, logout: async () => null,
+    getCurrentUser: () => client.request({ path: '/me' }),
+    getCapabilities: async () => ({ permissions: [], enabledModuleIds: [] }),
+  } })
+  assert.equal(auth.useAuthStore.getState().token, null)
+  ready = true
+  await auth.useAuthStore.getState().bootstrap()
+  assert.equal(auth.useAuthStore.getState().token, 'saved')
+  assert.equal(auth.useAuthStore.getState().refreshToken, 'saved-refresh')
+})
