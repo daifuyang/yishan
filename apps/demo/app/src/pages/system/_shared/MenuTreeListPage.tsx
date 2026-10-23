@@ -1,7 +1,6 @@
-import Taro, { useDidHide } from '@tarojs/taro'
+import Taro from '@tarojs/taro'
 import { type ReactNode, useEffect, useMemo, useState } from 'react'
 import {
-  BottomSelectSheet,
   ManagementFilterBar,
   ManagementFilterClear,
   ManagementFilterTriggers,
@@ -78,7 +77,6 @@ export function MenuTreeListPage<T extends FilterableNode & TreeNode<T>>({
 }: MenuTreeListPageProps<T>) {
   const guard = useRequireAuth({ moduleId })
   const canCreate = useCanWrite(createPermission)
-  const [panel, setPanel] = useState<'type' | 'status' | null>(null)
   const [keyword, setKeyword] = useState('')
   const [tree, setTree] = useState<T[]>([])
   const [filters, setFilters] = useState(DEFAULT_TREE_FILTERS)
@@ -104,7 +102,6 @@ export function MenuTreeListPage<T extends FilterableNode & TreeNode<T>>({
   useEffect(() => {
     void load()
   }, [enabled])
-  useDidHide(() => setPanel(null))
 
   const filtered = useMemo(
     () => filterTreeByTypeStatus(searchTree(tree, matches, keyword), filters),
@@ -149,22 +146,22 @@ export function MenuTreeListPage<T extends FilterableNode & TreeNode<T>>({
       <ManagementFilterBar>
         <ManagementSearchBar value={keyword} onChange={setKeyword} placeholder={searchPlaceholder} />
         <ManagementFilterTriggers
-          panel={panel}
-          onPanelChange={(key) => setPanel(panel === key ? null : (key as 'type' | 'status'))}
           triggers={[
-            { key: 'type', label: typeLabel, active: Boolean(filters.type) },
-            { key: 'status', label: statusLabel, active: Boolean(filters.status) },
+            {
+              key: 'type',
+              label: typeLabel,
+              active: Boolean(filters.type),
+              picker: { title: typeTitle, options: typeOptions, value: filters.type, onSelect: (key) => setFilters({ ...filters, type: key }) },
+            },
+            {
+              key: 'status',
+              label: statusLabel,
+              active: Boolean(filters.status),
+              picker: { title: `${noun}状态`, options: TREE_STATUS_OPTIONS, value: filters.status, onSelect: (key) => setFilters({ ...filters, status: key }) },
+            },
           ]}
         />
       </ManagementFilterBar>
-      <BottomSelectSheet
-        open={panel !== null}
-        title={panel === 'type' ? typeTitle : `${noun}状态`}
-        options={panel === 'type' ? typeOptions : TREE_STATUS_OPTIONS}
-        value={panel === 'type' ? filters.type : filters.status}
-        onSelect={(key) => setFilters({ ...filters, [panel === 'type' ? 'type' : 'status']: key })}
-        onClose={() => setPanel(null)}
-      />
       {kind === 'empty' && active ? <ManagementFilterClear onClick={clearAll} /> : null}
       <ManagementStates
         kind={kind}

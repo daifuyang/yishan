@@ -211,9 +211,11 @@ function UserIndexPage() {
         <ManagementList>
           {list.map((u, index) => {
             const displayName = u.realName || u.username || u.phone
-            const metadata = [u.username ? `@${u.username}` : '', u.phone || '']
-              .filter(Boolean)
-              .join(' · ')
+            // 副标题只放一项：手机号优先，其次 @账号；与标题重复的不再重复展示
+            const metadata =
+              [u.phone || '', u.username ? `@${u.username}` : ''].find(
+                (item) => item && item !== displayName && item !== `@${displayName}`,
+              ) || ''
             const status = userStatus(u)
             return (
               <ManagementCell

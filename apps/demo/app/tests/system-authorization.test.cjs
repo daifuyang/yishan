@@ -2,100 +2,6 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { loadTs } = require("./helpers/load-ts.cjs");
 
-function mountEditor(entry, name, props, apiMocks, permissions = []) {
-  const slots = [];
-  let cursor = 0;
-  let dirty = true;
-  let effects = [];
-  let tree;
-  const react = {
-    useState(initial) {
-      const index = cursor++;
-      slots[index] ??= { value: initial };
-      return [
-        slots[index].value,
-        (value) => {
-          slots[index].value = typeof value === "function" ? value(slots[index].value) : value;
-          dirty = true;
-        },
-      ];
-    },
-    useRef(initial) {
-      const index = cursor++;
-      slots[index] ??= { current: initial };
-      return slots[index];
-    },
-    useEffect(effect, deps) {
-      const index = cursor++;
-      if (slots[index]?.deps?.every((value, i) => Object.is(value, deps[i]))) return;
-      const cleanup = slots[index]?.cleanup;
-      slots[index] = { deps };
-      effects.push(() => {
-        cleanup?.();
-        slots[index].cleanup = effect();
-      });
-    },
-  };
-  const editor = loadTs(entry, {
-    react,
-    "@tarojs/components": { View: "View", Text: "Text" },
-    "@tarojs/taro": { showToast() {} },
-    "@/components/atoms": { Button: "Button" },
-    "@/components/molecules": { FormField: "FormField" },
-    "@/components/management": Object.fromEntries(
-      ["FormField", "EnumField", "FormError", "FormSection", "TextField", "TextAreaField", "SwitchField"].map(
-        (name) => [name, name],
-      ),
-    ),
-    "@/hooks": { useCanWrite: (...codes) => codes.every((code) => permissions.includes(code)) },
-    "@/utils/auth-guard": { canWriteModuleNow: () => true },
-    "@/api/client": { getSessionVersion: () => 0 },
-    "@/stores/auth": { useAuthStore: (select) => select({ user: { permissions } }) },
-    "@/modules/registry": {
-      hasRequiredPermissions: (codes, actual) => codes.every((code) => actual.includes(code)),
-    },
-    "@/utils/account-scope": {
-      errorMessage: (error) => error.message,
-    },
-    "./RoleEditor.module.scss": {},
-    ...apiMocks,
-  })[name];
-  const nodes = (value) =>
-    !value || typeof value !== "object"
-      ? []
-      : Array.isArray(value)
-        ? value.flatMap(nodes)
-        : [value, ...nodes(value.props?.children)];
-  function flush() {
-    while (dirty) {
-      dirty = false;
-      cursor = 0;
-      tree = editor(props);
-      const pending = effects;
-      effects = [];
-      pending.forEach((effect) => {
-        effect();
-      });
-    }
-    return nodes(tree);
-  }
-  flush();
-  return {
-    flush,
-    field: (label) =>
-      flush().find((node) => node.type === "FormField" && node.props.label === label),
-    save: () => flush().find((node) => node.type === "Button" && node.props.children === "保存"),
-    settle: async () => {
-      await new Promise(setImmediate);
-      return flush();
-    },
-    unmount: () =>
-      slots.forEach((slot) => {
-        slot?.cleanup?.();
-      }),
-  };
-}
-
 // 菜单表单已拆成独立页面，载荷组装集中在 model.ts，这里直接断言它的契约。
 test("menu edits preserve hidden flags and omit untouched associated permissions", () => {
   const { menuPayload } = loadTs("src/pages/system/menu/model.ts", {
@@ -138,98 +44,6 @@ test("menu edits preserve hidden flags and omit untouched associated permissions
   assert.equal("permissionCodes" in payload, false);
 });
 
-test("role basic edits omit inaccessible grants and preserve existing data scope", async () => {
-  const requests = [];
-  const editor = mountEditor(
-    "src/pages/system/role/RoleEditor.tsx",
-    "RoleEditor",
-    { id: 7, editable: true, onClose() {}, onSaved() {} },
-    {
-      "@/api/admin/role": {
-        getAdminRole: async () => ({
-          id: 7,
-          name: "审核员",
-          description: "审核订单",
-          status: "1",
-          dataScope: "5",
-          menuIds: [10],
-          appMenuIds: [40, 42],
-          permissionCodes: ["orders:approve"],
-        }),
-        updateAdminRole: async (id, data) => {
-          requests.push({ id, data });
-        },
-      },
-      "@/api/admin/menu": {},
-      "@/api/admin/appMenu": {},
-    },
-    ["system:role:update", "system:role:grant"],
-  );
-  await editor.settle();
-  editor.field("角色名称").props.onChange("高级审核员");
-  editor.save().props.onClick();
-  await editor.settle();
-  assert.deepEqual(requests, [
-    { id: 7, data: { name: "高级审核员", description: "审核订单", status: "1", dataScope: "5" } },
-  ]);
-});
-
-test("unchecking a single role permission leaves the other selected permissions intact", async () => {
-  const editor = mountEditor(
-    "src/pages/system/role/RoleEditor.tsx",
-    "RoleEditor",
-    { id: 7, editable: true, onClose() {}, onSaved() {} },
-    {
-      "@/api/admin/role": {
-        getAdminRole: async () => ({
-          id: 7,
-          name: "审核员",
-          description: "审核订单",
-          status: "1",
-          dataScope: "1",
-          menuIds: [],
-          appMenuIds: [],
-          permissionCodes: ["orders:approve", "orders:export"],
-        }),
-        updateAdminRole: async () => {},
-      },
-      "@/api/admin/menu": {
-        getAdminPermissionCatalog: async () => [
-          { code: "orders:approve", label: "审批订单", description: "审批订单" },
-          { code: "orders:export", label: "导出订单", description: "导出订单" },
-        ],
-      },
-      "@/api/admin/appMenu": {},
-    },
-    ["system:role:update", "system:role:grant", "system:permission:catalog"],
-  );
-  await editor.settle();
-
-  const approve = editor.field("审批订单");
-  const exportPerm = editor.field("导出订单");
-  assert.ok(approve, "应渲染 orders:approve 的开关");
-  assert.ok(exportPerm, "应渲染 orders:export 的开关");
-  assert.equal(approve.props.checked, true, "初始 orders:approve 应处于勾选状态");
-  assert.equal(exportPerm.props.checked, true, "初始 orders:export 应处于勾选状态");
-
-  // 走真实的 catalog 路径（RoleEditor.tsx 第 294 行所在的分支）。
-  approve.props.onChange(false);
-
-  // 目标项必须取消勾选，幸存项必须保留——这正是上一轮回归漏掉的两个半边。
-  // 只断言其中一项会让 `x !== x` 那种把整个数组清空的错误溜过去。
-  assert.equal(
-    editor.field("审批订单").props.checked,
-    false,
-    "被取消的 orders:approve 必须从勾选集合中移除",
-  );
-  assert.equal(
-    editor.field("导出订单").props.checked,
-    true,
-    "orders:export 仍应保留在勾选集合中，filter 错误会把幸存项一起清空",
-  );
-});
-
-// 工作台表单已拆成独立页面，载荷组装集中在 model.ts，这里直接断言它的契约。
 test("workbench group edits preserve its module even though the field is hidden", () => {
   const { appMenuPayload } = loadTs("src/pages/system/app-menu/model.ts", {
     "@/api/client": { getSessionVersion: () => 0 },
@@ -291,7 +105,6 @@ function pageNodes(page, permissions, records, extraMocks = {}) {
       ManagementHeaderAction: "ManagementHeaderAction",
       ManagementFilterBar: "ManagementFilterBar",
       ManagementSearchBar: "ManagementSearchBar",
-      ManagementFilterTabs: "ManagementFilterTabs",
       ManagementList: "ManagementList",
       ManagementCell: "ManagementCell",
       ManagementStates: "ManagementStates",
@@ -330,7 +143,6 @@ function pageNodes(page, permissions, records, extraMocks = {}) {
       withAccountScope: (component) => component,
       errorMessage: String,
     },
-    "./RoleEditor": { RoleEditor: "RoleEditor" },
     "./PositionEditor": { PositionEditor: "PositionEditor" },
     ...extraMocks,
   };
@@ -381,7 +193,7 @@ test("role list keeps row actions out and gates create behind grant permission",
 test("position read-only users can inspect but cannot mutate", () => {
   const nodes = pageNodes("position", [], [{ id: 1, name: "主管", status: "1" }], {
     "@tarojs/taro": { useDidShow() {}, useDidHide() {} },
-    "@/components/management": Object.fromEntries(["ManagementPage", "ManagementPageHeader", "ManagementHeaderAction", "ManagementFilterBar", "ManagementFilterTriggers", "ManagementFilterClear", "ManagementSearchBar", "ManagementList", "ManagementCell", "ManagementStates", "ManagementListFooter", "BottomSelectSheet"].map(key => [key, key])),
+    "@/components/management": Object.fromEntries(["ManagementPage", "ManagementPageHeader", "ManagementHeaderAction", "ManagementFilterBar", "ManagementFilterTriggers", "ManagementFilterClear", "ManagementSearchBar", "ManagementList", "ManagementCell", "ManagementStates", "ManagementListFooter"].map(key => [key, key])),
   });
   assert.equal(nodes.filter(node => node.type === "ManagementCell" && typeof node.props.onClick === "function").length, 1);
   assert.equal(nodes.filter(node => node.type === "ManagementHeaderAction").length, 0);

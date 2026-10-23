@@ -1,10 +1,8 @@
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
 import * as adminRoleApi from '@/api/admin/role'
 import type { AdminRole } from '@/api/admin/types'
 import { Tag } from '@/components/atoms'
 import {
-  BottomSelectSheet,
   ManagementCell,
   ManagementFilterBar,
   ManagementFilterClear,
@@ -35,7 +33,6 @@ import { roleStatus } from './model'
 function RolePage() {
   const guard = useRequireAuth({ moduleId: 'system-role' })
   const canCreate = useCanWrite(PERMS.roleCreate, PERMS.roleGrant)
-  const [panel, setPanel] = useState<string | null>(null)
 
   const {
     list,
@@ -112,28 +109,22 @@ function RolePage() {
       <ManagementFilterBar>
         <ManagementSearchBar value={keyword} onChange={setKeyword} placeholder="搜索角色名称或描述" />
         <ManagementFilterTriggers
-          panel={panel}
-          onPanelChange={(key) => setPanel(panel === key ? null : key)}
           triggers={[
-            { key: 'status', label: statusLabel, active: Boolean(roleFilters.status) },
+            {
+              key: 'status',
+              label: statusLabel,
+              active: Boolean(roleFilters.status),
+              picker: { title: '角色状态', options: ROLE_STATUS_OPTIONS, value: roleFilters.status, onSelect: (key) => changeFilters({ status: key }) },
+            },
             {
               key: 'sort',
               label: sortLabel,
               active: roleFilters.sort !== DEFAULT_ROLE_FILTERS.sort,
+              picker: { title: '排序方式', options: ROLE_SORT_OPTIONS, value: roleFilters.sort, onSelect: (key) => changeFilters({ sort: key }) },
             },
           ]}
         />
       </ManagementFilterBar>
-      <BottomSelectSheet
-        open={panel === 'status' || panel === 'sort'}
-        title={panel === 'status' ? '角色状态' : '排序方式'}
-        options={panel === 'status' ? ROLE_STATUS_OPTIONS : ROLE_SORT_OPTIONS}
-        value={panel === 'status' ? roleFilters.status : roleFilters.sort}
-        onSelect={(key) =>
-          changeFilters(panel === 'status' ? { status: key } : { sort: key })
-        }
-        onClose={() => setPanel(null)}
-      />
 
       {kind === 'empty' && filtered ? (
         <ManagementFilterClear onClick={clearFilters} />
@@ -153,7 +144,7 @@ function RolePage() {
                 key={role.id}
                 bordered={index < list.length - 1}
                 glyph="shield"
-                glyphColor={role.isSystemDefault ? '#1677FF' : '#4E5969'}
+                glyphColor={role.isSystemDefault ? 'var(--color-primary)' : 'var(--color-text-secondary)'}
                 title={role.name}
                 tag={
                   <Tag size="sm" variant={status.variant}>

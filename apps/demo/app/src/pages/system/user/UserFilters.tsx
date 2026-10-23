@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import {
-  BottomSelectSheet,
   DateRangeSheet,
   ManagementFilterBar,
   ManagementFilterSummary,
@@ -38,8 +37,18 @@ export function UserFilterBar({
         panel={panel}
         onPanelChange={(key) => setPanel(panel === key ? null : key)}
         triggers={[
-          { key: 'status', label: status.label, active: Boolean(filters.status) },
-          { key: 'sort', label: sort.label, active: filters.sort !== 'createdDesc' },
+          {
+            key: 'status',
+            label: status.label,
+            active: Boolean(filters.status),
+            picker: { title: '用户状态', options: USER_STATUS_OPTIONS, value: filters.status, onSelect: (key) => onChange({ status: key }) },
+          },
+          {
+            key: 'sort',
+            label: sort.label,
+            active: filters.sort !== 'createdDesc',
+            picker: { title: '排序方式', options: USER_SORT_OPTIONS, value: filters.sort, onSelect: (key) => onChange({ sort: key }) },
+          },
           { key: 'dates', label: hasDates ? '筛选 · 1' : '筛选', active: hasDates },
         ]}
       />
@@ -51,14 +60,6 @@ export function UserFilterBar({
           {filters.startDate} 至 {filters.endDate} 创建
         </ManagementFilterSummary>
       ) : null}
-      <BottomSelectSheet
-        open={panel === 'status' || panel === 'sort'}
-        title={panel === 'status' ? '用户状态' : '排序方式'}
-        options={panel === 'status' ? USER_STATUS_OPTIONS : USER_SORT_OPTIONS}
-        value={panel === 'status' ? filters.status : filters.sort}
-        onSelect={(key) => onChange(panel === 'status' ? { status: key } : { sort: key })}
-        onClose={() => setPanel(null)}
-      />
       {panel === 'dates' ? (
         <DateRangeSheet
           title="筛选用户"

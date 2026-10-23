@@ -111,12 +111,14 @@ function profileHarness(options = {}) {
   return { mount, navigate, queries, listState, calls }
 }
 
-// 应用一次「登录状态」筛选：打开面板 → 选中 → 重渲染，返回选中后的那棵树。
+// 筛选触发器自带原生 Picker：取对应触发器的 picker 配置。
+function pickerOf(tree, key) {
+  return nodesOf(tree, 'ManagementFilterTriggers')[0].props.triggers.find(trigger => trigger.key === key).picker
+}
+
+// 应用一次「登录状态」筛选：Picker 选中 → 重渲染，返回选中后的那棵树。
 function pickStatus(h, key) {
-  let tree = h.mount.render()
-  nodesOf(tree, 'ManagementFilterTriggers')[0].props.onPanelChange('status')
-  tree = h.mount.render()
-  nodesOf(tree, 'BottomSelectSheet')[0].props.onSelect(key)
+  pickerOf(h.mount.render(), 'status').onSelect(key)
   return h.mount.render()
 }
 
@@ -175,11 +177,9 @@ test('profile 登录日志列表按状态客户端筛选', () => {
   assert.equal(nodesOf(tree, 'ManagementCell').length, 2)
   const triggers = nodesOf(tree, 'ManagementFilterTriggers')[0]
   assert.deepEqual(triggers.props.triggers.map(trigger => trigger.key), ['status', 'sort', 'dates'])
-  triggers.props.onPanelChange('status')
-  tree = h.mount.render()
-  const sheet = nodesOf(tree, 'BottomSelectSheet')[0]
-  assert.equal(sheet.props.title, '登录状态')
-  sheet.props.onSelect('0')
+  const picker = pickerOf(tree, 'status')
+  assert.equal(picker.title, '登录状态')
+  picker.onSelect('0')
   tree = h.mount.render()
   const cells = nodesOf(tree, 'ManagementCell')
   assert.equal(cells.length, 1)
@@ -191,11 +191,9 @@ test('profile 登录日志列表按登录时间客户端排序', () => {
   const h = profileHarness({ records: [logRow(3, '1', '2026-10-12T12:00:00.000Z', '1.1.1.1'), logRow(2, '0', '2026-10-01T12:00:00.000Z', '2.2.2.2')] })
   let tree = h.mount.render()
   assert.equal(nodesOf(tree, 'ManagementCell')[0].props.description, '1.1.1.1')
-  nodesOf(tree, 'ManagementFilterTriggers')[0].props.onPanelChange('sort')
-  tree = h.mount.render()
-  const sheet = nodesOf(tree, 'BottomSelectSheet')[0]
-  assert.equal(sheet.props.title, '排序方式')
-  sheet.props.onSelect('asc')
+  const picker = pickerOf(tree, 'sort')
+  assert.equal(picker.title, '排序方式')
+  picker.onSelect('asc')
   tree = h.mount.render()
   assert.equal(nodesOf(tree, 'ManagementCell')[0].props.description, '2.2.2.2')
 })

@@ -6,7 +6,7 @@ import { StateView } from '@/components/feedback'
 import { PageContainer } from '@/components/layout'
 import {
   DateField,
-  SelectorPicker as Picker,
+  EnumField,
   FormContent,
   FormField,
   FormSection,
@@ -130,27 +130,15 @@ function UserEditContent({ id }: { id?: string }) {
                   if (field.kind === 'enum') {
                     // 状态/性别默认只显示文案 + 右箭头，点击唤起原生选择器
                     return (
-                      <FormField
+                      <EnumField
                         key={field.key}
                         label={field.label}
-                        arrow
+                        value={String(Number(field.value) || 0)}
+                        options={field.options.map((label, index) => ({ value: String(index), label }))}
+                        placeholder={UNSET}
                         error={(errors as Record<string, string | undefined>)[field.key]}
-                      >
-                        <Picker
-                          title={`选择${field.label}`}
-                          className={styles.picker}
-                          mode="selector"
-                          range={field.options as string[]}
-                          value={Number(field.value) || 0}
-                          onChange={(event) =>
-                            setterFor(field.key)?.(String(Number(event.detail.value)))
-                          }
-                        >
-                          <View className={styles.pickerValue}>
-                            <Text>{field.options[Number(field.value)] ?? UNSET}</Text>
-                          </View>
-                        </Picker>
-                      </FormField>
+                        onChange={(next) => setterFor(field.key)?.(next)}
+                      />
                     )
                   }
 

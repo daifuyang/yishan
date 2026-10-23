@@ -42,7 +42,7 @@ export function TodoPreview({ items, loaded, loading, error, onRetry, onOpen }: 
             <Text className={styles.row__title}>{item.title}</Text>
             {item.meta ? <Text className={styles.row__meta}>{item.meta}</Text> : null}
           </View>
-          <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+          <LineIcon name="chevronRight" size={16} color="var(--color-text-quaternary)" />
         </View>
       ))}
     </View>

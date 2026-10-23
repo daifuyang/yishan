@@ -212,7 +212,7 @@ function RoleDetailPage() {
             <>
               <DetailHero
                 glyph="shield"
-                glyphColor={role.isSystemDefault ? '#1677FF' : '#4E5969'}
+                glyphColor={role.isSystemDefault ? 'var(--color-primary)' : 'var(--color-text-secondary)'}
                 title={role.name}
                 tag={status ? <Tag variant={status.variant}>{status.label}</Tag> : undefined}
                 note={roleTypeLabel(role)}

@@ -1,4 +1,4 @@
-/* 外壳与 BottomSelectSheet 同一套：遮罩 + 底部圆角白底 + 56px 标题栏 */
+/* 外壳：遮罩 + 底部圆角白底 + 56px 标题栏 */
 .layer { position: fixed; inset: 0; z-index: var(--z-modal, 1000); }
 .mask { position: absolute; inset: 0; background: var(--color-bg-mask); }
 .sheet {

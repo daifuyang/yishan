@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Input, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import { useDidShow, useRouter } from '@tarojs/taro'
 
 import { adminRoleApi } from '@/api'
 import type { AdminRole } from '@/api/admin/types'
-import { Checkbox, SelectionFooter } from '@/components/management'
+import { Checkbox, ManagementFilterBar, ManagementSearchBar, SelectionFooter } from '@/components/management'
 import { StateView } from '@/components/feedback'
 import { useRequireAuth } from '@/utils/auth-guard'
 import { navigateBack } from '@/utils/router'
@@ -104,14 +104,9 @@ export default function UserRolesPage() {
         <Text className={styles.title}>选择角色</Text>
       </View> : null}
 
-      <View className={styles.search}>
-        <Input
-          className={styles.searchInput}
-          value={keyword}
-          placeholder="搜索角色名称"
-          onInput={(event) => setKeyword(event.detail.value)}
-        />
-      </View>
+      <ManagementFilterBar>
+        <ManagementSearchBar value={keyword} onChange={setKeyword} placeholder="搜索角色名称" />
+      </ManagementFilterBar>
 
       <StateView
         kind={error ? 'error' : loaded && !roles ? 'loading' : 'ready'}

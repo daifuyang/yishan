@@ -103,7 +103,6 @@ function mount({
       [
         'ActionSheet',
         'Checkbox',
-        'BottomSelectSheet',
         'ManagementCell',
         'ManagementFilterBar',
         'ManagementFilterClear',

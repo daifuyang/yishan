@@ -57,7 +57,7 @@ function mount({ params = {}, roles = ROLES, draftIds } = {}) {
       useRouter: () => ({ params }),
       useDidShow: (callback) => didShow.push(callback),
     },
-    '@/components/management': { SelectionFooter: 'FOOT' },
+    '@/components/management': { SelectionFooter: 'FOOT', ManagementFilterBar: 'FilterBar', ManagementSearchBar: 'SearchBar' },
     '@/components/feedback': { StateView: 'SV' },
     '@/stores/selectionDraft': {
       DRAFT_KEYS: { userDepts: 'user-depts', userRoles: 'user-roles' },
@@ -202,7 +202,7 @@ test('已选角色按名称传给底栏', async () => {
 test('搜索按名称过滤角色', async () => {
   const page = mount()
   let tree = await page.settle()
-  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '审核' } })
+  page.find(tree, (n) => n.type === 'SearchBar')[0].props.onChange('审核')
   tree = await page.settle()
   assert.equal(page.row(tree, '管理员'), undefined)
   assert.ok(page.row(tree, '审核员'))
@@ -211,7 +211,7 @@ test('搜索按名称过滤角色', async () => {
 test('搜索无匹配时展示空态', async () => {
   const page = mount()
   let tree = await page.settle()
-  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '不存在' } })
+  page.find(tree, (n) => n.type === 'SearchBar')[0].props.onChange('不存在')
   tree = await page.settle()
   assert.match(page.text(tree), /没有匹配的角色/)
 })

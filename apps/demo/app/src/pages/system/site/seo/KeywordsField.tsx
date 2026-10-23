@@ -31,7 +31,7 @@ export function KeywordsField({ value, onChange, disabled = false }: KeywordsFie
                 aria-label={`删除 ${keyword}`}
                 onClick={() => onChange(joinKeywords(keywords.filter((item) => item !== keyword)))}
               >
-                <LineIcon name="close" size={12} color="#86909C" />
+                <LineIcon name="close" size={12} color="var(--color-text-tertiary)" />
               </View>
             )}
           </View>

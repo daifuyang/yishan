@@ -18,7 +18,6 @@ import { Tag } from '@/components/atoms'
 import {
   ActionSheet,
   type ActionSheetItem,
-  BottomSelectSheet,
   Checkbox,
   ManagementCell,
   ManagementFilterBar,
@@ -379,8 +378,18 @@ function AttachmentsPage() {
               label: folderLabel(folders, filters.folderId, '全部分组'),
               active: Boolean(filters.folderId),
             },
-            { key: 'kind', label: kindLabel, active: Boolean(filters.kind) },
-            { key: 'status', label: statusLabel, active: Boolean(filters.status) },
+            {
+              key: 'kind',
+              label: kindLabel,
+              active: Boolean(filters.kind),
+              picker: { title: '素材类型', options: KIND_OPTIONS, value: filters.kind, onSelect: (key) => changeFilters({ kind: key }) },
+            },
+            {
+              key: 'status',
+              label: statusLabel,
+              active: Boolean(filters.status),
+              picker: { title: '素材状态', options: STATUS_OPTIONS, value: filters.status, onSelect: (key) => changeFilters({ status: key }) },
+            },
           ]}
         />
       </ManagementFilterBar>
@@ -395,14 +404,6 @@ function AttachmentsPage() {
           onClick: () => navigateTo(`/${SYSTEM_PAGES.attachmentFolders}`),
         }}
         onSelect={(folderId) => changeFilters({ folderId })}
-        onClose={() => setPanel(null)}
-      />
-      <BottomSelectSheet
-        open={panel === 'kind' || panel === 'status'}
-        title={panel === 'kind' ? '素材类型' : '素材状态'}
-        options={panel === 'kind' ? KIND_OPTIONS : STATUS_OPTIONS}
-        value={panel === 'kind' ? filters.kind : filters.status}
-        onSelect={(key) => changeFilters(panel === 'kind' ? { kind: key } : { status: key })}
         onClose={() => setPanel(null)}
       />
       <ActionSheet

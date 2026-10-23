@@ -180,7 +180,7 @@ function AttachmentDetailPage() {
               <View className={styles.preview}>
                 {!url || failedUrl === url ? (
                   <View className={styles.placeholder}>
-                    <LineIcon name={KIND_GLYPH[item.kind]} size={32} color="#86909C" />
+                    <LineIcon name={KIND_GLYPH[item.kind]} size={32} color="var(--color-text-tertiary)" />
                     <Text className={styles.placeholderText}>
                       {!url ? '暂无可预览链接' : item.kind === 'video' ? '视频无法播放' : '图片无法加载'}
                     </Text>
@@ -196,7 +196,7 @@ function AttachmentDetailPage() {
                   </View>
                 ) : (
                   <View className={styles.placeholder}>
-                    <LineIcon name="file" size={32} color="#1677FF" />
+                    <LineIcon name="file" size={32} color="var(--color-primary)" />
                     <Text className={styles.placeholderText}>{item.originalName}</Text>
                   </View>
                 )}

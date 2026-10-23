@@ -79,7 +79,7 @@ export function FolderTreeSheet({
             onClick={() => choose(selfValue)}
           >
             <Text>{selfLabel}</Text>
-            {value === selfValue ? <LineIcon name="check" size={18} color="#1677FF" /> : null}
+            {value === selfValue ? <LineIcon name="check" size={18} color="var(--color-primary)" /> : null}
           </View>
           {visible.map((folder) => {
             const children = (folder.children || []).filter((child) => !excludeIds?.has(child.id))
@@ -92,7 +92,7 @@ export function FolderTreeSheet({
                   onClick={() => choose(folder.id)}
                 >
                   <Text>{nameOf(folder)}</Text>
-                  {value === folder.id ? <LineIcon name="check" size={18} color="#1677FF" /> : null}
+                  {value === folder.id ? <LineIcon name="check" size={18} color="var(--color-primary)" /> : null}
                 </View>
                 {children.length ? (
                   <View
@@ -101,7 +101,7 @@ export function FolderTreeSheet({
                     onClick={() => setPath([...path, folder])}
                   >
                     <Text>下级</Text>
-                    <LineIcon name="chevronRight" size={14} color="#86909C" />
+                    <LineIcon name="chevronRight" size={14} color="var(--color-text-tertiary)" />
                   </View>
                 ) : null}
               </View>
@@ -118,7 +118,7 @@ export function FolderTreeSheet({
             }}
           >
             <Text>{footer.label}</Text>
-            <LineIcon name="chevronRight" size={16} color="#1677FF" />
+            <LineIcon name="chevronRight" size={16} color="var(--color-primary)" />
           </View>
         ) : null}
       </View>

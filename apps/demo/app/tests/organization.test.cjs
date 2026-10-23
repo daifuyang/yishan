@@ -349,8 +349,8 @@ test("department standalone edit loads authoritative parent and saves with its I
   await new Promise((resolve) => setImmediate(resolve));
   const tree = form.render();
   assert.equal(tree.find((node) => node.type === "TextField").props.value, "研发");
-  const picker = tree.find((node) => node.type === "Picker");
-  assert.deepEqual(picker.props.range, ["总部"]);
+  const parent = tree.find((node) => node.type === "EnumField" && node.props.label === "上级部门");
+  assert.deepEqual(parent.props.options.map((option) => option.label), ["总部"]);
   await tree.find((node) => node.type === "FormSubmitBar").props.onSubmit();
   assert.equal(saved.length, 1);
   assert.equal(saved[0].id, 3);

@@ -115,11 +115,8 @@ test('提交时空密码不会进入 update payload', () => {
 test("状态与性别用 Picker 呈现为普通行，而不是分段控件", () => {
   const source = readSource('src/pages/system/user/edit/index.tsx')
   assert.ok(!source.includes('SegmentField'), '枚举字段不应使用分段控件')
-  assert.ok(source.includes('mode="selector"'), '枚举字段应使用原生 selector Picker')
-  assert.ok(
-    /label=\{field\.label\}\s+arrow/.test(source),
-    'picker 行应由 FormField 的 arrow 渲染行尾箭头',
-  )
+  assert.ok(source.includes('<EnumField'), '枚举字段应复用 EnumField（原生 selector Picker + 行尾箭头）')
+  assert.ok(!source.includes('<Picker'), '不应再手写 Picker 行，避免与其他表单的枚举行样式漂移')
 })
 
 test("有 placeholder 的密码字段不再附加说明行", () => {

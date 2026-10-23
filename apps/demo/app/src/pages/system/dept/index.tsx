@@ -1,10 +1,8 @@
-import { useState } from 'react'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import * as api from '@/api/admin/dept'
 import type { AdminDept } from '@/api/admin/types'
 import { Tag } from '@/components/atoms'
 import {
-  BottomSelectSheet,
   ManagementCell,
   ManagementFilterBar,
   ManagementFilterClear,
@@ -34,7 +32,6 @@ import {
 function DeptIndexPage() {
   const guard = useRequireAuth({ moduleId: 'system-dept' })
   const canCreate = useCanWrite('system:department:create')
-  const [panel, setPanel] = useState<string | null>(null)
   const list = useListPagination<AdminDept>({
     enabled: guard.ready && guard.allowed,
     initialFilters: { ...DEFAULT_DEPT_FILTERS },
@@ -58,7 +55,6 @@ function DeptIndexPage() {
   useDidShow(() => {
     if (guard.ready && guard.allowed) void list.refresh()
   })
-  useDidHide(() => setPanel(null))
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
   const kind = list.error
     ? 'error'
@@ -95,26 +91,22 @@ function DeptIndexPage() {
           placeholder="搜索部门名称或描述"
         />
         <ManagementFilterTriggers
-          panel={panel}
-          onPanelChange={(key) => setPanel(panel === key ? null : key)}
           triggers={[
-            { key: 'status', label: statusLabel, active: Boolean(deptFilters.status) },
+            {
+              key: 'status',
+              label: statusLabel,
+              active: Boolean(deptFilters.status),
+              picker: { title: '部门状态', options: DEPT_STATUS_OPTIONS, value: deptFilters.status, onSelect: (key) => changeFilters({ status: key }) },
+            },
             {
               key: 'sort',
               label: sortLabel,
               active: deptFilters.sort !== DEFAULT_DEPT_FILTERS.sort,
+              picker: { title: '排序方式', options: DEPT_SORT_OPTIONS, value: deptFilters.sort, onSelect: (key) => changeFilters({ sort: key }) },
             },
           ]}
         />
       </ManagementFilterBar>
-      <BottomSelectSheet
-        open={panel === 'status' || panel === 'sort'}
-        title={panel === 'status' ? '部门状态' : '排序方式'}
-        options={panel === 'status' ? DEPT_STATUS_OPTIONS : DEPT_SORT_OPTIONS}
-        value={panel === 'status' ? deptFilters.status : deptFilters.sort}
-        onSelect={(key) => changeFilters(panel === 'status' ? { status: key } : { sort: key })}
-        onClose={() => setPanel(null)}
-      />
       {kind === 'empty' && filtered ? <ManagementFilterClear onClick={clearFilters} /> : null}
       <ManagementStates
         kind={kind}
@@ -129,7 +121,7 @@ function DeptIndexPage() {
               bordered={index < list.list.length - 1}
               glyph="folder"
               title={dept.name}
-              description={`${dept.parentName || '顶级部门'} · 负责人：${dept.leaderName || dept.leaderId || '未设置'}`}
+              description={dept.description || undefined}
               tag={
                 <Tag size="sm" variant={dept.status === '1' ? 'success' : 'default'}>
                   {dept.status === '1' ? '启用' : '禁用'}

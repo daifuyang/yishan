@@ -38,7 +38,6 @@ function renderPage(page, permissions) {
     },
     "@/components/atoms": { AppText: "AppText", Avatar: "Avatar", Tag: "Tag", Button: "Button" },
     "@/components/molecules": {
-      ListFilter: "ListFilter",
       ListItem: "ListItem",
       Card: "Card",
     },
@@ -51,7 +50,6 @@ function renderPage(page, permissions) {
       ManagementHeaderAction: "ManagementHeaderAction",
       ManagementFilterBar: "ManagementFilterBar",
       ManagementSearchBar: "ManagementSearchBar",
-      ManagementFilterTabs: "ManagementFilterTabs",
       ManagementList: "ManagementList",
       ManagementCell: "ManagementCell",
       ManagementStates: "ManagementStates",

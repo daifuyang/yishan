@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Input, Text, View } from '@tarojs/components'
+import { Text, View } from '@tarojs/components'
 import { useDidShow, useRouter } from '@tarojs/taro'
 
 import { adminDeptApi } from '@/api'
@@ -8,6 +8,8 @@ import {
   collectExpandable,
   DepartmentTreeNavigator,
   findDeptPath,
+  ManagementFilterBar,
+  ManagementSearchBar,
   searchTree,
   SelectionFooter,
   toggleExpanded,
@@ -114,14 +116,9 @@ export default function UserDepartmentsPage() {
         <Text className={styles.title}>选择部门</Text>
       </View> : null}
 
-      <View className={styles.search}>
-        <Input
-          className={styles.searchInput}
-          value={keyword}
-          placeholder="搜索部门名称"
-          onInput={(event) => setKeyword(event.detail.value)}
-        />
-      </View>
+      <ManagementFilterBar>
+        <ManagementSearchBar value={keyword} onChange={setKeyword} placeholder="搜索部门名称" />
+      </ManagementFilterBar>
 
       <StateView
         kind={error ? 'error' : loaded && !tree ? 'loading' : 'ready'}

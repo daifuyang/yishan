@@ -1,9 +1,7 @@
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { listAdminPositions } from '@/api/admin/position'
 import { Tag } from '@/components/atoms'
 import {
-  BottomSelectSheet,
   ManagementCell,
   ManagementFilterBar,
   ManagementFilterClear,
@@ -33,7 +31,6 @@ import {
 function PositionPage() {
   const guard = useRequireAuth({ moduleId: 'system-position' })
   const canCreate = useCanWrite('system:position:create')
-  const [panel, setPanel] = useState<string | null>(null)
   const list = useListPagination({
     enabled: guard.ready && guard.allowed,
     initialFilters: { ...DEFAULT_POSITION_FILTERS },
@@ -57,7 +54,6 @@ function PositionPage() {
   useDidShow(() => {
     if (guard.ready && guard.allowed) void list.refresh()
   })
-  useDidHide(() => setPanel(null))
   if (!guard.ready || !guard.allowed) return <ManagementPage>{null}</ManagementPage>
   const kind = list.error
     ? 'error'
@@ -94,28 +90,22 @@ function PositionPage() {
           placeholder="搜索岗位名称或描述"
         />
         <ManagementFilterTriggers
-          panel={panel}
-          onPanelChange={(key) => setPanel(panel === key ? null : key)}
           triggers={[
-            { key: 'status', label: statusLabel, active: Boolean(positionFilters.status) },
+            {
+              key: 'status',
+              label: statusLabel,
+              active: Boolean(positionFilters.status),
+              picker: { title: '岗位状态', options: POSITION_STATUS_OPTIONS, value: positionFilters.status, onSelect: (key) => changeFilters({ status: key }) },
+            },
             {
               key: 'sort',
               label: sortLabel,
               active: positionFilters.sort !== DEFAULT_POSITION_FILTERS.sort,
+              picker: { title: '排序方式', options: POSITION_SORT_OPTIONS, value: positionFilters.sort, onSelect: (key) => changeFilters({ sort: key }) },
             },
           ]}
         />
       </ManagementFilterBar>
-      <BottomSelectSheet
-        open={panel === 'status' || panel === 'sort'}
-        title={panel === 'status' ? '岗位状态' : '排序方式'}
-        options={panel === 'status' ? POSITION_STATUS_OPTIONS : POSITION_SORT_OPTIONS}
-        value={panel === 'status' ? positionFilters.status : positionFilters.sort}
-        onSelect={(key) =>
-          changeFilters(panel === 'status' ? { status: key } : { sort: key })
-        }
-        onClose={() => setPanel(null)}
-      />
       {kind === 'empty' && filtered ? <ManagementFilterClear onClick={clearFilters} /> : null}
       <ManagementStates
         kind={kind}

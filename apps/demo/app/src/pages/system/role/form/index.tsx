@@ -1,5 +1,4 @@
 import Taro, { useRouter } from '@tarojs/taro'
-import { Text, View } from '@tarojs/components'
 import { useEffect, useRef, useState } from 'react'
 import * as adminRoleApi from '@/api/admin/role'
 import * as adminAppMenuApi from '@/api/admin/appMenu'
@@ -7,7 +6,7 @@ import type { AdminRoleDetail } from '@/api/admin/role'
 import { getSessionVersion } from '@/api/client'
 import { StateView } from '@/components/feedback'
 import {
-  SelectorPicker as Picker,
+  EnumField,
   FormContent,
   FormField,
   FormSection,
@@ -18,7 +17,6 @@ import {
   TextAreaField,
   TextField,
 } from '@/components/management'
-import styles from './index.module.scss'
 import { PERMS, SYSTEM_PAGES } from '@/constants/routes'
 import { useCanWrite } from '@/hooks'
 import { useRequireAuth } from '@/utils/auth-guard'
@@ -181,43 +179,8 @@ function RoleFormPage() {
                 disabled={!canSave || submitting}
               />
             </FormField>
-            <FormField label="状态" arrow>
-              <Picker
-                title="选择状态"
-                className={styles.picker}
-                mode="selector"
-                range={STATUS_OPTIONS.map((option) => option.label)}
-                value={Math.max(STATUS_OPTIONS.findIndex((option) => option.value === status), 0)}
-                onChange={(event) =>
-                  setStatus(STATUS_OPTIONS[Number(event.detail.value)]?.value ?? status)
-                }
-              >
-                <View className={styles.pickerValue}>
-                  <Text>{STATUS_OPTIONS.find((option) => option.value === status)?.label ?? '启用'}</Text>
-                </View>
-              </Picker>
-            </FormField>
-            <FormField label="数据权限" arrow>
-              <Picker
-                title="选择数据权限"
-                className={styles.picker}
-                mode="selector"
-                range={SCOPE_OPTIONS.map((option) => option.label)}
-                value={Math.max(
-                  SCOPE_OPTIONS.findIndex((option) => option.value === dataScope),
-                  0,
-                )}
-                onChange={(event) =>
-                  setDataScope(SCOPE_OPTIONS[Number(event.detail.value)]?.value ?? dataScope)
-                }
-              >
-                <View className={styles.pickerValue}>
-                  <Text>
-                    {SCOPE_OPTIONS.find((option) => option.value === dataScope)?.label ?? '全部数据'}
-                  </Text>
-                </View>
-              </Picker>
-            </FormField>
+            <EnumField label="状态" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
+            <EnumField label="数据权限" value={dataScope} options={SCOPE_OPTIONS} onChange={setDataScope} />
           </FormSection>
 
           <FormSection title="权限配置">

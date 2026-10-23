@@ -260,8 +260,7 @@ function DeptDetailPage() {
                           }}
                           title={member.realName || member.username || member.phone}
                           description={
-                            [member.phone, member.email].filter(Boolean).join(' · ') ||
-                            '暂无联系方式'
+                            member.phone || member.email || '暂无联系方式'
                           }
                           showArrow={false}
                         />

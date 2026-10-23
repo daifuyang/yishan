@@ -94,7 +94,7 @@ function ModuleManagementPage() {
               key={item.id}
               glyph="folder"
               title={item.name}
-              description={`版本 ${item.version} · ${item.mounted ? '已挂载' : '未挂载'}`}
+              description={`版本 ${item.version}`}
               tag={
                 <Tag size="sm" variant={item.enabled ? 'success' : 'default'}>
                   {item.enabled ? '启用' : '停用'}

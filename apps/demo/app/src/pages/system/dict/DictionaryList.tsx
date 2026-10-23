@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { View } from '@tarojs/components'
 import { Tag } from '@/components/atoms'
 import {
-  BottomSelectSheet,
   ManagementCell,
   ManagementFilterBar,
   ManagementFilterClear,
@@ -36,7 +35,6 @@ import styles from './index.module.scss'
 
 export default function DictionaryList({ enabled, typeId }: { enabled: boolean; typeId?: number }) {
   const canCreate = useCanWrite('system:dict:create')
-  const [panel, setPanel] = useState<string | null>(null)
   const [context, setContext] = useState<AdminDictType | null>(null)
   const [contextError, setContextError] = useState('')
   const [reload, setReload] = useState(0)
@@ -83,7 +81,6 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
       setReload((value) => value + 1)
     }
   })
-  useDidHide(() => setPanel(null))
   const kind = list.error
     ? 'error'
     : list.loading && !list.list.length
@@ -130,26 +127,22 @@ export default function DictionaryList({ enabled, typeId }: { enabled: boolean; 
           placeholder={typeId ? '搜索标签、键值' : '搜索名称、类型'}
         />
         <ManagementFilterTriggers
-          panel={panel}
-          onPanelChange={(key) => setPanel(panel === key ? null : key)}
           triggers={[
-            { key: 'status', label: statusLabel, active: Boolean(dictFilters.status) },
+            {
+              key: 'status',
+              label: statusLabel,
+              active: Boolean(dictFilters.status),
+              picker: { title: '字典状态', options: DICT_STATUS_OPTIONS, value: dictFilters.status, onSelect: (key) => changeFilters({ status: key }) },
+            },
             {
               key: 'sort',
               label: sortLabel,
               active: dictFilters.sort !== DEFAULT_DICT_FILTERS.sort,
+              picker: { title: '排序方式', options: DICT_SORT_OPTIONS, value: dictFilters.sort, onSelect: (key) => changeFilters({ sort: key }) },
             },
           ]}
         />
       </ManagementFilterBar>
-      <BottomSelectSheet
-        open={panel === 'status' || panel === 'sort'}
-        title={panel === 'status' ? '字典状态' : '排序方式'}
-        options={panel === 'status' ? DICT_STATUS_OPTIONS : DICT_SORT_OPTIONS}
-        value={panel === 'status' ? dictFilters.status : dictFilters.sort}
-        onSelect={(key) => changeFilters(panel === 'status' ? { status: key } : { sort: key })}
-        onClose={() => setPanel(null)}
-      />
       {context ? (
         <View className={styles.context}>
           <LinkRow

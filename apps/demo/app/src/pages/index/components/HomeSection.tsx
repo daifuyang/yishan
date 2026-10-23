@@ -33,7 +33,7 @@ export function SectionLink({ text, onClick }: SectionLinkProps) {
   return (
     <View className={styles.section__link} hoverClass={styles['section__link--pressed']} onClick={onClick}>
       <Text>{text}</Text>
-      <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
+      <LineIcon name="chevronRight" size={16} color="var(--color-text-quaternary)" />
     </View>
   )
 }

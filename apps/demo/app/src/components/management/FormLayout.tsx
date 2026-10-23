@@ -218,6 +218,8 @@ export interface EnumFieldProps<T extends string> {
   disabled?: boolean
   /** 未选中时的占位文案，默认「请选择」 */
   placeholder?: string
+  required?: boolean
+  error?: string
 }
 
 /**
@@ -236,11 +238,13 @@ export function EnumField<T extends string>({
   onChange,
   disabled = false,
   placeholder = '请选择',
+  required,
+  error,
 }: EnumFieldProps<T>) {
   const index = options.findIndex((option) => option.value === value)
   const current = index >= 0 ? options[index].label : placeholder
   return (
-    <FormField label={label} disabled={disabled} arrow>
+    <FormField label={label} required={required} error={error} disabled={disabled} arrow>
       {/* H5 下 Picker 渲染成独立 div，自身没有 flex: 1 就不会撑满行，值到不了行尾 */}
       <Picker title={`选择${label}`} className={styles.enumPicker} disabled={disabled} mode="selector" range={options.map((option) => option.label)} value={Math.max(index, 0)} onChange={(event) => {
         const option = options[Number(event.detail.value)]

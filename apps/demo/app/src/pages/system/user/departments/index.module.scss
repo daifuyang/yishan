@@ -21,19 +21,6 @@
   color: var(--color-text-primary);
 }
 
-.search {
-  padding: var(--space-3) var(--space-4);
-}
-
-.searchInput {
-  height: var(--search-bar-height);
-  padding: 0 var(--space-3);
-  border-radius: var(--search-bar-radius);
-  background: var(--search-bar-bg);
-  font-size: var(--font-size-14);
-  color: var(--color-text-primary);
-}
-
 .empty {
   display: block;
   padding: var(--space-8) var(--space-4);

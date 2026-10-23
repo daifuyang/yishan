@@ -4,7 +4,6 @@ import { userApi } from '@/api'
 import type { LoginLog } from '@/api/types'
 import { Tag } from '@/components/atoms'
 import {
-  BottomSelectSheet,
   DateRangeSheet,
   ManagementCell,
   ManagementFilterBar,
@@ -126,8 +125,18 @@ function ProfileLoginLog() {
           panel={panel}
           onPanelChange={setPanel}
           triggers={[
-            { key: 'status', label: loginLogStatusLabel(status), active: Boolean(status) },
-            { key: 'sort', label: loginLogSortLabel(sort), active: sort === 'asc' },
+            {
+              key: 'status',
+              label: loginLogStatusLabel(status),
+              active: Boolean(status),
+              picker: { title: '登录状态', options: LOGIN_LOG_STATUS, value: status, onSelect: (key) => setFilters((previous) => ({ ...previous, status: key })) },
+            },
+            {
+              key: 'sort',
+              label: loginLogSortLabel(sort),
+              active: sort === 'asc',
+              picker: { title: '排序方式', options: LOGIN_LOG_SORT, value: sort, onSelect: (key) => setFilters((previous) => ({ ...previous, sort: key })) },
+            },
             { key: 'dates', label: hasDates ? '时间 · 1' : '登录时间', active: hasDates },
           ]}
         />
@@ -173,18 +182,6 @@ function ProfileLoginLog() {
         finished={list.finished}
         empty={!list.list.length}
         summary={kind === 'ready' && records.length ? `当前显示 ${records.length} 条` : undefined}
-      />
-      <BottomSelectSheet
-        open={panel === 'status' || panel === 'sort'}
-        title={panel === 'status' ? '登录状态' : '排序方式'}
-        options={panel === 'status' ? LOGIN_LOG_STATUS : LOGIN_LOG_SORT}
-        value={panel === 'status' ? status : sort}
-        onSelect={(key) =>
-          setFilters((previous) =>
-            panel === 'status' ? { ...previous, status: key } : { ...previous, sort: key },
-          )
-        }
-        onClose={() => setPanel('')}
       />
       {panel === 'dates' ? (
         <DateRangeSheet

@@ -32,7 +32,7 @@ export interface DateRangeSheetProps {
 /**
  * 日期区间筛选弹层。草稿态由组件持有，确认后才回调。
  *
- * 与 BottomSelectSheet 不同，这里没有 open：父组件按需挂载，每次挂载都以
+ * 没有 open：父组件按需挂载，每次挂载都以
  * 当前筛选值作为草稿初值（已进入筛选时直接展开「自定义」）。
  */
 export function DateRangeSheet({

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Text, View } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import {
-  SelectorPicker as Picker,
   EnumField,
   FormContent,
   FormError,
@@ -11,7 +10,6 @@ import {
   TextField,
   TextAreaField,
   FormSubmitBar,
-  LineIcon,
 } from '@/components/management'
 import styles from './DepartmentForm.module.scss'
 import { useCanWrite } from '@/hooks'
@@ -146,30 +144,13 @@ export default function DepartmentForm({
               onChange={(value) => field('name', value)}
             />
           </FormField>
-          <FormField label="上级部门" disabled={disabled}>
-            <Picker
-              title="选择上级部门"
-              className={styles.picker}
-              disabled={disabled}
-              range={parentOptions.map((option) => option.label)}
-              value={Math.max(
-                parentOptions.findIndex((option) => option.value === values.parentId),
-                0,
-              )}
-              onChange={(event) => {
-                const option = parentOptions[Number(event.detail.value)]
-                if (option) field('parentId', option.value)
-              }}
-            >
-              <View className={styles.pickerValue}>
-                <Text>
-                  {parentOptions.find((option) => option.value === values.parentId)?.label ||
-                    '请选择'}
-                </Text>
-                <LineIcon name="chevronRight" size={16} color="#C9CDD4" />
-              </View>
-            </Picker>
-          </FormField>
+          <EnumField
+            label="上级部门"
+            value={values.parentId}
+            options={parentOptions}
+            disabled={disabled}
+            onChange={(value) => field('parentId', value)}
+          />
           <EnumField
             label="状态"
             value={values.status}

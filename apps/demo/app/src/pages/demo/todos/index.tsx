@@ -1,10 +1,8 @@
 import { PageContainer } from '@/components/layout'
-import Taro, { useDidHide, useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { listTodos, type DemoTodo } from '@/api/demo'
 import { Tag } from '@/components/atoms'
 import {
-  BottomSelectSheet,
   ManagementCell,
   ManagementFilterBar,
   ManagementFilterClear,
@@ -42,7 +40,6 @@ function todoDescription(todo: DemoTodo): string {
 function TodosPage() {
   const guard = useRequireAuth({ moduleId: 'demo-todos' })
   const canCreate = useCanWrite('demo:todos:create')
-  const [panel, setPanel] = useState<string | null>(null)
   const list = useListPagination({
     enabled: guard.ready && guard.allowed,
     initialFilters: { ...DEFAULT_TODO_FILTERS },
@@ -66,7 +63,6 @@ function TodosPage() {
   useDidShow(() => {
     if (guard.ready && guard.allowed) void list.refresh()
   })
-  useDidHide(() => setPanel(null))
   if (!guard.ready || !guard.allowed) return <PageContainer>{null}</PageContainer>
   const kind = list.error
     ? 'error'
@@ -102,19 +98,16 @@ function TodosPage() {
           placeholder="搜索标题或描述"
         />
         <ManagementFilterTriggers
-          panel={panel}
-          onPanelChange={(key) => setPanel(panel === key ? null : key)}
-          triggers={[{ key: 'status', label: statusLabel, active: Boolean(todoFilters.status) }]}
+          triggers={[
+            {
+              key: 'status',
+              label: statusLabel,
+              active: Boolean(todoFilters.status),
+              picker: { title: 'Todo 状态', options: TODO_STATUS_OPTIONS, value: todoFilters.status, onSelect: (key) => changeFilters({ status: key }) },
+            },
+          ]}
         />
       </ManagementFilterBar>
-      <BottomSelectSheet
-        open={panel === 'status'}
-        title="Todo 状态"
-        options={TODO_STATUS_OPTIONS}
-        value={todoFilters.status}
-        onSelect={(key) => changeFilters({ status: key })}
-        onClose={() => setPanel(null)}
-      />
       {kind === 'empty' && filtered ? <ManagementFilterClear onClick={clearFilters} /> : null}
       <ManagementStates
         kind={kind}

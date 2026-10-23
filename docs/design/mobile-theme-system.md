@@ -108,8 +108,6 @@ pnpm --filter @yishan/demo-app build:h5
 - `apps/demo/app/src/components/feedback/DashboardSkeleton/DashboardSkeleton.module.scss`
 - `apps/demo/app/src/components/management/ActionBar.module.scss`
 - `apps/demo/app/src/components/management/ActionBar.tsx`
-- `apps/demo/app/src/components/management/BottomSelectSheet.module.scss`
-- `apps/demo/app/src/components/management/BottomSelectSheet.tsx`
 - `apps/demo/app/src/components/management/Breadcrumbs.tsx`
 - `apps/demo/app/src/components/management/DateRangeSheet.module.scss`
 - `apps/demo/app/src/components/management/DepartmentTreeNavigator.tsx`
@@ -138,7 +136,6 @@ pnpm --filter @yishan/demo-app build:h5
 - `apps/demo/app/src/components/molecules/Card/Card.module.scss`
 - `apps/demo/app/src/components/molecules/FormField/FormField.module.scss`
 - `apps/demo/app/src/components/molecules/GridItem/GridItem.module.scss`
-- `apps/demo/app/src/components/molecules/ListFilter/ListFilter.module.scss`
 - `apps/demo/app/src/components/molecules/ListItem/ListItem.module.scss`
 - `apps/demo/app/src/components/molecules/SearchBar/SearchBar.module.scss`
 - `apps/demo/app/src/components/molecules/SectionHeader/SectionHeader.module.scss`
@@ -146,8 +143,6 @@ pnpm --filter @yishan/demo-app build:h5
 - `apps/demo/app/src/components/organisms/DashboardHero/DashboardHero.module.scss`
 - `apps/demo/app/src/components/organisms/LoginBrand/LoginBrand.module.scss`
 - `apps/demo/app/src/components/organisms/StatCard/StatCard.module.scss`
-- `apps/demo/app/src/components/organisms/WorkbenchUserPanel/WorkbenchUserPanel.module.scss`
-- `apps/demo/app/src/components/organisms/WorkbenchUserPanel/index.tsx`
 - `apps/demo/app/src/constants/index.ts`
 - `apps/demo/app/src/hooks/useConfirm.ts`
 - `apps/demo/app/src/pages/apps/WorkbenchHeader.tsx`

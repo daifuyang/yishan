@@ -121,7 +121,7 @@ function HomeAppsEditPage() {
         <LineIcon
           name={delta < 0 ? 'chevronUp' : 'chevronDown'}
           size={18}
-          color={disabled ? '#C9CDD4' : '#4E5969'}
+          color={disabled ? 'var(--color-text-quaternary)' : 'var(--color-text-secondary)'}
         />
       </View>
     )

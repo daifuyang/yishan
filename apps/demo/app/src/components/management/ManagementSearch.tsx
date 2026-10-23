@@ -2,6 +2,7 @@ import { Input, Text, View } from '@tarojs/components'
 import type { ReactNode } from 'react'
 
 import { LineIcon } from './LineIcon'
+import { SelectorPicker } from './SelectorPicker'
 
 import styles from './ManagementSearch.module.scss'
 
@@ -55,36 +56,6 @@ export function ManagementSearchBar({
   )
 }
 
-export interface FilterTab {
-  key: string
-  label: string
-}
-
-export interface ManagementFilterTabsProps {
-  tabs: readonly FilterTab[]
-  active: string
-  onChange: (key: string) => void
-}
-
-/** 统一状态筛选 chips。 */
-export function ManagementFilterTabs({ tabs, active, onChange }: ManagementFilterTabsProps) {
-  return (
-    <View className={styles.chips}>
-      {tabs.map((tab) => (
-        <View
-          key={tab.key || 'all'}
-          className={cx(styles.chip, active === tab.key && styles.chipActive)}
-          onClick={() => onChange(tab.key)}
-          hoverClass={styles.chipHover}
-          aria-label={tab.label}
-        >
-          <Text>{tab.label}</Text>
-        </View>
-      ))}
-    </View>
-  )
-}
-
 export interface ManagementFilterTrigger {
   /** 稳定标识，同时作为展开面板的 key */
   key: string
@@ -92,40 +63,78 @@ export interface ManagementFilterTrigger {
   label: string
   /** 已命中该条件：转主色并加粗 */
   active?: boolean
+  /**
+   * 单选枚举：给了就由原生 Picker 承接选择（与表单里的 EnumField 同一套交互），
+   * 不再触发 onPanelChange，也不需要页面再挂选项面板。
+   * 日期区间这类非单选条件不传，仍走 onPanelChange + 自有面板。
+   */
+  picker?: {
+    title: string
+    options: readonly { key: string; label: string }[]
+    value: string
+    onSelect: (key: string) => void
+  }
 }
 
 export interface ManagementFilterTriggersProps {
   triggers: readonly ManagementFilterTrigger[]
-  /** 当前展开面板的 key，null 表示全部收起 */
-  panel: string | null
-  onPanelChange: (key: string) => void
+  /** 当前展开面板的 key，null 表示全部收起；触发器全是 picker 时可省略 */
+  panel?: string | null
+  onPanelChange?: (key: string) => void
 }
 
 /**
  * 统一筛选触发器行：等分排布，已命中或展开时转主色。
  *
- * 只负责触发器本身；选项面板（BottomSelectSheet / DateRangeSheet）由页面挂载，
+ * 只负责触发器本身；日期区间等非单选条件的面板（DateRangeSheet）由页面挂载，
  * 因为各页的选项集与草稿逻辑不同。
  */
 export function ManagementFilterTriggers({
   triggers,
-  panel,
+  panel = null,
   onPanelChange,
 }: ManagementFilterTriggersProps) {
   return (
     <View className={styles.triggers}>
       {triggers.map((trigger) => {
+        const { picker } = trigger
         const on = trigger.active || panel === trigger.key
+        const body = (
+          <>
+            <Text className={styles.triggerLabel}>{trigger.label}</Text>
+            <LineIcon name="chevronDown" size={14} color={on ? 'var(--color-primary)' : 'var(--color-text-secondary)'} />
+          </>
+        )
+        if (picker) {
+          const index = picker.options.findIndex((option) => option.key === picker.value)
+          return (
+            // H5 下 Picker 渲染成独立 div，必须由 Picker 自身占住等分宽度
+            <SelectorPicker
+              key={trigger.key}
+              className={styles.triggerPicker}
+              title={picker.title}
+              range={picker.options.map((option) => option.label)}
+              value={Math.max(index, 0)}
+              onChange={(event) => {
+                const option = picker.options[Number(event.detail.value)]
+                if (option) picker.onSelect(option.key)
+              }}
+            >
+              <View className={cx(styles.trigger, on && styles.triggerActive)} aria-label={trigger.label}>
+                {body}
+              </View>
+            </SelectorPicker>
+          )
+        }
         return (
           <View
             key={trigger.key}
             className={cx(styles.trigger, on && styles.triggerActive)}
             aria-label={trigger.label}
             aria-expanded={panel === trigger.key}
-            onClick={() => onPanelChange(trigger.key)}
+            onClick={() => onPanelChange?.(trigger.key)}
           >
-            <Text className={styles.triggerLabel}>{trigger.label}</Text>
-            <LineIcon name="chevronDown" size={14} color={on ? 'var(--color-primary)' : 'var(--color-text-secondary)'} />
+            {body}
           </View>
         )
       })}

@@ -74,6 +74,8 @@ function mount({ params = {}, tree = TREE, draftIds, fetchTree } = {}) {
     '@/components/management': {
       DepartmentTreeNavigator: 'NAV',
       SelectionFooter: 'FOOT',
+      ManagementFilterBar: 'FilterBar',
+      ManagementSearchBar: 'SearchBar',
       findDeptPath: deptTree.findDeptPath,
       searchTree: menuTree.searchTree,
       collectExpandable: menuTree.collectExpandable,
@@ -240,7 +242,7 @@ test('已选项按完整路径传给底栏，供跨分支消歧', async () => {
 test('搜索时仍用树列表，保留祖先链并展开到最子级', async () => {
   const page = mount()
   let tree = await page.settle()
-  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '前端' } })
+  page.find(tree, (n) => n.type === 'SearchBar')[0].props.onChange('前端')
   tree = await page.settle()
   const nav = page.el(tree, 'NAV')
   assert.equal(nav.props.nodes[0].name, '上海总公司')
@@ -252,10 +254,10 @@ test('搜索时仍用树列表，保留祖先链并展开到最子级', async ()
 test('搜索期间点箭头不改写用户自己的展开态', async () => {
   const page = mount()
   let tree = await page.settle()
-  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '前端' } })
+  page.find(tree, (n) => n.type === 'SearchBar')[0].props.onChange('前端')
   tree = await page.settle()
   page.el(tree, 'NAV').props.onToggleExpand(11)
-  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '' } })
+  page.find(tree, (n) => n.type === 'SearchBar')[0].props.onChange('')
   tree = await page.settle()
   assert.equal(page.el(tree, 'NAV').props.expandedIds.has(11), true)
 })
@@ -263,7 +265,7 @@ test('搜索期间点箭头不改写用户自己的展开态', async () => {
 test('搜索无结果时展示空态', async () => {
   const page = mount()
   let tree = await page.settle()
-  page.find(tree, (n) => n.type === 'Input')[0].props.onInput({ detail: { value: '不存在' } })
+  page.find(tree, (n) => n.type === 'SearchBar')[0].props.onChange('不存在')
   tree = await page.settle()
   assert.match(page.text(tree), /没有匹配的部门/)
 })

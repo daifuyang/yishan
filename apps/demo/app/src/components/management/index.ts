@@ -23,7 +23,6 @@ export {
 export { OrganizationPicker } from './OrganizationPicker'
 export { SelectorPicker, type SelectorPickerProps } from './SelectorPicker'
 export { TimeField, type TimeFieldProps } from './TimeField'
-export { BottomSelectSheet, type BottomSelectSheetProps } from './BottomSelectSheet'
 export { RegionPicker, type RegionPickerProps } from './RegionPicker'
 export {
   formatRegionPath,
@@ -142,15 +141,12 @@ export {
   type DateRangePreset,
 } from './dateRange'
 export {
-  type FilterTab,
   ManagementFilterBar,
   type ManagementFilterBarProps,
   ManagementFilterClear,
   type ManagementFilterClearProps,
   ManagementFilterSummary,
   type ManagementFilterSummaryProps,
-  ManagementFilterTabs,
-  type ManagementFilterTabsProps,
   ManagementFilterTriggers,
   type ManagementFilterTrigger,
   type ManagementFilterTriggersProps,
