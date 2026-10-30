@@ -8,8 +8,27 @@ name: iximei-crm-cd-fc
 #
 # 迁移不在本流水线里跑：函数实例不持有 DDL 权限，多实例并发迁移还会互相踩。
 # 顺序始终是「先迁移成功 → 再发代码」。
+#
+# 不等 yishan-fullstack-ci：那条 CI 的 paths 不覆盖 apps/iximei-crm/**，改了
+# crm 代码它根本不会跑，等也等不到。质量兜底靠 crm 自己的 vitest（85 个用例）
+# 和部署后的 smoke 检查，而不是把 crm 塞进 demo 的 CI 触发路径里。
 
 on:
+  # 用 push 而不是 workflow_dispatch 作为主入口：workflow_dispatch 只在该文件
+  # 位于**默认分支**时才出现在 Actions 页面。crm 是独立产品线，不该为了能点按钮
+  # 就把 crm 的业务代码合进 yishan 的 main —— 那条 main 一 push 就会触发
+  # yishan-api-cd-ubuntu（paths 含 packages/core/**），把演示环境 zerocmf 一起
+  # 重启并跑迁移。push 事件没有这个限制，dev 上改 crm 就能发 crm。
+  push:
+    branches:
+      - dev
+    paths:
+      - "apps/iximei-crm/**"
+      - "packages/core/**"
+      - "pnpm-lock.yaml"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/iximei-crm-cd-fc.yml"
   workflow_dispatch:
     inputs:
       ref:
@@ -54,6 +73,31 @@ jobs:
           : "${FUNCTION_VSWITCH_ID:?Missing FUNCTION_VSWITCH_ID}"
           : "${FUNCTION_SECURITY_GROUP:?Missing FUNCTION_SECURITY_GROUP}"
           : "${ALIBABA_CLOUD_OIDC_PROVIDER_ARN:?Missing ALIBABA_CLOUD_OIDC_PROVIDER_ARN}"
+
+      # 必须在 checkout / 打包 / 推送函数之前拦住：function.yaml 会把
+      # environmentVariables 全量写进函数配置，缺哪一项就会被写成空字符串，
+      # 直接覆盖线上正在用的值 —— crm.iximei.cn 会连不上库、起不来实例。
+      # 宁可这一步红，也不要"部署成功但站点挂掉"。
+      - name: Validate runtime credentials
+        env:
+          DATABASE_HOST: ${{ secrets.IXIMEI_CRM_DATABASE_HOST }}
+          DATABASE_USER: ${{ secrets.IXIMEI_CRM_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.IXIMEI_CRM_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.IXIMEI_CRM_DATABASE_NAME }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          LEGACY_AUTHCODE: ${{ secrets.LEGACY_AUTHCODE }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in DATABASE_HOST DATABASE_USER DATABASE_PASSWORD DATABASE_NAME REDIS_PASSWORD LEGACY_AUTHCODE; do
+            if [ -z "${!name:-}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::IXIMEI_CRM 环境缺少必需凭据：${missing[*]}"
+            echo "补齐后才发版。这一步故意在部署前失败，避免空值覆盖线上函数配置。"
+            exit 1
+          fi
+          echo "凭据齐全，继续。"
 
       - uses: actions/checkout@v4
         with:
@@ -152,6 +196,9 @@ jobs:
         working-directory: apps/iximei-crm/api
         env:
           LOG_LEVEL: info
+          # 函数在 FC 网关后面，真实客户端 IP 由网关写进 X-Forwarded-For。
+          # 不配这个，req.ip 拿到的全是网关地址，审计日志和按 IP 限流都会失真。
+          TRUST_PROXY_IPS: ${{ vars.TRUST_PROXY_IPS }}
           DATABASE_USER: ${{ secrets.IXIMEI_CRM_DATABASE_USER }}
           DATABASE_PASSWORD: ${{ secrets.IXIMEI_CRM_DATABASE_PASSWORD }}
           DATABASE_NAME: ${{ secrets.IXIMEI_CRM_DATABASE_NAME }}
