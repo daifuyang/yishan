@@ -340,6 +340,21 @@ describe.skipIf(process.env.YISHAN_DEMO_MYSQL_TEST !== '1')('compiled Demo produ
         if (!schema) throw new Error(`Missing ${name} schema`)
         if (runtimeBaseline.components?.schemas) runtimeBaseline.components.schemas[name] = schema
       }
+      // 历史密码兼容：sys_user 多了 password_format / password_change_recommended，
+      // 登录与资料契约随之透出。这里从当前 schema 取属性而不是手抄 description，
+      // 避免文案微调后出现无意义的测试失败；同时断言字段必须存在，防止静默丢失。
+      for (const name of ['sysUser', 'loginData', 'currentUser']) {
+        const expected = runtimeBaseline.components?.schemas?.[name]
+        if (!expected?.properties) throw new Error(`Missing ${name} baseline schema`)
+        const recommended = current.components?.schemas?.[name]?.properties?.passwordChangeRecommended
+        if (!recommended) throw new Error(`${name} lost passwordChangeRecommended`)
+        expected.properties.passwordChangeRecommended = recommended
+      }
+      const loginFormat = current.components?.schemas?.loginData?.properties?.passwordFormat
+      if (!loginFormat) throw new Error('loginData lost passwordFormat')
+      const loginDataBaseline = runtimeBaseline.components?.schemas?.loginData
+      if (!loginDataBaseline?.properties) throw new Error('Missing loginData baseline schema')
+      loginDataBaseline.properties.passwordFormat = loginFormat
       expect(current.components?.schemas).toEqual(runtimeBaseline.components?.schemas)
       expect(current.paths['/api/v1/auth/login'].post.security).toEqual([])
       expect(current.paths['/api/health'].get.security).toEqual([])
