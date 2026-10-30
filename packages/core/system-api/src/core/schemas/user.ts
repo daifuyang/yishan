@@ -54,6 +54,13 @@ const SysUserSchema = Type.Object(
     updatedAt: Type.String({ format: "date-time", description: "更新时间" }),
     deptIds: Type.Optional(Type.Array(Type.Number(), { description: "部门ID列表" })),
     roleIds: Type.Optional(Type.Array(Type.Number(), { description: "角色ID列表" })),
+    /**
+     * 改密推荐位。true = 该账号的密码仍是老系统格式（或由管理员重置后待确认），
+     * 前端应展示"建议立即修改密码"提示。用户主动改密成功后由后端清 0。
+     */
+    passwordChangeRecommended: Type.Optional(
+      Type.Boolean({ description: "是否建议该用户修改密码" })
+    ),
   },
   { $id: "sysUser" }
 );

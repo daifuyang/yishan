@@ -201,7 +201,9 @@ export const sysUser = mysqlTable(
   id: int('id').primaryKey().autoincrement().notNull(),
   username: varchar('username', { length: 50 }),
   email: varchar('email', { length: 100 }),
-  phone: varchar('phone', { length: 20 }).notNull(),
+  // 可空：老 iximei 库存在无手机号的账号，且 sys_user_phone_key 是唯一索引
+  // （MySQL 唯一索引允许多个 NULL）。见 drizzle/0001_legacy_password.sql。
+  phone: varchar('phone', { length: 20 }),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   realName: varchar('real_name', { length: 50 }),
   nickname: varchar('nickname', { length: 50 }),
@@ -218,6 +220,20 @@ export const sysUser = mysqlTable(
   updatedAt: datetime('updated_at', { mode: 'date' }).notNull().default(sql`CURRENT_TIMESTAMP(0)`),
   deletedAt: datetime('deleted_at', { mode: 'date' }),
   version: int('version').notNull().default(1),
+  /**
+   * passwordHash 使用的算法格式。
+   *   0 = 老 iximei（ThinkCMF 5.x）`###` + md5(md5(authcode + 明文))
+   *   1 = scrypt v1（`$scrypt$v=1$...`）
+   * 默认 1；只有从老库导入的行才会被显式回填 0，登录成功后自动升回 1。
+   */
+  passwordFormat: tinyint('password_format').notNull().default(1),
+  /**
+   * 与算法格式**解耦**的改密推荐位。
+   *   1 = 登录响应里提示前端展示"建议修改密码"banner
+   * 登录把 legacy hash 升级为 scrypt 时不清此位，只有用户真正走完
+   * changePassword 才清 0。
+   */
+  passwordChangeRecommended: tinyint('password_change_recommended').notNull().default(0),
   },
   (t) => ({
     sysUserUsernameKey: uniqueIndex('sys_user_username_key').on(t.username),

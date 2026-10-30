@@ -8,6 +8,13 @@
       "when": 1792560973443,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1793336900079,
+      "tag": "0001_legacy_password",
+      "breakpoints": true
     }
   ]
 }

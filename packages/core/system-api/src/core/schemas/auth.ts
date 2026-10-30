@@ -47,6 +47,24 @@ const LoginDataSchema = Type.Object(
     ),
     refreshTokenExpiresAt: Type.Optional(
       Type.Number({ description: "刷新令牌过期时间戳（秒）" })
+    ),
+    /**
+     * 登录成功时该账号密码凭证的算法格式。始终为 1（scrypt v1）：
+     * 历史格式账号在登录成功的同一次请求里就已被升级。
+     * 保留该字段是为了让前端不必猜。
+     */
+    passwordFormat: Type.Optional(
+      Type.Number({ description: "密码哈希格式（1 = scrypt v1）" })
+    ),
+    /**
+     * 是否建议用户改密。为 true 时前端应展示"建议立即修改密码"提示，
+     * 并引导到改密入口。用户主动改密成功后由后端清零。
+     *
+     * 与 passwordFormat 解耦：历史账号登录后哈希已升级，但此位仍为 true，
+     * 因为"算法换了"不等于"用户换过密码"。
+     */
+    passwordChangeRecommended: Type.Optional(
+      Type.Boolean({ description: "是否建议该用户修改密码（前端据此展示提示）" })
     )
   },
   { $id: "loginData" }
@@ -99,6 +117,15 @@ const CurrentUserSchema = Type.Object(
     accessPath: Type.Optional(Type.Array(Type.String(), { description: "已授权菜单路径列表" })),
     /** 已绑定角色编码列表（如 super_admin / admin）。前端用于硬编码 dev-only 菜单的可见性判断。 */
     roleCodes: Type.Optional(Type.Array(Type.String(), { description: "已绑定角色编码列表（如 super_admin）" })),
+    /**
+     * 改密推荐位。true = 该账号密码仍来自老系统或由管理员重置后待确认，
+     * 前端应在刷新页面（走本接口）后同样展示"建议立即修改密码"提示，
+     * 否则只有登录那一次能看到提示，用户刷新就丢了。
+     * 与登录响应里的同名字段语义一致。
+     */
+    passwordChangeRecommended: Type.Optional(
+      Type.Boolean({ description: "是否建议该用户修改密码" })
+    ),
   },
   { $id: "currentUser" }
 );

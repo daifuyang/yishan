@@ -7,6 +7,7 @@ import { UserErrorCode } from "@yishan/core-api/business-codes/user";
 import { BusinessError } from "@yishan/core-api/errors";
 import { CACHE_CONFIG } from "../../config/index.js";
 import { comparePassword, hashPassword } from "../../utils/password.js";
+import { PASSWORD_FORMAT_LEGACY, verifyLegacyPassword } from "../../utils/legacy-password.js";
 import { PermissionService } from "./permission.service.js";
 import { validateUserCreation, resolveCreatableDeptScope, type UserCreationSubject } from "./user-creation-policy.js";
 import { mergeDraftFields, type DraftSubmission, type UserCreationParticipant } from "./user-creation.js";
@@ -359,12 +360,17 @@ export class UserService {
     newPassword: string,
     fastify?: FastifyInstance,
   ): Promise<void> {
-    const passwordHash = await UserRepository.findPasswordHashById(userId);
-    if (!passwordHash) {
+    const credential = await UserRepository.findPasswordCredentialById(userId);
+    if (!credential) {
       throw new BusinessError(UserErrorCode.USER_NOT_FOUND, "用户不存在");
     }
 
-    const ok = await comparePassword(oldPassword, passwordHash);
+    // 旧密码校验同样按 password_format 分流。正常情况下历史账号在登录成功的
+    // 那一刻就已升级为 scrypt，但"管理员重置过密码"或"绕过登录的服务端调用"
+    // 都可能让这里拿到 format=0，不做分流就会给出误导性的"旧密码错误"。
+    const ok = credential.passwordFormat === PASSWORD_FORMAT_LEGACY
+      ? verifyLegacyPassword(oldPassword, credential.passwordHash).valid
+      : await comparePassword(oldPassword, credential.passwordHash);
     if (!ok) {
       throw new BusinessError(UserErrorCode.PASSWORD_ERROR, "旧密码错误");
     }
@@ -375,6 +381,7 @@ export class UserService {
 
     const newPasswordHash = await hashPassword(newPassword);
 
+    // 落库时一并置 format=1、清 password_change_recommended（在 repository 的事务内完成）。
     await UserRepository.changePasswordInTransaction(userId, newPasswordHash);
 
     await this.clearUserDetailCache(userId, fastify);

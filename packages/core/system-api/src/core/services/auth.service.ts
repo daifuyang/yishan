@@ -12,6 +12,7 @@ import { UserErrorCode } from "@yishan/core-api/business-codes/user";
 import { ValidationErrorCode } from "@yishan/core-api/business-codes/validation";
 import { BusinessError } from "@yishan/core-api/errors";
 import { hashPassword, verifyPassword } from "../../utils/password.js";
+import { PASSWORD_FORMAT_LEGACY, PASSWORD_FORMAT_SCRYPT_V1, verifyLegacyPassword } from "../../utils/legacy-password.js";
 import { JWT_CONFIG } from "../../config/index.js";
 import { dateUtils } from "../../utils/date.js";
 import { LoginLogService } from "./login-log.service.js";
@@ -59,13 +60,49 @@ export class AuthService {
         throw new BusinessError(AuthErrorCode.ACCOUNT_LOCKED, "账号已被锁定");
       }
 
-      const passwordVerification = await verifyPassword(password, user.passwordHash);
-      if (!passwordVerification.valid) {
-        throw new BusinessError(AuthErrorCode.LOGIN_FAILED, "用户名或密码错误");
-      }
+      // 按 password_format 分流校验：
+      //   0 (LEGACY) → utils/legacy-password.ts（ThinkCMF 5.x 的 cmf_password）
+      //   1 (SCRYPT) → utils/password.ts（scrypt v1；旧 hex `salt.hash` 会触发 needsRehash）
+      //
+      // ⚠ 不要把历史格式分支塞进 verifyPassword：changePassword 也复用它，
+      //   那样"老算法可校验"就成了全局隐式弱认证，而不是仅限历史账号。
+      const isLegacyFormat = user.passwordFormat === PASSWORD_FORMAT_LEGACY;
+      let needsRehash = false;
 
-      if (passwordVerification.needsRehash) {
-        await UserRepository.upgradePasswordHash(user.id, user.passwordHash, await hashPassword(password));
+      if (isLegacyFormat) {
+        const legacy = verifyLegacyPassword(password, user.passwordHash);
+        if (!legacy.valid) {
+          if (legacy.reason === 'authcode_missing') {
+            fastify.log.error(
+              { userId: user.id },
+              '账号密码仍是历史格式，但 LEGACY_AUTHCODE 未配置，无法校验；请补齐该环境变量',
+            );
+            throw new BusinessError(AuthErrorCode.LOGIN_FAILED, '该账号密码为历史格式，服务端尚未配置迁移参数，请联系管理员');
+          }
+          throw new BusinessError(AuthErrorCode.LOGIN_FAILED, '用户名或密码错误');
+        }
+
+        // 登录成功即升级到 scrypt：老 hash 的安全性上限就是 authcode 的保密性，
+        // 一旦 authcode 泄露即可批量还原明文，所以能换就换。
+        // 升级失败（并发改密抢了先）不影响本次登录，下一回再试。
+        const upgraded = await UserRepository.upgradeLegacyPasswordHash(
+          user.id,
+          user.passwordHash,
+          await hashPassword(password),
+        );
+        if (!upgraded) {
+          fastify.log.warn({ userId: user.id }, '历史密码升级未生效（并发改密或格式已变更），本次登录继续');
+        }
+        // 注意：不清 password_change_recommended —— 换了算法不等于用户换过密码。
+      } else {
+        const verification = await verifyPassword(password, user.passwordHash);
+        if (!verification.valid) {
+          throw new BusinessError(AuthErrorCode.LOGIN_FAILED, '用户名或密码错误');
+        }
+        needsRehash = verification.needsRehash;
+        if (needsRehash) {
+          await UserRepository.upgradePasswordHash(user.id, user.passwordHash, await hashPassword(password));
+        }
       }
 
       const accessTokenExpiresIn = rememberMe
@@ -124,7 +161,11 @@ export class AuthService {
         expiresIn: accessTokenExpiresIn,
         refreshTokenExpiresIn: refreshTokenExpiresIn,
         expiresAt,
-        refreshTokenExpiresAt
+        refreshTokenExpiresAt,
+        // 走到这里，无论刚才是不是历史格式，库里都已经是 scrypt v1 了。
+        passwordFormat: PASSWORD_FORMAT_SCRYPT_V1,
+        // 与格式解耦：历史账号首次登录后仍为 true，直到用户真正改密才清零。
+        passwordChangeRecommended: user.passwordChangeRecommended === 1,
       };
     } catch (error) {
       const message = error instanceof BusinessError ? error.message : "登录失败";
@@ -266,7 +307,9 @@ export class AuthService {
         expiresIn: accessTokenExpiresIn,
         refreshTokenExpiresIn: refreshTokenExpiresIn,
         expiresAt,
-        refreshTokenExpiresAt
+        refreshTokenExpiresAt,
+        passwordFormat: PASSWORD_FORMAT_SCRYPT_V1,
+        passwordChangeRecommended: user.passwordChangeRecommended === 1,
       };
 
     } catch (error) {

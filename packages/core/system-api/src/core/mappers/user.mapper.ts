@@ -35,6 +35,7 @@ export class UserMapper {
       updatedAt: dateUtils.formatISO(user.updatedAt)!,
       deptIds: undefined,
       roleIds: undefined,
+      passwordChangeRecommended: (user.passwordChangeRecommended ?? 0) === 1,
     };
   }
 
@@ -63,6 +64,7 @@ export class UserMapper {
       updatedAt: dateUtils.formatISO(user.updatedAt)!,
       deptIds: user.deptIds,
       roleIds: user.roleIds,
+      passwordChangeRecommended: (user.passwordChangeRecommended ?? 0) === 1,
     };
   }
 }

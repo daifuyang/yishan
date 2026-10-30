@@ -111,6 +111,10 @@
     "./utils/password": {
       "types": "./dist/utils/password.d.ts",
       "default": "./dist/utils/password.js"
+    },
+    "./utils/legacy-password": {
+      "types": "./dist/utils/legacy-password.d.ts",
+      "default": "./dist/utils/legacy-password.js"
     }
   }
 }

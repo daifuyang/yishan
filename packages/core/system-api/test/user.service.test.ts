@@ -318,7 +318,10 @@ describe('UserService business rules and side effects', () => {
 
   it('changes a password only when the old password matches, then revokes tokens through the transactional repository method', async () => {
     const oldHash = await hashPassword('OldPassword1');
-    vi.spyOn(UserRepository, 'findPasswordHashById').mockResolvedValue(oldHash);
+    vi.spyOn(UserRepository, 'findPasswordCredentialById').mockResolvedValue({
+      passwordHash: oldHash,
+      passwordFormat: 1,
+    });
     const change = vi.spyOn(UserRepository, 'changePasswordInTransaction').mockResolvedValue();
 
     await UserService.changePassword(2, 'OldPassword1', 'NewPassword1');
@@ -330,7 +333,7 @@ describe('UserService business rules and side effects', () => {
   });
 
   it('reports a missing user while changing a password', async () => {
-    vi.spyOn(UserRepository, 'findPasswordHashById').mockResolvedValue(null);
+    vi.spyOn(UserRepository, 'findPasswordCredentialById').mockResolvedValue(null);
 
     await expect(UserService.changePassword(404, 'OldPassword1', 'NewPassword1')).rejects.toMatchObject({
       code: UserErrorCode.USER_NOT_FOUND,

@@ -3,6 +3,7 @@ import { drizzleDb, type AppQueryDb, type AppTx } from "@/db";
 import { sysUser, sysUserDept, sysUserRole } from "@/db/schema";
 import { currentDataScope, resolveDataScope, scopedQueryCondition } from "@/core/auth/data-scope";
 import { dateUtils } from "../../utils/date.js";
+import { PASSWORD_FORMAT_LEGACY, PASSWORD_FORMAT_SCRYPT_V1 } from "../../utils/legacy-password.js";
 import { UserTokenRepository } from "./user-token.repository.js";
 import { clampOffset } from "./_pagination.js";
 
@@ -45,6 +46,10 @@ export interface LoginAuthInfo {
   email: string | null;
   realName: string | null;
   passwordHash: string;
+  /** 0 = 历史格式（ThinkCMF），1 = scrypt v1。决定登录时走哪套校验。 */
+  passwordFormat: number;
+  /** 1 = 登录后应提示前端展示"建议修改密码"。与 passwordFormat 解耦。 */
+  passwordChangeRecommended: number;
   status: number;
   deletedAt: Date | null;
   loginCount: number;
@@ -283,6 +288,8 @@ export class UserRepository {
         email: sysUser.email,
         realName: sysUser.realName,
         passwordHash: sysUser.passwordHash,
+        passwordFormat: sysUser.passwordFormat,
+        passwordChangeRecommended: sysUser.passwordChangeRecommended,
         status: sysUser.status,
         deletedAt: sysUser.deletedAt,
         loginCount: sysUser.loginCount,
@@ -520,16 +527,45 @@ export class UserRepository {
   // --------------------------------------------------------------------------
 
   /**
-   * 读取用户的 passwordHash（仅供 Service 层做旧密码校验使用）。
+   * 读取用户的密码凭证（仅供 Service 层做旧密码校验使用）。
    * 未命中或用户已软删返回 `null`；Service 拿到 null 后应抛 "用户不存在"。
+   *
+   * 返回 `passwordFormat` 是必需的：改密时校验旧密码同样要按格式分流，
+   * 否则一个还没登录过（因而尚未升级）的历史账号会改不了密码。
    */
-  static async findPasswordHashById(userId: number, db: AppQueryDb = drizzleDb): Promise<string | null> {
+  static async findPasswordCredentialById(
+    userId: number,
+    db: AppQueryDb = drizzleDb,
+  ): Promise<{ passwordHash: string; passwordFormat: number } | null> {
     const [row] = await db
-      .select({ passwordHash: sysUser.passwordHash })
+      .select({ passwordHash: sysUser.passwordHash, passwordFormat: sysUser.passwordFormat })
       .from(sysUser)
       .where(and(eq(sysUser.id, userId), isNull(sysUser.deletedAt)))
       .limit(1);
-    return row?.passwordHash ?? null;
+    return row ?? null;
+  }
+
+  /**
+   * Replace a legacy password hash after a successful login. The previous hash
+   * remains part of the predicate so a concurrent password reset cannot be
+   * overwritten by a delayed login upgrade.
+   *
+   * 与 `upgradePasswordHash` 的区别：这条路径同时把 `password_format` 从 0 抬到 1，
+   * 因此断言条件里带上 `passwordFormat = 0` —— 同一账号并发登录时只有一次升级生效。
+   * 注意**不清** `password_change_recommended`：hash 换了算法不等于用户换过密码，
+   * 提示要继续留着，直到他真正走完 changePassword。
+   */
+  static async upgradeLegacyPasswordHash(userId: number, previousHash: string, passwordHash: string): Promise<boolean> {
+    const [result] = await drizzleDb
+      .update(sysUser)
+      .set({ passwordHash, passwordFormat: PASSWORD_FORMAT_SCRYPT_V1, updaterId: userId, updatedAt: dateUtils.now() })
+      .where(and(
+        eq(sysUser.id, userId),
+        eq(sysUser.passwordHash, previousHash),
+        eq(sysUser.passwordFormat, PASSWORD_FORMAT_LEGACY),
+        isNull(sysUser.deletedAt),
+      ));
+    return result.affectedRows === 1;
   }
 
   /**
@@ -587,14 +623,23 @@ export class UserRepository {
    * 修改密码：在事务里更新 `passwordHash`，同时撤销该用户所有未撤销的 token
    * （强制重新登录）。两个步骤必须在同一事务内，否则可能出现 "密码已更新
    * 但旧 token 仍有效" 的窗口期。
+   *
+   * 落库时一并把 `password_format` 抬到 scrypt v1、`password_change_recommended`
+   * 清 0 —— 用户亲手换了密码，"建议改密"的提示就没有存在理由了。这三件事必须
+   * 同一个 UPDATE，否则中途失败会留下"已是新算法但仍提示改密"或反之的脏状态。
    */
   static async changePasswordInTransaction(userId: number, passwordHash: string): Promise<void> {
     await drizzleDb.transaction(async (tx) => {
-      await UserRepository.update(
-        userId,
-        { passwordHash, updaterId: userId } as UpdateUserInput,
-        tx,
-      );
+      await tx
+        .update(sysUser)
+        .set({
+          passwordHash,
+          passwordFormat: PASSWORD_FORMAT_SCRYPT_V1,
+          passwordChangeRecommended: 0,
+          updaterId: userId,
+          updatedAt: dateUtils.now(),
+        })
+        .where(and(eq(sysUser.id, userId), isNull(sysUser.deletedAt)));
       await UserTokenRepository.revokeAllByUserId(userId, tx);
     });
   }
