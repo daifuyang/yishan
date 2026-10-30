@@ -104,15 +104,18 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .tool-versions
-          cache: pnpm
-
+      # 必须先启用 pnpm 再 setup-node：setup-node 的 cache: pnpm 会在配置阶段
+      # 直接调用 pnpm 去算 store 路径，此时 pnpm 还不存在就会整步失败
+      # （Unable to locate executable file: pnpm）。
       - name: Enable pnpm
         run: |
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
 
       - name: Install
         run: pnpm install --frozen-lockfile --prod=false
