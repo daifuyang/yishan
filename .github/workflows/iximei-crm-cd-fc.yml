@@ -145,9 +145,12 @@ jobs:
           pnpm install --frozen-lockfile
           # Umi 的 max setup 必须先跑，否则 build 缺临时文件。
           pnpm --filter "${ADMIN_PKG}" exec max setup
+          # 用递归过滤器（pkg...）把 admin 的 workspace 依赖一起按拓扑序构建。
+          # 少了这一步，admin 里 `import ... from 'yishan-tiptap'` 找不到 dist，
+          # mako 直接 fatal - Build with mako failed。
           # PUBLIC_PATH 必须与线上 ADMIN_BASE_PATH 一致（末尾带斜杠），
           # 否则产物的资源引用指向站点根，挂在 /admin/ 下会整页 404。
-          PUBLIC_PATH="${ADMIN_BASE_PATH%/}/" pnpm --filter "${ADMIN_PKG}" build
+          PUBLIC_PATH="${ADMIN_BASE_PATH%/}/" pnpm -r --filter "${ADMIN_PKG}..." build
           # dist 在**包目录**下，不是 workspace 根目录。
           PKG_DIR="$(pnpm --filter "${ADMIN_PKG}" exec pwd)"
           dist="$PKG_DIR/dist"
