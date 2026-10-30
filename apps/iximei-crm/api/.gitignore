@@ -1,0 +1,29 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Dependency directories
+node_modules
+
+# 本地环境变量（.env.example 才是提交的模板）
+.env
+
+# mac / editor
+.DS_Store
+.idea
+.vscode
+*.swp
+
+# 编译产物
+dist
+/public/admin
+/public/uploads
+
+deploy/fc3/certs
+deploy/fc3/.build

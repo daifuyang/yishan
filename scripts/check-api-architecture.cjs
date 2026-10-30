@@ -91,6 +91,22 @@ function collectArchitectureErrors(repositoryRoot) {
     database: new Set(['@yishan/core-contracts']),
     'system-api': new Set(['@yishan/core-contracts', '@yishan/core-api', '@yishan/core-database']),
   }
+  /**
+   * 允许业务模块读 system 表的产品白名单。
+   *
+   * 「业务模块不碰 sys_*」的前提是业务与用户体系能靠 `userDirectory` /
+   * `PermissionService` 解耦。iximei-crm 不满足这个前提：客户 / 派单 / 会员的
+   * 每个列表都要按「归属人 / 创建人」过滤并回显姓名，医院账号的可见范围还要按
+   * `sys_role.data_scope` 判定。改走接口层会把一条 SQL 拆成 N+1 次调用，并且仍然
+   * 需要读 `sys_role` 才能算范围 —— 拆分只增加成本，不增加隔离。
+   *
+   * 这是记了账的例外，不是漏网：
+   *   - 只允许 `src/modules/**` 读 `sys_user` / `sys_role` / `sys_role_permission` / `sys_user_token`
+   *   - 只读。写 sys_* 的唯一合法位置是模块自己的 seed（初始配置）
+   *   - 新增读取点必须落在 repositories/，不得出现在 routes/ 或 services/
+   * 还债时需要先做数据搬迁，再逐条替换成 userDirectory，不要顺手改。
+   */
+  const systemSchemaExemptProducts = new Set(['iximei-crm'])
   for (const owner of packages) {
     // Frontend runtime, build plugins and product Admin source have their own checker.
     // Keep them in byName so backend reverse dependencies remain visible.
@@ -120,7 +136,7 @@ function collectArchitectureErrors(repositoryRoot) {
             const targets = exportedTargets(target.manifest, subpath)
             if (targets.some(value => /\/(?:repositories|auth)\//.test(value))) report('system private implementation cannot be exposed through aliases')
             // Integration fixtures may prepare public system schema; business implementation cannot query it.
-            if (/^src\/modules\//.test(relative) && !/\/tests\/[^/]+\.integration\.test\.ts$/.test(relative) && (subpath === './schema' || targets.some(value => /\/db\/schema\//.test(value)))) report('business modules cannot import system tables')
+            if (/^src\/modules\//.test(relative) && !/\/tests\/[^/]+\.integration\.test\.ts$/.test(relative) && !systemSchemaExemptProducts.has(owner.product) && (subpath === './schema' || targets.some(value => /\/db\/schema\//.test(value)))) report('business modules cannot import system tables')
           }
         } else if (owner.core && /(?:demo|products?)[/-]api/.test(packageName)) {
           report('Core cannot import a product application')

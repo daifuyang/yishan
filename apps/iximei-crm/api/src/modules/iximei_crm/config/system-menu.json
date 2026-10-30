@@ -1,0 +1,97 @@
+[
+  {
+    "type": 1,
+    "name": "医院看板",
+    "path": "/crm/hospital-dashboard",
+    "sortOrder": -2,
+    "icon": "bar-chart",
+    "component": "./modules/crm/hospital-dashboard",
+    "children": [
+      { "type": 2, "name": "查看", "permissionCodes": ["crm:hospital-dashboard:view"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 }
+    ]
+  },
+  {
+    "type": 1,
+    "name": "数据看板",
+    "path": "/crm/dashboard",
+    "sortOrder": -1,
+    "icon": "appstore",
+    "component": "./modules/crm/dashboard",
+    "children": [
+      { "type": 2, "name": "查看", "permissionCodes": ["crm:dashboard:view"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 }
+    ]
+  },
+  {
+    "type": 1,
+    "name": "医院管理",
+    "path": "/crm/hospitals",
+    "sortOrder": 30,
+    "icon": "hospital",
+    "component": "./modules/crm/hospitals",
+    "children": [
+      { "type": 2, "name": "查看", "permissionCodes": ["crm:hospitals:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+      { "type": 2, "name": "新建", "permissionCodes": ["crm:hospitals:create"], "sortOrder": 2, "hideInMenu": 1 },
+      { "type": 2, "name": "编辑", "permissionCodes": ["crm:hospitals:update"], "sortOrder": 3, "hideInMenu": 1 },
+      { "type": 2, "name": "删除", "permissionCodes": ["crm:hospitals:delete"], "sortOrder": 4, "hideInMenu": 1 }
+    ]
+  },
+  {
+    "type": 1,
+    "name": "客户管理",
+    "path": "/crm/customers",
+    "sortOrder": 31,
+    "icon": "users-round",
+    "component": "./modules/crm/customers",
+    "children": [
+      { "type": 2, "name": "查看", "permissionCodes": ["crm:customers:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+      { "type": 2, "name": "新建", "permissionCodes": ["crm:customers:create"], "sortOrder": 2, "hideInMenu": 1 },
+      { "type": 2, "name": "编辑", "permissionCodes": ["crm:customers:update"], "sortOrder": 3, "hideInMenu": 1 },
+      { "type": 2, "name": "派单", "permissionCodes": ["crm:customers:dispatch"], "sortOrder": 4, "hideInMenu": 1 }
+    ]
+  },
+  {
+    "type": 1,
+    "name": "派单管理",
+    "path": "/crm/dispatches",
+    "sortOrder": 32,
+    "icon": "clipboard-list",
+    "component": "./modules/crm/dispatches",
+    "children": [
+      { "type": 2, "name": "查看", "permissionCodes": ["crm:dispatches:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+      { "type": 2, "name": "编辑", "permissionCodes": ["crm:dispatches:update"], "sortOrder": 2, "hideInMenu": 1 },
+      { "type": 2, "name": "回复", "permissionCodes": ["crm:dispatches:reply"], "sortOrder": 3, "hideInMenu": 1 },
+      { "type": 2, "name": "跟进", "permissionCodes": ["crm:dispatches:log"], "sortOrder": 4, "hideInMenu": 1 }
+    ]
+  },
+  {
+    "type": 1,
+    "name": "派单查看日志",
+    "path": "/crm/admin/dispatch-view-logs",
+    "sortOrder": 321,
+    "icon": "eye",
+    "component": "./modules/crm/admin-dispatch-view-logs",
+    "children": [
+      { "type": 2, "name": "查看", "permissionCodes": ["crm:dispatches:view-hospital-log"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 }
+    ]
+  },
+  {
+    "type": 1,
+    "name": "会员管理",
+    "path": "/crm/members",
+    "sortOrder": 33,
+    "icon": "contact-round",
+    "component": "./modules/crm/members",
+    "children": [
+      { "type": 2, "name": "查看", "permissionCodes": ["crm:members:list"], "sortOrder": 1, "hideInMenu": 1, "isDefaultAction": 1 },
+      { "type": 2, "name": "新建", "permissionCodes": ["crm:members:create"], "sortOrder": 2, "hideInMenu": 1 },
+      { "type": 2, "name": "编辑", "permissionCodes": ["crm:members:update"], "sortOrder": 3, "hideInMenu": 1 },
+      { "type": 2, "name": "备注", "permissionCodes": ["crm:members:remark"], "sortOrder": 4, "hideInMenu": 1 },
+      { "type": 2, "name": "跟进", "permissionCodes": ["crm:members:follow_up"], "sortOrder": 5, "hideInMenu": 1 },
+      { "type": 2, "name": "分配", "permissionCodes": ["crm:members:assign"], "sortOrder": 6, "hideInMenu": 1 },
+      { "type": 2, "name": "标签", "permissionCodes": ["crm:members:tag"], "sortOrder": 7, "hideInMenu": 1 },
+      { "type": 2, "name": "作废", "permissionCodes": ["crm:members:invalidate"], "sortOrder": 8, "hideInMenu": 1 },
+      { "type": 2, "name": "恢复", "permissionCodes": ["crm:members:restore"], "sortOrder": 9, "hideInMenu": 1 },
+      { "type": 2, "name": "导出", "permissionCodes": ["crm:members:export"], "sortOrder": 10, "hideInMenu": 1 }
+    ]
+  }
+]
