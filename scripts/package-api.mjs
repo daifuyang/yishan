@@ -125,7 +125,16 @@ export function smokeApiArtifact(directory) {
         links.push({ source, destination, target: join(temporary, relative(resolve(directory), sourceTarget)) })
         return false
       } })
-      for (const link of links) symlinkSync(link.target, link.destination, statSync(link.source).isDirectory() ? (process.platform === 'win32' ? 'junction' : 'dir') : 'file')
+      for (const link of links) {
+        const isDirectory = statSync(link.source).isDirectory()
+        const type = process.platform === 'win32' && isDirectory ? 'junction' : (isDirectory ? 'dir' : 'file')
+        // 重建链接必须用**相对**目标。link.target 指向临时目录里的绝对路径，
+        // 直接拿来建链接会让紧随其后的 verifyApiArtifact 立刻判定"不可移植"
+        // 并失败 —— 那是自己刚建的链接。Windows 的 junction 不支持相对目标，
+        // 保持原样（这类产物本来就不能跨机器部署）。
+        const target = type === 'junction' ? link.target : relative(dirname(link.destination), link.target)
+        symlinkSync(target, link.destination, type)
+      }
       verifyApiArtifact(temporary)
       smokeApiArtifact(temporary)
     } finally { rmSync(temporary, { recursive: true, force: true }) }
