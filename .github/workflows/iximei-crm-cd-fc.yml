@@ -1,0 +1,212 @@
+name: iximei-crm-cd-fc
+
+# 发布 iximei-crm 后端到阿里云函数计算。
+#
+# 只发 API。Admin 前端是可选的：配了 ADMIN_SOURCE_REPO 就用另一仓库存放的
+# 前端源码在本次流水线里构建，然后把 dist 交给 pre-deploy.sh 一起打进产物；
+# 没配就只有 API，`/admin/` 返回 404（宁可 404，也不要上线一个空壳白屏）。
+#
+# 迁移不在本流水线里跑：函数实例不持有 DDL 权限，多实例并发迁移还会互相踩。
+# 顺序始终是「先迁移成功 → 再发代码」。
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "要发布的 commit / 分支（默认当前分支）"
+        required: false
+        type: string
+      skip_migrations_warning:
+        description: "我确认数据库已手动迁移完成"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: iximei-crm-cd-fc
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: IXIMEI_CRM
+    permissions:
+      contents: read
+      id-token: write   # 阿里云 OIDC 换 STS
+    env:
+      FUNCTION_REGION: ${{ vars.FUNCTION_REGION }}
+      FUNCTION_NAME: ${{ vars.FUNCTION_NAME }}
+      FUNCTION_DESCRIPTION: ${{ vars.FUNCTION_DESCRIPTION }}
+      FUNCTION_VPC_ID: ${{ vars.FUNCTION_VPC_ID }}
+      FUNCTION_VSWITCH_ID: ${{ vars.FUNCTION_VSWITCH_ID }}
+      FUNCTION_SECURITY_GROUP: ${{ vars.FUNCTION_SECURITY_GROUP }}
+      ALIBABA_CLOUD_OIDC_AUDIENCE: github-actions
+      ALIBABA_CLOUD_OIDC_PROVIDER_ARN: ${{ vars.ALIBABA_CLOUD_OIDC_PROVIDER_ARN }}
+    steps:
+      - name: Validate deployment variables
+        run: |
+          set -euo pipefail
+          : "${FUNCTION_REGION:?Missing FUNCTION_REGION}"
+          : "${FUNCTION_NAME:?Missing FUNCTION_NAME}"
+          : "${FUNCTION_DESCRIPTION:?Missing FUNCTION_DESCRIPTION}"
+          : "${FUNCTION_VPC_ID:?Missing FUNCTION_VPC_ID}"
+          : "${FUNCTION_VSWITCH_ID:?Missing FUNCTION_VSWITCH_ID}"
+          : "${FUNCTION_SECURITY_GROUP:?Missing FUNCTION_SECURITY_GROUP}"
+          : "${ALIBABA_CLOUD_OIDC_PROVIDER_ARN:?Missing ALIBABA_CLOUD_OIDC_PROVIDER_ARN}"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --prod=false
+
+      # 可选：从另一个仓库取 Admin 源码并构建。
+      # 产物必须带 index.html，否则 pre-deploy.sh 会拒绝打包。
+      - name: Build Admin (optional)
+        id: admin
+        if: vars.ADMIN_SOURCE_REPO != ''
+        env:
+          ADMIN_REPO: ${{ vars.ADMIN_SOURCE_REPO }}
+          ADMIN_SUBDIR: ${{ vars.ADMIN_SOURCE_SUBDIR }}
+          ADMIN_PKG: ${{ vars.ADMIN_PACKAGE_NAME }}
+          ADMIN_PAT: ${{ secrets.ADMIN_SOURCE_PAT }}
+        run: |
+          set -euo pipefail
+          : "${ADMIN_PAT:?配置了 ADMIN_SOURCE_REPO 就必须提供 ADMIN_SOURCE_PAT}"
+          git clone --depth 1 "https://x-access-token:${ADMIN_PAT}@github.com/${ADMIN_REPO}.git" /tmp/admin-src
+          cd "/tmp/admin-src/${ADMIN_SUBDIR}"
+          corepack enable
+          corepack prepare pnpm@8.15.9 --activate
+          pnpm install --frozen-lockfile
+          pnpm --filter "${ADMIN_PKG}" build
+          dist="$(pwd)/dist"
+          test -f "$dist/index.html"
+          echo "dist=$dist" >> "$GITHUB_OUTPUT"
+
+      - name: Install Serverless Devs
+        run: npm i -g @serverless-devs/s
+
+      - name: Assume FC deploy role via OIDC
+        env:
+          ROLE_ARN: ${{ secrets.FC_DEPLOY_ROLE_ARN }}
+          ACCOUNT_ID: ${{ vars.ALIBABA_CLOUD_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          : "${ROLE_ARN:?Missing FC_DEPLOY_ROLE_ARN}"
+          : "${ACCOUNT_ID:?Missing ALIBABA_CLOUD_ACCOUNT_ID}"
+          curl -fsSL "https://aliyuncli.alicdn.com/aliyun-cli-linux-3.0.182-amd64.tgz" -o /tmp/aliyun.tgz
+          tar -xzf /tmp/aliyun.tgz -C /tmp
+          if [ -f /tmp/aliyun ]; then sudo mv /tmp/aliyun /usr/local/bin/aliyun; fi
+          mkdir -p ~/.aliyun
+          cat >~/.aliyun/config.json <<'CFG'
+          {"current":"fcdeploy","profiles":[{"name":"fcdeploy","mode":"AK","access_key_id":"placeholder","access_key_secret":"placeholder","sts_token":"","ram_role_name":"","ram_role_arn":"","private_key":"","key_pairs_cmd":"","key_pairs_dir":"","language":"en","site":"","retry_timeout":0,"retry_count":0,"process_command":"","credentials_uri":"","oidc_provider_arn":"","oidc_token_file":"","external_id":"","using_oidc":false,"oidc_token_endpoint":"","ram_role_session_name":"","expiration":"","region_id":"cn-shanghai","output_format":"json","timeout":0,"insecure":false,"ssl_verify":true}],"meta_path":""}
+          CFG
+          chmod 600 ~/.aliyun/config.json
+          TOKEN=$(curl -fsS \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${ALIBABA_CLOUD_OIDC_AUDIENCE}" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin)['value'])")
+          RESP=$(aliyun sts AssumeRoleWithOIDC \
+            --region cn-hangzhou \
+            --RoleArn "$ROLE_ARN" \
+            --OIDCProviderArn "$ALIBABA_CLOUD_OIDC_PROVIDER_ARN" \
+            --OIDCToken "$TOKEN" \
+            --RoleSessionName "gha-${{ github.run_id }}" \
+            --DurationSeconds 3600)
+          AK=$(printf '%s' "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeyId'])")
+          SK=$(printf '%s' "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['AccessKeySecret'])")
+          ST=$(printf '%s' "$RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['Credentials']['SecurityToken'])")
+          mkdir -p ~/.s
+          cat >~/.s/access.yaml <<SSHA
+          default:
+            AccessKeyID: ${AK}
+            AccessKeySecret: ${SK}
+            SecurityToken: ${ST}
+            type: sts
+            AccountID: '${ACCOUNT_ID}'
+            __provider: Alibaba Cloud
+          SSHA
+          chmod 600 ~/.s/access.yaml
+          echo "STS issued OK"
+
+      - name: Build standalone API package
+        working-directory: apps/iximei-crm/api
+        env:
+          ADMIN_DIST: ${{ steps.admin.outputs.dist }}
+        run: bash ./deploy/fc3/scripts/pre-deploy.sh
+
+      - name: Deploy API function
+        working-directory: apps/iximei-crm/api
+        env:
+          LOG_LEVEL: info
+          DATABASE_USER: ${{ secrets.IXIMEI_CRM_DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ secrets.IXIMEI_CRM_DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ secrets.IXIMEI_CRM_DATABASE_NAME }}
+          DATABASE_HOST: ${{ secrets.IXIMEI_CRM_DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.IXIMEI_CRM_DATABASE_PORT }}
+          REDIS_HOST: ${{ vars.REDIS_HOST }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          REDIS_DB: ${{ vars.REDIS_DB }}
+          JWT_SECRET: ${{ secrets.IXIMEI_CRM_JWT_SECRET }}
+          # 历史账号密码兼容前缀。缺失时老格式账号一律登录失败（不会放行）。
+          LEGACY_AUTHCODE: ${{ secrets.LEGACY_AUTHCODE }}
+          CACHE_NAMESPACE: ${{ vars.CACHE_NAMESPACE || 'yishan:iximei-crm' }}
+          ADMIN_BASE_PATH: ${{ vars.ADMIN_BASE_PATH || '/admin' }}
+          ADMIN_REDIRECT_ROOT: ${{ vars.ADMIN_REDIRECT_ROOT || 'true' }}
+          YISHAN_API_VERSION: ${{ github.ref_name }}
+          GIT_COMMIT_SHA: ${{ github.sha }}
+          BUILD_TIME: ${{ github.event.repository.updated_at }}
+        run: |
+          set -euo pipefail
+          export DATABASE_PORT="${DATABASE_PORT:-3306}"
+          export REDIS_PORT="${REDIS_PORT:-6379}"
+          # REDIS_URL 显式用内网地址拼：函数在 VPC 内没有公网出口，
+          # demo 那边的教训是 URL 主机与 REDIS_HOST 不一致会导致启动超时。
+          export REDIS_URL="redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}"
+          bash ./deploy/fc3/scripts/deploy-function.sh
+
+      - name: Post-deploy smoke check
+        env:
+          SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL }}
+        run: |
+          set -euo pipefail
+          BASE="${SMOKE_BASE_URL:-}"
+          if [ -z "$BASE" ]; then
+            echo "::warning::SMOKE_BASE_URL 未配置，跳过 smoke 检查。"
+            exit 0
+          fi
+          BASE="${BASE%/}"
+          for attempt in $(seq 1 10); do
+            HEALTH="$(curl -fsS --max-time 15 "${BASE}/api/health" 2>/dev/null || true)"
+            if [ -n "$HEALTH" ]; then
+              echo "health: ${HEALTH}"
+              printf '%s' "$HEALTH" | jq -e '.success == true and .data.status == "ok"' >/dev/null \
+                || { echo "::error::/api/health 返回体不符合预期。"; exit 1; }
+              printf '%s' "$HEALTH" | jq -e '.data.db.ok == true' >/dev/null \
+                || { echo "::error::/api/health 报告数据库不可用。"; exit 1; }
+              break
+            fi
+            if [ "$attempt" = "10" ]; then
+              echo "::error::/api/health 连续 10 次不可用，部署视为失败。"; exit 1
+            fi
+            echo "等待实例就绪（第 ${attempt} 次）…"; sleep 5
+          done
+          if [ "${{ vars.ADMIN_SOURCE_REPO }}" != "" ]; then
+            CODE="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "${BASE}/admin/" || true)"
+            echo "/admin/ -> ${CODE}"
+            [ "$CODE" = "200" ] || { echo "::error::/admin/ 返回 ${CODE}，期望 200。"; exit 1; }
+          fi
+          echo "Smoke check passed."
