@@ -59,7 +59,9 @@ resources:
           - ./dist/main.js
         port: 3000
       functionName: ${vars.functionName}
-      code: ../.build/function-code
+      # 产物默认放在仓库外（/tmp）：fc3 组件打包 code 时会套用 .gitignore，
+      # 而 api 目录的 .gitignore 里有 /public/admin，会把 Admin 静态资源排除掉。
+      code: ${env('FUNCTION_CODE_DIR', '../.build/function-code')}
       triggers:
         - triggerName: httpTrigger
           triggerType: http

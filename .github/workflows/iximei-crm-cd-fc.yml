@@ -207,19 +207,23 @@ jobs:
         working-directory: apps/iximei-crm/api
         env:
           ADMIN_DIST: ${{ steps.admin.outputs.dist }}
+          # 必须在仓库外：仓库内的 .gitignore 有 /public/admin，fc3 打包时会
+          # 套用该规则把 Admin 静态资源排除，导致 /admin/ 500。
+          FUNCTION_CODE_DIR: /tmp/iximei-crm-function-code
         run: bash ./deploy/fc3/scripts/pre-deploy.sh
 
       - name: Inspect artifact layout
         run: |
-          A=apps/iximei-crm/api/deploy/fc3/.build/function-code
+          A=/tmp/iximei-crm-function-code
           echo "--- 产物顶层 ---"
           ls -la "$A" | head -25
-          echo "--- public ---"
-          find "$A/public" -maxdepth 3 2>&1 | head -25
+          echo "--- public/admin 抽样 ---"
+          find "$A/public" -maxdepth 2 2>&1 | head -15
 
       - name: Deploy API function
         working-directory: apps/iximei-crm/api
         env:
+          FUNCTION_CODE_DIR: /tmp/iximei-crm-function-code
           LOG_LEVEL: info
           # 函数在 FC 网关后面，真实客户端 IP 由网关写进 X-Forwarded-For。
           # 不配这个，req.ip 拿到的全是网关地址，审计日志和按 IP 限流都会失真。

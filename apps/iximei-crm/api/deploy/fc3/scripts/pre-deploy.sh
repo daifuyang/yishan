@@ -20,7 +20,15 @@ if [ -n "${ADMIN_DIST:-}" ]; then
   ADMIN_ARGS=(--admin "$ADMIN_DIST")
 fi
 
+# 产物必须落在**仓库之外**（默认 /tmp）：fc3 组件打包 code 目录时会套用
+# .gitignore 规则，而 apps/iximei-crm/api/.gitignore 里有 `/public/admin`，
+# 正好把 Admin 静态资源整个排除掉。表现是函数里压根没有 public/admin，
+# /admin/ 读 index.html 抛 ENOENT，被 error handler 翻成 500。
+# 放到 /tmp 就没有任何 ignore 规则与之匹配，admin 才能跟着上传。
+OUT="${FUNCTION_CODE_DIR:-$FC_DIR/.build/function-code}"
+mkdir -p "$(dirname "$OUT")"
+
 node scripts/package-api.mjs \
   --api "$API_ROOT" \
-  --output "$FC_DIR/.build/function-code" \
+  --output "$OUT" \
   "${ADMIN_ARGS[@]}"
