@@ -420,3 +420,11 @@ const UserList: React.FC = () => {
 };
 
 export default UserList;
+
+// 建号表单字段既服务于 UserList，也被独立测试直接渲染。
+// 从页面入口公开，避免测试用跨包相对路径穿透到 src/（边界守卫会拒绝）。
+export { UserCreateFields } from './components/UserCreateFields';
+export type {
+  UserCreateFieldsProps,
+  UserCreateFormDefinition,
+} from './components/UserCreateFields';
