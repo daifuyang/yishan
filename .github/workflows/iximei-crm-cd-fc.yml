@@ -127,19 +127,30 @@ jobs:
         if: vars.ADMIN_SOURCE_REPO != ''
         env:
           ADMIN_REPO: ${{ vars.ADMIN_SOURCE_REPO }}
-          ADMIN_SUBDIR: ${{ vars.ADMIN_SOURCE_SUBDIR }}
           ADMIN_PKG: ${{ vars.ADMIN_PACKAGE_NAME }}
           ADMIN_PAT: ${{ secrets.ADMIN_SOURCE_PAT }}
+          ADMIN_BASE_PATH: ${{ vars.ADMIN_BASE_PATH || '/admin' }}
         run: |
           set -euo pipefail
-          : "${ADMIN_PAT:?配置了 ADMIN_SOURCE_REPO 就必须提供 ADMIN_SOURCE_PAT}"
-          git clone --depth 1 "https://x-access-token:${ADMIN_PAT}@github.com/${ADMIN_REPO}.git" /tmp/admin-src
-          cd "/tmp/admin-src/${ADMIN_SUBDIR}"
+          # public 仓库不需要 PAT；private 才用 x-access-token 形式。
+          if [ -n "${ADMIN_PAT:-}" ]; then
+            URL="https://x-access-token:${ADMIN_PAT}@github.com/${ADMIN_REPO}.git"
+          else
+            URL="https://github.com/${ADMIN_REPO}.git"
+          fi
+          git clone --depth 1 "$URL" /tmp/admin-src
+          cd /tmp/admin-src
           corepack enable
           corepack prepare pnpm@8.15.9 --activate
           pnpm install --frozen-lockfile
-          pnpm --filter "${ADMIN_PKG}" build
-          dist="$(pwd)/dist"
+          # Umi 的 max setup 必须先跑，否则 build 缺临时文件。
+          pnpm --filter "${ADMIN_PKG}" exec max setup
+          # PUBLIC_PATH 必须与线上 ADMIN_BASE_PATH 一致（末尾带斜杠），
+          # 否则产物的资源引用指向站点根，挂在 /admin/ 下会整页 404。
+          PUBLIC_PATH="${ADMIN_BASE_PATH%/}/" pnpm --filter "${ADMIN_PKG}" build
+          # dist 在**包目录**下，不是 workspace 根目录。
+          PKG_DIR="$(pnpm --filter "${ADMIN_PKG}" exec pwd)"
+          dist="$PKG_DIR/dist"
           test -f "$dist/index.html"
           echo "dist=$dist" >> "$GITHUB_OUTPUT"
 
