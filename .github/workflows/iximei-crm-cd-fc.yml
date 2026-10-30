@@ -209,6 +209,14 @@ jobs:
           ADMIN_DIST: ${{ steps.admin.outputs.dist }}
         run: bash ./deploy/fc3/scripts/pre-deploy.sh
 
+      - name: Inspect artifact layout
+        run: |
+          A=apps/iximei-crm/api/deploy/fc3/.build/function-code
+          echo "--- 产物顶层 ---"
+          ls -la "$A" | head -25
+          echo "--- public ---"
+          find "$A/public" -maxdepth 3 2>&1 | head -25
+
       - name: Deploy API function
         working-directory: apps/iximei-crm/api
         env:
