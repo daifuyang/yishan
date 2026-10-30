@@ -439,6 +439,8 @@ declare namespace SystemAPI {
     accessPath?: string[];
     /** 已绑定角色编码列表（如 super_admin） */
     roleCodes?: string[];
+    /** 是否建议该用户修改密码 */
+    passwordChangeRecommended?: boolean;
   };
 
   type currentUserResp = {
@@ -916,6 +918,10 @@ declare namespace SystemAPI {
     expiresAt?: number;
     /** 刷新令牌过期时间戳（秒） */
     refreshTokenExpiresAt?: number;
+    /** 密码哈希格式（1 = scrypt v1） */
+    passwordFormat?: number;
+    /** 是否建议该用户修改密码（前端据此展示提示） */
+    passwordChangeRecommended?: boolean;
   };
 
   type loginReq = {
@@ -1723,6 +1729,8 @@ declare namespace SystemAPI {
     deptIds?: number[];
     /** 角色ID列表 */
     roleIds?: number[];
+    /** 是否建议该用户修改密码 */
+    passwordChangeRecommended?: boolean;
   };
 
   type toggleModuleManagementParams = {

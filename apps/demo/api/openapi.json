@@ -174,6 +174,10 @@
             "items": {
               "type": "number"
             }
+          },
+          "passwordChangeRecommended": {
+            "description": "是否建议该用户修改密码",
+            "type": "boolean"
           }
         },
         "required": [
@@ -885,6 +889,14 @@
           "refreshTokenExpiresAt": {
             "description": "刷新令牌过期时间戳（秒）",
             "type": "number"
+          },
+          "passwordFormat": {
+            "description": "密码哈希格式（1 = scrypt v1）",
+            "type": "number"
+          },
+          "passwordChangeRecommended": {
+            "description": "是否建议该用户修改密码（前端据此展示提示）",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1018,6 +1030,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "passwordChangeRecommended": {
+            "description": "是否建议该用户修改密码",
+            "type": "boolean"
           }
         },
         "required": [
